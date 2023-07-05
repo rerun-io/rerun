@@ -438,9 +438,9 @@ def main() -> None:
         root_dirpath = os.path.abspath(f"{script_dirpath}/..")
         os.chdir(root_dirpath)
 
-        extensions = ["fbs", "html", "js", "md", "py", "rs", "sh", "toml", "wgsl", "yml"]
+        extensions = ["c", "cpp", "fbs", "h", "hpp" "html", "js", "md", "py", "rs", "sh", "toml", "wgsl", "yml"]
 
-        exclude_dirs = {"env", "renv", "venv", "target", "target_ra", "target_wasm", ".nox"}
+        exclude_dirs = {"env", "renv", "venv", "venv3.10", "target", "target_ra", "target_wasm", ".nox"}
 
         exclude_paths = {
             "./CODE_STYLE.md",

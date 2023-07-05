@@ -170,7 +170,8 @@ fn paint_ticks(
     let mut current_time =
         time_range.min.floor().as_i64() / small_spacing_time * small_spacing_time;
 
-    while current_time <= time_range.max.ceil().as_i64() {
+    let end_time = time_range.max.ceil().as_i64().saturating_add(1);
+    while current_time < end_time {
         let line_x = x_from_time(current_time);
 
         if visible_rect.min.x <= line_x && line_x <= visible_rect.max.x {
@@ -210,7 +211,7 @@ fn paint_ticks(
             }
         }
 
-        current_time += small_spacing_time;
+        current_time = current_time.saturating_add(small_spacing_time);
     }
 
     shapes

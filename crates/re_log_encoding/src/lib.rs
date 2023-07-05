@@ -23,6 +23,8 @@ pub use file_sink::{FileSink, FileSinkError};
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
 const RRD_HEADER: &[u8; 4] = b"RRF2";
+
+#[cfg(feature = "decoder")]
 const OLD_RRD_HEADERS: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
 
 // ----------------------------------------------------------------------------
@@ -81,7 +83,7 @@ impl EncodingOptions {
         }
     }
 
-    pub fn to_bytes(&self) -> [u8; 4] {
+    pub fn to_bytes(self) -> [u8; 4] {
         [
             self.compression as u8,
             self.serializer as u8,
@@ -93,6 +95,7 @@ impl EncodingOptions {
 
 /// On failure to decode [`EncodingOptions`]
 #[derive(thiserror::Error, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum OptionsError {
     #[error("Reserved bytes not zero")]
     UnknownReservedBytes,
@@ -112,6 +115,7 @@ pub(crate) struct FileHeader {
 }
 
 impl FileHeader {
+    #[cfg(feature = "decoder")]
     pub const SIZE: usize = 12;
 
     #[cfg(feature = "encoder")]
@@ -153,6 +157,7 @@ pub(crate) struct MessageHeader {
 }
 
 impl MessageHeader {
+    #[cfg(feature = "decoder")]
     pub const SIZE: usize = 8;
 
     #[cfg(feature = "encoder")]
@@ -169,6 +174,10 @@ impl MessageHeader {
 
     #[cfg(feature = "decoder")]
     pub fn decode(read: &mut impl std::io::Read) -> Result<Self, decoder::DecodeError> {
+        fn u32_from_le_slice(bytes: &[u8]) -> u32 {
+            u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
+        }
+
         let mut buffer = [0_u8; Self::SIZE];
         read.read_exact(&mut buffer)
             .map_err(decoder::DecodeError::Read)?;
@@ -179,8 +188,4 @@ impl MessageHeader {
             uncompressed_len: uncompressed,
         })
     }
-}
-
-pub(crate) fn u32_from_le_slice(bytes: &[u8]) -> u32 {
-    u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
 }

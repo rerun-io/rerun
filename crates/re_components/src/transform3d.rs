@@ -519,7 +519,7 @@ impl Transform3D {
 #[cfg(feature = "glam")]
 impl Transform3D {
     #[inline]
-    pub fn to_parent_from_child_transform(&self) -> glam::Affine3A {
+    pub fn to_parent_from_child_transform(self) -> glam::Affine3A {
         let transform: glam::Affine3A = self.transform.into();
         if self.from_parent {
             transform.inverse()

@@ -1,5 +1,5 @@
 [package]
-name = "api_demo"
+name = "test_api"
 version = "0.8.0-alpha.0"
 edition = "2021"
 rust-version = "1.69"

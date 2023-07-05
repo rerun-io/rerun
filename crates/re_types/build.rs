@@ -20,6 +20,11 @@ const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
 
 fn main() {
+    if cfg!(target_os = "windows") {
+        // TODO(#2591): Codegen is temporarily disabled on Windows due to hashing issues.
+        return;
+    }
+
     if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
         // Only run if we are in the rerun workspace, not on users machines.
         return;

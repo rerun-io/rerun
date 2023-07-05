@@ -30,7 +30,7 @@ Call [`rr.spawn`](https://ref.rerun.io/docs/python/latest/package/rerun/__init__
 
 Connects to a remote Rerun Viewer and streams all the data via TCP.
 
-You will need to start a stand-alone viewer first, either by using `python -m rerun` if you've installed via `pip`, or simply `rerun` if you've installed via `cargo`.
+You will need to start a stand-alone viewer first by typing `rerun` in your terminal.
 
 #### `Python`
 
@@ -54,9 +54,9 @@ Use [`rr.serve`](https://ref.rerun.io/docs/python/latest/package/rerun/__init__/
 
 ## Save
 
-Saves all the data buffered so far into an `rrd` file on disk, which can then be loaded into a stand-alone viewer.
+Streams all logging data into an `.rrd` file on disk, which can then be loaded into a stand-alone viewer.
 
-To visualize the saved file, use `python -m rerun path/to/file.rrd` if you've installed via `pip`, or simply `rerun path/to/file.rrd` if you've installed via `cargo`.
+To view the saved file, use `rerun path/to/file.rrd`.
 
 ⚠️  [RRD files don't yet handle versioning!](https://github.com/rerun-io/rerun/issues/873) ⚠️
 

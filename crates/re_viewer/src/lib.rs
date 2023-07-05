@@ -67,6 +67,9 @@ pub fn build_info() -> re_build_info::BuildInfo {
 /// Used for analytics.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AppEnvironment {
+    /// Created from the Rerun C SDK.
+    CSdk,
+
     /// Created from the Rerun Python SDK.
     PythonSdk(re_log_types::PythonVersion),
 
@@ -93,6 +96,7 @@ impl AppEnvironment {
     pub fn from_store_source(source: &re_log_types::StoreSource) -> Self {
         use re_log_types::StoreSource;
         match source {
+            StoreSource::CSdk => Self::CSdk,
             StoreSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
             StoreSource::RustSdk {
                 rustc_version: rust_version,

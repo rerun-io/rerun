@@ -5,16 +5,20 @@ order: 2
 
 ## The Definition of Spaces
 
-Every Entity in Rerun exists in some *Space.* This is at the core of how Rerun organizes the visualizations of the data
-that you have logged.  In the [Rerun Viewer](../reference/viewer.md) you view data by configuring a "Space View," which is a view
+Every Entity in Rerun exists in some *Space*. This is at the core of how Rerun organizes the visualizations of the data
+that you have logged.  In the [Rerun Viewer](../reference/viewer.md) you view data by configuring a "Space View", which is a view
 of a set of entities *as seen from a particular Space.*
 
 A "Space" is, very loosely, a generalization of the idea of a "Coordinate System" (sometimes known as a "Coordinate Frame") to arbitrary data. If a collection of
-entities are part of the same Space, it means they can be rendered together in the same view, using the same
-"coordinates." As some examples:
+entities are part of the same Space, it means they can be rendered together in the same "coordinate system".
+
+For examples:
 - For 2d and 3d geometric primitives this means they share the same origin and coordinate system.
 - For scalar plots it means they share the same plot axes.
 - For text logs, it means they share the same conceptual stream.
+
+As explained bellow, a Space View *may* display data belonging to multiple Spaces, but its coordinate system is defined
+by a specific Space, and the other Spaces must have well-defined transforms to that Space to be displayed in the same view.
 
 Which entities belong to which Spaces is a function of the Transform system, which uses the following rules to define
 the connectivity of Spaces:
@@ -32,9 +36,9 @@ share the same Space. However, as soon as you begin to log transforms, you can e
 Consider the following scenario:
 
 ```python
-rr.log_points("world/mapped_keypoints", ...)
-rr.log_points("world/robot/observed_features", ...)
-rr.log_rigid3("world/robot", ...)
+rr.log_points("world/mapped_keypoints", …)
+rr.log_points("world/robot/observed_features", …)
+rr.log_transform3d("world/robot", …)
 ```
 
 There are 4 parent/child entity relationships represented in this hierarchy.
@@ -44,34 +48,35 @@ There are 4 parent/child entity relationships represented in this hierarchy.
 - `world` -> `world/robot`
 - `world/robot` -> `world/robot/observed_features`
 
-The call: `rr.log_rigid3("world/robot", ...)` only applies to the relationship: `world` -> `world/robot` because the
-logged transform (`world/robot`) describes the relationship between the entity and its _parent_ (`world`). All of the
-other relationships are considered to be an identity transform.
+The call: `rr.log_transform3d("world/robot", ...)` only applies to the relationship: `world` -> `world/robot` because the
+logged transform (`world/robot`) describes the relationship between the entity and its _parent_ (`world`). All other 
+relationships are considered to be an identity transform.
 
 This leaves us with two spaces. In one space, we have the entities `world`, and `world/mapped_keypoints`. In the other
 space we have the entities `world/robot` and `world/robot/observed_features`.
 
 Practically speaking, this means that the position values of the points from `world/mapped_keypoints` and the points
 from `world/robot/observed_features` are not directly comparable. If you were to directly draw these points in a single
-coordinate system the results would be meaningless. Fortunately, Rerun can still put these entities in the same Space View because it is able to automatically transform data between different spaces.
+coordinate system the results would be meaningless. As noted above, Rerun can still display these entities in the same
+Space View because it is able to automatically transform data between different spaces.
 
 
 ## Space Transformations
 
 In order to correctly display data from different Spaces in the same view, Rerun uses the information from logged
 transforms. Since most transforms are invertible, Rerun can usually transform data from a parent space to a child space
-or vice versa.  As long as there is a continuous chain of well defined transforms, Rerun will apply the correct series
+or vice versa.  As long as there is a continuous chain of well-defined transforms, Rerun will apply the correct series
 of transformations to the component data when building the scene.
 
 Rerun transforms are currently limited to connections between _Spatial_ views of 2D or 3D data. There are 3 types of
 transforms that can be logged:
 
-- Rigid3D transforms define a pure 3D translation + rotation relationship between two paths.
-  [rerun.log_rigid3](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_rigid3))
+- Affine 3D transforms, which can define any combination of translation, rotation, and scale relationship between two paths.
+  [rerun.log_transform3d](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_transform3d))
 - Pinhole transforms define a 3D -> 2D camera projection. (See:
   [rerun.log_pinhole](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_pinhole))
 - Unknown transforms specify that the data cannot be transformed. In this case it will not be possible to combine the
-  data into a single view and you will need to create two separate views to explore the data. (See:
+  data into a single view, and you will need to create two separate views to explore the data. (See:
   [rerun.log_unknown_transform](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_unknown_transform))
 
 In the future, Rerun will be adding support for additional types of transforms.
@@ -87,11 +92,11 @@ Say you have a 3D world with two cameras with known extrinsics (pose) and intrin
 rr.log_points("world/points", …)
 
 # Log first camera:
-rr.log_rigid3("world/camera/#0", parent_from_child=(cam0_pose.pos, cam0_pose.rot))
+rr.log_transform3d("world/camera/#0", rr.TranslationAndMat3(translation=cam0_pose.pos, matrix=cam0_pose.rot))
 rr.log_pinhole("world/camera/#0/image", …)
 
 # Log second camera:
-rr.log_rigid3("world/camera/#1", parent_from_child=(cam1_pose.pos, cam1_pose.rot))
+rr.log_transform3d("world/camera/#1", rr.TranslationAndMat3(translation=cam1_pose.pos, matrix=cam1_pose.rot))
 rr.log_pinhole("world/camera/#1/image", …)
 
 # Log some data to the image spaces of the first camera:

@@ -5,8 +5,8 @@ A collection of many small examples, in one file.
 It uses a lot of different aspects of the Rerun API in order to test it.
 
 Example usage:
-* Run all demos: `examples/python/api_demo/main.py`
-* Run specific demo: `examples/python/api_demo/main.py --demo rects`
+* Run all tests: `examples/python/test_api/main.py`
+* Run specific test: `examples/python/test_api/main.py --test rects`
 """
 from __future__ import annotations
 
@@ -30,67 +30,67 @@ def run_segmentation() -> None:
     segmentation_img[10:20, 30:50] = 13
     segmentation_img[80:100, 60:80] = 42
     segmentation_img[20:50, 90:110] = 99
-    rr.log_segmentation_image("seg_demo/img", segmentation_img)
+    rr.log_segmentation_image("seg_test/img", segmentation_img)
 
     # Log a bunch of classified 2D points
     if rr.ENABLE_NEXT_GEN_API:
         # Note: this uses the new, WIP object-oriented API
-        rr.log_any("seg_demo/single_point", rr.Points2D([64, 64], class_ids=13))
-        rr.log_any("seg_demo/single_point_labeled", rr.Points2D([90, 50], class_ids=13, labels="labeled point"))
-        rr.log_any("seg_demo/several_points0", rr.Points2D([[20, 50], [100, 70], [60, 30]], class_ids=42))
+        rr.log_any("seg_test/single_point", rr.Points2D([64, 64], class_ids=13))
+        rr.log_any("seg_test/single_point_labeled", rr.Points2D([90, 50], class_ids=13, labels="labeled point"))
+        rr.log_any("seg_test/several_points0", rr.Points2D([[20, 50], [100, 70], [60, 30]], class_ids=42))
         rr.log_any(
-            "seg_demo/several_points1",
+            "seg_test/several_points1",
             rr.Points2D([[40, 50], [120, 70], [80, 30]], class_ids=np.array([13, 42, 99], dtype=np.uint8)),
         )
         rr.log_any(
-            "seg_demo/many points",
+            "seg_test/many points",
             rr.Points2D(
                 [[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)],
                 class_ids=np.array([42], dtype=np.uint8),
             ),
         )
     else:
-        rr.log_point("seg_demo/single_point", np.array([64, 64]), class_id=13)
-        rr.log_point("seg_demo/single_point_labeled", np.array([90, 50]), class_id=13, label="labeled point")
-        rr.log_points("seg_demo/several_points0", np.array([[20, 50], [100, 70], [60, 30]]), class_ids=42)
+        rr.log_point("seg_test/single_point", np.array([64, 64]), class_id=13)
+        rr.log_point("seg_test/single_point_labeled", np.array([90, 50]), class_id=13, label="labeled point")
+        rr.log_points("seg_test/several_points0", np.array([[20, 50], [100, 70], [60, 30]]), class_ids=42)
         rr.log_points(
-            "seg_demo/several_points1",
+            "seg_test/several_points1",
             np.array([[40, 50], [120, 70], [80, 30]]),
             class_ids=np.array([13, 42, 99], dtype=np.uint8),
         )
         rr.log_points(
-            "seg_demo/many points",
+            "seg_test/many points",
             np.array([[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)]),
             class_ids=np.array([42], dtype=np.uint8),
         )
 
-    rr.log_text_entry("logs/seg_demo_log", "default colored rects, default colored points, a single point has a label")
+    rr.log_text_entry("logs/seg_test_log", "default colored rects, default colored points, a single point has a label")
 
     # Log an initial segmentation map with arbitrary colors
     rr.set_time_seconds("sim_time", 2)
-    rr.log_annotation_context("seg_demo", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
+    rr.log_annotation_context("seg_test", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
     rr.log_text_entry(
-        "logs/seg_demo_log",
+        "logs/seg_test_log",
         "default colored rects, default colored points, " "all points except the bottom right clusters have labels",
     )
 
     # Log an updated segmentation map with specific colors
     rr.set_time_seconds("sim_time", 3)
     rr.log_annotation_context(
-        "seg_demo",
+        "seg_test",
         [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))],
         timeless=False,
     )
-    rr.log_text_entry("logs/seg_demo_log", "points/rects with user specified colors")
+    rr.log_text_entry("logs/seg_test_log", "points/rects with user specified colors")
 
     # Log with a mixture of set and unset colors / labels
     rr.set_time_seconds("sim_time", 4)
     rr.log_annotation_context(
-        "seg_demo",
+        "seg_test",
         [rr.AnnotationInfo(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), rr.AnnotationInfo(99, label="label3")],
         timeless=False,
     )
-    rr.log_text_entry("logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
+    rr.log_text_entry("logs/seg_test_log", "label1 disappears and everything with label3 is now default colored again")
 
 
 def small_image() -> None:
@@ -212,7 +212,7 @@ def run_3d_points() -> None:
 
 def raw_mesh() -> None:
     rr.log_mesh(
-        "mesh_demo/triangle",
+        "mesh_test/triangle",
         positions=[[0, 0, 0], [0, 0.7, 0], [1.0, 0.0, 0]],
         vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
     )
@@ -226,7 +226,7 @@ def run_rects() -> None:
     # Add an image
     img = np.zeros([1024, 1024, 3], dtype="uint8")
     img[:, :] = (128, 128, 128)
-    rr.log_image("rects_demo/img", img)
+    rr.log_image("rects_test/img", img)
 
     # 20 random rectangles
     rr.set_time_seconds("sim_time", 2)
@@ -234,11 +234,11 @@ def run_rects() -> None:
     rects_wh = np.random.rand(20, 2) * (1024 - rects_xy + 1)
     rects = np.hstack((rects_xy, rects_wh))
     colors = np.array([[random.randrange(255) for _ in range(3)] for _ in range(20)])
-    rr.log_rects("rects_demo/rects", rects, colors=colors, rect_format=rr.RectFormat.XYWH)
+    rr.log_rects("rects_test/rects", rects, colors=colors, rect_format=rr.RectFormat.XYWH)
 
     # Clear the rectangles by logging an empty set
     rr.set_time_seconds("sim_time", 3)
-    rr.log_rects("rects_demo/rects", [])
+    rr.log_rects("rects_test/rects", [])
 
 
 def run_text_logs() -> None:
@@ -252,16 +252,16 @@ def run_text_logs() -> None:
 
 def run_log_cleared() -> None:
     rr.set_time_seconds("sim_time", 1)
-    rr.log_rect("null_demo/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
-    rr.log_rect("null_demo/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
+    rr.log_rect("null_test/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
+    rr.log_rect("null_test/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
     rr.set_time_seconds("sim_time", 2)
-    rr.log_cleared("null_demo/rect/0")
+    rr.log_cleared("null_test/rect/0")
     rr.set_time_seconds("sim_time", 3)
-    rr.log_cleared("null_demo/rect", recursive=True)
+    rr.log_cleared("null_test/rect", recursive=True)
     rr.set_time_seconds("sim_time", 4)
-    rr.log_rect("null_demo/rect/0", [5, 5, 4, 4])
+    rr.log_rect("null_test/rect/0", [5, 5, 4, 4])
     rr.set_time_seconds("sim_time", 5)
-    rr.log_rect("null_demo/rect/1", [10, 5, 4, 4])
+    rr.log_rect("null_test/rect/1", [10, 5, 4, 4])
 
 
 def transforms_rigid_3d() -> None:
@@ -339,7 +339,7 @@ def transforms_rigid_3d() -> None:
 def run_bounding_box() -> None:
     rr.set_time_seconds("sim_time", 0)
     rr.log_obb(
-        "bbox_demo/bbox",
+        "bbox_test/bbox",
         half_size=[1.0, 0.5, 0.25],
         position=np.array([0.0, 0.0, 0.0]),
         rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
@@ -350,7 +350,7 @@ def run_bounding_box() -> None:
 
     rr.set_time_seconds("sim_time", 1)
     rr.log_obb(
-        "bbox_demo/bbox",
+        "bbox_test/bbox",
         half_size=[1.0, 0.5, 0.25],
         position=np.array([1.0, 0.0, 0.0]),
         rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
@@ -414,13 +414,14 @@ def run_image_tensors() -> None:
         rr.log_image(f"img_gray_{dtype}", img_gray.astype(dtype))
 
 
-def spawn_demo(demo: Callable[[], None], rec: rr.RecordingStream) -> None:
+def spawn_test(test: Callable[[], None], rec: rr.RecordingStream) -> None:
     with rec:
-        demo()
+        test()
 
 
 def main() -> None:
-    demos = {
+    tests = {
+        "2d_layering": run_2d_layering,
         "2d_lines": run_2d_lines,
         "3d_points": run_3d_points,
         "bbox": run_bounding_box,
@@ -432,51 +433,50 @@ def main() -> None:
         "segmentation": run_segmentation,
         "small_image": small_image,
         "text": run_text_logs,
-        "transforms_rigid_3d": transforms_rigid_3d,
         "transform_test": transform_test,
-        "2d_layering": run_2d_layering,
+        "transforms_rigid_3d": transforms_rigid_3d,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
-        "--demo", type=str, default="most", help="What demo to run", choices=["most", "all"] + list(demos.keys())
+        "--test", type=str, default="most", help="What test to run", choices=["most", "all"] + list(tests.keys())
     )
     parser.add_argument(
         "--multithread",
         dest="multithread",
         action="store_true",
-        help="If specified, each demo will be run from its own python thread",
+        help="If specified, each test will be run from its own python thread",
     )
     parser.add_argument(
         "--split-recordings",
         dest="split_recordings",
         action="store_true",
-        help="If specified, each demo will be its own recording",
+        help="If specified, each test will be its own recording",
     )
 
     rr.script_add_args(parser)
     args = parser.parse_args()
 
     if not args.split_recordings:
-        rec = rr.script_setup(args, "api_demo")
+        rec = rr.script_setup(args, f"test_api_{args.test}")
 
-    if args.demo in ["most", "all"]:
-        print(f"Running {args.demo} demos…")
+    if args.test in ["most", "all"]:
+        print(f"Running {args.test} tests…")
 
         threads = []
-        for name, demo in demos.items():
-            # Some demos are just a bit… too much
-            if args.demo == "most" and name in ["image_tensors", "transform_test"]:
+        for name, test in tests.items():
+            # Some tests are just a bit… too much
+            if args.test == "most" and name in ["image_tensors", "transform_test"]:
                 continue
 
             if args.split_recordings:
-                rec = rr.script_setup(args, f"api_demo/{name}")
+                rec = rr.script_setup(args, f"test_api/{name}")
 
             if args.multithread:
                 t = threading.Thread(
-                    target=spawn_demo,
+                    target=spawn_test,
                     args=(
-                        demo,
+                        test,
                         rec,
                     ),
                 )
@@ -485,16 +485,16 @@ def main() -> None:
             else:
                 logging.info(f"Starting {name}")
                 with rec:
-                    demo()
+                    test()
 
         for t in threads:
             t.join()
     else:
         if args.split_recordings:
-            with rr.script_setup(args, f"api_demo/{args.demo}"):
-                demos[args.demo]()
+            with rr.script_setup(args, f"test_api/{args.test}"):
+                tests[args.test]()
         else:
-            demos[args.demo]()
+            tests[args.test]()
 
     rr.script_teardown(args)
 
