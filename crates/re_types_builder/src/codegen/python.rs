@@ -11,8 +11,7 @@ use std::{
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_PYTHON_TRANSPARENT,
-    ATTR_RERUN_LEGACY_FQNAME,
+    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_RERUN_LEGACY_FQNAME,
 };
 
 // ---
@@ -721,7 +720,7 @@ fn quote_array_method_from_obj(
     objects: &Objects,
     obj: &Object,
 ) -> String {
-    // TODO(cmc): should be using native type, but need transparency
+    // TODO(cmc): should be using the native type, but need to compare numpy types etc
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
 
     // allow overriding the __array__ function
@@ -769,7 +768,7 @@ fn quote_native_types_method_from_obj(objects: &Objects, obj: &Object) -> String
         // that field cannot be optional
         || obj.fields[0].is_nullable
         // that single field must be of a supported native type
-        // TODO(cmc): should be using native type, but need transparency
+        // TODO(cmc): should be using the native type, but need to compare numpy types etc
         || !["str", "int", "float"].contains(&typ)
     {
         return String::new();
@@ -872,7 +871,7 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
 /// The returned boolean indicates whether there was anything to unwrap at all.
 /// The third returned value is a default converter function if any.
 fn quote_field_type_from_field(
-    objects: &Objects,
+    _objects: &Objects,
     field: &ObjectField,
     unwrap: bool,
 ) -> (String, bool, String) {
@@ -936,25 +935,7 @@ fn quote_field_type_from_field(
                 }
             }
         }
-        Type::Object(fqname) => {
-            // TODO(cmc): it is a bit weird to be doing the transparency logic (which is language
-            // agnostic) in a python specific quoting function... a static helper at the very least
-            // would be nice.
-            let is_transparent = field
-                .try_get_attr::<String>(ATTR_PYTHON_TRANSPARENT)
-                .is_some();
-            if is_transparent {
-                let target = objects.get(fqname);
-                assert_eq!(target.fields.len(), 1, "transparent field must point to an object with exactly 1 field, but {:?} has {}", fqname, target.fields.len());
-                // NOTE: unwrap call is safe due to assertion just above
-                return quote_field_type_from_field(
-                    objects,
-                    target.fields.first().unwrap(),
-                    unwrap,
-                );
-            }
-            quote_type_from_element_type(&ElementType::Object(fqname.clone()))
-        }
+        Type::Object(fqname) => quote_type_from_element_type(&ElementType::Object(fqname.clone())),
     };
 
     (typ, unwrapped, converter)
