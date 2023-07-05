@@ -305,6 +305,12 @@ impl ImagesPart {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 
+        let view_coordinates = crate::scene::contexts::pinhole_camera_view_coordinates(
+            ctx.store_db.store(),
+            &ctx.current_query(),
+            parent_pinhole_path,
+        );
+
         // TODO(cmc): getting to those extrinsics is no easy task :|
         let world_from_obj = parent_pinhole_path
             .parent()
@@ -312,6 +318,8 @@ impl ImagesPart {
         let Some(world_from_obj) = world_from_obj else {
             anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
         };
+        let world_from_obj =
+            world_from_obj * glam::Affine3A::from_mat3(view_coordinates.from_rub());
 
         let Some([height, width, _]) = tensor.image_height_width_channels() else {
             anyhow::bail!("Tensor at {ent_path:?} is not an image");

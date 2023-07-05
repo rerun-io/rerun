@@ -244,7 +244,7 @@ impl ViewCoordinates {
         }
     }
 
-    /// Returns a matrix that translates this coordinate system to RUB.
+    /// Returns a matrix that transforms this coordinate system to RUB.
     ///
     /// (RUB: X=Right, Y=Up, B=Back)
     #[cfg(feature = "glam")]
