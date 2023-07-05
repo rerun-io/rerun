@@ -12,7 +12,6 @@ namespace rerun.components;
 /// A point in 2D space.
 // TODO(cmc): bring back attr.rust.tuple_struct
 struct Point2D (
-  "attr.arrow.transparent",
   "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
   "attr.rerun.legacy_fqname": "rerun.point2d",
