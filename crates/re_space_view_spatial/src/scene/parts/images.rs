@@ -234,7 +234,7 @@ impl ImagesPart {
                     ) {
                         Ok(cloud) => {
                             self.data
-                                .extend_bounding_box(cloud.bbox(), cloud.world_from_obj);
+                                .extend_bounding_box(cloud.bbox(), cloud.world_from_rdf);
                             self.depth_cloud_entities.insert(ent_path.hash());
                             depth_clouds.push(cloud);
                             return Ok(());
@@ -312,14 +312,14 @@ impl ImagesPart {
         );
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
-        let world_from_obj = parent_pinhole_path
+        let world_from_view = parent_pinhole_path
             .parent()
             .and_then(|ent_path| scene_context.transforms.reference_from_entity(&ent_path));
-        let Some(world_from_obj) = world_from_obj else {
+        let Some(world_from_view) = world_from_view else {
             anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
         };
-        let world_from_obj =
-            world_from_obj * glam::Affine3A::from_mat3(view_coordinates.from_rub());
+        let world_from_rdf =
+            world_from_view * glam::Affine3A::from_mat3(view_coordinates.from_rdf());
 
         let Some([height, width, _]) = tensor.image_height_width_channels() else {
             anyhow::bail!("Tensor at {ent_path:?} is not an image");
@@ -359,7 +359,7 @@ impl ImagesPart {
         let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
         Ok(DepthCloud {
-            world_from_obj,
+            world_from_rdf,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,

@@ -89,7 +89,7 @@ impl CamerasPart {
         // Setup a RUB frustum - for non-rub we apply a transformation matrix.
         let fy = (fov_y * 0.5).tan() * frustum_length;
         let fx = fy * pinhole.aspect_ratio().unwrap_or(1.0);
-        let fz = -frustum_length;
+        let fz = -frustum_length; // z = back, so we use negative z here.
 
         let image_center_pixel = pinhole.resolution().unwrap_or(glam::Vec2::ZERO) * 0.5;
         let principal_point_offset_pixel = image_center_pixel - pinhole.principal_point();

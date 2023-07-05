@@ -60,7 +60,7 @@ def log_camera(origin: npt.ArrayLike, xyz: str, forward: npt.ArrayLike) -> None:
         camera_xyz=xyz,
     )
     rr.log_image(f"{pinhole_path}/rgb", rgb)
-    rr.log_depth_image(f"{pinhole_path}/depth", depth)
+    rr.log_depth_image(f"{pinhole_path}/depth", depth, meter=1.0)
 
 
 # Log a series of pinhole cameras only differing by their view coordinates and some offset.

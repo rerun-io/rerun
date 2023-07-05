@@ -23,7 +23,7 @@ const SAMPLE_TYPE_UINT  = 3u;
 /// Same for all draw-phases.
 struct DepthCloudInfo {
     /// The extrinsincs of the camera used for the projection.
-    world_from_obj: Mat4,
+    world_from_rdf: Mat4,
 
     /// The intrinsics of the camera used for the projection.
     ///
@@ -127,12 +127,13 @@ fn compute_point_data(quad_idx: u32) -> PointData {
         let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);
         let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
 
-        let pos_in_obj = Vec3(
+        // RDF: X=Right, Y=Down, Z=Forward
+        let pos_in_rdf = Vec3(
             (Vec2(texcoords) - offset) * world_space_depth / focal_length,
-            world_space_depth,
+            world_space_depth, // RDF, Z=forward, so positive depth
         );
 
-        let pos_in_world = depth_cloud_info.world_from_obj * Vec4(pos_in_obj, 1.0);
+        let pos_in_world = depth_cloud_info.world_from_rdf * Vec4(pos_in_rdf, 1.0);
 
         data.pos_in_world = pos_in_world.xyz;
         data.unresolved_radius = depth_cloud_info.point_radius_from_world_depth * world_space_depth;

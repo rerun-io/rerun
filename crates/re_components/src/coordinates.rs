@@ -211,18 +211,27 @@ impl ViewCoordinates {
 
     /// Returns a matrix that transforms from RUB to this coordinate system.
     ///
-    /// (RUB: X=Right, Y=Up, B=Back)
+    /// (RUB: X=Right, Y=Up, Z=Back)
     #[cfg(feature = "glam")]
     #[inline]
     pub fn from_rub(&self) -> glam::Mat3 {
         self.to_rub().transpose()
     }
 
+    /// Returns a matrix that transforms from RDF to this coordinate system.
+    ///
+    /// (RDF: X=Right, Y=Down, Z=Forward)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn from_rdf(&self) -> glam::Mat3 {
+        self.from_rub() * Self::RDF.to_rub()
+    }
+
     /// Returns a quaternion that rotates from RUB to this coordinate system.
     ///
     /// Errors if the coordinate system is left-handed or degenerate.
     ///
-    /// (RUB: X=Right, Y=Up, B=Back)
+    /// (RUB: X=Right, Y=Up, Z=Back)
     #[cfg(feature = "glam")]
     #[inline]
     pub fn from_rub_quat(&self) -> Result<glam::Quat, String> {
@@ -246,7 +255,7 @@ impl ViewCoordinates {
 
     /// Returns a matrix that transforms this coordinate system to RUB.
     ///
-    /// (RUB: X=Right, Y=Up, B=Back)
+    /// (RUB: X=Right, Y=Up, Z=Back)
     #[cfg(feature = "glam")]
     #[inline]
     pub fn to_rub(&self) -> glam::Mat3 {
