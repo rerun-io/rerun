@@ -276,7 +276,7 @@ def is_already_uploaded(version: str, crate: Crate) -> bool:
     ).json()
 
     # crate has not been uploaded yet
-    if "versions" not in res or len(res["versions"]) == 0:
+    if "versions" not in res:
         return False
 
     # crate has been uploaded, check every version against what we're uploading
