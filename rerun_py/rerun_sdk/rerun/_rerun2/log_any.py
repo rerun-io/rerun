@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import fields
 from typing import Any, Iterable
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from attrs import fields
 
 from .. import RecordingStream, bindings
 from ..log import error_utils
-from .archetypes import Archetype
-from .components import Component, InstanceKeyArray
+from ._baseclasses import Archetype, NamedExtensionArray
+from .components import InstanceKeyArray, InstanceKeyType
 
 __all__ = ["log_any"]
 
@@ -22,8 +22,8 @@ ext_component_types: dict[str, Any] = {}
 
 # adapted from rerun.log._add_extension_components
 def _add_extension_components(
-    instanced: dict[str, Component],
-    splats: dict[str, Component],
+    instanced: dict[str, pa.ExtensionArray],
+    splats: dict[str, pa.ExtensionArray],
     ext: dict[str, Any],
     identifiers: npt.NDArray[np.uint64] | None,
 ) -> None:
@@ -65,11 +65,20 @@ def _add_extension_components(
             instanced[name] = pa_value  # noqa
 
 
-def _extract_components(entity: Archetype) -> Iterable[tuple[Component, bool]]:
+def _extract_components(entity: Archetype) -> Iterable[tuple[NamedExtensionArray, bool]]:
     """Extract the components from an entity, yielding (component, is_primary) tuples."""
-    for fld in fields(entity):
+    for fld in fields(type(entity)):
         if "component" in fld.metadata:
-            yield getattr(entity, fld.name), fld.metadata["component"] == "primary"
+            comp = getattr(entity, fld.name)
+            if comp is not None:
+                yield getattr(entity, fld.name), fld.metadata["component"] == "primary"
+
+
+def _splat() -> InstanceKeyArray:
+    """Helper to generate a splat InstanceKeyArray."""
+
+    _MAX_U64 = 2**64 - 1
+    return pa.array([_MAX_U64], type=InstanceKeyType().storage_type)  # type: ignore[no-any-return]
 
 
 def log_any(
@@ -105,8 +114,8 @@ def log_any(
         if not isinstance(entity, Archetype):
             raise TypeError(f"Expected Archetype, got {type(entity)}")
 
-    instanced: dict[str, Component] = {}
-    splats: dict[str, Component] = {}
+    instanced: dict[str, NamedExtensionArray] = {}
+    splats: dict[str, NamedExtensionArray] = {}
 
     # find canonical length of this entity by based on the longest length of any primary component
     archetype_length = max(len(comp) for comp, primary in _extract_components(entity) if primary)
@@ -123,7 +132,7 @@ def log_any(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = InstanceKeyArray.splat()
+        splats["rerun.instance_key"] = _splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

@@ -105,7 +105,7 @@ impl re_log_types::Component for ViewCoordinates {
 }
 
 impl ViewCoordinates {
-    /// Default right-handed view coordinates of re_renderer: X=Right, Y=Up, Z=Back.
+    /// Default right-handed view coordinates of `re_renderer`: X=Right, Y=Up, Z=Back.
     pub const RUB: Self = Self([ViewDir::Right, ViewDir::Up, ViewDir::Back]);
 
     /// Default right-handed pinhole, camera, and image coordinates: X=Right, Y=Down, Z=Forward.

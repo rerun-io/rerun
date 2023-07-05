@@ -146,7 +146,6 @@ pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recomme
 pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
 pub const ATTR_RERUN_LEGACY_FQNAME: &str = "attr.rerun.legacy_fqname";
 
-pub const ATTR_PYTHON_TRANSPARENT: &str = "attr.python.transparent";
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
 pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
 
@@ -267,7 +266,6 @@ pub fn generate_rust_code(
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
 
-    // generate rust code
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
     let _filepaths = gen.generate(&objects, &arrow_registry);
 }

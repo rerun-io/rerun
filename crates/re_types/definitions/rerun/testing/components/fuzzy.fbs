@@ -9,7 +9,6 @@ namespace rerun.testing.components;
 // ---
 
 table AffixFuzzer1 (
-  "attr.arrow.transparent",
   "attr.rust.derive": "Debug, Clone, PartialEq",
   order: 100
 ) {
@@ -17,7 +16,6 @@ table AffixFuzzer1 (
 }
 
 table AffixFuzzer2 (
-  "attr.arrow.transparent",
   "attr.rust.derive": "Debug, Clone, PartialEq",
   "attr.rust.tuple_struct",
   order: 200
@@ -33,7 +31,6 @@ table AffixFuzzer3 (
 }
 
 table AffixFuzzer4 (
-  "attr.arrow.transparent",
   "attr.rust.derive": "Debug, Clone, PartialEq",
   order: 400
 ) {
@@ -41,7 +38,6 @@ table AffixFuzzer4 (
 }
 
 table AffixFuzzer5 (
-  "attr.arrow.transparent",
   "attr.rust.derive": "Debug, Clone, PartialEq",
   "attr.rust.tuple_struct",
   order: 500
@@ -61,12 +57,55 @@ table AffixFuzzer7 (
   order: 700
 ) {
   many_optional: [rerun.testing.datatypes.AffixFuzzer1] (order: 100);
-  single_float_optional: float (order: 101);
-  single_string_required: string (order: 102, required);
-  single_string_optional: string (order: 103);
-  many_floats_optional: [float] (order: 104);
-  many_strings_required: [string] (order: 105, required);
-  many_strings_optional: [string] (order: 106);
-  // TODO(cmc): the ugly bug we need to take care of at some point
-  // many_transparent_optionals: rerun.testing.datatypes.AffixFuzzer2 (order: 107);
 }
+
+table AffixFuzzer8 (
+  "attr.rust.derive": "Debug, Clone, PartialEq",
+  order: 800
+) {
+  single_float_optional: float (order: 101);
+}
+
+table AffixFuzzer9 (
+  "attr.rust.derive": "Debug, Clone, PartialEq, Eq",
+  order: 900
+) {
+  single_string_required: string (order: 102, required);
+}
+
+table AffixFuzzer10 (
+  "attr.rust.derive": "Debug, Clone, PartialEq, Eq",
+  order: 1000
+) {
+  single_string_optional: string (order: 103);
+}
+
+table AffixFuzzer11 (
+  "attr.rust.derive": "Debug, Clone, PartialEq",
+  order: 1100
+) {
+  many_floats_optional: [float] (order: 104);
+}
+
+table AffixFuzzer12 (
+  "attr.rust.derive": "Debug, Clone, PartialEq, Eq",
+  order: 1200
+) {
+  many_strings_required: [string] (order: 105, required);
+}
+
+table AffixFuzzer13 (
+  "attr.rust.derive": "Debug, Clone, PartialEq, Eq",
+  order: 1300
+) {
+  many_strings_optional: [string] (order: 106);
+}
+
+// TODO(cmc): the ugly bug we need to take care of at some point
+// table AffixFuzzer14 (
+//   "attr.rust.derive": "Debug, Clone, PartialEq",
+//   order: 1400
+// ) {
+//
+//   many_transparent_optionals: rerun.testing.datatypes.AffixFuzzer2 (order: 107);
+// }

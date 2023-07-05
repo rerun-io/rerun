@@ -339,7 +339,7 @@ impl Object {
         let kind = ObjectKind::from_pkg_name(&pkg_name);
         let attrs = Attributes::from_raw_attrs(obj.attributes());
 
-        let fields = {
+        let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
                 .fields()
                 .iter()
@@ -352,6 +352,14 @@ impl Object {
             fields.sort_by_key(|field| field.order());
             fields
         };
+
+        if kind == ObjectKind::Component {
+            assert!(
+                fields.len() == 1,
+                "components must have exactly 1 field, but {fqname} has {}",
+                fields.len()
+            );
+        }
 
         Self {
             virtpath,
@@ -410,7 +418,7 @@ impl Object {
         };
         let attrs = Attributes::from_raw_attrs(enm.attributes());
 
-        let fields = enm
+        let fields: Vec<_> = enm
             .values()
             .iter()
             // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
@@ -421,6 +429,14 @@ impl Object {
             })
             .map(|val| ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val))
             .collect();
+
+        if kind == ObjectKind::Component {
+            assert!(
+                fields.len() == 1,
+                "components must have exactly 1 field, but {fqname} has {}",
+                fields.len()
+            );
+        }
 
         Self {
             virtpath,
@@ -479,6 +495,13 @@ impl Object {
             ObjectSpecifics::Struct {} => false,
             ObjectSpecifics::Union { utype } => utype.is_none(),
         }
+    }
+
+    pub fn is_arrow_transparent(&self) -> bool {
+        self.kind == ObjectKind::Component
+            || self
+                .try_get_attr::<String>(crate::ATTR_ARROW_TRANSPARENT)
+                .is_some()
     }
 }
 
