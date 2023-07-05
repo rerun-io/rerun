@@ -1,6 +1,6 @@
 [package]
 name = "raw_mesh"
-version = "0.8.0-alpha.0"
+version = "0.8.0-alpha.2"
 edition = "2021"
 rust-version = "1.69"
 license = "MIT OR Apache-2.0"
