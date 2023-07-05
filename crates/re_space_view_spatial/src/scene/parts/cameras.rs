@@ -76,6 +76,8 @@ impl CamerasPart {
             return;
         };
 
+        debug_assert!(world_from_camera_iso.is_finite());
+
         self.space_cameras.push(SpaceCamera3D {
             ent_path: ent_path.clone(),
             pinhole_view_coordinates,

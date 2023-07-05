@@ -154,6 +154,10 @@ impl Eye {
         position: glam::Vec3,
         viewport_size: egui::Vec2,
     ) -> f32 {
+        if !self.world_from_rub_view.is_finite() {
+            return 1.0 / viewport_size.y;
+        }
+
         if let Some(fov_y) = self.fov_y {
             let distance = position.distance(self.world_from_rub_view.translation());
             (fov_y * 0.5).tan() * 2.0 / viewport_size.y * distance
@@ -446,8 +450,14 @@ impl OrbitEye {
             let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
             let fwd = fwd.normalize(); // Prevent drift
 
-            self.world_from_view_rot =
+            let new_world_from_view_rot =
                 Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
+
+            if new_world_from_view_rot.is_finite() {
+                self.world_from_view_rot = new_world_from_view_rot;
+            } else {
+                re_log::debug_once!("Failed to rotate camera: got non-finites");
+            }
         }
     }
 
