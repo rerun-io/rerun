@@ -496,6 +496,13 @@ impl Object {
             ObjectSpecifics::Union { utype } => utype.is_none(),
         }
     }
+
+    pub fn is_arrow_transparent(&self) -> bool {
+        self.kind == ObjectKind::Component
+            || self
+                .try_get_attr::<String>(crate::ATTR_ARROW_TRANSPARENT)
+                .is_some()
+    }
 }
 
 /// Properties specific to either structs or unions, but not both.
