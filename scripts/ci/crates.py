@@ -111,6 +111,7 @@ def get_sorted_publishable_crates(ctx: Context, crates: Dict[str, Crate]) -> Dic
                 ctx.error(
                     f"Crate {Fore.BLUE}{name}{Fore.RESET} does not have {Fore.BLUE}package.publish{Fore.RESET} set."
                 )
+                return
 
             if publish:
                 output[name] = crate
