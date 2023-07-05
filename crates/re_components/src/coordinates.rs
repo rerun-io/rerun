@@ -493,12 +493,17 @@ impl Handedness {
 fn view_coordinates() {
     use glam::{vec3, Mat3};
 
+    assert_eq!(ViewCoordinates::RUB.to_rub(), Mat3::IDENTITY);
+    assert_eq!(ViewCoordinates::RUB.from_rub(), Mat3::IDENTITY);
+
     {
         assert!("UUDDLRLRBAStart".parse::<ViewCoordinates>().is_err());
         assert!("UUD".parse::<ViewCoordinates>().is_err());
 
         let rub = "RUB".parse::<ViewCoordinates>().unwrap();
         let bru = "BRU".parse::<ViewCoordinates>().unwrap();
+
+        assert_eq!(rub, ViewCoordinates::RUB);
 
         assert_eq!(rub.to_rub(), Mat3::IDENTITY);
         assert_eq!(
