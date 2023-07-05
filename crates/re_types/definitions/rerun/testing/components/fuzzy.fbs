@@ -9,7 +9,6 @@ namespace rerun.testing.components;
 // ---
 
 table AffixFuzzer1 (
-  "attr.arrow.transparent",
   "attr.rust.derive": "Debug, Clone, PartialEq",
   order: 100
 ) {
@@ -17,7 +16,6 @@ table AffixFuzzer1 (
 }
 
 table AffixFuzzer2 (
-  "attr.arrow.transparent",
   "attr.rust.derive": "Debug, Clone, PartialEq",
   "attr.rust.tuple_struct",
   order: 200
@@ -33,7 +31,6 @@ table AffixFuzzer3 (
 }
 
 table AffixFuzzer4 (
-  "attr.arrow.transparent",
   "attr.rust.derive": "Debug, Clone, PartialEq",
   order: 400
 ) {
@@ -41,7 +38,6 @@ table AffixFuzzer4 (
 }
 
 table AffixFuzzer5 (
-  "attr.arrow.transparent",
   "attr.rust.derive": "Debug, Clone, PartialEq",
   "attr.rust.tuple_struct",
   order: 500

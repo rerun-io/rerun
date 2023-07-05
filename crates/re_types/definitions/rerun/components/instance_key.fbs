@@ -11,7 +11,6 @@ namespace rerun.components;
 
 /// A unique numeric identifier for each individual instance within a batch.
 struct InstanceKey (
-  "attr.arrow.transparent",
   "attr.python.aliases": "int",
   "attr.python.array_aliases": "npt.NDArray[np.uint64]",
   "attr.rerun.legacy_fqname": "rerun.instance_key",
