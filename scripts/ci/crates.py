@@ -9,8 +9,6 @@ Install dependencies:
 Use the script:
     python3 scripts/ci/crates.py --help
 
-Examples
---------
     # Update crate versions to the next prerelease version,
     # e.g. `0.8.0` -> `0.8.0-alpha.0`, `0.8.0-alpha.0` -> `0.8.0-alpha.1`
     python3 scripts/ci/crates.py version prerelase --dry-run
