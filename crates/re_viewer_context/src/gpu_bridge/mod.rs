@@ -1,7 +1,7 @@
 //! Bridge to `re_renderer`
 
 mod tensor_to_gpu;
-pub use tensor_to_gpu::tensor_to_gpu;
+pub use tensor_to_gpu::{depth_tensor_to_gpu, tensor_to_gpu};
 
 use crate::TensorStats;
 
