@@ -5,7 +5,6 @@ import itertools
 import numpy as np
 import rerun as rr
 
-
 # TODO(cmc): roundtrips (serialize in python, deserialize in rust)
 
 U64_MAX_MINUS_1 = 2**64 - 2
