@@ -492,6 +492,11 @@ fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenSt
     let quoted = obj
         .try_get_attr::<String>(attr)
         .map(|what| {
+            let what = if clause == "derive" {
+                format!("Debug, Clone, {what}")
+            } else {
+                what
+            };
             syn::parse_str::<syn::MetaList>(&format!("{clause}({what})"))
                 .with_context(|| format!("illegal meta clause: {what:?}"))
                 .unwrap()
