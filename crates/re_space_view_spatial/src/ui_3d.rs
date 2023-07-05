@@ -191,9 +191,9 @@ impl EyeInterpolation {
     pub fn target_time(start: &Eye, stop: &Eye) -> f32 {
         // Take more time if the rotation is big:
         let angle_difference = start
-            .world_from_view
+            .world_from_rub_view
             .rotation()
-            .angle_between(stop.world_from_view.rotation());
+            .angle_between(stop.world_from_rub_view.rotation());
 
         egui::remap_clamp(angle_difference, 0.0..=std::f32::consts::PI, 0.2..=0.7)
     }
@@ -340,7 +340,7 @@ pub fn view_3d(
 
         resolution_in_pixel,
 
-        view_from_world: eye.world_from_view.inverse(),
+        view_from_world: eye.world_from_rub_view.inverse(),
         projection_from_view: Projection::Perspective {
             vertical_fov: eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y),
             near_plane_distance: eye.near(),

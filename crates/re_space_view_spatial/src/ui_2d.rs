@@ -280,7 +280,7 @@ pub fn view_2d(
 
         // TODO(andreas): Use the same eye & transformations as in `setup_target_config`.
         let eye = Eye {
-            world_from_view: IsoTransform::IDENTITY,
+            world_from_rub_view: IsoTransform::IDENTITY,
             fov_y: None,
         };
 
