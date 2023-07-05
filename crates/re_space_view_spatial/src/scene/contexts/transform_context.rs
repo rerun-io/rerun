@@ -324,5 +324,5 @@ pub fn pinhole_camera_view_coordinates(
 ) -> ViewCoordinates {
     store
         .query_latest_component(entity_path, query)
-        .unwrap_or(ViewCoordinates::RUB)
+        .unwrap_or(ViewCoordinates::RDF)
 }

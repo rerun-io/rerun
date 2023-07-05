@@ -254,7 +254,7 @@ def log_camera(
     # pathlib makes it easy to get the parent, but log methods requires a string
     camera_path = str(PosixPath(entity_id).parent)
     rr.log_transform3d(camera_path, camera_from_world, from_parent=True)
-    rr.log_pinhole(entity_id, width=w, height=h, child_from_parent=intrinsic, camera_xyz="RDF")
+    rr.log_pinhole(entity_id, width=w, height=h, child_from_parent=intrinsic)
 
 
 def read_camera_from_world(traj_string: str) -> tuple[str, rr.TranslationRotationScale3D]:

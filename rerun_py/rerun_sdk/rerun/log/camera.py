@@ -58,7 +58,7 @@ def log_pinhole(
                       child_from_parent = [[f_len, 0,     u_cen],
                                            [0,     f_len, v_cen],
                                            [0,     0,     1  ]],
-                      camera_xyz="RUB")
+                      camera_xyz="RDF")
     ```
 
     Parameters
@@ -88,10 +88,9 @@ def log_pinhole(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     camera_xyz:
-        Sets the view coordinates for the camera. The default is "RUB", i.e. X=Right, Y=Up, Z=Back.
-        Other common formats are "RDF" (X=Right, Y=Down, Z=Forward) and "FLU" (X=Forward, Y=Left, Z=Up).
+        Sets the view coordinates for the camera. The default is "RDF", i.e. X=Right, Y=Down, Z=Forward.
+        Other common formats are "RUB" (X=Right, Y=Up, Z=Back) and "FLU" (X=Forward, Y=Left, Z=Up).
         Equivalent to calling [`rerun.log_view_coordinates(entity, xyz=…)`][rerun.log_view_coordinates].
-        This will change the orientation of the camera frustum.
         NOTE: setting this to something else than "RDF" (the default) will change the orientation of the camera frustum,
         and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
         The pinhole matrix (the `child_from_parent` argument) always project along the Z axis of the camera space,
