@@ -49,6 +49,7 @@ arrow2 = { workspace = true, features = [
 arrow2_convert.workspace = true
 document-features = "0.2"
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
+half.workspace = true
 itertools = { workspace = true }
 web-time.workspace = true
 nohash-hasher = "0.2"
@@ -60,7 +61,6 @@ thiserror.workspace = true
 time = { workspace = true, features = ["formatting", "macros"] }
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
-half.workspace = true
 
 
 # Optional dependencies:
