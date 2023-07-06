@@ -26,5 +26,5 @@ struct KeypointId (
   "attr.rust.tuple_struct",
   order: 200
 ) {
-  id: ushort;
+  id: ushort (order: 100);
 }

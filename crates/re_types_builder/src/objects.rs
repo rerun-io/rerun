@@ -88,6 +88,7 @@ impl Objects {
                                 docs: _,
                                 typ,
                                 attrs,
+                                order: _,
                                 is_nullable: _,
                                 is_deprecated: _,
                                 datatype,

@@ -25,5 +25,5 @@ struct DrawOrder (
   "attr.rust.tuple_struct",
   order: 100
 ) {
-   value: float;
+   value: float (order: 100);
 }

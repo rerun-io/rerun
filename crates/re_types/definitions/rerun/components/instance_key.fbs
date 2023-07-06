@@ -18,5 +18,5 @@ struct InstanceKey (
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
   order: 100
 ) {
-  value: uint64;
+  value: uint64 (order: 100);
 }
