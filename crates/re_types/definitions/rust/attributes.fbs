@@ -8,7 +8,7 @@ attribute "attr.rust.tuple_struct";
 /// Apply to any object to generate a #derive clause.
 ///
 /// The value of the attribute will be trimmed out but otherwise left as-is.
-/// E.g. "attr.rust.derive": "Debug, Clone, Copy"`.
+/// E.g. "attr.rust.derive": "Copy"`.
 attribute "attr.rust.derive";
 
 /// Apply to any object to generate a #repr clause with the specified value.
