@@ -2,6 +2,9 @@
 
 #define RERUN_WITH_ARROW 1
 
+#include <rerun.h> // TODO: use C++ wrappers instead
+
+#include <loguru.hpp>
 #include <rerun.hpp>
 
 int main(int argc, char** argv) {
