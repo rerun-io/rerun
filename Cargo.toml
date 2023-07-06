@@ -80,7 +80,7 @@ ecolor = "0.22.0"
 eframe = { version = "0.22.0", default-features = false }
 egui = { version = "0.22.0", features = ["extra_debug_asserts", "log"] }
 egui_extras = { version = "0.22.0", features = ["log"] }
-egui_tiles = { version = "0.1" }
+egui_tiles = { version = "0.2" }
 egui-wgpu = "0.22.0"
 emath = "0.22.0"
 enumset = "1.0.12"
@@ -144,5 +144,3 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
-
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles.git", rev = "cc97c9c977270108d9d644c0d425cd6bead3beb7" } # 2023-07-04: visibility toggle crash fix
