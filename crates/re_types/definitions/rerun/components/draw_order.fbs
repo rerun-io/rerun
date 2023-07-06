@@ -17,11 +17,10 @@ namespace rerun.components;
 ///
 /// Draw order for entities with the same draw order is generally undefined.
 struct DrawOrder (
-  "attr.arrow.transparent",
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "npt.NDArray[np.float32]",
   "attr.rerun.legacy_fqname": "rerun.draw_order",
-  "attr.rust.derive": "Debug, Clone, Copy",
+  "attr.rust.derive": "Copy",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",
   order: 100

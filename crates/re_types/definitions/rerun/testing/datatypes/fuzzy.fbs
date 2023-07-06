@@ -7,7 +7,7 @@ namespace rerun.testing.datatypes;
 // ---
 
 table AffixFuzzer1 (
-  "attr.rust.derive": "Debug, Clone, PartialEq",
+  "attr.rust.derive": "PartialEq",
   order: 100
 ) {
   single_float_optional: float (order: 101);
@@ -20,7 +20,7 @@ table AffixFuzzer1 (
 
 table AffixFuzzer2 (
   "attr.arrow.transparent",
-  "attr.rust.derive": "Debug, Clone, PartialEq",
+  "attr.rust.derive": "PartialEq",
   "attr.rust.tuple_struct",
   order: 200
 ) {

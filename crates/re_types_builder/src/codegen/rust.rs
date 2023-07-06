@@ -125,6 +125,7 @@ fn create_files(
         code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
         code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
         code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
+        code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
         code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
 
         for obj in objs {
@@ -491,6 +492,11 @@ fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenSt
     let quoted = obj
         .try_get_attr::<String>(attr)
         .map(|what| {
+            let what = if clause == "derive" {
+                format!("Debug, Clone, {what}")
+            } else {
+                what
+            };
             syn::parse_str::<syn::MetaList>(&format!("{clause}({what})"))
                 .with_context(|| format!("illegal meta clause: {what:?}"))
                 .unwrap()

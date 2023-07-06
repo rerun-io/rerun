@@ -6,6 +6,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A 16-bit ID representing a type of semantic keypoint within a class."]
@@ -13,7 +14,7 @@
 #[doc = "`KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`."]
 #[doc = ""]
 #[doc = "Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`."]
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeypointId(pub u16);
 
 impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {

@@ -6,12 +6,13 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A 16-bit ID representing a type of semantic class."]
 #[doc = ""]
 #[doc = "Used to look up a `crate::components::ClassDescription` within the `crate::components::AnnotationContext`."]
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ClassId(pub u16);
 
 impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {

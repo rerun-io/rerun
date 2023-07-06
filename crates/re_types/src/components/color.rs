@@ -6,13 +6,14 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha."]
 #[derive(
     Debug,
-    Default,
     Clone,
+    Default,
     Copy,
     PartialEq,
     Eq,

@@ -4,9 +4,7 @@ use anyhow::Context as _;
 use arrow2::datatypes::{DataType, Field, UnionMode};
 use std::collections::{BTreeMap, HashMap};
 
-use crate::{
-    ElementType, Object, ObjectField, Type, ATTR_ARROW_SPARSE_UNION, ATTR_ARROW_TRANSPARENT,
-};
+use crate::{ElementType, Object, ObjectField, Type, ATTR_ARROW_SPARSE_UNION};
 
 // --- Registry ---
 
@@ -52,16 +50,16 @@ impl ArrowRegistry {
 
     fn arrow_datatype_from_object(&mut self, obj: &mut Object) -> LazyDatatype {
         let is_struct = obj.is_struct();
-        let is_transparent = obj.try_get_attr::<String>(ATTR_ARROW_TRANSPARENT).is_some();
+        let is_arrow_transparent = obj.is_arrow_transparent();
         let num_fields = obj.fields.len();
 
         assert!(
-            !is_transparent || (is_struct && num_fields == 1),
+            !is_arrow_transparent || (is_struct && num_fields == 1),
             "cannot have a transparent arrow object with any number of fields but 1: {:?} has {num_fields}",
             obj.fqname,
         );
 
-        let datatype = if is_transparent {
+        let datatype = if is_arrow_transparent {
             LazyDatatype::Extension(
                 obj.fqname.clone(),
                 Box::new(
@@ -114,7 +112,7 @@ impl ArrowRegistry {
         };
 
         // NOTE: Arrow-transparent objects by definition don't have a datatype of their own.
-        if !is_transparent {
+        if !is_arrow_transparent {
             obj.datatype = datatype.clone().into();
         }
 
