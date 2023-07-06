@@ -27,14 +27,14 @@ def main() -> None:
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
     points2d = rr.Points2D(
-        points,  # type: ignore[arg-type]
-        radii=radii,  # type: ignore[arg-type]
-        colors=colors,  # type: ignore[arg-type]
-        labels=labels,  # type: ignore[arg-type]
-        draw_order=draw_order,  # type: ignore[arg-type]
-        class_ids=class_ids,  # type: ignore[arg-type]
-        keypoint_ids=keypoint_ids,  # type: ignore[arg-type]
-        instance_keys=instance_keys,  # type: ignore[arg-type]
+        points,
+        radii=radii,
+        colors=colors,
+        labels=labels,
+        draw_order=draw_order,
+        class_ids=class_ids, 
+        keypoint_ids=keypoint_ids,
+        instance_keys=instance_keys,
     )
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
