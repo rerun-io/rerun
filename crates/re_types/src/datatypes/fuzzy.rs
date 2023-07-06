@@ -167,12 +167,12 @@ impl crate::Datatype for FlattenedScalar {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AffixFuzzer1 {
-    pub single_float_optional: f32,
+    pub single_float_optional: Option<f32>,
     pub single_string_required: String,
-    pub single_string_optional: String,
-    pub many_floats_optional: Vec<f32>,
+    pub single_string_optional: Option<String>,
+    pub many_floats_optional: Option<Vec<f32>>,
     pub many_strings_required: Vec<String>,
-    pub many_strings_optional: Vec<String>,
+    pub many_strings_optional: Option<Vec<String>>,
     pub flattened_scalar: f32,
     pub almost_flattened_scalar: crate::datatypes::FlattenedScalar,
 }
@@ -205,7 +205,7 @@ impl crate::Datatype for AffixFuzzer1 {
             Field {
                 name: "single_float_optional".to_owned(),
                 data_type: DataType::Float32,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -217,7 +217,7 @@ impl crate::Datatype for AffixFuzzer1 {
             Field {
                 name: "single_string_optional".to_owned(),
                 data_type: DataType::Utf8,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -225,10 +225,10 @@ impl crate::Datatype for AffixFuzzer1 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -247,10 +247,10 @@ impl crate::Datatype for AffixFuzzer1 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -312,13 +312,16 @@ impl crate::Datatype for AffixFuzzer1 {
                         let (somes, single_float_optional): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        single_float_optional,
-                                        ..
-                                    } = &**datum;
-                                    single_float_optional.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| {
+                                        let Self {
+                                            single_float_optional,
+                                            ..
+                                        } = &**datum;
+                                        single_float_optional.clone()
+                                    })
+                                    .flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -389,13 +392,16 @@ impl crate::Datatype for AffixFuzzer1 {
                         let (somes, single_string_optional): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        single_string_optional,
-                                        ..
-                                    } = &**datum;
-                                    single_string_optional.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| {
+                                        let Self {
+                                            single_string_optional,
+                                            ..
+                                        } = &**datum;
+                                        single_string_optional.clone()
+                                    })
+                                    .flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -435,13 +441,16 @@ impl crate::Datatype for AffixFuzzer1 {
                         let (somes, many_floats_optional): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        many_floats_optional,
-                                        ..
-                                    } = &**datum;
-                                    many_floats_optional.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| {
+                                        let Self {
+                                            many_floats_optional,
+                                            ..
+                                        } = &**datum;
+                                        many_floats_optional.clone()
+                                    })
+                                    .flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -483,7 +492,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
-                                        is_nullable: false,
+                                        is_nullable: true,
                                         metadata: [].into(),
                                     }))
                                     .to_logical_type()
@@ -606,13 +615,16 @@ impl crate::Datatype for AffixFuzzer1 {
                         let (somes, many_strings_optional): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        many_strings_optional,
-                                        ..
-                                    } = &**datum;
-                                    many_strings_optional.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| {
+                                        let Self {
+                                            many_strings_optional,
+                                            ..
+                                        } = &**datum;
+                                        many_strings_optional.clone()
+                                    })
+                                    .flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -654,7 +666,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Utf8,
-                                        is_nullable: false,
+                                        is_nullable: true,
                                         metadata: [].into(),
                                     }))
                                     .to_logical_type()
@@ -1008,36 +1020,20 @@ impl crate::Datatype for AffixFuzzer1 {
                     is_valid(i)
                         .then(|| {
                             Ok(Self {
-                                single_float_optional: single_float_optional.ok_or_else(|| {
-                                    crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    }
-                                })?,
+                                single_float_optional,
                                 single_string_required: single_string_required.ok_or_else(
                                     || crate::DeserializationError::MissingData {
                                         datatype: data.data_type().clone(),
                                     },
                                 )?,
-                                single_string_optional: single_string_optional.ok_or_else(
-                                    || crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    },
-                                )?,
-                                many_floats_optional: many_floats_optional.ok_or_else(|| {
-                                    crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    }
-                                })?,
+                                single_string_optional,
+                                many_floats_optional,
                                 many_strings_required: many_strings_required.ok_or_else(|| {
                                     crate::DeserializationError::MissingData {
                                         datatype: data.data_type().clone(),
                                     }
                                 })?,
-                                many_strings_optional: many_strings_optional.ok_or_else(|| {
-                                    crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    }
-                                })?,
+                                many_strings_optional,
                                 flattened_scalar: flattened_scalar.ok_or_else(|| {
                                     crate::DeserializationError::MissingData {
                                         datatype: data.data_type().clone(),
@@ -1059,7 +1055,7 @@ impl crate::Datatype for AffixFuzzer1 {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct AffixFuzzer2(pub f32);
+pub struct AffixFuzzer2(pub Option<f32>);
 
 impl<'a> From<AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
     #[inline]
@@ -1103,10 +1099,12 @@ impl crate::Datatype for AffixFuzzer2 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum
+                        .map(|datum| {
+                            let Self(data0) = datum.into_owned();
+                            data0
+                        })
+                        .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -1147,11 +1145,7 @@ impl crate::Datatype for AffixFuzzer2 {
             .unwrap()
             .into_iter()
             .map(|v| v.copied())
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
-                })
-            })
+            .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
