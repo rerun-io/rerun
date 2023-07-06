@@ -6,27 +6,15 @@ namespace rerun.testing.datatypes;
 
 // ---
 
-table FlattenedScalar (
-  "attr.rust.derive": "Debug, Clone",
-  transparent,
-  order: 001
-) {
+table FlattenedScalar (transparent, order: 001) {
   value: float (order: 1002);
 }
 
-table DeeplyFlattenedScalar (
-  "attr.rust.derive": "Debug, Clone",
-  transparent,
-  order: 001
-) {
+table DeeplyFlattenedScalar (transparent, order: 001) {
   value: FlattenedScalar (order: 1001, transparent);
 }
 
-table VeryDeeplyFlattenedScalar (
-  "attr.rust.derive": "Debug, Clone",
-  transparent,
-  order: 001
-) {
+table VeryDeeplyFlattenedScalar (transparent, order: 001) {
   value: DeeplyFlattenedScalar (order: 1000, transparent);
 }
 
