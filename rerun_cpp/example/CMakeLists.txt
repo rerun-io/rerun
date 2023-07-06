@@ -44,12 +44,12 @@ else()
 endif()
 
 if(APPLE)
-  target_link_libraries(rerun_example PRIVATE ${CMAKE_SOURCE_DIR}/../../../target/debug/librerun_c.a)
+  target_link_libraries(rerun_example PRIVATE ${CMAKE_SOURCE_DIR}/../../target/debug/librerun_c.a)
   target_link_libraries(rerun_example PRIVATE "-framework CoreFoundation" "-framework IOKit")
 endif()
 
 if(LINUX)
-  target_link_libraries(rerun_example PRIVATE ${CMAKE_SOURCE_DIR}/../../../target/debug/librerun_c.a)
+  target_link_libraries(rerun_example PRIVATE ${CMAKE_SOURCE_DIR}/../../target/debug/librerun_c.a)
   target_link_libraries(rerun_example PRIVATE "-lm")
 endif()
 
@@ -59,6 +59,7 @@ else()
   target_link_libraries(rerun_example PRIVATE Arrow::arrow_static)
 endif()
 
-include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../src) # for rerun.hpp
+include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../../crates/rerun_c/src) # for rerun.h (Rerun C SDK)
+include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../src) # for rerun.hpp (Rerun C++ SDK)
 
 target_link_libraries(rerun_example PRIVATE loguru::loguru)
