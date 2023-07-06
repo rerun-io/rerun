@@ -2,8 +2,6 @@
 
 #define RERUN_WITH_ARROW 1
 
-#include <rerun.h> // TODO: use C++ wrappers instead
-
 #include <loguru.hpp>
 #include <rerun.hpp>
 
@@ -14,25 +12,18 @@ int main(int argc, char** argv) {
 
     LOG_F(INFO, "Rerun C++ SDK version: %s", rr::version_string());
 
-    const rr_store_info store_info = {
-        .application_id = "c-example-app",
-        .store_kind = RERUN_STORE_KIND_RECORDING,
-    };
-    rr_recording_stream rec_stream = rr_recording_stream_new(&store_info, "0.0.0.0:9876");
+    auto rr_stream = rr::RecordingStream{"c-example-app", "127.0.0.1:9876"};
 
     float xyz[9] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 5.0, 5.0, 5.0};
     auto points = rr::points3(3, xyz).ValueOrDie();
     auto buffer = rr::ipc_from_table(*points).ValueOrDie();
 
-    const rr_data_cell data_cells[1] = {rr_data_cell{
+    const rr::DataCell data_cells[1] = {rr::DataCell{
         .component_name = "rerun.point3d",
-        .num_bytes = static_cast<uint64_t>(buffer->size()),
+        .num_bytes = static_cast<size_t>(buffer->size()),
         .bytes = buffer->data(),
     }};
 
-    const rr_data_row data_row = {
-        .entity_path = "points", .num_instances = 3, .num_data_cells = 1, .data_cells = data_cells};
-    rr_log(rec_stream, &data_row);
-
-    rr_recording_stream_free(rec_stream);
+    uint32_t num_instances = 3;
+    rr_stream.log_data_row("points", num_instances, 1, data_cells);
 }

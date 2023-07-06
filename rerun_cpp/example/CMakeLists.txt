@@ -23,6 +23,4 @@ endif()
 
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../src) # For rerun.hpp (Rerun C++ SDK)
 
-include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../../crates/rerun_c/src) # For rerun.h (Rerun C SDK) TODO: remove
-
 target_link_libraries(rerun_example PRIVATE loguru::loguru rerun_sdk)
