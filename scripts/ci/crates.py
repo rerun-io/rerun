@@ -320,7 +320,7 @@ def publish(dry_run: bool, token: str) -> None:
     ctx.finish(dry_run)
 
     if not dry_run:
-        env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes", "IS_IN_RERUN_WORKSPACE": "yes"}
+        env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
         for crate in crates.values():
             publish_crate(crate, token, version, env)
 
