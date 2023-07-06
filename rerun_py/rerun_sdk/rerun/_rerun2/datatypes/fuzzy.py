@@ -39,10 +39,13 @@ __all__ = [
 
 @define
 class FlattenedScalar:
-    value: float | None = field(default=None)
+    value: float = field()
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
         return np.asarray(self.value, dtype=dtype)
+
+    def __float__(self) -> float:
+        return float(self.value)
 
 
 FlattenedScalarLike = FlattenedScalar
@@ -58,7 +61,7 @@ FlattenedScalarArrayLike = Union[
 class FlattenedScalarType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.struct([pa.field("value", pa.float32(), True, {})]), "rerun.testing.datatypes.FlattenedScalar"
+            self, pa.struct([pa.field("value", pa.float32(), False, {})]), "rerun.testing.datatypes.FlattenedScalar"
         )
 
 
@@ -79,14 +82,14 @@ FlattenedScalarType._ARRAY_TYPE = FlattenedScalarArray
 
 @define
 class AffixFuzzer1:
+    single_float_optional: float = field()
     single_string_required: str = field()
+    single_string_optional: str = field()
+    many_floats_optional: npt.NDArray[np.float32] = field(converter=to_np_float32)
     many_strings_required: list[str] = field()
+    many_strings_optional: list[str] = field()
     flattened_scalar: float = field()
     almost_flattened_scalar: datatypes.FlattenedScalar = field()
-    single_float_optional: float | None = field(default=None)
-    single_string_optional: str | None = field(default=None)
-    many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
-    many_strings_optional: list[str] | None = field(default=None)
 
 
 AffixFuzzer1Like = AffixFuzzer1
@@ -105,15 +108,15 @@ class AffixFuzzer1Type(BaseExtensionType):
             self,
             pa.struct(
                 [
-                    pa.field("single_float_optional", pa.float32(), True, {}),
+                    pa.field("single_float_optional", pa.float32(), False, {}),
                     pa.field("single_string_required", pa.utf8(), False, {}),
-                    pa.field("single_string_optional", pa.utf8(), True, {}),
-                    pa.field("many_floats_optional", pa.list_(pa.field("item", pa.float32(), True, {})), True, {}),
+                    pa.field("single_string_optional", pa.utf8(), False, {}),
+                    pa.field("many_floats_optional", pa.list_(pa.field("item", pa.float32(), False, {})), False, {}),
                     pa.field("many_strings_required", pa.list_(pa.field("item", pa.utf8(), False, {})), False, {}),
-                    pa.field("many_strings_optional", pa.list_(pa.field("item", pa.utf8(), True, {})), True, {}),
+                    pa.field("many_strings_optional", pa.list_(pa.field("item", pa.utf8(), False, {})), False, {}),
                     pa.field("flattened_scalar", pa.float32(), False, {}),
                     pa.field(
-                        "almost_flattened_scalar", pa.struct([pa.field("value", pa.float32(), True, {})]), False, {}
+                        "almost_flattened_scalar", pa.struct([pa.field("value", pa.float32(), False, {})]), False, {}
                     ),
                 ]
             ),
@@ -138,10 +141,13 @@ AffixFuzzer1Type._ARRAY_TYPE = AffixFuzzer1Array
 
 @define
 class AffixFuzzer2:
-    single_float_optional: float | None = field(default=None)
+    single_float_optional: float = field()
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
         return np.asarray(self.single_float_optional, dtype=dtype)
+
+    def __float__(self) -> float:
+        return float(self.single_float_optional)
 
 
 AffixFuzzer2Like = AffixFuzzer2

@@ -39,18 +39,16 @@ class Points2D(Archetype):
     All the actual 2D points that make up the point cloud.
     """
 
-    radii: components.RadiusArray | None = field(
-        metadata={"component": "secondary"},
-        default=None,
+    radii: components.RadiusArray = field(
+        metadata={"component": "primary"},
         converter=components.RadiusArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional radii for the points, effectively turning them into circles.
     """
 
-    colors: components.ColorArray | None = field(
-        metadata={"component": "secondary"},
-        default=None,
+    colors: components.ColorArray = field(
+        metadata={"component": "primary"},
         converter=components.ColorArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -60,18 +58,16 @@ class Points2D(Archetype):
     As either 0-1 floats or 0-255 integers, with separate alpha.
     """
 
-    labels: components.LabelArray | None = field(
-        metadata={"component": "secondary"},
-        default=None,
+    labels: components.LabelArray = field(
+        metadata={"component": "primary"},
         converter=components.LabelArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the points.
     """
 
-    draw_order: components.DrawOrderArray | None = field(
-        metadata={"component": "secondary"},
-        default=None,
+    draw_order: components.DrawOrderArray = field(
+        metadata={"component": "primary"},
         converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -81,9 +77,8 @@ class Points2D(Archetype):
     The default for 2D points is 30.0.
     """
 
-    class_ids: components.ClassIdArray | None = field(
-        metadata={"component": "secondary"},
-        default=None,
+    class_ids: components.ClassIdArray = field(
+        metadata={"component": "primary"},
         converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -92,9 +87,8 @@ class Points2D(Archetype):
     The class ID provides colors and labels if not specified explicitly.
     """
 
-    keypoint_ids: components.KeypointIdArray | None = field(
-        metadata={"component": "secondary"},
-        default=None,
+    keypoint_ids: components.KeypointIdArray = field(
+        metadata={"component": "primary"},
         converter=components.KeypointIdArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -108,9 +102,8 @@ class Points2D(Archetype):
     detected skeleton.
     """
 
-    instance_keys: components.InstanceKeyArray | None = field(
-        metadata={"component": "secondary"},
-        default=None,
+    instance_keys: components.InstanceKeyArray = field(
+        metadata={"component": "primary"},
         converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
     )
     """

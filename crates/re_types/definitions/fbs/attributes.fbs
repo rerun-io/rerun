@@ -30,3 +30,11 @@ attribute "order";
 /// table when defining a union, cannot put arrays (as opposed to vectors) into tables, etc) that
 /// do not apply in our case.
 attribute "transparent";
+
+/// If specified on a field, the field becomes nullable, which affects both its native as well as
+/// its arrow datatypes.
+///
+/// NOTE: We do not use flatbuffers' builtin `required` attribute because A) it has many
+/// limitations that do not make sense for our use case and B) our overall data model is built
+/// around the idea of nullability, rather than requirements (i.e. the exact opposite).
+attribute "is_nullable";
