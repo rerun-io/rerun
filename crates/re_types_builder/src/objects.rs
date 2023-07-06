@@ -157,7 +157,7 @@ impl Objects {
             .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
 
         let mut objs = objs.collect::<Vec<_>>();
-        objs.sort_by_key(|anyobj| anyobj.order());
+        objs.sort_by_key(|anyobj| anyobj.order);
 
         objs
     }
@@ -171,7 +171,7 @@ impl Objects {
             .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
 
         let mut objs = objs.collect::<Vec<_>>();
-        objs.sort_by_key(|anyobj| anyobj.order());
+        objs.sort_by_key(|anyobj| anyobj.order);
 
         objs
     }
@@ -356,6 +356,9 @@ pub struct Object {
     /// The object's attributes.
     pub attrs: Attributes,
 
+    /// The object's `order` attribute's value, which is always mandatory.
+    pub order: u32,
+
     /// The object's inner fields, which can be either struct members or union values.
     ///
     /// These are pre-sorted, in ascending order, using their `order` attribute.
@@ -399,6 +402,7 @@ impl Object {
         let docs = Docs::from_raw_docs(&filepath, obj.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
         let attrs = Attributes::from_raw_attrs(obj.attributes());
+        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
@@ -410,7 +414,7 @@ impl Object {
                     ObjectField::from_raw_object_field(include_dir_path, enums, objs, obj, &field)
                 })
                 .collect();
-            fields.sort_by_key(|field| field.order());
+            fields.sort_by_key(|field| field.order);
             fields
         };
 
@@ -431,6 +435,7 @@ impl Object {
             docs,
             kind,
             attrs,
+            order,
             fields,
             specifics: ObjectSpecifics::Struct {},
             datatype: None,
@@ -478,6 +483,7 @@ impl Object {
             }
         };
         let attrs = Attributes::from_raw_attrs(enm.attributes());
+        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = enm
             .values()
@@ -508,6 +514,7 @@ impl Object {
             docs,
             kind,
             attrs,
+            order,
             fields,
             specifics: ObjectSpecifics::Union { utype },
             datatype: None,
@@ -528,13 +535,6 @@ impl Object {
         T::Err: std::error::Error + Send + Sync + 'static,
     {
         self.attrs.try_get(self.fqname.as_str(), name)
-    }
-
-    /// Returns the mandatory `order` attribute of this object.
-    ///
-    /// Panics if no order has been set.
-    pub fn order(&self) -> u32 {
-        self.attrs.get::<u32>(&self.fqname, crate::ATTR_ORDER)
     }
 
     pub fn is_struct(&self) -> bool {
@@ -612,6 +612,9 @@ pub struct ObjectField {
     /// The field's attributes.
     pub attrs: Attributes,
 
+    /// The field's `order` attribute's value, which is always mandatory.
+    pub order: u32,
+
     /// Whether the field is required.
     ///
     /// Always true for IDL definitions using flatbuffers' `struct` type (as opposed to `table`).
@@ -656,6 +659,7 @@ impl ObjectField {
 
         let typ = Type::from_raw_type(enums, objs, field.type_());
         let attrs = Attributes::from_raw_attrs(field.attributes());
+        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = !obj.is_struct() && !field.required();
         let is_deprecated = field.deprecated();
@@ -669,6 +673,7 @@ impl ObjectField {
             docs,
             typ,
             attrs,
+            order,
             is_nullable,
             is_deprecated,
             datatype: None,
@@ -706,6 +711,7 @@ impl ObjectField {
         );
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
+        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
         let is_nullable = false;
@@ -720,18 +726,11 @@ impl ObjectField {
             docs,
             typ,
             attrs,
+            order,
             is_nullable,
             is_deprecated,
             datatype: None,
         }
-    }
-
-    /// Returns the mandatory `order` attribute of this field.
-    ///
-    /// Panics if no order has been set.
-    #[inline]
-    pub fn order(&self) -> u32 {
-        self.attrs.get::<u32>(&self.fqname, "order")
     }
 
     fn is_transparent(&self) -> bool {
