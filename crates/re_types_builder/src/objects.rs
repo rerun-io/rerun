@@ -641,9 +641,9 @@ impl ObjectField {
         obj: &FbsObject<'_>,
         field: &FbsField<'_>,
     ) -> Self {
-        let fqname = format!("{}.{}", obj.name(), field.name());
+        let fqname = format!("{}#{}", obj.name(), field.name());
         let (pkg_name, name) = fqname
-            .rsplit_once('.')
+            .rsplit_once('#')
             .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
                 (pkg_name.to_owned(), name.to_owned())
             });
@@ -687,9 +687,9 @@ impl ObjectField {
         enm: &FbsEnum<'_>,
         val: &FbsEnumVal<'_>,
     ) -> Self {
-        let fqname = format!("{}.{}", enm.name(), val.name());
+        let fqname = format!("{}#{}", enm.name(), val.name());
         let (pkg_name, name) = fqname
-            .rsplit_once('.')
+            .rsplit_once('#')
             .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
                 (pkg_name.to_owned(), name.to_owned())
             });
