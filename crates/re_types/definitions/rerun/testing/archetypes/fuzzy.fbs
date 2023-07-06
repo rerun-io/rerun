@@ -12,7 +12,7 @@ namespace rerun.testing.archetypes;
 // - required affects the nullability of the element values for the underlying array (both native and arrow)
 
 table AffixFuzzer1 (
-  "attr.rust.derive": "Debug, Clone, PartialEq",
+  "attr.rust.derive": "PartialEq",
   order: 100
 ) {
   fuzz1001: rerun.testing.components.AffixFuzzer1 ("attr.rerun.component_required", required, order: 1001);

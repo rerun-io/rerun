@@ -10,7 +10,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A vector in 2D space."]
-#[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, PartialOrd)]
 pub struct Vec2D(pub [f32; 2usize]);
 
 impl<'a> From<Vec2D> for ::std::borrow::Cow<'a, Vec2D> {
