@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 
-add_library(rerun_sdk rerun.cpp)
+# NOTE: CMake docs strongly discourages using GLOB, and instead suggests
+# manually listing all the files, like it's 1972.
+# However, that won't work for use since we auto-generate the source tree.
+# See https://cmake.org/cmake/help/latest/command/file.html#glob
+file(GLOB rerun_sdk_SRC CONFIGURE_DEPENDS
+    "*.hpp"
+    "*.cpp"
+)
+
+add_library(rerun_sdk ${rerun_sdk_SRC})
 
 # ------------------------------------------------------------------------------
 
