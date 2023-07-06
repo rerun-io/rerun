@@ -119,14 +119,16 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "build-linux"
-          env-vars: RUSTFLAGS CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          cache-targets: false
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
           save-if: false
 
       # Sccache will cache everything else
       # See: https://github.com/marketplace/actions/sccache-action
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Delete existing /target/doc
+        run: rm -rf ./target/doc
 
       - name: cargo doc --document-private-items
         uses: actions-rs/cargo@v1
