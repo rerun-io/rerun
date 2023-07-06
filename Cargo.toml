@@ -7,6 +7,7 @@ members = [
   "rerun_py",
   "run_wasm",
   "tests/rust/test_*",
+  "tests/rust/roundtrips/points2d",
 ]
 
 [workspace.package]
