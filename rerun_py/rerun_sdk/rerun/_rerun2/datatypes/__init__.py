@@ -13,6 +13,11 @@ from .fuzzy import (
     AffixFuzzer2ArrayLike,
     AffixFuzzer2Like,
     AffixFuzzer2Type,
+    FlattenedScalar,
+    FlattenedScalarArray,
+    FlattenedScalarArrayLike,
+    FlattenedScalarLike,
+    FlattenedScalarType,
 )
 from .point2d import Point2D, Point2DArray, Point2DArrayLike, Point2DLike, Point2DType
 from .vec2d import Vec2D, Vec2DArray, Vec2DArrayLike, Vec2DLike, Vec2DType
@@ -28,6 +33,11 @@ __all__ = [
     "AffixFuzzer2ArrayLike",
     "AffixFuzzer2Like",
     "AffixFuzzer2Type",
+    "FlattenedScalar",
+    "FlattenedScalarArray",
+    "FlattenedScalarArrayLike",
+    "FlattenedScalarLike",
+    "FlattenedScalarType",
     "Point2D",
     "Point2DArray",
     "Point2DArrayLike",

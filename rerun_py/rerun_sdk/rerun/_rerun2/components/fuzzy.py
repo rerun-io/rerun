@@ -210,6 +210,12 @@ class AffixFuzzer7Type(BaseExtensionType):
                                 "many_strings_optional", pa.list_(pa.field("item", pa.utf8(), True, {})), True, {}
                             ),
                             pa.field("flattened_scalar", pa.float32(), False, {}),
+                            pa.field(
+                                "almost_flattened_scalar",
+                                pa.struct([pa.field("value", pa.float32(), True, {})]),
+                                False,
+                                {},
+                            ),
                         ]
                     ),
                     True,

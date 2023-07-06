@@ -94,19 +94,21 @@ impl Objects {
                             } = target_obj.fields.pop().unwrap();
 
                             field.typ = typ;
-                            // TODO(cmc): might want to do something smarter at some point.
-                            if attrs
-                                .try_get::<String>(&fqname, crate::ATTR_TRANSPARENT)
-                                .is_some()
+                            field.datatype = datatype;
+
+                            // TODO(cmc): might want to do something smarter at some point regarding attrs.
+
+                            // NOTE: Transparency (or lack thereof) of the target field takes precedence.
+                            if let transparency @ Some(_) =
+                                attrs.try_get::<String>(&fqname, crate::ATTR_TRANSPARENT)
                             {
                                 field.attrs.0.insert(
                                     crate::ATTR_TRANSPARENT.to_owned(),
-                                    Some("inherited".to_owned()),
+                                    transparency.clone(),
                                 );
                             } else {
                                 field.attrs.0.remove(crate::ATTR_TRANSPARENT);
                             }
-                            field.datatype = datatype;
 
                             done = false;
                         }
