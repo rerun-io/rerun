@@ -88,7 +88,6 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
                 )
 
                 # Log the depth image to the cameras image-space:
-                img_depth = img_depth.astype(np.float16)
                 rr.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
 
 

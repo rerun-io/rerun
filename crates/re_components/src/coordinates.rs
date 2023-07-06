@@ -224,7 +224,8 @@ impl ViewCoordinates {
     #[cfg(feature = "glam")]
     #[inline]
     pub fn from_rdf(&self) -> glam::Mat3 {
-        self.from_rub() * Self::RDF.to_rub()
+        let rub_from_rdf = Self::RDF.to_rub();
+        self.from_rub() * rub_from_rdf
     }
 
     /// Returns a quaternion that rotates from RUB to this coordinate system.
