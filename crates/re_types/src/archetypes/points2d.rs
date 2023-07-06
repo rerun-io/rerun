@@ -46,24 +46,24 @@ pub struct Points2D {
     pub points: Vec<crate::components::Point2D>,
 
     #[doc = "Optional radii for the points, effectively turning them into circles."]
-    pub radii: Option<Vec<crate::components::Radius>>,
+    pub radii: Vec<crate::components::Radius>,
 
     #[doc = "Optional colors for the points."]
-    pub colors: Option<Vec<crate::components::Color>>,
+    pub colors: Vec<crate::components::Color>,
 
     #[doc = "Optional text labels for the points."]
-    pub labels: Option<Vec<crate::components::Label>>,
+    pub labels: Vec<crate::components::Label>,
 
     #[doc = "An optional floating point value that specifies the 2D drawing order."]
     #[doc = "Objects with higher values are drawn on top of those with lower values."]
     #[doc = ""]
     #[doc = "The default for 2D points is 30.0."]
-    pub draw_order: Option<crate::components::DrawOrder>,
+    pub draw_order: crate::components::DrawOrder,
 
     #[doc = "Optional class Ids for the points."]
     #[doc = ""]
     #[doc = "The class ID provides colors and labels if not specified explicitly."]
-    pub class_ids: Option<Vec<crate::components::ClassId>>,
+    pub class_ids: Vec<crate::components::ClassId>,
 
     #[doc = "Optional keypoint IDs for the points, identifying them within a class."]
     #[doc = ""]
@@ -73,10 +73,10 @@ pub struct Points2D {
     #[doc = "with `class_id`)."]
     #[doc = "E.g. the classification might be 'Person' and the keypoints refer to joints on a"]
     #[doc = "detected skeleton."]
-    pub keypoint_ids: Option<Vec<crate::components::KeypointId>>,
+    pub keypoint_ids: Vec<crate::components::KeypointId>,
 
     #[doc = "Unique identifiers for each individual point in the batch."]
-    pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
+    pub instance_keys: Vec<crate::components::InstanceKey>,
 }
 
 impl Points2D {
@@ -156,139 +156,131 @@ impl crate::Archetype for Points2D {
                 .transpose()?
             },
             {
-                self.radii
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::Radius>::try_to_arrow(many.iter(), None);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Radius".into(),
-                                Box::new(array.data_type().clone()),
-                                Some("rerun.radius".into()),
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("radii", datatype, false),
-                                array,
-                            )
-                        })
+                Some({
+                    let array = <crate::components::Radius>::try_to_arrow(self.radii.iter(), None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.Radius".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.radius".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("radii", datatype, false),
+                            array,
+                        )
                     })
-                    .transpose()?
+                })
+                .transpose()?
             },
             {
-                self.colors
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::Color>::try_to_arrow(many.iter(), None);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Color".into(),
-                                Box::new(array.data_type().clone()),
-                                Some("rerun.colorrgba".into()),
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("colors", datatype, false),
-                                array,
-                            )
-                        })
+                Some({
+                    let array = <crate::components::Color>::try_to_arrow(self.colors.iter(), None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.Color".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.colorrgba".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("colors", datatype, false),
+                            array,
+                        )
                     })
-                    .transpose()?
+                })
+                .transpose()?
             },
             {
-                self.labels
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::Label>::try_to_arrow(many.iter(), None);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Label".into(),
-                                Box::new(array.data_type().clone()),
-                                Some("rerun.label".into()),
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("labels", datatype, false),
-                                array,
-                            )
-                        })
+                Some({
+                    let array = <crate::components::Label>::try_to_arrow(self.labels.iter(), None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.Label".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.label".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("labels", datatype, false),
+                            array,
+                        )
                     })
-                    .transpose()?
+                })
+                .transpose()?
             },
             {
-                self.draw_order
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::DrawOrder>::try_to_arrow([single], None);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.DrawOrder".into(),
-                                Box::new(array.data_type().clone()),
-                                Some("rerun.draw_order".into()),
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("draw_order", datatype, false),
-                                array,
-                            )
-                        })
+                Some({
+                    let array =
+                        <crate::components::DrawOrder>::try_to_arrow([&self.draw_order], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.DrawOrder".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.draw_order".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("draw_order", datatype, false),
+                            array,
+                        )
                     })
-                    .transpose()?
+                })
+                .transpose()?
             },
             {
-                self.class_ids
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::ClassId>::try_to_arrow(many.iter(), None);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.ClassId".into(),
-                                Box::new(array.data_type().clone()),
-                                Some("rerun.class_id".into()),
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("class_ids", datatype, false),
-                                array,
-                            )
-                        })
+                Some({
+                    let array =
+                        <crate::components::ClassId>::try_to_arrow(self.class_ids.iter(), None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.ClassId".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.class_id".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("class_ids", datatype, false),
+                            array,
+                        )
                     })
-                    .transpose()?
+                })
+                .transpose()?
             },
             {
-                self.keypoint_ids
-                    .as_ref()
-                    .map(|many| {
-                        let array =
-                            <crate::components::KeypointId>::try_to_arrow(many.iter(), None);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.KeypointId".into(),
-                                Box::new(array.data_type().clone()),
-                                Some("rerun.keypoint_id".into()),
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("keypoint_ids", datatype, false),
-                                array,
-                            )
-                        })
+                Some({
+                    let array = <crate::components::KeypointId>::try_to_arrow(
+                        self.keypoint_ids.iter(),
+                        None,
+                    );
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.KeypointId".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.keypoint_id".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("keypoint_ids", datatype, false),
+                            array,
+                        )
                     })
-                    .transpose()?
+                })
+                .transpose()?
             },
             {
-                self.instance_keys
-                    .as_ref()
-                    .map(|many| {
-                        let array =
-                            <crate::components::InstanceKey>::try_to_arrow(many.iter(), None);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.InstanceKey".into(),
-                                Box::new(array.data_type().clone()),
-                                Some("rerun.instance_key".into()),
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("instance_keys", datatype, false),
-                                array,
-                            )
-                        })
+                Some({
+                    let array = <crate::components::InstanceKey>::try_to_arrow(
+                        self.instance_keys.iter(),
+                        None,
+                    );
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.InstanceKey".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.instance_key".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("instance_keys", datatype, false),
+                            array,
+                        )
                     })
-                    .transpose()?
+                })
+                .transpose()?
             },
         ]
         .into_iter()
@@ -320,102 +312,109 @@ impl crate::Archetype for Points2D {
                 })
                 .collect::<crate::DeserializationResult<Vec<_>>>()?
         };
-        let radii = if let Some(array) = arrays_by_name.get("radii") {
-            Some(
-                <crate::components::Radius>::try_from_arrow_opt(&**array)?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            datatype: ::arrow2::datatypes::DataType::Null,
-                        })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
-            )
-        } else {
-            None
-        };
-        let colors = if let Some(array) = arrays_by_name.get("colors") {
-            Some(
-                <crate::components::Color>::try_from_arrow_opt(&**array)?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            datatype: ::arrow2::datatypes::DataType::Null,
-                        })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
-            )
-        } else {
-            None
-        };
-        let labels = if let Some(array) = arrays_by_name.get("labels") {
-            Some(
-                <crate::components::Label>::try_from_arrow_opt(&**array)?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            datatype: ::arrow2::datatypes::DataType::Null,
-                        })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
-            )
-        } else {
-            None
-        };
-        let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
-            Some(
-                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(|| crate::DeserializationError::MissingData {
+        let radii = {
+            let array = arrays_by_name.get("radii").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::Radius>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
                         datatype: ::arrow2::datatypes::DataType::Null,
-                    })?,
-            )
-        } else {
-            None
-        };
-        let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
-            Some(
-                <crate::components::ClassId>::try_from_arrow_opt(&**array)?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            datatype: ::arrow2::datatypes::DataType::Null,
-                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
-            )
-        } else {
-            None
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
         };
-        let keypoint_ids = if let Some(array) = arrays_by_name.get("keypoint_ids") {
-            Some(
-                <crate::components::KeypointId>::try_from_arrow_opt(&**array)?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            datatype: ::arrow2::datatypes::DataType::Null,
-                        })
+        let colors = {
+            let array = arrays_by_name.get("colors").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::Color>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
-            )
-        } else {
-            None
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
         };
-        let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
-            Some(
-                <crate::components::InstanceKey>::try_from_arrow_opt(&**array)?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            datatype: ::arrow2::datatypes::DataType::Null,
-                        })
+        let labels = {
+            let array = arrays_by_name.get("labels").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::Label>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
-            )
-        } else {
-            None
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let draw_order = {
+            let array = arrays_by_name.get("draw_order").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::DrawOrder>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let class_ids = {
+            let array = arrays_by_name.get("class_ids").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::ClassId>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let keypoint_ids = {
+            let array = arrays_by_name.get("keypoint_ids").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::KeypointId>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let instance_keys = {
+            let array = arrays_by_name.get("instance_keys").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::InstanceKey>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
         };
         Ok(Self {
             points,
@@ -431,69 +430,25 @@ impl crate::Archetype for Points2D {
 }
 
 impl Points2D {
-    pub fn new(points: impl IntoIterator<Item = impl Into<crate::components::Point2D>>) -> Self {
-        Self {
-            points: points.into_iter().map(Into::into).collect(),
-            radii: None,
-            colors: None,
-            labels: None,
-            draw_order: None,
-            class_ids: None,
-            keypoint_ids: None,
-            instance_keys: None,
-        }
-    }
-
-    pub fn with_radii(
-        mut self,
+    pub fn new(
+        points: impl IntoIterator<Item = impl Into<crate::components::Point2D>>,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
-    ) -> Self {
-        self.radii = Some(radii.into_iter().map(Into::into).collect());
-        self
-    }
-
-    pub fn with_colors(
-        mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
-    ) -> Self {
-        self.colors = Some(colors.into_iter().map(Into::into).collect());
-        self
-    }
-
-    pub fn with_labels(
-        mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Label>>,
-    ) -> Self {
-        self.labels = Some(labels.into_iter().map(Into::into).collect());
-        self
-    }
-
-    pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
-        self.draw_order = Some(draw_order.into());
-        self
-    }
-
-    pub fn with_class_ids(
-        mut self,
+        draw_order: impl Into<crate::components::DrawOrder>,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
-    ) -> Self {
-        self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
-        self
-    }
-
-    pub fn with_keypoint_ids(
-        mut self,
         keypoint_ids: impl IntoIterator<Item = impl Into<crate::components::KeypointId>>,
-    ) -> Self {
-        self.keypoint_ids = Some(keypoint_ids.into_iter().map(Into::into).collect());
-        self
-    }
-
-    pub fn with_instance_keys(
-        mut self,
         instance_keys: impl IntoIterator<Item = impl Into<crate::components::InstanceKey>>,
     ) -> Self {
-        self.instance_keys = Some(instance_keys.into_iter().map(Into::into).collect());
-        self
+        Self {
+            points: points.into_iter().map(Into::into).collect(),
+            radii: radii.into_iter().map(Into::into).collect(),
+            colors: colors.into_iter().map(Into::into).collect(),
+            labels: labels.into_iter().map(Into::into).collect(),
+            draw_order: draw_order.into(),
+            class_ids: class_ids.into_iter().map(Into::into).collect(),
+            keypoint_ids: keypoint_ids.into_iter().map(Into::into).collect(),
+            instance_keys: instance_keys.into_iter().map(Into::into).collect(),
+        }
     }
 }
