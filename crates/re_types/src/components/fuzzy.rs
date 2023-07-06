@@ -90,6 +90,23 @@ impl crate::Component for AffixFuzzer1 {
                 is_nullable: true,
                 metadata: [].into(),
             },
+            Field {
+                name: "flattened_scalar".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "almost_flattened_scalar".to_owned(),
+                data_type: DataType::Struct(vec![Field {
+                    name: "value".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: true,
+                    metadata: [].into(),
+                }]),
+                is_nullable: false,
+                metadata: [].into(),
+            },
         ])
     }
 
@@ -228,6 +245,23 @@ impl crate::Component for AffixFuzzer2 {
                     metadata: [].into(),
                 })),
                 is_nullable: true,
+                metadata: [].into(),
+            },
+            Field {
+                name: "flattened_scalar".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "almost_flattened_scalar".to_owned(),
+                data_type: DataType::Struct(vec![Field {
+                    name: "value".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: true,
+                    metadata: [].into(),
+                }]),
+                is_nullable: false,
                 metadata: [].into(),
             },
         ])
@@ -372,6 +406,23 @@ impl crate::Component for AffixFuzzer3 {
                 is_nullable: true,
                 metadata: [].into(),
             },
+            Field {
+                name: "flattened_scalar".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "almost_flattened_scalar".to_owned(),
+                data_type: DataType::Struct(vec![Field {
+                    name: "value".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: true,
+                    metadata: [].into(),
+                }]),
+                is_nullable: false,
+                metadata: [].into(),
+            },
         ])
     }
 
@@ -514,6 +565,23 @@ impl crate::Component for AffixFuzzer4 {
                 is_nullable: true,
                 metadata: [].into(),
             },
+            Field {
+                name: "flattened_scalar".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "almost_flattened_scalar".to_owned(),
+                data_type: DataType::Struct(vec![Field {
+                    name: "value".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: true,
+                    metadata: [].into(),
+                }]),
+                is_nullable: false,
+                metadata: [].into(),
+            },
         ])
     }
 
@@ -650,6 +718,23 @@ impl crate::Component for AffixFuzzer5 {
                     metadata: [].into(),
                 })),
                 is_nullable: true,
+                metadata: [].into(),
+            },
+            Field {
+                name: "flattened_scalar".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "almost_flattened_scalar".to_owned(),
+                data_type: DataType::Struct(vec![Field {
+                    name: "value".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: true,
+                    metadata: [].into(),
+                }]),
+                is_nullable: false,
                 metadata: [].into(),
             },
         ])
@@ -790,6 +875,23 @@ impl crate::Component for AffixFuzzer6 {
                     metadata: [].into(),
                 })),
                 is_nullable: true,
+                metadata: [].into(),
+            },
+            Field {
+                name: "flattened_scalar".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "almost_flattened_scalar".to_owned(),
+                data_type: DataType::Struct(vec![Field {
+                    name: "value".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: true,
+                    metadata: [].into(),
+                }]),
+                is_nullable: false,
                 metadata: [].into(),
             },
         ])
@@ -934,6 +1036,23 @@ impl crate::Component for AffixFuzzer7 {
                     is_nullable: true,
                     metadata: [].into(),
                 },
+                Field {
+                    name: "flattened_scalar".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "almost_flattened_scalar".to_owned(),
+                    data_type: DataType::Struct(vec![Field {
+                        name: "value".to_owned(),
+                        data_type: DataType::Float32,
+                        is_nullable: true,
+                        metadata: [].into(),
+                    }]),
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
             ]),
             is_nullable: true,
             metadata: [].into(),
@@ -1052,6 +1171,23 @@ impl crate::Component for AffixFuzzer7 {
                                         is_nullable: true,
                                         metadata: [].into(),
                                     },
+                                    Field {
+                                        name: "flattened_scalar".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "almost_flattened_scalar".to_owned(),
+                                        data_type: DataType::Struct(vec![Field {
+                                            name: "value".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: true,
+                                            metadata: [].into(),
+                                        }]),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
                                 ]),
                                 is_nullable: true,
                                 metadata: [].into(),
@@ -1152,6 +1288,23 @@ impl crate::Component for AffixFuzzer7 {
                                     metadata: [].into(),
                                 })),
                                 is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "flattened_scalar".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "almost_flattened_scalar".to_owned(),
+                                data_type: DataType::Struct(vec![Field {
+                                    name: "value".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                }]),
+                                is_nullable: false,
                                 metadata: [].into(),
                             },
                         ]),

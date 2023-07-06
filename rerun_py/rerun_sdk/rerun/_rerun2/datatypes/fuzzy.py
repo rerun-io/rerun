@@ -9,6 +9,7 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
+from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
@@ -28,13 +29,60 @@ __all__ = [
     "AffixFuzzer2ArrayLike",
     "AffixFuzzer2Like",
     "AffixFuzzer2Type",
+    "FlattenedScalar",
+    "FlattenedScalarArray",
+    "FlattenedScalarArrayLike",
+    "FlattenedScalarLike",
+    "FlattenedScalarType",
 ]
+
+
+@define
+class FlattenedScalar:
+    value: float | None = field(default=None)
+
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+        return np.asarray(self.value, dtype=dtype)
+
+
+FlattenedScalarLike = FlattenedScalar
+FlattenedScalarArrayLike = Union[
+    FlattenedScalar,
+    Sequence[FlattenedScalarLike],
+]
+
+
+# --- Arrow support ---
+
+
+class FlattenedScalarType(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self, pa.struct([pa.field("value", pa.float32(), True, {})]), "rerun.testing.datatypes.FlattenedScalar"
+        )
+
+
+class FlattenedScalarArray(BaseExtensionArray[FlattenedScalarArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.datatypes.FlattenedScalar"
+    _EXTENSION_TYPE = FlattenedScalarType
+
+    @staticmethod
+    def _native_to_pa_array(data: FlattenedScalarArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+FlattenedScalarType._ARRAY_TYPE = FlattenedScalarArray
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(FlattenedScalarType())
 
 
 @define
 class AffixFuzzer1:
     single_string_required: str = field()
     many_strings_required: list[str] = field()
+    flattened_scalar: float = field()
+    almost_flattened_scalar: datatypes.FlattenedScalar = field()
     single_float_optional: float | None = field(default=None)
     single_string_optional: str | None = field(default=None)
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
@@ -63,6 +111,10 @@ class AffixFuzzer1Type(BaseExtensionType):
                     pa.field("many_floats_optional", pa.list_(pa.field("item", pa.float32(), True, {})), True, {}),
                     pa.field("many_strings_required", pa.list_(pa.field("item", pa.utf8(), False, {})), False, {}),
                     pa.field("many_strings_optional", pa.list_(pa.field("item", pa.utf8(), True, {})), True, {}),
+                    pa.field("flattened_scalar", pa.float32(), False, {}),
+                    pa.field(
+                        "almost_flattened_scalar", pa.struct([pa.field("value", pa.float32(), True, {})]), False, {}
+                    ),
                 ]
             ),
             "rerun.testing.datatypes.AffixFuzzer1",
