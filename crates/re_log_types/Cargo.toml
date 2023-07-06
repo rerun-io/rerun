@@ -49,6 +49,8 @@ arrow2 = { workspace = true, features = [
 arrow2_convert.workspace = true
 document-features = "0.2"
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
+# `fixed` depends on `half`, so even though `half` is not directly used in this crate,
+# we keep it as a direct dependency to ensure it stays pinned on `2.2.1`
 half.workspace = true
 itertools = { workspace = true }
 web-time.workspace = true
