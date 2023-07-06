@@ -1,4 +1,4 @@
-name: 'Reusable Deploy Docs'
+name: "Reusable Deploy Docs"
 
 on:
   workflow_call:
@@ -33,8 +33,7 @@ env:
   RUSTC_WRAPPER: "sccache"
 
 jobs:
-
-# ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
   py-deploy-docs:
     name: Python
@@ -90,8 +89,7 @@ jobs:
           git commit -m "Update docs for ${GITHUB_SHA}"
           git push origin gh-pages-orphan:gh-pages -f
 
-
-# ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
   rs-deploy-docs:
     name: Rust
@@ -129,6 +127,9 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
+      - name: Delete existing /target/doc
+        run: rm -rf ./target/doc
+
       - name: cargo doc --document-private-items
         uses: actions-rs/cargo@v1
         with:
@@ -156,3 +157,4 @@ jobs:
         run: |
           git fetch
           python3 -m ghp_import -n -p -x docs/rust/head target/doc/ -m "Update the rust docs"
+
