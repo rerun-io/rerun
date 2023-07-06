@@ -1,0 +1,23 @@
+{
+  "extraPaths": [
+    "rerun_py/rerun_sdk"
+  ],
+
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__"
+  ],
+
+  "ignore": [
+    "rerun_py/rerun",
+    "rerun_py/rerun_demo"
+  ],
+
+  "defineConstant": {
+    "DEBUG": true
+  },
+
+  "venv": "venv",
+
+  "reportPrivateImportUsage": false
+}

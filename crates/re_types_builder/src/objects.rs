@@ -51,19 +51,80 @@ impl Objects {
         }
 
         // resolve objects
-        for obj in schema
-            .objects()
-            .iter()
-            // NOTE: Wrapped scalar types used by unions, not actual objects: ignore.
-            .filter(|obj| !obj.name().starts_with("fbs.scalars."))
-        {
+        for obj in schema.objects().iter() {
             let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
 
-        Self {
+        let mut this = Self {
             objects: resolved_enums.into_iter().chain(resolved_objs).collect(),
+        };
+
+        // Resolve field-level semantic transparency recursively.
+        let mut done = false;
+        while !done {
+            done = true;
+            let mut objects_copy = this.objects.clone(); // borrowck, the lazy way
+            for obj in this.objects.values_mut() {
+                for field in &mut obj.fields {
+                    if field.is_transparent() {
+                        if let Some(target_fqname) = field.typ.fqname() {
+                            let mut target_obj = objects_copy.remove(target_fqname).unwrap();
+                            assert!(
+                                target_obj.fields.len() == 1,
+                                "field '{}' is marked transparent but points to object '{}' which \
+                                    doesn't have exactly one field (found {} fields instead)",
+                                field.fqname,
+                                target_obj.fqname,
+                                target_obj.fields.len(),
+                            );
+
+                            let ObjectField {
+                                virtpath: _,
+                                filepath: _,
+                                fqname,
+                                pkg_name: _,
+                                name: _,
+                                docs: _,
+                                typ,
+                                attrs,
+                                is_nullable: _,
+                                is_deprecated: _,
+                                datatype,
+                            } = target_obj.fields.pop().unwrap();
+
+                            field.typ = typ;
+                            field.datatype = datatype;
+
+                            // TODO(cmc): might want to do something smarter at some point regarding attrs.
+
+                            // NOTE: Transparency (or lack thereof) of the target field takes precedence.
+                            if let transparency @ Some(_) =
+                                attrs.try_get::<String>(&fqname, crate::ATTR_TRANSPARENT)
+                            {
+                                field.attrs.0.insert(
+                                    crate::ATTR_TRANSPARENT.to_owned(),
+                                    transparency.clone(),
+                                );
+                            } else {
+                                field.attrs.0.remove(crate::ATTR_TRANSPARENT);
+                            }
+
+                            done = false;
+                        }
+                    }
+                }
+            }
         }
+
+        // Remove whole objects marked as transparent.
+        this.objects = this
+            .objects
+            .drain()
+            .filter(|(_, obj)| !obj.is_transparent())
+            .collect();
+
+        this
     }
 }
 
@@ -473,7 +534,7 @@ impl Object {
     ///
     /// Panics if no order has been set.
     pub fn order(&self) -> u32 {
-        self.attrs.get::<u32>(&self.fqname, "order")
+        self.attrs.get::<u32>(&self.fqname, crate::ATTR_ORDER)
     }
 
     pub fn is_struct(&self) -> bool {
@@ -502,6 +563,12 @@ impl Object {
             || self
                 .try_get_attr::<String>(crate::ATTR_ARROW_TRANSPARENT)
                 .is_some()
+    }
+
+    fn is_transparent(&self) -> bool {
+        self.attrs
+            .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
+            .is_some()
     }
 }
 
@@ -667,6 +734,12 @@ impl ObjectField {
         self.attrs.get::<u32>(&self.fqname, "order")
     }
 
+    fn is_transparent(&self) -> bool {
+        self.attrs
+            .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
+            .is_some()
+    }
+
     pub fn get_attr<T>(&self, name: impl AsRef<str>) -> T
     where
         T: std::str::FromStr,
@@ -754,7 +827,7 @@ impl Type {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[field_type.index() as usize];
-                flatten_scalar_wrappers(obj).into()
+                Self::Object(obj.name().to_owned())
             }
             FbsBaseType::Union => {
                 let union = &enums[field_type.index() as usize];
@@ -869,7 +942,7 @@ impl ElementType {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[outer_type.index() as usize];
-                flatten_scalar_wrappers(obj)
+                Self::Object(obj.name().to_owned())
             }
             FbsBaseType::Union => unimplemented!("{inner_type:#?}"), // NOLINT
             FbsBaseType::None
@@ -969,19 +1042,6 @@ impl Attributes {
                 })
                 .unwrap(),
         )
-    }
-}
-
-/// Helper to turn wrapped scalars into actual scalars.
-fn flatten_scalar_wrappers(obj: &FbsObject<'_>) -> ElementType {
-    let name = obj.name();
-    if name.starts_with("fbs.scalars.") {
-        match name {
-            "fbs.scalars.Float32" => ElementType::Float32,
-            _ => unimplemented!("{name:#?}"), // NOLINT
-        }
-    } else {
-        ElementType::Object(name.to_owned())
     }
 }
 

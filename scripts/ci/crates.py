@@ -26,14 +26,15 @@ from glob import glob
 from pathlib import Path
 from typing import Any, Generator
 
+import requests
 import tomlkit
 from colorama import Fore
 from colorama import init as colorama_init
 from semver import VersionInfo
 
 
-def cargo(args: str, cwd: str | Path | None = None) -> None:
-    subprocess.check_output(["cargo"] + args.split(), cwd=cwd)
+def cargo(args: str, cwd: str | Path | None = None, env: Dict[str, Any] = {}) -> Any:
+    subprocess.check_output(["cargo"] + args.split(), cwd=cwd, env=env)
 
 
 class Crate:
@@ -265,7 +266,46 @@ def version(dry_run: bool, bump: Bump) -> None:
         for name, crate in crates.items():
             with Path(f"{crate.path}/Cargo.toml").open("w") as f:
                 tomlkit.dump(crate.manifest, f)
-        cargo("update -w")
+        cargo("update --workspace")
+
+
+def is_already_uploaded(version: str, crate: Crate) -> bool:
+    res = requests.get(
+        f"https://crates.io/api/v1/crates/{crate}",
+        headers={"user-agent": "rerun-publishing-script (rerun.io)"},
+    ).json()
+
+    # crate has not been uploaded yet
+    if "versions" not in res:
+        return False
+
+    # crate has been uploaded, check every version against what we're uploading
+    versions: List[str] = [version["num"] for version in res["versions"]]
+    for uploaded_version in versions:
+        if uploaded_version == version:
+            return True
+    return False
+
+
+def publish_crate(crate: Crate, token: str, version: str, env: Dict[str, Any]) -> None:
+    package = crate.manifest["package"]
+    name = package["name"]
+    crate_version = crate.manifest["package"].get("version") or version
+    if "workspace" in crate_version:
+        crate_version = version
+
+    if is_already_uploaded(crate_version, crate.manifest["package"]["name"]):
+        print(f"{Fore.GREEN}Already published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+    else:
+        print(f"{Fore.GREEN}Verifying{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+        cargo("publish --quiet --dry-run", cwd=crate.path, env=env)
+        print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+        try:
+            cargo(f"publish --token {token}", cwd=crate.path, env=env)
+            print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+        except:
+            print(f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}")
+            raise
 
 
 def publish(dry_run: bool, token: str) -> None:
@@ -280,9 +320,9 @@ def publish(dry_run: bool, token: str) -> None:
     ctx.finish(dry_run)
 
     if not dry_run:
+        env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
         for crate in crates.values():
-            cargo("publish --dry-run", cwd=crate.path)
-            cargo(f"publish --token {token}", cwd=crate.path)
+            publish_crate(crate, token, version, env)
 
 
 def main() -> None:

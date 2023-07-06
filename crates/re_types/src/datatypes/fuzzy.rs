@@ -10,6 +10,153 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct FlattenedScalar {
+    pub value: Option<f32>,
+}
+
+impl<'a> From<FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
+    #[inline]
+    fn from(value: FlattenedScalar) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
+    #[inline]
+    fn from(value: &'a FlattenedScalar) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Datatype for FlattenedScalar {
+    #[inline]
+    fn name() -> crate::DatatypeName {
+        crate::DatatypeName::Borrowed("rerun.testing.datatypes.FlattenedScalar")
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![Field {
+            name: "value".to_owned(),
+            data_type: DataType::Float32,
+            is_nullable: true,
+            metadata: [].into(),
+        }])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
+                (if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::datatypes::FlattenedScalar>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::datatypes::FlattenedScalar>::to_arrow_datatype()
+                })
+                .to_logical_type()
+                .clone(),
+                vec![{
+                    let (somes, value): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .map(|datum| {
+                            let datum = datum
+                                .as_ref()
+                                .map(|datum| {
+                                    let Self { value, .. } = &**datum;
+                                    value.clone()
+                                })
+                                .flatten();
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let value_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    PrimitiveArray::new(
+                        {
+                            _ = extension_wrapper;
+                            DataType::Float32.to_logical_type().clone()
+                        },
+                        value.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        value_bitmap,
+                    )
+                    .boxed()
+                }],
+                bitmap,
+            )
+            .boxed()
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                    expected: data.data_type().clone(),
+                    got: data.data_type().clone(),
+                })?;
+            let (data_fields, data_arrays, data_bitmap) =
+                (data.fields(), data.values(), data.validity());
+            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .zip(data_arrays)
+                .collect();
+            let value = {
+                let data = &**arrays_by_name["value"];
+
+                data.as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+            };
+            ::itertools::izip!(value)
+                .enumerate()
+                .map(|(i, (value))| is_valid(i).then(|| Ok(Self { value })).transpose())
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
     pub single_string_required: String,
@@ -17,6 +164,8 @@ pub struct AffixFuzzer1 {
     pub many_floats_optional: Option<Vec<f32>>,
     pub many_strings_required: Vec<String>,
     pub many_strings_optional: Option<Vec<String>>,
+    pub flattened_scalar: f32,
+    pub almost_flattened_scalar: crate::datatypes::FlattenedScalar,
 }
 
 impl<'a> From<AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
@@ -93,6 +242,23 @@ impl crate::Datatype for AffixFuzzer1 {
                     metadata: [].into(),
                 })),
                 is_nullable: true,
+                metadata: [].into(),
+            },
+            Field {
+                name: "flattened_scalar".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "almost_flattened_scalar".to_owned(),
+                data_type: DataType::Struct(vec![Field {
+                    name: "value".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: true,
+                    metadata: [].into(),
+                }]),
+                is_nullable: false,
                 metadata: [].into(),
             },
         ])
@@ -534,6 +700,63 @@ impl crate::Datatype for AffixFuzzer1 {
                             .boxed()
                         }
                     },
+                    {
+                        let (somes, flattened_scalar): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self {
+                                        flattened_scalar, ..
+                                    } = &**datum;
+                                    flattened_scalar.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let flattened_scalar_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        PrimitiveArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::Float32.to_logical_type().clone()
+                            },
+                            flattened_scalar
+                                .into_iter()
+                                .map(|v| v.unwrap_or_default())
+                                .collect(),
+                            flattened_scalar_bitmap,
+                        )
+                        .boxed()
+                    },
+                    {
+                        let (somes, almost_flattened_scalar): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self {
+                                        almost_flattened_scalar,
+                                        ..
+                                    } = &**datum;
+                                    almost_flattened_scalar.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let almost_flattened_scalar_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            _ = almost_flattened_scalar_bitmap;
+                            _ = extension_wrapper;
+                            crate::datatypes::FlattenedScalar::try_to_arrow_opt(
+                                almost_flattened_scalar,
+                                None::<&str>,
+                            )?
+                        }
+                    },
                 ],
                 bitmap,
             )
@@ -746,13 +969,29 @@ impl crate::Datatype for AffixFuzzer1 {
                         .into_iter()
                 }
             };
+            let flattened_scalar = {
+                let data = &**arrays_by_name["flattened_scalar"];
+
+                data.as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+            };
+            let almost_flattened_scalar = {
+                let data = &**arrays_by_name["almost_flattened_scalar"];
+
+                crate::datatypes::FlattenedScalar::try_from_arrow_opt(data)?.into_iter()
+            };
             ::itertools::izip!(
                 single_float_optional,
                 single_string_required,
                 single_string_optional,
                 many_floats_optional,
                 many_strings_required,
-                many_strings_optional
+                many_strings_optional,
+                flattened_scalar,
+                almost_flattened_scalar
             )
             .enumerate()
             .map(
@@ -765,6 +1004,8 @@ impl crate::Datatype for AffixFuzzer1 {
                         many_floats_optional,
                         many_strings_required,
                         many_strings_optional,
+                        flattened_scalar,
+                        almost_flattened_scalar,
                     ),
                 )| {
                     is_valid(i)
@@ -784,6 +1025,16 @@ impl crate::Datatype for AffixFuzzer1 {
                                     }
                                 })?,
                                 many_strings_optional,
+                                flattened_scalar: flattened_scalar.ok_or_else(|| {
+                                    crate::DeserializationError::MissingData {
+                                        datatype: data.data_type().clone(),
+                                    }
+                                })?,
+                                almost_flattened_scalar: almost_flattened_scalar.ok_or_else(
+                                    || crate::DeserializationError::MissingData {
+                                        datatype: data.data_type().clone(),
+                                    },
+                                )?,
                             })
                         })
                         .transpose()
