@@ -12,7 +12,7 @@ table AffixFuzzer1 (
   "attr.rust.derive": "PartialEq",
   order: 100
 ) {
-  single_required: rerun.testing.datatypes.AffixFuzzer1 (required, order: 101);
+  single_required: rerun.testing.datatypes.AffixFuzzer1 (order: 101);
 }
 
 table AffixFuzzer2 (
@@ -20,21 +20,21 @@ table AffixFuzzer2 (
   "attr.rust.tuple_struct",
   order: 200
 ) {
-  single_required: rerun.testing.datatypes.AffixFuzzer1 (required, order: 102);
+  single_required: rerun.testing.datatypes.AffixFuzzer1 (order: 102);
 }
 
 table AffixFuzzer3 (
   "attr.rust.derive": "PartialEq",
   order: 300
 ) {
-  single_required: rerun.testing.datatypes.AffixFuzzer1 (required, order: 103);
+  single_required: rerun.testing.datatypes.AffixFuzzer1 (order: 103);
 }
 
 table AffixFuzzer4 (
   "attr.rust.derive": "PartialEq",
   order: 400
 ) {
-  single_optional: rerun.testing.datatypes.AffixFuzzer1 (order: 104);
+  single_optional: rerun.testing.datatypes.AffixFuzzer1 (is_nullable, order: 104);
 }
 
 table AffixFuzzer5 (
@@ -42,63 +42,63 @@ table AffixFuzzer5 (
   "attr.rust.tuple_struct",
   order: 500
 ) {
-  single_optional: rerun.testing.datatypes.AffixFuzzer1 (order: 105);
+  single_optional: rerun.testing.datatypes.AffixFuzzer1 (is_nullable, order: 105);
 }
 
 table AffixFuzzer6 (
   "attr.rust.derive": "PartialEq",
   order: 600
 ) {
-  single_optional: rerun.testing.datatypes.AffixFuzzer1 (order: 106);
+  single_optional: rerun.testing.datatypes.AffixFuzzer1 (is_nullable, order: 106);
 }
 
 table AffixFuzzer7 (
   "attr.rust.derive": "PartialEq",
   order: 700
 ) {
-  many_optional: [rerun.testing.datatypes.AffixFuzzer1] (order: 107);
+  many_optional: [rerun.testing.datatypes.AffixFuzzer1] (is_nullable, order: 107);
 }
 
 table AffixFuzzer8 (
   "attr.rust.derive": "PartialEq",
   order: 800
 ) {
-  single_float_optional: float (order: 108);
+  single_float_optional: float (is_nullable, order: 108);
 }
 
 table AffixFuzzer9 (
   "attr.rust.derive": "PartialEq, Eq",
   order: 900
 ) {
-  single_string_required: string (required, order: 109);
+  single_string_required: string (order: 109);
 }
 
 table AffixFuzzer10 (
   "attr.rust.derive": "PartialEq, Eq",
   order: 1000
 ) {
-  single_string_optional: string (order: 110);
+  single_string_optional: string (is_nullable, order: 110);
 }
 
 table AffixFuzzer11 (
   "attr.rust.derive": "PartialEq",
   order: 1100
 ) {
-  many_floats_optional: [float] (order: 111);
+  many_floats_optional: [float] (is_nullable, order: 111);
 }
 
 table AffixFuzzer12 (
   "attr.rust.derive": "PartialEq, Eq",
   order: 1200
 ) {
-  many_strings_required: [string] (required, order: 112);
+  many_strings_required: [string] (order: 112);
 }
 
 table AffixFuzzer13 (
   "attr.rust.derive": "PartialEq, Eq",
   order: 1300
 ) {
-  many_strings_optional: [string] (order: 113);
+  many_strings_optional: [string] (is_nullable, order: 113);
 }
 
 // TODO(cmc): the ugly bug we need to take care of at some point
