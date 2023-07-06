@@ -24,4 +24,4 @@ egui.workspace = true
 nohash-hasher.workspace = true
 serde = "1.0"
 slotmap.workspace = true
-smallvec.workspace = true
+smallvec = { workspace = true, features = ["serde"] }
