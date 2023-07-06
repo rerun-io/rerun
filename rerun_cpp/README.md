@@ -8,9 +8,10 @@ Run `scripts/setup.sh`.
 ## Test it
 rerun_cpp/example/build_and_run.sh
 
-# TODO
+# To do:
 * CI
 * Code-gen
 * Documentation
 * Packaging
 * Publishing
+* …
