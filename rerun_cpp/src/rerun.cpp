@@ -7,7 +7,7 @@
 
 #include <loguru.hpp>
 
-namespace rerun {
+namespace rr {
     const char* version_string() {
         return rr_version_string();
     }
@@ -51,4 +51,4 @@ namespace rerun {
         ARROW_RETURN_NOT_OK(writer->Close());
         return output->Finish();
     }
-} // namespace rerun
+} // namespace rr

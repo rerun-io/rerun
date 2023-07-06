@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
     loguru::g_preamble_thread = false;
     loguru::init(argc, argv); // installs signal handlers
 
-    LOG_F(INFO, "Rerun C++ SDK version: %s", rerun::version_string());
+    LOG_F(INFO, "Rerun C++ SDK version: %s", rr::version_string());
 
     const rr_store_info store_info = {
         .application_id = "c-example-app",
@@ -21,8 +21,8 @@ int main(int argc, char** argv) {
     rr_recording_stream rec_stream = rr_recording_stream_new(&store_info, "0.0.0.0:9876");
 
     float xyz[9] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 5.0, 5.0, 5.0};
-    auto points = rerun::points3(3, xyz).ValueOrDie();
-    auto buffer = rerun::ipc_from_table(*points).ValueOrDie();
+    auto points = rr::points3(3, xyz).ValueOrDie();
+    auto buffer = rr::ipc_from_table(*points).ValueOrDie();
 
     const rr_data_cell data_cells[1] = {rr_data_cell{
         .component_name = "rerun.point3d",
