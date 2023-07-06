@@ -7,6 +7,12 @@
     },
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
+    "files.exclude": {
+        "target_ra/**": true,
+        "target_wasm/**": true,
+        "target/**": true,
+        "venv/**": true,
+    },
     "files.autoGuessEncoding": true,
     "python.formatting.provider": "black",
     "python.formatting.blackArgs": [
