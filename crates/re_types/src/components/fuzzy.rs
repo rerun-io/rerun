@@ -42,7 +42,7 @@ impl crate::Component for AffixFuzzer1 {
             Field {
                 name: "single_float_optional".to_owned(),
                 data_type: DataType::Float32,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -54,7 +54,7 @@ impl crate::Component for AffixFuzzer1 {
             Field {
                 name: "single_string_optional".to_owned(),
                 data_type: DataType::Utf8,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -62,10 +62,10 @@ impl crate::Component for AffixFuzzer1 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -84,10 +84,10 @@ impl crate::Component for AffixFuzzer1 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -199,7 +199,7 @@ impl crate::Component for AffixFuzzer2 {
             Field {
                 name: "single_float_optional".to_owned(),
                 data_type: DataType::Float32,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -211,7 +211,7 @@ impl crate::Component for AffixFuzzer2 {
             Field {
                 name: "single_string_optional".to_owned(),
                 data_type: DataType::Utf8,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -219,10 +219,10 @@ impl crate::Component for AffixFuzzer2 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -241,10 +241,10 @@ impl crate::Component for AffixFuzzer2 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -358,7 +358,7 @@ impl crate::Component for AffixFuzzer3 {
             Field {
                 name: "single_float_optional".to_owned(),
                 data_type: DataType::Float32,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -370,7 +370,7 @@ impl crate::Component for AffixFuzzer3 {
             Field {
                 name: "single_string_optional".to_owned(),
                 data_type: DataType::Utf8,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -378,10 +378,10 @@ impl crate::Component for AffixFuzzer3 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -400,10 +400,10 @@ impl crate::Component for AffixFuzzer3 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -486,7 +486,7 @@ impl crate::Component for AffixFuzzer3 {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AffixFuzzer4 {
-    pub single_optional: crate::datatypes::AffixFuzzer1,
+    pub single_optional: Option<crate::datatypes::AffixFuzzer1>,
 }
 
 impl<'a> From<AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
@@ -517,7 +517,7 @@ impl crate::Component for AffixFuzzer4 {
             Field {
                 name: "single_float_optional".to_owned(),
                 data_type: DataType::Float32,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -529,7 +529,7 @@ impl crate::Component for AffixFuzzer4 {
             Field {
                 name: "single_string_optional".to_owned(),
                 data_type: DataType::Utf8,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -537,10 +537,10 @@ impl crate::Component for AffixFuzzer4 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -559,10 +559,10 @@ impl crate::Component for AffixFuzzer4 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -600,10 +600,12 @@ impl crate::Component for AffixFuzzer4 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self { single_optional } = datum.into_owned();
-                        single_optional
-                    });
+                    let datum = datum
+                        .map(|datum| {
+                            let Self { single_optional } = datum.into_owned();
+                            single_optional
+                        })
+                        .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -633,18 +635,14 @@ impl crate::Component for AffixFuzzer4 {
         use ::arrow2::{array::*, datatypes::*};
         Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)?
             .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
-                })
-            })
+            .map(Ok)
             .map(|res| res.map(|single_optional| Some(Self { single_optional })))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct AffixFuzzer5(pub crate::datatypes::AffixFuzzer1);
+pub struct AffixFuzzer5(pub Option<crate::datatypes::AffixFuzzer1>);
 
 impl<'a> From<AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
     #[inline]
@@ -674,7 +672,7 @@ impl crate::Component for AffixFuzzer5 {
             Field {
                 name: "single_float_optional".to_owned(),
                 data_type: DataType::Float32,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -686,7 +684,7 @@ impl crate::Component for AffixFuzzer5 {
             Field {
                 name: "single_string_optional".to_owned(),
                 data_type: DataType::Utf8,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -694,10 +692,10 @@ impl crate::Component for AffixFuzzer5 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -716,10 +714,10 @@ impl crate::Component for AffixFuzzer5 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -757,10 +755,12 @@ impl crate::Component for AffixFuzzer5 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum
+                        .map(|datum| {
+                            let Self(data0) = datum.into_owned();
+                            data0
+                        })
+                        .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -790,11 +790,7 @@ impl crate::Component for AffixFuzzer5 {
         use ::arrow2::{array::*, datatypes::*};
         Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)?
             .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
-                })
-            })
+            .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
@@ -802,7 +798,7 @@ impl crate::Component for AffixFuzzer5 {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AffixFuzzer6 {
-    pub single_optional: crate::datatypes::AffixFuzzer1,
+    pub single_optional: Option<crate::datatypes::AffixFuzzer1>,
 }
 
 impl<'a> From<AffixFuzzer6> for ::std::borrow::Cow<'a, AffixFuzzer6> {
@@ -833,7 +829,7 @@ impl crate::Component for AffixFuzzer6 {
             Field {
                 name: "single_float_optional".to_owned(),
                 data_type: DataType::Float32,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -845,7 +841,7 @@ impl crate::Component for AffixFuzzer6 {
             Field {
                 name: "single_string_optional".to_owned(),
                 data_type: DataType::Utf8,
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -853,10 +849,10 @@ impl crate::Component for AffixFuzzer6 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -875,10 +871,10 @@ impl crate::Component for AffixFuzzer6 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 })),
-                is_nullable: false,
+                is_nullable: true,
                 metadata: [].into(),
             },
             Field {
@@ -916,10 +912,12 @@ impl crate::Component for AffixFuzzer6 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self { single_optional } = datum.into_owned();
-                        single_optional
-                    });
+                    let datum = datum
+                        .map(|datum| {
+                            let Self { single_optional } = datum.into_owned();
+                            single_optional
+                        })
+                        .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -949,11 +947,7 @@ impl crate::Component for AffixFuzzer6 {
         use ::arrow2::{array::*, datatypes::*};
         Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)?
             .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
-                })
-            })
+            .map(Ok)
             .map(|res| res.map(|single_optional| Some(Self { single_optional })))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
@@ -961,7 +955,7 @@ impl crate::Component for AffixFuzzer6 {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AffixFuzzer7 {
-    pub many_optional: Vec<crate::datatypes::AffixFuzzer1>,
+    pub many_optional: Option<Vec<crate::datatypes::AffixFuzzer1>>,
 }
 
 impl<'a> From<AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
@@ -994,7 +988,7 @@ impl crate::Component for AffixFuzzer7 {
                 Field {
                     name: "single_float_optional".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 },
                 Field {
@@ -1006,7 +1000,7 @@ impl crate::Component for AffixFuzzer7 {
                 Field {
                     name: "single_string_optional".to_owned(),
                     data_type: DataType::Utf8,
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 },
                 Field {
@@ -1014,10 +1008,10 @@ impl crate::Component for AffixFuzzer7 {
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::Float32,
-                        is_nullable: false,
+                        is_nullable: true,
                         metadata: [].into(),
                     })),
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 },
                 Field {
@@ -1036,10 +1030,10 @@ impl crate::Component for AffixFuzzer7 {
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::Utf8,
-                        is_nullable: false,
+                        is_nullable: true,
                         metadata: [].into(),
                     })),
-                    is_nullable: false,
+                    is_nullable: true,
                     metadata: [].into(),
                 },
                 Field {
@@ -1060,7 +1054,7 @@ impl crate::Component for AffixFuzzer7 {
                     metadata: [].into(),
                 },
             ]),
-            is_nullable: false,
+            is_nullable: true,
             metadata: [].into(),
         }))
     }
@@ -1080,10 +1074,12 @@ impl crate::Component for AffixFuzzer7 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self { many_optional } = datum.into_owned();
-                        many_optional
-                    });
+                    let datum = datum
+                        .map(|datum| {
+                            let Self { many_optional } = datum.into_owned();
+                            many_optional
+                        })
+                        .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -1127,7 +1123,7 @@ impl crate::Component for AffixFuzzer7 {
                                     Field {
                                         name: "single_float_optional".to_owned(),
                                         data_type: DataType::Float32,
-                                        is_nullable: false,
+                                        is_nullable: true,
                                         metadata: [].into(),
                                     },
                                     Field {
@@ -1139,7 +1135,7 @@ impl crate::Component for AffixFuzzer7 {
                                     Field {
                                         name: "single_string_optional".to_owned(),
                                         data_type: DataType::Utf8,
-                                        is_nullable: false,
+                                        is_nullable: true,
                                         metadata: [].into(),
                                     },
                                     Field {
@@ -1147,10 +1143,10 @@ impl crate::Component for AffixFuzzer7 {
                                         data_type: DataType::List(Box::new(Field {
                                             name: "item".to_owned(),
                                             data_type: DataType::Float32,
-                                            is_nullable: false,
+                                            is_nullable: true,
                                             metadata: [].into(),
                                         })),
-                                        is_nullable: false,
+                                        is_nullable: true,
                                         metadata: [].into(),
                                     },
                                     Field {
@@ -1169,10 +1165,10 @@ impl crate::Component for AffixFuzzer7 {
                                         data_type: DataType::List(Box::new(Field {
                                             name: "item".to_owned(),
                                             data_type: DataType::Utf8,
-                                            is_nullable: false,
+                                            is_nullable: true,
                                             metadata: [].into(),
                                         })),
-                                        is_nullable: false,
+                                        is_nullable: true,
                                         metadata: [].into(),
                                     },
                                     Field {
@@ -1193,7 +1189,7 @@ impl crate::Component for AffixFuzzer7 {
                                         metadata: [].into(),
                                     },
                                 ]),
-                                is_nullable: false,
+                                is_nullable: true,
                                 metadata: [].into(),
                             }))),
                             None,
@@ -1246,7 +1242,7 @@ impl crate::Component for AffixFuzzer7 {
                             Field {
                                 name: "single_float_optional".to_owned(),
                                 data_type: DataType::Float32,
-                                is_nullable: false,
+                                is_nullable: true,
                                 metadata: [].into(),
                             },
                             Field {
@@ -1258,7 +1254,7 @@ impl crate::Component for AffixFuzzer7 {
                             Field {
                                 name: "single_string_optional".to_owned(),
                                 data_type: DataType::Utf8,
-                                is_nullable: false,
+                                is_nullable: true,
                                 metadata: [].into(),
                             },
                             Field {
@@ -1266,10 +1262,10 @@ impl crate::Component for AffixFuzzer7 {
                                 data_type: DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float32,
-                                    is_nullable: false,
+                                    is_nullable: true,
                                     metadata: [].into(),
                                 })),
-                                is_nullable: false,
+                                is_nullable: true,
                                 metadata: [].into(),
                             },
                             Field {
@@ -1288,10 +1284,10 @@ impl crate::Component for AffixFuzzer7 {
                                 data_type: DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Utf8,
-                                    is_nullable: false,
+                                    is_nullable: true,
                                     metadata: [].into(),
                                 })),
-                                is_nullable: false,
+                                is_nullable: true,
                                 metadata: [].into(),
                             },
                             Field {
@@ -1336,11 +1332,7 @@ impl crate::Component for AffixFuzzer7 {
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                 .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                datatype: data.data_type().clone(),
-            })
-        })
+        .map(Ok)
         .map(|res| res.map(|many_optional| Some(Self { many_optional })))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
@@ -1348,7 +1340,7 @@ impl crate::Component for AffixFuzzer7 {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AffixFuzzer8 {
-    pub single_float_optional: f32,
+    pub single_float_optional: Option<f32>,
 }
 
 impl<'a> From<AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
@@ -1393,12 +1385,14 @@ impl crate::Component for AffixFuzzer8 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self {
-                            single_float_optional,
-                        } = datum.into_owned();
-                        single_float_optional
-                    });
+                    let datum = datum
+                        .map(|datum| {
+                            let Self {
+                                single_float_optional,
+                            } = datum.into_owned();
+                            single_float_optional
+                        })
+                        .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -1442,11 +1436,7 @@ impl crate::Component for AffixFuzzer8 {
             .unwrap()
             .into_iter()
             .map(|v| v.copied())
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
-                })
-            })
+            .map(Ok)
             .map(|res| {
                 res.map(|single_float_optional| {
                     Some(Self {
@@ -1587,7 +1577,7 @@ impl crate::Component for AffixFuzzer9 {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AffixFuzzer10 {
-    pub single_string_optional: String,
+    pub single_string_optional: Option<String>,
 }
 
 impl<'a> From<AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
@@ -1632,12 +1622,14 @@ impl crate::Component for AffixFuzzer10 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self {
-                            single_string_optional,
-                        } = datum.into_owned();
-                        single_string_optional
-                    });
+                    let datum = datum
+                        .map(|datum| {
+                            let Self {
+                                single_string_optional,
+                            } = datum.into_owned();
+                            single_string_optional
+                        })
+                        .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -1696,11 +1688,7 @@ impl crate::Component for AffixFuzzer10 {
             .unwrap()
             .into_iter()
             .map(|v| v.map(ToOwned::to_owned))
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
-                })
-            })
+            .map(Ok)
             .map(|res| {
                 res.map(|single_string_optional| {
                     Some(Self {
@@ -1714,7 +1702,7 @@ impl crate::Component for AffixFuzzer10 {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AffixFuzzer11 {
-    pub many_floats_optional: Vec<f32>,
+    pub many_floats_optional: Option<Vec<f32>>,
 }
 
 impl<'a> From<AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
@@ -1744,7 +1732,7 @@ impl crate::Component for AffixFuzzer11 {
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
             data_type: DataType::Float32,
-            is_nullable: false,
+            is_nullable: true,
             metadata: [].into(),
         }))
     }
@@ -1764,12 +1752,14 @@ impl crate::Component for AffixFuzzer11 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self {
-                            many_floats_optional,
-                        } = datum.into_owned();
-                        many_floats_optional
-                    });
+                    let datum = datum
+                        .map(|datum| {
+                            let Self {
+                                many_floats_optional,
+                            } = datum.into_owned();
+                            many_floats_optional
+                        })
+                        .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -1810,7 +1800,7 @@ impl crate::Component for AffixFuzzer11 {
                             Box::new(DataType::List(Box::new(Field {
                                 name: "item".to_owned(),
                                 data_type: DataType::Float32,
-                                is_nullable: false,
+                                is_nullable: true,
                                 metadata: [].into(),
                             }))),
                             None,
@@ -1898,11 +1888,7 @@ impl crate::Component for AffixFuzzer11 {
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                 .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                datatype: data.data_type().clone(),
-            })
-        })
+        .map(Ok)
         .map(|res| {
             res.map(|many_floats_optional| {
                 Some(Self {
@@ -2134,7 +2120,7 @@ impl crate::Component for AffixFuzzer12 {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AffixFuzzer13 {
-    pub many_strings_optional: Vec<String>,
+    pub many_strings_optional: Option<Vec<String>>,
 }
 
 impl<'a> From<AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
@@ -2164,7 +2150,7 @@ impl crate::Component for AffixFuzzer13 {
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
             data_type: DataType::Utf8,
-            is_nullable: false,
+            is_nullable: true,
             metadata: [].into(),
         }))
     }
@@ -2184,12 +2170,14 @@ impl crate::Component for AffixFuzzer13 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self {
-                            many_strings_optional,
-                        } = datum.into_owned();
-                        many_strings_optional
-                    });
+                    let datum = datum
+                        .map(|datum| {
+                            let Self {
+                                many_strings_optional,
+                            } = datum.into_owned();
+                            many_strings_optional
+                        })
+                        .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -2230,7 +2218,7 @@ impl crate::Component for AffixFuzzer13 {
                             Box::new(DataType::List(Box::new(Field {
                                 name: "item".to_owned(),
                                 data_type: DataType::Utf8,
-                                is_nullable: false,
+                                is_nullable: true,
                                 metadata: [].into(),
                             }))),
                             None,
@@ -2334,11 +2322,7 @@ impl crate::Component for AffixFuzzer13 {
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                 .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                datatype: data.data_type().clone(),
-            })
-        })
+        .map(Ok)
         .map(|res| {
             res.map(|many_strings_optional| {
                 Some(Self {

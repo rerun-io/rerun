@@ -175,7 +175,7 @@ AffixFuzzer6Type._ARRAY_TYPE = AffixFuzzer6Array
 
 @define
 class AffixFuzzer7:
-    many_optional: list[datatypes.AffixFuzzer1] = field()
+    many_optional: list[datatypes.AffixFuzzer1] | None = field(default=None)
 
 
 AffixFuzzer7Like = AffixFuzzer7
@@ -197,17 +197,17 @@ class AffixFuzzer7Type(BaseExtensionType):
                     "item",
                     pa.struct(
                         [
-                            pa.field("single_float_optional", pa.float32(), False, {}),
+                            pa.field("single_float_optional", pa.float32(), True, {}),
                             pa.field("single_string_required", pa.utf8(), False, {}),
-                            pa.field("single_string_optional", pa.utf8(), False, {}),
+                            pa.field("single_string_optional", pa.utf8(), True, {}),
                             pa.field(
-                                "many_floats_optional", pa.list_(pa.field("item", pa.float32(), False, {})), False, {}
+                                "many_floats_optional", pa.list_(pa.field("item", pa.float32(), True, {})), True, {}
                             ),
                             pa.field(
                                 "many_strings_required", pa.list_(pa.field("item", pa.utf8(), False, {})), False, {}
                             ),
                             pa.field(
-                                "many_strings_optional", pa.list_(pa.field("item", pa.utf8(), False, {})), False, {}
+                                "many_strings_optional", pa.list_(pa.field("item", pa.utf8(), True, {})), True, {}
                             ),
                             pa.field("flattened_scalar", pa.float32(), False, {}),
                             pa.field(
@@ -218,7 +218,7 @@ class AffixFuzzer7Type(BaseExtensionType):
                             ),
                         ]
                     ),
-                    False,
+                    True,
                     {},
                 )
             ),
@@ -243,13 +243,10 @@ AffixFuzzer7Type._ARRAY_TYPE = AffixFuzzer7Array
 
 @define
 class AffixFuzzer8:
-    single_float_optional: float = field()
+    single_float_optional: float | None = field(default=None)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
         return np.asarray(self.single_float_optional, dtype=dtype)
-
-    def __float__(self) -> float:
-        return float(self.single_float_optional)
 
 
 AffixFuzzer8Like = AffixFuzzer8
@@ -322,10 +319,7 @@ AffixFuzzer9Type._ARRAY_TYPE = AffixFuzzer9Array
 
 @define
 class AffixFuzzer10:
-    single_string_optional: str = field()
-
-    def __str__(self) -> str:
-        return str(self.single_string_optional)
+    single_string_optional: str | None = field(default=None)
 
 
 AffixFuzzer10Like = AffixFuzzer10
@@ -360,7 +354,7 @@ AffixFuzzer10Type._ARRAY_TYPE = AffixFuzzer10Array
 
 @define
 class AffixFuzzer11:
-    many_floats_optional: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
         return np.asarray(self.many_floats_optional, dtype=dtype)
@@ -379,7 +373,7 @@ AffixFuzzer11ArrayLike = Union[
 class AffixFuzzer11Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), False, {})), "rerun.testing.components.AffixFuzzer11"
+            self, pa.list_(pa.field("item", pa.float32(), True, {})), "rerun.testing.components.AffixFuzzer11"
         )
 
 
@@ -437,7 +431,7 @@ AffixFuzzer12Type._ARRAY_TYPE = AffixFuzzer12Array
 
 @define
 class AffixFuzzer13:
-    many_strings_optional: list[str] = field()
+    many_strings_optional: list[str] | None = field(default=None)
 
 
 AffixFuzzer13Like = AffixFuzzer13
@@ -453,7 +447,7 @@ AffixFuzzer13ArrayLike = Union[
 class AffixFuzzer13Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.utf8(), False, {})), "rerun.testing.components.AffixFuzzer13"
+            self, pa.list_(pa.field("item", pa.utf8(), True, {})), "rerun.testing.components.AffixFuzzer13"
         )
 
 
