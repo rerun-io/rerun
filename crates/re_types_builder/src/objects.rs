@@ -79,7 +79,35 @@ impl Objects {
                                 target_obj.fields.len(),
                             );
 
-                            field.typ = target_obj.fields.pop().unwrap().typ;
+                            let ObjectField {
+                                virtpath: _,
+                                filepath: _,
+                                fqname,
+                                pkg_name: _,
+                                name: _,
+                                docs: _,
+                                typ,
+                                attrs,
+                                is_nullable: _,
+                                is_deprecated: _,
+                                datatype,
+                            } = target_obj.fields.pop().unwrap();
+
+                            field.typ = typ;
+                            // TODO(cmc): might want to do something smarter at some point.
+                            if attrs
+                                .try_get::<String>(&fqname, crate::ATTR_TRANSPARENT)
+                                .is_some()
+                            {
+                                field.attrs.0.insert(
+                                    crate::ATTR_TRANSPARENT.to_owned(),
+                                    Some("inherited".to_owned()),
+                                );
+                            } else {
+                                field.attrs.0.remove(crate::ATTR_TRANSPARENT);
+                            }
+                            field.datatype = datatype;
+
                             done = false;
                         }
                     }
