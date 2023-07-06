@@ -7,7 +7,7 @@ to find and link to the builds associated with a given PR.
 This is expected to be run by the `reusable_pr_summary.yml` GitHub workflow.
 
 Requires the following packages:
-  pip install google-cloud-storage Jinja2 PyGithub # NOLINT
+  pip install google-cloud-storage Jinja2 PyGithub
 """
 from __future__ import annotations
 
@@ -16,14 +16,14 @@ import io
 import os
 from typing import Any
 
-from github import Github  # NOLINT
+from github import Github
 from google.cloud import storage
 from jinja2 import Template
 
 
 def generate_pr_summary(github_token: str, github_repository: str, pr_number: int, upload: bool) -> None:
     # Initialize the GitHub and GCS clients
-    gh = Github(github_token)  # NOLINT
+    gh = Github(github_token)
     gcs_client = storage.Client()
 
     # Get the list of commits associated with the PR
