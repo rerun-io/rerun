@@ -295,7 +295,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: Dict[str, Any]) -
         crate_version = version
 
     if is_already_uploaded(crate_version, crate.manifest["package"]["name"]):
-        print(f"{Fore.GREEN}Skipped{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+        print(f"{Fore.GREEN}Already published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
     else:
         print(f"{Fore.GREEN}Verifying{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
         cargo("publish --quiet --dry-run", cwd=crate.path, env=env)
