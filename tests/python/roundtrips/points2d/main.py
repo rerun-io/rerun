@@ -32,7 +32,7 @@ def main() -> None:
         colors=colors,
         labels=labels,
         draw_order=draw_order,
-        class_ids=class_ids, 
+        class_ids=class_ids,
         keypoint_ids=keypoint_ids,
         instance_keys=instance_keys,
     )
