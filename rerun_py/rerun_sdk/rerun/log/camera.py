@@ -110,11 +110,23 @@ def log_pinhole(
             fl_x = focal_length_px
             fl_y = focal_length_px
         else:
-            fl_x = focal_length_px[0]  # type: ignore[index]
-            fl_y = focal_length_px[1]  # type: ignore[index]
+            try:
+                # TODO(emilk): check that it is 2 elements long
+                fl_x = focal_length_px[0]  # type: ignore[index]
+                fl_y = focal_length_px[1]  # type: ignore[index]
+            except Exception:
+                _send_warning("log_pinhole: expected focal_length_px to be one or two floats", 1)
+                fl_x = width / 2
+                fl_y = fl_x
 
-        u_cen = principal_point_px[0]  # type: ignore[index]
-        v_cen = principal_point_px[1]  # type: ignore[index]
+        try:
+            # TODO(emilk): check that it is 2 elements long
+            u_cen = principal_point_px[0]  # type: ignore[index]
+            v_cen = principal_point_px[1]  # type: ignore[index]
+        except Exception:
+            _send_warning("log_pinhole: expected principal_point_px to be one or two floats", 1)
+            u_cen = width / 2
+            v_cen = height / 2
 
         matrix = [[fl_x, 0, u_cen], [0, fl_y, v_cen], [0, 0, 1]]  # type: ignore[assignment]
     else:
