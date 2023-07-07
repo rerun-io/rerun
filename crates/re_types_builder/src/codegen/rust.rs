@@ -1626,6 +1626,91 @@ fn quote_arrow_deserializer(
                         .collect::<crate::DeserializationResult<Vec<_>>>()?
                 }}
             }
+
+            DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
+                let data_src_types = format_ident!("{data_src}_types");
+                let data_src_arrays = format_ident!("{data_src}_arrays");
+                let data_src_offsets = format_ident!("{data_src}_offsets");
+
+                let quoted_field_deserializers =
+                    obj.fields.iter().enumerate().map(|(i, obj_field)| {
+                        let data_dst = format_ident!("{}", obj_field.name);
+
+                        let quoted_deserializer = quote_arrow_field_deserializer(
+                            &arrow_registry.get(&obj_field.fqname),
+                            obj_field.is_nullable,
+                            &data_src,
+                        );
+
+                        quote! {
+                            let #data_dst = {
+                                let #data_src = &*#data_src_arrays[#i];
+                                 #quoted_deserializer.collect::<Vec<_>>()
+                            }
+                        }
+                    });
+
+                let quoted_obj_name = format_ident!("{}", obj.name);
+                let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
+                    let i = i as i8;
+                    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+                    let quoted_obj_field_type = {
+                        use convert_case::{Case, Casing};
+                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
+                    };
+
+                    let quoted_unwrap = if obj_field.is_nullable {
+                        quote!()
+                    } else {
+                        quote!(.unwrap())
+                    };
+
+                    quote! {
+                        #i => #quoted_obj_name::#quoted_obj_field_type(
+                            #quoted_obj_field_name
+                                .get(offset as usize)
+                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                    bounds: (offset as usize, offset as usize),
+                                    len: #quoted_obj_field_name.len(),
+                                    datatype: #data_src.data_type().clone(),
+                                })?
+                                .clone()
+                                #quoted_unwrap
+                        )
+                    }
+                });
+
+                quote! {{
+                    let #data_src = #data_src
+                        .as_any()
+                        .downcast_ref::<::arrow2::array::UnionArray>()
+                        .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                            expected: #data_src.data_type().clone(),
+                            got: #data_src.data_type().clone(),
+                        })?;
+
+                    let (#data_src_types, #data_src_arrays, #data_src_offsets) =
+                        // NOTE: unwrapping of offsets is safe because this is a dense union
+                        (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
+
+                    #(#quoted_field_deserializers;)*
+
+                    #data_src_types
+                        .iter()
+                        .enumerate()
+                        .map(|(i, typ)| {
+                            let offset = #data_src_offsets[i];
+
+                            Ok(Some(match typ {
+                                #(#quoted_branches,)*
+                                _ => unreachable!(),
+                            }))
+                        })
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                }}
+            }
+
             _ => unimplemented!("{datatype:#?}"), // NOLINT
         }
     }
@@ -1770,7 +1855,7 @@ fn quote_arrow_field_deserializer(
             }}
         }
 
-        DataType::Struct(_) => {
+        DataType::Struct(_) | DataType::Union(_, _, _) => {
             let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
             let fqname_use = quote_fqname_as_type_path(fqname);
             quote!(#fqname_use::try_from_arrow_opt(#data_src)?.into_iter())
