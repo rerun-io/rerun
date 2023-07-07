@@ -64,12 +64,12 @@ impl Objects {
         let mut done = false;
         while !done {
             done = true;
-            let mut objects_copy = this.objects.clone(); // borrowck, the lazy way
+            let objects_copy = this.objects.clone(); // borrowck, the lazy way
             for obj in this.objects.values_mut() {
                 for field in &mut obj.fields {
                     if field.is_transparent() {
                         if let Some(target_fqname) = field.typ.fqname() {
-                            let mut target_obj = objects_copy.remove(target_fqname).unwrap();
+                            let mut target_obj = objects_copy[target_fqname].clone();
                             assert!(
                                 target_obj.fields.len() == 1,
                                 "field '{}' is marked transparent but points to object '{}' which \
