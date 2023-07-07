@@ -113,7 +113,7 @@ table AffixFuzzer14 (
 //   "attr.rust.derive": "PartialEq",
 //   order: 1500
 // ) {
-//   single_optional_union: rerun.testing.datatypes.AffixFuzzer3 (is_nullable, order: 115);
+//   single_optional_union: rerun.testing.datatypes.AffixFuzzer3 (nullable, order: 115);
 // }
 
 table AffixFuzzer16 (
@@ -127,14 +127,14 @@ table AffixFuzzer17 (
   "attr.rust.derive": "PartialEq",
   order: 1700
 ) {
-  many_optional_unions: [rerun.testing.datatypes.AffixFuzzer3] (is_nullable, order: 117);
+  many_optional_unions: [rerun.testing.datatypes.AffixFuzzer3] (nullable, order: 117);
 }
 
 table AffixFuzzer18 (
   "attr.rust.derive": "PartialEq",
   order: 1800
 ) {
-  many_optional_unions: [rerun.testing.datatypes.AffixFuzzer4] (is_nullable, order: 118);
+  many_optional_unions: [rerun.testing.datatypes.AffixFuzzer4] (nullable, order: 118);
 }
 
 // TODO(cmc): the ugly bug we need to take care of at some point
@@ -143,5 +143,5 @@ table AffixFuzzer18 (
 //   order: 1400
 // ) {
 //
-//   many_transparent_optionals: rerun.testing.datatypes.AffixFuzzer2 (is_nullable, order: 107);
+//   many_transparent_optionals: rerun.testing.datatypes.AffixFuzzer2 (nullable, order: 107);
 // }

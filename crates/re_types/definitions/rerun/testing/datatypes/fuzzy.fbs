@@ -54,7 +54,7 @@ union AffixFuzzer3 (
   order: 300
 ) {
   degrees: FlattenedScalar (transparent, order: 100),
-  radians: FlattenedScalar (transparent, is_nullable, order: 101),
+  radians: FlattenedScalar (transparent, nullable, order: 101),
   craziness: __AffixFuzzer1Vec (transparent, order: 102),
 }
 
@@ -72,5 +72,5 @@ union AffixFuzzer4 (
 ) {
   single_required: __AffixFuzzer3 (transparent, order: 100),
   many_required: __AffixFuzzer3Vec (transparent, order: 101),
-  many_optional: __AffixFuzzer3Vec (transparent, order: 102, is_nullable),
+  many_optional: __AffixFuzzer3Vec (transparent, order: 102, nullable),
 }
