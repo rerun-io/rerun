@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
@@ -52,8 +53,13 @@ pub fn iter_dir<'a>(
 ///
 /// This will automatically emit a `rerun-if-changed` clause for the specified file.
 ///
+/// If `hashed_files` is specified, all hashed files' paths will be accumulated into it.
+///
 /// Panics if the file doesn't exist.
-pub fn compute_file_hash(path: impl AsRef<Path>) -> String {
+pub fn compute_file_hash(
+    path: impl AsRef<Path>,
+    mut hashed_files: Option<&mut BTreeSet<PathBuf>>,
+) -> String {
     let mut hasher = Sha256::new();
 
     let path = path.as_ref();
@@ -65,6 +71,9 @@ pub fn compute_file_hash(path: impl AsRef<Path>) -> String {
         .unwrap();
 
     rerun_if_changed(path);
+    if let Some(hashed_files) = hashed_files.as_mut() {
+        hashed_files.insert(path.to_owned());
+    }
 
     encode_hex(hasher.finalize().as_slice())
 }
@@ -76,9 +85,15 @@ pub fn compute_file_hash(path: impl AsRef<Path>) -> String {
 ///
 /// This will automatically emit a `rerun-if-changed` clause for all the files that were hashed.
 ///
+/// If `hashed_files` is specified, all hashed files' paths will be accumulated into it.
+///
 /// If `extensions` is specified, only files with the right extensions will be iterated.
 /// Specified extensions should _not_ include the leading dot, e.g. `fbs` rather than `.fbs`.
-pub fn compute_dir_hash<'a>(path: impl AsRef<Path>, extensions: Option<&'a [&'a str]>) -> String {
+pub fn compute_dir_hash<'a>(
+    path: impl AsRef<Path>,
+    extensions: Option<&'a [&'a str]>,
+    mut hashed_files: Option<&mut BTreeSet<PathBuf>>,
+) -> String {
     let mut hasher = Sha256::new();
 
     let path = path.as_ref();
@@ -90,7 +105,10 @@ pub fn compute_dir_hash<'a>(path: impl AsRef<Path>, extensions: Option<&'a [&'a 
             .with_context(|| format!("couldn't copy from {filepath:?}"))
             .unwrap();
 
-        rerun_if_changed(filepath);
+        rerun_if_changed(&filepath);
+        if let Some(hashed_files) = hashed_files.as_mut() {
+            hashed_files.insert(filepath);
+        }
     }
 
     encode_hex(hasher.finalize().as_slice())
@@ -118,7 +136,10 @@ pub fn compute_crate_hash(pkg_name: impl AsRef<str>) -> String {
     let mut files = files.into_iter().collect::<Vec<_>>();
     files.sort();
 
-    let hashes = files.into_iter().map(compute_file_hash).collect::<Vec<_>>();
+    let hashes = files
+        .into_iter()
+        .map(|path| compute_file_hash(path, None))
+        .collect::<Vec<_>>();
     let hashes = hashes.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
     compute_strings_hash(&hashes)
@@ -144,11 +165,15 @@ pub fn compute_strings_hash(strs: &[&str]) -> String {
 /// Panics on I/O errors.
 ///
 /// Use [`read_versioning_hash`] to read it back.
-pub fn write_versioning_hash(path: impl AsRef<Path>, hash: impl AsRef<str>) {
+pub fn write_versioning_hash(
+    path: impl AsRef<Path>,
+    hash: impl AsRef<str>,
+    hashed_files: Option<&BTreeSet<PathBuf>>,
+) {
     let path = path.as_ref();
     let hash = hash.as_ref();
 
-    let contents = unindent::unindent(&format!(
+    let mut contents = unindent::unindent(&format!(
         "
         # This is a sha256 hash for all direct and indirect dependencies of this crate's build script.
         # It can be safely removed at anytime to force the build script to run again.
@@ -156,6 +181,15 @@ pub fn write_versioning_hash(path: impl AsRef<Path>, hash: impl AsRef<str>) {
         {hash}
         "
     ));
+
+    if let Some(hashed_files) = &hashed_files {
+        contents += &hashed_files
+            .iter()
+            .map(|path| format!("# {path:?}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+    }
+
     std::fs::write(path, contents.trim())
         .with_context(|| format!("couldn't write to {path:?}"))
         .unwrap();

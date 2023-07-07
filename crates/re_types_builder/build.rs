@@ -1,5 +1,7 @@
 //! Generates flatbuffers reflection code from `reflection.fbs`.
 
+use std::collections::BTreeSet;
+
 use xshell::{cmd, Shell};
 
 use re_build_tools::{
@@ -37,8 +39,11 @@ fn main() {
     //
     // For these reasons, we manually compute and track signature hashes for the graph nodes we
     // depend on, and make sure to exit early if everything's already up to date.
+
     let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
-    let new_hash = compute_file_hash(FBS_REFLECTION_DEFINITION_PATH);
+
+    let mut hashed_files = BTreeSet::default();
+    let new_hash = compute_file_hash(FBS_REFLECTION_DEFINITION_PATH, Some(&mut hashed_files));
 
     // Leave these be please, very useful when debugging.
     eprintln!("cur_hash: {cur_hash:?}");
@@ -76,5 +81,5 @@ fn main() {
     // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
     cmd!(sh, "cargo fmt").run().ok();
 
-    write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+    write_versioning_hash(SOURCE_HASH_PATH, new_hash, Some(&hashed_files));
 }

@@ -1,6 +1,6 @@
 //! Generates Rust & Python code from flatbuffers definitions.
 
-use std::path::PathBuf;
+use std::{collections::BTreeSet, path::PathBuf};
 
 use xshell::{cmd, Shell};
 
@@ -49,20 +49,33 @@ fn main() {
     // NOTE: We need to hash both the flatbuffers definitions as well as the source code of the
     // code generator itself!
     let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
+
+    let mut hashed_files = BTreeSet::default();
     let re_types_builder_hash = compute_crate_hash("re_types_builder");
-    let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&["fbs"]));
-    let doc_examples_hash = compute_dir_hash(DOC_EXAMPLES_DIR_PATH, Some(&["rs", "py"]));
+    let definitions_hash = compute_dir_hash(
+        DEFINITIONS_DIR_PATH,
+        Some(&["fbs"]),
+        Some(&mut hashed_files),
+    );
+    let doc_examples_hash = compute_dir_hash(
+        DOC_EXAMPLES_DIR_PATH,
+        Some(&["rs", "py"]),
+        Some(&mut hashed_files),
+    );
     let archetype_overrides_hash = compute_dir_hash(
         PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(ARCHETYPE_OVERRIDES_SUB_DIR_PATH),
         Some(&["py"]),
+        Some(&mut hashed_files),
     );
     let component_overrides_hash = compute_dir_hash(
         PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(COMPONENT_OVERRIDES_SUB_DIR_PATH),
         Some(&["py"]),
+        Some(&mut hashed_files),
     );
     let datatype_overrides_hash = compute_dir_hash(
         PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(DATATYPE_OVERRIDES_SUB_DIR_PATH),
         Some(&["py"]),
+        Some(&mut hashed_files),
     );
 
     let new_hash = compute_strings_hash(&[
@@ -164,5 +177,5 @@ fn main() {
     .run()
     .ok();
 
-    write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+    write_versioning_hash(SOURCE_HASH_PATH, new_hash, Some(&hashed_files));
 }
