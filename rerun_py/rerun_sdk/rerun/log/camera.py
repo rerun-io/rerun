@@ -75,7 +75,7 @@ def log_pinhole(
         This is the last column of the projection matrix.
     child_from_parent:
         Row-major intrinsics matrix for projecting from camera space to image space.
-        Projection is done along the Z axis.
+        Projection is done along the positive Z axis.
         This can be specified _instead_ of `focal_length_px` and `principal_point_px`.
     width:
         Width of the image in pixels.
