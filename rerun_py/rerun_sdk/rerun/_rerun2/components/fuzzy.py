@@ -212,7 +212,7 @@ class AffixFuzzer7Type(BaseExtensionType):
                             pa.field("flattened_scalar", pa.float32(), False, {}),
                             pa.field(
                                 "almost_flattened_scalar",
-                                pa.struct([pa.field("value", pa.float32(), True, {})]),
+                                pa.struct([pa.field("value", pa.float32(), False, {})]),
                                 False,
                                 {},
                             ),

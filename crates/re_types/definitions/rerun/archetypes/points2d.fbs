@@ -34,34 +34,34 @@ table Points2D (
   // --- Required ---
 
   /// All the actual 2D points that make up the point cloud.
-  points: [rerun.components.Point2D] ("attr.rerun.component_required", required, order: 1000);
+  points: [rerun.components.Point2D] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 
   /// Optional radii for the points, effectively turning them into circles.
-  radii: [rerun.components.Radius] ("attr.rerun.component_recommended", order: 2000);
+  radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Optional colors for the points.
   ///
   /// \python The colors are interpreted as RGB or RGBA in sRGB gamma-space,
   /// \python As either 0-1 floats or 0-255 integers, with separate alpha.
-  colors: [rerun.components.Color] ("attr.rerun.component_recommended", order: 2100);
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   // --- Optional ---
 
   /// Optional text labels for the points.
-  labels: [rerun.components.Label] ("attr.rerun.component_optional", order: 3000);
+  labels: [rerun.components.Label] ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// An optional floating point value that specifies the 2D drawing order.
   /// Objects with higher values are drawn on top of those with lower values.
   ///
   /// The default for 2D points is 30.0.
-  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", order: 3100);
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional class Ids for the points.
   ///
   /// The class ID provides colors and labels if not specified explicitly.
-  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", order: 3200);
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Optional keypoint IDs for the points, identifying them within a class.
   ///
@@ -71,8 +71,8 @@ table Points2D (
   /// with `class_id`).
   /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
   /// detected skeleton.
-  keypoint_ids: [rerun.components.KeypointId] ("attr.rerun.component_optional", order: 3300);
+  keypoint_ids: [rerun.components.KeypointId] ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Unique identifiers for each individual point in the batch.
-  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", order: 3400);
+  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
 }
