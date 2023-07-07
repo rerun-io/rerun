@@ -73,6 +73,7 @@ anyhow = "1.0"
 arrow2 = "0.17"
 arrow2_convert = "0.5.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+camino = "1.1"
 cfg-if = "1.0"
 clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
