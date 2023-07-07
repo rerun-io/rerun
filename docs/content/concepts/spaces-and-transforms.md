@@ -112,12 +112,10 @@ Note that none of the names in the paths are special.
 ## View coordinates
 You can use [`rr.log_view_coordinates`](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_view_coordinates) to set your preferred view coordinate systems, giving semantic meaning to the XYZ axes of the space.
 
-For 3D world spaces it can be used to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rr.log_view_coordinates("world", up="+Z", timeless=True)`.
+For 3D spaces it can be used to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rr.log_view_coordinates("world", up="+Z", timeless=True)`.
 
-For pinhole entities the view coordinates specify the orientation of the camera frustum. The optical axis of the camera will point along whichever axis is "F" (or opposite "B"). The default is `RDF` (X=Right, Y=Down, Z=Forward).
+You can also use this `log_view_coordinates` for pinhole entities, but it is encouraged that you instead use `rr.log_pinhole(…, camera_xyz=)`](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_pinhole) for this. The default coordinate system for pinhole entities is `RDF` (X=Right, Y=Down, Z=Forward).
 
-:warning: unlike in 3D views where this only impacts how the rendered scene is oriented, applying `view_coordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See the (TODO) example for a concrete example.
-
-You can also use `[`rr.log_pinhole(…, camera_xyz=)`](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_pinhole) as a shortcut for this.
+WARNING: unlike in 3D views where `log_view_coordinates` only impacts how the rendered scene is oriented, applying `log_view_coordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the `open_photogrammetry_format` example.
 
 For 2D spaces and other entities the view coordinates currently do nothing (https://github.com/rerun-io/rerun/issues/1387).
