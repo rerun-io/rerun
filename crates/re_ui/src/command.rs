@@ -275,3 +275,43 @@ impl UICommand {
         }
     }
 }
+
+#[test]
+fn check_for_clashing_command_shortcuts() {
+    fn clashes(a: KeyboardShortcut, b: KeyboardShortcut) -> bool {
+        if a.key != b.key {
+            return false;
+        }
+
+        if a.modifiers.alt != b.modifiers.alt {
+            return false;
+        }
+
+        if a.modifiers.shift != b.modifiers.shift {
+            return false;
+        }
+
+        // On Non-Mac, command is interpreted as ctrl!
+        (a.modifiers.command || a.modifiers.ctrl) == (b.modifiers.command || b.modifiers.ctrl)
+    }
+
+    use strum::IntoEnumIterator as _;
+
+    for a_cmd in UICommand::iter() {
+        if let Some(a_shortcut) = a_cmd.kb_shortcut() {
+            for b_cmd in UICommand::iter() {
+                if a_cmd == b_cmd {
+                    continue;
+                }
+                if let Some(b_shortcut) = b_cmd.kb_shortcut() {
+                    assert!(
+                        !clashes(a_shortcut, b_shortcut),
+                        "Command '{a_cmd:?}' and '{b_cmd:?}' have overlapping keyboard shortcuts: {:?} vs {:?}",
+                        a_shortcut.format(&egui::ModifierNames::NAMES, true),
+                        b_shortcut.format(&egui::ModifierNames::NAMES, true),
+                    );
+                }
+            }
+        }
+    }
+}
