@@ -123,6 +123,8 @@ impl MemorySinkStorage {
     }
 
     /// Consumes and returns the inner array of [`LogMsg`].
+    ///
+    /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
     pub fn take(&self) -> Vec<LogMsg> {
         if let Some(rec_stream) = self.rec_stream.as_ref() {
