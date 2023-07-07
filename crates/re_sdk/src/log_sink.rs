@@ -109,7 +109,7 @@ pub struct MemorySinkStorage(Arc<RwLock<Vec<LogMsg>>>);
 impl Drop for MemorySinkStorage {
     fn drop(&mut self) {
         if !self.0.read().is_empty() {
-            re_log::warn!("Dropping data in MemorySink - did you forget to flush?");
+            re_log::warn!("Dropping data in MemorySink");
         }
     }
 }
