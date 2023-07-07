@@ -65,13 +65,12 @@ impl SpaceCamera3D {
         //
         // Because the [`Pinhole`] component currently assumes an input in the default `image_view_coordinates`
         // we need to pre-transform the data from the user-defined `pinhole_view_coordiantes` to the required
-        // `image_view_coordinates`. We do this by converting the points into and out of RUB.
-        // 
+        // `image_view_coordinates`.
+        //
         // TODO(...): When Pinhole is an archetype instead of a component, `pinhole.project` should do this
         // internally.
-        let point_in_image_unprojected = image_view_coordinates().from_rub()
-            * self.pinhole_view_coordinates.to_rub()
-            * point_in_cam;
+        let point_in_image_unprojected =
+            image_view_coordinates().from_other(&self.pinhole_view_coordinates) * point_in_cam;
 
         let point_in_image = pinhole.project(point_in_image_unprojected);
         Some(point_in_image)

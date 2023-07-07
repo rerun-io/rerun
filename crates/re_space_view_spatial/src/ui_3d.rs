@@ -575,11 +575,13 @@ fn show_projections_from_2d_space(
                         cam.picture_plane_distance
                     };
                     let stop_in_image_plane = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
-                    let stop_in_rub_view = image_view_coordinates().to_rub() * stop_in_image_plane;
 
-                    let world_from_rub_view = glam::Affine3A::from(cam.world_from_camera)
-                        * glam::Affine3A::from_mat3(cam.pinhole_view_coordinates.from_rub());
-                    let stop_in_world = world_from_rub_view.transform_point3(stop_in_rub_view);
+                    let world_from_image = glam::Affine3A::from(cam.world_from_camera)
+                        * glam::Affine3A::from_mat3(
+                            cam.pinhole_view_coordinates
+                                .from_other(&image_view_coordinates()),
+                        );
+                    let stop_in_world = world_from_image.transform_point3(stop_in_image_plane);
 
                     let origin = cam.position();
                     let ray =

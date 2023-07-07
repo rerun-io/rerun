@@ -105,11 +105,11 @@ impl re_log_types::Component for ViewCoordinates {
 }
 
 impl ViewCoordinates {
-    /// Default right-handed view coordinates of `re_renderer`: X=Right, Y=Up, Z=Back.
-    pub const RUB: Self = Self([ViewDir::Right, ViewDir::Up, ViewDir::Back]);
-
     /// Default right-handed pinhole, camera, and image coordinates: X=Right, Y=Down, Z=Forward.
     pub const RDF: Self = Self([ViewDir::Right, ViewDir::Down, ViewDir::Forward]);
+
+    /// Default right-handed view coordinates of `re_renderer`: X=Right, Y=Up, Z=Back.
+    pub const RUB: Self = Self([ViewDir::Right, ViewDir::Up, ViewDir::Back]);
 
     /// Choses a coordinate system based on just an up-axis.
     pub fn from_up_and_handedness(up: SignedAxis3, handedness: Handedness) -> Self {
@@ -209,13 +209,31 @@ impl ViewCoordinates {
         )
     }
 
-    /// Returns a matrix that transforms from RUB to this coordinate system.
-    ///
-    /// (RUB: X=Right, Y=Up, Z=Back)
+    /// Returns a matrix that transforms from another coordinate system to this (self) one.
     #[cfg(feature = "glam")]
     #[inline]
-    pub fn from_rub(&self) -> glam::Mat3 {
-        self.to_rub().transpose()
+    pub fn from_other(&self, other: &Self) -> glam::Mat3 {
+        self.from_rdf() * other.to_rdf()
+    }
+
+    /// Returns a matrix that transforms this coordinate system to RDF.
+    ///
+    /// (RDF: X=Right, Y=Down, Z=Forward)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn to_rdf(&self) -> glam::Mat3 {
+        fn rdf(dir: ViewDir) -> [f32; 3] {
+            match dir {
+                ViewDir::Right => [1.0, 0.0, 0.0],
+                ViewDir::Left => [-1.0, 0.0, 0.0],
+                ViewDir::Up => [0.0, -1.0, 0.0],
+                ViewDir::Down => [0.0, 1.0, 0.0],
+                ViewDir::Back => [0.0, 0.0, -1.0],
+                ViewDir::Forward => [0.0, 0.0, 1.0],
+            }
+        }
+
+        glam::Mat3::from_cols_array_2d(&[rdf(self.0[0]), rdf(self.0[1]), rdf(self.0[2])])
     }
 
     /// Returns a matrix that transforms from RDF to this coordinate system.
@@ -224,8 +242,36 @@ impl ViewCoordinates {
     #[cfg(feature = "glam")]
     #[inline]
     pub fn from_rdf(&self) -> glam::Mat3 {
-        let rub_from_rdf = Self::RDF.to_rub();
-        self.from_rub() * rub_from_rdf
+        self.to_rdf().transpose()
+    }
+
+    /// Returns a matrix that transforms this coordinate system to RUB.
+    ///
+    /// (RUB: X=Right, Y=Up, Z=Back)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn to_rub(&self) -> glam::Mat3 {
+        fn rub(dir: ViewDir) -> [f32; 3] {
+            match dir {
+                ViewDir::Right => [1.0, 0.0, 0.0],
+                ViewDir::Left => [-1.0, 0.0, 0.0],
+                ViewDir::Up => [0.0, 1.0, 0.0],
+                ViewDir::Down => [0.0, -1.0, 0.0],
+                ViewDir::Back => [0.0, 0.0, 1.0],
+                ViewDir::Forward => [0.0, 0.0, -1.0],
+            }
+        }
+
+        glam::Mat3::from_cols_array_2d(&[rub(self.0[0]), rub(self.0[1]), rub(self.0[2])])
+    }
+
+    /// Returns a matrix that transforms from RUB to this coordinate system.
+    ///
+    /// (RUB: X=Right, Y=Up, Z=Back)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn from_rub(&self) -> glam::Mat3 {
+        self.to_rub().transpose()
     }
 
     /// Returns a quaternion that rotates from RUB to this coordinate system.
@@ -254,31 +300,11 @@ impl ViewCoordinates {
         }
     }
 
-    /// Returns a matrix that transforms this coordinate system to RUB.
-    ///
-    /// (RUB: X=Right, Y=Up, Z=Back)
-    #[cfg(feature = "glam")]
-    #[inline]
-    pub fn to_rub(&self) -> glam::Mat3 {
-        fn rub(dir: ViewDir) -> [f32; 3] {
-            match dir {
-                ViewDir::Right => [1.0, 0.0, 0.0],
-                ViewDir::Left => [-1.0, 0.0, 0.0],
-                ViewDir::Up => [0.0, 1.0, 0.0],
-                ViewDir::Down => [0.0, -1.0, 0.0],
-                ViewDir::Back => [0.0, 0.0, 1.0],
-                ViewDir::Forward => [0.0, 0.0, -1.0],
-            }
-        }
-
-        glam::Mat3::from_cols_array_2d(&[rub(self.0[0]), rub(self.0[1]), rub(self.0[2])])
-    }
-
     #[cfg(feature = "glam")]
     #[inline]
     pub fn handedness(&self) -> Option<Handedness> {
-        let to_rub = self.to_rub();
-        let det = to_rub.determinant();
+        let to_rdf = self.to_rdf();
+        let det = to_rdf.determinant();
         if det == -1.0 {
             Some(Handedness::Left)
         } else if det == 0.0 {

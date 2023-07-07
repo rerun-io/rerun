@@ -276,11 +276,7 @@ fn transform_at(
         // determine how the image plane is oriented.
         // (see also `CamerasPart` where the frustum lines are set up)
         let view_coordinates = pinhole_camera_view_coordinates(store, query, entity_path);
-        let world_from_image_plane3d =
-            // Convert from RUB setup to what we'are actually using.
-            view_coordinates.from_rub() *
-            // Account for the orientation of the image plane.
-            image_view_coordinates().to_rub();
+        let world_from_image_plane3d = view_coordinates.from_other(&image_view_coordinates());
 
         glam::Affine3A::from_mat3(world_from_image_plane3d) * image_plane3d_from_2d_content
 
