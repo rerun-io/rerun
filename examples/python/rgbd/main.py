@@ -50,7 +50,7 @@ def read_depth_image(buf: bytes) -> npt.NDArray[Any]:
 
 
 def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
-    rr.log_view_coordinates("world", up="+Y", timeless=True)
+    rr.log_view_coordinates("world", up="-Y", timeless=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
@@ -84,7 +84,6 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
                     width=img_depth.shape[1],
                     height=img_depth.shape[0],
                     focal_length_px=0.7 * img_depth.shape[1],
-                    camera_xyz="FUR",
                 )
 
                 # Log the depth image to the cameras image-space:
