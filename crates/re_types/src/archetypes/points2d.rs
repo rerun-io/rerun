@@ -33,8 +33,6 @@
 #[doc = "       .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 4.0, 3.0]))])?"]
 #[doc = "       .send(&rec_stream)?;"]
 #[doc = ""]
-#[doc = "   rec_stream.flush_blocking();"]
-#[doc = ""]
 #[doc = "   rerun::native_viewer::show(storage.take())?;"]
 #[doc = ""]
 #[doc = "   Ok(())"]
