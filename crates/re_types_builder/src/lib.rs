@@ -138,7 +138,7 @@ pub use self::objects::{
 
 // --- Attributes ---
 
-pub const ATTR_IS_NULLABLE: &str = "is_nullable";
+pub const ATTR_NULLABLE: &str = "nullable";
 pub const ATTR_ORDER: &str = "order";
 pub const ATTR_TRANSPARENT: &str = "transparent";
 

@@ -37,4 +37,4 @@ attribute "transparent";
 /// NOTE: We do not use flatbuffers' builtin `required` attribute because A) it has many
 /// limitations that do not make sense for our use case and B) our overall data model is built
 /// around the idea of nullability, rather than requirements (i.e. the exact opposite).
-attribute "is_nullable";
+attribute "nullable";

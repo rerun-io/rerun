@@ -26,12 +26,12 @@ table AffixFuzzer1 (
   "attr.rust.derive": "PartialEq",
   order: 100
 ) {
-  single_float_optional: float (is_nullable, order: 101);
+  single_float_optional: float (nullable, order: 101);
   single_string_required: string (order: 102);
-  single_string_optional: string (is_nullable, order: 103);
-  many_floats_optional: [float] (is_nullable, order: 104);
+  single_string_optional: string (nullable, order: 103);
+  many_floats_optional: [float] (nullable, order: 104);
   many_strings_required: [string] (order: 105);
-  many_strings_optional: [string] (is_nullable, order: 106);
+  many_strings_optional: [string] (nullable, order: 106);
   flattened_scalar: VeryDeeplyFlattenedScalar (order: 107, transparent);
   almost_flattened_scalar: SurprisinglyShallowScalar (order: 108, transparent);
 }
@@ -42,5 +42,5 @@ table AffixFuzzer2 (
   "attr.rust.tuple_struct",
   order: 200
 ) {
-  single_float_optional: float (is_nullable, order: 101);
+  single_float_optional: float (nullable, order: 101);
 }

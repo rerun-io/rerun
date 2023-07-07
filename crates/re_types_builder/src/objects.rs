@@ -661,7 +661,7 @@ impl ObjectField {
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs
-            .try_get::<String>(&fqname, crate::ATTR_IS_NULLABLE)
+            .try_get::<String>(&fqname, crate::ATTR_NULLABLE)
             .is_some();
         let is_deprecated = field.deprecated();
 
@@ -715,7 +715,7 @@ impl ObjectField {
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs
-            .try_get::<String>(&fqname, crate::ATTR_IS_NULLABLE)
+            .try_get::<String>(&fqname, crate::ATTR_NULLABLE)
             .is_some();
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
         let is_deprecated = false;
