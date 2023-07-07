@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Setup required to build rerun
+# Setup required to build rerun.
+# This file is mirrored in ci_docker/Dockerfile.
 
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
@@ -31,7 +32,8 @@ elif [ -x "$(command -v dnf)" ];   then
         pkg-config
 fi
 
-packagesNeeded='flatbuffers'
+# C++ SDK requires `apache-arrow` and `cmake`
+packagesNeeded='apache-arrow cmake flatbuffers'
 if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
 elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
 elif [ -x "$(command -v apt-get)" ]; then sudo apt-get -y install $packagesNeeded

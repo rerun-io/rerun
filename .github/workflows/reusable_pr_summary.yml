@@ -46,7 +46,7 @@ jobs:
           version: '>= 363.0.0'
 
       - name: Install deps
-        run: pip install google-cloud-storage Jinja2 PyGithub # NOLINT
+        run: pip install google-cloud-storage Jinja2 PyGithub
 
       - name: Render HTML template
         run: |

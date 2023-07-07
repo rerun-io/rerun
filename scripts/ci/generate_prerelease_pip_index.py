@@ -7,7 +7,7 @@ associated with a given commit.
 This is expected to be run by the `reusable_pip_index.yml` GitHub workflow.
 
 Requires the following packages:
-  pip install google-cloud-storage Jinja2 PyGithub # NOLINT
+  pip install google-cloud-storage Jinja2 PyGithub
 """
 from __future__ import annotations
 

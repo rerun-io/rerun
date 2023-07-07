@@ -2,6 +2,7 @@ BasedOnStyle: Google
 
 # Make it slightly more similar to Rust.
 # Based loosly on https://gist.github.com/YodaEmbedding/c2c77dc693d11f3734d78489f9a6eea4
+AccessModifierOffset: -2
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty
