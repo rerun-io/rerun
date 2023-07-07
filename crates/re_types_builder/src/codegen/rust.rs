@@ -1225,6 +1225,123 @@ fn quote_arrow_serializer(
                     ).boxed()
                 }}
             }
+            DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
+                let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
+                    let data_dst = format_ident!("{}", obj_field.name);
+                    let bitmap_dst = format_ident!("{data_dst}_bitmap");
+
+                    let quoted_serializer = quote_arrow_field_serializer(
+                        None,
+                        &arrow_registry.get(&obj_field.fqname),
+                        obj_field.is_nullable,
+                        &bitmap_dst,
+                        &data_dst,
+                    );
+
+                    let quoted_flatten = quoted_flatten(obj_field.is_nullable);
+                    let quoted_bitmap = quoted_bitmap(bitmap_dst);
+
+                    let quoted_obj_name = format_ident!("{}", obj.name);
+                    let quoted_obj_field_name = {
+                        use convert_case::{Case, Casing};
+                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
+                    };
+
+                    quote! {{
+                        let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
+                            .iter()
+                            .flatten() // NOTE: unions cannot ever be nullable at top-level
+                            .filter(|datum| matches!(***datum, #quoted_obj_name::#quoted_obj_field_name(_)))
+                            .map(|datum| {
+                                let datum = match &**datum {
+                                    #quoted_obj_name::#quoted_obj_field_name(v) => Some(v.clone()),
+                                    _ => None,
+                                } #quoted_flatten ;
+
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+
+
+                        #quoted_bitmap;
+
+                        #quoted_serializer
+                    }}
+                });
+
+                let quoted_types = {
+                    let quoted_obj_name = format_ident!("{}", obj.name);
+                    let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
+                        let i = i as i8;
+                        let quoted_obj_field_name = {
+                            use convert_case::{Case, Casing};
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
+                        };
+                        quote!(#quoted_obj_name::#quoted_obj_field_name(_) => #i)
+                    });
+
+                    quote! {{
+                        #data_src
+                            .iter()
+                            .flatten()
+                            .map(|v| match **v {
+                                #(#quoted_branches,)*
+                            })
+                            .collect()
+                    }}
+                };
+
+                let quoted_offsets = {
+                    let quoted_obj_name = format_ident!("{}", obj.name);
+
+                    let quoted_counters = obj.fields.iter().map(|obj_field| {
+                        let quoted_obj_field_name = format_ident!("{}_offset", obj_field.name);
+                        quote!(let mut #quoted_obj_field_name = 0)
+                    });
+
+                    let quoted_branches = obj.fields.iter().map(|obj_field| {
+                        let quoted_counter_name = format_ident!("{}_offset", obj_field.name);
+                        let quoted_obj_field_name = {
+                            use convert_case::{Case, Casing};
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
+                        };
+                        quote! {
+                            #quoted_obj_name::#quoted_obj_field_name(_) => {
+                                let offset = #quoted_counter_name;
+                                #quoted_counter_name += 1;
+                                offset
+                            }
+                        }
+                    });
+
+                    quote! {{
+                        #(#quoted_counters;)*
+                        #data_src
+                            .iter()
+                            .flatten()
+                            .map(|v| match **v {
+                                #(#quoted_branches,)*
+                            })
+                            .collect()
+                    }}
+                };
+
+                quote! {{
+                    let #data_src: Vec<_> = #data_src
+                        .into_iter()
+                        .map(|datum| {
+                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                            datum
+                        })
+                        .collect();
+
+                    UnionArray::new(
+                        #quoted_datatype,
+                        #quoted_types,
+                        vec![#(#quoted_field_serializers,)*],
+                        Some(#quoted_offsets),
+                    ).boxed()
+                }}
             }
             _ => unimplemented!("{datatype:#?}"), // NOLINT
         }
@@ -1357,7 +1474,7 @@ fn quote_arrow_field_serializer(
             }}
         }
 
-        DataType::Struct(_) => {
+        DataType::Struct(_) | DataType::Union(_, _, _) => {
             // NOTE: We always wrap objects with full extension metadata.
             let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
             let fqname_use = quote_fqname_as_type_path(fqname);
