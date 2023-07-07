@@ -167,13 +167,13 @@ impl RenderDepthClouds {
             ..
         } = self;
 
-        let world_from_obj = glam::Affine3A::from_scale(glam::Vec3::splat(*scale));
+        let world_from_rdf = glam::Affine3A::from_scale(glam::Vec3::splat(*scale));
 
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
             &DepthClouds {
                 clouds: vec![DepthCloud {
-                    world_from_obj,
+                    world_from_rdf,
                     depth_camera_intrinsics: *intrinsics,
                     world_depth_from_texture_depth: 1.0,
                     point_radius_from_world_depth: *point_radius_from_world_depth,

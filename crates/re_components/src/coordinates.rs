@@ -105,6 +105,12 @@ impl re_log_types::Component for ViewCoordinates {
 }
 
 impl ViewCoordinates {
+    /// Default right-handed pinhole, camera, and image coordinates: X=Right, Y=Down, Z=Forward.
+    pub const RDF: Self = Self([ViewDir::Right, ViewDir::Down, ViewDir::Forward]);
+
+    /// Default right-handed view coordinates of `re_renderer`: X=Right, Y=Up, Z=Back.
+    pub const RUB: Self = Self([ViewDir::Right, ViewDir::Up, ViewDir::Back]);
+
     /// Choses a coordinate system based on just an up-axis.
     pub fn from_up_and_handedness(up: SignedAxis3, handedness: Handedness) -> Self {
         use ViewDir::{Back, Down, Forward, Right, Up};
@@ -203,18 +209,45 @@ impl ViewCoordinates {
         )
     }
 
-    /// Returns a matrix that translates RUB to this coordinate system.
-    ///
-    /// (RUB: X=Right, Y=Up, B=Back)
+    /// Returns a matrix that transforms from another coordinate system to this (self) one.
     #[cfg(feature = "glam")]
     #[inline]
-    pub fn from_rub(&self) -> glam::Mat3 {
-        self.to_rub().transpose()
+    pub fn from_other(&self, other: &Self) -> glam::Mat3 {
+        self.from_rdf() * other.to_rdf()
     }
 
-    /// Returns a matrix that translates this coordinate system to RUB.
+    /// Returns a matrix that transforms this coordinate system to RDF.
     ///
-    /// (RUB: X=Right, Y=Up, B=Back)
+    /// (RDF: X=Right, Y=Down, Z=Forward)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn to_rdf(&self) -> glam::Mat3 {
+        fn rdf(dir: ViewDir) -> [f32; 3] {
+            match dir {
+                ViewDir::Right => [1.0, 0.0, 0.0],
+                ViewDir::Left => [-1.0, 0.0, 0.0],
+                ViewDir::Up => [0.0, -1.0, 0.0],
+                ViewDir::Down => [0.0, 1.0, 0.0],
+                ViewDir::Back => [0.0, 0.0, -1.0],
+                ViewDir::Forward => [0.0, 0.0, 1.0],
+            }
+        }
+
+        glam::Mat3::from_cols_array_2d(&[rdf(self.0[0]), rdf(self.0[1]), rdf(self.0[2])])
+    }
+
+    /// Returns a matrix that transforms from RDF to this coordinate system.
+    ///
+    /// (RDF: X=Right, Y=Down, Z=Forward)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn from_rdf(&self) -> glam::Mat3 {
+        self.to_rdf().transpose()
+    }
+
+    /// Returns a matrix that transforms this coordinate system to RUB.
+    ///
+    /// (RUB: X=Right, Y=Up, Z=Back)
     #[cfg(feature = "glam")]
     #[inline]
     pub fn to_rub(&self) -> glam::Mat3 {
@@ -232,11 +265,46 @@ impl ViewCoordinates {
         glam::Mat3::from_cols_array_2d(&[rub(self.0[0]), rub(self.0[1]), rub(self.0[2])])
     }
 
+    /// Returns a matrix that transforms from RUB to this coordinate system.
+    ///
+    /// (RUB: X=Right, Y=Up, Z=Back)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn from_rub(&self) -> glam::Mat3 {
+        self.to_rub().transpose()
+    }
+
+    /// Returns a quaternion that rotates from RUB to this coordinate system.
+    ///
+    /// Errors if the coordinate system is left-handed or degenerate.
+    ///
+    /// (RUB: X=Right, Y=Up, Z=Back)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn from_rub_quat(&self) -> Result<glam::Quat, String> {
+        let mat3 = self.from_rub();
+
+        let det = mat3.determinant();
+        if det == 1.0 {
+            Ok(glam::Quat::from_mat3(&mat3))
+        } else if det == -1.0 {
+            Err(format!(
+                "Rerun does not yet support left-handed coordinate systems (found {})",
+                self.describe()
+            ))
+        } else {
+            Err(format!(
+                "Found a degenerate coordinate system: {}",
+                self.describe()
+            ))
+        }
+    }
+
     #[cfg(feature = "glam")]
     #[inline]
     pub fn handedness(&self) -> Option<Handedness> {
-        let to_rub = self.to_rub();
-        let det = to_rub.determinant();
+        let to_rdf = self.to_rdf();
+        let det = to_rdf.determinant();
         if det == -1.0 {
             Some(Handedness::Left)
         } else if det == 0.0 {
@@ -417,6 +485,14 @@ impl std::str::FromStr for SignedAxis3 {
     }
 }
 
+#[cfg(feature = "glam")]
+impl From<SignedAxis3> for glam::Vec3 {
+    #[inline]
+    fn from(signed_axis: SignedAxis3) -> Self {
+        glam::Vec3::from(signed_axis.as_vec3())
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Left or right handedness. Used to describe a coordinate system.
@@ -453,12 +529,17 @@ impl Handedness {
 fn view_coordinates() {
     use glam::{vec3, Mat3};
 
+    assert_eq!(ViewCoordinates::RUB.to_rub(), Mat3::IDENTITY);
+    assert_eq!(ViewCoordinates::RUB.from_rub(), Mat3::IDENTITY);
+
     {
         assert!("UUDDLRLRBAStart".parse::<ViewCoordinates>().is_err());
         assert!("UUD".parse::<ViewCoordinates>().is_err());
 
         let rub = "RUB".parse::<ViewCoordinates>().unwrap();
         let bru = "BRU".parse::<ViewCoordinates>().unwrap();
+
+        assert_eq!(rub, ViewCoordinates::RUB);
 
         assert_eq!(rub.to_rub(), Mat3::IDENTITY);
         assert_eq!(
