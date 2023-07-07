@@ -33,7 +33,7 @@ from colorama import init as colorama_init
 from semver import VersionInfo
 
 
-def cargo(args: str, cwd: str | Path | None = None, env: Dict[str, Any] = {}) -> Any:
+def cargo(args: str, cwd: str | Path | None = None, env: dict[str, Any] = {}) -> Any:
     subprocess.check_output(["cargo"] + args.split(), cwd=cwd, env=env)
 
 
@@ -280,14 +280,14 @@ def is_already_uploaded(version: str, crate: Crate) -> bool:
         return False
 
     # crate has been uploaded, check every version against what we're uploading
-    versions: List[str] = [version["num"] for version in res["versions"]]
+    versions: list[str] = [version["num"] for version in res["versions"]]
     for uploaded_version in versions:
         if uploaded_version == version:
             return True
     return False
 
 
-def publish_crate(crate: Crate, token: str, version: str, env: Dict[str, Any]) -> None:
+def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
     package = crate.manifest["package"]
     name = package["name"]
     crate_version = crate.manifest["package"].get("version") or version
