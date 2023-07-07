@@ -59,9 +59,16 @@ impl SpaceCamera3D {
         let pinhole = self.pinhole?;
         let point_in_cam = self.cam_from_world().transform_point3(point_in_world);
 
-        // View-coordinates are relevant here because without them we have no notion of what the image plane is.
-        // (it's not a given that e.g. XY is the camera image plane!)
-        // First transform to the "standard RUB" 3D camera and then from there to the image plane coordinate system.
+        // The pinhole view-coordinates are important here because they define how the image plane is aligned
+        // with the camera coordinate system. It is not a given that a user wants the image-plane aligned with the
+        // XY-plane in camera space.
+        //
+        // Because the [`Pinhole`] component currently assumes an input in the default `image_view_coordinates`
+        // we need to pre-transform the data from the user-defined `pinhole_view_coordiantes` to the required
+        // `image_view_coordinates`. We do this by converting the points into and out of RUB.
+        // 
+        // TODO(...): When Pinhole is an archetype instead of a component, `pinhole.project` should do this
+        // internally.
         let point_in_image_unprojected = image_view_coordinates().from_rub()
             * self.pinhole_view_coordinates.to_rub()
             * point_in_cam;
