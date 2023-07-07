@@ -106,6 +106,14 @@ impl LogSink for MemorySink {
 #[derive(Default, Clone)]
 pub struct MemorySinkStorage(Arc<RwLock<Vec<LogMsg>>>);
 
+impl Drop for MemorySinkStorage {
+    fn drop(&mut self) {
+        if !self.0.read().is_empty() {
+            re_log::warn!("Dropping data in MemorySink - did you forget to flush?");
+        }
+    }
+}
+
 impl MemorySinkStorage {
     /// Write access to the inner array of [`LogMsg`].
     #[inline]
