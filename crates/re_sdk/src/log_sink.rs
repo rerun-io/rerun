@@ -106,6 +106,7 @@ impl LogSink for MemorySink {
 #[derive(Default, Clone)]
 pub struct MemorySinkStorage {
     msgs: Arc<RwLock<Vec<LogMsg>>>,
+    pub(crate) rec_stream: Option<crate::RecordingStream>,
 }
 
 impl MemorySinkStorage {
@@ -124,6 +125,11 @@ impl MemorySinkStorage {
     /// Consumes and returns the inner array of [`LogMsg`].
     #[inline]
     pub fn take(&self) -> Vec<LogMsg> {
+        if let Some(rec_stream) = self.rec_stream.as_ref() {
+            // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
+            // in this flush; it's just a matter of making the table batcher tick early.
+            rec_stream.flush_blocking();
+        }
         std::mem::take(&mut *self.msgs.write())
     }
 }

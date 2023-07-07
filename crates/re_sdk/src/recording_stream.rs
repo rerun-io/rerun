@@ -184,12 +184,14 @@ impl RecordingStreamBuilder {
         self,
     ) -> RecordingStreamResult<(RecordingStream, crate::log_sink::MemorySinkStorage)> {
         let sink = crate::log_sink::MemorySink::default();
-        let storage = sink.buffer();
+        let mut storage = sink.buffer();
 
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
-            RecordingStream::new(store_info, batcher_config, Box::new(sink))
-                .map(|rec_stream| (rec_stream, storage))
+            RecordingStream::new(store_info, batcher_config, Box::new(sink)).map(|rec_stream| {
+                storage.rec_stream = Some(rec_stream.clone());
+                (rec_stream, storage)
+            })
         } else {
             re_log::debug!("Rerun disabled - call to memory() ignored");
             Ok((RecordingStream::disabled(), Default::default()))
