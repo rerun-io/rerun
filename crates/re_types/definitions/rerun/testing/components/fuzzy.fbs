@@ -101,11 +101,47 @@ table AffixFuzzer13 (
   many_strings_optional: [string] (nullable, order: 113);
 }
 
+table AffixFuzzer14 (
+  "attr.rust.derive": "PartialEq",
+  order: 1400
+) {
+  single_required_union: rerun.testing.datatypes.AffixFuzzer3 (order: 114);
+}
+
+// NOTE: Illegal: union don't have top-level bitmaps! Commenting out will/should break the build.
+// table AffixFuzzer15 (
+//   "attr.rust.derive": "PartialEq",
+//   order: 1500
+// ) {
+//   single_optional_union: rerun.testing.datatypes.AffixFuzzer3 (is_nullable, order: 115);
+// }
+
+table AffixFuzzer16 (
+  "attr.rust.derive": "PartialEq",
+  order: 1600
+) {
+  many_required_unions: [rerun.testing.datatypes.AffixFuzzer3] (order: 116);
+}
+
+table AffixFuzzer17 (
+  "attr.rust.derive": "PartialEq",
+  order: 1700
+) {
+  many_optional_unions: [rerun.testing.datatypes.AffixFuzzer3] (is_nullable, order: 117);
+}
+
+table AffixFuzzer18 (
+  "attr.rust.derive": "PartialEq",
+  order: 1800
+) {
+  many_optional_unions: [rerun.testing.datatypes.AffixFuzzer4] (is_nullable, order: 118);
+}
+
 // TODO(cmc): the ugly bug we need to take care of at some point
 // table AffixFuzzer14 (
 //   "attr.rust.derive": "PartialEq",
 //   order: 1400
 // ) {
 //
-//   many_transparent_optionals: rerun.testing.datatypes.AffixFuzzer2 (order: 107);
+//   many_transparent_optionals: rerun.testing.datatypes.AffixFuzzer2 (is_nullable, order: 107);
 // }

@@ -28,6 +28,12 @@ table AffixFuzzer1 (
   fuzz1011: rerun.testing.components.AffixFuzzer11 ("attr.rerun.component_required", order: 1011);
   fuzz1012: rerun.testing.components.AffixFuzzer12 ("attr.rerun.component_required", order: 1012);
   fuzz1013: rerun.testing.components.AffixFuzzer13 ("attr.rerun.component_required", order: 1013);
+  fuzz1014: rerun.testing.components.AffixFuzzer14 ("attr.rerun.component_required", order: 1014);
+  // NOTE: nullable union -- illegal!
+  // fuzz1015: rerun.testing.components.AffixFuzzer15 ("attr.rerun.component_required", order: 1015);
+  fuzz1016: rerun.testing.components.AffixFuzzer16 ("attr.rerun.component_required", order: 1016);
+  fuzz1017: rerun.testing.components.AffixFuzzer17 ("attr.rerun.component_required", order: 1017);
+  fuzz1018: rerun.testing.components.AffixFuzzer18 ("attr.rerun.component_required", order: 1018);
 
   fuzz1101: [rerun.testing.components.AffixFuzzer1] ("attr.rerun.component_required", order: 1101);
   fuzz1102: [rerun.testing.components.AffixFuzzer2] ("attr.rerun.component_required", order: 1102);
@@ -42,6 +48,12 @@ table AffixFuzzer1 (
   fuzz1111: [rerun.testing.components.AffixFuzzer11] ("attr.rerun.component_required", order: 1111);
   fuzz1112: [rerun.testing.components.AffixFuzzer12] ("attr.rerun.component_required", order: 1112);
   fuzz1113: [rerun.testing.components.AffixFuzzer13] ("attr.rerun.component_required", order: 1113);
+  fuzz1114: [rerun.testing.components.AffixFuzzer14] ("attr.rerun.component_required", order: 1114);
+  // NOTE: nullable union -- illegal!
+  // fuzz1115: [rerun.testing.components.AffixFuzzer15] ("attr.rerun.component_required", order: 1115);
+  fuzz1116: [rerun.testing.components.AffixFuzzer16] ("attr.rerun.component_required", order: 1116);
+  fuzz1117: [rerun.testing.components.AffixFuzzer17] ("attr.rerun.component_required", order: 1117);
+  fuzz1118: [rerun.testing.components.AffixFuzzer18] ("attr.rerun.component_required", order: 1118);
 
   fuzz2001: rerun.testing.components.AffixFuzzer1 ("attr.rerun.component_optional", nullable, order: 2001);
   fuzz2002: rerun.testing.components.AffixFuzzer2 ("attr.rerun.component_optional", nullable, order: 2002);
@@ -71,4 +83,3 @@ table AffixFuzzer1 (
   fuzz2112: [rerun.testing.components.AffixFuzzer12] ("attr.rerun.component_optional", nullable, order: 2112);
   fuzz2113: [rerun.testing.components.AffixFuzzer13] ("attr.rerun.component_optional", nullable, order: 2113);
 }
-
