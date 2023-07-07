@@ -120,13 +120,13 @@ impl MemorySinkStorage {
     }
 
     /// Consumes and returns the inner array of [`LogMsg`].
+    ///
+    /// You should make sure to call [`RecordingStream::flush_blocking`] before calling this.
     #[inline]
     pub fn take(&self) -> Vec<LogMsg> {
         std::mem::take(&mut *self.0.write())
     }
-}
 
-impl MemorySinkStorage {
     /// Convert the stored messages into an in-memory Rerun log file.
     #[inline]
     pub fn concat_memory_sinks_as_bytes(
