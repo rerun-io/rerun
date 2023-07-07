@@ -188,6 +188,96 @@ AffixFuzzer2Type._ARRAY_TYPE = AffixFuzzer2Array
 
 
 @define
+class AffixFuzzer3:
+    degrees: float | None = None
+    radians: float | None = None
+    craziness: list[datatypes.AffixFuzzer1] | None = None
+
+
+AffixFuzzer3Like = AffixFuzzer3
+AffixFuzzer3ArrayLike = Union[
+    AffixFuzzer3,
+    Sequence[AffixFuzzer3Like],
+]
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer3Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.dense_union(
+                [
+                    pa.field("degrees", pa.float32(), False, {}),
+                    pa.field("radians", pa.float32(), False, {}),
+                    pa.field(
+                        "craziness",
+                        pa.list_(
+                            pa.field(
+                                "item",
+                                pa.struct(
+                                    [
+                                        pa.field("single_float_optional", pa.float32(), True, {}),
+                                        pa.field("single_string_required", pa.utf8(), False, {}),
+                                        pa.field("single_string_optional", pa.utf8(), True, {}),
+                                        pa.field(
+                                            "many_floats_optional",
+                                            pa.list_(pa.field("item", pa.float32(), True, {})),
+                                            True,
+                                            {},
+                                        ),
+                                        pa.field(
+                                            "many_strings_required",
+                                            pa.list_(pa.field("item", pa.utf8(), False, {})),
+                                            False,
+                                            {},
+                                        ),
+                                        pa.field(
+                                            "many_strings_optional",
+                                            pa.list_(pa.field("item", pa.utf8(), True, {})),
+                                            True,
+                                            {},
+                                        ),
+                                        pa.field("flattened_scalar", pa.float32(), False, {}),
+                                        pa.field(
+                                            "almost_flattened_scalar",
+                                            pa.struct([pa.field("value", pa.float32(), False, {})]),
+                                            False,
+                                            {},
+                                        ),
+                                    ]
+                                ),
+                                False,
+                                {},
+                            )
+                        ),
+                        False,
+                        {},
+                    ),
+                ]
+            ),
+            "rerun.testing.datatypes.AffixFuzzer3",
+        )
+
+
+class AffixFuzzer3Array(BaseExtensionArray[AffixFuzzer3ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.datatypes.AffixFuzzer3"
+    _EXTENSION_TYPE = AffixFuzzer3Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer3ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer3Type._ARRAY_TYPE = AffixFuzzer3Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer3Type())
+
+
+@define
 class AffixFuzzer4:
     single_required: datatypes.AffixFuzzer3 | None = None
     many_required: list[datatypes.AffixFuzzer3] | None = None
@@ -408,93 +498,3 @@ AffixFuzzer4Type._ARRAY_TYPE = AffixFuzzer4Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer4Type())
-
-
-@define
-class AffixFuzzer3:
-    degrees: float | None = None
-    radians: float | None = None
-    craziness: list[datatypes.AffixFuzzer1] | None = None
-
-
-AffixFuzzer3Like = AffixFuzzer3
-AffixFuzzer3ArrayLike = Union[
-    AffixFuzzer3,
-    Sequence[AffixFuzzer3Like],
-]
-
-
-# --- Arrow support ---
-
-
-class AffixFuzzer3Type(BaseExtensionType):
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.dense_union(
-                [
-                    pa.field("degrees", pa.float32(), False, {}),
-                    pa.field("radians", pa.float32(), False, {}),
-                    pa.field(
-                        "craziness",
-                        pa.list_(
-                            pa.field(
-                                "item",
-                                pa.struct(
-                                    [
-                                        pa.field("single_float_optional", pa.float32(), True, {}),
-                                        pa.field("single_string_required", pa.utf8(), False, {}),
-                                        pa.field("single_string_optional", pa.utf8(), True, {}),
-                                        pa.field(
-                                            "many_floats_optional",
-                                            pa.list_(pa.field("item", pa.float32(), True, {})),
-                                            True,
-                                            {},
-                                        ),
-                                        pa.field(
-                                            "many_strings_required",
-                                            pa.list_(pa.field("item", pa.utf8(), False, {})),
-                                            False,
-                                            {},
-                                        ),
-                                        pa.field(
-                                            "many_strings_optional",
-                                            pa.list_(pa.field("item", pa.utf8(), True, {})),
-                                            True,
-                                            {},
-                                        ),
-                                        pa.field("flattened_scalar", pa.float32(), False, {}),
-                                        pa.field(
-                                            "almost_flattened_scalar",
-                                            pa.struct([pa.field("value", pa.float32(), False, {})]),
-                                            False,
-                                            {},
-                                        ),
-                                    ]
-                                ),
-                                False,
-                                {},
-                            )
-                        ),
-                        False,
-                        {},
-                    ),
-                ]
-            ),
-            "rerun.testing.datatypes.AffixFuzzer3",
-        )
-
-
-class AffixFuzzer3Array(BaseExtensionArray[AffixFuzzer3ArrayLike]):
-    _EXTENSION_NAME = "rerun.testing.datatypes.AffixFuzzer3"
-    _EXTENSION_TYPE = AffixFuzzer3Type
-
-    @staticmethod
-    def _native_to_pa_array(data: AffixFuzzer3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError
-
-
-AffixFuzzer3Type._ARRAY_TYPE = AffixFuzzer3Array
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(AffixFuzzer3Type())
