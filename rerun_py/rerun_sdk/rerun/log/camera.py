@@ -73,7 +73,7 @@ def log_pinhole(
         The center of the camera in pixels.
         The default is half the width and height.
         This is the last column of the projection matrix.
-        Expectes two values along the dimensions Right and Down
+        Expects two values along the dimensions Right and Down
     child_from_parent:
         Row-major intrinsics matrix for projecting from camera space to image space.
         The first two axes are X=Right and Y=Down, respectively.

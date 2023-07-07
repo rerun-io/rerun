@@ -64,7 +64,7 @@ impl SpaceCamera3D {
         // XY-plane in camera space.
         //
         // Because the [`Pinhole`] component currently assumes an input in the default `image_view_coordinates`
-        // we need to pre-transform the data from the user-defined `pinhole_view_coordiantes` to the required
+        // we need to pre-transform the data from the user-defined `pinhole_view_coordinates` to the required
         // `image_view_coordinates`.
         //
         // TODO(...): When Pinhole is an archetype instead of a component, `pinhole.project` should do this
