@@ -164,8 +164,8 @@ impl UICommand {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        fn cmd_shift(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), key)
+        fn cmd_alt(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::ALT), key)
         }
 
         fn ctrl_shift(key: Key) -> KeyboardShortcut {
@@ -176,7 +176,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Save => Some(cmd(Key::S)),
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::SaveSelection => Some(cmd_shift(Key::S)),
+            UICommand::SaveSelection => Some(cmd_alt(Key::S)),
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => Some(cmd(Key::O)),
 
