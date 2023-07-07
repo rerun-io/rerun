@@ -18,5 +18,5 @@ struct Radius (
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   order: 100
 ) {
-  value: float;
+  value: float (order: 100);
 }

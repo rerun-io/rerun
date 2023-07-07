@@ -19,5 +19,5 @@ struct ClassId (
   "attr.rust.tuple_struct",
   order: 100
 ) {
-  id: ushort;
+  id: ushort (order: 100);
 }
