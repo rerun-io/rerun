@@ -251,7 +251,7 @@ impl QuotedObject {
         let quoted_struct = if is_tuple_struct {
             quote! { pub struct #name(#(#quoted_fields,)*); }
         } else {
-            quote! { pub struct #name { #(#quoted_fields,)* } }
+            quote! { pub struct #name { #(#quoted_fields,)* }}
         };
 
         let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
@@ -315,15 +315,21 @@ impl QuotedObject {
                 typ: _,
                 attrs: _,
                 order: _,
-                is_nullable: _,
+                is_nullable,
                 is_deprecated: _,
                 datatype: _,
             } = obj_field;
 
-            let name = format_ident!("{name}");
+            use convert_case::{Case, Casing};
+            let name = format_ident!("{}", name.to_case(Case::UpperCamel));
 
             let quoted_doc = quote_doc_from_docs(docs);
             let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
+            let quoted_type = if *is_nullable {
+                quote!(Option<#quoted_type>)
+            } else {
+                quoted_type
+            };
 
             quote! {
                 #quoted_doc
@@ -974,7 +980,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                     UnionMode::Dense => quote!(UnionMode::Dense),
                     UnionMode::Sparse => quote!(UnionMode::Sparse),
                 };
-                quote!(DataType::Union(#(#fields,)*, None, #mode))
+                quote!(DataType::Union(vec![ #(#fields,)* ], None, #mode))
             }
 
             DataType::Struct(fields) => {
@@ -1132,7 +1138,7 @@ fn quote_arrow_serializer(
 
         let quoted_flatten = quoted_flatten(obj_field.is_nullable);
 
-        quote! { {
+        quote! {{
             let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
                 .into_iter()
                 .map(|datum| {
@@ -1153,7 +1159,7 @@ fn quote_arrow_serializer(
             #quoted_bitmap;
 
             #quoted_serializer
-        } }
+        }}
     } else {
         let data_src = data_src.clone();
 
@@ -1176,7 +1182,7 @@ fn quote_arrow_serializer(
 
                     let quoted_bitmap = quoted_bitmap(bitmap_dst);
 
-                    quote! { {
+                    quote! {{
                         let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
                             .iter()
                             .map(|datum| {
@@ -1196,12 +1202,12 @@ fn quote_arrow_serializer(
                         #quoted_bitmap;
 
                         #quoted_serializer
-                    } }
+                    }}
                 });
 
                 let quoted_bitmap = quoted_bitmap(format_ident!("bitmap"));
 
-                quote! { {
+                quote! {{
                     let (somes, #data_src): (Vec<_>, Vec<_>) = #data_src
                         .into_iter()
                         .map(|datum| {
@@ -1217,7 +1223,8 @@ fn quote_arrow_serializer(
                         vec![#(#quoted_field_serializers,)*],
                         bitmap,
                     ).boxed()
-                } }
+                }}
+            }
             }
             _ => unimplemented!("{datatype:#?}"), // NOLINT
         }
@@ -1269,7 +1276,7 @@ fn quote_arrow_field_serializer(
         }
 
         DataType::Utf8 => {
-            quote! { {
+            quote! {{
                 // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                 // about it while building the backing buffer since it's all offsets driven.
                 let inner_data: ::arrow2::buffer::Buffer<u8> = #data_src.iter().flatten().flat_map(|s| s.bytes()).collect();
@@ -1282,7 +1289,7 @@ fn quote_arrow_field_serializer(
                 // whole utf8 validation _again_.
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe { Utf8Array::<i32>::new_unchecked(#quoted_datatype, offsets, inner_data, #bitmap_src) }.boxed()
-            } }
+            }}
         }
 
         DataType::List(inner) | DataType::FixedSizeList(inner, _) => {
@@ -1325,7 +1332,7 @@ fn quote_arrow_field_serializer(
             // TODO(cmc): We should be checking this, but right now we don't because we don't
             // support intra-list nullability.
             _ = is_nullable;
-            quote! { {
+            quote! {{
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                 let #quoted_inner_data: Vec<_> = #data_src
@@ -1347,7 +1354,7 @@ fn quote_arrow_field_serializer(
                 };
 
                 #quoted_create
-            } }
+            }}
         }
 
         DataType::Struct(_) => {
@@ -1471,7 +1478,7 @@ fn quote_arrow_deserializer(
                     }
                 });
 
-                quote! { {
+                quote! {{
                     let #data_src = #data_src
                         .as_any()
                         .downcast_ref::<::arrow2::array::StructArray>()
@@ -1500,7 +1507,7 @@ fn quote_arrow_deserializer(
                         })).transpose())
                         // NOTE: implicit Vec<Result> to Result<Vec>
                         .collect::<crate::DeserializationResult<Vec<_>>>()?
-                } }
+                }}
             }
             _ => unimplemented!("{datatype:#?}"), // NOLINT
         }
@@ -1555,7 +1562,7 @@ fn quote_arrow_field_deserializer(
             let quoted_inner =
                 quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
 
-            quote! { {
+            quote! {{
                 let datatype = #data_src.data_type();
                 let #data_src = #data_src
                     .as_any()
@@ -1595,7 +1602,7 @@ fn quote_arrow_field_deserializer(
                     // NOTE: implicit Vec<Result> to Result<Vec>
                     .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                     .into_iter()
-            } }
+            }}
         }
 
         DataType::List(inner) => {
@@ -1605,7 +1612,7 @@ fn quote_arrow_field_deserializer(
             let quoted_inner =
                 quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
 
-            quote! { {
+            quote! {{
                 let datatype = #data_src.data_type();
                 let #data_src = #data_src
                     .as_any()
@@ -1643,7 +1650,7 @@ fn quote_arrow_field_deserializer(
                     // NOTE: implicit Vec<Result> to Result<Vec>
                     .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                     .into_iter()
-            } }
+            }}
         }
 
         DataType::Struct(_) => {
