@@ -39,10 +39,13 @@ __all__ = [
 
 @define
 class FlattenedScalar:
-    value: float | None = field(default=None)
+    value: float = field()
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
         return np.asarray(self.value, dtype=dtype)
+
+    def __float__(self) -> float:
+        return float(self.value)
 
 
 FlattenedScalarLike = FlattenedScalar
@@ -58,7 +61,7 @@ FlattenedScalarArrayLike = Union[
 class FlattenedScalarType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.struct([pa.field("value", pa.float32(), True, {})]), "rerun.testing.datatypes.FlattenedScalar"
+            self, pa.struct([pa.field("value", pa.float32(), False, {})]), "rerun.testing.datatypes.FlattenedScalar"
         )
 
 
@@ -113,7 +116,7 @@ class AffixFuzzer1Type(BaseExtensionType):
                     pa.field("many_strings_optional", pa.list_(pa.field("item", pa.utf8(), True, {})), True, {}),
                     pa.field("flattened_scalar", pa.float32(), False, {}),
                     pa.field(
-                        "almost_flattened_scalar", pa.struct([pa.field("value", pa.float32(), True, {})]), False, {}
+                        "almost_flattened_scalar", pa.struct([pa.field("value", pa.float32(), False, {})]), False, {}
                     ),
                 ]
             ),

@@ -11,7 +11,7 @@
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FlattenedScalar {
-    pub value: Option<f32>,
+    pub value: f32,
 }
 
 impl<'a> From<FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
@@ -41,7 +41,7 @@ impl crate::Datatype for FlattenedScalar {
         DataType::Struct(vec![Field {
             name: "value".to_owned(),
             data_type: DataType::Float32,
-            is_nullable: true,
+            is_nullable: false,
             metadata: [].into(),
         }])
     }
@@ -84,13 +84,10 @@ impl crate::Datatype for FlattenedScalar {
                     let (somes, value): (Vec<_>, Vec<_>) = data
                         .iter()
                         .map(|datum| {
-                            let datum = datum
-                                .as_ref()
-                                .map(|datum| {
-                                    let Self { value, .. } = &**datum;
-                                    value.clone()
-                                })
-                                .flatten();
+                            let datum = datum.as_ref().map(|datum| {
+                                let Self { value, .. } = &**datum;
+                                value.clone()
+                            });
                             (datum.is_some(), datum)
                         })
                         .unzip();
@@ -150,7 +147,19 @@ impl crate::Datatype for FlattenedScalar {
             };
             ::itertools::izip!(value)
                 .enumerate()
-                .map(|(i, (value))| is_valid(i).then(|| Ok(Self { value })).transpose())
+                .map(|(i, (value))| {
+                    is_valid(i)
+                        .then(|| {
+                            Ok(Self {
+                                value: value.ok_or_else(|| {
+                                    crate::DeserializationError::MissingData {
+                                        datatype: data.data_type().clone(),
+                                    }
+                                })?,
+                            })
+                        })
+                        .transpose()
+                })
                 .collect::<crate::DeserializationResult<Vec<_>>>()?
         })
     }
@@ -255,7 +264,7 @@ impl crate::Datatype for AffixFuzzer1 {
                 data_type: DataType::Struct(vec![Field {
                     name: "value".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 }]),
                 is_nullable: false,

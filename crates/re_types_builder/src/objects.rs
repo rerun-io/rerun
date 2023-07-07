@@ -616,9 +616,7 @@ pub struct ObjectField {
     /// The field's `order` attribute's value, which is always mandatory.
     pub order: u32,
 
-    /// Whether the field is required.
-    ///
-    /// Always true for IDL definitions using flatbuffers' `struct` type (as opposed to `table`).
+    /// Whether the field is nullable.
     pub is_nullable: bool,
 
     /// Whether the field is deprecated.
@@ -662,7 +660,9 @@ impl ObjectField {
         let attrs = Attributes::from_raw_attrs(field.attributes());
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
-        let is_nullable = !obj.is_struct() && !field.required();
+        let is_nullable = attrs
+            .try_get::<String>(&fqname, crate::ATTR_NULLABLE)
+            .is_some();
         let is_deprecated = field.deprecated();
 
         Self {
@@ -714,8 +714,10 @@ impl ObjectField {
         let attrs = Attributes::from_raw_attrs(val.attributes());
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
+        let is_nullable = attrs
+            .try_get::<String>(&fqname, crate::ATTR_NULLABLE)
+            .is_some();
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
-        let is_nullable = false;
         let is_deprecated = false;
 
         Self {

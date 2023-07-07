@@ -101,7 +101,7 @@ impl crate::Component for AffixFuzzer1 {
                 data_type: DataType::Struct(vec![Field {
                     name: "value".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 }]),
                 is_nullable: false,
@@ -258,7 +258,7 @@ impl crate::Component for AffixFuzzer2 {
                 data_type: DataType::Struct(vec![Field {
                     name: "value".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 }]),
                 is_nullable: false,
@@ -417,7 +417,7 @@ impl crate::Component for AffixFuzzer3 {
                 data_type: DataType::Struct(vec![Field {
                     name: "value".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 }]),
                 is_nullable: false,
@@ -576,7 +576,7 @@ impl crate::Component for AffixFuzzer4 {
                 data_type: DataType::Struct(vec![Field {
                     name: "value".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 }]),
                 is_nullable: false,
@@ -731,7 +731,7 @@ impl crate::Component for AffixFuzzer5 {
                 data_type: DataType::Struct(vec![Field {
                     name: "value".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 }]),
                 is_nullable: false,
@@ -888,7 +888,7 @@ impl crate::Component for AffixFuzzer6 {
                 data_type: DataType::Struct(vec![Field {
                     name: "value".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 }]),
                 is_nullable: false,
@@ -1047,7 +1047,7 @@ impl crate::Component for AffixFuzzer7 {
                     data_type: DataType::Struct(vec![Field {
                         name: "value".to_owned(),
                         data_type: DataType::Float32,
-                        is_nullable: true,
+                        is_nullable: false,
                         metadata: [].into(),
                     }]),
                     is_nullable: false,
@@ -1182,7 +1182,7 @@ impl crate::Component for AffixFuzzer7 {
                                         data_type: DataType::Struct(vec![Field {
                                             name: "value".to_owned(),
                                             data_type: DataType::Float32,
-                                            is_nullable: true,
+                                            is_nullable: false,
                                             metadata: [].into(),
                                         }]),
                                         is_nullable: false,
@@ -1301,7 +1301,7 @@ impl crate::Component for AffixFuzzer7 {
                                 data_type: DataType::Struct(vec![Field {
                                     name: "value".to_owned(),
                                     data_type: DataType::Float32,
-                                    is_nullable: true,
+                                    is_nullable: false,
                                     metadata: [].into(),
                                 }]),
                                 is_nullable: false,
