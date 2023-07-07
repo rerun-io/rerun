@@ -9,7 +9,7 @@ LABEL description="Docker image used for the CI of https://github.com/rerun-io/r
 # This mirrors scripts/setup.sh
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    apache-arrow cmake \
+    apache-arrow \
     build-essential \
     cmake \
     curl \
