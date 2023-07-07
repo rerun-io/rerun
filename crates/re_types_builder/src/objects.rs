@@ -64,12 +64,12 @@ impl Objects {
         let mut done = false;
         while !done {
             done = true;
-            let mut objects_copy = this.objects.clone(); // borrowck, the lazy way
+            let objects_copy = this.objects.clone(); // borrowck, the lazy way
             for obj in this.objects.values_mut() {
                 for field in &mut obj.fields {
                     if field.is_transparent() {
                         if let Some(target_fqname) = field.typ.fqname() {
-                            let mut target_obj = objects_copy.remove(target_fqname).unwrap();
+                            let mut target_obj = objects_copy[target_fqname].clone();
                             assert!(
                                 target_obj.fields.len() == 1,
                                 "field '{}' is marked transparent but points to object '{}' which \
@@ -124,6 +124,24 @@ impl Objects {
             .drain()
             .filter(|(_, obj)| !obj.is_transparent())
             .collect();
+
+        // Check for nullable unions -- these cannot be represented in Arrow!
+        for obj in this.objects.values() {
+            for field in &obj.fields {
+                if !field.is_nullable {
+                    continue;
+                }
+
+                if let Type::Object(fqname) = &field.typ {
+                    let target = &this.objects[fqname];
+                    assert!(
+                        !(target.is_enum() || target.is_union()),
+                        "nullable unions cannot be represented in Arrow, found one at {:?}",
+                        field.fqname,
+                    );
+                }
+            }
+        }
 
         this
     }
@@ -411,6 +429,7 @@ impl Object {
                 .iter()
                 // NOTE: These are intermediate fields used by flatbuffers internals, we don't care.
                 .filter(|field| field.type_().base_type() != FbsBaseType::UType)
+                .filter(|field| field.type_().element() != FbsBaseType::UType)
                 .map(|field| {
                     ObjectField::from_raw_object_field(include_dir_path, enums, objs, obj, &field)
                 })
@@ -923,7 +942,7 @@ pub enum ElementType {
 
 impl ElementType {
     pub fn from_raw_base_type(
-        _enums: &[FbsEnum<'_>],
+        enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         outer_type: FbsType<'_>,
         inner_type: FbsBaseType,
@@ -946,12 +965,15 @@ impl ElementType {
                 let obj = &objs[outer_type.index() as usize];
                 Self::Object(obj.name().to_owned())
             }
-            FbsBaseType::Union => unimplemented!("{inner_type:#?}"), // NOLINT
+            FbsBaseType::Union => {
+                let enm = &enums[outer_type.index() as usize];
+                Self::Object(enm.name().to_owned())
+            }
             FbsBaseType::None
             | FbsBaseType::UType
             | FbsBaseType::Array
             | FbsBaseType::Vector
-            | FbsBaseType::Vector64 => unreachable!("{inner_type:#?}"),
+            | FbsBaseType::Vector64 => unreachable!("{outer_type:#?} into {inner_type:#?}"),
             // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants...
             _ => unreachable!("{inner_type:#?}"),
         }
