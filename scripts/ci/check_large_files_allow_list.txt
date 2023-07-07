@@ -1,4 +1,6 @@
 Cargo.lock
+crates/re_types/src/archetypes/fuzzy.rs
 crates/re_types/src/components/fuzzy.rs
+crates/re_types/src/datatypes/fuzzy.rs
 crates/re_types_builder/src/reflection.rs
 crates/re_ui/data/Inter-Medium.otf
