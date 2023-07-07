@@ -104,25 +104,27 @@ impl LogSink for MemorySink {
 
 /// The storage used by [`MemorySink`].
 #[derive(Default, Clone)]
-pub struct MemorySinkStorage(Arc<RwLock<Vec<LogMsg>>>);
+pub struct MemorySinkStorage {
+    msgs: Arc<RwLock<Vec<LogMsg>>>,
+}
 
 impl MemorySinkStorage {
     /// Write access to the inner array of [`LogMsg`].
     #[inline]
     fn write(&self) -> parking_lot::RwLockWriteGuard<'_, Vec<LogMsg>> {
-        self.0.write()
+        self.msgs.write()
     }
 
     /// Read access to the inner array of [`LogMsg`].
     #[inline]
     pub fn read(&self) -> parking_lot::RwLockReadGuard<'_, Vec<LogMsg>> {
-        self.0.read()
+        self.msgs.read()
     }
 
     /// Consumes and returns the inner array of [`LogMsg`].
     #[inline]
     pub fn take(&self) -> Vec<LogMsg> {
-        std::mem::take(&mut *self.0.write())
+        std::mem::take(&mut *self.msgs.write())
     }
 }
 
