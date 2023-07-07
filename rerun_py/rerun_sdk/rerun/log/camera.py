@@ -92,6 +92,8 @@ def log_pinhole(
     camera_xyz:
         Sets the view coordinates for the camera. The default is "RDF", i.e. X=Right, Y=Down, Z=Forward,
         and this is also the recommended setting.
+        This means that the camera frustum will point along the positive Z axis of the parent space,
+        and the cameras "up" direction will be along the negative Y axis of the parent space.
 
         Each letter represents:
 
