@@ -68,14 +68,16 @@ def log_pinhole(
     focal_length_px:
         The focal length of the camera in pixels.
         This is the diagonal of the projection matrix.
-        Set one value for symmetric cameras, or two values (x, y) for anamorphic cameras.
+        Set one value for symmetric cameras, or two values (X=Right, Y=Down) for anamorphic cameras.
     principal_point_px:
         The center of the camera in pixels.
         The default is half the width and height.
         This is the last column of the projection matrix.
+        Expectes two values along the dimensions Right and Down
     child_from_parent:
         Row-major intrinsics matrix for projecting from camera space to image space.
-        Projection is done along the positive Z axis.
+        The first two axes are X=Right and Y=Down, respectively.
+        Projection is done along the positive third (Z=Forward) axis.
         This can be specified _instead_ of `focal_length_px` and `principal_point_px`.
     width:
         Width of the image in pixels.
@@ -88,14 +90,39 @@ def log_pinhole(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     camera_xyz:
-        Sets the view coordinates for the camera. The default is "RDF", i.e. X=Right, Y=Down, Z=Forward.
+        Sets the view coordinates for the camera. The default is "RDF", i.e. X=Right, Y=Down, Z=Forward,
+        and this is also the recommended setting.
+
+        Each letter represents:
+
+        * R: Right
+        * L: Left
+        * U: Up
+        * D: Down
+        * F: Forward
+        * B: Back
+
+        The camera furstum will point whichever axis is set to `F` (or the oppositve of `B`).
+        When logging a depth image under this entity, this is the direction the point cloud will be projected.
+        With XYZ=RDF, the default forward is +Z.
+
+        The frustum's "up" direction will be whichever axis is set to `U` (or the oppositve of `D`).
+        This will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).
+        With RDF, the default is up is -Y.
+
+        The frustum's "right" direction will be whichever axis is set to `R` (or the oppositve of `L`).
+        This will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).
+        With RDF, the default right is +x.
+
         Other common formats are "RUB" (X=Right, Y=Up, Z=Back) and "FLU" (X=Forward, Y=Left, Z=Up).
+
         Equivalent to calling [`rerun.log_view_coordinates(entity, xyz=…)`][rerun.log_view_coordinates].
+
         NOTE: setting this to something else than "RDF" (the default) will change the orientation of the camera frustum,
         and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
-        The pinhole matrix (the `child_from_parent` argument) always project along the Z axis of the camera space,
-        but will be re-oritented to project along another axis if the `camera_xyz` argument is set.
 
+        The pinhole matrix (the `child_from_parent` argument) always project along the third (Z) axis,
+        but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
     """
 
     matrix: npt.ArrayLike

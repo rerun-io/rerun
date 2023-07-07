@@ -55,7 +55,8 @@ def log_view_coordinates(
     This is particularly useful for 3D spaces, to set the up-axis.
 
     For pinhole entities this will control the direction of the camera frustum.
-    You can also use [`rerun.log_pinhole(…, camera_xyz=…)`][rerun.log_pinhole] for this.
+    You should use [`rerun.log_pinhole(…, camera_xyz=…)`][rerun.log_pinhole] for this instead,
+    and read the documentation there.
 
     For full control, set the `xyz` parameter to a three-letter acronym (`xyz="RDF"`). Each letter represents:
 
