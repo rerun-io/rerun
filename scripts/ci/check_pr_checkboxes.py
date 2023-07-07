@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from github import Github  # NOLINT
+from github import Github
 
 
 def main() -> None:
@@ -14,7 +14,7 @@ def main() -> None:
     parser.add_argument("--pr-number", required=True, type=int, help="PR number")
     args = parser.parse_args()
 
-    gh = Github(args.github_token)  # NOLINT
+    gh = Github(args.github_token)
     repo = gh.get_repo(args.github_repository)
     pr = repo.get_pull(args.pr_number)
 

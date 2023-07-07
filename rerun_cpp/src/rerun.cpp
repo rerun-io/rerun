@@ -1,28 +1,19 @@
-// The Rerun C++ SDK.
-
-#ifndef RERUN_HPP
-#define RERUN_HPP
-
-#include <rerun.h>
-
-namespace rerun {
-    inline const char* version_string() {
-        return rr_version_string();
-    }
-} // namespace rerun
-
-// ----------------------------------------------------------------------------
-// Arrow integration
-
-#if RERUN_WITH_ARROW
+#include "rerun.hpp"
 
 #include <arrow/api.h>
 #include <arrow/io/api.h>
 #include <arrow/ipc/api.h>
+#include <rerun.h>
 
 #include <loguru.hpp>
 
-namespace rerun {
+namespace rr {
+    const char* version_string() {
+        return rr_version_string();
+    }
+
+    // ------------------------------------------------------------------------
+
     arrow::Result<std::shared_ptr<arrow::Table>> points3(size_t num_points, const float* xyz) {
         arrow::MemoryPool* pool = arrow::default_memory_pool();
 
@@ -62,10 +53,4 @@ namespace rerun {
         ARROW_RETURN_NOT_OK(writer->Close());
         return output->Finish();
     }
-} // namespace rerun
-
-#endif // RERUN_WITH_ARROW
-
-// ----------------------------------------------------------------------------
-
-#endif // RERUN_HPP
+} // namespace rr

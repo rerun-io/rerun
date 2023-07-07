@@ -6,7 +6,7 @@ Script to update the PR description template.
 This is expected to be run by the `reusable_update_pr_body.yml` GitHub workflow.
 
 Requires the following packages:
-  pip install Jinja2 PyGithub # NOLINT
+  pip install Jinja2 PyGithub
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import argparse
 import logging
 import urllib.parse
 
-from github import Github  # NOLINT
+from github import Github
 from jinja2 import DebugUndefined, select_autoescape
 from jinja2.sandbox import SandboxedEnvironment
 
@@ -31,7 +31,7 @@ def main() -> None:
     parser.add_argument("--pr-number", required=True, type=int, help="PR number")
     args = parser.parse_args()
 
-    gh = Github(args.github_token)  # NOLINT
+    gh = Github(args.github_token)
     repo = gh.get_repo(args.github_repository)
     pr = repo.get_pull(args.pr_number)
 
