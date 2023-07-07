@@ -714,7 +714,10 @@ fn log_view_coordinates(
     let Some(recording) = get_data_recording(recording) else { return Ok(()); };
 
     if coordinates.handedness() == Some(Handedness::Left) {
-        re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
+        re_log::warn_once!(
+            "Left-handed coordinate systems are not yet fully supported by Rerun (got {})",
+            coordinates.describe_short()
+        );
     }
 
     // We normally disallow logging to root, but we make an exception for view_coordinates

@@ -66,6 +66,22 @@ class AffixFuzzer1(Archetype):
         metadata={"component": "primary"},
         converter=components.AffixFuzzer13Array.from_similar,  # type: ignore[misc]
     )
+    fuzz1014: components.AffixFuzzer14Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1016: components.AffixFuzzer16Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer16Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1017: components.AffixFuzzer17Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer17Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1018: components.AffixFuzzer18Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer18Array.from_similar,  # type: ignore[misc]
+    )
     fuzz1101: components.AffixFuzzer1Array = field(
         metadata={"component": "primary"},
         converter=components.AffixFuzzer1Array.from_similar,  # type: ignore[misc]
@@ -117,6 +133,22 @@ class AffixFuzzer1(Archetype):
     fuzz1113: components.AffixFuzzer13Array = field(
         metadata={"component": "primary"},
         converter=components.AffixFuzzer13Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1114: components.AffixFuzzer14Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1116: components.AffixFuzzer16Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer16Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1117: components.AffixFuzzer17Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer17Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1118: components.AffixFuzzer18Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer18Array.from_similar,  # type: ignore[misc]
     )
     fuzz2001: components.AffixFuzzer1Array | None = field(
         metadata={"component": "secondary"},
@@ -183,6 +215,26 @@ class AffixFuzzer1(Archetype):
         default=None,
         converter=components.AffixFuzzer13Array.from_similar,  # type: ignore[misc]
     )
+    fuzz2014: components.AffixFuzzer14Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2016: components.AffixFuzzer16Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer16Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2017: components.AffixFuzzer17Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer17Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2018: components.AffixFuzzer18Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer18Array.from_similar,  # type: ignore[misc]
+    )
     fuzz2101: components.AffixFuzzer1Array | None = field(
         metadata={"component": "secondary"},
         default=None,
@@ -247,6 +299,26 @@ class AffixFuzzer1(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.AffixFuzzer13Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2114: components.AffixFuzzer14Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2116: components.AffixFuzzer16Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer16Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2117: components.AffixFuzzer17Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer17Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2118: components.AffixFuzzer18Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer18Array.from_similar,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

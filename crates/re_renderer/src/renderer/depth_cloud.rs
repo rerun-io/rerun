@@ -50,7 +50,7 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
         /// The extrinsics of the camera used for the projection.
-        pub world_from_obj: wgpu_buffer_types::Mat4,
+        pub world_from_rdf: wgpu_buffer_types::Mat4,
 
         pub depth_camera_intrinsics: wgpu_buffer_types::Mat3,
 
@@ -89,7 +89,7 @@ mod gpu_data {
             depth_cloud: &super::DepthCloud,
         ) -> Result<Self, DepthCloudDrawDataError> {
             let super::DepthCloud {
-                world_from_obj,
+                world_from_rdf: world_from_obj,
                 depth_camera_intrinsics,
                 world_depth_from_texture_depth,
                 point_radius_from_world_depth,
@@ -114,7 +114,7 @@ mod gpu_data {
             };
 
             Ok(Self {
-                world_from_obj: (*world_from_obj).into(),
+                world_from_rdf: (*world_from_obj).into(),
                 depth_camera_intrinsics: (*depth_camera_intrinsics).into(),
                 outline_mask_id: outline_mask_id.0.unwrap_or_default().into(),
                 world_depth_from_texture_depth: *world_depth_from_texture_depth,
@@ -132,8 +132,9 @@ mod gpu_data {
 }
 
 pub struct DepthCloud {
-    /// The extrinsics of the camera used for the projection.
-    pub world_from_obj: glam::Affine3A,
+    /// The extrinsics of the camera used for the projection,
+    /// with a RDF coordinate system on the right-hand side.
+    pub world_from_rdf: glam::Affine3A,
 
     /// The intrinsics of the camera used for the projection.
     ///
@@ -190,7 +191,7 @@ impl DepthCloud {
         for corner in corners {
             let depth = corner.z;
             let pos_in_obj = ((corner.truncate() - offset) * depth / focal_length).extend(depth);
-            let pos_in_world = self.world_from_obj.transform_point3(pos_in_obj);
+            let pos_in_world = self.world_from_rdf.transform_point3(pos_in_obj);
             bbox.extend(pos_in_world);
         }
 

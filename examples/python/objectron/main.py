@@ -147,12 +147,12 @@ def log_camera(cam: ARCamera) -> None:
         "world/camera",
         rr.TranslationRotationScale3D(translation, rr.Quaternion(xyzw=rot.as_quat())),
     )
-    rr.log_view_coordinates("world/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
     rr.log_pinhole(
         "world/camera",
-        child_from_parent=intrinsics,
         width=w,
         height=h,
+        child_from_parent=intrinsics,
+        camera_xyz="RDF",
     )
 
 
