@@ -19,6 +19,7 @@ const DEFINITIONS_DIR_PATH: &str = "./definitions";
 const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
+const PYTHON_PYPROJECT_PATH: &str = "../../rerun_py/pyproject.toml";
 
 // located in PYTHON_OUTPUT_DIR_PATH
 const ARCHETYPE_OVERRIDES_SUB_DIR_PATH: &str = "archetypes/_overrides";
@@ -148,17 +149,6 @@ fn main() {
         "./definitions/rerun/archetypes.fbs",
     );
 
-    let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("pyproject.toml")
-        .to_string_lossy()
-        .to_string();
-
     // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
     // not end users.
     // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
@@ -173,7 +163,7 @@ fn main() {
     // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
     cmd!(
         sh,
-        "black --config {pyproject_path} {PYTHON_OUTPUT_DIR_PATH}"
+        "black --config {PYTHON_PYPROJECT_PATH} {PYTHON_OUTPUT_DIR_PATH}"
     )
     .run()
     .ok();
@@ -186,10 +176,10 @@ fn main() {
     // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
     cmd!(
         sh,
-        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
+        "ruff --config {PYTHON_PYPROJECT_PATH} --fix {PYTHON_OUTPUT_DIR_PATH}"
     )
     .run()
-    .ok();
+    .unwrap();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
 }

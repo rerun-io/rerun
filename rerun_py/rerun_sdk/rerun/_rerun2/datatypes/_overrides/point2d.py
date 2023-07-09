@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import pyarrow as pa
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 
 
-def point2d_as_array(data: Point2D, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+def point2d_as_array(data: Point2D, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
     return np.array([data.x, data.y], dtype=dtype)
 
 

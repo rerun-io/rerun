@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+from typing import Optional, cast
 
 import numpy as np
 import rerun as rr
@@ -228,6 +229,16 @@ def test_points2d() -> None:
 
     for points, radii, colors, labels, draw_order, class_ids, keypoint_ids, instance_keys in all_arrays:
         points = points if points is not None else points_arrays[-1]
+
+        # make Pyright happy as it's apparently not able to track typing info trough zip_longest
+        points = cast(Optional[rrd.Point2DArrayLike], points)
+        radii = cast(Optional[rrc.RadiusArrayLike], radii)
+        colors = cast(Optional[rrc.ColorArrayLike], colors)
+        labels = cast(Optional[rrc.LabelArrayLike], labels)
+        draw_order = cast(Optional[rrc.DrawOrderArrayLike], draw_order)
+        class_ids = cast(Optional[rrc.ClassIdArrayLike], class_ids)
+        keypoint_ids = cast(Optional[rrc.KeypointIdArrayLike], keypoint_ids)
+        instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
 
         print(
             f"rr.Points2D(\n"

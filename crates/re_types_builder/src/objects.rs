@@ -620,7 +620,7 @@ pub struct ObjectField {
     /// Fully-qualified package name of the field, e.g. `rerun.components`.
     pub pkg_name: String,
 
-    /// Name of the object, e.g. `Point2D`.
+    /// Name of the field, e.g. `x`.
     pub name: String,
 
     /// The field's multiple layers of documentation.

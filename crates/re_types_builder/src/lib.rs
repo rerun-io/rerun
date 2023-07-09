@@ -133,7 +133,7 @@ mod objects;
 pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
 pub use self::codegen::{CodeGenerator, PythonCodeGenerator, RustCodeGenerator};
 pub use self::objects::{
-    Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, Objects, Type,
+    Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
 };
 
 // --- Attributes ---
@@ -271,8 +271,10 @@ pub fn generate_rust_code(
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
 
-    let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let _filepaths = gen.generate(&objects, &arrow_registry);
+    // TODO(cmc): thread 'main' panicked at 'not implemented: Boolean',
+    //  re_types_builder/src/codegen/rust.rs:1490:14
+    //let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
+    //let _filepaths = gen.generate(&objects, &arrow_registry);
 }
 
 /// Generates Python code from a set of flatbuffers definitions.
