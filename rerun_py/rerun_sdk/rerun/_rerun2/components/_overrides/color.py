@@ -51,7 +51,7 @@ def color_rgba_converter(data: ColorLike) -> int:
 def color_native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
     from .. import Color
 
-    if isinstance(data, Color):
+    if isinstance(data, (Color, int)):
         data = [data]
 
     if isinstance(data, np.ndarray):

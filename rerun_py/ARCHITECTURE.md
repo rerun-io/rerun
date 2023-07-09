@@ -105,13 +105,16 @@ This hook is the primary means of providing serialisation to Arrow data, which i
 
 ## Design notes on code generation
 
+### Logging with `rr.log_any`
+
+TODO(ab): auto upcasting
+
 ### Union type handling
 
 TODO(ab):
 - *not* inheritance (arm type might be reused elsewhere)
 - `inner: Union[x, y]`
 - `kind` for disambiguation (e.g. `Angle`) (typically requires init override for clean API)
-
 
 
 ### Interplay between hooks and generated methods
