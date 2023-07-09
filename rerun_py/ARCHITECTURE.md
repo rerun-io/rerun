@@ -44,7 +44,7 @@ TODO(ab):
 - `from_similar()`
 - impl never autogen'd, so hand-coded required
 
-#### Typing aliases (`OjectNameLike` and `ObjectNameArrayLike`)
+#### Typing aliases (`ObjectNameLike` and `ObjectNameArrayLike`)
 
 TODO(ab)
 

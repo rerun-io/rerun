@@ -665,12 +665,12 @@ impl QuotedObject {
         if has_duplicate_types {
             let kind_type = fields
                 .iter()
-                .map(|f| format!("\"{}\"", f.name.to_lowercase()))
+                .map(|f| format!("{:?}", f.name.to_lowercase()))
                 .join(", ");
             let first_kind = &fields[0].name.to_lowercase();
 
             code.push_text(
-                format!("kind: Literal[{kind_type}] = field(default=\"{first_kind}\")"),
+                format!("kind: Literal[{kind_type}] = field(default={first_kind:?})"),
                 1,
                 4,
             );
