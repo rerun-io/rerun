@@ -11,9 +11,8 @@ use itertools::Itertools;
 
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
-    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind,
-    ObjectSpecifics, Objects, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
-    ATTR_RERUN_LEGACY_FQNAME,
+    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
+    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_RERUN_LEGACY_FQNAME,
 };
 
 // ---
@@ -507,7 +506,7 @@ impl QuotedObject {
                     String::new()
                 };
 
-                let converter = field_converters.get(&field.fqname).unwrap();
+                let converter = &field_converters[&field.fqname];
                 let typ = if !*is_nullable {
                     format!("{typ} = field({metadata}{converter})")
                 } else {
@@ -742,8 +741,8 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
             field.name,
             quote_field_type_from_field(objects, field, false).0
         ));
-        lines.extend(field_lines.into_iter().map(|line| format!("    {}", line)));
-        lines.push("".to_owned());
+        lines.extend(field_lines.into_iter().map(|line| format!("    {line}")));
+        lines.push(String::new());
     }
 
     if lines.is_empty() {
@@ -761,39 +760,6 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
         .join("\n");
 
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")
-}
-
-/// Generates generic `__str__` and `__repr__` methods for archetypes.
-//
-// TODO(cmc): this could alternatively import a statically defined mixin from "somewhere".
-fn quote_str_repr_from_obj(obj: &Object) -> String {
-    if obj.kind != ObjectKind::Archetype {
-        return String::new();
-    }
-
-    unindent::unindent(
-        r#"
-        def __str__(self) -> str:
-            s = f"rr.{type(self).__name__}(\n"
-
-            from dataclasses import fields
-            for fld in fields(self):
-                if "component" in fld.metadata:
-                    comp: components.Component = getattr(self, fld.name)
-                    if datatype := getattr(comp, "type"):
-                        name = comp.extension_name
-                        typ = datatype.storage_type
-                        s += f"  {name}<{typ}>(\n    {comp.to_pylist()}\n  )\n"
-
-            s += ")"
-
-            return s
-
-        def __repr__(self) -> str:
-            return str(self)
-
-        "#,
-    )
 }
 
 /// Automatically implement `__array__` if the object is a single
@@ -1082,10 +1048,7 @@ fn quote_field_type_from_field(
                 }
             }
         },
-        Type::Object(fqname) => {
-            let typ = quote_type_from_element_type(&ElementType::Object(fqname.clone()));
-            typ
-        }
+        Type::Object(fqname) => quote_type_from_element_type(&ElementType::Object(fqname.clone())),
     };
 
     (typ, unwrapped)
