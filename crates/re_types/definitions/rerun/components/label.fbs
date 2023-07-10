@@ -19,5 +19,5 @@ table Label (
   "attr.rust.tuple_struct",
   order: 100
 ) {
-  value: string (required, order: 100);
+  value: string (order: 100);
 }

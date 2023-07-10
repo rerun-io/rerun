@@ -192,12 +192,14 @@ impl RecordingStreamBuilder {
         self,
     ) -> RecordingStreamResult<(RecordingStream, crate::log_sink::MemorySinkStorage)> {
         let sink = crate::log_sink::MemorySink::default();
-        let storage = sink.buffer();
+        let mut storage = sink.buffer();
 
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
-            RecordingStream::new(store_info, batcher_config, Box::new(sink))
-                .map(|rec_stream| (rec_stream, storage))
+            RecordingStream::new(store_info, batcher_config, Box::new(sink)).map(|rec_stream| {
+                storage.rec_stream = Some(rec_stream.clone());
+                (rec_stream, storage)
+            })
         } else {
             re_log::debug!("Rerun disabled - call to memory() ignored");
             Ok((RecordingStream::disabled(), Default::default()))
@@ -1150,21 +1152,7 @@ mod tests {
                 _ => panic!("expected SetStoreInfo"),
             }
 
-            // The underlying batcher is never flushing: there's nothing else.
-            assert!(msgs.pop().is_none());
-        }
-
-        // The underlying batcher is never flushing: there's nothing else.
-        assert!(storage.take().is_empty());
-
-        rec_stream.flush_blocking(); // flush the entire hierarchy
-
-        {
-            let mut msgs = {
-                let mut msgs = storage.take();
-                msgs.reverse();
-                msgs
-            };
+            // MemorySinkStorage transparently handles flushing during `take()`!
 
             // The batched table itself, which was sent as a result of the explicit flush above.
             match msgs.pop().unwrap() {

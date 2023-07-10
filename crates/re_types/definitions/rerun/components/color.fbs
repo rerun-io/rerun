@@ -23,5 +23,5 @@ struct Color (
   "attr.rust.tuple_struct",
   order: 100
 ) {
-  rgba: uint;
+  rgba: uint (order: 100);
 }

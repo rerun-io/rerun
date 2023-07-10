@@ -159,38 +159,20 @@ class OPFProject:
                         [0, 0, 1],
                     ]
                 )
-                @ np.array(  # somehow needed to have the camera point at the right direction
-                    [
-                        [1, 0, 0],
-                        [0, -1, 0],
-                        [0, 0, -1],
-                    ]
-                )
             )
 
             rr.log_transform3d(entity, rr.TranslationAndMat3(translation=calib_camera.position, matrix=rot))
 
             assert calib_sensor.internals.type == "perspective"
 
-            # TODO(ab): the correction matrix term as well as the intrinsics definition are a work-around for
-            #  https://github.com/rerun-io/rerun/issues/2244. Should be cleaned up once this is addressed.
-
-            focal_length = calib_sensor.internals.focal_length_px
-            u_center = calib_sensor.internals.principal_point_px[0]
-            v_center = calib_sensor.internals.principal_point_px[1]
-            intrinsics = np.array(
-                [
-                    [focal_length, 0, u_center],
-                    [0, focal_length, v_center],
-                    [0, 0, 1],
-                ]
-            )
-
+            # RUB coordinate system specified in https://pix4d.github.io/opf-spec/specification/projected_input_cameras.html#coordinate-system-specification
             rr.log_pinhole(
                 entity + "/image",
-                child_from_parent=intrinsics,
+                focal_length_px=calib_sensor.internals.focal_length_px,
+                principal_point_px=calib_sensor.internals.principal_point_px,
                 width=sensor.image_size_px[0],
                 height=sensor.image_size_px[1],
+                camera_xyz="RUB",
             )
             rr.log_image_file(entity + "/image/rgb", img_path=self.path.parent / camera.uri)
 

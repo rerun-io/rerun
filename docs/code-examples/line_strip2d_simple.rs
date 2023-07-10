@@ -16,7 +16,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_component(&[Rect2D::XCYCWH(Vec4D([3.0, 0.0, 8.0, 6.0]))])?
         .send(&rec_stream)?;
 
-    rec_stream.flush_blocking();
     rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

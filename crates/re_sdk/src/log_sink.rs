@@ -104,7 +104,10 @@ impl LogSink for MemorySink {
 
 /// The storage used by [`MemorySink`].
 #[derive(Default, Clone)]
-pub struct MemorySinkStorage(Arc<RwLock<Vec<LogMsg>>>);
+pub struct MemorySinkStorage {
+    msgs: Arc<RwLock<Vec<LogMsg>>>,
+    pub(crate) rec_stream: Option<crate::RecordingStream>,
+}
 
 impl Drop for MemorySinkStorage {
     fn drop(&mut self) {
@@ -118,21 +121,26 @@ impl MemorySinkStorage {
     /// Write access to the inner array of [`LogMsg`].
     #[inline]
     fn write(&self) -> parking_lot::RwLockWriteGuard<'_, Vec<LogMsg>> {
-        self.0.write()
+        self.msgs.write()
     }
 
     /// Read access to the inner array of [`LogMsg`].
     #[inline]
     pub fn read(&self) -> parking_lot::RwLockReadGuard<'_, Vec<LogMsg>> {
-        self.0.read()
+        self.msgs.read()
     }
 
     /// Consumes and returns the inner array of [`LogMsg`].
     ///
-    /// You should make sure to call [`RecordingStream::flush_blocking`] before calling this.
+    /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
     pub fn take(&self) -> Vec<LogMsg> {
-        std::mem::take(&mut *self.0.write())
+        if let Some(rec_stream) = self.rec_stream.as_ref() {
+            // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
+            // in this flush; it's just a matter of making the table batcher tick early.
+            rec_stream.flush_blocking();
+        }
+        std::mem::take(&mut *self.msgs.write())
     }
 
     /// Convert the stored messages into an in-memory Rerun log file.
