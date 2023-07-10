@@ -200,7 +200,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     } else {
         quad_dir = pos_data_quad_end.pos - pos_data_quad_begin.pos;
     }
-    quad_dir = normalize(quad_dir);
+    let quad_length = length(quad_dir);
+    quad_dir = quad_dir / quad_length;
 
     // Resolve radius.
     // (slight inaccuracy: End caps are going to adjust their center_position)
@@ -213,20 +214,26 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let camera_distance = distance(camera_ray.origin, center_position);
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
 
+    // If the triangle cap is longer than the quad would be otherwise, we need to stunt it, otherwise we'd get artifacts.
+    var triangle_cap_length = batch.triangle_cap_length_factor * strip_radius;
+    let max_triangle_cap_length = quad_length * 0.75; // Having the entire arrow be just triangle head already looks pretty bad, so we're stopping at 75% of the quad length.
+    let triangle_cap_size_factor = min(1.0, max_triangle_cap_length / triangle_cap_length);
+    triangle_cap_length *= triangle_cap_size_factor;
+
     // Make space for the end cap if this is either the cap itself or the cap follows right after/before this quad.
     if !has_any_flag(strip_data.flags, FLAG_CAP_END_EXTEND_OUTWARDS) &&
         (is_end_cap_triangle || (is_at_quad_end && pos_data_current.strip_index != pos_data_quad_after.strip_index)) {
         var cap_length =
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND)) +
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) * batch.triangle_cap_length_factor;
-        center_position -= quad_dir * (cap_length * strip_radius);
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND)) * strip_radius +
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) * triangle_cap_length;
+        center_position -= quad_dir * cap_length;
     }
     if !has_any_flag(strip_data.flags, FLAG_CAP_START_EXTEND_OUTWARDS) &&
         (is_start_cap_triangle || (!is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index)) {
         var cap_length =
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND)) +
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) * batch.triangle_cap_length_factor;
-        center_position += quad_dir * (cap_length * strip_radius);
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND)) * strip_radius +
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) * triangle_cap_length;
+        center_position += quad_dir * cap_length;
     }
 
     // Boost radius only now that we subtracted/added the cap length.
@@ -234,6 +241,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     if draw_data.radius_boost_in_ui_points > 0.0 {
         let size_boost = world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);
         strip_radius += size_boost;
+        triangle_cap_length += size_boost;
         // Push out positions as well along the quad dir.
         // This is especially important if there's no miters on a line-strip (TODO(#829)),
         // as this would enhance gaps between lines otherwise.
@@ -244,7 +252,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // If this is a triangle cap, we blow up our ("virtual") quad by a given factor.
     if (is_end_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) ||
        (is_start_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) {
-        active_radius *= batch.triangle_cap_width_factor;
+        active_radius *= batch.triangle_cap_width_factor * triangle_cap_size_factor;
     }
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
@@ -258,8 +266,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         // and far enough to do rounded caps without any visible clipping.
         // There is _some_ clipping, but we can't see it ;)
         // If we want to do it properly, we would extend the radius for rounded caps too.
-        center_position += quad_dir *
-            (strip_radius * batch.triangle_cap_length_factor * select(-1.0, 1.0, is_right_triangle));
+        center_position += quad_dir * (triangle_cap_length * select(-1.0, 1.0, is_right_triangle));
         pos = center_position;
     } else {
         pos = center_position + (active_radius * top_bottom) * dir_up;
