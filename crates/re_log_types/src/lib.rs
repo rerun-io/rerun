@@ -44,7 +44,7 @@ use std::sync::Arc;
 pub use self::arrow_msg::ArrowMsg;
 pub use self::component::{Component, DeserializableComponent, SerializableComponent};
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
-pub use self::data_row::{DataCellVec, DataRow, DataRowError, DataRowResult, RowId};
+pub use self::data_row::{DataCellRow, DataCellVec, DataRow, DataRowError, DataRowResult, RowId};
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
     ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, COLUMN_ENTITY_PATH,
@@ -313,6 +313,9 @@ impl std::fmt::Display for PythonVersion {
 pub enum StoreSource {
     Unknown,
 
+    /// The official Rerun C Logging SDK
+    CSdk,
+
     /// The official Rerun Python Logging SDK
     PythonSdk(PythonVersion),
 
@@ -330,6 +333,7 @@ impl std::fmt::Display for StoreSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Unknown => "Unknown".fmt(f),
+            Self::CSdk => "C SDK".fmt(f),
             Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
             Self::RustSdk {
                 rustc_version: rust_version,

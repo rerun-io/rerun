@@ -132,7 +132,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         .radius(Size::new_scene(0.1))
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE);
 
-    builder.to_draw_data(re_ctx).unwrap()
+    builder.into_draw_data(re_ctx).unwrap()
 }
 
 enum CameraControl {
@@ -334,7 +334,7 @@ impl Example for Multiview {
                 std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
             );
 
-        let point_cloud = builder.to_draw_data(re_ctx).unwrap();
+        let point_cloud = builder.into_draw_data(re_ctx);
         let meshes = build_mesh_instances(
             re_ctx,
             &self.model_mesh_instances,

@@ -7,7 +7,7 @@ Installation
 ------------
 
 Requires the following packages:
-  pip install google-cloud-storage # NOLINT
+  pip install google-cloud-storage
 
 Before running, you have to authenticate via the Google Cloud CLI:
 - Install it (https://cloud.google.com/storage/docs/gsutil_install)

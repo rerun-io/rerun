@@ -32,6 +32,8 @@ impl serde::Serialize for ArrowMsg {
     where
         S: serde::Serializer,
     {
+        re_tracing::profile_scope!("ArrowMsg::serialize");
+
         use arrow2::io::ipc::write::StreamWriter;
         use serde::ser::SerializeTuple;
 
@@ -76,12 +78,14 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
             where
                 A: serde::de::SeqAccess<'de>,
             {
+                re_tracing::profile_scope!("ArrowMsg::deserialize");
+
                 let table_id: Option<TableId> = seq.next_element()?;
-                let timepoint_min: Option<TimePoint> = seq.next_element()?;
+                let timepoint_max: Option<TimePoint> = seq.next_element()?;
                 let buf: Option<serde_bytes::ByteBuf> = seq.next_element()?;
 
-                if let (Some(table_id), Some(timepoint_min), Some(buf)) =
-                    (table_id, timepoint_min, buf)
+                if let (Some(table_id), Some(timepoint_max), Some(buf)) =
+                    (table_id, timepoint_max, buf)
                 {
                     let mut cursor = std::io::Cursor::new(buf);
                     let metadata = match read_stream_metadata(&mut cursor) {
@@ -92,21 +96,36 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                             )))
                         }
                     };
-                    let mut stream = StreamReader::new(cursor, metadata, None);
-                    let chunk = stream
-                        .find_map(|state| match state {
-                            Ok(StreamState::Some(chunk)) => Some(chunk),
+                    let schema = metadata.schema.clone();
+                    let stream = StreamReader::new(cursor, metadata, None);
+                    let chunks: Result<Vec<_>, _> = stream
+                        .map(|state| match state {
+                            Ok(StreamState::Some(chunk)) => Ok(chunk),
                             Ok(StreamState::Waiting) => {
                                 unreachable!("cannot be waiting on a fixed buffer")
                             }
-                            _ => None,
+                            Err(err) => Err(err),
                         })
-                        .ok_or_else(|| serde::de::Error::custom("No Chunk found in stream"))?;
+                        .collect();
+
+                    let chunks = chunks
+                        .map_err(|err| serde::de::Error::custom(format!("Arrow error: {err}")))?;
+
+                    if chunks.is_empty() {
+                        return Err(serde::de::Error::custom("No Chunk found in stream"));
+                    }
+                    if chunks.len() > 1 {
+                        return Err(serde::de::Error::custom(format!(
+                            "Found {} chunks in stream - expected just one.",
+                            chunks.len()
+                        )));
+                    }
+                    let chunk = chunks.into_iter().next().unwrap();
 
                     Ok(ArrowMsg {
                         table_id,
-                        timepoint_max: timepoint_min,
-                        schema: stream.metadata().schema.clone(),
+                        timepoint_max,
+                        schema,
                         chunk,
                     })
                 } else {

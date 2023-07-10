@@ -6,12 +6,13 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A 16-bit ID representing a type of semantic class."]
 #[doc = ""]
 #[doc = "Used to look up a `crate::components::ClassDescription` within the `crate::components::AnnotationContext`."]
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ClassId(pub u16);
 
 impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
@@ -38,11 +39,7 @@ impl crate::Component for ClassId {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Extension(
-            "rerun.components.ClassId".to_owned(),
-            Box::new(DataType::UInt16),
-            None,
-        )
+        DataType::UInt16
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -79,6 +76,8 @@ impl crate::Component for ClassId {
                         Box::new(DataType::UInt16),
                         None,
                     )
+                    .to_logical_type()
+                    .clone()
                 },
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,

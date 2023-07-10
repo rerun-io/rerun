@@ -2,127 +2,323 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from attrs import define, field
+
+from .. import components
+from .._baseclasses import (
+    Archetype,
+)
 
 __all__ = ["AffixFuzzer1"]
 
-from .. import components
 
-## --- AffixFuzzer1 --- ##
-
-
-@dataclass
-class AffixFuzzer1:
-    fuzz1001: components.AffixFuzzer1Array
-    fuzz1002: components.AffixFuzzer2Array
-    fuzz1003: components.AffixFuzzer3Array
-    fuzz1004: components.AffixFuzzer4Array
-    fuzz1005: components.AffixFuzzer5Array
-    fuzz1006: components.AffixFuzzer6Array
-    fuzz1007: components.AffixFuzzer7Array
-    fuzz1101: components.AffixFuzzer1Array
-    fuzz1102: components.AffixFuzzer2Array
-    fuzz1103: components.AffixFuzzer3Array
-    fuzz1104: components.AffixFuzzer4Array
-    fuzz1105: components.AffixFuzzer5Array
-    fuzz1106: components.AffixFuzzer6Array
-    fuzz1107: components.AffixFuzzer7Array
-    fuzz2001: components.AffixFuzzer1Array | None = None
-    fuzz2002: components.AffixFuzzer2Array | None = None
-    fuzz2003: components.AffixFuzzer3Array | None = None
-    fuzz2004: components.AffixFuzzer4Array | None = None
-    fuzz2005: components.AffixFuzzer5Array | None = None
-    fuzz2006: components.AffixFuzzer6Array | None = None
-    fuzz2007: components.AffixFuzzer7Array | None = None
-    fuzz2101: components.AffixFuzzer1Array | None = None
-    fuzz2102: components.AffixFuzzer2Array | None = None
-    fuzz2103: components.AffixFuzzer3Array | None = None
-    fuzz2104: components.AffixFuzzer4Array | None = None
-    fuzz2105: components.AffixFuzzer5Array | None = None
-    fuzz2106: components.AffixFuzzer6Array | None = None
-    fuzz2107: components.AffixFuzzer7Array | None = None
-
-    def __str__(self) -> str:
-        s = f"rr.{type(self).__name__}(\n"
-
-        from dataclasses import fields
-
-        for field in fields(self):
-            data = getattr(self, field.name)
-            datatype = getattr(data, "type", None)
-            if datatype:
-                name = datatype.extension_name
-                typ = datatype.storage_type
-                s += f"  {name}<{typ}>(\n    {data.to_pylist()}\n  )\n"
-
-        s += ")"
-
-        return s
-
-    def __repr__(self) -> str:
-        return str(self)
-
-    def __init__(
-        self,
-        fuzz1001: components.AffixFuzzer1Like,
-        fuzz1002: components.AffixFuzzer2Like,
-        fuzz1003: components.AffixFuzzer3Like,
-        fuzz1004: components.AffixFuzzer4Like,
-        fuzz1005: components.AffixFuzzer5Like,
-        fuzz1006: components.AffixFuzzer6Like,
-        fuzz1007: components.AffixFuzzer7Like,
-        fuzz1101: components.AffixFuzzer1ArrayLike,
-        fuzz1102: components.AffixFuzzer2ArrayLike,
-        fuzz1103: components.AffixFuzzer3ArrayLike,
-        fuzz1104: components.AffixFuzzer4ArrayLike,
-        fuzz1105: components.AffixFuzzer5ArrayLike,
-        fuzz1106: components.AffixFuzzer6ArrayLike,
-        fuzz1107: components.AffixFuzzer7ArrayLike,
-        *,
-        fuzz2001: components.AffixFuzzer1Like | None = None,
-        fuzz2002: components.AffixFuzzer2Like | None = None,
-        fuzz2003: components.AffixFuzzer3Like | None = None,
-        fuzz2004: components.AffixFuzzer4Like | None = None,
-        fuzz2005: components.AffixFuzzer5Like | None = None,
-        fuzz2006: components.AffixFuzzer6Like | None = None,
-        fuzz2007: components.AffixFuzzer7Like | None = None,
-        fuzz2101: components.AffixFuzzer1ArrayLike | None = None,
-        fuzz2102: components.AffixFuzzer2ArrayLike | None = None,
-        fuzz2103: components.AffixFuzzer3ArrayLike | None = None,
-        fuzz2104: components.AffixFuzzer4ArrayLike | None = None,
-        fuzz2105: components.AffixFuzzer5ArrayLike | None = None,
-        fuzz2106: components.AffixFuzzer6ArrayLike | None = None,
-        fuzz2107: components.AffixFuzzer7ArrayLike | None = None,
-    ) -> None:
-        # Required components
-        self.fuzz1001 = components.AffixFuzzer1Array.from_similar(fuzz1001)
-        self.fuzz1002 = components.AffixFuzzer2Array.from_similar(fuzz1002)
-        self.fuzz1003 = components.AffixFuzzer3Array.from_similar(fuzz1003)
-        self.fuzz1004 = components.AffixFuzzer4Array.from_similar(fuzz1004)
-        self.fuzz1005 = components.AffixFuzzer5Array.from_similar(fuzz1005)
-        self.fuzz1006 = components.AffixFuzzer6Array.from_similar(fuzz1006)
-        self.fuzz1007 = components.AffixFuzzer7Array.from_similar(fuzz1007)
-        self.fuzz1101 = components.AffixFuzzer1Array.from_similar(fuzz1101)
-        self.fuzz1102 = components.AffixFuzzer2Array.from_similar(fuzz1102)
-        self.fuzz1103 = components.AffixFuzzer3Array.from_similar(fuzz1103)
-        self.fuzz1104 = components.AffixFuzzer4Array.from_similar(fuzz1104)
-        self.fuzz1105 = components.AffixFuzzer5Array.from_similar(fuzz1105)
-        self.fuzz1106 = components.AffixFuzzer6Array.from_similar(fuzz1106)
-        self.fuzz1107 = components.AffixFuzzer7Array.from_similar(fuzz1107)
-
-        # Optional components
-
-        self.fuzz2001 = components.AffixFuzzer1Array.from_similar(fuzz2001)
-        self.fuzz2002 = components.AffixFuzzer2Array.from_similar(fuzz2002)
-        self.fuzz2003 = components.AffixFuzzer3Array.from_similar(fuzz2003)
-        self.fuzz2004 = components.AffixFuzzer4Array.from_similar(fuzz2004)
-        self.fuzz2005 = components.AffixFuzzer5Array.from_similar(fuzz2005)
-        self.fuzz2006 = components.AffixFuzzer6Array.from_similar(fuzz2006)
-        self.fuzz2007 = components.AffixFuzzer7Array.from_similar(fuzz2007)
-        self.fuzz2101 = components.AffixFuzzer1Array.from_similar(fuzz2101)
-        self.fuzz2102 = components.AffixFuzzer2Array.from_similar(fuzz2102)
-        self.fuzz2103 = components.AffixFuzzer3Array.from_similar(fuzz2103)
-        self.fuzz2104 = components.AffixFuzzer4Array.from_similar(fuzz2104)
-        self.fuzz2105 = components.AffixFuzzer5Array.from_similar(fuzz2105)
-        self.fuzz2106 = components.AffixFuzzer6Array.from_similar(fuzz2106)
-        self.fuzz2107 = components.AffixFuzzer7Array.from_similar(fuzz2107)
+@define(str=False, repr=False)
+class AffixFuzzer1(Archetype):
+    fuzz1001: components.AffixFuzzer1Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer1Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1002: components.AffixFuzzer2Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer2Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1003: components.AffixFuzzer3Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer3Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1004: components.AffixFuzzer4Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer4Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1005: components.AffixFuzzer5Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer5Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1006: components.AffixFuzzer6Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer6Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1007: components.AffixFuzzer7Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer7Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1008: components.AffixFuzzer8Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer8Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1009: components.AffixFuzzer9Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer9Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1010: components.AffixFuzzer10Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer10Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1011: components.AffixFuzzer11Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer11Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1012: components.AffixFuzzer12Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer12Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1013: components.AffixFuzzer13Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer13Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1014: components.AffixFuzzer14Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1016: components.AffixFuzzer16Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer16Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1017: components.AffixFuzzer17Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer17Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1018: components.AffixFuzzer18Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer18Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1101: components.AffixFuzzer1Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer1Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1102: components.AffixFuzzer2Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer2Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1103: components.AffixFuzzer3Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer3Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1104: components.AffixFuzzer4Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer4Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1105: components.AffixFuzzer5Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer5Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1106: components.AffixFuzzer6Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer6Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1107: components.AffixFuzzer7Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer7Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1108: components.AffixFuzzer8Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer8Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1109: components.AffixFuzzer9Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer9Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1110: components.AffixFuzzer10Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer10Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1111: components.AffixFuzzer11Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer11Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1112: components.AffixFuzzer12Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer12Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1113: components.AffixFuzzer13Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer13Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1114: components.AffixFuzzer14Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1116: components.AffixFuzzer16Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer16Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1117: components.AffixFuzzer17Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer17Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1118: components.AffixFuzzer18Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer18Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2001: components.AffixFuzzer1Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer1Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2002: components.AffixFuzzer2Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer2Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2003: components.AffixFuzzer3Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer3Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2004: components.AffixFuzzer4Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer4Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2005: components.AffixFuzzer5Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer5Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2006: components.AffixFuzzer6Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer6Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2007: components.AffixFuzzer7Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer7Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2008: components.AffixFuzzer8Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer8Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2009: components.AffixFuzzer9Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer9Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2010: components.AffixFuzzer10Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer10Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2011: components.AffixFuzzer11Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer11Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2012: components.AffixFuzzer12Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer12Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2013: components.AffixFuzzer13Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer13Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2014: components.AffixFuzzer14Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2016: components.AffixFuzzer16Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer16Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2017: components.AffixFuzzer17Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer17Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2018: components.AffixFuzzer18Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer18Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2101: components.AffixFuzzer1Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer1Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2102: components.AffixFuzzer2Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer2Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2103: components.AffixFuzzer3Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer3Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2104: components.AffixFuzzer4Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer4Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2105: components.AffixFuzzer5Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer5Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2106: components.AffixFuzzer6Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer6Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2107: components.AffixFuzzer7Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer7Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2108: components.AffixFuzzer8Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer8Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2109: components.AffixFuzzer9Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer9Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2110: components.AffixFuzzer10Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer10Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2111: components.AffixFuzzer11Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer11Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2112: components.AffixFuzzer12Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer12Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2113: components.AffixFuzzer13Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer13Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2114: components.AffixFuzzer14Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2116: components.AffixFuzzer16Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer16Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2117: components.AffixFuzzer17Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer17Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2118: components.AffixFuzzer18Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer18Array.from_similar,  # type: ignore[misc]
+    )
+    __str__ = Archetype.__str__
+    __repr__ = Archetype.__repr__

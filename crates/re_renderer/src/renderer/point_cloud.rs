@@ -183,10 +183,7 @@ impl PointCloudDrawData {
     /// Number of vertices and colors has to be equal.
     ///
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
-    pub fn new(
-        ctx: &mut RenderContext,
-        mut builder: PointCloudBuilder,
-    ) -> Result<Self, PointCloudDrawDataError> {
+    pub fn new(ctx: &mut RenderContext, mut builder: PointCloudBuilder) -> Self {
         re_tracing::profile_function!();
 
         let mut renderers = ctx.renderers.write();
@@ -201,11 +198,11 @@ impl PointCloudDrawData {
         let batches = builder.batches.as_slice();
 
         if vertices.is_empty() {
-            return Ok(PointCloudDrawData {
+            return PointCloudDrawData {
                 bind_group_all_points: None,
                 bind_group_all_points_outline_mask: None,
                 batches: Vec::new(),
-            });
+            };
         }
 
         let fallback_batches = [PointCloudBatchInfo {
@@ -491,11 +488,11 @@ impl PointCloudDrawData {
             }
         }
 
-        Ok(PointCloudDrawData {
+        PointCloudDrawData {
             bind_group_all_points: Some(bind_group_all_points),
             bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
-        })
+        }
     }
 }
 

@@ -1,4 +1,3 @@
--r api_demo/requirements.txt
 -r arkit_scenes/requirements.txt
 -r blueprint/requirements.txt
 -r car/requirements.txt
@@ -17,6 +16,7 @@
 -r multithreading/requirements.txt
 -r notebook/requirements.txt
 -r objectron/requirements.txt
+-r open_photogrammetry_format/requirements.txt
 -r plots/requirements.txt
 -r raw_mesh/requirements.txt
 -r rgbd/requirements.txt

@@ -6,10 +6,11 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A vector in 2D space."]
-#[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, PartialOrd)]
 pub struct Vec2D(pub [f32; 2usize]);
 
 impl<'a> From<Vec2D> for ::std::borrow::Cow<'a, Vec2D> {
@@ -36,18 +37,14 @@ impl crate::Datatype for Vec2D {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Extension(
-            "rerun.datatypes.Vec2D".to_owned(),
-            Box::new(DataType::FixedSizeList(
-                Box::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                }),
-                2usize,
-            )),
-            None,
+        DataType::FixedSizeList(
+            Box::new(Field {
+                name: "item".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            }),
+            2usize,
         )
     }
 
@@ -106,6 +103,8 @@ impl crate::Datatype for Vec2D {
                             )),
                             None,
                         )
+                        .to_logical_type()
+                        .clone()
                     },
                     PrimitiveArray::new(
                         {
@@ -115,6 +114,8 @@ impl crate::Datatype for Vec2D {
                                 Box::new(DataType::Float32),
                                 None,
                             )
+                            .to_logical_type()
+                            .clone()
                         },
                         data0_inner_data
                             .into_iter()

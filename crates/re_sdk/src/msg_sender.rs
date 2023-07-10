@@ -1,4 +1,7 @@
-use re_log_types::{DataRow, DataTableError, InstanceKey, RowId, StoreId};
+use re_log_types::{
+    external::arrow2::datatypes::DataType, DataRow, DataTableError, InstanceKey, RowId, StoreId,
+};
+use re_types::Archetype;
 
 use crate::{
     log::DataCell,
@@ -100,6 +103,32 @@ impl MsgSender {
             instanced: Vec::new(),
             splatted: Vec::new(),
         }
+    }
+
+    /// Starts a new `MsgSender` for the given entity path, and fill it with the contents of the
+    /// passed-in [`Archetype`].
+    ///
+    /// WARNING: This is an experimental feature!
+    pub fn from_archetype(
+        ent_path: impl Into<EntityPath>,
+        arch: &impl Archetype,
+    ) -> Result<Self, MsgSenderError> {
+        let serialized = arch.to_arrow();
+
+        let mut this = Self::new(ent_path);
+        for (field, array) in serialized {
+            // NOTE: Unreachable, a top-level Field will always be a component, and thus an
+            // extension.
+            let DataType::Extension(_, _, legacy_fqname) = field.data_type else { unreachable!() };
+            this = this.with_cell(DataCell::from_arrow(
+                // NOTE: Unwrapping is safe as we always include the legacy fqname into the Field's
+                // metadata while migrating towards HOPE.
+                legacy_fqname.as_deref().unwrap().into(),
+                array,
+            ))?;
+        }
+
+        Ok(this)
     }
 
     /// Read the file at the given path and log it.
@@ -291,6 +320,7 @@ impl MsgSender {
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
+    #[allow(clippy::unnecessary_wraps)] // We might want to return errors in the future.
     pub fn send(self, rec_stream: &RecordingStream) -> Result<(), DataTableError> {
         if !rec_stream.is_enabled() {
             return Ok(()); // silently drop the message

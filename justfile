@@ -10,15 +10,24 @@ default:
 
 ### Common
 # Format all of our code
-format: toml-format py-format
+format: cpp-format toml-format py-format
     cargo fmt --all
 
 # Lint all of our code
 lint: toml-lint py-lint rs-lint
 
+### C and C++
+
+cpp-format:
+    #!/usr/bin/env bash
+    fd --extension h --exec clang-format -i
+    fd --extension hpp --exec clang-format -i
+    fd --extension c --exec clang-format -i
+    fd --extension cpp --exec clang-format -i
+
 ### Python
 
-py_folders := "examples rerun_py scripts docs/code-examples"
+py_folders := "docs/code-examples examples rerun_py scripts tests"
 
 # Set up a Pythonvirtual environment for development
 py-dev-env:
@@ -54,7 +63,6 @@ py-build *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
     unset CONDA_PREFIX && \
-        source venv/bin/activate && \
         maturin develop \
             --manifest-path rerun_py/Cargo.toml \
             --extras="tests" \

@@ -6,6 +6,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A String label component."]
@@ -37,11 +38,7 @@ impl crate::Component for Label {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Extension(
-            "rerun.components.Label".to_owned(),
-            Box::new(DataType::Utf8),
-            None,
-        )
+        DataType::Utf8
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -90,6 +87,8 @@ impl crate::Component for Label {
                                 Box::new(DataType::Utf8),
                                 None,
                             )
+                            .to_logical_type()
+                            .clone()
                         },
                         offsets,
                         inner_data,

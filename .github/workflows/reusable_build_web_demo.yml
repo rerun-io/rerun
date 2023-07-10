@@ -59,8 +59,8 @@ jobs:
 
       - name: Install dependencies for examples/python
         run: |
-          pip install -r scripts/requirements-web-demo.txt
-          pip install Jinja2
+          pip install -r scripts/ci/requirements.txt
+          pip install -r scripts/ci/requirements-web-demo.txt
 
       - name: Install built wheel
         shell: bash

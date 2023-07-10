@@ -6,9 +6,38 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A 2D point cloud with positions and optional colors, radii, labels, etc."]
+#[doc = ""]
+#[doc = "## Example"]
+#[doc = ""]
+#[doc = "```ignore"]
+#[doc = "//! Log some very simple points."]
+#[doc = ""]
+#[doc = "use rerun::{"]
+#[doc = "   components::{Rect2D, Vec4D},"]
+#[doc = "   experimental::archetypes::Points2D,"]
+#[doc = "   MsgSender, RecordingStreamBuilder,"]
+#[doc = "};"]
+#[doc = ""]
+#[doc = "fn main() -> Result<(), Box<dyn std::error::Error>> {"]
+#[doc = "   let (rec_stream, storage) = RecordingStreamBuilder::new(\"points\").memory()?;"]
+#[doc = ""]
+#[doc = "   MsgSender::from_archetype(\"points\", &Points2D::new([(0.0, 0.0), (1.0, 1.0)]))?"]
+#[doc = "       .send(&rec_stream)?;"]
+#[doc = ""]
+#[doc = "   // Log an extra rect to set the view bounds"]
+#[doc = "   MsgSender::new(\"bounds\")"]
+#[doc = "       .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 4.0, 3.0]))])?"]
+#[doc = "       .send(&rec_stream)?;"]
+#[doc = ""]
+#[doc = "   rerun::native_viewer::show(storage.take())?;"]
+#[doc = ""]
+#[doc = "   Ok(())"]
+#[doc = "}"]
+#[doc = "```"]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Points2D {
     #[doc = "All the actual 2D points that make up the point cloud."]
@@ -111,7 +140,11 @@ impl crate::Archetype for Points2D {
                     let array =
                         <crate::components::Point2D>::try_to_arrow(self.points.iter(), None);
                     array.map(|array| {
-                        let datatype = array.data_type().clone();
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.Point2D".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.point2d".into()),
+                        );
                         (
                             ::arrow2::datatypes::Field::new("points", datatype, false),
                             array,
@@ -126,7 +159,11 @@ impl crate::Archetype for Points2D {
                     .map(|many| {
                         let array = <crate::components::Radius>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.Radius".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.radius".into()),
+                            );
                             (
                                 ::arrow2::datatypes::Field::new("radii", datatype, false),
                                 array,
@@ -141,7 +178,11 @@ impl crate::Archetype for Points2D {
                     .map(|many| {
                         let array = <crate::components::Color>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.Color".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.colorrgba".into()),
+                            );
                             (
                                 ::arrow2::datatypes::Field::new("colors", datatype, false),
                                 array,
@@ -156,7 +197,11 @@ impl crate::Archetype for Points2D {
                     .map(|many| {
                         let array = <crate::components::Label>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.Label".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.label".into()),
+                            );
                             (
                                 ::arrow2::datatypes::Field::new("labels", datatype, false),
                                 array,
@@ -171,7 +216,11 @@ impl crate::Archetype for Points2D {
                     .map(|single| {
                         let array = <crate::components::DrawOrder>::try_to_arrow([single], None);
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.DrawOrder".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.draw_order".into()),
+                            );
                             (
                                 ::arrow2::datatypes::Field::new("draw_order", datatype, false),
                                 array,
@@ -186,7 +235,11 @@ impl crate::Archetype for Points2D {
                     .map(|many| {
                         let array = <crate::components::ClassId>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.ClassId".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.class_id".into()),
+                            );
                             (
                                 ::arrow2::datatypes::Field::new("class_ids", datatype, false),
                                 array,
@@ -202,7 +255,11 @@ impl crate::Archetype for Points2D {
                         let array =
                             <crate::components::KeypointId>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.KeypointId".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.keypoint_id".into()),
+                            );
                             (
                                 ::arrow2::datatypes::Field::new("keypoint_ids", datatype, false),
                                 array,
@@ -218,7 +275,11 @@ impl crate::Archetype for Points2D {
                         let array =
                             <crate::components::InstanceKey>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.InstanceKey".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.instance_key".into()),
+                            );
                             (
                                 ::arrow2::datatypes::Field::new("instance_keys", datatype, false),
                                 array,

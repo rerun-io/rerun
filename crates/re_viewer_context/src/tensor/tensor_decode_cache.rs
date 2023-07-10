@@ -92,7 +92,7 @@ impl Cache for TensorDecodeCache {
             retain
         });
 
-        re_log::debug!(
+        re_log::trace!(
             "Flushed tensor decode cache. Before: {:.2} GB. After: {:.2} GB",
             before as f64 / 1e9,
             self.memory_used as f64 / 1e9,

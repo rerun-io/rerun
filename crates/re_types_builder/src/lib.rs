@@ -113,6 +113,8 @@
 )]
 mod reflection;
 
+use anyhow::Context;
+
 pub use self::reflection::reflection::{
     root_as_schema, BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal,
     Field as FbsField, KeyValue as FbsKeyValue, Object as FbsObject, Schema as FbsSchema,
@@ -136,6 +138,10 @@ pub use self::objects::{
 
 // --- Attributes ---
 
+pub const ATTR_NULLABLE: &str = "nullable";
+pub const ATTR_ORDER: &str = "order";
+pub const ATTR_TRANSPARENT: &str = "transparent";
+
 pub const ATTR_ARROW_TRANSPARENT: &str = "attr.arrow.transparent";
 pub const ATTR_ARROW_SPARSE_UNION: &str = "attr.arrow.sparse_union";
 
@@ -144,7 +150,6 @@ pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recomme
 pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
 pub const ATTR_RERUN_LEGACY_FQNAME: &str = "attr.rerun.legacy_fqname";
 
-pub const ATTR_PYTHON_TRANSPARENT: &str = "attr.python.transparent";
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
 pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
 
@@ -154,7 +159,7 @@ pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
 
 // --- Entrypoints ---
 
-use std::path::{Path, PathBuf};
+use camino::{Utf8Path, Utf8PathBuf};
 
 /// Compiles binary reflection dumps from flatbuffers definitions.
 ///
@@ -175,13 +180,13 @@ use std::path::{Path, PathBuf};
 /// );
 /// ```
 pub fn compile_binary_schemas(
-    include_dir_path: impl AsRef<Path>,
-    output_dir_path: impl AsRef<Path>,
-    entrypoint_path: impl AsRef<Path>,
+    include_dir_path: impl AsRef<Utf8Path>,
+    output_dir_path: impl AsRef<Utf8Path>,
+    entrypoint_path: impl AsRef<Utf8Path>,
 ) {
-    let include_dir_path = include_dir_path.as_ref().to_str().unwrap();
-    let output_dir_path = output_dir_path.as_ref().to_str().unwrap();
-    let entrypoint_path = entrypoint_path.as_ref().to_str().unwrap();
+    let include_dir_path = include_dir_path.as_ref().as_str();
+    let output_dir_path = output_dir_path.as_ref().as_str();
+    let entrypoint_path = entrypoint_path.as_ref().as_str();
 
     use xshell::{cmd, Shell};
     let sh = Shell::new().unwrap();
@@ -201,26 +206,34 @@ pub fn compile_binary_schemas(
 /// 2. Run the semantic pass
 /// 3. Compute the Arrow registry
 fn generate_lang_agnostic(
-    include_dir_path: impl AsRef<Path>,
-    entrypoint_path: impl AsRef<Path>,
+    include_dir_path: impl AsRef<Utf8Path>,
+    entrypoint_path: impl AsRef<Utf8Path>,
 ) -> (Objects, ArrowRegistry) {
     use xshell::Shell;
 
     let sh = Shell::new().unwrap();
     let tmp = sh.create_temp_dir().unwrap();
+    let tmp_path = Utf8PathBuf::try_from(tmp.path().to_path_buf()).unwrap();
 
     let entrypoint_path = entrypoint_path.as_ref();
     let entrypoint_filename = entrypoint_path.file_name().unwrap();
 
-    // generate bfbs definitions
-    compile_binary_schemas(include_dir_path, tmp.path(), entrypoint_path);
+    let include_dir_path = include_dir_path.as_ref();
+    let include_dir_path = include_dir_path
+        .canonicalize_utf8()
+        .with_context(|| format!("failed to canonicalize include path: {include_dir_path:?}"))
+        .unwrap();
 
-    let mut binary_entrypoint_path = PathBuf::from(entrypoint_filename);
+    // generate bfbs definitions
+    compile_binary_schemas(&include_dir_path, &tmp_path, entrypoint_path);
+
+    let mut binary_entrypoint_path = Utf8PathBuf::from(entrypoint_filename);
     binary_entrypoint_path.set_extension("bfbs");
 
     // semantic pass: high level objects from low-level reflection data
     let mut objects = Objects::from_buf(
-        sh.read_binary_file(tmp.path().join(binary_entrypoint_path))
+        include_dir_path,
+        sh.read_binary_file(tmp_path.join(binary_entrypoint_path))
             .unwrap()
             .as_slice(),
     );
@@ -251,14 +264,13 @@ fn generate_lang_agnostic(
 /// );
 /// ```
 pub fn generate_rust_code(
-    include_dir_path: impl AsRef<Path>,
-    output_crate_path: impl AsRef<Path>,
-    entrypoint_path: impl AsRef<Path>,
+    include_dir_path: impl AsRef<Utf8Path>,
+    output_crate_path: impl AsRef<Utf8Path>,
+    entrypoint_path: impl AsRef<Utf8Path>,
 ) {
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
 
-    // generate rust code
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
     let _filepaths = gen.generate(&objects, &arrow_registry);
 }
@@ -280,9 +292,9 @@ pub fn generate_rust_code(
 /// );
 /// ```
 pub fn generate_python_code(
-    include_dir_path: impl AsRef<Path>,
-    output_pkg_path: impl AsRef<Path>,
-    entrypoint_path: impl AsRef<Path>,
+    include_dir_path: impl AsRef<Utf8Path>,
+    output_pkg_path: impl AsRef<Utf8Path>,
+    entrypoint_path: impl AsRef<Utf8Path>,
 ) {
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);

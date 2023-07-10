@@ -7,7 +7,7 @@ use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
 /// A grouping of several data-blueprints.
-#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct DataBlueprintGroup {
     pub display_name: String,
 
@@ -31,9 +31,29 @@ pub struct DataBlueprintGroup {
     pub entities: BTreeSet<EntityPath>,
 }
 
+impl DataBlueprintGroup {
+    /// Determine whether this `DataBlueprints` has user-edits relative to another `DataBlueprints`
+    fn has_edits(&self, other: &Self) -> bool {
+        let Self {
+            display_name,
+            properties_individual,
+            properties_projected: _,
+            parent,
+            children,
+            entities,
+        } = self;
+
+        display_name != &other.display_name
+            || properties_individual.has_edits(&other.properties_individual)
+            || parent != &other.parent
+            || children != &other.children
+            || entities != &other.entities
+    }
+}
+
 /// Data blueprints for all entity paths in a space view.
-#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
-struct DataBlueprints {
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+pub struct DataBlueprints {
     /// Individual settings. Mutate this.
     individual: EntityPropertyMap,
 
@@ -42,6 +62,19 @@ struct DataBlueprints {
     /// Recalculated at the start of each frame from [`Self::individual`].
     #[cfg_attr(feature = "serde", serde(skip))]
     projected: EntityPropertyMap,
+}
+
+// Manually implement `PartialEq` since projected is serde skip
+impl DataBlueprints {
+    /// Determine whether this `DataBlueprints` has user-edits relative to another `DataBlueprints`
+    fn has_edits(&self, other: &Self) -> bool {
+        let Self {
+            individual,
+            projected: _,
+        } = self;
+
+        individual.has_edits(&other.individual)
+    }
 }
 
 /// Tree of all data blueprint groups for a single space view.
@@ -71,9 +104,9 @@ pub struct DataBlueprintTree {
     data_blueprints: DataBlueprints,
 }
 
-// Manually implement PartialEq since slotmap doesn't
-impl PartialEq for DataBlueprintTree {
-    fn eq(&self, other: &Self) -> bool {
+/// Determine whether this `DataBlueprintTree` has user-edits relative to another `DataBlueprintTree`
+impl DataBlueprintTree {
+    pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             groups,
             path_to_group,
@@ -82,12 +115,17 @@ impl PartialEq for DataBlueprintTree {
             data_blueprints,
         } = self;
 
-        // Note: this could fail unexpectedly if slotmap iteration order is unstable.
-        groups.iter().zip(other.groups.iter()).all(|(x, y)| x == y)
-            && *path_to_group == other.path_to_group
-            && *entity_paths == other.entity_paths
-            && *root_group_handle == other.root_group_handle
-            && *data_blueprints == other.data_blueprints
+        groups.len() != other.groups.len()
+            || groups.iter().any(|(key, val)| {
+                other
+                    .groups
+                    .get(key)
+                    .map_or(true, |other_val| val.has_edits(other_val))
+            })
+            || *path_to_group != other.path_to_group
+            || *entity_paths != other.entity_paths
+            || *root_group_handle != other.root_group_handle
+            || data_blueprints.has_edits(&other.data_blueprints)
     }
 }
 

@@ -678,7 +678,7 @@ impl DataTable {
             COLUMN_NUM_INSTANCES,
             col_num_instances.as_slice(),
             None,
-        )?;
+        );
         schema.fields.push(num_instances_field);
         columns.push(num_instances_column);
 
@@ -730,7 +730,7 @@ impl DataTable {
         name: &str,
         values: &[T],
         datatype: Option<DataType>,
-    ) -> DataTableResult<(Field, Box<dyn Array>)> {
+    ) -> (Field, Box<dyn Array>) {
         re_tracing::profile_function!();
 
         let data = PrimitiveArray::from_slice(values);
@@ -747,7 +747,7 @@ impl DataTable {
                 .extend([("ARROW:extension:name".to_owned(), name)]);
         }
 
-        Ok((field, data))
+        (field, data)
     }
 
     /// Serializes all data columns into an arrow payload and schema.
@@ -1055,5 +1055,104 @@ impl std::fmt::Display for DataTable {
             schema.fields.iter().map(|field| field.name.as_str()),
         )
         .fmt(f)
+    }
+}
+
+impl DataTable {
+    /// Checks whether two [`DataTable`]s are _similar_, i.e. not equal on a byte-level but
+    /// functionally equivalent.
+    ///
+    /// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
+    pub fn similar(table1: &DataTable, table2: &DataTable) -> anyhow::Result<()> {
+        /// Given a [`DataTable`], returns all of its rows sorted by timeline.
+        fn compute_rows(table: &DataTable) -> HashMap<Timeline, Vec<DataRow>> {
+            let mut rows_by_timeline: HashMap<Timeline, Vec<DataRow>> = Default::default();
+
+            let rows = table.to_rows().flat_map(|row| {
+                row.timepoint
+                    .iter()
+                    .map(|(timeline, time)| {
+                        let mut row = row.clone();
+                        row.timepoint = TimePoint::from([(*timeline, *time)]);
+                        (*timeline, row)
+                    })
+                    .collect_vec()
+            });
+
+            for (timeline, row) in rows {
+                rows_by_timeline.entry(timeline).or_default().push(row);
+            }
+
+            rows_by_timeline
+        }
+
+        let mut rows_by_timeline1 = compute_rows(table1);
+        let mut rows_by_timeline2 = compute_rows(table2);
+
+        for timeline1 in rows_by_timeline1.keys() {
+            anyhow::ensure!(
+                rows_by_timeline2.contains_key(timeline1),
+                "timeline {timeline1:?} was present in the first rrd file but not in the second",
+            );
+        }
+        for timeline2 in rows_by_timeline2.keys() {
+            anyhow::ensure!(
+                rows_by_timeline1.contains_key(timeline2),
+                "timeline {timeline2:?} was present in the second rrd file but not in the first",
+            );
+        }
+
+        // NOTE: Can't compare `log_time`, by definition.
+        rows_by_timeline1.remove(&Timeline::log_time());
+        rows_by_timeline2.remove(&Timeline::log_time());
+
+        for (timeline, rows1) in &mut rows_by_timeline1 {
+            let rows2 = rows_by_timeline2.get_mut(timeline).unwrap(); // safe
+
+            // NOTE: We need both sets of rows to follow a common natural order for the comparison
+            // to make sense.
+            rows1.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
+            rows2.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
+
+            anyhow::ensure!(
+                rows1.len() == rows2.len(),
+                "rrd files yielded different number of datastore rows for timeline {timeline:?}: {} vs. {}",
+                rows1.len(),
+                rows2.len()
+            );
+
+            for (ri, (row1, row2)) in rows1.iter().zip(rows2).enumerate() {
+                let DataRow {
+                    row_id: _,
+                    timepoint: timepoint1,
+                    entity_path: entity_path1,
+                    num_instances: num_instances1,
+                    cells: cells1,
+                } = row1;
+                let DataRow {
+                    row_id: _,
+                    timepoint: timepoint2,
+                    entity_path: entity_path2,
+                    num_instances: num_instances2,
+                    cells: cells2,
+                } = row2;
+
+                anyhow::ensure!(
+                    timepoint1 == timepoint2
+                        && entity_path1 == entity_path2
+                        && num_instances1 == num_instances2
+                        && cells1 == cells2,
+                    "Found discrepancy in row #{ri}:\n{}",
+                    similar_asserts::SimpleDiff::from_str(
+                        &row1.to_string(),
+                        &row2.to_string(),
+                        "row1",
+                        "row2"
+                    )
+                );
+            }
+        }
+
+        Ok(())
     }
 }

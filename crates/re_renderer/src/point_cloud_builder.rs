@@ -1,10 +1,7 @@
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
     draw_phases::PickingLayerObjectId,
-    renderer::{
-        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        PointCloudVertex,
-    },
+    renderer::{PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudVertex},
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
     Size,
 };
@@ -100,10 +97,7 @@ impl PointCloudBuilder {
     }
 
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
-    pub fn to_draw_data(
-        self,
-        ctx: &mut crate::context::RenderContext,
-    ) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
+    pub fn into_draw_data(self, ctx: &mut crate::context::RenderContext) -> PointCloudDrawData {
         PointCloudDrawData::new(ctx, self)
     }
 }

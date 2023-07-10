@@ -1,3 +1,4 @@
+include "./datatypes/point2d.fbs";
 include "./datatypes/vec2d.fbs";
 
 namespace rerun.datatypes;

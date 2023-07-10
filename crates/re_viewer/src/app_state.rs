@@ -7,7 +7,7 @@ use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
-use re_viewport::{SpaceInfoCollection, ViewportBlueprint, ViewportState};
+use re_viewport::{SpaceInfoCollection, Viewport, ViewportState};
 
 use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
 
@@ -83,8 +83,6 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
-        let mut blueprint = ViewportBlueprint::from_db(store_context.blueprint);
-
         let Self {
             app_options,
             cache,
@@ -94,6 +92,8 @@ impl AppState {
             viewport_state,
         } = self;
 
+        let mut viewport = Viewport::from_db(store_context.blueprint, viewport_state);
+
         recording_config_entry(
             recording_configs,
             store_db.store_id().clone(),
@@ -101,7 +101,7 @@ impl AppState {
             store_db,
         )
         .selection_state
-        .on_frame_start(|item| blueprint.is_item_valid(item));
+        .on_frame_start(|item| viewport.is_item_valid(item));
 
         let rec_cfg = recording_config_entry(
             recording_configs,
@@ -125,10 +125,9 @@ impl AppState {
 
         time_panel.show_panel(&mut ctx, ui, app_blueprint.time_panel_expanded);
         selection_panel.show_panel(
-            viewport_state,
             &mut ctx,
             ui,
-            &mut blueprint,
+            &mut viewport,
             app_blueprint.selection_panel_expanded,
         );
 
@@ -141,14 +140,12 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show_inside(ui, |ui| {
-                re_tracing::profile_function!();
-
                 let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
 
-                blueprint.viewport.on_frame_start(&mut ctx, &spaces_info);
+                viewport.on_frame_start(&mut ctx, &spaces_info);
 
                 blueprint_panel_ui(
-                    &mut blueprint,
+                    &mut viewport.blueprint,
                     &mut ctx,
                     ui,
                     &spaces_info,
@@ -163,16 +160,16 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
-                        blueprint.viewport.viewport_ui(viewport_state, ui, &mut ctx);
+                        viewport.viewport_ui(ui, &mut ctx);
                     });
 
                 // If the viewport was user-edited, then disable auto space views
-                if blueprint.viewport.has_been_user_edited {
-                    blueprint.viewport.auto_space_views = false;
+                if viewport.blueprint.has_been_user_edited {
+                    viewport.blueprint.auto_space_views = false;
                 }
             });
 
-        blueprint.sync_changes(command_sender);
+        viewport.sync_blueprint_changes(command_sender);
 
         {
             // We move the time at the very end of the frame,

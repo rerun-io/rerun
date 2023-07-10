@@ -20,7 +20,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_component(&[Tensor::try_from(image.as_standard_layout().view())?])?
         .send(&rec_stream)?;
 
-    rec_stream.flush_blocking();
     rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

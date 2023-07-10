@@ -7,6 +7,7 @@ import argparse
 import os
 import socket
 import subprocess
+import sys
 import time
 from glob import glob
 from pathlib import Path
@@ -25,6 +26,18 @@ HAS_NO_SAVE_ARG = {
     "examples/python/minimal",
     "examples/python/multiprocessing",
 }
+
+MIN_PYTHON_REQUIREMENTS: dict[str : tuple[int, int]] = {
+    # pyopf requires Python 3.10
+    "examples/python/open_photogrammetry_format": (3, 10),
+}
+
+SKIP_LIST = [
+    # depth_sensor requires a specific piece of hardware to be attached
+    "examples/python/live_depth_sensor",
+    # ros requires complex system dependencies to be installed
+    "examples/python/ros_node",
+]
 
 
 def start_process(args: list[str], *, wait: bool) -> Any:
@@ -76,9 +89,9 @@ def get_free_port() -> int:
 
 def collect_examples(fast: bool) -> list[str]:
     if fast:
-        # cherry picked
+        # cherry-picked
         return [
-            "examples/python/api_demo",
+            "tests/python/test_api",
             "examples/python/car",
             "examples/python/clock",
             "examples/python/dicom_mri",
@@ -90,16 +103,22 @@ def collect_examples(fast: bool) -> list[str]:
             "examples/python/text_logging",
         ]
     else:
-        skip_list = [
-            # depth_sensor requires a specific piece of hardware to be attached
-            "examples/python/live_depth_sensor/main.py",
-            # ros requires complex system dependencies to be installed
-            "examples/python/ros_node/main.py",
-        ]
+        examples = []
+        for main_path in glob("examples/python/**/main.py"):
+            example = os.path.dirname(main_path)
 
-        return [
-            os.path.dirname(main_path) for main_path in glob("examples/python/**/main.py") if main_path not in skip_list
-        ]
+            if example in SKIP_LIST:
+                continue
+
+            if example in MIN_PYTHON_REQUIREMENTS:
+                req_major, req_minor = MIN_PYTHON_REQUIREMENTS[example]
+                major, minor, *_ = sys.version_info
+                if major < req_major or (major == req_major and minor < req_minor):
+                    continue
+
+            examples.append(example)
+
+        return examples
 
 
 def print_example_output(path: str, example: Any) -> None:

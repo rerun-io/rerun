@@ -2,34 +2,41 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Sequence, Union
+from typing import Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
+
+from .._baseclasses import (
+    BaseExtensionArray,
+    BaseExtensionType,
+)
+from ._overrides import classid_native_to_pa_array  # noqa: F401
 
 __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
 
 
-## --- ClassId --- ##
-
-
-@dataclass
+@define
 class ClassId:
     """A 16-bit ID representing a type of semantic class."""
 
-    id: int
+    id: int = field()
 
-    def __array__(self) -> npt.ArrayLike:
-        return np.asarray(self.id)
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+        return np.asarray(self.id, dtype=dtype)
+
+    def __int__(self) -> int:
+        return int(self.id)
 
 
 ClassIdLike = Union[ClassId, int]
 
 ClassIdArrayLike = Union[
-    ClassIdLike,
+    ClassId,
     Sequence[ClassIdLike],
+    int,
     npt.NDArray[np.uint8],
     npt.NDArray[np.uint16],
     npt.NDArray[np.uint32],
@@ -39,43 +46,22 @@ ClassIdArrayLike = Union[
 
 # --- Arrow support ---
 
-from .class_id_ext import ClassIdArrayExt  # noqa: E402
 
-
-class ClassIdType(pa.ExtensionType):  # type: ignore[misc]
-    def __init__(self: type[pa.ExtensionType]) -> None:
+class ClassIdType(BaseExtensionType):
+    def __init__(self) -> None:
         pa.ExtensionType.__init__(self, pa.uint16(), "rerun.class_id")
 
-    def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
-        # since we don't have a parameterized type, we don't need extra metadata to be deserialized
-        return b""
 
-    @classmethod
-    def __arrow_ext_deserialize__(
-        cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
-    ) -> type[pa.ExtensionType]:
-        # return an instance of this subclass given the serialized metadata.
-        return ClassIdType()
+class ClassIdArray(BaseExtensionArray[ClassIdArrayLike]):
+    _EXTENSION_NAME = "rerun.class_id"
+    _EXTENSION_TYPE = ClassIdType
 
-    def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
-        return ClassIdArray
+    @staticmethod
+    def _native_to_pa_array(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:
+        return classid_native_to_pa_array(data, data_type)
 
+
+ClassIdType._ARRAY_TYPE = ClassIdArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassIdType())
-
-
-class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]
-    @staticmethod
-    def from_similar(data: ClassIdArrayLike | None) -> pa.Array:
-        if data is None:
-            return ClassIdType().wrap_array(pa.array([], type=ClassIdType().storage_type))
-        else:
-            return ClassIdArrayExt._from_similar(
-                data,
-                mono=ClassId,
-                mono_aliases=ClassIdLike,
-                many=ClassIdArray,
-                many_aliases=ClassIdArrayLike,
-                arrow=ClassIdType,
-            )

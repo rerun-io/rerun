@@ -1,14 +1,13 @@
 //! Implements the Rust codegen pass.
 
+use std::{collections::HashMap, io::Write};
+
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use std::{
-    collections::HashMap,
-    io::Write,
-    path::{Path, PathBuf},
-};
+
+use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
@@ -24,11 +23,11 @@ use crate::{
 // ---
 
 pub struct RustCodeGenerator {
-    crate_path: PathBuf,
+    crate_path: Utf8PathBuf,
 }
 
 impl RustCodeGenerator {
-    pub fn new(crate_path: impl Into<PathBuf>) -> Self {
+    pub fn new(crate_path: impl Into<Utf8PathBuf>) -> Self {
         Self {
             crate_path: crate_path.into(),
         }
@@ -36,7 +35,7 @@ impl RustCodeGenerator {
 }
 
 impl CodeGenerator for RustCodeGenerator {
-    fn generate(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
+    fn generate(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<Utf8PathBuf> {
         let mut filepaths = Vec::new();
 
         let datatypes_path = self.crate_path.join("src/datatypes");
@@ -79,16 +78,16 @@ impl CodeGenerator for RustCodeGenerator {
 // --- File management ---
 
 fn create_files(
-    out_path: impl AsRef<Path>,
+    out_path: impl AsRef<Utf8Path>,
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     objs: &[&Object],
-) -> Vec<PathBuf> {
+) -> Vec<Utf8PathBuf> {
     let out_path = out_path.as_ref();
 
     let mut filepaths = Vec::new();
 
-    let mut files = HashMap::<PathBuf, Vec<QuotedObject>>::new();
+    let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
         let obj = if obj.is_struct() {
             QuotedObject::from_struct(arrow_registry, objects, obj)
@@ -108,7 +107,7 @@ fn create_files(
         // NOTE: Isolating the file stem only works because we're handling datatypes, components
         // and archetypes separately (and even then it's a bit shady, eh).
         let names = objs.iter().map(|obj| obj.name.clone()).collect::<Vec<_>>();
-        mods.entry(filepath.file_stem().unwrap().to_string_lossy().to_string())
+        mods.entry(filepath.file_stem().unwrap().to_owned())
             .or_default()
             .extend(names);
 
@@ -125,14 +124,42 @@ fn create_files(
         code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
         code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
         code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
+        code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
         code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
 
         for obj in objs {
-            let tokens_str = obj.tokens.to_string();
+            let mut acc = TokenStream::new();
 
             // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
-            // inject some of our own when writing to file.
-            let tokens_str = tokens_str
+            // inject some of our own when writing to file... while making sure that don't inject
+            // random spacing into doc comments that look like code!
+
+            let mut tokens = obj.tokens.into_iter();
+            while let Some(token) = tokens.next() {
+                match &token {
+                    // If this is a doc-comment block, be smart about it.
+                    proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
+                        let tokens_str = acc
+                            .to_string()
+                            .replace('}', "}\n\n")
+                            .replace("] ;", "];\n\n")
+                            .replace("# [doc", "\n\n#[doc")
+                            .replace("impl ", "\n\nimpl ");
+                        code.push_text(tokens_str, 1, 0);
+                        acc = TokenStream::new();
+
+                        acc.extend([token, tokens.next().unwrap()]);
+                        code.push_text(acc.to_string(), 1, 0);
+                        acc = TokenStream::new();
+                    }
+                    _ => {
+                        acc.extend([token]);
+                    }
+                }
+            }
+
+            let tokens_str = acc
+                .to_string()
                 .replace('}', "}\n\n")
                 .replace("] ;", "];\n\n")
                 .replace("# [doc", "\n\n#[doc")
@@ -185,7 +212,7 @@ fn create_files(
 
 #[derive(Debug, Clone)]
 struct QuotedObject {
-    filepath: PathBuf,
+    filepath: Utf8PathBuf,
     name: String,
     tokens: TokenStream,
 }
@@ -195,13 +222,15 @@ impl QuotedObject {
         assert!(obj.is_struct());
 
         let Object {
-            filepath,
+            virtpath,
+            filepath: _,
             fqname: _,
             pkg_name: _,
             name,
             docs,
             kind: _,
             attrs: _,
+            order: _,
             fields,
             specifics: _,
             datatype: _,
@@ -221,7 +250,7 @@ impl QuotedObject {
         let quoted_struct = if is_tuple_struct {
             quote! { pub struct #name(#(#quoted_fields,)*); }
         } else {
-            quote! { pub struct #name { #(#quoted_fields,)* } }
+            quote! { pub struct #name { #(#quoted_fields,)* }}
         };
 
         let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
@@ -241,7 +270,7 @@ impl QuotedObject {
 
         Self {
             filepath: {
-                let mut filepath = PathBuf::from(filepath);
+                let mut filepath = Utf8PathBuf::from(virtpath);
                 filepath.set_extension("rs");
                 filepath
             },
@@ -254,13 +283,15 @@ impl QuotedObject {
         assert!(!obj.is_struct());
 
         let Object {
-            filepath,
+            virtpath,
+            filepath: _,
             fqname: _,
             pkg_name: _,
             name,
             docs,
             kind: _,
             attrs: _,
+            order: _,
             fields,
             specifics: _,
             datatype: _,
@@ -274,6 +305,7 @@ impl QuotedObject {
 
         let quoted_fields = fields.iter().map(|obj_field| {
             let ObjectField {
+                virtpath: _,
                 filepath: _,
                 fqname: _,
                 pkg_name: _,
@@ -281,15 +313,22 @@ impl QuotedObject {
                 docs,
                 typ: _,
                 attrs: _,
-                is_nullable: _,
+                order: _,
+                is_nullable,
                 is_deprecated: _,
                 datatype: _,
             } = obj_field;
 
-            let name = format_ident!("{name}");
+            use convert_case::{Case, Casing};
+            let name = format_ident!("{}", name.to_case(Case::UpperCamel));
 
             let quoted_doc = quote_doc_from_docs(docs);
             let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
+            let quoted_type = if *is_nullable {
+                quote!(Option<#quoted_type>)
+            } else {
+                quoted_type
+            };
 
             quote! {
                 #quoted_doc
@@ -312,7 +351,7 @@ impl QuotedObject {
 
         Self {
             filepath: {
-                let mut filepath = PathBuf::from(filepath);
+                let mut filepath = Utf8PathBuf::from(virtpath);
                 filepath.set_extension("rs");
                 filepath
             },
@@ -331,6 +370,7 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
         let Self(obj, obj_field) = self;
 
         let ObjectField {
+            virtpath: _,
             filepath: _,
             pkg_name: _,
             fqname: _,
@@ -338,6 +378,7 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
             docs,
             typ: _,
             attrs: _,
+            order: _,
             is_nullable,
             // TODO(#2366): support for deprecation notices
             is_deprecated: _,
@@ -460,6 +501,11 @@ fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenSt
     let quoted = obj
         .try_get_attr::<String>(attr)
         .map(|what| {
+            let what = if clause == "derive" {
+                format!("Debug, Clone, {what}")
+            } else {
+                what
+            };
             syn::parse_str::<syn::MetaList>(&format!("{clause}({what})"))
                 .with_context(|| format!("illegal meta clause: {what:?}"))
                 .unwrap()
@@ -474,6 +520,7 @@ fn quote_trait_impls_from_obj(
     obj: &Object,
 ) -> TokenStream {
     let Object {
+        virtpath: _,
         filepath: _,
         fqname,
         pkg_name: _,
@@ -481,6 +528,7 @@ fn quote_trait_impls_from_obj(
         docs: _,
         kind,
         attrs: _,
+        order: _,
         fields: _,
         specifics: _,
         datatype: _,
@@ -605,9 +653,23 @@ fn quote_trait_impls_from_obj(
                     let component = format_ident!("{}", component.rsplit_once('.').unwrap().1);
                     let component = quote!(crate::components::#component);
 
+                    let fqname = obj_field.typ.fqname().unwrap();
+                    let legacy_fqname = objects
+                        .get(fqname)
+                        .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
+                        .unwrap_or_else(|| fqname.to_owned());
+
                     let extract_datatype_and_return = quote! {
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            // NOTE: Temporarily injecting the extension metadata as well as the
+                            // legacy fully-qualified name into the `Field` object so we can work
+                            // around `arrow2-convert` limitations and map to old names while we're
+                            // migrating.
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                #fqname.into(),
+                                Box::new(array.data_type().clone()),
+                                Some(#legacy_fqname.into()),
+                            );
                             (::arrow2::datatypes::Field::new(#field_name_str, datatype, false), array)
                         })
                     };
@@ -776,6 +838,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
     }
 
     let Object {
+        virtpath: _,
         filepath: _,
         fqname: _,
         pkg_name: _,
@@ -783,6 +846,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
         docs: _,
         kind: _,
         attrs: _,
+        order: _,
         fields,
         specifics: _,
         datatype: _,
@@ -879,7 +943,8 @@ struct ArrowDataTypeTokenizer<'a>(&'a ::arrow2::datatypes::DataType);
 impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use arrow2::datatypes::UnionMode;
-        match self.0 {
+        // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
+        match self.0.to_logical_type() {
             DataType::Null => quote!(DataType::Null),
             DataType::Boolean => quote!(DataType::Boolean),
             DataType::Int8 => quote!(DataType::Int8),
@@ -914,7 +979,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                     UnionMode::Dense => quote!(UnionMode::Dense),
                     UnionMode::Sparse => quote!(UnionMode::Sparse),
                 };
-                quote!(DataType::Union(#(#fields,)*, None, #mode))
+                quote!(DataType::Union(vec![ #(#fields,)* ], None, #mode))
             }
 
             DataType::Struct(fields) => {
@@ -1006,11 +1071,13 @@ fn quote_arrow_serializer(
     let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
     let fqname_use = quote_fqname_as_type_path(fqname);
     let quoted_datatype = quote! {
-        if let Some(ext) = extension_wrapper {
+        (if let Some(ext) = extension_wrapper {
             DataType::Extension(ext.to_owned(), Box::new(<#fqname_use>::to_arrow_datatype()), None)
         } else {
             <#fqname_use>::to_arrow_datatype()
-        }
+        })
+        // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
+        .to_logical_type().clone()
     };
 
     let is_arrow_transparent = obj.datatype.is_none();
@@ -1070,7 +1137,7 @@ fn quote_arrow_serializer(
 
         let quoted_flatten = quoted_flatten(obj_field.is_nullable);
 
-        quote! { {
+        quote! {{
             let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
                 .into_iter()
                 .map(|datum| {
@@ -1091,7 +1158,7 @@ fn quote_arrow_serializer(
             #quoted_bitmap;
 
             #quoted_serializer
-        } }
+        }}
     } else {
         let data_src = data_src.clone();
 
@@ -1114,7 +1181,7 @@ fn quote_arrow_serializer(
 
                     let quoted_bitmap = quoted_bitmap(bitmap_dst);
 
-                    quote! { {
+                    quote! {{
                         let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
                             .iter()
                             .map(|datum| {
@@ -1134,12 +1201,12 @@ fn quote_arrow_serializer(
                         #quoted_bitmap;
 
                         #quoted_serializer
-                    } }
+                    }}
                 });
 
                 let quoted_bitmap = quoted_bitmap(format_ident!("bitmap"));
 
-                quote! { {
+                quote! {{
                     let (somes, #data_src): (Vec<_>, Vec<_>) = #data_src
                         .into_iter()
                         .map(|datum| {
@@ -1155,7 +1222,125 @@ fn quote_arrow_serializer(
                         vec![#(#quoted_field_serializers,)*],
                         bitmap,
                     ).boxed()
-                } }
+                }}
+            }
+            DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
+                let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
+                    let data_dst = format_ident!("{}", obj_field.name);
+                    let bitmap_dst = format_ident!("{data_dst}_bitmap");
+
+                    let quoted_serializer = quote_arrow_field_serializer(
+                        None,
+                        &arrow_registry.get(&obj_field.fqname),
+                        obj_field.is_nullable,
+                        &bitmap_dst,
+                        &data_dst,
+                    );
+
+                    let quoted_flatten = quoted_flatten(obj_field.is_nullable);
+                    let quoted_bitmap = quoted_bitmap(bitmap_dst);
+
+                    let quoted_obj_name = format_ident!("{}", obj.name);
+                    let quoted_obj_field_name = {
+                        use convert_case::{Case, Casing};
+                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
+                    };
+
+                    quote! {{
+                        let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
+                            .iter()
+                            .flatten() // NOTE: unions cannot ever be nullable at top-level
+                            .filter(|datum| matches!(***datum, #quoted_obj_name::#quoted_obj_field_name(_)))
+                            .map(|datum| {
+                                let datum = match &**datum {
+                                    #quoted_obj_name::#quoted_obj_field_name(v) => Some(v.clone()),
+                                    _ => None,
+                                } #quoted_flatten ;
+
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+
+
+                        #quoted_bitmap;
+
+                        #quoted_serializer
+                    }}
+                });
+
+                let quoted_types = {
+                    let quoted_obj_name = format_ident!("{}", obj.name);
+                    let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
+                        let i = i as i8;
+                        let quoted_obj_field_name = {
+                            use convert_case::{Case, Casing};
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
+                        };
+                        quote!(#quoted_obj_name::#quoted_obj_field_name(_) => #i)
+                    });
+
+                    quote! {{
+                        #data_src
+                            .iter()
+                            .flatten()
+                            .map(|v| match **v {
+                                #(#quoted_branches,)*
+                            })
+                            .collect()
+                    }}
+                };
+
+                let quoted_offsets = {
+                    let quoted_obj_name = format_ident!("{}", obj.name);
+
+                    let quoted_counters = obj.fields.iter().map(|obj_field| {
+                        let quoted_obj_field_name = format_ident!("{}_offset", obj_field.name);
+                        quote!(let mut #quoted_obj_field_name = 0)
+                    });
+
+                    let quoted_branches = obj.fields.iter().map(|obj_field| {
+                        let quoted_counter_name = format_ident!("{}_offset", obj_field.name);
+                        let quoted_obj_field_name = {
+                            use convert_case::{Case, Casing};
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
+                        };
+                        quote! {
+                            #quoted_obj_name::#quoted_obj_field_name(_) => {
+                                let offset = #quoted_counter_name;
+                                #quoted_counter_name += 1;
+                                offset
+                            }
+                        }
+                    });
+
+                    quote! {{
+                        #(#quoted_counters;)*
+                        #data_src
+                            .iter()
+                            .flatten()
+                            .map(|v| match **v {
+                                #(#quoted_branches,)*
+                            })
+                            .collect()
+                    }}
+                };
+
+                quote! {{
+                    let #data_src: Vec<_> = #data_src
+                        .into_iter()
+                        .map(|datum| {
+                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                            datum
+                        })
+                        .collect();
+
+                    UnionArray::new(
+                        #quoted_datatype,
+                        #quoted_types,
+                        vec![#(#quoted_field_serializers,)*],
+                        Some(#quoted_offsets),
+                    ).boxed()
+                }}
             }
             _ => unimplemented!("{datatype:#?}"), // NOLINT
         }
@@ -1179,6 +1364,8 @@ fn quote_arrow_field_serializer(
         // NOTE: This is a field, it's never going to need the runtime one.
         _ = extension_wrapper;
         #quoted_datatype
+            // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
+            .to_logical_type().clone()
     }};
 
     match datatype.to_logical_type() {
@@ -1205,7 +1392,7 @@ fn quote_arrow_field_serializer(
         }
 
         DataType::Utf8 => {
-            quote! { {
+            quote! {{
                 // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                 // about it while building the backing buffer since it's all offsets driven.
                 let inner_data: ::arrow2::buffer::Buffer<u8> = #data_src.iter().flatten().flat_map(|s| s.bytes()).collect();
@@ -1218,7 +1405,7 @@ fn quote_arrow_field_serializer(
                 // whole utf8 validation _again_.
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe { Utf8Array::<i32>::new_unchecked(#quoted_datatype, offsets, inner_data, #bitmap_src) }.boxed()
-            } }
+            }}
         }
 
         DataType::List(inner) | DataType::FixedSizeList(inner, _) => {
@@ -1261,7 +1448,7 @@ fn quote_arrow_field_serializer(
             // TODO(cmc): We should be checking this, but right now we don't because we don't
             // support intra-list nullability.
             _ = is_nullable;
-            quote! { {
+            quote! {{
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                 let #quoted_inner_data: Vec<_> = #data_src
@@ -1283,10 +1470,10 @@ fn quote_arrow_field_serializer(
                 };
 
                 #quoted_create
-            } }
+            }}
         }
 
-        DataType::Struct(_) => {
+        DataType::Struct(_) | DataType::Union(_, _, _) => {
             // NOTE: We always wrap objects with full extension metadata.
             let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
             let fqname_use = quote_fqname_as_type_path(fqname);
@@ -1407,7 +1594,7 @@ fn quote_arrow_deserializer(
                     }
                 });
 
-                quote! { {
+                quote! {{
                     let #data_src = #data_src
                         .as_any()
                         .downcast_ref::<::arrow2::array::StructArray>()
@@ -1436,8 +1623,93 @@ fn quote_arrow_deserializer(
                         })).transpose())
                         // NOTE: implicit Vec<Result> to Result<Vec>
                         .collect::<crate::DeserializationResult<Vec<_>>>()?
-                } }
+                }}
             }
+
+            DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
+                let data_src_types = format_ident!("{data_src}_types");
+                let data_src_arrays = format_ident!("{data_src}_arrays");
+                let data_src_offsets = format_ident!("{data_src}_offsets");
+
+                let quoted_field_deserializers =
+                    obj.fields.iter().enumerate().map(|(i, obj_field)| {
+                        let data_dst = format_ident!("{}", obj_field.name);
+
+                        let quoted_deserializer = quote_arrow_field_deserializer(
+                            &arrow_registry.get(&obj_field.fqname),
+                            obj_field.is_nullable,
+                            &data_src,
+                        );
+
+                        quote! {
+                            let #data_dst = {
+                                let #data_src = &*#data_src_arrays[#i];
+                                 #quoted_deserializer.collect::<Vec<_>>()
+                            }
+                        }
+                    });
+
+                let quoted_obj_name = format_ident!("{}", obj.name);
+                let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
+                    let i = i as i8;
+                    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+                    let quoted_obj_field_type = {
+                        use convert_case::{Case, Casing};
+                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
+                    };
+
+                    let quoted_unwrap = if obj_field.is_nullable {
+                        quote!()
+                    } else {
+                        quote!(.unwrap())
+                    };
+
+                    quote! {
+                        #i => #quoted_obj_name::#quoted_obj_field_type(
+                            #quoted_obj_field_name
+                                .get(offset as usize)
+                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                    bounds: (offset as usize, offset as usize),
+                                    len: #quoted_obj_field_name.len(),
+                                    datatype: #data_src.data_type().clone(),
+                                })?
+                                .clone()
+                                #quoted_unwrap
+                        )
+                    }
+                });
+
+                quote! {{
+                    let #data_src = #data_src
+                        .as_any()
+                        .downcast_ref::<::arrow2::array::UnionArray>()
+                        .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                            expected: #data_src.data_type().clone(),
+                            got: #data_src.data_type().clone(),
+                        })?;
+
+                    let (#data_src_types, #data_src_arrays, #data_src_offsets) =
+                        // NOTE: unwrapping of offsets is safe because this is a dense union
+                        (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
+
+                    #(#quoted_field_deserializers;)*
+
+                    #data_src_types
+                        .iter()
+                        .enumerate()
+                        .map(|(i, typ)| {
+                            let offset = #data_src_offsets[i];
+
+                            Ok(Some(match typ {
+                                #(#quoted_branches,)*
+                                _ => unreachable!(),
+                            }))
+                        })
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                }}
+            }
+
             _ => unimplemented!("{datatype:#?}"), // NOLINT
         }
     }
@@ -1491,7 +1763,7 @@ fn quote_arrow_field_deserializer(
             let quoted_inner =
                 quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
 
-            quote! { {
+            quote! {{
                 let datatype = #data_src.data_type();
                 let #data_src = #data_src
                     .as_any()
@@ -1531,7 +1803,7 @@ fn quote_arrow_field_deserializer(
                     // NOTE: implicit Vec<Result> to Result<Vec>
                     .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                     .into_iter()
-            } }
+            }}
         }
 
         DataType::List(inner) => {
@@ -1541,7 +1813,7 @@ fn quote_arrow_field_deserializer(
             let quoted_inner =
                 quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
 
-            quote! { {
+            quote! {{
                 let datatype = #data_src.data_type();
                 let #data_src = #data_src
                     .as_any()
@@ -1579,10 +1851,10 @@ fn quote_arrow_field_deserializer(
                     // NOTE: implicit Vec<Result> to Result<Vec>
                     .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                     .into_iter()
-            } }
+            }}
         }
 
-        DataType::Struct(_) => {
+        DataType::Struct(_) | DataType::Union(_, _, _) => {
             let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
             let fqname_use = quote_fqname_as_type_path(fqname);
             quote!(#fqname_use::try_from_arrow_opt(#data_src)?.into_iter())

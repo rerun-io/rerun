@@ -25,15 +25,16 @@ else_return = re.compile(r"else\s*{\s*return;?\s*};")
 explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
 
 
-def lint_line(line: str) -> str | None:
+def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if "NOLINT" in line:
         return None  # NOLINT ignores the linter
 
-    if "Github" in line:
-        return "It's 'GitHub', not 'Github'"
+    if file_extension == "md":
+        if "Github" in line:
+            return "It's 'GitHub', not 'Github'"
 
-    if " github " in line:
-        return "It's 'GitHub', not 'github'"
+        if " github " in line:
+            return "It's 'GitHub', not 'github'"
 
     if "FIXME" in line:
         return "we prefer TODO over FIXME"
@@ -370,13 +371,15 @@ def test_lint_workspace_deps() -> None:
 
 
 def lint_file(filepath: str, args: Any) -> int:
+    file_extension = filepath.split(".")[-1]
+
     with open(filepath) as f:
         lines_in = f.readlines()
 
     num_errors = 0
 
     for line_nr, line in enumerate(lines_in):
-        error = lint_line(line)
+        error = lint_line(line, file_extension)
         if error is not None:
             num_errors += 1
             print(f"{filepath}:{line_nr+1}: {error}")
@@ -438,9 +441,9 @@ def main() -> None:
         root_dirpath = os.path.abspath(f"{script_dirpath}/..")
         os.chdir(root_dirpath)
 
-        extensions = ["fbs", "html", "js", "md", "py", "rs", "sh", "toml", "wgsl", "yml"]
+        extensions = ["c", "cpp", "fbs", "h", "hpp" "html", "js", "md", "py", "rs", "sh", "toml", "txt", "wgsl", "yml"]
 
-        exclude_dirs = {"env", "renv", "venv", "target", "target_ra", "target_wasm"}
+        exclude_dirs = {"env", "renv", "venv", "venv3.10", "target", "target_ra", "target_wasm", ".nox"}
 
         exclude_paths = {
             "./CODE_STYLE.md",

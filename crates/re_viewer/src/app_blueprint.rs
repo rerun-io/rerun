@@ -112,6 +112,7 @@ impl<'a> AppBlueprint<'a> {
 }
 
 fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::StoreDb) -> Option<bool> {
+    re_tracing::profile_function!();
     blueprint_db
         .store()
         .query_timeless_component::<PanelState>(path)

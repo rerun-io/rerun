@@ -6,6 +6,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A unique numeric identifier for each individual instance within a batch."]
@@ -36,11 +37,7 @@ impl crate::Component for InstanceKey {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Extension(
-            "rerun.components.InstanceKey".to_owned(),
-            Box::new(DataType::UInt64),
-            None,
-        )
+        DataType::UInt64
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -77,6 +74,8 @@ impl crate::Component for InstanceKey {
                         Box::new(DataType::UInt64),
                         None,
                     )
+                    .to_logical_type()
+                    .clone()
                 },
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,

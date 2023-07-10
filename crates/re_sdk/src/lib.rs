@@ -94,6 +94,11 @@ pub mod coordinates {
     pub use re_components::coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 }
 
+/// Experimental APIs, to try out upcoming Rerun features.
+pub mod experimental {
+    pub use re_types::{archetypes, components, datatypes, Archetype, Component, Datatype};
+}
+
 /// Re-exports of other crates.
 pub mod external {
     pub use re_log;
@@ -110,6 +115,11 @@ pub mod external {
 
 // -----
 // Misc:
+
+/// The version of the Rerun SDK.
+pub fn build_info() -> re_build_info::BuildInfo {
+    re_build_info::build_info!()
+}
 
 const RERUN_ENV_VAR: &str = "RERUN";
 

@@ -3,6 +3,7 @@
   // for the documentation about the extensions.json format
   "recommendations": [
     "charliermarsh.ruff",
+    "gaborv.flatbuffers",
     "github.vscode-github-actions",
     "ms-python.python",
     "ms-vsliveshare.vsliveshare",
@@ -14,7 +15,7 @@
     "vadimcn.vscode-lldb",
     "wayou.vscode-todo-highlight",
     "webfreak.debug",
+    "xaver.clang-format", // C++ formatter
     "zxh404.vscode-proto3",
-    "gaborv.flatbuffers"
   ]
 }

@@ -16,7 +16,7 @@ use crate::{
 // ----------------------------------------------------------------------------
 
 /// A view of a space.
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
@@ -38,6 +38,29 @@ pub struct SpaceViewBlueprint {
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
+}
+
+/// Determine whether this `SpaceViewBlueprint` has user-edits relative to another `SpaceViewBlueprint`
+impl SpaceViewBlueprint {
+    pub fn has_edits(&self, other: &Self) -> bool {
+        let Self {
+            id,
+            display_name,
+            class_name,
+            space_origin,
+            data_blueprint,
+            category,
+            entities_determined_by_user,
+        } = self;
+
+        id != &other.id
+            || display_name != &other.display_name
+            || class_name != &other.class_name
+            || space_origin != &other.space_origin
+            || data_blueprint.has_edits(&other.data_blueprint)
+            || category != &other.category
+            || entities_determined_by_user != &other.entities_determined_by_user
+    }
 }
 
 impl SpaceViewBlueprint {
