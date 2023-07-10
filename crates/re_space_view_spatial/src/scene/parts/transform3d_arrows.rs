@@ -112,6 +112,8 @@ pub fn add_axis_lines(
     let mut line_batch = line_builder
         .batch("transform gizmo")
         .world_from_obj(world_from_obj)
+        .triangle_cap_length_factor(10.0)
+        .triangle_cap_width_factor(3.0)
         .outline_mask_ids(outline_mask_ids)
         .picking_object_id(re_renderer::PickingLayerObjectId(
             ent_path.map_or(0, |p| p.hash64()),
