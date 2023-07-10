@@ -94,7 +94,7 @@ def log_line_strip(
 
     if positions is not None:
         positions = np.require(positions, dtype="float32")
-        if not positions.any() and len(positions.shape) == 1:
+        if positions.size == 0 and len(positions.shape) == 1:
             positions = np.empty((0, 2), dtype="float32")
 
     instanced: dict[str, Any] = {}
@@ -185,7 +185,7 @@ def log_line_segments(
 
     if positions is not None:
         positions = np.require(positions, dtype="float32")
-        if not positions.any() and len(positions.shape) == 1:
+        if positions.size == 0 and len(positions.shape) == 1:
             positions = np.empty((0, 2), dtype="float32")
 
     instanced: dict[str, Any] = {}
@@ -199,14 +199,14 @@ def log_line_segments(
             # Reshape even-odd pairs into a collection of line-strips of length2
             # [[a00, a01], [a10, a11], [b00, b01], [b10, b11]]
             # -> [[[a00, a01], [a10, a11]], [[b00, b01], [b10, b11]]]
-            if positions.any():
+            if positions.size != 0:
                 positions = positions.reshape([len(positions) // 2, 2, 2])
             else:
                 positions = [positions]
             instanced["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays(positions)
         elif positions.ndim > 1 and positions.shape[1] == 3:
             # Same as above but for 3d points
-            if positions.any():
+            if positions.size != 0:
                 positions = positions.reshape([len(positions) // 2, 2, 3])
             else:
                 positions = [positions]

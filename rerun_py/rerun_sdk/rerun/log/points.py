@@ -228,7 +228,7 @@ def log_points(
         class_ids = 0
     if positions is not None:
         positions = np.require(positions, dtype="float32")
-        if not positions.any() and len(positions.shape) == 1:
+        if positions.size == 0 and len(positions.shape) == 1:
             positions = np.empty((0, 2), dtype="float32")
 
     colors = _normalize_colors(colors)
