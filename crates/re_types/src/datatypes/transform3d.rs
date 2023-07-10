@@ -3,6 +3,7 @@
 #![allow(trivial_numeric_casts)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
@@ -14,7 +15,7 @@
 #[doc = "Representation of a 3D affine transform."]
 #[doc = ""]
 #[doc = "Rarely used directly, prefer using the underlying representation classes and pass them"]
-#[doc = "directly to [`Transform3D::child_from_parent`] or [`Transform3D::parent_from_child`]."]
+#[doc = "directly to `Transform3D::child_from_parent` or `Transform3D::parent_from_child`."]
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Transform3D {
     TranslationAndMat3X3(crate::datatypes::TranslationAndMat3x3),

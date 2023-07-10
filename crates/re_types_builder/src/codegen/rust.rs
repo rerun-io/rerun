@@ -118,18 +118,21 @@ fn create_files(
             .unwrap();
 
         let mut code = String::new();
-        code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
-        code.push_text("#![allow(trivial_numeric_casts)]", 2, 0);
-        code.push_text("#![allow(unused_parens)]", 2, 0);
-        code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
-        code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
         #[rustfmt::skip]
-        code.push_text("#![allow(clippy::match_wildcard_for_single_variants)]", 2, 0);
-        code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
-        code.push_text("#![allow(clippy::redundant_closure)]", 2, 0);
-        code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
-        code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
-        code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
+        {
+            code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
+            code.push_text("#![allow(trivial_numeric_casts)]", 2, 0);
+            code.push_text("#![allow(unused_parens)]", 2, 0);
+            code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
+            code.push_text("#![allow(clippy::iter_on_single_items)]", 2, 0);
+            code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
+            code.push_text("#![allow(clippy::match_wildcard_for_single_variants)]", 2, 0);
+            code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
+            code.push_text("#![allow(clippy::redundant_closure)]", 2, 0);
+            code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
+            code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
+            code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
+        };
 
         for obj in objs {
             let mut acc = TokenStream::new();

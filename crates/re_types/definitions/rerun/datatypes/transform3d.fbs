@@ -8,7 +8,7 @@ namespace rerun.datatypes;
 /// Representation of a 3D affine transform.
 ///
 /// \rs Rarely used directly, prefer using the underlying representation classes and pass them
-/// \rs directly to [`Transform3D::child_from_parent`] or [`Transform3D::parent_from_child`].
+/// \rs directly to `Transform3D::child_from_parent` or `Transform3D::parent_from_child`.
 union Transform3D (
   "attr.rust.derive": "Copy, PartialEq",
   order: 700
