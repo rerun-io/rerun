@@ -1792,13 +1792,18 @@ fn quote_arrow_field_deserializer(
         | DataType::Boolean => {
             let arrow_type = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
             let arrow_type = format_ident!("{arrow_type}Array");
+            let quoted_map_copy = if *datatype.to_logical_type() == DataType::Boolean {
+                quote!()
+            } else {
+                quote!(.map(|v| v.copied()))
+            };
             quote! {
                 #data_src
                     .as_any()
                     .downcast_ref::<#arrow_type>()
                     .unwrap() // safe
                     .into_iter()
-                    .map(|v| v.copied())
+                    #quoted_map_copy
             }
         }
 
