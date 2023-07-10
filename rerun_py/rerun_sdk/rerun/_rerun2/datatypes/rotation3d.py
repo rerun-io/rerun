@@ -31,8 +31,7 @@ class Rotation3D:
     """
 
 
-Rotation3DLike = Union[Rotation3D, Sequence[SupportsFloat]]
-
+Rotation3DLike = Rotation3D
 Rotation3DArrayLike = Union[
     Rotation3D,
     Sequence[Rotation3DLike],
