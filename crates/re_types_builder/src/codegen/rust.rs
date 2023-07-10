@@ -239,6 +239,7 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
+        let quoted_derive_clone_debug = quote_derive_clone_debug();
         let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
 
@@ -259,6 +260,7 @@ impl QuotedObject {
 
         let tokens = quote! {
             #quoted_doc
+            #quoted_derive_clone_debug
             #quoted_derive_clause
             #quoted_repr_clause
             #quoted_struct
@@ -300,6 +302,7 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
+        let quoted_derive_clone_debug = quote_derive_clone_debug();
         let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
 
@@ -340,6 +343,7 @@ impl QuotedObject {
 
         let tokens = quote! {
             #quoted_doc
+            #quoted_derive_clone_debug
             #quoted_derive_clause
             #quoted_repr_clause
             pub enum #name {
@@ -497,15 +501,14 @@ impl quote::ToTokens for &ElementType {
     }
 }
 
+fn quote_derive_clone_debug() -> TokenStream {
+    quote!(#[derive(Clone, Debug)])
+}
+
 fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenStream {
     let quoted = obj
         .try_get_attr::<String>(attr)
         .map(|what| {
-            let what = if clause == "derive" {
-                format!("Debug, Clone, {what}")
-            } else {
-                what
-            };
             syn::parse_str::<syn::MetaList>(&format!("{clause}({what})"))
                 .with_context(|| format!("illegal meta clause: {what:?}"))
                 .unwrap()
