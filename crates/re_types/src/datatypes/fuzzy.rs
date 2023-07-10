@@ -179,6 +179,7 @@ pub struct AffixFuzzer1 {
     pub many_strings_optional: Option<Vec<String>>,
     pub flattened_scalar: f32,
     pub almost_flattened_scalar: crate::datatypes::FlattenedScalar,
+    pub from_parent: Option<bool>,
 }
 
 impl<'a> From<AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
@@ -272,6 +273,12 @@ impl crate::Datatype for AffixFuzzer1 {
                     metadata: [].into(),
                 }]),
                 is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "from_parent".to_owned(),
+                data_type: DataType::Boolean,
+                is_nullable: true,
                 metadata: [].into(),
             },
         ])
@@ -743,6 +750,37 @@ impl crate::Datatype for AffixFuzzer1 {
                             )?
                         }
                     },
+                    {
+                        let (somes, from_parent): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| {
+                                        let Self { from_parent, .. } = &**datum;
+                                        from_parent.clone()
+                                    })
+                                    .flatten();
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let from_parent_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        BooleanArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::Boolean.to_logical_type().clone()
+                            },
+                            from_parent
+                                .into_iter()
+                                .map(|v| v.unwrap_or_default())
+                                .collect(),
+                            from_parent_bitmap,
+                        )
+                        .boxed()
+                    },
                 ],
                 bitmap,
             )
@@ -969,6 +1007,14 @@ impl crate::Datatype for AffixFuzzer1 {
 
                 crate::datatypes::FlattenedScalar::try_from_arrow_opt(data)?.into_iter()
             };
+            let from_parent = {
+                let data = &**arrays_by_name["from_parent"];
+
+                data.as_any()
+                    .downcast_ref::<BooleanArray>()
+                    .unwrap()
+                    .into_iter()
+            };
             ::itertools::izip!(
                 single_float_optional,
                 single_string_required,
@@ -977,7 +1023,8 @@ impl crate::Datatype for AffixFuzzer1 {
                 many_strings_required,
                 many_strings_optional,
                 flattened_scalar,
-                almost_flattened_scalar
+                almost_flattened_scalar,
+                from_parent
             )
             .enumerate()
             .map(
@@ -992,6 +1039,7 @@ impl crate::Datatype for AffixFuzzer1 {
                         many_strings_optional,
                         flattened_scalar,
                         almost_flattened_scalar,
+                        from_parent,
                     ),
                 )| {
                     is_valid(i)
@@ -1021,6 +1069,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                         datatype: data.data_type().clone(),
                                     },
                                 )?,
+                                from_parent,
                             })
                         })
                         .transpose()
@@ -1248,6 +1297,12 @@ impl crate::Datatype for AffixFuzzer3 {
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
+                            Field {
+                                name: "from_parent".to_owned(),
+                                data_type: DataType::Boolean,
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
                         ]),
                         is_nullable: false,
                         metadata: [].into(),
@@ -1465,6 +1520,12 @@ impl crate::Datatype for AffixFuzzer3 {
                                                 is_nullable: false,
                                                 metadata: [].into(),
                                             },
+                                            Field {
+                                                name: "from_parent".to_owned(),
+                                                data_type: DataType::Boolean,
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
                                         ]),
                                         is_nullable: false,
                                         metadata: [].into(),
@@ -1644,6 +1705,12 @@ impl crate::Datatype for AffixFuzzer3 {
                                             metadata: [].into(),
                                         }]),
                                         is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "from_parent".to_owned(),
+                                        data_type: DataType::Boolean,
+                                        is_nullable: true,
                                         metadata: [].into(),
                                     },
                                 ]),
@@ -1845,6 +1912,12 @@ impl crate::Datatype for AffixFuzzer4 {
                                             is_nullable: false,
                                             metadata: [].into(),
                                         },
+                                        Field {
+                                            name: "from_parent".to_owned(),
+                                            data_type: DataType::Boolean,
+                                            is_nullable: true,
+                                            metadata: [].into(),
+                                        },
                                     ]),
                                     is_nullable: false,
                                     metadata: [].into(),
@@ -1948,6 +2021,12 @@ impl crate::Datatype for AffixFuzzer4 {
                                                     metadata: [].into(),
                                                 }]),
                                                 is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "from_parent".to_owned(),
+                                                data_type: DataType::Boolean,
+                                                is_nullable: true,
                                                 metadata: [].into(),
                                             },
                                         ]),
@@ -2056,6 +2135,12 @@ impl crate::Datatype for AffixFuzzer4 {
                                                     metadata: [].into(),
                                                 }]),
                                                 is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "from_parent".to_owned(),
+                                                data_type: DataType::Boolean,
+                                                is_nullable: true,
                                                 metadata: [].into(),
                                             },
                                         ]),
@@ -2291,6 +2376,12 @@ impl crate::Datatype for AffixFuzzer4 {
                                                                 is_nullable: false,
                                                                 metadata: [].into(),
                                                             },
+                                                            Field {
+                                                                name: "from_parent".to_owned(),
+                                                                data_type: DataType::Boolean,
+                                                                is_nullable: true,
+                                                                metadata: [].into(),
+                                                            },
                                                         ]),
                                                         is_nullable: false,
                                                         metadata: [].into(),
@@ -2464,6 +2555,12 @@ impl crate::Datatype for AffixFuzzer4 {
                                                                     },
                                                                 ]),
                                                                 is_nullable: false,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "from_parent".to_owned(),
+                                                                data_type: DataType::Boolean,
+                                                                is_nullable: true,
                                                                 metadata: [].into(),
                                                             },
                                                         ]),
@@ -2668,6 +2765,12 @@ impl crate::Datatype for AffixFuzzer4 {
                                                         is_nullable: false,
                                                         metadata: [].into(),
                                                     },
+                                                    Field {
+                                                        name: "from_parent".to_owned(),
+                                                        data_type: DataType::Boolean,
+                                                        is_nullable: true,
+                                                        metadata: [].into(),
+                                                    },
                                                 ]),
                                                 is_nullable: false,
                                                 metadata: [].into(),
@@ -2817,6 +2920,12 @@ impl crate::Datatype for AffixFuzzer4 {
                                                             metadata: [].into(),
                                                         }]),
                                                         is_nullable: false,
+                                                        metadata: [].into(),
+                                                    },
+                                                    Field {
+                                                        name: "from_parent".to_owned(),
+                                                        data_type: DataType::Boolean,
+                                                        is_nullable: true,
                                                         metadata: [].into(),
                                                     },
                                                 ]),

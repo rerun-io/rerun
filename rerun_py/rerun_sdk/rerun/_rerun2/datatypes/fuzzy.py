@@ -100,6 +100,7 @@ class AffixFuzzer1:
     single_string_optional: str | None = field(default=None)
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
     many_strings_optional: list[str] | None = field(default=None)
+    from_parent: bool | None = field(default=None)
 
 
 AffixFuzzer1Like = AffixFuzzer1
@@ -128,6 +129,7 @@ class AffixFuzzer1Type(BaseExtensionType):
                     pa.field(
                         "almost_flattened_scalar", pa.struct([pa.field("value", pa.float32(), False, {})]), False, {}
                     ),
+                    pa.field("from_parent", pa.bool_(), True, {}),
                 ]
             ),
             "rerun.testing.datatypes.AffixFuzzer1",
@@ -247,6 +249,7 @@ class AffixFuzzer3Type(BaseExtensionType):
                                             False,
                                             {},
                                         ),
+                                        pa.field("from_parent", pa.bool_(), True, {}),
                                     ]
                                 ),
                                 False,
@@ -341,6 +344,7 @@ class AffixFuzzer4Type(BaseExtensionType):
                                                         False,
                                                         {},
                                                     ),
+                                                    pa.field("from_parent", pa.bool_(), True, {}),
                                                 ]
                                             ),
                                             False,
@@ -399,6 +403,7 @@ class AffixFuzzer4Type(BaseExtensionType):
                                                                 False,
                                                                 {},
                                                             ),
+                                                            pa.field("from_parent", pa.bool_(), True, {}),
                                                         ]
                                                     ),
                                                     False,
@@ -461,6 +466,7 @@ class AffixFuzzer4Type(BaseExtensionType):
                                                                 False,
                                                                 {},
                                                             ),
+                                                            pa.field("from_parent", pa.bool_(), True, {}),
                                                         ]
                                                     ),
                                                     False,

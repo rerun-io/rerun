@@ -233,6 +233,7 @@ class AffixFuzzer7Type(BaseExtensionType):
                                 False,
                                 {},
                             ),
+                            pa.field("from_parent", pa.bool_(), True, {}),
                         ]
                     ),
                     True,
@@ -561,6 +562,7 @@ class AffixFuzzer16Type(BaseExtensionType):
                                                     False,
                                                     {},
                                                 ),
+                                                pa.field("from_parent", pa.bool_(), True, {}),
                                             ]
                                         ),
                                         False,
@@ -656,6 +658,7 @@ class AffixFuzzer17Type(BaseExtensionType):
                                                     False,
                                                     {},
                                                 ),
+                                                pa.field("from_parent", pa.bool_(), True, {}),
                                             ]
                                         ),
                                         False,
@@ -755,6 +758,7 @@ class AffixFuzzer18Type(BaseExtensionType):
                                                                 False,
                                                                 {},
                                                             ),
+                                                            pa.field("from_parent", pa.bool_(), True, {}),
                                                         ]
                                                     ),
                                                     False,
@@ -827,6 +831,7 @@ class AffixFuzzer18Type(BaseExtensionType):
                                                                         False,
                                                                         {},
                                                                     ),
+                                                                    pa.field("from_parent", pa.bool_(), True, {}),
                                                                 ]
                                                             ),
                                                             False,
@@ -903,6 +908,7 @@ class AffixFuzzer18Type(BaseExtensionType):
                                                                         False,
                                                                         {},
                                                                     ),
+                                                                    pa.field("from_parent", pa.bool_(), True, {}),
                                                                 ]
                                                             ),
                                                             False,
