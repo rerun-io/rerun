@@ -935,8 +935,8 @@ fn quote_union_aliases_from_object<'a>(
     //             {array_aliases}
     //         ]
     //     else:
-    //         {name}Like = ...
-    //         {name}ArrayLike = ...
+    //         {name}Like = Any
+    //         {name}ArrayLike = Any
     //     ",
     // ))
 
@@ -955,8 +955,8 @@ if TYPE_CHECKING:
         {array_aliases}
     ]
 else:
-    {name}Like = ...
-    {name}ArrayLike = ...
+    {name}Like = Any
+    {name}ArrayLike = Any
         ",
     )
 }
