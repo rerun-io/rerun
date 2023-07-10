@@ -1391,6 +1391,18 @@ fn quote_arrow_field_serializer(
             }
         }
 
+        DataType::Boolean => {
+            quote! {
+                BooleanArray::new(
+                    #quoted_datatype,
+                    // NOTE: We need values for all slots, regardless of what the bitmap says,
+                    // hence `unwrap_or_default`.
+                    #data_src.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                    #bitmap_src,
+                ).boxed()
+            }
+        }
+
         DataType::Utf8 => {
             quote! {{
                 // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
@@ -1732,7 +1744,8 @@ fn quote_arrow_field_deserializer(
         | DataType::UInt64
         | DataType::Float16
         | DataType::Float32
-        | DataType::Float64 => {
+        | DataType::Float64
+        | DataType::Boolean => {
             let arrow_type = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
             let arrow_type = format_ident!("{arrow_type}Array");
             quote! {
