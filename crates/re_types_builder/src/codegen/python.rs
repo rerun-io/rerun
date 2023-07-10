@@ -1,12 +1,13 @@
 //! Implements the Python codegen pass.
 
-use anyhow::Context as _;
-use itertools::Itertools;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     io::Write,
-    path::{Path, PathBuf},
 };
+
+use anyhow::Context as _;
+use camino::{Utf8Path, Utf8PathBuf};
+use itertools::Itertools;
 
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
@@ -54,11 +55,11 @@ impl PythonObjectExt for Object {
 }
 
 pub struct PythonCodeGenerator {
-    pkg_path: PathBuf,
+    pkg_path: Utf8PathBuf,
 }
 
 impl PythonCodeGenerator {
-    pub fn new(pkg_path: impl Into<PathBuf>) -> Self {
+    pub fn new(pkg_path: impl Into<Utf8PathBuf>) -> Self {
         Self {
             pkg_path: pkg_path.into(),
         }
@@ -69,7 +70,7 @@ impl PythonCodeGenerator {
 ///
 /// This is the hacky way. We extract all identifiers from `__init__.py` which contains, but don't
 /// start with, a underscore (`_`).
-fn load_overrides(path: &Path) -> HashSet<String> {
+fn load_overrides(path: &Utf8Path) -> HashSet<String> {
     let path = path.join("_overrides").join("__init__.py");
     let contents = std::fs::read_to_string(&path)
         .with_context(|| format!("couldn't load overrides module at {path:?}"))
@@ -84,7 +85,7 @@ fn load_overrides(path: &Path) -> HashSet<String> {
 }
 
 impl CodeGenerator for PythonCodeGenerator {
-    fn generate(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
+    fn generate(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<Utf8PathBuf> {
         let mut filepaths = Vec::new();
 
         let datatypes_path = self.pkg_path.join("datatypes");
@@ -144,7 +145,7 @@ impl CodeGenerator for PythonCodeGenerator {
 
 // --- File management ---
 
-fn quote_lib(out_path: impl AsRef<Path>, archetype_names: &[String]) -> PathBuf {
+fn quote_lib(out_path: impl AsRef<Utf8Path>, archetype_names: &[String]) -> Utf8PathBuf {
     let out_path = out_path.as_ref();
 
     std::fs::create_dir_all(out_path)
@@ -178,19 +179,19 @@ fn quote_lib(out_path: impl AsRef<Path>, archetype_names: &[String]) -> PathBuf 
 
 /// Returns all filepaths + all object names.
 fn quote_objects(
-    out_path: impl AsRef<Path>,
+    out_path: impl AsRef<Utf8Path>,
     arrow_registry: &ArrowRegistry,
     overrides: &HashSet<String>,
     all_objects: &Objects,
     _kind: ObjectKind,
     objs: &[&Object],
-) -> (Vec<PathBuf>, Vec<String>) {
+) -> (Vec<Utf8PathBuf>, Vec<String>) {
     let out_path = out_path.as_ref();
 
     let mut filepaths = Vec::new();
     let mut all_names = Vec::new();
 
-    let mut files = HashMap::<PathBuf, Vec<QuotedObject>>::new();
+    let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
         all_names.push(obj.name.clone());
 
@@ -233,7 +234,7 @@ fn quote_objects(
 
         // NOTE: Isolating the file stem only works because we're handling datatypes, components
         // and archetypes separately (and even then it's a bit shady, eh).
-        mods.entry(filepath.file_stem().unwrap().to_string_lossy().to_string())
+        mods.entry(filepath.file_stem().unwrap().to_owned())
             .or_default()
             .extend(names.iter().cloned());
 
@@ -374,7 +375,7 @@ fn quote_objects(
 #[derive(Debug, Clone)]
 struct QuotedObject {
     object: Object,
-    filepath: PathBuf,
+    filepath: Utf8PathBuf,
     code: String,
 }
 
@@ -543,7 +544,7 @@ impl QuotedObject {
             }
         }
 
-        let mut filepath = PathBuf::from(virtpath);
+        let mut filepath = Utf8PathBuf::from(virtpath);
         filepath.set_extension("py");
 
         Self {
@@ -635,7 +636,7 @@ impl QuotedObject {
             }
         }
 
-        let mut filepath = PathBuf::from(virtpath);
+        let mut filepath = Utf8PathBuf::from(virtpath);
         filepath.set_extension("py");
 
         Self {

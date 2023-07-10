@@ -7,7 +7,7 @@ pub trait CodeGenerator {
         &mut self,
         objs: &crate::Objects,
         arrow_registry: &crate::ArrowRegistry,
-    ) -> Vec<std::path::PathBuf>;
+    ) -> Vec<camino::Utf8PathBuf>;
 }
 
 // ---

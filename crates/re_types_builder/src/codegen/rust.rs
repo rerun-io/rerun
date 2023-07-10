@@ -1,14 +1,13 @@
 //! Implements the Rust codegen pass.
 
+use std::{collections::HashMap, io::Write};
+
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use std::{
-    collections::HashMap,
-    io::Write,
-    path::{Path, PathBuf},
-};
+
+use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
@@ -24,11 +23,11 @@ use crate::{
 // ---
 
 pub struct RustCodeGenerator {
-    crate_path: PathBuf,
+    crate_path: Utf8PathBuf,
 }
 
 impl RustCodeGenerator {
-    pub fn new(crate_path: impl Into<PathBuf>) -> Self {
+    pub fn new(crate_path: impl Into<Utf8PathBuf>) -> Self {
         Self {
             crate_path: crate_path.into(),
         }
@@ -36,7 +35,7 @@ impl RustCodeGenerator {
 }
 
 impl CodeGenerator for RustCodeGenerator {
-    fn generate(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
+    fn generate(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<Utf8PathBuf> {
         let mut filepaths = Vec::new();
 
         let datatypes_path = self.crate_path.join("src/datatypes");
@@ -79,16 +78,16 @@ impl CodeGenerator for RustCodeGenerator {
 // --- File management ---
 
 fn create_files(
-    out_path: impl AsRef<Path>,
+    out_path: impl AsRef<Utf8Path>,
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     objs: &[&Object],
-) -> Vec<PathBuf> {
+) -> Vec<Utf8PathBuf> {
     let out_path = out_path.as_ref();
 
     let mut filepaths = Vec::new();
 
-    let mut files = HashMap::<PathBuf, Vec<QuotedObject>>::new();
+    let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
         let obj = if obj.is_struct() {
             QuotedObject::from_struct(arrow_registry, objects, obj)
@@ -108,7 +107,7 @@ fn create_files(
         // NOTE: Isolating the file stem only works because we're handling datatypes, components
         // and archetypes separately (and even then it's a bit shady, eh).
         let names = objs.iter().map(|obj| obj.name.clone()).collect::<Vec<_>>();
-        mods.entry(filepath.file_stem().unwrap().to_string_lossy().to_string())
+        mods.entry(filepath.file_stem().unwrap().to_owned())
             .or_default()
             .extend(names);
 
@@ -213,7 +212,7 @@ fn create_files(
 
 #[derive(Debug, Clone)]
 struct QuotedObject {
-    filepath: PathBuf,
+    filepath: Utf8PathBuf,
     name: String,
     tokens: TokenStream,
 }
@@ -271,7 +270,7 @@ impl QuotedObject {
 
         Self {
             filepath: {
-                let mut filepath = PathBuf::from(virtpath);
+                let mut filepath = Utf8PathBuf::from(virtpath);
                 filepath.set_extension("rs");
                 filepath
             },
@@ -352,7 +351,7 @@ impl QuotedObject {
 
         Self {
             filepath: {
-                let mut filepath = PathBuf::from(virtpath);
+                let mut filepath = Utf8PathBuf::from(virtpath);
                 filepath.set_extension("rs");
                 filepath
             },
