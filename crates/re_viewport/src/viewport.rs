@@ -262,7 +262,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         if button_response.clicked() {
             if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
                 self.ctx
-                    .set_single_selection(Item::SpaceView(*space_view_id));
+                    .set_single_selection(&Item::SpaceView(*space_view_id));
             }
         }
     }
@@ -315,7 +315,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             {
                 *self.maximized = Some(space_view_id);
                 self.ctx
-                    .set_single_selection(Item::SpaceView(space_view_id));
+                    .set_single_selection(&Item::SpaceView(space_view_id));
             }
         }
 
