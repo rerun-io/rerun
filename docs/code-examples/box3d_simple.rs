@@ -9,7 +9,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_component(&[Box3D::new(2.0, 2.0, 1.0)])?
         .send(&rec_stream)?;
 
-    rec_stream.flush_blocking();
     rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

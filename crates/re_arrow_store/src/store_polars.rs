@@ -223,8 +223,7 @@ impl IndexedBucket {
             self.timeline.name(),
             col_time,
             self.timeline.datatype().into(),
-        )
-        .unwrap();
+        );
         let num_rows = times.len();
 
         let insert_ids = config

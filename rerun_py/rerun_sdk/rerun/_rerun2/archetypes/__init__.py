@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["Points2D"]
-
+from .fuzzy import AffixFuzzer1
 from .points2d import Points2D
+
+__all__ = ["AffixFuzzer1", "Points2D"]

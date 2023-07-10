@@ -211,7 +211,7 @@ fn class_id_tensor_to_gpu(
 // ----------------------------------------------------------------------------
 // Depth textures:
 
-fn depth_tensor_to_gpu(
+pub fn depth_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     tensor: &DecodedTensor,

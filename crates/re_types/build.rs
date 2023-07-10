@@ -16,15 +16,18 @@ use re_build_tools::{
 
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
+const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
 
+// located in PYTHON_OUTPUT_DIR_PATH
+const ARCHETYPE_OVERRIDES_SUB_DIR_PATH: &str = "archetypes/_overrides";
+const COMPONENT_OVERRIDES_SUB_DIR_PATH: &str = "components/_overrides";
+const DATATYPE_OVERRIDES_SUB_DIR_PATH: &str = "datatypes/_overrides";
+
 fn main() {
-    if std::env::var("CI").is_ok() {
-        // Don't run on CI!
-        //
-        // The code we're generating here is actual source code that gets committed into the
-        // repository.
+    if cfg!(target_os = "windows") {
+        // TODO(#2591): Codegen is temporarily disabled on Windows due to hashing issues.
         return;
     }
 
@@ -39,7 +42,7 @@ fn main() {
     }
 
     rerun_if_changed_or_doesnt_exist(SOURCE_HASH_PATH);
-    for path in iter_dir(DEFINITIONS_DIR_PATH, Some(&[".fbs"])) {
+    for path in iter_dir(DEFINITIONS_DIR_PATH, Some(&["fbs"])) {
         rerun_if_changed(&path);
     }
 
@@ -47,14 +50,39 @@ fn main() {
     // code generator itself!
     let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
     let re_types_builder_hash = compute_crate_hash("re_types_builder");
-    let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&[".fbs"]));
-    let new_hash = compute_strings_hash(&[&re_types_builder_hash, &definitions_hash]);
+    let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&["fbs"]));
+    let doc_examples_hash = compute_dir_hash(DOC_EXAMPLES_DIR_PATH, Some(&["rs", "py"]));
+    let archetype_overrides_hash = compute_dir_hash(
+        PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(ARCHETYPE_OVERRIDES_SUB_DIR_PATH),
+        Some(&["py"]),
+    );
+    let component_overrides_hash = compute_dir_hash(
+        PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(COMPONENT_OVERRIDES_SUB_DIR_PATH),
+        Some(&["py"]),
+    );
+    let datatype_overrides_hash = compute_dir_hash(
+        PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(DATATYPE_OVERRIDES_SUB_DIR_PATH),
+        Some(&["py"]),
+    );
+
+    let new_hash = compute_strings_hash(&[
+        &re_types_builder_hash,
+        &definitions_hash,
+        &doc_examples_hash,
+        &archetype_overrides_hash,
+        &component_overrides_hash,
+        &datatype_overrides_hash,
+    ]);
 
     // Leave these be please, very useful when debugging.
     eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
-    eprintln!("cur_hash: {cur_hash:?}");
     eprintln!("definitions_hash: {definitions_hash:?}");
+    eprintln!("doc_examples_hash: {doc_examples_hash:?}");
+    eprintln!("archetype_overrides_hash: {archetype_overrides_hash:?}");
+    eprintln!("component_overrides_hash: {component_overrides_hash:?}");
+    eprintln!("datatype_overrides_hash: {datatype_overrides_hash:?}");
     eprintln!("new_hash: {new_hash:?}");
+    eprintln!("cur_hash: {cur_hash:?}");
 
     if let Some(cur_hash) = cur_hash {
         if cur_hash == new_hash {
@@ -62,6 +90,13 @@ fn main() {
             // to do anything at this point.
             return;
         }
+    }
+
+    // Detect desyncs between definitions and generated when running on CI, and
+    // crash the build accordingly.
+    #[allow(clippy::manual_assert)]
+    if std::env::var("CI").is_ok() {
+        panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 
     let sh = Shell::new().unwrap();

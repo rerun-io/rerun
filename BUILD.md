@@ -69,6 +69,7 @@ First, a local virtual environment must be created and the necessary dependencie
 
 ```sh
 just py-dev-env
+source venv/bin/activate
 ```
 
 Then, the SDK can be compiled and installed in the virtual environment using the following command:

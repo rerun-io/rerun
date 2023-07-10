@@ -11,7 +11,7 @@ import os
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 import cv2
 import numpy as np
@@ -33,31 +33,19 @@ def parse_timestamp(filename: str) -> datetime:
     return datetime.fromtimestamp(float(time))
 
 
-def camera_for_image(h: float, w: float) -> tuple[float, float, float]:
-    """Returns a tuple of (u_center, v_center, focal_length) for a camera image."""
-    return (w / 2, h / 2, 0.7 * w)
-
-
-def camera_intrinsics(image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
-    """Create reasonable camera intrinsics given the resolution."""
-    (h, w) = image.shape
-    (u_center, v_center, focal_length) = camera_for_image(h, w)
-    return np.array(((focal_length, 0, u_center), (0, focal_length, v_center), (0, 0, 1)))
-
-
 def read_image_rgb(buf: bytes) -> npt.NDArray[np.uint8]:
     """Decode an image provided in `buf`, and interpret it as RGB data."""
     np_buf: npt.NDArray[np.uint8] = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
     # OpenCV reads images in BGR rather than RGB format
     img_bgr = cv2.imdecode(np_buf, cv2.IMREAD_COLOR)
-    img_rgb: npt.NDArray[np.uint8] = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    img_rgb: npt.NDArray[Any] = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     return img_rgb
 
 
-def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
+def read_depth_image(buf: bytes) -> npt.NDArray[Any]:
     """Decode an image provided in `buf`."""
     np_buf: npt.NDArray[np.uint8] = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
-    img: npt.NDArray[np.uint8] = cv2.imdecode(np_buf, cv2.IMREAD_UNCHANGED)
+    img: npt.NDArray[Any] = cv2.imdecode(np_buf, cv2.IMREAD_UNCHANGED)
     return img
 
 
@@ -88,15 +76,14 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
 
             elif f.filename.endswith(".pgm"):
                 buf = archive.read(f)
-                img_depth = read_image(buf)
+                img_depth = read_depth_image(buf)
 
                 # Log the camera transforms:
-                rr.log_view_coordinates("world/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
                 rr.log_pinhole(
                     "world/camera/image",
-                    child_from_parent=camera_intrinsics(img_depth),
                     width=img_depth.shape[1],
                     height=img_depth.shape[0],
+                    focal_length_px=0.7 * img_depth.shape[1],
                 )
 
                 # Log the depth image to the cameras image-space:

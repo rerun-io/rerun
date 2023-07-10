@@ -17,7 +17,7 @@ use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerConte
 
 use crate::{
     axis_lines::add_axis_lines,
-    scene::{SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
+    scene::{image_view_coordinates, SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
     space_camera_3d::SpaceCamera3D,
     ui::{
         create_labels, outline_config, picking, screenshot_context_menu, SpatialNavigationMode,
@@ -47,9 +47,6 @@ pub struct View3DState {
     pub show_bbox: bool,
 
     last_eye_interact_time: f64,
-
-    /// Filled in at the start of each frame
-    pub(crate) space_specs: SpaceSpecs,
 }
 
 impl Default for View3DState {
@@ -63,7 +60,6 @@ impl Default for View3DState {
             show_axes: false,
             show_bbox: false,
             last_eye_interact_time: f64::NEG_INFINITY,
-            space_specs: Default::default(),
         }
     }
 }
@@ -73,8 +69,12 @@ fn ease_out(t: f32) -> f32 {
 }
 
 impl View3DState {
-    pub fn reset_camera(&mut self, scene_bbox_accum: &BoundingBox) {
-        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.space_specs));
+    pub fn reset_camera(
+        &mut self,
+        scene_bbox_accum: &BoundingBox,
+        view_coordinates: &Option<ViewCoordinates>,
+    ) {
+        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, view_coordinates));
         self.tracked_camera = None;
         self.camera_before_tracked_camera = None;
     }
@@ -84,6 +84,7 @@ impl View3DState {
         response: &egui::Response,
         scene_bbox_accum: &BoundingBox,
         space_cameras: &[SpaceCamera3D],
+        view_coordinates: Option<ViewCoordinates>,
     ) -> &mut OrbitEye {
         let tracking_camera = self
             .tracked_camera
@@ -105,7 +106,7 @@ impl View3DState {
 
         let orbit_camera = self
             .orbit_eye
-            .get_or_insert_with(|| default_eye(scene_bbox_accum, &self.space_specs));
+            .get_or_insert_with(|| default_eye(scene_bbox_accum, &view_coordinates));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -190,26 +191,11 @@ impl EyeInterpolation {
     pub fn target_time(start: &Eye, stop: &Eye) -> f32 {
         // Take more time if the rotation is big:
         let angle_difference = start
-            .world_from_view
+            .world_from_rub_view
             .rotation()
-            .angle_between(stop.world_from_view.rotation());
+            .angle_between(stop.world_from_rub_view.rotation());
 
         egui::remap_clamp(angle_difference, 0.0..=std::f32::consts::PI, 0.2..=0.7)
-    }
-}
-
-#[derive(Clone, Default, PartialEq)]
-pub struct SpaceSpecs {
-    pub up: Option<glam::Vec3>,
-    pub right: Option<glam::Vec3>,
-}
-
-impl SpaceSpecs {
-    pub fn from_view_coordinates(coordinates: Option<ViewCoordinates>) -> Self {
-        let up = (|| Some(coordinates?.up()?.as_vec3().into()))();
-        let right = (|| Some(coordinates?.right()?.as_vec3().into()))();
-
-        Self { up, right }
     }
 }
 
@@ -288,6 +274,10 @@ pub fn view_3d(
 
     let highlights = &scene.highlights;
     let space_cameras = &scene.parts.cameras.space_cameras;
+    let view_coordinates = ctx
+        .store_db
+        .store()
+        .query_latest_component(space, &ctx.current_query());
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
@@ -303,9 +293,12 @@ pub fn view_3d(
         Some(_) => 4.0,
         None => 0.0,
     };
-    let orbit_eye = state
-        .state_3d
-        .update_eye(&response, &state.scene_bbox_accum, space_cameras);
+    let orbit_eye = state.state_3d.update_eye(
+        &response,
+        &state.scene_bbox_accum,
+        space_cameras,
+        view_coordinates,
+    );
     let did_interact_with_eye =
         orbit_eye.update(&response, orbit_eye_drag_threshold, &state.scene_bbox_accum);
 
@@ -347,7 +340,7 @@ pub fn view_3d(
 
         resolution_in_pixel,
 
-        view_from_world: eye.world_from_view.inverse(),
+        view_from_world: eye.world_from_rub_view.inverse(),
         projection_from_view: Projection::Perspective {
             vertical_fov: eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y),
             near_plane_distance: eye.near(),
@@ -423,7 +416,9 @@ pub fn view_3d(
         }
         // Without hovering, resets the camera.
         else {
-            state.state_3d.reset_camera(&state.scene_bbox_accum);
+            state
+                .state_3d
+                .reset_camera(&state.scene_bbox_accum, &view_coordinates);
         }
     }
 
@@ -528,7 +523,7 @@ pub fn view_3d(
     }
 
     // Commit ui induced lines.
-    match line_builder.to_draw_data(ctx.render_ctx) {
+    match line_builder.into_draw_data(ctx.render_ctx) {
         Ok(line_draw_data) => {
             view_builder.queue_draw(line_draw_data);
         }
@@ -579,9 +574,14 @@ fn show_projections_from_2d_space(
                     } else {
                         cam.picture_plane_distance
                     };
+                    let stop_in_image_plane = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
 
-                    let stop_in_cam = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
-                    let stop_in_world = cam.world_from_cam().transform_point3(stop_in_cam);
+                    let world_from_image = glam::Affine3A::from(cam.world_from_camera)
+                        * glam::Affine3A::from_mat3(
+                            cam.pinhole_view_coordinates
+                                .from_other(&image_view_coordinates()),
+                        );
+                    let stop_in_world = world_from_image.transform_point3(stop_in_image_plane);
 
                     let origin = cam.position();
                     let ray =
@@ -640,7 +640,10 @@ fn add_picking_ray(
         .radius(Size::new_points(0.5));
 }
 
-fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {
+fn default_eye(
+    scene_bbox: &macaw::BoundingBox,
+    view_coordinates: &Option<ViewCoordinates>,
+) -> OrbitEye {
     let mut center = scene_bbox.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
@@ -651,10 +654,14 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> Orb
         radius = 1.0;
     }
 
-    let look_up = space_specs.up.unwrap_or(Vec3::Z);
+    let look_up: glam::Vec3 = view_coordinates
+        .and_then(|vc| vc.up())
+        .unwrap_or(re_components::coordinates::SignedAxis3::POSITIVE_Z)
+        .into();
 
-    let look_dir = if let Some(right) = space_specs.right {
+    let look_dir = if let Some(right) = view_coordinates.and_then(|vc| vc.right()) {
         // Make sure right is to the right, and up is up:
+        let right = right.into();
         let fwd = look_up.cross(right);
         0.75 * fwd + 0.25 * right - 0.25 * look_up
     } else {
@@ -673,6 +680,8 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> Orb
         center,
         radius,
         Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, look_up).inverse()),
-        space_specs.up.unwrap_or(Vec3::ZERO),
+        view_coordinates
+            .and_then(|vc| vc.up())
+            .map_or(glam::Vec3::ZERO, Into::into),
     )
 }

@@ -50,7 +50,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Initialization",
         module_summary=None,
-        func_list=["init", "connect", "disconnect", "spawn", "serve", "memory_recording"],
+        func_list=["init", "connect", "disconnect", "spawn", "serve", "save", "memory_recording"],
         class_list=[],
     ),
     Section(
@@ -117,12 +117,12 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Transforms",
         module_summary="log.transform",
         func_list=[
-            "log_rigid3",
             "log_transform3d",
             "log_pinhole",
             "log_unknown_transform",
             "log_disconnected_space",
             "log_view_coordinates",
+            "log_rigid3",
         ],
         class_list=[],
     ),

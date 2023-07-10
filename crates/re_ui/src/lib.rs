@@ -143,6 +143,7 @@ impl ReUi {
         frame
     }
 
+    #[allow(clippy::unused_self)]
     pub fn bottom_panel_margin(&self) -> egui::Vec2 {
         egui::Vec2::splat(8.0)
     }

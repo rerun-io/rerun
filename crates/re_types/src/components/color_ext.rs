@@ -12,7 +12,7 @@ impl Color {
     }
 
     #[inline]
-    pub fn to_array(&self) -> [u8; 4] {
+    pub fn to_array(self) -> [u8; 4] {
         [
             (self.0 >> 24) as u8,
             (self.0 >> 16) as u8,

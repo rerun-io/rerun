@@ -46,7 +46,7 @@ pub type DataRowResult<T> = ::std::result::Result<T, DataRowError>;
 
 // ---
 
-type DataCellVec = SmallVec<[DataCell; 4]>;
+pub type DataCellVec = SmallVec<[DataCell; 4]>;
 
 /// A row's worth of [`DataCell`]s: a collection of independent [`DataCell`]s with different
 /// underlying datatypes and pointing to different parts of the heap.

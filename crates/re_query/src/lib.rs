@@ -44,7 +44,7 @@ pub enum QueryError {
     #[error("Error with one or more the underlying data cells: {0}")]
     DataCell(#[from] re_log_types::DataCellError),
 
-    #[error("Error converting arrow data")]
+    #[error("Error converting arrow data: {0}")]
     ArrowError(#[from] arrow2::error::Error),
 
     #[cfg(feature = "polars")]

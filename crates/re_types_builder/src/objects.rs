@@ -4,7 +4,11 @@
 //! are much easier to inspect and manipulate / friendler to work with.
 
 use anyhow::Context as _;
-use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+};
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
@@ -25,39 +29,121 @@ impl Objects {
     /// Runs the semantic pass on a serialized flatbuffers schema.
     ///
     /// The buffer must be a serialized [`FbsSchema`] (i.e. `.bfbs` data).
-    pub fn from_buf(buf: &[u8]) -> Self {
+    pub fn from_buf(include_dir_path: impl AsRef<Path>, buf: &[u8]) -> Self {
         let schema = root_as_schema(buf).unwrap();
-        Self::from_raw_schema(&schema)
+        Self::from_raw_schema(include_dir_path, &schema)
     }
 
     /// Runs the semantic pass on a deserialized flatbuffers [`FbsSchema`].
-    pub fn from_raw_schema(schema: &FbsSchema<'_>) -> Self {
+    pub fn from_raw_schema(include_dir_path: impl AsRef<Path>, schema: &FbsSchema<'_>) -> Self {
         let mut resolved_objs = HashMap::new();
         let mut resolved_enums = HashMap::new();
 
         let enums = schema.enums().iter().collect::<Vec<_>>();
         let objs = schema.objects().iter().collect::<Vec<_>>();
 
+        let include_dir_path = include_dir_path.as_ref();
+
         // resolve enums
         for enm in schema.enums() {
-            let resolved_enum = Object::from_raw_enum(&enums, &objs, &enm);
+            let resolved_enum = Object::from_raw_enum(include_dir_path, &enums, &objs, &enm);
             resolved_enums.insert(resolved_enum.fqname.clone(), resolved_enum);
         }
 
         // resolve objects
-        for obj in schema
-            .objects()
-            .iter()
-            // NOTE: Wrapped scalar types used by unions, not actual objects: ignore.
-            .filter(|obj| !obj.name().starts_with("fbs.scalars."))
-        {
-            let resolved_obj = Object::from_raw_object(&enums, &objs, &obj);
+        for obj in schema.objects().iter() {
+            let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
 
-        Self {
+        let mut this = Self {
             objects: resolved_enums.into_iter().chain(resolved_objs).collect(),
+        };
+
+        // Resolve field-level semantic transparency recursively.
+        let mut done = false;
+        while !done {
+            done = true;
+            let objects_copy = this.objects.clone(); // borrowck, the lazy way
+            for obj in this.objects.values_mut() {
+                for field in &mut obj.fields {
+                    if field.is_transparent() {
+                        if let Some(target_fqname) = field.typ.fqname() {
+                            let mut target_obj = objects_copy[target_fqname].clone();
+                            assert!(
+                                target_obj.fields.len() == 1,
+                                "field '{}' is marked transparent but points to object '{}' which \
+                                    doesn't have exactly one field (found {} fields instead)",
+                                field.fqname,
+                                target_obj.fqname,
+                                target_obj.fields.len(),
+                            );
+
+                            let ObjectField {
+                                virtpath: _,
+                                filepath: _,
+                                fqname,
+                                pkg_name: _,
+                                name: _,
+                                docs: _,
+                                typ,
+                                attrs,
+                                order: _,
+                                is_nullable: _,
+                                is_deprecated: _,
+                                datatype,
+                            } = target_obj.fields.pop().unwrap();
+
+                            field.typ = typ;
+                            field.datatype = datatype;
+
+                            // TODO(cmc): might want to do something smarter at some point regarding attrs.
+
+                            // NOTE: Transparency (or lack thereof) of the target field takes precedence.
+                            if let transparency @ Some(_) =
+                                attrs.try_get::<String>(&fqname, crate::ATTR_TRANSPARENT)
+                            {
+                                field.attrs.0.insert(
+                                    crate::ATTR_TRANSPARENT.to_owned(),
+                                    transparency.clone(),
+                                );
+                            } else {
+                                field.attrs.0.remove(crate::ATTR_TRANSPARENT);
+                            }
+
+                            done = false;
+                        }
+                    }
+                }
+            }
         }
+
+        // Remove whole objects marked as transparent.
+        this.objects = this
+            .objects
+            .drain()
+            .filter(|(_, obj)| !obj.is_transparent())
+            .collect();
+
+        // Check for nullable unions -- these cannot be represented in Arrow!
+        for obj in this.objects.values() {
+            for field in &obj.fields {
+                if !field.is_nullable {
+                    continue;
+                }
+
+                if let Type::Object(fqname) = &field.typ {
+                    let target = &this.objects[fqname];
+                    assert!(
+                        !(target.is_enum() || target.is_union()),
+                        "nullable unions cannot be represented in Arrow, found one at {:?}",
+                        field.fqname,
+                    );
+                }
+            }
+        }
+
+        this
     }
 }
 
@@ -81,22 +167,18 @@ impl Objects {
             .unwrap()
     }
 
-    /// Returns all available datatypes, pre-sorted in ascending order based on their `order`
+    /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
-    pub fn ordered_datatypes(&self) -> Vec<&Object> {
-        self.ordered_objects(ObjectKind::Datatype.into())
-    }
+    pub fn ordered_objects_mut(&mut self, kind: Option<ObjectKind>) -> Vec<&mut Object> {
+        let objs = self
+            .objects
+            .values_mut()
+            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
 
-    /// Returns all available components, pre-sorted in ascending order based on their `order`
-    /// attribute.
-    pub fn ordered_components(&self) -> Vec<&Object> {
-        self.ordered_objects(ObjectKind::Component.into())
-    }
+        let mut objs = objs.collect::<Vec<_>>();
+        objs.sort_by_key(|anyobj| anyobj.order);
 
-    /// Returns all available archetypes, pre-sorted in ascending order based on their `order`
-    /// attribute.
-    pub fn ordered_archetypes(&self) -> Vec<&Object> {
-        self.ordered_objects(ObjectKind::Archetype.into())
+        objs
     }
 
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
@@ -108,7 +190,7 @@ impl Objects {
             .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
 
         let mut objs = objs.collect::<Vec<_>>();
-        objs.sort_by_key(|anyobj| anyobj.order());
+        objs.sort_by_key(|anyobj| anyobj.order);
 
         objs
     }
@@ -127,7 +209,7 @@ pub enum ObjectKind {
 impl ObjectKind {
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
-        let pkg_name = pkg_name.as_ref();
+        let pkg_name = pkg_name.as_ref().replace(".testing", "");
         if pkg_name.starts_with("rerun.datatypes") {
             ObjectKind::Datatype
         } else if pkg_name.starts_with("rerun.components") {
@@ -165,19 +247,54 @@ pub struct Docs {
     ///
     /// See also [`Docs::doc`].
     pub tagged_docs: HashMap<String, Vec<String>>,
+
+    /// Contents of all the files included using `\include:<path>`.
+    pub included_files: HashMap<PathBuf, String>,
 }
 
 impl Docs {
     fn from_raw_docs(
+        filepath: &Path,
         docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
     ) -> Self {
+        let mut included_files = HashMap::default();
+
+        let include_file = |included_files: &mut HashMap<_, _>, raw_path: &str| {
+            let path: PathBuf = raw_path
+                .parse()
+                .with_context(|| format!("couldn't parse included path: {raw_path:?}"))
+                .unwrap();
+
+            let path = filepath.join(path);
+
+            included_files
+                .entry(path.clone())
+                .or_insert_with(|| {
+                    std::fs::read_to_string(&path)
+                        .with_context(|| {
+                            format!("couldn't parse read file at included path: {path:?}")
+                        })
+                        .unwrap()
+                })
+                .clone()
+        };
+
         // language-agnostic docs
         let doc = docs
             .into_iter()
             .flat_map(|doc| doc.into_iter())
             // NOTE: discard tagged lines!
             .filter(|line| !line.trim().starts_with('\\'))
-            .map(ToOwned::to_owned)
+            .flat_map(|line| {
+                if let Some((_, path)) = line.split_once("\\include:") {
+                    include_file(&mut included_files, path)
+                        .lines()
+                        .map(|line| line.to_owned())
+                        .collect_vec()
+                } else {
+                    vec![line.to_owned()]
+                }
+            })
             .collect::<Vec<_>>();
 
         // tagged docs, e.g. `\py this only applies to python!`
@@ -193,6 +310,16 @@ impl Docs {
                         let line = &trimmed[tag.len()..];
                         (tag[1..].to_owned(), line.to_owned())
                     })
+                })
+                .flat_map(|(tag, line)| {
+                    if let Some((_, path)) = line.split_once("\\include:") {
+                        include_file(&mut included_files, path)
+                            .lines()
+                            .map(|line| (tag.clone(), line.to_owned()))
+                            .collect_vec()
+                    } else {
+                        vec![(tag, line)]
+                    }
                 })
                 .collect::<Vec<_>>();
 
@@ -212,7 +339,11 @@ impl Docs {
             tagged_docs
         };
 
-        Self { doc, tagged_docs }
+        Self {
+            doc,
+            tagged_docs,
+            included_files,
+        }
     }
 }
 
@@ -220,8 +351,11 @@ impl Docs {
 /// an enum.
 #[derive(Debug, Clone)]
 pub struct Object {
-    /// File path of the associated fbs definition, e.g. `//rerun/components/point2d.fbs`.
-    pub filepath: String,
+    /// Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    pub virtpath: String,
+
+    /// Absolute filepath of the associated fbs definition.
+    pub filepath: PathBuf,
 
     /// Fully-qualified name of the object, e.g. `rerun.components.Point2D`.
     pub fqname: String,
@@ -241,6 +375,9 @@ pub struct Object {
     /// The object's attributes.
     pub attrs: Attributes,
 
+    /// The object's `order` attribute's value, which is always mandatory.
+    pub order: u32,
+
     /// The object's inner fields, which can be either struct members or union values.
     ///
     /// These are pre-sorted, in ascending order, using their `order` attribute.
@@ -248,16 +385,25 @@ pub struct Object {
 
     /// Properties that only apply to either structs or unions.
     pub specifics: ObjectSpecifics,
+
+    /// The Arrow datatype of this `Object`, or `None` if the object is Arrow-transparent.
+    ///
+    /// This is lazily computed when the parent object gets registered into the Arrow registry and
+    /// will be `None` until then.
+    pub datatype: Option<crate::LazyDatatype>,
 }
 
 impl Object {
     /// Resolves a raw [`crate::Object`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
     pub fn from_raw_object(
+        include_dir_path: impl AsRef<Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         obj: &FbsObject<'_>,
     ) -> Self {
+        let include_dir_path = include_dir_path.as_ref();
+
         let fqname = obj.name().to_owned();
         let (pkg_name, name) = fqname
             .rsplit_once('.')
@@ -265,29 +411,43 @@ impl Object {
                 (pkg_name.to_owned(), name.to_owned())
             });
 
-        let filepath = obj
+        let virtpath = obj
             .declaration_file()
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(obj.documentation());
+        let docs = Docs::from_raw_docs(&filepath, obj.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
         let attrs = Attributes::from_raw_attrs(obj.attributes());
+        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
-        let fields = {
+        let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
                 .fields()
                 .iter()
                 // NOTE: These are intermediate fields used by flatbuffers internals, we don't care.
                 .filter(|field| field.type_().base_type() != FbsBaseType::UType)
-                .map(|field| ObjectField::from_raw_object_field(enums, objs, obj, &field))
+                .filter(|field| field.type_().element() != FbsBaseType::UType)
+                .map(|field| {
+                    ObjectField::from_raw_object_field(include_dir_path, enums, objs, obj, &field)
+                })
                 .collect();
-            fields.sort_by_key(|field| field.order());
+            fields.sort_by_key(|field| field.order);
             fields
         };
 
+        if kind == ObjectKind::Component {
+            assert!(
+                fields.len() == 1,
+                "components must have exactly 1 field, but {fqname} has {}",
+                fields.len()
+            );
+        }
+
         Self {
+            virtpath,
             filepath,
             fqname,
             pkg_name,
@@ -295,14 +455,23 @@ impl Object {
             docs,
             kind,
             attrs,
+            order,
             fields,
             specifics: ObjectSpecifics::Struct {},
+            datatype: None,
         }
     }
 
     /// Resolves a raw [`FbsEnum`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
-    pub fn from_raw_enum(enums: &[FbsEnum<'_>], objs: &[FbsObject<'_>], enm: &FbsEnum<'_>) -> Self {
+    pub fn from_raw_enum(
+        include_dir_path: impl AsRef<Path>,
+        enums: &[FbsEnum<'_>],
+        objs: &[FbsObject<'_>],
+        enm: &FbsEnum<'_>,
+    ) -> Self {
+        let include_dir_path = include_dir_path.as_ref();
+
         let fqname = enm.name().to_owned();
         let (pkg_name, name) = fqname
             .rsplit_once('.')
@@ -310,13 +479,14 @@ impl Object {
                 (pkg_name.to_owned(), name.to_owned())
             });
 
-        let filepath = enm
+        let virtpath = enm
             .declaration_file()
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(enm.documentation());
+        let docs = Docs::from_raw_docs(&filepath, enm.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
 
         let utype = {
@@ -333,8 +503,9 @@ impl Object {
             }
         };
         let attrs = Attributes::from_raw_attrs(enm.attributes());
+        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
-        let fields = enm
+        let fields: Vec<_> = enm
             .values()
             .iter()
             // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
@@ -343,10 +514,19 @@ impl Object {
                     .filter(|utype| utype.base_type() != FbsBaseType::None)
                     .is_some()
             })
-            .map(|val| ObjectField::from_raw_enum_value(enums, objs, enm, &val))
+            .map(|val| ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val))
             .collect();
 
+        if kind == ObjectKind::Component {
+            assert!(
+                fields.len() == 1,
+                "components must have exactly 1 field, but {fqname} has {}",
+                fields.len()
+            );
+        }
+
         Self {
+            virtpath,
             filepath,
             fqname,
             pkg_name,
@@ -354,8 +534,10 @@ impl Object {
             docs,
             kind,
             attrs,
+            order,
             fields,
             specifics: ObjectSpecifics::Union { utype },
+            datatype: None,
         }
     }
 
@@ -373,13 +555,6 @@ impl Object {
         T::Err: std::error::Error + Send + Sync + 'static,
     {
         self.attrs.try_get(self.fqname.as_str(), name)
-    }
-
-    /// Returns the mandatory `order` attribute of this object.
-    ///
-    /// Panics if no order has been set.
-    pub fn order(&self) -> u32 {
-        self.attrs.get::<u32>(&self.fqname, "order")
     }
 
     pub fn is_struct(&self) -> bool {
@@ -402,6 +577,19 @@ impl Object {
             ObjectSpecifics::Union { utype } => utype.is_none(),
         }
     }
+
+    pub fn is_arrow_transparent(&self) -> bool {
+        self.kind == ObjectKind::Component
+            || self
+                .try_get_attr::<String>(crate::ATTR_ARROW_TRANSPARENT)
+                .is_some()
+    }
+
+    fn is_transparent(&self) -> bool {
+        self.attrs
+            .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
+            .is_some()
+    }
 }
 
 /// Properties specific to either structs or unions, but not both.
@@ -420,8 +608,11 @@ pub enum ObjectSpecifics {
 /// union value.
 #[derive(Debug, Clone)]
 pub struct ObjectField {
-    /// File path of the associated fbs definition, e.g. `//rerun/components/point2d.fbs`.
-    pub filepath: String,
+    /// Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    pub virtpath: String,
+
+    /// Absolute filepath of the associated fbs definition.
+    pub filepath: PathBuf,
 
     /// Fully-qualified name of the field, e.g. `rerun.components.Point2D#position`.
     pub fqname: String,
@@ -441,47 +632,60 @@ pub struct ObjectField {
     /// The field's attributes.
     pub attrs: Attributes,
 
-    /// Whether the field is required.
-    ///
-    /// Always true for IDL definitions using flatbuffers' `struct` type (as opposed to `table`).
-    pub required: bool,
+    /// The field's `order` attribute's value, which is always mandatory.
+    pub order: u32,
+
+    /// Whether the field is nullable.
+    pub is_nullable: bool,
 
     /// Whether the field is deprecated.
     //
     // TODO(#2366): do something with this
     // TODO(#2367): implement custom attr to specify deprecation reason
-    pub deprecated: bool,
+    pub is_deprecated: bool,
+
+    /// The Arrow datatype of this `ObjectField`.
+    ///
+    /// This is lazily computed when the parent object gets registered into the Arrow registry and
+    /// will be `None` until then.
+    pub datatype: Option<crate::LazyDatatype>,
 }
 
 impl ObjectField {
     pub fn from_raw_object_field(
+        include_dir_path: impl AsRef<Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         obj: &FbsObject<'_>,
         field: &FbsField<'_>,
     ) -> Self {
-        let fqname = format!("{}.{}", obj.name(), field.name());
+        let fqname = format!("{}#{}", obj.name(), field.name());
         let (pkg_name, name) = fqname
-            .rsplit_once('.')
+            .rsplit_once('#')
             .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
                 (pkg_name.to_owned(), name.to_owned())
             });
 
-        let filepath = obj
+        let virtpath = obj
             .declaration_file()
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(field.documentation());
+        let docs = Docs::from_raw_docs(&filepath, field.documentation());
 
         let typ = Type::from_raw_type(enums, objs, field.type_());
         let attrs = Attributes::from_raw_attrs(field.attributes());
+        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
-        let required = field.required() || obj.is_struct();
-        let deprecated = field.deprecated();
+        let is_nullable = attrs
+            .try_get::<String>(&fqname, crate::ATTR_NULLABLE)
+            .is_some();
+        let is_deprecated = field.deprecated();
 
         Self {
+            virtpath,
             filepath,
             fqname,
             pkg_name,
@@ -489,31 +693,35 @@ impl ObjectField {
             docs,
             typ,
             attrs,
-            required,
-            deprecated,
+            order,
+            is_nullable,
+            is_deprecated,
+            datatype: None,
         }
     }
 
     pub fn from_raw_enum_value(
+        include_dir_path: impl AsRef<Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         enm: &FbsEnum<'_>,
         val: &FbsEnumVal<'_>,
     ) -> Self {
-        let fqname = format!("{}.{}", enm.name(), val.name());
+        let fqname = format!("{}#{}", enm.name(), val.name());
         let (pkg_name, name) = fqname
-            .rsplit_once('.')
+            .rsplit_once('#')
             .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
                 (pkg_name.to_owned(), name.to_owned())
             });
 
-        let filepath = enm
+        let virtpath = enm
             .declaration_file()
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(val.documentation());
+        let docs = Docs::from_raw_docs(&filepath, val.documentation());
 
         let typ = Type::from_raw_type(
             enums,
@@ -523,12 +731,16 @@ impl ObjectField {
         );
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
+        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
+        let is_nullable = attrs
+            .try_get::<String>(&fqname, crate::ATTR_NULLABLE)
+            .is_some();
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
-        let required = true;
-        let deprecated = false;
+        let is_deprecated = false;
 
         Self {
+            virtpath,
             filepath,
             fqname,
             pkg_name,
@@ -536,17 +748,17 @@ impl ObjectField {
             docs,
             typ,
             attrs,
-            required,
-            deprecated,
+            order,
+            is_nullable,
+            is_deprecated,
+            datatype: None,
         }
     }
 
-    /// Returns the mandatory `order` attribute of this field.
-    ///
-    /// Panics if no order has been set.
-    #[inline]
-    pub fn order(&self) -> u32 {
-        self.attrs.get::<u32>(&self.fqname, "order")
+    fn is_transparent(&self) -> bool {
+        self.attrs
+            .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
+            .is_some()
     }
 
     pub fn get_attr<T>(&self, name: impl AsRef<str>) -> T
@@ -636,7 +848,7 @@ impl Type {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[field_type.index() as usize];
-                flatten_scalar_wrappers(obj).into()
+                Self::Object(obj.name().to_owned())
             }
             FbsBaseType::Union => {
                 let union = &enums[field_type.index() as usize];
@@ -666,6 +878,44 @@ impl Type {
             _ => unreachable!("{typ:#?}"),
         }
     }
+
+    /// True if this is some kind of array/vector.
+    pub fn is_plural(&self) -> bool {
+        match self {
+            Type::Array {
+                elem_type: _,
+                length: _,
+            }
+            | Type::Vector { elem_type: _ } => true,
+            Type::UInt8
+            | Type::UInt16
+            | Type::UInt32
+            | Type::UInt64
+            | Type::Int8
+            | Type::Int16
+            | Type::Int32
+            | Type::Int64
+            | Type::Bool
+            | Type::Float16
+            | Type::Float32
+            | Type::Float64
+            | Type::String
+            | Type::Object(_) => false,
+        }
+    }
+
+    /// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
+    pub fn fqname(&self) -> Option<&str> {
+        match self {
+            Type::Object(fqname) => Some(fqname.as_str()),
+            Type::Array {
+                elem_type,
+                length: _,
+            }
+            | Type::Vector { elem_type } => elem_type.fqname(),
+            _ => None,
+        }
+    }
 }
 
 /// The underlying element type for arrays/vectors/maps.
@@ -692,7 +942,7 @@ pub enum ElementType {
 
 impl ElementType {
     pub fn from_raw_base_type(
-        _enums: &[FbsEnum<'_>],
+        enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         outer_type: FbsType<'_>,
         inner_type: FbsBaseType,
@@ -713,16 +963,27 @@ impl ElementType {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[outer_type.index() as usize];
-                flatten_scalar_wrappers(obj)
+                Self::Object(obj.name().to_owned())
             }
-            FbsBaseType::Union => unimplemented!("{inner_type:#?}"), // NOLINT
+            FbsBaseType::Union => {
+                let enm = &enums[outer_type.index() as usize];
+                Self::Object(enm.name().to_owned())
+            }
             FbsBaseType::None
             | FbsBaseType::UType
             | FbsBaseType::Array
             | FbsBaseType::Vector
-            | FbsBaseType::Vector64 => unreachable!("{inner_type:#?}"),
+            | FbsBaseType::Vector64 => unreachable!("{outer_type:#?} into {inner_type:#?}"),
             // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants...
             _ => unreachable!("{inner_type:#?}"),
+        }
+    }
+
+    /// `Some(fqname)` if this is an `Object`.
+    pub fn fqname(&self) -> Option<&str> {
+        match self {
+            ElementType::Object(fqname) => Some(fqname.as_str()),
+            _ => None,
         }
     }
 }
@@ -808,15 +1069,15 @@ impl Attributes {
     }
 }
 
-/// Helper to turn wrapped scalars into actual scalars.
-fn flatten_scalar_wrappers(obj: &FbsObject<'_>) -> ElementType {
-    let name = obj.name();
-    if name.starts_with("fbs.scalars.") {
-        match name {
-            "fbs.scalars.Float32" => ElementType::Float32,
-            _ => unimplemented!("{name:#?}"), // NOLINT
-        }
-    } else {
-        ElementType::Object(name.to_owned())
-    }
+fn filepath_from_declaration_file(
+    include_dir_path: impl AsRef<Path>,
+    declaration_file: impl AsRef<str>,
+) -> PathBuf {
+    include_dir_path.as_ref().join("rerun").join(
+        PathBuf::from(declaration_file.as_ref())
+            .parent()
+            .unwrap() // NOTE: safe, this _must_ be a file
+            .to_string_lossy()
+            .replace("//", ""),
+    )
 }

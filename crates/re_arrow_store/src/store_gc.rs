@@ -82,7 +82,7 @@ impl DataStore {
                 let num_bytes_to_drop = initial_num_bytes * p;
                 let target_num_bytes = initial_num_bytes - num_bytes_to_drop;
 
-                re_log::debug!(
+                re_log::trace!(
                     kind = "gc",
                     id = self.gc_id,
                     %target,
@@ -106,7 +106,7 @@ impl DataStore {
         let new_num_bytes =
             (stats_after.temporal.num_bytes + stats_after.metadata_registry.num_bytes) as f64;
 
-        re_log::debug!(
+        re_log::trace!(
             kind = "gc",
             id = self.gc_id,
             %target,

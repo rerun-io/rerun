@@ -1,8 +1,10 @@
-use glam::{Quat, Vec2, Vec3};
-use macaw::{IsoTransform, Ray3};
+use glam::Vec3;
+use macaw::IsoTransform;
 
 use re_components::{Pinhole, ViewCoordinates};
 use re_log_types::EntityPath;
+
+use crate::scene::image_view_coordinates;
 
 /// A logged camera that connects spaces.
 #[derive(Clone, PartialEq)]
@@ -12,8 +14,8 @@ pub struct SpaceCamera3D {
     /// We expect the camera transform to apply to this instance and every path below it.
     pub ent_path: EntityPath,
 
-    /// The coordinate system of the camera ("view-space").
-    pub view_coordinates: ViewCoordinates,
+    /// The coordinate system of the pinhole entity ("view-space").
+    pub pinhole_view_coordinates: ViewCoordinates,
 
     /// Camera "Extrinsics", i.e. the pose of the camera.
     pub world_from_camera: IsoTransform,
@@ -43,7 +45,7 @@ impl SpaceCamera3D {
 
     /// Scene-space from Rerun view-space (RUB).
     pub fn world_from_rub_view(&self) -> Option<IsoTransform> {
-        match from_rub_quat(self.view_coordinates) {
+        match self.pinhole_view_coordinates.from_rub_quat() {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
                 re_log::warn_once!("Camera {:?}: {err}", self.ent_path);
@@ -56,33 +58,21 @@ impl SpaceCamera3D {
     pub fn project_onto_2d(&self, point_in_world: Vec3) -> Option<Vec3> {
         let pinhole = self.pinhole?;
         let point_in_cam = self.cam_from_world().transform_point3(point_in_world);
-        let point_in_image = pinhole.project(point_in_cam);
+
+        // The pinhole view-coordinates are important here because they define how the image plane is aligned
+        // with the camera coordinate system. It is not a given that a user wants the image-plane aligned with the
+        // XY-plane in camera space.
+        //
+        // Because the [`Pinhole`] component currently assumes an input in the default `image_view_coordinates`
+        // we need to pre-transform the data from the user-defined `pinhole_view_coordinates` to the required
+        // `image_view_coordinates`.
+        //
+        // TODO(...): When Pinhole is an archetype instead of a component, `pinhole.project` should do this
+        // internally.
+        let point_in_image_unprojected =
+            image_view_coordinates().from_other(&self.pinhole_view_coordinates) * point_in_cam;
+
+        let point_in_image = pinhole.project(point_in_image_unprojected);
         Some(point_in_image)
-    }
-
-    /// Unproject a 2D image coordinate as a ray in 3D space
-    pub fn unproject_as_ray(&self, pos2d: Vec2) -> Option<Ray3> {
-        let pinhole = self.pinhole?;
-
-        let depth = 1.0; // whatever will do
-        let stop = pinhole.unproject(pos2d.extend(depth));
-        let ray_in_camera = Ray3::from_origin_dir(Vec3::ZERO, stop);
-        Some(self.world_from_camera * ray_in_camera)
-    }
-}
-
-fn from_rub_quat(system: ViewCoordinates) -> Result<Quat, String> {
-    let mat3 = system.from_rub();
-
-    let det = mat3.determinant();
-    if det == 1.0 {
-        Ok(Quat::from_mat3(&mat3))
-    } else if det == -1.0 {
-        Err("has a left-handed coordinate system - Rerun does not yet support this!".to_owned())
-    } else {
-        Err(format!(
-            "has a degenerate coordinate system: {}",
-            system.describe()
-        ))
     }
 }

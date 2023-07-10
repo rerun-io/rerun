@@ -60,6 +60,41 @@
 //! brings very little value.
 //!
 //! Make sure to test the behavior of its output though: `re_types`!
+//!
+//!
+//! ### Understanding the subtleties of affixes
+//!
+//! So-called "affixes" are effects applied to objects defined with the Rerun IDL and that affect
+//! the way these objects behave and interoperate with each other (so, yes, monads. shhh.).
+//!
+//! There are 3 distinct and very common affixes used when working with Rerun's IDL: transparency,
+//! nullability and plurality.
+//!
+//! Broadly, we can describe these affixes as follows:
+//! - Transparency allows for bypassing a single layer of typing (e.g. to "extract" a field out of
+//!   a struct).
+//! - Nullability specifies whether a piece of data is allowed to be left unspecified at runtime.
+//! - Plurality specifies whether a piece of data is actually a collection of that same type.
+//!
+//! We say "broadly" here because the way these affixes ultimately affect objects in practice will
+//! actually depend on the kind of object that they are applied to, of which there are 3: archetypes,
+//! components and datatypes.
+//!
+//! Not only that, but objects defined in Rerun's IDL are materialized into 3 distinct environments:
+//! IDL definitions, Arrow datatypes and native code (e.g. Rust & Python).
+//!
+//! These environment have vastly different characteristics, quirks, pitfalls and limitations,
+//! which once again lead to these affixes having different, sometimes surprising behavior
+//! depending on the environment we're interested in.
+//! Also keep in mind that Flatbuffers and native code are generally designed around arrays of
+//! structures, while Arrow is all about structures of arrays!
+//!
+//! All in all, these interactions between affixes, object kinds and environments lead to a
+//! combinatorial explosion of edge cases that can be very confusing when it comes to (de)serialization
+//! code, and even API design.
+//!
+//! When in doubt, check out the `rerun.testing.archetypes.AffixFuzzer` IDL definitions, generated code and
+//! test suites for definitive answers.
 
 // TODO(#2365): support for external IDL definitions
 
@@ -78,6 +113,8 @@
 )]
 mod reflection;
 
+use anyhow::Context;
+
 pub use self::reflection::reflection::{
     root_as_schema, BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal,
     Field as FbsField, KeyValue as FbsKeyValue, Object as FbsObject, Schema as FbsSchema,
@@ -93,13 +130,17 @@ mod codegen;
 #[allow(clippy::unimplemented)]
 mod objects;
 
-pub use self::arrow_registry::ArrowRegistry;
+pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
 pub use self::codegen::{CodeGenerator, PythonCodeGenerator, RustCodeGenerator};
 pub use self::objects::{
     Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, Objects, Type,
 };
 
 // --- Attributes ---
+
+pub const ATTR_NULLABLE: &str = "nullable";
+pub const ATTR_ORDER: &str = "order";
+pub const ATTR_TRANSPARENT: &str = "transparent";
 
 pub const ATTR_ARROW_TRANSPARENT: &str = "attr.arrow.transparent";
 pub const ATTR_ARROW_SPARSE_UNION: &str = "attr.arrow.sparse_union";
@@ -109,7 +150,6 @@ pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recomme
 pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
 pub const ATTR_RERUN_LEGACY_FQNAME: &str = "attr.rerun.legacy_fqname";
 
-pub const ATTR_PYTHON_TRANSPARENT: &str = "attr.python.transparent";
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
 pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
 
@@ -177,14 +217,21 @@ fn generate_lang_agnostic(
     let entrypoint_path = entrypoint_path.as_ref();
     let entrypoint_filename = entrypoint_path.file_name().unwrap();
 
+    let include_dir_path = include_dir_path.as_ref();
+    let include_dir_path = include_dir_path
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize include path: {include_dir_path:?}"))
+        .unwrap();
+
     // generate bfbs definitions
-    compile_binary_schemas(include_dir_path, tmp.path(), entrypoint_path);
+    compile_binary_schemas(&include_dir_path, tmp.path(), entrypoint_path);
 
     let mut binary_entrypoint_path = PathBuf::from(entrypoint_filename);
     binary_entrypoint_path.set_extension("bfbs");
 
     // semantic pass: high level objects from low-level reflection data
-    let objects = Objects::from_buf(
+    let mut objects = Objects::from_buf(
+        include_dir_path,
         sh.read_binary_file(tmp.path().join(binary_entrypoint_path))
             .unwrap()
             .as_slice(),
@@ -192,7 +239,7 @@ fn generate_lang_agnostic(
 
     // create and fill out arrow registry
     let mut arrow_registry = ArrowRegistry::default();
-    for obj in objects.ordered_objects(None) {
+    for obj in objects.ordered_objects_mut(None) {
         arrow_registry.register(obj);
     }
 
@@ -223,7 +270,6 @@ pub fn generate_rust_code(
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
 
-    // generate rust code
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
     let _filepaths = gen.generate(&objects, &arrow_registry);
 }
