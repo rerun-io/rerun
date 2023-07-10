@@ -20,7 +20,9 @@ mod vec3d;
 mod vec4d;
 
 pub use self::angle::Angle;
-pub use self::fuzzy::{AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4, FlattenedScalar};
+pub use self::fuzzy::{
+    AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4, AffixFuzzer5, FlattenedScalar,
+};
 pub use self::mat3x3::Mat3x3;
 pub use self::mat4x4::Mat4x4;
 pub use self::point2d::Point2D;

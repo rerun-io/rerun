@@ -4564,3 +4564,449 @@ impl crate::Component for AffixFuzzer18 {
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
+pub struct AffixFuzzer19 {
+    pub just_a_table_nothing_shady: crate::datatypes::AffixFuzzer5,
+}
+
+impl<'a> From<AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
+    #[inline]
+    fn from(value: AffixFuzzer19) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
+    #[inline]
+    fn from(value: &'a AffixFuzzer19) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Component for AffixFuzzer19 {
+    #[inline]
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer19")
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![Field {
+            name: "single_optional_union".to_owned(),
+            data_type: DataType::Union(
+                vec![
+                    Field {
+                        name: "single_required".to_owned(),
+                        data_type: DataType::Union(
+                            vec![
+                                Field {
+                                    name: "degrees".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "radians".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "craziness".to_owned(),
+                                    data_type: DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Struct(vec![
+                                            Field {
+                                                name: "single_float_optional".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "single_string_required".to_owned(),
+                                                data_type: DataType::Utf8,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "single_string_optional".to_owned(),
+                                                data_type: DataType::Utf8,
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "many_floats_optional".to_owned(),
+                                                data_type: DataType::List(Box::new(Field {
+                                                    name: "item".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                })),
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "many_strings_required".to_owned(),
+                                                data_type: DataType::List(Box::new(Field {
+                                                    name: "item".to_owned(),
+                                                    data_type: DataType::Utf8,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                })),
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "many_strings_optional".to_owned(),
+                                                data_type: DataType::List(Box::new(Field {
+                                                    name: "item".to_owned(),
+                                                    data_type: DataType::Utf8,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                })),
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "flattened_scalar".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "almost_flattened_scalar".to_owned(),
+                                                data_type: DataType::Struct(vec![Field {
+                                                    name: "value".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                }]),
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "from_parent".to_owned(),
+                                                data_type: DataType::Boolean,
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                        ]),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    })),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ],
+                            None,
+                            UnionMode::Dense,
+                        ),
+                        is_nullable: false,
+                        metadata: [].into(),
+                    },
+                    Field {
+                        name: "many_required".to_owned(),
+                        data_type: DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::Union(
+                                vec![
+                                    Field {
+                                        name: "degrees".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "radians".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "craziness".to_owned(),
+                                        data_type: DataType::List(Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Struct(vec![
+                                                Field {
+                                                    name: "single_float_optional".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "single_string_required".to_owned(),
+                                                    data_type: DataType::Utf8,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "single_string_optional".to_owned(),
+                                                    data_type: DataType::Utf8,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "many_floats_optional".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Float32,
+                                                        is_nullable: true,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "many_strings_required".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Utf8,
+                                                        is_nullable: false,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "many_strings_optional".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Utf8,
+                                                        is_nullable: true,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "flattened_scalar".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "almost_flattened_scalar".to_owned(),
+                                                    data_type: DataType::Struct(vec![Field {
+                                                        name: "value".to_owned(),
+                                                        data_type: DataType::Float32,
+                                                        is_nullable: false,
+                                                        metadata: [].into(),
+                                                    }]),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "from_parent".to_owned(),
+                                                    data_type: DataType::Boolean,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                            ]),
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        })),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                ],
+                                None,
+                                UnionMode::Dense,
+                            ),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        })),
+                        is_nullable: false,
+                        metadata: [].into(),
+                    },
+                    Field {
+                        name: "many_optional".to_owned(),
+                        data_type: DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::Union(
+                                vec![
+                                    Field {
+                                        name: "degrees".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "radians".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "craziness".to_owned(),
+                                        data_type: DataType::List(Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Struct(vec![
+                                                Field {
+                                                    name: "single_float_optional".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "single_string_required".to_owned(),
+                                                    data_type: DataType::Utf8,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "single_string_optional".to_owned(),
+                                                    data_type: DataType::Utf8,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "many_floats_optional".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Float32,
+                                                        is_nullable: true,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "many_strings_required".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Utf8,
+                                                        is_nullable: false,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "many_strings_optional".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Utf8,
+                                                        is_nullable: true,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "flattened_scalar".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "almost_flattened_scalar".to_owned(),
+                                                    data_type: DataType::Struct(vec![Field {
+                                                        name: "value".to_owned(),
+                                                        data_type: DataType::Float32,
+                                                        is_nullable: false,
+                                                        metadata: [].into(),
+                                                    }]),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "from_parent".to_owned(),
+                                                    data_type: DataType::Boolean,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                            ]),
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        })),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                ],
+                                None,
+                                UnionMode::Dense,
+                            ),
+                            is_nullable: true,
+                            metadata: [].into(),
+                        })),
+                        is_nullable: false,
+                        metadata: [].into(),
+                    },
+                ],
+                None,
+                UnionMode::Dense,
+            ),
+            is_nullable: true,
+            metadata: [].into(),
+        }])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, just_a_table_nothing_shady): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| {
+                        let Self {
+                            just_a_table_nothing_shady,
+                        } = datum.into_owned();
+                        just_a_table_nothing_shady
+                    });
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let just_a_table_nothing_shady_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            {
+                _ = just_a_table_nothing_shady_bitmap;
+                _ = extension_wrapper;
+                crate::datatypes::AffixFuzzer5::try_to_arrow_opt(
+                    just_a_table_nothing_shady,
+                    Some("rerun.testing.components.AffixFuzzer19"),
+                )?
+            }
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok(crate::datatypes::AffixFuzzer5::try_from_arrow_opt(data)?
+            .into_iter()
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: data.data_type().clone(),
+                })
+            })
+            .map(|res| {
+                res.map(|just_a_table_nothing_shady| {
+                    Some(Self {
+                        just_a_table_nothing_shady,
+                    })
+                })
+            })
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
+    }
+}

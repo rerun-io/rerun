@@ -70,6 +70,8 @@ from .fuzzy import (
     AffixFuzzer18ArrayLike,
     AffixFuzzer18Like,
     AffixFuzzer18Type,
+    AffixFuzzer19Array,
+    AffixFuzzer19Type,
 )
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
@@ -116,6 +118,8 @@ __all__ = [
     "AffixFuzzer18ArrayLike",
     "AffixFuzzer18Like",
     "AffixFuzzer18Type",
+    "AffixFuzzer19Array",
+    "AffixFuzzer19Type",
     "AffixFuzzer1Array",
     "AffixFuzzer1Type",
     "AffixFuzzer2Array",

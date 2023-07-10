@@ -58,6 +58,8 @@ __all__ = [
     "AffixFuzzer18ArrayLike",
     "AffixFuzzer18Like",
     "AffixFuzzer18Type",
+    "AffixFuzzer19Array",
+    "AffixFuzzer19Type",
     "AffixFuzzer1Array",
     "AffixFuzzer1Type",
     "AffixFuzzer2Array",
@@ -950,3 +952,20 @@ AffixFuzzer18Type._ARRAY_TYPE = AffixFuzzer18Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer18Type())
+
+
+class AffixFuzzer19Type(BaseDelegatingExtensionType):
+    _TYPE_NAME = "rerun.testing.components.AffixFuzzer19"
+    _DELEGATED_EXTENSION_TYPE = datatypes.AffixFuzzer5Type
+
+
+class AffixFuzzer19Array(BaseDelegatingExtensionArray[datatypes.AffixFuzzer5ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer19"
+    _EXTENSION_TYPE = AffixFuzzer19Type
+    _DELEGATED_ARRAY_TYPE = datatypes.AffixFuzzer5Array
+
+
+AffixFuzzer19Type._ARRAY_TYPE = AffixFuzzer19Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer19Type())
