@@ -1816,7 +1816,7 @@ fn quote_arrow_field_deserializer(
                 let datatype = #data_src.data_type();
                 let #data_src = #data_src
                     .as_any()
-                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                     .unwrap(); // safe
 
                 let bitmap = #data_src.validity().cloned();
