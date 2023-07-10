@@ -123,7 +123,10 @@ fn create_files(
         code.push_text("#![allow(unused_parens)]", 2, 0);
         code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
         code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
+        #[rustfmt::skip]
+        code.push_text("#![allow(clippy::match_wildcard_for_single_variants)]", 2, 0);
         code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
+        code.push_text("#![allow(clippy::redundant_closure)]", 2, 0);
         code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
         code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
         code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
@@ -1542,7 +1545,7 @@ fn quote_arrow_field_serializer(
 
 fn quote_arrow_deserializer(
     arrow_registry: &ArrowRegistry,
-    _objects: &Objects,
+    objects: &Objects,
     obj: &Object,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
@@ -1567,6 +1570,7 @@ fn quote_arrow_deserializer(
         );
 
         let quoted_deserializer = quote_arrow_field_deserializer(
+            objects,
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
             &data_src,
@@ -1610,6 +1614,7 @@ fn quote_arrow_deserializer(
                     let data_dst = format_ident!("{}", obj_field.name);
 
                     let quoted_deserializer = quote_arrow_field_deserializer(
+                        objects,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
                         &data_src,
@@ -1683,9 +1688,10 @@ fn quote_arrow_deserializer(
 
                 let quoted_field_deserializers =
                     obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                        let data_dst = format_ident!("{}", obj_field.name);
+                        let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
 
                         let quoted_deserializer = quote_arrow_field_deserializer(
+                            objects,
                             &arrow_registry.get(&obj_field.fqname),
                             obj_field.is_nullable,
                             &data_src,
@@ -1702,7 +1708,8 @@ fn quote_arrow_deserializer(
                 let quoted_obj_name = format_ident!("{}", obj.name);
                 let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
                     let i = i as i8;
-                    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+                    let quoted_obj_field_name =
+                        format_ident!("{}", obj_field.name.to_case(Case::Snake));
                     let quoted_obj_field_type =
                         format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
@@ -1764,6 +1771,7 @@ fn quote_arrow_deserializer(
 }
 
 fn quote_arrow_field_deserializer(
+    objects: &Objects,
     datatype: &DataType,
     is_nullable: bool,
     data_src: &proc_macro2::Ident,
@@ -1809,8 +1817,40 @@ fn quote_arrow_field_deserializer(
             let inner_datatype = inner.data_type();
             let quoted_inner_datatype = ArrowDataTypeTokenizer(inner_datatype);
 
-            let quoted_inner =
-                quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
+            let quoted_inner = quote_arrow_field_deserializer(
+                objects,
+                inner_datatype,
+                inner.is_nullable,
+                data_src,
+            );
+
+            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+                Some(objects.get(fqname))
+            } else {
+                None
+            };
+            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+
+            let quoted_transparent_unmapping = if inner_is_arrow_transparent {
+                let inner_obj = inner_obj.as_ref().unwrap();
+                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
+                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+                let quoted_data_dst = format_ident!(
+                    "{}",
+                    if is_tuple_struct {
+                        "data0"
+                    } else {
+                        inner_obj.fields[0].name.as_str()
+                    }
+                );
+                if is_tuple_struct {
+                    quote!(.map(|res| res.map(|opt| opt.map(|v| #quoted_inner_obj_type(v)))))
+                } else {
+                    quote!(.map(|res| res.map(|opt| opt.map(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst }))))
+                }
+            } else {
+                quote!()
+            };
 
             quote! {{
                 let datatype = #data_src.data_type();
@@ -1849,6 +1889,7 @@ fn quote_arrow_field_deserializer(
                             })
                         }).transpose()
                     )
+                    #quoted_transparent_unmapping
                     // NOTE: implicit Vec<Result> to Result<Vec>
                     .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                     .into_iter()
@@ -1859,8 +1900,12 @@ fn quote_arrow_field_deserializer(
             let inner_datatype = inner.data_type();
             let quoted_inner_datatype = ArrowDataTypeTokenizer(inner_datatype);
 
-            let quoted_inner =
-                quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
+            let quoted_inner = quote_arrow_field_deserializer(
+                objects,
+                inner_datatype,
+                inner.is_nullable,
+                data_src,
+            );
 
             quote! {{
                 let datatype = #data_src.data_type();
