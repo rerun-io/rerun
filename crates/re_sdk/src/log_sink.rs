@@ -111,7 +111,7 @@ pub struct MemorySinkStorage {
 
 impl Drop for MemorySinkStorage {
     fn drop(&mut self) {
-        if !self.0.read().is_empty() {
+        if !self.msgs.read().is_empty() {
             re_log::warn!("Dropping data in MemorySink");
         }
     }
