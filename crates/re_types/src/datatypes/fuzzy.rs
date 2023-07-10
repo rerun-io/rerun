@@ -12,7 +12,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct FlattenedScalar {
     pub value: f32,
 }
@@ -168,7 +169,8 @@ impl crate::Datatype for FlattenedScalar {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
     pub single_string_required: String,
@@ -1079,7 +1081,8 @@ impl crate::Datatype for AffixFuzzer1 {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer2(pub Option<f32>);
 
 impl<'a> From<AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
@@ -1176,7 +1179,8 @@ impl crate::Datatype for AffixFuzzer2 {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub enum AffixFuzzer3 {
     Degrees(f32),
     Radians(Option<f32>),
@@ -1786,7 +1790,8 @@ impl crate::Datatype for AffixFuzzer3 {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub enum AffixFuzzer4 {
     SingleRequired(crate::datatypes::AffixFuzzer3),
     ManyRequired(Vec<crate::datatypes::AffixFuzzer3>),
@@ -3010,7 +3015,8 @@ impl crate::Datatype for AffixFuzzer4 {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::datatypes::AffixFuzzer4>,
 }

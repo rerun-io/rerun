@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -30,12 +30,16 @@ class Mat4x4:
         return np.asarray(self.coeffs, dtype=dtype)
 
 
-Mat4x4Like = Union[Mat4x4, Sequence[float], Sequence[Sequence[float]]]
+if TYPE_CHECKING:
+    Mat4x4Like = Union[Mat4x4, Sequence[float], Sequence[Sequence[float]]]
 
-Mat4x4ArrayLike = Union[
-    Mat4x4,
-    Sequence[Mat4x4Like],
-]
+    Mat4x4ArrayLike = Union[
+        Mat4x4,
+        Sequence[Mat4x4Like],
+    ]
+else:
+    Mat4x4Like = Any
+    Mat4x4ArrayLike = Any
 
 
 # --- Arrow support ---

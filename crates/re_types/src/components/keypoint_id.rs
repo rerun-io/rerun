@@ -17,7 +17,8 @@
 #[doc = "`KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`."]
 #[doc = ""]
 #[doc = "Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`."]
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug)]
+#[derive(Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeypointId(pub u16);
 
 impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define
@@ -30,11 +30,16 @@ class Angle:
     """
 
 
-AngleLike = Angle
-AngleArrayLike = Union[
-    Angle,
-    Sequence[AngleLike],
-]
+if TYPE_CHECKING:
+    AngleLike = Angle
+
+    AngleArrayLike = Union[
+        Angle,
+        Sequence[AngleLike],
+    ]
+else:
+    AngleLike = Any
+    AngleArrayLike = Any
 
 
 # --- Arrow support ---

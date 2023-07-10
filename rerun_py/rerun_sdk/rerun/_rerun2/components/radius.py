@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -31,9 +31,13 @@ class Radius:
         return float(self.value)
 
 
-RadiusLike = Union[Radius, float]
+if TYPE_CHECKING:
+    RadiusLike = Union[Radius, float]
 
-RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.NDArray[np.float32]]
+    RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.NDArray[np.float32]]
+else:
+    RadiusLike = Any
+    RadiusArrayLike = Any
 
 
 # --- Arrow support ---

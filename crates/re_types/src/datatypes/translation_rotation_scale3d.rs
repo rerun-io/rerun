@@ -13,7 +13,8 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "Representation of an affine transform via separate translation, rotation & scale."]
-#[derive(Clone, Debug, Copy, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(Copy, PartialEq)]
 pub struct TranslationRotationScale3D {
     #[doc = "3D translation vector, applied last."]
     pub translation: Option<crate::datatypes::Vec3D>,

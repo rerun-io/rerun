@@ -13,18 +13,8 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha."]
-#[derive(
-    Clone,
-    Debug,
-    Default,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    bytemuck :: Pod,
-    bytemuck :: Zeroable,
-)]
+#[derive(Clone, Debug)]
+#[derive(Default, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck :: Pod, bytemuck :: Zeroable)]
 #[repr(transparent)]
 pub struct Color(pub u32);
 

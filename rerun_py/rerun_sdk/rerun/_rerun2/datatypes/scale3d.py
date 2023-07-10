@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define
@@ -44,12 +44,16 @@ class Scale3D:
     """
 
 
-Scale3DLike = Union[Scale3D, datatypes.Vec3DLike]
+if TYPE_CHECKING:
+    Scale3DLike = Union[Scale3D, datatypes.Vec3DLike]
 
-Scale3DArrayLike = Union[
-    Scale3D,
-    Sequence[Scale3DLike],
-]
+    Scale3DArrayLike = Union[
+        Scale3D,
+        Sequence[Scale3DLike],
+    ]
+else:
+    Scale3DLike = Any
+    Scale3DArrayLike = Any
 
 
 # --- Arrow support ---

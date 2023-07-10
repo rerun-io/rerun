@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -41,11 +41,16 @@ class RotationAxisAngle:
     """
 
 
-RotationAxisAngleLike = RotationAxisAngle
-RotationAxisAngleArrayLike = Union[
-    RotationAxisAngle,
-    Sequence[RotationAxisAngleLike],
-]
+if TYPE_CHECKING:
+    RotationAxisAngleLike = RotationAxisAngle
+
+    RotationAxisAngleArrayLike = Union[
+        RotationAxisAngle,
+        Sequence[RotationAxisAngleLike],
+    ]
+else:
+    RotationAxisAngleLike = Any
+    RotationAxisAngleArrayLike = Any
 
 
 # --- Arrow support ---

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -30,11 +30,16 @@ class Quaternion:
         return np.asarray(self.xyzw, dtype=dtype)
 
 
-QuaternionLike = Quaternion
-QuaternionArrayLike = Union[
-    Quaternion,
-    Sequence[QuaternionLike],
-]
+if TYPE_CHECKING:
+    QuaternionLike = Quaternion
+
+    QuaternionArrayLike = Union[
+        Quaternion,
+        Sequence[QuaternionLike],
+    ]
+else:
+    QuaternionLike = Any
+    QuaternionArrayLike = Any
 
 
 # --- Arrow support ---

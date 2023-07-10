@@ -13,7 +13,8 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A point in 2D space."]
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug)]
+#[derive(Default, Copy, PartialEq, PartialOrd)]
 pub struct Point2D {
     pub x: f32,
     pub y: f32,

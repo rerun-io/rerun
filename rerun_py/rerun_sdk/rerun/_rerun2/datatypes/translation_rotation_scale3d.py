@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -48,11 +48,16 @@ class TranslationRotationScale3D:
     """
 
 
-TranslationRotationScale3DLike = TranslationRotationScale3D
-TranslationRotationScale3DArrayLike = Union[
-    TranslationRotationScale3D,
-    Sequence[TranslationRotationScale3DLike],
-]
+if TYPE_CHECKING:
+    TranslationRotationScale3DLike = TranslationRotationScale3D
+
+    TranslationRotationScale3DArrayLike = Union[
+        TranslationRotationScale3D,
+        Sequence[TranslationRotationScale3DLike],
+    ]
+else:
+    TranslationRotationScale3DLike = Any
+    TranslationRotationScale3DArrayLike = Any
 
 
 # --- Arrow support ---

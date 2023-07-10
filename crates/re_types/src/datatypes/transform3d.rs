@@ -16,7 +16,8 @@
 #[doc = ""]
 #[doc = "Rarely used directly, prefer using the underlying representation classes and pass them"]
 #[doc = "directly to `Transform3D::child_from_parent` or `Transform3D::parent_from_child`."]
-#[derive(Clone, Debug, Copy, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(Copy, PartialEq)]
 pub enum Transform3D {
     TranslationAndMat3X3(crate::datatypes::TranslationAndMat3x3),
     TranslationRotationScale(crate::datatypes::TranslationRotationScale3D),

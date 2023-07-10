@@ -19,7 +19,8 @@
 #[doc = "Within an entity draw order is governed by the order of the components."]
 #[doc = ""]
 #[doc = "Draw order for entities with the same draw order is generally undefined."]
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug)]
+#[derive(Copy)]
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);
 

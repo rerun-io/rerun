@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -197,11 +197,16 @@ class AffixFuzzer7:
     many_optional: list[datatypes.AffixFuzzer1] | None = field(default=None)
 
 
-AffixFuzzer7Like = AffixFuzzer7
-AffixFuzzer7ArrayLike = Union[
-    AffixFuzzer7,
-    Sequence[AffixFuzzer7Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer7Like = AffixFuzzer7
+
+    AffixFuzzer7ArrayLike = Union[
+        AffixFuzzer7,
+        Sequence[AffixFuzzer7Like],
+    ]
+else:
+    AffixFuzzer7Like = Any
+    AffixFuzzer7ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -269,11 +274,16 @@ class AffixFuzzer8:
         return np.asarray(self.single_float_optional, dtype=dtype)
 
 
-AffixFuzzer8Like = AffixFuzzer8
-AffixFuzzer8ArrayLike = Union[
-    AffixFuzzer8,
-    Sequence[AffixFuzzer8Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer8Like = AffixFuzzer8
+
+    AffixFuzzer8ArrayLike = Union[
+        AffixFuzzer8,
+        Sequence[AffixFuzzer8Like],
+    ]
+else:
+    AffixFuzzer8Like = Any
+    AffixFuzzer8ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -307,11 +317,16 @@ class AffixFuzzer9:
         return str(self.single_string_required)
 
 
-AffixFuzzer9Like = AffixFuzzer9
-AffixFuzzer9ArrayLike = Union[
-    AffixFuzzer9,
-    Sequence[AffixFuzzer9Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer9Like = AffixFuzzer9
+
+    AffixFuzzer9ArrayLike = Union[
+        AffixFuzzer9,
+        Sequence[AffixFuzzer9Like],
+    ]
+else:
+    AffixFuzzer9Like = Any
+    AffixFuzzer9ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -342,11 +357,16 @@ class AffixFuzzer10:
     single_string_optional: str | None = field(default=None)
 
 
-AffixFuzzer10Like = AffixFuzzer10
-AffixFuzzer10ArrayLike = Union[
-    AffixFuzzer10,
-    Sequence[AffixFuzzer10Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer10Like = AffixFuzzer10
+
+    AffixFuzzer10ArrayLike = Union[
+        AffixFuzzer10,
+        Sequence[AffixFuzzer10Like],
+    ]
+else:
+    AffixFuzzer10Like = Any
+    AffixFuzzer10ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -380,11 +400,16 @@ class AffixFuzzer11:
         return np.asarray(self.many_floats_optional, dtype=dtype)
 
 
-AffixFuzzer11Like = AffixFuzzer11
-AffixFuzzer11ArrayLike = Union[
-    AffixFuzzer11,
-    Sequence[AffixFuzzer11Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer11Like = AffixFuzzer11
+
+    AffixFuzzer11ArrayLike = Union[
+        AffixFuzzer11,
+        Sequence[AffixFuzzer11Like],
+    ]
+else:
+    AffixFuzzer11Like = Any
+    AffixFuzzer11ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -417,11 +442,16 @@ class AffixFuzzer12:
     many_strings_required: list[str] = field()
 
 
-AffixFuzzer12Like = AffixFuzzer12
-AffixFuzzer12ArrayLike = Union[
-    AffixFuzzer12,
-    Sequence[AffixFuzzer12Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer12Like = AffixFuzzer12
+
+    AffixFuzzer12ArrayLike = Union[
+        AffixFuzzer12,
+        Sequence[AffixFuzzer12Like],
+    ]
+else:
+    AffixFuzzer12Like = Any
+    AffixFuzzer12ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -454,11 +484,16 @@ class AffixFuzzer13:
     many_strings_optional: list[str] | None = field(default=None)
 
 
-AffixFuzzer13Like = AffixFuzzer13
-AffixFuzzer13ArrayLike = Union[
-    AffixFuzzer13,
-    Sequence[AffixFuzzer13Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer13Like = AffixFuzzer13
+
+    AffixFuzzer13ArrayLike = Union[
+        AffixFuzzer13,
+        Sequence[AffixFuzzer13Like],
+    ]
+else:
+    AffixFuzzer13Like = Any
+    AffixFuzzer13ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -508,11 +543,16 @@ class AffixFuzzer16:
     many_required_unions: list[datatypes.AffixFuzzer3] = field()
 
 
-AffixFuzzer16Like = AffixFuzzer16
-AffixFuzzer16ArrayLike = Union[
-    AffixFuzzer16,
-    Sequence[AffixFuzzer16Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer16Like = AffixFuzzer16
+
+    AffixFuzzer16ArrayLike = Union[
+        AffixFuzzer16,
+        Sequence[AffixFuzzer16Like],
+    ]
+else:
+    AffixFuzzer16Like = Any
+    AffixFuzzer16ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -604,11 +644,16 @@ class AffixFuzzer17:
     many_optional_unions: list[datatypes.AffixFuzzer3] | None = field(default=None)
 
 
-AffixFuzzer17Like = AffixFuzzer17
-AffixFuzzer17ArrayLike = Union[
-    AffixFuzzer17,
-    Sequence[AffixFuzzer17Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer17Like = AffixFuzzer17
+
+    AffixFuzzer17ArrayLike = Union[
+        AffixFuzzer17,
+        Sequence[AffixFuzzer17Like],
+    ]
+else:
+    AffixFuzzer17Like = Any
+    AffixFuzzer17ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -700,11 +745,16 @@ class AffixFuzzer18:
     many_optional_unions: list[datatypes.AffixFuzzer4] | None = field(default=None)
 
 
-AffixFuzzer18Like = AffixFuzzer18
-AffixFuzzer18ArrayLike = Union[
-    AffixFuzzer18,
-    Sequence[AffixFuzzer18Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer18Like = AffixFuzzer18
+
+    AffixFuzzer18ArrayLike = Union[
+        AffixFuzzer18,
+        Sequence[AffixFuzzer18Like],
+    ]
+else:
+    AffixFuzzer18Like = Any
+    AffixFuzzer18ArrayLike = Any
 
 
 # --- Arrow support ---

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -30,9 +30,13 @@ class Vec4D:
         return np.asarray(self.xyzw, dtype=dtype)
 
 
-Vec4DLike = Union[Vec4D, npt.NDArray[Any], Sequence[float]]
+if TYPE_CHECKING:
+    Vec4DLike = Union[Vec4D, npt.NDArray[Any], Sequence[float]]
 
-Vec4DArrayLike = Union[Vec4D, Sequence[Vec4DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
+    Vec4DArrayLike = Union[Vec4D, Sequence[Vec4DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
+else:
+    Vec4DLike = Any
+    Vec4DArrayLike = Any
 
 
 # --- Arrow support ---

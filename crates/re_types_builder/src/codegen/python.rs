@@ -257,7 +257,7 @@ fn quote_objects(
             import pyarrow as pa
 
             from attrs import define, field
-            from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
+            from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union, TYPE_CHECKING
 
             from .._baseclasses import (
                 Archetype,
@@ -794,31 +794,46 @@ fn quote_aliases_from_object(obj: &Object) -> String {
 
     let mut code = String::new();
 
-    code.push_unindented_text(
+    code.push_unindented_text("if TYPE_CHECKING:", 1);
+
+    code.push_text(
         &if let Some(aliases) = aliases {
             format!(
                 r#"
-                {name}Like = Union[
-                    {name},
-                    {aliases}
-                ]
-                "#,
+{name}Like = Union[
+    {name},
+    {aliases}
+]
+"#,
             )
         } else {
             format!("{name}Like = {name}")
         },
         1,
+        4,
+    );
+
+    code.push_text(
+        format!(
+            r#"
+{name}ArrayLike = Union[
+    {name},
+    Sequence[{name}Like],
+    {array_aliases}
+]
+"#,
+        ),
+        0,
+        4,
     );
 
     code.push_unindented_text(
         format!(
             r#"
-            {name}ArrayLike = Union[
-                {name},
-                Sequence[{name}Like],
-                {array_aliases}
-            ]
-            "#,
+        else:
+            {name}Like = Any
+            {name}ArrayLike = Any
+        "#
         ),
         0,
     );

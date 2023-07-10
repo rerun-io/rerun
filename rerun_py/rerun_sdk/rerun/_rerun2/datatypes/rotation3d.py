@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define
@@ -31,11 +31,16 @@ class Rotation3D:
     """
 
 
-Rotation3DLike = Rotation3D
-Rotation3DArrayLike = Union[
-    Rotation3D,
-    Sequence[Rotation3DLike],
-]
+if TYPE_CHECKING:
+    Rotation3DLike = Rotation3D
+
+    Rotation3DArrayLike = Union[
+        Rotation3D,
+        Sequence[Rotation3DLike],
+    ]
+else:
+    Rotation3DLike = Any
+    Rotation3DArrayLike = Any
 
 
 # --- Arrow support ---

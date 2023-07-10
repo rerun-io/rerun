@@ -13,7 +13,8 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A Radius component."]
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug)]
+#[derive(Copy, PartialEq, PartialOrd)]
 pub struct Radius(pub f32);
 
 impl<'a> From<Radius> for ::std::borrow::Cow<'a, Radius> {

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -47,11 +47,16 @@ class TranslationAndMat3x3:
     """
 
 
-TranslationAndMat3x3Like = TranslationAndMat3x3
-TranslationAndMat3x3ArrayLike = Union[
-    TranslationAndMat3x3,
-    Sequence[TranslationAndMat3x3Like],
-]
+if TYPE_CHECKING:
+    TranslationAndMat3x3Like = TranslationAndMat3x3
+
+    TranslationAndMat3x3ArrayLike = Union[
+        TranslationAndMat3x3,
+        Sequence[TranslationAndMat3x3Like],
+    ]
+else:
+    TranslationAndMat3x3Like = Any
+    TranslationAndMat3x3ArrayLike = Any
 
 
 # --- Arrow support ---
