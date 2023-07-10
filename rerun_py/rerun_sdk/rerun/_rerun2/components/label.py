@@ -28,7 +28,7 @@ class Label:
 
 LabelLike = Union[Label, str]
 
-LabelArrayLike = Union[Label, Sequence[LabelLike], Sequence[str]]
+LabelArrayLike = Union[Label, Sequence[LabelLike], str, Sequence[str]]
 
 
 # --- Arrow support ---

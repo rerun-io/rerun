@@ -33,7 +33,7 @@ class Radius:
 
 RadiusLike = Union[Radius, float]
 
-RadiusArrayLike = Union[Radius, Sequence[RadiusLike], npt.NDArray[np.float32]]
+RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.NDArray[np.float32]]
 
 
 # --- Arrow support ---

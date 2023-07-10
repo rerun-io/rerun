@@ -4,12 +4,15 @@
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer1 {
     pub fuzz1001: crate::components::AffixFuzzer1,
     pub fuzz1002: crate::components::AffixFuzzer2,

@@ -41,7 +41,7 @@ class DrawOrder:
 
 DrawOrderLike = Union[DrawOrder, float]
 
-DrawOrderArrayLike = Union[DrawOrder, Sequence[DrawOrderLike], npt.NDArray[np.float32]]
+DrawOrderArrayLike = Union[DrawOrder, Sequence[DrawOrderLike], float, npt.NDArray[np.float32]]
 
 
 # --- Arrow support ---

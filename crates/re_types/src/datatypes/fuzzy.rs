@@ -4,12 +4,15 @@
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct FlattenedScalar {
     pub value: f32,
 }
@@ -165,7 +168,8 @@ impl crate::Datatype for FlattenedScalar {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
     pub single_string_required: String,
@@ -469,16 +473,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                 .collect();
                             let many_floats_optional_inner_bitmap: Option<
                                 ::arrow2::bitmap::Bitmap,
-                            > = {
-                                let any_nones =
-                                    many_floats_optional_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    many_floats_optional_inner_data
-                                        .iter()
-                                        .map(|v| v.is_some())
-                                        .collect()
-                                })
-                            };
+                            > = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_floats_optional.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
@@ -545,16 +540,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                 .collect();
                             let many_strings_required_inner_bitmap: Option<
                                 ::arrow2::bitmap::Bitmap,
-                            > = {
-                                let any_nones =
-                                    many_strings_required_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    many_strings_required_inner_data
-                                        .iter()
-                                        .map(|v| v.is_some())
-                                        .collect()
-                                })
-                            };
+                            > = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_strings_required.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
@@ -643,16 +629,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                 .collect();
                             let many_strings_optional_inner_bitmap: Option<
                                 ::arrow2::bitmap::Bitmap,
-                            > = {
-                                let any_nones =
-                                    many_strings_optional_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    many_strings_optional_inner_data
-                                        .iter()
-                                        .map(|v| v.is_some())
-                                        .collect()
-                                })
-                            };
+                            > = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_strings_optional.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
@@ -1054,7 +1031,8 @@ impl crate::Datatype for AffixFuzzer1 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer2(pub Option<f32>);
 
 impl<'a> From<AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
@@ -1151,7 +1129,8 @@ impl crate::Datatype for AffixFuzzer2 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub enum AffixFuzzer3 {
     Degrees(f32),
     Radians(Option<f32>),
@@ -1404,12 +1383,7 @@ impl crate::Datatype for AffixFuzzer3 {
                                 .map(ToOwned::to_owned)
                                 .map(Some)
                                 .collect();
-                            let craziness_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                                let any_nones = craziness_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    craziness_inner_data.iter().map(|v| v.is_some()).collect()
-                                })
-                            };
+                            let craziness_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 craziness.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
@@ -1748,7 +1722,8 @@ impl crate::Datatype for AffixFuzzer3 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub enum AffixFuzzer4 {
     SingleRequired(crate::datatypes::AffixFuzzer3),
     ManyRequired(Vec<crate::datatypes::AffixFuzzer3>),
@@ -2199,16 +2174,7 @@ impl crate::Datatype for AffixFuzzer4 {
                                 .map(ToOwned::to_owned)
                                 .map(Some)
                                 .collect();
-                            let many_required_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                                let any_nones =
-                                    many_required_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    many_required_inner_data
-                                        .iter()
-                                        .map(|v| v.is_some())
-                                        .collect()
-                                })
-                            };
+                            let many_required_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_required.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
@@ -2383,16 +2349,7 @@ impl crate::Datatype for AffixFuzzer4 {
                                 .map(ToOwned::to_owned)
                                 .map(Some)
                                 .collect();
-                            let many_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                                let any_nones =
-                                    many_optional_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    many_optional_inner_data
-                                        .iter()
-                                        .map(|v| v.is_some())
-                                        .collect()
-                                })
-                            };
+                            let many_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_optional.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()

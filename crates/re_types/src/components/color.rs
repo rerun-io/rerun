@@ -4,24 +4,16 @@
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha."]
-#[derive(
-    Debug,
-    Clone,
-    Default,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    bytemuck :: Pod,
-    bytemuck :: Zeroable,
-)]
+#[derive(Clone, Debug)]
+#[derive(Default, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck :: Pod, bytemuck :: Zeroable)]
 #[repr(transparent)]
 pub struct Color(pub u32);
 

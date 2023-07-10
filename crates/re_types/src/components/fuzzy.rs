@@ -4,12 +4,15 @@
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_required: crate::datatypes::AffixFuzzer1,
 }
@@ -168,7 +171,8 @@ impl crate::Component for AffixFuzzer1 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer2(pub crate::datatypes::AffixFuzzer1);
 
 impl<'a> From<AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
@@ -325,7 +329,8 @@ impl crate::Component for AffixFuzzer2 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer3 {
     pub single_required: crate::datatypes::AffixFuzzer1,
 }
@@ -484,7 +489,8 @@ impl crate::Component for AffixFuzzer3 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer4 {
     pub single_optional: Option<crate::datatypes::AffixFuzzer1>,
 }
@@ -641,7 +647,8 @@ impl crate::Component for AffixFuzzer4 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer5(pub Option<crate::datatypes::AffixFuzzer1>);
 
 impl<'a> From<AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
@@ -796,7 +803,8 @@ impl crate::Component for AffixFuzzer5 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer6 {
     pub single_optional: Option<crate::datatypes::AffixFuzzer1>,
 }
@@ -953,7 +961,8 @@ impl crate::Component for AffixFuzzer6 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer7 {
     pub many_optional: Option<Vec<crate::datatypes::AffixFuzzer1>>,
 }
@@ -1096,15 +1105,7 @@ impl crate::Component for AffixFuzzer7 {
                     .map(ToOwned::to_owned)
                     .map(Some)
                     .collect();
-                let many_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = many_optional_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| {
-                        many_optional_inner_data
-                            .iter()
-                            .map(|v| v.is_some())
-                            .collect()
-                    })
-                };
+                let many_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     many_optional
                         .iter()
@@ -1338,7 +1339,8 @@ impl crate::Component for AffixFuzzer7 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer8 {
     pub single_float_optional: Option<f32>,
 }
@@ -1448,7 +1450,8 @@ impl crate::Component for AffixFuzzer8 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq)]
 pub struct AffixFuzzer9 {
     pub single_string_required: String,
 }
@@ -1575,7 +1578,8 @@ impl crate::Component for AffixFuzzer9 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq)]
 pub struct AffixFuzzer10 {
     pub single_string_optional: Option<String>,
 }
@@ -1700,7 +1704,8 @@ impl crate::Component for AffixFuzzer10 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer11 {
     pub many_floats_optional: Option<Vec<f32>>,
 }
@@ -1776,15 +1781,7 @@ impl crate::Component for AffixFuzzer11 {
                     .map(ToOwned::to_owned)
                     .map(Some)
                     .collect();
-                let many_floats_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = many_floats_optional_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| {
-                        many_floats_optional_inner_data
-                            .iter()
-                            .map(|v| v.is_some())
-                            .collect()
-                    })
-                };
+                let many_floats_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     many_floats_optional
                         .iter()
@@ -1900,7 +1897,8 @@ impl crate::Component for AffixFuzzer11 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq)]
 pub struct AffixFuzzer12 {
     pub many_strings_required: Vec<String>,
 }
@@ -1974,15 +1972,7 @@ impl crate::Component for AffixFuzzer12 {
                     .map(ToOwned::to_owned)
                     .map(Some)
                     .collect();
-                let many_strings_required_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = many_strings_required_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| {
-                        many_strings_required_inner_data
-                            .iter()
-                            .map(|v| v.is_some())
-                            .collect()
-                    })
-                };
+                let many_strings_required_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     many_strings_required
                         .iter()
@@ -2118,7 +2108,8 @@ impl crate::Component for AffixFuzzer12 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq)]
 pub struct AffixFuzzer13 {
     pub many_strings_optional: Option<Vec<String>>,
 }
@@ -2194,15 +2185,7 @@ impl crate::Component for AffixFuzzer13 {
                     .map(ToOwned::to_owned)
                     .map(Some)
                     .collect();
-                let many_strings_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = many_strings_optional_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| {
-                        many_strings_optional_inner_data
-                            .iter()
-                            .map(|v| v.is_some())
-                            .collect()
-                    })
-                };
+                let many_strings_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     many_strings_optional
                         .iter()
@@ -2334,7 +2317,8 @@ impl crate::Component for AffixFuzzer13 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer14 {
     pub single_required_union: crate::datatypes::AffixFuzzer3,
 }
@@ -2529,7 +2513,8 @@ impl crate::Component for AffixFuzzer14 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer16 {
     pub many_required_unions: Vec<crate::datatypes::AffixFuzzer3>,
 }
@@ -2700,15 +2685,7 @@ impl crate::Component for AffixFuzzer16 {
                     .map(ToOwned::to_owned)
                     .map(Some)
                     .collect();
-                let many_required_unions_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = many_required_unions_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| {
-                        many_required_unions_inner_data
-                            .iter()
-                            .map(|v| v.is_some())
-                            .collect()
-                    })
-                };
+                let many_required_unions_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     many_required_unions
                         .iter()
@@ -3014,7 +2991,8 @@ impl crate::Component for AffixFuzzer16 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer17 {
     pub many_optional_unions: Option<Vec<crate::datatypes::AffixFuzzer3>>,
 }
@@ -3187,15 +3165,7 @@ impl crate::Component for AffixFuzzer17 {
                     .map(ToOwned::to_owned)
                     .map(Some)
                     .collect();
-                let many_optional_unions_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = many_optional_unions_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| {
-                        many_optional_unions_inner_data
-                            .iter()
-                            .map(|v| v.is_some())
-                            .collect()
-                    })
-                };
+                let many_optional_unions_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     many_optional_unions
                         .iter()
@@ -3497,7 +3467,8 @@ impl crate::Component for AffixFuzzer17 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug)]
+#[derive(PartialEq)]
 pub struct AffixFuzzer18 {
     pub many_optional_unions: Option<Vec<crate::datatypes::AffixFuzzer4>>,
 }
@@ -3897,15 +3868,7 @@ impl crate::Component for AffixFuzzer18 {
                     .map(ToOwned::to_owned)
                     .map(Some)
                     .collect();
-                let many_optional_unions_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = many_optional_unions_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| {
-                        many_optional_unions_inner_data
-                            .iter()
-                            .map(|v| v.is_some())
-                            .collect()
-                    })
-                };
+                let many_optional_unions_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     many_optional_unions
                         .iter()

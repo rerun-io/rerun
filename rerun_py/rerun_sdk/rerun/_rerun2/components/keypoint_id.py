@@ -41,7 +41,7 @@ class KeypointId:
 KeypointIdLike = Union[KeypointId, float]
 
 KeypointIdArrayLike = Union[
-    KeypointId, Sequence[KeypointIdLike], npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
+    KeypointId, Sequence[KeypointIdLike], float, npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
 ]
 
 

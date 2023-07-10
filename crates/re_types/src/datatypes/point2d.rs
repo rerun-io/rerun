@@ -4,13 +4,16 @@
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A point in 2D space."]
-#[derive(Debug, Clone, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug)]
+#[derive(Default, Copy, PartialEq, PartialOrd)]
 pub struct Point2D {
     pub x: f32,
     pub y: f32,

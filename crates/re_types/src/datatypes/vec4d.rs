@@ -11,29 +11,29 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A vector in 2D space."]
+#[doc = "A vector in 4D space."]
 #[derive(Clone, Debug)]
 #[derive(Default, Copy, PartialEq, PartialOrd)]
-pub struct Vec2D(pub [f32; 2usize]);
+pub struct Vec4D(pub [f32; 4usize]);
 
-impl<'a> From<Vec2D> for ::std::borrow::Cow<'a, Vec2D> {
+impl<'a> From<Vec4D> for ::std::borrow::Cow<'a, Vec4D> {
     #[inline]
-    fn from(value: Vec2D) -> Self {
+    fn from(value: Vec4D) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Vec2D> for ::std::borrow::Cow<'a, Vec2D> {
+impl<'a> From<&'a Vec4D> for ::std::borrow::Cow<'a, Vec4D> {
     #[inline]
-    fn from(value: &'a Vec2D) -> Self {
+    fn from(value: &'a Vec4D) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Datatype for Vec2D {
+impl crate::Datatype for Vec4D {
     #[inline]
     fn name() -> crate::DatatypeName {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Vec2D")
+        crate::DatatypeName::Borrowed("rerun.datatypes.Vec4D")
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -47,7 +47,7 @@ impl crate::Datatype for Vec2D {
                 is_nullable: false,
                 metadata: [].into(),
             }),
-            2usize,
+            4usize,
         )
     }
 
@@ -91,7 +91,7 @@ impl crate::Datatype for Vec2D {
                     {
                         _ = extension_wrapper;
                         DataType::Extension(
-                            "rerun.datatypes.Vec2D".to_owned(),
+                            "rerun.datatypes.Vec4D".to_owned(),
                             Box::new(DataType::FixedSizeList(
                                 Box::new(Field {
                                     name: "item".to_owned(),
@@ -99,7 +99,7 @@ impl crate::Datatype for Vec2D {
                                     is_nullable: false,
                                     metadata: [].into(),
                                 }),
-                                2usize,
+                                4usize,
                             )),
                             None,
                         )
@@ -110,7 +110,7 @@ impl crate::Datatype for Vec2D {
                         {
                             _ = extension_wrapper;
                             DataType::Extension(
-                                "rerun.datatypes.Vec2D".to_owned(),
+                                "rerun.datatypes.Vec4D".to_owned(),
                                 Box::new(DataType::Float32),
                                 None,
                             )
@@ -147,7 +147,7 @@ impl crate::Datatype for Vec2D {
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .unwrap();
             let bitmap = data.validity().cloned();
-            let offsets = (0..).step_by(2usize).zip((2usize..).step_by(2usize));
+            let offsets = (0..).step_by(4usize).zip((4usize..).step_by(4usize));
             let data = &**data.values();
             let data = data
                 .as_any()
@@ -177,7 +177,7 @@ impl crate::Datatype for Vec2D {
                                 .to_vec()
                                 .try_into()
                                 .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                    expected: 2usize,
+                                    expected: 4usize,
                                     got: (end - start) as usize,
                                     datatype: datatype.clone(),
                                 })

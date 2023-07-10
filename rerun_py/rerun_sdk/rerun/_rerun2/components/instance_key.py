@@ -33,7 +33,7 @@ class InstanceKey:
 
 InstanceKeyLike = Union[InstanceKey, int]
 
-InstanceKeyArrayLike = Union[InstanceKey, Sequence[InstanceKeyLike], npt.NDArray[np.uint64]]
+InstanceKeyArrayLike = Union[InstanceKey, Sequence[InstanceKeyLike], int, npt.NDArray[np.uint64]]
 
 
 # --- Arrow support ---

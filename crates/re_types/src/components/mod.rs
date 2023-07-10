@@ -17,6 +17,7 @@ mod point2d;
 mod point2d_ext;
 mod radius;
 mod radius_ext;
+mod transform3d;
 
 pub use self::class_id::ClassId;
 pub use self::color::Color;
@@ -31,3 +32,4 @@ pub use self::keypoint_id::KeypointId;
 pub use self::label::Label;
 pub use self::point2d::Point2D;
 pub use self::radius::Radius;
+pub use self::transform3d::Transform3D;

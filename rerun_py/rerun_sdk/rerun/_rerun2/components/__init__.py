@@ -76,6 +76,7 @@ from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, Keypo
 from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
 from .point2d import Point2DArray, Point2DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
+from .transform3d import Transform3DArray, Transform3DType
 
 __all__ = [
     "AffixFuzzer10",
@@ -179,4 +180,6 @@ __all__ = [
     "RadiusArrayLike",
     "RadiusLike",
     "RadiusType",
+    "Transform3DArray",
+    "Transform3DType",
 ]

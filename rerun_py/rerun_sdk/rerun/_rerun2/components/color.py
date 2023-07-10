@@ -40,7 +40,11 @@ class Color:
 ColorLike = Union[Color, int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]
 
 ColorArrayLike = Union[
-    Color, Sequence[ColorLike], Sequence[Sequence[int]], npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]]
+    Color,
+    Sequence[ColorLike],
+    int,
+    Sequence[Sequence[int]],
+    npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]],
 ]
 
 
