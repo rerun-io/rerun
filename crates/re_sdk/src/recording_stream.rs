@@ -183,7 +183,6 @@ impl RecordingStreamBuilder {
     ///
     /// log_data(&rec_stream);
     ///
-    /// rec_stream.flush_blocking(); // Important!
     /// let data = storage.take();
     ///
     /// # Ok::<(), Box<dyn std::error::Error>>(())
