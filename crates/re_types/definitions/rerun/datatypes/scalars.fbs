@@ -1,0 +1,10 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.datatypes;
+
+struct Float32 (transparent, order: 0) {
+  value: float (order: 0);
+}

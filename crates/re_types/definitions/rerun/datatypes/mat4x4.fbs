@@ -7,14 +7,14 @@ namespace rerun.datatypes;
 
 // ---
 
-/// A vector in 2D space.
-struct Vec2D (
+/// A 4x4 column-major Matrix.
+struct Mat4x4 (
   "attr.arrow.transparent",
-  "attr.python.aliases": "npt.NDArray[Any], Sequence[float]",
-  "attr.python.array_aliases": "npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]",
+  "attr.python.aliases": "Sequence[float], Sequence[Sequence[float]]",
   "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
   "attr.rust.tuple_struct",
-  order: 100
+  order: 600
 ) {
-  xy: [float: 2] (order: 100);
+  /// \py: matrix coefficients in column-major order
+  coeffs: [float32: 16] (order: 100);
 }
