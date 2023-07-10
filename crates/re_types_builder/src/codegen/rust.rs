@@ -556,7 +556,7 @@ fn quote_trait_impls_from_obj(
                 .unwrap_or_else(|| fqname.clone());
 
             let quoted_serializer =
-                quote_arrow_serializer(arrow_registry, obj, &format_ident!("data"));
+                quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
             let quoted_deserializer =
                 quote_arrow_deserializer(arrow_registry, objects, obj, &format_ident!("data"));
 
@@ -1066,6 +1066,7 @@ fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
 
 fn quote_arrow_serializer(
     arrow_registry: &ArrowRegistry,
+    objects: &Objects,
     obj: &Object,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
@@ -1129,6 +1130,7 @@ fn quote_arrow_serializer(
         };
 
         let quoted_serializer = quote_arrow_field_serializer(
+            objects,
             Some(obj.fqname.as_str()),
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
@@ -1173,6 +1175,7 @@ fn quote_arrow_serializer(
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
                     let quoted_serializer = quote_arrow_field_serializer(
+                        objects,
                         None,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
@@ -1233,6 +1236,7 @@ fn quote_arrow_serializer(
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
                     let quoted_serializer = quote_arrow_field_serializer(
+                        objects,
                         None,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
@@ -1347,6 +1351,7 @@ fn quote_arrow_serializer(
 }
 
 fn quote_arrow_field_serializer(
+    objects: &Objects,
     extension_wrapper: Option<&str>,
     datatype: &DataType,
     is_nullable: bool,
@@ -1426,12 +1431,47 @@ fn quote_arrow_field_serializer(
             let quoted_inner_bitmap = format_ident!("{data_src}_inner_bitmap");
 
             let quoted_inner = quote_arrow_field_serializer(
+                objects,
                 extension_wrapper,
                 inner_datatype,
                 inner.is_nullable,
                 &quoted_inner_bitmap,
                 &quoted_inner_data,
             );
+
+            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+                Some(objects.get(fqname))
+            } else {
+                None
+            };
+            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+
+            let quoted_transparent_mapping = if inner_is_arrow_transparent {
+                let inner_obj = inner_obj.as_ref().unwrap();
+                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
+                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+                let quoted_data_dst = format_ident!(
+                    "{}",
+                    if is_tuple_struct {
+                        "data0"
+                    } else {
+                        inner_obj.fields[0].name.as_str()
+                    }
+                );
+                let quoted_binding = if is_tuple_struct {
+                    quote!(#quoted_inner_obj_type(#quoted_data_dst))
+                } else {
+                    quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                };
+                quote! {
+                    .map(|datum| {
+                        let #quoted_binding = datum;
+                        #quoted_data_dst
+                    })
+                }
+            } else {
+                quote!()
+            };
 
             let quoted_create = if let DataType::List(_) = datatype {
                 quote! {
@@ -1467,6 +1507,7 @@ fn quote_arrow_field_serializer(
                     // NOTE: Flattening to remove the guaranteed layer of nullability, we don't care
                     // about it while building the backing buffer.
                     .flatten()
+                    #quoted_transparent_mapping
                     // NOTE: Flattening yet again since we have to deconstruct the inner list.
                     .flatten()
                     .map(ToOwned::to_owned)
@@ -1475,10 +1516,8 @@ fn quote_arrow_field_serializer(
                     .map(Some)
                     .collect();
 
-                let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = #quoted_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| #quoted_inner_data.iter().map(|v| v.is_some()).collect())
-                };
+                // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
+                let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
 
                 #quoted_create
             }}
