@@ -16,6 +16,7 @@ fn roundtrip() {
             many_strings_optional: Some(vec!["10".into(), "20".into()]),
             flattened_scalar: 42.0,
             almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 42.0 },
+            from_parent: Some(true),
         },
     };
 
@@ -28,6 +29,7 @@ fn roundtrip() {
         many_strings_optional: None,
         flattened_scalar: 43.0,
         almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 43.0 },
+        from_parent: Some(false),
     });
 
     let fuzzy3 = re_types::components::AffixFuzzer3 {
@@ -40,6 +42,7 @@ fn roundtrip() {
             many_strings_optional: Some(vec!["50".into(), "60".into()]),
             flattened_scalar: 44.0,
             almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 44.0 },
+            from_parent: None,
         },
     };
 
@@ -53,6 +56,7 @@ fn roundtrip() {
             many_strings_optional: None,
             flattened_scalar: 45.0,
             almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 45.0 },
+            from_parent: None,
         }),
     };
 
@@ -93,6 +97,7 @@ fn roundtrip() {
             many_strings_optional: None,
             flattened_scalar: 46.0,
             almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 46.0 },
+            from_parent: Some(false),
         }]),
     };
 
@@ -205,6 +210,7 @@ fn roundtrip() {
                         almost_flattened_scalar: re_types::datatypes::FlattenedScalar {
                             value: 46.0,
                         },
+                        from_parent: Some(true),
                     },
                 ]),
             ), //
@@ -234,6 +240,7 @@ fn roundtrip() {
                         almost_flattened_scalar: re_types::datatypes::FlattenedScalar {
                             value: 44.0,
                         },
+                        from_parent: None,
                     },
                 ]),
             ]), //

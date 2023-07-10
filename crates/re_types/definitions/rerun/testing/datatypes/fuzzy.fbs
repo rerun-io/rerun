@@ -34,6 +34,7 @@ table AffixFuzzer1 (
   many_strings_optional: [string] (nullable, order: 106);
   flattened_scalar: VeryDeeplyFlattenedScalar (order: 107, transparent);
   almost_flattened_scalar: SurprisinglyShallowScalar (order: 108, transparent);
+  from_parent: bool = false (nullable, order: 109);
 }
 
 table __AffixFuzzer1Vec (transparent, order: 0) {
