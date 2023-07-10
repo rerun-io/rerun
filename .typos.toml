@@ -4,7 +4,7 @@
 
 [files]
 extend-exclude = [
-  "_typos.toml",
+  ".typos.toml",
   "crates/re_ui/data/design_tokens.json",
   "crates/re_ui/src/design_tokens.rs",
 ]
