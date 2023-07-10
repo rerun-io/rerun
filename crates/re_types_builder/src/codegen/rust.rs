@@ -4,6 +4,7 @@ use std::{collections::HashMap, io::Write};
 
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
+use convert_case::{Case, Casing as _};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -322,7 +323,6 @@ impl QuotedObject {
                 datatype: _,
             } = obj_field;
 
-            use convert_case::{Case, Casing};
             let name = format_ident!("{}", name.to_case(Case::UpperCamel));
 
             let quoted_doc = quote_doc_from_docs(docs);
@@ -1229,7 +1229,7 @@ fn quote_arrow_serializer(
             }
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
-                    let data_dst = format_ident!("{}", obj_field.name);
+                    let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
                     let quoted_serializer = quote_arrow_field_serializer(
@@ -1244,10 +1244,8 @@ fn quote_arrow_serializer(
                     let quoted_bitmap = quoted_bitmap(bitmap_dst);
 
                     let quoted_obj_name = format_ident!("{}", obj.name);
-                    let quoted_obj_field_name = {
-                        use convert_case::{Case, Casing};
-                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                    };
+                    let quoted_obj_field_name = 
+                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
                     quote! {{
                         let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
@@ -1275,10 +1273,8 @@ fn quote_arrow_serializer(
                     let quoted_obj_name = format_ident!("{}", obj.name);
                     let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
                         let i = i as i8;
-                        let quoted_obj_field_name = {
-                            use convert_case::{Case, Casing};
-                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                        };
+                        let quoted_obj_field_name =
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
                         quote!(#quoted_obj_name::#quoted_obj_field_name(_) => #i)
                     });
 
@@ -1297,16 +1293,16 @@ fn quote_arrow_serializer(
                     let quoted_obj_name = format_ident!("{}", obj.name);
 
                     let quoted_counters = obj.fields.iter().map(|obj_field| {
-                        let quoted_obj_field_name = format_ident!("{}_offset", obj_field.name);
+                        let quoted_obj_field_name =
+                            format_ident!("{}_offset", obj_field.name.to_case(Case::Snake));
                         quote!(let mut #quoted_obj_field_name = 0)
                     });
 
                     let quoted_branches = obj.fields.iter().map(|obj_field| {
-                        let quoted_counter_name = format_ident!("{}_offset", obj_field.name);
-                        let quoted_obj_field_name = {
-                            use convert_case::{Case, Casing};
-                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                        };
+                        let quoted_counter_name =
+                            format_ident!("{}_offset", obj_field.name.to_case(Case::Snake));
+                        let quoted_obj_field_name =
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
                         quote! {
                             #quoted_obj_name::#quoted_obj_field_name(_) => {
                                 let offset = #quoted_counter_name;
@@ -1668,10 +1664,8 @@ fn quote_arrow_deserializer(
                 let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
                     let i = i as i8;
                     let quoted_obj_field_name = format_ident!("{}", obj_field.name);
-                    let quoted_obj_field_type = {
-                        use convert_case::{Case, Casing};
-                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                    };
+                    let quoted_obj_field_type =
+                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
                     let quoted_unwrap = if obj_field.is_nullable {
                         quote!()
