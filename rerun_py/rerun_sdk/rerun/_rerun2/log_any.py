@@ -155,7 +155,17 @@ def log_any(
 
     if splats:
         splats["rerun.instance_key"] = _splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
+        bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
+            entity_path,
+            components=splats,
+            timeless=timeless,
+            recording=recording,
+        )
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
-    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+    bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
+        entity_path,
+        components=instanced,
+        timeless=timeless,
+        recording=recording,
+    )

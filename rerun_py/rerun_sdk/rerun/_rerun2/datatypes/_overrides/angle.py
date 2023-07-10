@@ -8,8 +8,8 @@ if TYPE_CHECKING:
 
 def angle_init(self: Angle, rad: float | None = None, deg: float | None = None) -> None:
     if rad is not None:
-        self.__attrs_init__(inner=rad, kind="radians")
+        self.__attrs_init__(inner=rad, kind="radians")  # pyright: ignore[reportGeneralTypeIssues]
     elif deg is not None:
-        self.__attrs_init__(inner=deg, kind="degrees")
+        self.__attrs_init__(inner=deg, kind="degrees")  # pyright: ignore[reportGeneralTypeIssues]
     else:
         raise ValueError("Either `rad` or `deg` must be provided.")
