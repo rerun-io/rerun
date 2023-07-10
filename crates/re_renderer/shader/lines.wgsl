@@ -30,6 +30,8 @@ struct BatchUniformBuffer {
     outline_mask_ids: UVec2,
     picking_layer_object_id: UVec2,
     depth_offset: f32,
+    triangle_cap_length_factor: f32,
+    triangle_cap_width_factor: f32,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -216,14 +218,14 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         (is_end_cap_triangle || (is_at_quad_end && pos_data_current.strip_index != pos_data_quad_after.strip_index)) {
         var cap_length =
             f32(has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND)) +
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) * 4.0;
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) * batch.triangle_cap_length_factor;
         center_position -= quad_dir * (cap_length * strip_radius);
     }
     if !has_any_flag(strip_data.flags, FLAG_CAP_START_EXTEND_OUTWARDS) &&
         (is_start_cap_triangle || (!is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index)) {
         var cap_length =
             f32(has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND)) +
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) * 4.0;
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) * batch.triangle_cap_length_factor;
         center_position += quad_dir * (cap_length * strip_radius);
     }
 
@@ -239,10 +241,10 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
 
     var active_radius = strip_radius;
-    // If this is a triangle cap, we blow up our ("virtual") quad by twice the size.
+    // If this is a triangle cap, we blow up our ("virtual") quad by a given factor.
     if (is_end_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) ||
        (is_start_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) {
-        active_radius *= 2.0;
+        active_radius *= batch.triangle_cap_width_factor;
     }
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
@@ -256,7 +258,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         // and far enough to do rounded caps without any visible clipping.
         // There is _some_ clipping, but we can't see it ;)
         // If we want to do it properly, we would extend the radius for rounded caps too.
-        center_position += quad_dir * (strip_radius * 4.0 * select(-1.0, 1.0, is_right_triangle));
+        center_position += quad_dir *
+            (strip_radius * batch.triangle_cap_length_factor * select(-1.0, 1.0, is_right_triangle));
         pos = center_position;
     } else {
         pos = center_position + (active_radius * top_bottom) * dir_up;

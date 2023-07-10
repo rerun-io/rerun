@@ -65,12 +65,7 @@ impl LineStripSeriesBuilder {
     pub fn batch(&mut self, label: impl Into<DebugLabel>) -> LineBatchBuilder<'_> {
         self.batches.push(LineBatchInfo {
             label: label.into(),
-            world_from_obj: glam::Affine3A::IDENTITY,
-            line_vertex_count: 0,
-            overall_outline_mask_ids: OutlineMaskPreference::NONE,
-            additional_outline_mask_ids_vertex_ranges: Vec::new(),
-            picking_object_id: PickingLayerObjectId::default(),
-            depth_offset: 0,
+            ..LineBatchInfo::default()
         });
 
         LineBatchBuilder(self)
@@ -168,6 +163,26 @@ impl<'a> LineBatchBuilder<'a> {
     #[inline]
     pub fn depth_offset(mut self, depth_offset: DepthOffset) -> Self {
         self.batch_mut().depth_offset = depth_offset;
+        self
+    }
+
+    /// Sets the length factor as multiple of a line's radius applied to all triangle caps in this batch.
+    ///
+    /// This controls how far the "pointy end" of the triangle/arrow-head extends.
+    /// (defaults to 4.0)
+    #[inline]
+    pub fn triangle_cap_length_factor(mut self, triangle_cap_length_factor: f32) -> Self {
+        self.batch_mut().triangle_cap_length_factor = triangle_cap_length_factor;
+        self
+    }
+
+    /// Sets the width factor as multiple of a line's radius applied to all triangle caps in this batch.
+    ///
+    /// This controls how wide the triangle/arrow-head is orthogonal to the line's direction.
+    /// (defaults to 2.0)
+    #[inline]
+    pub fn triangle_cap_width_factor(mut self, triangle_cap_width_factor: f32) -> Self {
+        self.batch_mut().triangle_cap_width_factor = triangle_cap_width_factor;
         self
     }
 

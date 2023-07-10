@@ -115,6 +115,28 @@ impl framework::Example for Render2D {
             }
         }
 
+        // Lines with non-default arrow heads - long thin arrows.
+        {
+            let mut line_batch = line_strip_builder
+                .batch("larger arrowheads")
+                .triangle_cap_length_factor(15.0)
+                .triangle_cap_width_factor(3.0);
+            for (i, flags) in [
+                LineStripFlags::FLAG_CAP_START_TRIANGLE | LineStripFlags::FLAG_CAP_END_ROUND,
+                LineStripFlags::FLAG_CAP_START_ROUND | LineStripFlags::FLAG_CAP_END_TRIANGLE,
+                LineStripFlags::FLAG_CAP_START_TRIANGLE | LineStripFlags::FLAG_CAP_END_TRIANGLE,
+            ]
+            .iter()
+            .enumerate()
+            {
+                let y = (i + 1) as f32 * 40.0 + 650.0;
+                line_batch
+                    .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
+                    .radius(Size::new_scene(5.0))
+                    .flags(*flags);
+            }
+        }
+
         // Lines with different kinds of radius
         // The first two lines are the same thickness if there no (!) scaling.
         // Moving the windows to a high dpi screen makes the second one bigger.
@@ -170,7 +192,7 @@ impl framework::Example for Render2D {
         // Do in individual batches to test depth offset.
         {
             let num_lines = 20_i16;
-            let y_range = 700.0..780.0;
+            let y_range = 800.0..880.0;
 
             // Cycle through which line is on top.
             let top_line = ((time.seconds_since_startup() * 6.0) as i16 % (num_lines * 2 - 1)
