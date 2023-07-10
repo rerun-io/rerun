@@ -50,17 +50,17 @@ def run_segmentation() -> None:
             ),
         )
     else:
-        rr.log_point("seg_test/single_point", np.array([64, 64]), class_id=13)
-        rr.log_point("seg_test/single_point_labeled", np.array([90, 50]), class_id=13, label="labeled point")
-        rr.log_points("seg_test/several_points0", np.array([[20, 50], [100, 70], [60, 30]]), class_ids=42)
+        rr.log_point("seg_test/single_point", [64, 64], class_id=13)
+        rr.log_point("seg_test/single_point_labeled", [90, 50], class_id=13, label="labeled point")
+        rr.log_points("seg_test/several_points0", [[20, 50], [100, 70], [60, 30]], class_ids=42)
         rr.log_points(
             "seg_test/several_points1",
-            np.array([[40, 50], [120, 70], [80, 30]]),
+            [[40, 50], [120, 70], [80, 30]],
             class_ids=np.array([13, 42, 99], dtype=np.uint8),
         )
         rr.log_points(
             "seg_test/many points",
-            np.array([[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)]),
+            [[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)],
             class_ids=np.array([42], dtype=np.uint8),
         )
 
