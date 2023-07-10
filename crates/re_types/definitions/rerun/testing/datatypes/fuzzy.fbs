@@ -75,3 +75,10 @@ union AffixFuzzer4 (
   many_required: __AffixFuzzer3Vec (transparent, order: 101),
   many_optional: __AffixFuzzer3Vec (transparent, order: 102, nullable),
 }
+
+table AffixFuzzer5 (
+  "attr.rust.derive": "PartialEq",
+  order: 500
+) {
+  single_optional_union: AffixFuzzer4 (order: 100, nullable);
+}
