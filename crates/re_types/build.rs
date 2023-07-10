@@ -179,7 +179,7 @@ fn main() {
         "ruff --config {PYTHON_PYPROJECT_PATH} --fix {PYTHON_OUTPUT_DIR_PATH}"
     )
     .run()
-    .unwrap();
+    .ok();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
 }
