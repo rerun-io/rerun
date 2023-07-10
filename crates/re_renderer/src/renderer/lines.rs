@@ -648,7 +648,7 @@ impl LineDrawData {
                     world_from_obj: batch_info.world_from_obj.into(),
                     outline_mask_ids: outline_mask_ids.into(),
                     picking_object_id: batch_info.picking_object_id,
-                    depth_offset: (batch_info.depth_offset as f32).into(),
+                    depth_offset: batch_info.depth_offset as f32,
                     triangle_cap_length_factor: batch_info.triangle_cap_length_factor,
                     triangle_cap_width_factor: batch_info.triangle_cap_width_factor,
                     _padding: 0.0,
@@ -680,10 +680,7 @@ impl LineDrawData {
                                 .additional_outline_mask_ids_vertex_ranges
                                 .iter()
                                 .map(|(_, mask)| {
-                                    uniforms_from_batch_info(
-                                        batch_info,
-                                        mask.0.unwrap_or_default().into(),
-                                    )
+                                    uniforms_from_batch_info(batch_info, mask.0.unwrap_or_default())
                                 })
                         })
                         .collect::<Vec<_>>()
