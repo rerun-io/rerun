@@ -90,7 +90,7 @@ pub fn compute_dir_hash<'a>(path: impl AsRef<Path>, extensions: Option<&'a [&'a 
             .with_context(|| format!("couldn't copy from {filepath:?}"))
             .unwrap();
 
-        rerun_if_changed(path);
+        rerun_if_changed(filepath);
     }
 
     encode_hex(hasher.finalize().as_slice())

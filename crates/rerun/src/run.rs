@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use itertools::Itertools;
 use re_log_types::{LogMsg, PythonVersion};
 use re_smart_channel::{Receiver, SmartMessagePayload};
@@ -149,6 +151,19 @@ enum Commands {
     #[cfg(all(feature = "analytics"))]
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
+
+    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
+    /// match.
+    ///
+    /// This ignores the `log_time` timeline.
+    Compare {
+        path_to_rrd1: String,
+        path_to_rrd2: String,
+
+        /// If specified, dumps both .rrd files as tables.
+        #[clap(long, default_value_t = false)]
+        full_dump: bool,
+    },
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -254,8 +269,16 @@ where
         match commands {
             #[cfg(all(feature = "analytics"))]
             Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
-            #[cfg(not(all(feature = "analytics")))]
-            _ => Ok(()),
+
+            Commands::Compare {
+                path_to_rrd1,
+                path_to_rrd2,
+                full_dump,
+            } => {
+                let path_to_rrd1 = PathBuf::from(path_to_rrd1);
+                let path_to_rrd2 = PathBuf::from(path_to_rrd2);
+                run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
+            }
         }
     } else {
         run_impl(build_info, call_source, args).await
@@ -278,6 +301,75 @@ where
         // Unclean failure -- re-raise exception
         Err(err) => Err(err),
     }
+}
+
+/// Checks whether two .rrd files are _similar_, i.e. not equal on a byte-level but
+/// functionally equivalent.
+///
+/// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
+fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> anyhow::Result<()> {
+    /// Given a path to an rrd file, builds up a `DataStore` and returns its contents as one big
+    /// `DataTable`.
+    ///
+    /// Fails if there are more than one data recordings present in the rrd file.
+    fn compute_uber_table(path_to_rrd: &Path) -> anyhow::Result<re_log_types::DataTable> {
+        use re_data_store::StoreDb;
+        use re_log_types::StoreId;
+
+        let rrd_file = std::fs::File::open(path_to_rrd)
+            .with_context(|| format!("couldn't open rrd file contents at {path_to_rrd:?}"))?;
+
+        let mut stores: std::collections::HashMap<StoreId, StoreDb> = Default::default();
+        let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
+        for msg in decoder {
+            let msg = msg
+                .with_context(|| format!("couldn't decode rrd file contents at {path_to_rrd:?}"))?;
+            stores
+                .entry(msg.store_id().clone())
+                .or_insert(re_data_store::StoreDb::new(msg.store_id().clone()))
+                .add(&msg)
+                .with_context(|| format!("couldn't decode rrd file contents at {path_to_rrd:?}"))?;
+        }
+
+        let mut stores = stores
+            .values()
+            .filter(|store| store.store_kind() == re_log_types::StoreKind::Recording)
+            .collect_vec();
+
+        anyhow::ensure!(
+            !stores.is_empty(),
+            "no data recording found in rrd file at {path_to_rrd:?}"
+        );
+        anyhow::ensure!(
+            stores.len() == 1,
+            "more than one data recording found in rrd file at {path_to_rrd:?}"
+        );
+
+        let store = stores.pop().unwrap(); // safe, ensured above
+
+        let table = re_log_types::DataTable::from_rows(re_log_types::TableId::random(), {
+            let mut rows = store
+                .store()
+                .to_data_tables(None)
+                .flat_map(|t| t.to_rows().collect_vec())
+                .collect_vec();
+            // NOTE: So the full dump makes sense, if enabled.
+            rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
+            rows
+        });
+
+        Ok::<_, anyhow::Error>(table)
+    }
+
+    let table1 = compute_uber_table(path_to_rrd1)?;
+    let table2 = compute_uber_table(path_to_rrd2)?;
+
+    if full_dump {
+        println!("{table1}");
+        println!("{table2}");
+    }
+
+    re_log_types::DataTable::similar(&table1, &table2)
 }
 
 #[cfg(all(feature = "analytics"))]
@@ -814,6 +906,7 @@ fn load_rrd_file_to_channel(
     let decoder = re_log_encoding::decoder::Decoder::new(file)?;
 
     rayon::spawn(move || {
+        re_tracing::profile_scope!("load_rrd_file_to_channel");
         for msg in decoder {
             match msg {
                 Ok(msg) => {

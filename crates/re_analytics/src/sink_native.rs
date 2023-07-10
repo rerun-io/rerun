@@ -85,7 +85,10 @@ impl PostHogSink {
             .collect::<Vec<_>>();
         let batch = PostHogBatch::from_events(&events);
 
-        re_log::debug!("{}", serde_json::to_string_pretty(&batch)?);
+        re_log::trace!(
+            "Sending analytics: {}",
+            serde_json::to_string_pretty(&batch)?
+        );
         self.agent.post(resolved_url).send_json(&batch)?;
         Ok(())
     }

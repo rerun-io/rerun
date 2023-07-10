@@ -16,7 +16,7 @@ use crate::space_camera_3d::SpaceCamera3D;
 /// Our view-space uses RUB (X=Right, Y=Up, Z=Back).
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Eye {
-    pub world_from_view: IsoTransform,
+    pub world_from_rub_view: IsoTransform,
 
     /// If no angle is present, this is an orthographic camera.
     pub fov_y: Option<f32>,
@@ -32,7 +32,7 @@ impl Eye {
             .unwrap_or(Self::DEFAULT_FOV_Y);
 
         Some(Self {
-            world_from_view: space_cameras.world_from_rub_view()?,
+            world_from_rub_view: space_cameras.world_from_rub_view()?,
             fov_y: Some(fov_y),
         })
     }
@@ -72,7 +72,7 @@ impl Eye {
         Mat4::from_translation(vec3(space2d_rect.center().x, space2d_rect.center().y, 0.0))
             * Mat4::from_scale(0.5 * vec3(space2d_rect.width(), -space2d_rect.height(), 1.0))
             * projection
-            * self.world_from_view.inverse()
+            * self.world_from_rub_view.inverse()
     }
 
     pub fn is_perspective(&self) -> bool {
@@ -93,15 +93,15 @@ impl Eye {
             let px = (2.0 * (pointer.x - screen_rect.left()) / w - 1.0) * f * aspect_ratio;
             let py = (1.0 - 2.0 * (pointer.y - screen_rect.top()) / h) * f;
             let ray_dir = self
-                .world_from_view
+                .world_from_rub_view
                 .transform_vector3(glam::vec3(px, py, -1.0));
             macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize())
         } else {
             // The ray originates on the camera plane, not from the camera position
-            let ray_dir = self.world_from_view.rotation().mul_vec3(glam::Vec3::Z);
-            let origin = self.world_from_view.translation()
-                + self.world_from_view.rotation().mul_vec3(glam::Vec3::X) * pointer.x
-                + self.world_from_view.rotation().mul_vec3(glam::Vec3::Y) * pointer.y
+            let ray_dir = self.world_from_rub_view.rotation().mul_vec3(glam::Vec3::Z);
+            let origin = self.world_from_rub_view.translation()
+                + self.world_from_rub_view.rotation().mul_vec3(glam::Vec3::X) * pointer.x
+                + self.world_from_rub_view.rotation().mul_vec3(glam::Vec3::Y) * pointer.y
                 + ray_dir * self.near();
 
             macaw::Ray3::from_origin_dir(origin, ray_dir)
@@ -109,22 +109,22 @@ impl Eye {
     }
 
     pub fn pos_in_world(&self) -> glam::Vec3 {
-        self.world_from_view.translation()
+        self.world_from_rub_view.translation()
     }
 
     pub fn forward_in_world(&self) -> glam::Vec3 {
-        self.world_from_view.rotation() * -Vec3::Z // because we use RUB
+        self.world_from_rub_view.rotation() * -Vec3::Z // because we use RUB
     }
 
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
         let translation = self
-            .world_from_view
+            .world_from_rub_view
             .translation()
-            .lerp(other.world_from_view.translation(), t);
+            .lerp(other.world_from_rub_view.translation(), t);
         let rotation = self
-            .world_from_view
+            .world_from_rub_view
             .rotation()
-            .slerp(other.world_from_view.rotation(), t);
+            .slerp(other.world_from_rub_view.rotation(), t);
 
         let fov_y = if t < 0.02 {
             self.fov_y
@@ -141,7 +141,7 @@ impl Eye {
         };
 
         Eye {
-            world_from_view: IsoTransform::from_rotation_translation(rotation, translation),
+            world_from_rub_view: IsoTransform::from_rotation_translation(rotation, translation),
             fov_y,
         }
     }
@@ -201,7 +201,7 @@ impl OrbitEye {
 
     pub fn to_eye(self) -> Eye {
         Eye {
-            world_from_view: IsoTransform::from_rotation_translation(
+            world_from_rub_view: IsoTransform::from_rotation_translation(
                 self.world_from_view_rot,
                 self.position(),
             ),
@@ -217,7 +217,7 @@ impl OrbitEye {
             .dot(self.orbit_center - eye.pos_in_world());
         self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
         self.orbit_center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
-        self.world_from_view_rot = eye.world_from_view.rotation();
+        self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
     }
@@ -430,8 +430,14 @@ impl OrbitEye {
             let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
             let fwd = fwd.normalize(); // Prevent drift
 
-            self.world_from_view_rot =
+            let new_world_from_view_rot =
                 Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
+
+            if new_world_from_view_rot.is_finite() {
+                self.world_from_view_rot = new_world_from_view_rot;
+            } else {
+                re_log::debug_once!("Failed to rotate camera: got non-finites");
+            }
         }
     }
 

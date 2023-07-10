@@ -177,8 +177,9 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
 // --- Init ---
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::fn_params_excessive_bools)]
 #[allow(clippy::struct_excessive_bools)]
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -243,7 +244,7 @@ fn new_recording(
     Ok(PyRecordingStream(recording))
 }
 
-#[allow(clippy::struct_excessive_bools)]
+#[allow(clippy::fn_params_excessive_bools)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -713,7 +714,10 @@ fn log_view_coordinates(
     let Some(recording) = get_data_recording(recording) else { return Ok(()); };
 
     if coordinates.handedness() == Some(Handedness::Left) {
-        re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
+        re_log::warn_once!(
+            "Left-handed coordinate systems are not yet fully supported by Rerun (got {})",
+            coordinates.describe_short()
+        );
     }
 
     // We normally disallow logging to root, but we make an exception for view_coordinates

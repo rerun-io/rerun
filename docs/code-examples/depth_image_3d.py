@@ -12,18 +12,11 @@ image[130:180, 100:280] = 45000
 rr.init("depth_image", spawn=True)
 
 # If we log a pinhole camera model, the depth gets automatically back-projected to 3D
-focal_length = 200
 rr.log_pinhole(
     "world/camera",
-    child_from_parent=np.array(
-        (
-            (focal_length, 0, image.shape[1] / 2),
-            (0, focal_length, image.shape[0] / 2),
-            (0, 0, 1),
-        ),
-    ),
     width=image.shape[1],
     height=image.shape[0],
+    focal_length_px=200,
 )
 
 # Log the tensor, assigning names to each dimension

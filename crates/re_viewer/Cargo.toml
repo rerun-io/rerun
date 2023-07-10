@@ -75,6 +75,7 @@ arrow2.workspace = true
 arrow2_convert.workspace = true
 bytemuck.workspace = true
 cfg-if.workspace = true
+directories-next = "2.0.0"
 eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
   "persistence",

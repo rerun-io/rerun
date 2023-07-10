@@ -5,7 +5,7 @@ use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, Entity
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::TimeType;
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
-use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
+use re_viewport::{Viewport, ViewportBlueprint};
 
 use super::selection_history_ui::SelectionHistoryUi;
 
@@ -21,10 +21,9 @@ pub(crate) struct SelectionPanel {
 impl SelectionPanel {
     pub fn show_panel(
         &mut self,
-        viewport_state: &mut ViewportState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        blueprint: &mut ViewportBlueprint<'_>,
+        viewport: &mut Viewport<'_, '_>,
         expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
@@ -50,7 +49,7 @@ impl SelectionPanel {
                     if let Some(selection) = self.selection_state_ui.selection_ui(
                         ctx.re_ui,
                         ui,
-                        blueprint,
+                        &viewport.blueprint,
                         &mut ctx.selection_state_mut().history,
                     ) {
                         ctx.selection_state_mut()
@@ -66,7 +65,7 @@ impl SelectionPanel {
                         ..Default::default()
                     }
                     .show(ui, |ui| {
-                        self.contents(viewport_state, ctx, ui, blueprint);
+                        self.contents(ctx, ui, viewport);
                     });
                 });
         });
@@ -75,10 +74,9 @@ impl SelectionPanel {
     #[allow(clippy::unused_self)]
     fn contents(
         &mut self,
-        viewport_state: &mut ViewportState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        blueprint: &mut ViewportBlueprint<'_>,
+        viewport: &mut Viewport<'_, '_>,
     ) {
         re_tracing::profile_function!();
 
@@ -92,7 +90,7 @@ impl SelectionPanel {
         let selection = ctx.selection().to_vec();
         for (i, item) in selection.iter().enumerate() {
             ui.push_id(i, |ui| {
-                what_is_selected_ui(ui, ctx, &mut blueprint.viewport, item);
+                what_is_selected_ui(ui, ctx, &mut viewport.blueprint, item);
 
                 if has_data_section(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
@@ -102,7 +100,7 @@ impl SelectionPanel {
 
                 ctx.re_ui
                     .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                        blueprint_ui(viewport_state, ui, ctx, blueprint, item);
+                        blueprint_ui(ui, ctx, viewport, item);
                     });
 
                 if i + 1 < num_selections {
@@ -126,7 +124,7 @@ fn has_data_section(item: &Item) -> bool {
 fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    viewport: &mut Viewport,
+    viewport: &mut ViewportBlueprint<'_>,
     item: &Item,
 ) {
     match item {
@@ -205,15 +203,19 @@ fn what_is_selected_ui(
 
 /// What is the blueprint stuff for this item?
 fn blueprint_ui(
-    viewport_state: &mut ViewportState,
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    blueprint: &mut ViewportBlueprint<'_>,
+    viewport: &mut Viewport<'_, '_>,
     item: &Item,
 ) {
     match item {
         Item::ComponentPath(component_path) => {
-            list_existing_data_blueprints(ui, ctx, component_path.entity_path(), blueprint);
+            list_existing_data_blueprints(
+                ui,
+                ctx,
+                component_path.entity_path(),
+                &viewport.blueprint,
+            );
         }
 
         Item::SpaceView(space_view_id) => {
@@ -223,7 +225,7 @@ fn blueprint_ui(
                     .on_hover_text("Manually add or remove entities from the Space View.")
                     .clicked()
                 {
-                    viewport_state
+                    viewport
                         .show_add_remove_entities_window(*space_view_id);
                 }
 
@@ -232,19 +234,19 @@ fn blueprint_ui(
                     .on_hover_text("Create an exact duplicate of this Space View including all blueprint settings")
                     .clicked()
                 {
-                    if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                         let mut new_space_view = space_view.clone();
                         new_space_view.id = SpaceViewId::random();
-                        blueprint.viewport.add_space_view(new_space_view);
-                        blueprint.viewport.mark_user_interaction();
+                        viewport.blueprint.add_space_view(new_space_view);
+                        viewport.blueprint.mark_user_interaction();
                     }
                 }
             });
 
             ui.add_space(ui.spacing().item_spacing.y);
 
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
-                let space_view_state = viewport_state.space_view_state_mut(
+            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+                let space_view_state = viewport.state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
                     space_view.class_name(),
@@ -264,7 +266,7 @@ fn blueprint_ui(
 
         Item::InstancePath(space_view_id, instance_path) => {
             if let Some(space_view_id) = space_view_id {
-                if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                     if instance_path.instance_key.is_specific() {
                         ui.horizontal(|ui| {
                             ui.label("Part of");
@@ -285,12 +287,17 @@ fn blueprint_ui(
                     }
                 }
             } else {
-                list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, blueprint);
+                list_existing_data_blueprints(
+                    ui,
+                    ctx,
+                    &instance_path.entity_path,
+                    &viewport.blueprint,
+                );
             }
         }
 
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)
@@ -310,9 +317,7 @@ fn list_existing_data_blueprints(
     entity_path: &EntityPath,
     blueprint: &ViewportBlueprint<'_>,
 ) {
-    let space_views_with_path = blueprint
-        .viewport
-        .space_views_containing_entity_path(entity_path);
+    let space_views_with_path = blueprint.space_views_containing_entity_path(entity_path);
 
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any Space View)");
@@ -322,7 +327,7 @@ fn list_existing_data_blueprints(
 
         ui.indent("list of data blueprints indent", |ui| {
             for space_view_id in &space_views_with_path {
-                if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                if let Some(space_view) = blueprint.space_view(space_view_id) {
                     item_ui::entity_path_button_to(
                         ctx,
                         ui,

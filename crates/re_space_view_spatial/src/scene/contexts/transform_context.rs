@@ -1,11 +1,13 @@
 use nohash_hasher::IntMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_components::{DisconnectedSpace, Pinhole, Transform3D};
+use re_components::{DisconnectedSpace, Pinhole, Transform3D, ViewCoordinates};
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_log_types::Component;
 use re_space_view::UnreachableTransformReason;
 use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
+
+use crate::scene::image_view_coordinates;
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -285,21 +287,30 @@ fn transform_at(
         .map(|transform| transform.to_parent_from_child_transform());
 
     let pinhole = pinhole.map(|pinhole| {
-        // A pinhole camera means that we're looking at some 2D image plane from a single point (the pinhole).
+        // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
+        // Our visualization interprets this as looking at a 2D image plane from a single point (the pinhole).
+
         // Center the image plane and move it along z, scaling the further the image plane is.
         let distance = pinhole_image_plane_distance(entity_path);
-
         let focal_length = pinhole.focal_length_in_pixels();
         let focal_length = glam::vec2(focal_length.x(), focal_length.y());
         let scale = distance / focal_length;
         let translation = (-pinhole.principal_point() * scale).extend(distance);
 
-        glam::Affine3A::from_translation(translation)
-        // We want to preserve any depth that might be on the pinhole image.
-        // Use harmonic mean of x/y scale for those.
-        * glam::Affine3A::from_scale(
-            scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
-        )
+        let image_plane3d_from_2d_content = glam::Affine3A::from_translation(translation)
+            // We want to preserve any depth that might be on the pinhole image.
+            // Use harmonic mean of x/y scale for those.
+            * glam::Affine3A::from_scale(
+                scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
+            );
+
+        // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
+        // determine how the image plane is oriented.
+        // (see also `CamerasPart` where the frustum lines are set up)
+        let view_coordinates = pinhole_camera_view_coordinates(store, query, entity_path);
+        let world_from_image_plane3d = view_coordinates.from_other(&image_view_coordinates());
+
+        glam::Affine3A::from_mat3(world_from_image_plane3d) * image_plane3d_from_2d_content
 
         // Above calculation is nice for a certain kind of visualizing a projected image plane,
         // but the image plane distance is arbitrary and there might be other, better visualizations!
@@ -327,4 +338,19 @@ fn transform_at(
     } else {
         Ok(None)
     }
+}
+
+/// Determine the view coordinates, i.e. the axis semantics, of a pinhole entity.
+///
+/// This is used to orient the camera frustum.
+///
+/// The recommended way to log this is using `rr.log_pinhole(…, camera_xyz=…)`
+pub fn pinhole_camera_view_coordinates(
+    store: &re_arrow_store::DataStore,
+    query: &LatestAtQuery,
+    entity_path: &EntityPath,
+) -> ViewCoordinates {
+    store
+        .query_latest_component(entity_path, query)
+        .unwrap_or(ViewCoordinates::RDF)
 }

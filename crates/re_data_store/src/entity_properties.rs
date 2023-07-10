@@ -34,6 +34,17 @@ impl EntityPropertyMap {
     pub fn iter(&self) -> impl Iterator<Item = (&EntityPath, &EntityProperties)> {
         self.props.iter()
     }
+
+    /// Determine whether this `EntityPropertyMap` has user-edits relative to another `EntityPropertyMap`
+    pub fn has_edits(&self, other: &Self) -> bool {
+        self.props.len() != other.props.len()
+            || self.props.iter().any(|(key, val)| {
+                other
+                    .props
+                    .get(key)
+                    .map_or(true, |other_val| val.has_edits(other_val))
+            })
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -129,6 +140,33 @@ impl EntityProperties {
                 .clone(),
             transform_3d_size: self.transform_3d_size.or(&child.transform_3d_size).clone(),
         }
+    }
+
+    /// Determine whether this `EntityProperty` has user-edits relative to another `EntityProperty`
+    pub fn has_edits(&self, other: &Self) -> bool {
+        let Self {
+            visible,
+            visible_history,
+            interactive,
+            color_mapper,
+            pinhole_image_plane_distance,
+            backproject_depth,
+            depth_from_world_scale,
+            backproject_radius_scale,
+            transform_3d_visible,
+            transform_3d_size,
+        } = self;
+
+        visible != &other.visible
+            || visible_history != &other.visible_history
+            || interactive != &other.interactive
+            || color_mapper.has_edits(&other.color_mapper)
+            || pinhole_image_plane_distance.has_edits(&other.pinhole_image_plane_distance)
+            || backproject_depth.has_edits(&other.backproject_depth)
+            || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
+            || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
+            || transform_3d_visible.has_edits(&other.transform_3d_visible)
+            || transform_3d_size.has_edits(&other.transform_3d_size)
     }
 }
 

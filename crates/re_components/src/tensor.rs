@@ -146,6 +146,7 @@ impl ArrowDeserialize for TensorId {
 /// ```
 #[derive(Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
+#[allow(clippy::upper_case_acronyms)] // TODO(emilk): Rename to `Jpeg`.
 pub enum TensorData {
     U8(Buffer<u8>),
     U16(Buffer<u16>),

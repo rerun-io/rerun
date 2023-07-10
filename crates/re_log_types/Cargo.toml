@@ -40,6 +40,7 @@ re_tuid = { workspace = true, features = ["arrow2_convert"] }
 
 # External
 ahash.workspace = true
+anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "io_ipc",
   "io_print",
@@ -48,11 +49,15 @@ arrow2 = { workspace = true, features = [
 arrow2_convert.workspace = true
 document-features = "0.2"
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
+# `fixed` depends on `half`, so even though `half` is not directly used in this crate,
+# we keep it as a direct dependency to ensure it stays pinned on `2.2.1`
+half.workspace = true
 itertools = { workspace = true }
 web-time.workspace = true
 nohash-hasher = "0.2"
 num-derive = "0.3"
 num-traits = "0.2"
+similar-asserts = "1.4.2"
 smallvec.workspace = true
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting", "macros"] }

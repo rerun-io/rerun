@@ -14,3 +14,27 @@ namespace fbs.attributes;
 /// NOTE: We do not use flatbuffers' builtin `id` attribute as it only works on `table`s, whereas we
 /// need a stable order for all kinds of things.
 attribute "order";
+
+/// This attribute enables _semantic_ transparency.
+///
+/// * When applied to a table's field that is itself a table, this removes the extra table
+///   layer during the semantic pass, leaving just the inner field's type in its stead.
+///
+/// * When applied to a table object, this indicates that the object is only ever used as a
+///   field type, and thus should not generate any standalone code for itself.
+///
+/// Since all of this is done during the semantic pass, none of the other passes will ever know
+/// that the extra layer ever existed in the first place.
+///
+/// This allows to bypass all of Flatbuffers artificial limitations (have to wrap scalars in a
+/// table when defining a union, cannot put arrays (as opposed to vectors) into tables, etc) that
+/// do not apply in our case.
+attribute "transparent";
+
+/// If specified on a field, the field becomes nullable, which affects both its native as well as
+/// its arrow datatypes.
+///
+/// NOTE: We do not use flatbuffers' builtin `required` attribute because A) it has many
+/// limitations that do not make sense for our use case and B) our overall data model is built
+/// around the idea of nullability, rather than requirements (i.e. the exact opposite).
+attribute "nullable";

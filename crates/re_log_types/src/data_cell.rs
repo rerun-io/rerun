@@ -230,6 +230,7 @@ impl DataCell {
     ///
     /// Fails if the array is not a valid list of components.
     #[inline]
+    #[allow(clippy::unnecessary_wraps)] // TODO(cmc): check that it is indeed a component datatype
     pub fn try_from_arrow(
         name: ComponentName,
         values: Box<dyn arrow2::array::Array>,
@@ -267,12 +268,11 @@ impl DataCell {
     ///
     /// Fails if the datatype is not a valid component type.
     #[inline]
+    #[allow(clippy::unnecessary_wraps)] // TODO(cmc): check that it is indeed a component datatype
     pub fn try_from_arrow_empty(
         name: ComponentName,
         datatype: arrow2::datatypes::DataType,
     ) -> DataCellResult<Self> {
-        // TODO(cmc): check that it is indeed a component datatype
-
         let mut inner = DataCellInner {
             name,
             size_bytes: 0,

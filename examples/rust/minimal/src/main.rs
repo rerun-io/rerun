@@ -23,8 +23,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_splat(Radius(0.5))?
         .send(&rec_stream)?;
 
-    rec_stream.flush_blocking();
-
     rerun::native_viewer::show(storage.take())?;
 
     Ok(())

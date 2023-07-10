@@ -22,7 +22,7 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, SamplerDesc,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
     },
     Colormap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
 };
@@ -168,10 +168,8 @@ pub enum RectangleError {
     #[error("Texture required special features: {0:?}")]
     SpecialFeatures(wgpu::Features),
 
-    // There's really no need for users to be able to sample depth textures.
-    // We don't get filtering of depth textures any way.
-    #[error("Depth textures not supported - use float or integer textures instead.")]
-    DepthTexturesNotSupported,
+    #[error("Texture format not supported: {0:?} - use float or integer textures instead.")]
+    TextureFormatNotSupported(wgpu::TextureFormat),
 
     #[error("Color mapping is being applied to a four-component RGBA texture")]
     ColormappingRgbaTexture,
@@ -278,7 +276,7 @@ mod gpu_data {
                 Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT,
                 Some(wgpu::TextureSampleType::Uint) => SAMPLE_TYPE_UINT,
                 _ => {
-                    return Err(RectangleError::DepthTexturesNotSupported);
+                    return Err(RectangleError::TextureFormatNotSupported(texture_format));
                 }
             };
 
@@ -392,30 +390,6 @@ impl RectangleDrawData {
 
         let mut instances = Vec::with_capacity(rectangles.len());
         for (rectangle, uniform_buffer) in izip!(rectangles, uniform_buffer_bindings) {
-            let options = &rectangle.options;
-            let sampler = ctx.gpu_resources.samplers.get_or_create(
-                &ctx.device,
-                &SamplerDesc {
-                    label: format!(
-                        "rectangle sampler mag {:?} min {:?}",
-                        options.texture_filter_magnification, options.texture_filter_minification
-                    )
-                    .into(),
-                    mag_filter: match options.texture_filter_magnification {
-                        TextureFilterMag::Linear => wgpu::FilterMode::Linear,
-                        TextureFilterMag::Nearest => wgpu::FilterMode::Nearest,
-                    },
-                    min_filter: match options.texture_filter_minification {
-                        TextureFilterMin::Linear => wgpu::FilterMode::Linear,
-                        TextureFilterMin::Nearest => wgpu::FilterMode::Nearest,
-                    },
-                    mipmap_filter: wgpu::FilterMode::Nearest,
-                    address_mode_u: wgpu::AddressMode::ClampToEdge,
-                    address_mode_v: wgpu::AddressMode::ClampToEdge,
-                    ..Default::default()
-                },
-            );
-
             let texture = &rectangle.colormapped_texture.texture;
             let texture_format = texture.creation_desc.format;
             if texture_format.required_features() != Default::default() {
@@ -440,7 +414,7 @@ impl RectangleDrawData {
                     texture_uint = texture.handle;
                 }
                 _ => {
-                    return Err(RectangleError::DepthTexturesNotSupported);
+                    return Err(RectangleError::TextureFormatNotSupported(texture_format));
                 }
             }
 
@@ -465,7 +439,6 @@ impl RectangleDrawData {
                         label: "RectangleInstance::bind_group".into(),
                         entries: smallvec![
                             uniform_buffer,
-                            BindGroupEntry::Sampler(sampler),
                             BindGroupEntry::DefaultTextureView(texture_float),
                             BindGroupEntry::DefaultTextureView(texture_sint),
                             BindGroupEntry::DefaultTextureView(texture_uint),
@@ -520,16 +493,9 @@ impl Renderer for RectangleRenderer {
                         },
                         count: None,
                     },
-                    // float sampler:
+                    // float texture:
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                    // float textures without filtering (e.g. R32Float):
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: false },
@@ -540,7 +506,7 @@ impl Renderer for RectangleRenderer {
                     },
                     // sint texture:
                     wgpu::BindGroupLayoutEntry {
-                        binding: 3,
+                        binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Sint,
@@ -551,7 +517,7 @@ impl Renderer for RectangleRenderer {
                     },
                     // uint texture:
                     wgpu::BindGroupLayoutEntry {
-                        binding: 4,
+                        binding: 3,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Uint,
@@ -562,10 +528,10 @@ impl Renderer for RectangleRenderer {
                     },
                     // colormap texture:
                     wgpu::BindGroupLayoutEntry {
-                        binding: 5,
+                        binding: 4,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },

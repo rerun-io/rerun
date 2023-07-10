@@ -290,11 +290,11 @@ Rerun offers several solutions for these use cases.
 
 ### Logging data over the network
 
-At any time, you can start a Rerun Viewer by running `python -m rerun`. This viewer is in fact a server that's ready to accept data over TCP (it's listening on `0.0.0.0:9876` by default).
+At any time, you can start a Rerun Viewer by running `rerun`. This viewer is in fact a server that's ready to accept data over TCP (it's listening on `0.0.0.0:9876` by default).
 
 On the logger side, simply use [`rr.connect`](https://ref.rerun.io/docs/python/latest/common/initialization/#rerun.connect) instead of [`rr.spawn`](https://ref.rerun.io/docs/python/latest/common/initialization/#rerun.spawn) to start sending the data over to any TCP address.
 
-Checkout `python -m rerun --help` for more options.
+Checkout `rerun --help` for more options.
 
 ### Saving & loading to/from RRD files
 
@@ -302,7 +302,7 @@ Sometimes, sending the data over the network is not an option. Maybe you'd like 
 
 Rerun has you covered:
 - Use [`rr.save`](https://ref.rerun.io/docs/python/latest/package/rerun/__init__/#rerun.save) to stream all logged data to disk.
-- Visualize it via `python -m rerun path/to/recording.rrd`
+- View it with `rerun path/to/recording.rrd`
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
 

@@ -26,7 +26,7 @@ use crate::scene::preferred_navigation_mode;
 use crate::{
     scene::{PickableUiRect, SceneSpatial, UiLabel, UiLabelTarget},
     ui_2d::view_2d,
-    ui_3d::{view_3d, SpaceSpecs},
+    ui_3d::view_3d,
 };
 
 /// Default auto point radius in UI points.
@@ -187,7 +187,7 @@ impl SpatialSpaceViewState {
             if properties.pinhole_image_plane_distance.is_auto() {
                 let scene_size = self.scene_bbox_accum.size().length();
                 let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
-                    scene_size * 0.05
+                    scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/main.py --no-frames`
                 } else {
                     1.0
                 };
@@ -310,6 +310,11 @@ impl SpatialSpaceViewState {
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) {
+        let view_coordinates = ctx
+            .store_db
+            .store()
+            .query_latest_component(space_origin, &ctx.current_query());
+
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
@@ -384,7 +389,7 @@ impl SpatialSpaceViewState {
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
                     {
-                        self.state_3d.reset_camera(&self.scene_bbox_accum);
+                        self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
                     }
                     ui.checkbox(&mut self.state_3d.spin, "Spin")
                         .on_hover_text("Spin camera around the orbit center.");
@@ -396,7 +401,12 @@ impl SpatialSpaceViewState {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view.");
                 ui.vertical(|ui|{
-                    ui.label(format!("Up is {}", axis_name(self.state_3d.space_specs.up))).on_hover_ui(|ui| {
+                    let up_description = if let Some(up) = view_coordinates.and_then(|v| v.up()) {
+                        format!("Up is {up}")
+                    } else {
+                        "Up is unspecified".to_owned()
+                    };
+                    ui.label(up_description).on_hover_ui(|ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 0.0;
                             ui.label("Set with ");
@@ -460,11 +470,8 @@ impl SpatialSpaceViewState {
             .num_3d_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        let store = &ctx.store_db.entity_db.data_store;
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                let coordinates = store.query_latest_component(space_origin, &ctx.current_query());
-                self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
                 view_3d(ctx, ui, self, space_origin, space_view_id, scene);
             }
             SpatialNavigationMode::TwoD => {
@@ -553,30 +560,6 @@ fn size_ui(
                 AutoSizeUnit::World => Size::new_scene(displayed_size),
             };
         }
-    }
-}
-
-fn axis_name(axis: Option<glam::Vec3>) -> String {
-    if let Some(axis) = axis {
-        if axis == glam::Vec3::X {
-            "+X".to_owned()
-        } else if axis == -glam::Vec3::X {
-            "-X".to_owned()
-        } else if axis == glam::Vec3::Y {
-            "+Y".to_owned()
-        } else if axis == -glam::Vec3::Y {
-            "-Y".to_owned()
-        } else if axis == glam::Vec3::Z {
-            "+Z".to_owned()
-        } else if axis == -glam::Vec3::Z {
-            "-Z".to_owned()
-        } else if axis != glam::Vec3::ZERO {
-            format!("Up is [{:.3} {:.3} {:.3}]", axis.x, axis.y, axis.z)
-        } else {
-            "—".to_owned()
-        }
-    } else {
-        "—".to_owned()
     }
 }
 

@@ -41,15 +41,10 @@ def run_realsense(num_frames: int | None) -> None:
 
     rr.log_pinhole(
         "realsense/depth/image",
-        child_from_parent=np.array(
-            (
-                (depth_intr.fx, 0, depth_intr.ppx),
-                (0, depth_intr.fy, depth_intr.ppy),
-                (0, 0, 1),
-            ),
-        ),
         width=depth_intr.width,
         height=depth_intr.height,
+        focal_length_px=[depth_intr.fx, depth_intr.fy],
+        principal_point_px=[depth_intr.ppx, depth_intr.ppy],
         timeless=True,
     )
 
@@ -71,15 +66,10 @@ def run_realsense(num_frames: int | None) -> None:
 
     rr.log_pinhole(
         "realsense/rgb/image",
-        child_from_parent=np.array(
-            (
-                (rgb_intr.fx, 0, rgb_intr.ppx),
-                (0, rgb_intr.fy, rgb_intr.ppy),
-                (0, 0, 1),
-            ),
-        ),
         width=rgb_intr.width,
         height=rgb_intr.height,
+        focal_length_px=[rgb_intr.fx, rgb_intr.fy],
+        principal_point_px=[rgb_intr.ppx, rgb_intr.ppy],
         timeless=True,
     )
 

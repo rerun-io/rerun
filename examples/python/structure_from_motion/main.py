@@ -8,7 +8,7 @@ import re
 import zipfile
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Any, Final
+from typing import Final
 
 import cv2
 import numpy as np
@@ -35,24 +35,6 @@ def scale_camera(camera: Camera, resize: tuple[int, int]) -> tuple[Camera, npt.N
     new_params = np.append(camera.params[:2] * scale_factor, camera.params[2:] * scale_factor)
 
     return (Camera(camera.id, camera.model, new_width, new_height, new_params), scale_factor)
-
-
-def intrinsics_for_camera(camera: Camera) -> npt.NDArray[Any]:
-    """Convert a colmap camera to a pinhole camera intrinsics matrix."""
-    assert camera.model == "PINHOLE"
-    return np.vstack(
-        [
-            np.hstack(
-                [
-                    # Focal length is in [:2]
-                    np.diag(camera.params[:2]),
-                    # Principle point is in [2:]
-                    np.vstack(camera.params[2:]),
-                ]
-            ),
-            [0, 0, 1],
-        ]
-    )
 
 
 def get_downloaded_dataset_path(dataset_name: str) -> Path:
@@ -120,8 +102,6 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         else:
             scale_factor = np.array([1.0, 1.0])
 
-        intrinsics = intrinsics_for_camera(camera)
-
         visible = [id != -1 and points3D.get(id) is not None for id in image.point3D_ids]
         visible_ids = image.point3D_ids[visible]
 
@@ -150,11 +130,13 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         rr.log_view_coordinates("camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
 
         # Log camera intrinsics
+        assert camera.model == "PINHOLE"
         rr.log_pinhole(
             "camera/image",
-            child_from_parent=intrinsics,
             width=camera.width,
             height=camera.height,
+            focal_length_px=camera.params[:2],
+            principal_point_px=camera.params[2:],
         )
 
         if resize:

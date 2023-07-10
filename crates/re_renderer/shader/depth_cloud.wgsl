@@ -13,12 +13,17 @@
 
 // ---
 
-/// Keep in sync with `DepthCloudInfoUBO` in `depth_cloud.rs`.
-///
+// Keep in sync with `DepthCloudInfoUBO` in `depth_cloud.rs`.
+
+// Which texture to read from?
+const SAMPLE_TYPE_FLOAT = 1u;
+const SAMPLE_TYPE_SINT  = 2u;
+const SAMPLE_TYPE_UINT  = 3u;
+
 /// Same for all draw-phases.
 struct DepthCloudInfo {
     /// The extrinsincs of the camera used for the projection.
-    world_from_obj: Mat4,
+    world_from_rdf: Mat4,
 
     /// The intrinsics of the camera used for the projection.
     ///
@@ -43,6 +48,9 @@ struct DepthCloudInfo {
     /// Configures color mapping mode, see `colormap.wgsl`.
     colormap: u32,
 
+    /// Which texture sample to use
+    sample_type: u32,
+
     /// Changes between the opaque and outline draw-phases.
     radius_boost_in_ui_points: f32,
 };
@@ -51,7 +59,13 @@ struct DepthCloudInfo {
 var<uniform> depth_cloud_info: DepthCloudInfo;
 
 @group(1) @binding(1)
-var depth_texture: texture_2d<f32>;
+var texture_float: texture_2d<f32>;
+
+@group(1) @binding(2)
+var texture_sint: texture_2d<i32>;
+
+@group(1) @binding(3)
+var texture_uint: texture_2d<u32>;
 
 struct VertexOut {
     @builtin(position)
@@ -83,11 +97,24 @@ struct PointData {
 
 // Backprojects the depth texture using the intrinsics passed in the uniform buffer.
 fn compute_point_data(quad_idx: u32) -> PointData {
-    let wh = textureDimensions(depth_texture);
-    let texcoords = UVec2(quad_idx % wh.x, quad_idx / wh.x);
+    var texcoords: UVec2;
+    var texture_value = 0.0;
+    if depth_cloud_info.sample_type == SAMPLE_TYPE_FLOAT {
+        let wh = textureDimensions(texture_float);
+        texcoords = UVec2(quad_idx % wh.x, quad_idx / wh.x);
+        texture_value = textureLoad(texture_float, texcoords, 0).x;
+    } else if depth_cloud_info.sample_type == SAMPLE_TYPE_SINT {
+        let wh = textureDimensions(texture_sint);
+        texcoords = UVec2(quad_idx % wh.x, quad_idx / wh.x);
+        texture_value = f32(textureLoad(texture_sint, texcoords, 0).x);
+    } else {
+        let wh = textureDimensions(texture_uint);
+        texcoords = UVec2(quad_idx % wh.x, quad_idx / wh.x);
+        texture_value = f32(textureLoad(texture_uint, texcoords, 0).x);
+    }
 
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
-    let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
+    let world_space_depth = depth_cloud_info.world_depth_from_texture_value * texture_value;
 
     var data: PointData;
 
@@ -100,12 +127,13 @@ fn compute_point_data(quad_idx: u32) -> PointData {
         let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);
         let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
 
-        let pos_in_obj = Vec3(
+        // RDF: X=Right, Y=Down, Z=Forward
+        let pos_in_rdf = Vec3(
             (Vec2(texcoords) - offset) * world_space_depth / focal_length,
-            world_space_depth,
+            world_space_depth, // RDF, Z=forward, so positive depth
         );
 
-        let pos_in_world = depth_cloud_info.world_from_obj * Vec4(pos_in_obj, 1.0);
+        let pos_in_world = depth_cloud_info.world_from_rdf * Vec4(pos_in_rdf, 1.0);
 
         data.pos_in_world = pos_in_world.xyz;
         data.unresolved_radius = depth_cloud_info.point_radius_from_world_depth * world_space_depth;

@@ -14,11 +14,8 @@ const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const FBS_REFLECTION_DEFINITION_PATH: &str = "./definitions/reflection.fbs";
 
 fn main() {
-    if std::env::var("CI").is_ok() {
-        // Don't run on CI!
-        //
-        // The code we're generating here is actual source code that gets committed into the
-        // repository.
+    if cfg!(target_os = "windows") {
+        // TODO(#2591): Codegen is temporarily disabled on Windows due to hashing issues.
         return;
     }
 
@@ -52,6 +49,13 @@ fn main() {
             // Source definition hasn't changed, no need to do anything.
             return;
         }
+    }
+
+    // Detect desyncs between definitions and generated when running on CI, and
+    // crash the build accordingly.
+    #[allow(clippy::manual_assert)]
+    if std::env::var("CI").is_ok() {
+        panic!("re_types_builder's fbs definitions and generated code are out-of-sync!");
     }
 
     // NOTE: This requires `flatc` to be in $PATH, but only for contributors, not end users.

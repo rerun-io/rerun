@@ -6,13 +6,14 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 
-use re_viewer_context::SpaceViewId;
+use re_viewer_context::{SpaceViewClassName, SpaceViewId};
 
 use super::space_view::SpaceViewBlueprint;
 
 #[derive(Clone, Debug)]
 struct SpaceMakeInfo {
     id: SpaceViewId,
+    class_name: SpaceViewClassName,
     layout_priority: re_viewer_context::SpaceViewClassLayoutPriority,
 }
 
@@ -35,11 +36,13 @@ pub(crate) fn tree_from_space_views(
             )
         })
         .map(|(space_view_id, space_view)| {
+            let class_name = *space_view.class_name();
             let layout_priority = space_view
                 .class(space_view_class_registry)
                 .layout_priority();
             SpaceMakeInfo {
                 id: *space_view_id,
+                class_name,
                 layout_priority,
             }
         })
@@ -59,13 +62,45 @@ pub(crate) fn tree_from_space_views(
             ],
             &mut tiles,
         )
-    } else {
+    } else if space_make_infos.len() <= 12 {
         // Arrange it all in a grid that is responsive to changes in viewport size:
         let child_tile_ids = space_make_infos
             .into_iter()
             .map(|smi| tiles.insert_pane(smi.id))
             .collect_vec();
         tiles.insert_grid_tile(child_tile_ids)
+    } else {
+        // So many space views - lets group by class and put the members of each group into tabs:
+        let mut grouped_by_class: BTreeMap<SpaceViewClassName, Vec<SpaceMakeInfo>> =
+            Default::default();
+        for smi in space_make_infos {
+            grouped_by_class
+                .entry(smi.class_name)
+                .or_default()
+                .push(smi);
+        }
+
+        let groups = grouped_by_class
+            .values()
+            .cloned()
+            .sorted_by_key(|group| -(group[0].layout_priority as isize));
+
+        let tabs = groups
+            .into_iter()
+            .map(|group| {
+                let children = group
+                    .into_iter()
+                    .map(|smi| tiles.insert_pane(smi.id))
+                    .collect_vec();
+                tiles.insert_tab_tile(children)
+            })
+            .collect_vec();
+
+        if tabs.len() == 1 {
+            tabs[0]
+        } else {
+            tiles.insert_grid_tile(tabs)
+        }
     };
 
     egui_tiles::Tree::new(root, tiles)

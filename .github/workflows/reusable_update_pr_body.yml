@@ -35,7 +35,8 @@ jobs:
           python-version: 3.x
 
       - name: Install deps
-        run: pip install Jinja2 PyGithub # NOLINT
+        run: |
+          python3 -m pip install -r ./scripts/ci/requirements.txt
 
       - name: Update PR description
         run: |
