@@ -151,10 +151,9 @@ def test_translation_and_mat3x3_from_parent() -> None:
 def test_transform3d() -> None:
     """Demo of the various ways to construct a Transform3D object."""
     # TODO(ab): this test should ideally check that logging these things results in the expected output
-    # TODO(ab): from_parent should be optional
-    rr.log_any("entity", rr.dt.TranslationRotationScale3D(scale=5.0, from_parent=False))
-    rr.log_any("entity", rr.dt.TranslationRotationScale3D(translation=[1, 3, 4], from_parent=False))
+    rr.log_any("world/t1", rr.dt.TranslationRotationScale3D(scale=5.0))
+    rr.log_any("world/t2", rr.dt.TranslationRotationScale3D(translation=[1, 3, 4], from_parent=True))
     rr.log_any(
-        "entity",
-        rr.dt.TranslationAndMat3x3(translation=[1, 3, 4], matrix=[(1, 0, 0), (0, 1, 0), (0, 0, 1)], from_parent=False),
+        "world/t3",
+        rr.dt.TranslationAndMat3x3(translation=[1, 3, 4], matrix=[(1, 0, 0), (0, 1, 0), (0, 0, 1)]),
     )

@@ -4,6 +4,8 @@ import itertools
 from typing import Optional, cast
 
 import numpy as np
+import pytest
+
 import rerun as rr
 from rerun import cmp as rrc
 from rerun import dt as rrd
@@ -278,6 +280,53 @@ def test_points2d() -> None:
 
 def non_empty(v: object) -> bool:
     return v is not None and len(v) > 0  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        [0, 128, 0, 255],
+        [0, 128, 0],
+        np.array((0, 128, 0, 255)),
+        [0.0, 0.5, 0.0, 1.0],
+        np.array((0.0, 0.5, 0.0, 1.0)),
+    ],
+)
+def test_point2d_single_color(data: rrc.ColorArrayLike):
+    pts = rr.Points2D(points=np.zeros((5, 2)), colors=data)
+
+    assert pts.colors == rrc.ColorArray.from_similar(rrc.Color([0, 128, 0, 255]))
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        [[0, 128, 0, 255], [128, 0, 0, 255]],
+        [[0, 128, 0], [128, 0, 0]],
+        np.array([[0, 128, 0, 255], [128, 0, 0, 255]]),
+        np.array([0, 128, 0, 255, 128, 0, 0, 255], dtype=np.uint8),
+        np.array([8388863, 2147483903], dtype=np.uint32),
+        np.array([[0, 128, 0], [128, 0, 0]]),
+        [[0.0, 0.5, 0.0, 1.0], [0.5, 0.0, 0.0, 1.0]],
+        [[0.0, 0.5, 0.0], [0.5, 0.0, 0.0]],
+        np.array([[0.0, 0.5, 0.0, 1.0], [0.5, 0.0, 0.0, 1.0]]),
+        np.array([[0.0, 0.5, 0.0], [0.5, 0.0, 0.0]]),
+        np.array([0.0, 0.5, 0.0, 1.0, 0.5, 0.0, 0.0, 1.0]),
+        # Note: Sequence[int] is interpreted as a single color when they are 3 or 4 long. For other lengths, they
+        # are interpreted as list of packed uint32 colors. Note that this means one cannot pass an len=N*4 flat list of
+        # color components.
+        [8388863, 2147483903],
+    ],
+)
+def test_point2d_multiple_colors(data: rrc.ColorArrayLike):
+    pts = rr.Points2D(points=np.zeros((5, 2)), colors=data)
+
+    assert pts.colors == rrc.ColorArray.from_similar(
+        [
+            rrc.Color([0, 128, 0, 255]),
+            rrc.Color([128, 0, 0, 255]),
+        ]
+    )
 
 
 if __name__ == "__main__":

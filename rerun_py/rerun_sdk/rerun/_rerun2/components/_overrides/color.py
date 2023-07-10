@@ -40,10 +40,17 @@ def _numpy_array_to_u32(data: npt.NDArray[np.uint8 | np.float32 | np.float64]) -
 
 
 def color_rgba_converter(data: ColorLike) -> int:
+    from .. import Color
+
+    if isinstance(data, Color):
+        return data.rgba
     if isinstance(data, np.ndarray):
         return int(_numpy_array_to_u32(data.reshape((1, -1)))[0])
     elif isinstance(data, Sequence):
-        return int(_numpy_array_to_u32(np.array(data, dtype=np.uint8).reshape((1, -1)))[0])
+        data = np.array(data).reshape((1, -1))
+        if data.shape[1] not in (3, 4):
+            raise ValueError(f"expected sequence of length of 3 or 4, received {data.shape[1]}")
+        return int(_numpy_array_to_u32(data)[0])
     else:
         return int(data)
 
@@ -69,6 +76,16 @@ def color_native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa
                     data = data.reshape((1, -1))
             array = _numpy_array_to_u32(cast(npt.NDArray[Union[np.uint8, np.float32, np.float64]], data))
     else:
+        data = list(data)
+
+        # does that array d
+        try:
+            # try to build a single color with that
+            # if we cannot, data must represent an array of colors
+            data = [Color(data)]
+        except (IndexError, ValueError):
+            pass
+
         # Handle heterogeneous sequence of Color-like object, such as Color instances, ints, sub-sequence, etc.
         # Note how this is simplified by the flexible implementation of `Color`, thanks to its converter function and
         # the auto-generated `__int__()` method.

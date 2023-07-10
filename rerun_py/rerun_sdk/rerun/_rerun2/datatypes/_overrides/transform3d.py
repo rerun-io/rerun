@@ -1,32 +1,225 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
+
+import numpy as np
+import numpy.typing as npt
+import pyarrow as pa
 
 if TYPE_CHECKING:
-    pass
+    from .. import (
+        Mat3x3,
+        Quaternion,
+        Rotation3D,
+        RotationAxisAngle,
+        Scale3D,
+        Transform3DLike,
+        TranslationAndMat3x3,
+        TranslationRotationScale3D,
+        Vec3D,
+    )
 
 # TODO(#2623): lots of boilerplate here that could be auto-generated
+# To address that:
+# 1) rewrite everything in the form of `xxx_native_to_pa_array()`
+# 2) higher level `xxx_native_to_pa_array()` should call into lower level `xxx::from_similar()`
+# 3) identify regularities and auto-gen them
 
-# TODO(ab): WIP
 
-# def translationrotationscale_native_to_pa_array(
-#     data: TranslationRotationScale3DLike, data_type: pa.DataType
-# ) -> pa.Array:
-#     pass
-#
-#
-# def translationandmat3x3_native_to_pa_array(data: TranslationAndMat3x3Like, data_type: pa.DataType) -> pa.Array:
-#     pass
-#
-#
-# def transform3d_native_to_pa_array(data: Transform3DLike, data_type: pa.DataType) -> pa.Array:
-#     from .. import TranslationAndMat3x3, TranslationRotationScale3D
-#
-#     if isinstance(data, TranslationRotationScale3D):
-#         pass
-#     elif isinstance(data, TranslationAndMat3x3):
-#         pass
-#     else:
-#         pass  # TODO(ab): how to deal with sequence
-#
-#     return pa.array(array, type=data_type)
+def _union_discriminant_type(data_type: pa.DenseUnionType, discriminant: str) -> pa.DataType:
+    """Return the data type of the given discriminant."""
+    return next(f.type for f in list(data_type) if f.name == discriminant)
+
+
+def _build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: pa.Array) -> pa.Array:
+    """
+    Build a dense UnionArray given the `data_type`, a discriminant, and the child value array.
+
+    If the discriminant string doesn't match any possible value, a `ValueError` is raised.
+
+    WARNING: Because of #705, each new union component needs to be handled in `array_to_rust` on the native side.
+    """
+    try:
+        idx = [f.name for f in list(data_type)].index(discriminant)
+        type_ids = pa.array([idx] * len(child), type=pa.int8())
+        value_offsets = pa.array(range(len(child)), type=pa.int32())
+
+        children = [pa.nulls(0, type=f.type) for f in list(data_type)]
+        try:
+            children[idx] = child.cast(data_type[idx].type, safe=False)
+        except pa.ArrowInvalid:
+            # Since we're having issues with nullability in union types (see below),
+            # the cast sometimes fails but can be skipped.
+            children[idx] = child
+
+        return pa.Array.from_buffers(
+            type=data_type,
+            length=len(child),
+            buffers=[None, type_ids.buffers()[1], value_offsets.buffers()[1]],
+            children=children,
+        )
+        # Cast doesn't work for non-flat unions it seems - we're getting issues about the nullability of union variants.
+        # It's pointless anyway since on the native side we have to cast the field types
+        # See https://github.com/rerun-io/rerun/issues/795
+        # .cast(data_type)
+
+    except ValueError as e:
+        raise ValueError(e.args)
+
+
+def _build_struct_array_from_axis_angle_rotation(
+    rotation: RotationAxisAngle, axis_angle_type: pa.StructType
+) -> pa.StructArray:
+    axis = pa.FixedSizeListArray.from_arrays(
+        np.array(rotation.axis.xyz, dtype=np.float32).flatten(), type=axis_angle_type["axis"].type
+    )
+
+    angle = pa.array([rotation.angle.inner], type=pa.float32())
+    if rotation.angle.kind == "degrees":
+        angle_variant = "Degrees"
+    else:
+        angle_variant = "Radians"
+    angle_pa_arr = _build_dense_union(axis_angle_type["angle"].type, angle_variant, angle)
+
+    return pa.StructArray.from_arrays(
+        [
+            axis,
+            angle_pa_arr,
+        ],
+        fields=list(axis_angle_type),
+    )
+
+
+def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionType) -> pa.Array:
+    if scale is None:
+        return pa.nulls(1, type=type_)
+    else:
+        scale = scale.inner
+
+    if np.isscalar(scale):
+        scale_discriminant = "Uniform"
+        scale_pa_arr = pa.array([scale], type=pa.float32())
+    else:
+        scale_discriminant = "ThreeD"
+        scale_arr = np.array(scale, dtype=np.float32).flatten()
+        if len(scale_arr) != 3:
+            raise ValueError(f"Scale vector must have 3 elements, got {len(scale_arr)}")
+        scale_pa_arr = pa.FixedSizeListArray.from_arrays(
+            scale, type=_union_discriminant_type(type_, scale_discriminant)
+        )
+
+    return _build_dense_union(type_, scale_discriminant, scale_pa_arr)
+
+
+def _build_union_array_from_rotation(rotation: Rotation3D | None, type_: pa.DenseUnionType) -> pa.Array:
+    from .. import RotationAxisAngle
+
+    if rotation is None:
+        return pa.nulls(1, type=type_)
+    else:
+        rotation = rotation.inner
+
+    if isinstance(rotation, RotationAxisAngle):
+        rotation_discriminant = "AxisAngle"
+        axis_angle_type = _union_discriminant_type(type_, rotation_discriminant)
+        stored_rotation = _build_struct_array_from_axis_angle_rotation(rotation, cast(pa.StructType, axis_angle_type))
+    elif isinstance(rotation, Quaternion):
+        rotation_discriminant = "Quaternion"
+        np_rotation = np.array(rotation.xyzw, dtype=np.float32).flatten()
+        stored_rotation = pa.FixedSizeListArray.from_arrays(
+            np_rotation, type=_union_discriminant_type(type_, rotation_discriminant)
+        )
+    else:
+        raise ValueError(
+            f"Unknown 3d rotation representation: {rotation} (expected `Rotation3D`, `RotationAxisAngle`, "
+            "`Quaternion`, or `None`."
+        )
+
+    return _build_dense_union(type_, rotation_discriminant, stored_rotation)
+
+
+def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> npt.NDArray[np.float32]:
+    if mat is None:
+        return np.eye(3).flatten(order="F")
+    else:
+        return mat.coeffs
+
+
+def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
+    from .. import Vec3DType
+
+    if translation is None:
+        return pa.nulls(1, type=Vec3DType().storage_type)
+    else:
+        return pa.FixedSizeListArray.from_arrays(translation.xyz, type=Vec3DType.storage_type)
+
+
+def _build_struct_array_from_translation_mat3x3(
+    translation_mat3: TranslationAndMat3x3, type_: pa.StructType
+) -> pa.StructArray:
+    translation = _optional_translation_to_arrow(translation_mat3.translation)
+    matrix = pa.FixedSizeListArray.from_arrays(
+        _optional_mat3x3_to_arrow(translation_mat3.matrix), type=type_["matrix"].type
+    )
+
+    return pa.StructArray.from_arrays(
+        [
+            translation,
+            matrix,
+        ],
+        fields=list(type_),
+    )
+
+
+def _build_struct_array_from_translation_rotation_scale(
+    transform: TranslationRotationScale3D, type_: pa.StructType
+) -> pa.StructArray:
+    translation = _optional_translation_to_arrow(transform.translation)
+    rotation = _build_union_array_from_rotation(transform.rotation, type_["rotation"].type)
+    scale = _build_union_array_from_scale(transform.scale, type_["scale"].type)
+
+    return pa.StructArray.from_arrays(
+        [
+            translation,
+            rotation,
+            scale,
+        ],
+        fields=list(type_),
+    )
+
+
+def transform3d_native_to_pa_array(data: Transform3DLike, data_type: pa.DataType) -> pa.Array:
+    from .. import Transform3D, Transform3DType
+
+    if isinstance(data, Transform3D):
+        data = data.inner
+
+    union_type = Transform3DType().storage_type
+
+    if isinstance(data, RotationAxisAngle):
+        discriminant = "TranslationAndMat3"
+        repr_type = _union_discriminant_type(union_type, discriminant)
+        transform_repr = _build_struct_array_from_translation_mat3x3(data, cast(pa.StructType, repr_type))
+    elif isinstance(data, RotationAxisAngle):
+        discriminant = "TranslationRotationScale"
+        repr_type = _union_discriminant_type(union_type, discriminant)
+        transform_repr = _build_struct_array_from_translation_rotation_scale(data, cast(pa.StructType, repr_type))
+    else:
+        raise ValueError(
+            f"unknown transform 3d value: {data} (expected `Transform3D`, `TranslationAndMat3x3`, or "
+            "`TranslationRotationScale`"
+        )
+
+    # TODO(ab/cmc): we pull the `from_parent` field of the union arm one level up, for backward compatibility
+    # TODO(#2641): we must check from_parent for None because default value are not yet supported
+    storage = pa.StructArray.from_arrays(
+        [
+            _build_dense_union(union_type, discriminant, transform_repr),
+            pa.array([data.from_parent if data.from_parent is not None else False], type=pa.bool_()),
+        ],
+        fields=list(union_type),
+    )
+
+    # TODO(clement) enable extension type wrapper
+    # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
+    return storage  # type: ignore[no-any-return]
