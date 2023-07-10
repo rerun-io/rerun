@@ -14,8 +14,7 @@
 #[doc = "A 16-bit ID representing a type of semantic class."]
 #[doc = ""]
 #[doc = "Used to look up a `crate::components::ClassDescription` within the `crate::components::AnnotationContext`."]
-#[derive(Clone, Debug)]
-#[derive(Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ClassId(pub u16);
 
 impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {

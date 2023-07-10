@@ -1251,8 +1251,7 @@ fn quote_arrow_serializer(
                     let quoted_bitmap = quoted_bitmap(bitmap_dst);
 
                     let quoted_obj_name = format_ident!("{}", obj.name);
-                    let quoted_obj_field_name = 
-                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
+                    let quoted_obj_field_name = format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
                     quote! {{
                         let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src

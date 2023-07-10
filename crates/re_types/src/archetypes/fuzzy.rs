@@ -11,8 +11,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer1 {
     pub fuzz1001: crate::components::AffixFuzzer1,
     pub fuzz1002: crate::components::AffixFuzzer2,

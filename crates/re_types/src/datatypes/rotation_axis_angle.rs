@@ -12,8 +12,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "3D rotation represented by a rotation around a given axis."]
-#[derive(Clone, Debug)]
-#[derive(Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub struct RotationAxisAngle {
     #[doc = "Axis to rotate around."]
     #[doc = ""]

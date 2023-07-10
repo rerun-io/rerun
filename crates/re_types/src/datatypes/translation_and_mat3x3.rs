@@ -14,8 +14,7 @@
 #[doc = "Representation of an affine transform via a 3x3 affine matrix paired with a translation."]
 #[doc = ""]
 #[doc = "First applies the matrix, then the translation."]
-#[derive(Clone, Debug)]
-#[derive(Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub struct TranslationAndMat3x3 {
     #[doc = "3D translation, applied after the matrix."]
     pub translation: Option<crate::datatypes::Vec3D>,

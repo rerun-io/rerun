@@ -12,8 +12,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A String label component."]
-#[derive(Clone, Debug)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Label(pub String);
 
