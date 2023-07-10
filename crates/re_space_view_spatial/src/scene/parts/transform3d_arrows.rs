@@ -68,7 +68,7 @@ impl ScenePart<SpatialSpaceView> for Transform3DArrowsPart {
                 continue;
             };
 
-            // Only add the center to the bounding box - the lines may be dependend on the bounding box, causing a feedback loop otherwise.
+            // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
             self.0
                 .bounding_box
                 .extend(world_from_obj.translation.into());
