@@ -109,6 +109,14 @@ pub struct MemorySinkStorage {
     pub(crate) rec_stream: Option<crate::RecordingStream>,
 }
 
+impl Drop for MemorySinkStorage {
+    fn drop(&mut self) {
+        if !self.msgs.read().is_empty() {
+            re_log::warn!("Dropping data in MemorySink");
+        }
+    }
+}
+
 impl MemorySinkStorage {
     /// Write access to the inner array of [`LogMsg`].
     #[inline]
@@ -134,9 +142,7 @@ impl MemorySinkStorage {
         }
         std::mem::take(&mut *self.msgs.write())
     }
-}
 
-impl MemorySinkStorage {
     /// Convert the stored messages into an in-memory Rerun log file.
     #[inline]
     pub fn concat_memory_sinks_as_bytes(
