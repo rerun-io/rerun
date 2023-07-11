@@ -9,7 +9,6 @@ import pyarrow as pa
 if TYPE_CHECKING:
     from .. import (
         Mat3x3,
-        Quaternion,
         Rotation3D,
         RotationAxisAngle,
         Scale3D,
@@ -91,6 +90,8 @@ def _build_struct_array_from_axis_angle_rotation(
 
 
 def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionType) -> pa.Array:
+    from .. import Vec3D
+
     if scale is None:
         return pa.nulls(1, type=type_)
 
@@ -101,18 +102,15 @@ def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionTyp
         scale_pa_arr = pa.array([scale_arm], type=pa.float32())
     else:
         scale_discriminant = "ThreeD"
-        scale_arr = np.array(scale_arm, dtype=np.float32).flatten()
-        if len(scale_arr) != 3:
-            raise ValueError(f"Scale vector must have 3 elements, got {len(scale_arr)}")
         scale_pa_arr = pa.FixedSizeListArray.from_arrays(
-            scale_arm, type=_union_discriminant_type(type_, scale_discriminant)
+            cast(Vec3D, scale_arm).xyz, type=_union_discriminant_type(type_, scale_discriminant)
         )
 
     return _build_dense_union(type_, scale_discriminant, scale_pa_arr)
 
 
 def _build_union_array_from_rotation(rotation: Rotation3D | None, type_: pa.DenseUnionType) -> pa.Array:
-    from .. import RotationAxisAngle
+    from .. import Quaternion, RotationAxisAngle
 
     if rotation is None:
         return pa.nulls(1, type=type_)
@@ -153,7 +151,7 @@ def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
     if translation is None:
         return pa.nulls(1, type=Vec3DType().storage_type)
     else:
-        return pa.FixedSizeListArray.from_arrays(translation.xyz, type=Vec3DType.storage_type)
+        return pa.FixedSizeListArray.from_arrays(translation.xyz, type=Vec3DType().storage_type)
 
 
 def _build_struct_array_from_translation_mat3x3(

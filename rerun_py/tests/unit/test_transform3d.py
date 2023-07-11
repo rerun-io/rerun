@@ -145,13 +145,76 @@ def test_translation_and_mat3x3_from_parent() -> None:
     assert not rr.dt.TranslationAndMat3x3(from_parent=False).from_parent
 
 
-@pytest.mark.skip(reason="from_similar() for transforms not yet implemented")
-def test_transform3d() -> None:
-    """Demo of the various ways to construct a Transform3D object."""
-    # TODO(ab): this test should ideally check that logging these things results in the expected output
-    rr.log_any("world/t1", rr.dt.TranslationRotationScale3D(scale=5.0))
-    rr.log_any("world/t2", rr.dt.TranslationRotationScale3D(translation=[1, 3, 4], from_parent=True))
-    rr.log_any(
-        "world/t3",
-        rr.dt.TranslationAndMat3x3(translation=[1, 3, 4], matrix=[(1, 0, 0), (0, 1, 0), (0, 0, 1)]),
+# SERIALISATION TESTS
+# This should cover all acceptable input to the Transform3D archetype
+
+
+@pytest.mark.parametrize("trans", VEC_3D_INPUT)
+@pytest.mark.parametrize("mat", MAT_3X3_INPUT)
+def test_transform3d_translation_and_mat3x3(trans: rr.dt.Vec3DLike, mat: rr.dt.Mat3x3Like) -> None:
+    tm = rr.arch.Transform3D(rr.dt.TranslationAndMat3x3(translation=trans, matrix=mat))
+
+    assert tm.transform == rr.cmp.Transform3DArray.from_similar(
+        rr.dt.Transform3D(
+            rr.dt.TranslationAndMat3x3(
+                translation=rr.dt.Vec3D([1, 2, 3]), matrix=rr.dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9])
+            )
+        )
+    )
+
+    tm2 = rr.arch.Transform3D(rr.dt.TranslationAndMat3x3(translation=trans, matrix=mat, from_parent=True))
+
+    assert tm2.transform == rr.cmp.Transform3DArray.from_similar(
+        rr.dt.Transform3D(
+            rr.dt.TranslationAndMat3x3(
+                translation=rr.dt.Vec3D([1, 2, 3]),
+                matrix=rr.dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+                from_parent=True,
+            )
+        )
+    )
+
+    assert tm != tm2
+
+
+@pytest.mark.parametrize("trans", VEC_3D_INPUT)
+def test_transform3d_translation_rotation_scale3d_translation(trans: rr.dt.Vec3DLike) -> None:
+    tm = rr.arch.Transform3D(rr.dt.TranslationRotationScale3D(translation=trans))
+
+    assert tm.transform == rr.cmp.Transform3DArray.from_similar(
+        rr.dt.Transform3D(rr.dt.TranslationRotationScale3D(translation=rr.dt.Vec3D([1, 2, 3])))
+    )
+
+    tm2 = rr.arch.Transform3D(rr.dt.TranslationRotationScale3D(translation=trans, from_parent=True))
+
+    assert tm2.transform == rr.cmp.Transform3DArray.from_similar(
+        rr.dt.Transform3D(rr.dt.TranslationRotationScale3D(translation=rr.dt.Vec3D([1, 2, 3]), from_parent=True))
+    )
+
+    assert tm2 != tm
+
+
+@pytest.mark.parametrize("rot", ROTATION_3D_INPUT)
+def test_transform3d_translation_rotation_scale3d_rotation(rot: rr.dt.Rotation3DLike) -> None:
+    tm = rr.arch.Transform3D(rr.dt.TranslationRotationScale3D(rotation=rot))
+
+    assert tm.transform == rr.cmp.Transform3DArray.from_similar(
+        rr.dt.Transform3D(rr.dt.TranslationRotationScale3D(rotation=rr.dt.Rotation3D(rr.dt.Quaternion([1, 2, 3, 4]))))
+    ) or tm.transform == rr.cmp.Transform3DArray.from_similar(
+        rr.dt.Transform3D(
+            rr.dt.TranslationRotationScale3D(
+                rotation=rr.dt.Rotation3D(rr.dt.RotationAxisAngle(rr.dt.Vec3D([1, 2, 3]), rr.dt.Angle(rad=4)))
+            )
+        )
+    )
+
+
+@pytest.mark.parametrize("scale", SCALE_3D_INPUT)
+def test_transform3d_translation_rotation_scale3d_scale(scale: rr.dt.Scale3DLike) -> None:
+    tm = rr.arch.Transform3D(rr.dt.TranslationRotationScale3D(scale=scale))
+
+    assert tm.transform == rr.cmp.Transform3DArray.from_similar(
+        rr.dt.Transform3D(rr.dt.TranslationRotationScale3D(scale=rr.dt.Scale3D([1, 2, 3])))
+    ) or tm.transform == rr.cmp.Transform3DArray.from_similar(
+        rr.dt.Transform3D(rr.dt.TranslationRotationScale3D(scale=rr.dt.Scale3D(4.0)))
     )

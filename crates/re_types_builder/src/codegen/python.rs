@@ -496,7 +496,7 @@ impl QuotedObject {
 
             // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
             // complains.
-            // TODO(ab): this is required because fields without default should appear before fields
+            // TODO(ab, #2641): this is required because fields without default should appear before fields
             //  with default. Now, `TranslationXXX.from_parent` *should* have a default value,
             //  and appear at the end of the list, but it currently doesn't. This is unfortunate as
             //  the apparent field order is inconsistent with what the `xxxx_init()` override
