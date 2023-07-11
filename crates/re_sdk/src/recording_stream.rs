@@ -153,7 +153,7 @@ impl RecordingStreamBuilder {
     ///
     /// ## Example
     ///
-    /// ```no_run
+    /// ```
     /// let rec_stream = re_sdk::RecordingStreamBuilder::new("my_app").buffered()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
@@ -176,8 +176,15 @@ impl RecordingStreamBuilder {
     ///
     /// ## Example
     ///
-    /// ```no_run
+    /// ```
+    /// # fn log_data(_: &re_sdk::RecordingStream) { }
+    ///
     /// let (rec_stream, storage) = re_sdk::RecordingStreamBuilder::new("my_app").memory()?;
+    ///
+    /// log_data(&rec_stream);
+    ///
+    /// let data = storage.take();
+    ///
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn memory(

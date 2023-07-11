@@ -248,6 +248,8 @@ pub fn select_hovered_on_click(
     response: &egui::Response,
     items: &[Item],
 ) {
+    re_tracing::profile_function!();
+
     if response.hovered() {
         ctx.selection_state_mut().set_hovered(items.iter().cloned());
     }
@@ -270,10 +272,10 @@ pub fn select_hovered_on_click(
         }
 
         if response.ctx.input(|i| i.modifiers.command) {
-            ctx.selection_state_mut().toggle_selection(selected_items);
+            ctx.selection_state_mut().toggle_selection(items.to_vec());
         } else {
             ctx.selection_state_mut()
-                .set_selection(selected_items.into_iter());
+                .set_selection(items.iter().cloned());
         }
     }
 }

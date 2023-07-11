@@ -4534,6 +4534,7 @@ version = "0.8.0-alpha.2"
 dependencies = [
  "anyhow",
  "arrow2",
+ "camino",
  "convert_case",
  "flatbuffers",
  "indent",

@@ -120,3 +120,55 @@ impl std::iter::IntoIterator for ItemCollection {
         self.items.into_iter()
     }
 }
+
+/// If the given item refers to the first element of an instance with a single element, resolve to a splatted entity path.
+pub fn resolve_mono_instance_path_item(
+    query: &re_arrow_store::LatestAtQuery,
+    store: &re_arrow_store::DataStore,
+    item: &Item,
+) -> Item {
+    // Resolve to entity path if there's only a single instance.
+    match item {
+        Item::InstancePath(space_view, instance) => Item::InstancePath(
+            *space_view,
+            resolve_mono_instance_path(query, store, instance),
+        ),
+        Item::ComponentPath(_) | Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
+            item.clone()
+        }
+    }
+}
+
+/// If the given path refers to the first element of an instance with a single element, resolve to a splatted entity path.
+pub fn resolve_mono_instance_path(
+    query: &re_arrow_store::LatestAtQuery,
+    store: &re_arrow_store::DataStore,
+    instance: &re_data_store::InstancePath,
+) -> re_data_store::InstancePath {
+    re_tracing::profile_function!();
+
+    if instance.instance_key.0 == 0 {
+        let Some(components) = store
+                .all_components(&query.timeline, &instance.entity_path) else {
+            // No components at all, return splatted entity.
+            return re_data_store::InstancePath::entity_splat(instance.entity_path.clone());
+        };
+        for component in components {
+            if let Some((_row_id, instances)) = re_query::get_component_with_instances(
+                store,
+                query,
+                &instance.entity_path,
+                component,
+            ) {
+                if instances.len() > 1 {
+                    return instance.clone();
+                }
+            }
+        }
+
+        // All instances had only a single element or less, resolve to splatted entity.
+        return re_data_store::InstancePath::entity_splat(instance.entity_path.clone());
+    }
+
+    instance.clone()
+}

@@ -223,7 +223,11 @@ impl Drop for DataTableBatcherInner {
     fn drop(&mut self) {
         // Drop the receiving end of the table stream first and foremost, so that we don't block
         // even if the output channel is bounded and currently full.
-        drop(self.rx_tables.take());
+        if let Some(rx_tables) = self.rx_tables.take() {
+            if !rx_tables.is_empty() {
+                re_log::warn!("Dropping data");
+            }
+        }
 
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
         // sending data down the pipeline.

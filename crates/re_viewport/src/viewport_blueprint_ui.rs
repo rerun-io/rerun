@@ -366,7 +366,7 @@ impl ViewportBlueprint<'_> {
                 {
                     ui.close_menu();
                     let new_space_view_id = self.add_space_view(space_view);
-                    ctx.set_single_selection(Item::SpaceView(new_space_view_id));
+                    ctx.set_single_selection(&Item::SpaceView(new_space_view_id));
                 }
             }
         })

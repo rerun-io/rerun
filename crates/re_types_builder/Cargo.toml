@@ -22,6 +22,7 @@ all-features = true
 # External
 anyhow.workspace = true
 arrow2.workspace = true
+camino.workspace = true
 convert_case = "0.6"
 flatbuffers = "23.0"
 indent = "0.1"
