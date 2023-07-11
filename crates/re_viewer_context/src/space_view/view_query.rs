@@ -39,7 +39,7 @@ impl<'s> ViewQuery<'s> {
         }
     }
 
-    /// Iter over all of the currently visible [`EntityPath`]s in the [`SpaceViewQuery`].
+    /// Iter over all of the currently visible [`EntityPath`]s in the [`ViewQuery`].
     ///
     /// Also includes the corresponding [`EntityProperties`].
     pub fn iter_entities(&self) -> impl Iterator<Item = (&EntityPath, EntityProperties)> {
