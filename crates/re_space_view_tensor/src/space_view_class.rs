@@ -15,7 +15,7 @@ use re_viewer_context::{
     TypedScene, ViewerContext,
 };
 
-use crate::{scene_part::SceneTensor, tensor_dimension_mapper::dimension_mapping_ui};
+use crate::{tensor_dimension_mapper::dimension_mapping_ui, view_part_system::SceneTensor};
 
 #[derive(Default)]
 pub struct TensorSpaceView;

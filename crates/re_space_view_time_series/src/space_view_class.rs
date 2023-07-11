@@ -11,7 +11,7 @@ use re_viewer_context::{
     SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
 };
 
-use crate::scene_part::{PlotSeriesKind, SceneTimeSeries};
+use crate::view_part_system::{PlotSeriesKind, SceneTimeSeries};
 
 #[derive(Default)]
 pub struct TimeSeriesSpaceView;

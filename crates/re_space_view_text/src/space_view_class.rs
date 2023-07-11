@@ -7,7 +7,7 @@ use re_viewer_context::{
     TypedScene, ViewerContext,
 };
 
-use super::scene_part::{SceneText, TextEntry};
+use super::view_part_system::{SceneText, TextEntry};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default)]

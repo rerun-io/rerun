@@ -4,7 +4,7 @@ use re_viewer_context::{
     SpaceViewState, TypedScene, ViewerContext,
 };
 
-use super::scene_part::SceneTextBox;
+use super::view_part_system::SceneTextBox;
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq)]

@@ -10,7 +10,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::color_coordinates_scene_parts::{ColorCoordinatesSceneParts, ColorWithInstanceKey};
+use crate::color_coordinates_view_part_system::{ColorCoordinatesSceneParts, ColorWithInstanceKey};
 
 /// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]

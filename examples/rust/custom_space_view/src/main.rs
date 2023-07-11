@@ -2,8 +2,8 @@
 
 use re_viewer::external::{re_log, re_memory};
 
-mod color_coordinates_scene_parts;
 mod color_coordinates_space_view;
+mod color_coordinates_view_part_system;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.

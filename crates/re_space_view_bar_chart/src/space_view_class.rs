@@ -6,7 +6,7 @@ use re_viewer_context::{
     auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
 };
 
-use super::scene_part::SceneBarChart;
+use super::view_part_system::SceneBarChart;
 
 #[derive(Default)]
 pub struct BarChartSpaceView;
