@@ -98,8 +98,8 @@ impl CamerasPart {
         let corners = [
             pinhole.unproject(vec3(0.0, 0.0, z)),
             pinhole.unproject(vec3(0.0, h, z)),
-            pinhole.unproject(vec3(w, 0.0, z)),
             pinhole.unproject(vec3(w, h, z)),
+            pinhole.unproject(vec3(w, 0.0, z)),
         ];
 
         let up_triangle = [
