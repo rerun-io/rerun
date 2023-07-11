@@ -96,8 +96,6 @@ pub fn build_data_row_from_components(
         |iter| iter.unzip(),
     )?;
 
-    dbg!((&arrays, &fields));
-
     let cells = arrays
         .into_iter()
         .zip(fields.into_iter())
