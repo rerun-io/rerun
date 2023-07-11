@@ -45,24 +45,24 @@ As of writing we have:
 * Text Box
 * Time Series
 
-Proposal for future builtin, plus some notes:
-* Spatial 2D
-  * encompasses Tensor and Bar Chart
-  * can display everything Spatial 3D can display
-* Spatial 3D
-  * can display everything Spatial 2D can display
-* Data Table
-  * New "raw" data view
-* Text Log
-  * Rename from Text
-* RichText
-  * Replaces text box
-  * Supports markdown etc.
-* Time Series
-  * Need to figure out how this is constrained compared to Spatial 2D
+#### Future Space View Class distinction
 
+The fundamental difference between different space views lies in the kinds of axes a view has.
+- Data Table (currently text views) have rows and columns with text
+- Text Log have rows with logs sorted in time (not 100% sure this is fundamentally different than Data Table)
+- Spatial 2D has two orthogonal axes with defined spatial relationships
+- Spatial 3D has three orthogonal axes with defined spatial relationships
+- Time Series has one time axis and one numeric axis
+- Rich Text is a rich text document (linear in top to bottom with wraparound in horizontal)
 
-#### On the idempotence of 2D & 3D Space Views
+##### On merging Bar Chart with Spatial 2D
+It might take some time to get the Archetype Queries + defaults expressive and and easy to use enough that it makes sense to merge bar chart with spatial 2D. Right now we have the state that the bar chart space view takes a single 1-D tensor and draws a bar chart with x-axis = tensor indices and y-axis = tensor values. It draws boxes with width 1, centered on integers in x, y-min = 0 and y-max = tensor value.
+
+With the right set of primitives a user should be able to manually build a bar chart in a spatial 2D view. For example they might want a stacked bar chart. Talking about bringing in 3D into a bar chart doesn't likely make sense since there probably doesn't exist a camera projection that maps between 3D and the tensor indices axis (x).
+
+One could imagine that we would have heuristics that generate a Data Blueprint for boxes that creates a bar chart from 1-D tensors.
+
+##### On why 2D and 3D space views shouldn't be the same
 In the early prototype 2D and 3D Space Views were separate since they would use different
 renderers - 3D Space Views were driven by `three-d`, 2D Space Views by egui directly.
 With the advent or `re_renderer`, this distinction was no longer necessary and indeed a hindrance.
@@ -76,18 +76,11 @@ Therefore, all 3D content can be displayed in a 2D Space View.
 Vice versa, if an entity in a 3D space defines camera intrinsics, any 2D contents under it can be previewed
 in 3D space. Again, there is no point in putting a limit on what is displayed there.
 
-Arguments for distinguishing 2D and 3D views anyways:
-* Control of the `Eye` is vastly different
-* Most users have expectations on what a 2D view looks and feels
-  * Heuristics of how things are displayed by default may vary wildly
-    * e.g. a depth image in 3D should be displayed as a point cloud whenever possible, whereas in 2D this makes rarely sense
-* 2D and 3D may have different properties regarding grid lines, background and rendering effects (?)
-  * the later is doubtful since again 3D content may be displayed in 2D views
+However, they are more different from a users point of view. 
 
+First of all 3D data is only viewable in 2D if combined with a suitable projection (could be through perspective projection or by dropping the data of one dimension). The fact that 2D views are rendered in a 3D pipeline using some kind of pseudo depth (draw order) and an implicitly defined orthographic camera, is not top of mind to me as a user. This is something you need considerable exposure to graphics or 3D computer vision to experience as immediately obvious.
 
-Note that the strong overlaps between 2D and 3D views constrain re-usability points in the design
-of `SpaceViewClass`
-
+Second, the expectations around how to navigate a 2D visualization are quite different from how I expect to navigate a 3D visualization.
 
 ### Space View State
 In addition to blueprint stored data, a space view has a class specific `SpaceViewState`
