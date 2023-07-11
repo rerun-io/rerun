@@ -41,8 +41,7 @@
 #[doc = "   Ok(())"]
 #[doc = "}"]
 #[doc = "```"]
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Points2D {
     #[doc = "All the actual 2D points that make up the point cloud."]
     pub points: Vec<crate::components::Point2D>,

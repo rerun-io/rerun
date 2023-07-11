@@ -13,8 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A Quaternion represented by 4 real numbers."]
-#[derive(Clone, Debug)]
-#[derive(Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Quaternion(pub [f32; 4usize]);
 
 impl<'a> From<Quaternion> for ::std::borrow::Cow<'a, Quaternion> {

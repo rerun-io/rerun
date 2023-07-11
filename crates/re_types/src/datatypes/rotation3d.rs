@@ -13,8 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A 3D rotation."]
-#[derive(Clone, Debug)]
-#[derive(Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Rotation3D {
     #[doc = "Rotation defined by a quaternion."]
     Quaternion(crate::datatypes::Quaternion),

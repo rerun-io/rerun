@@ -12,8 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_required: crate::datatypes::AffixFuzzer1,
 }
@@ -178,8 +177,7 @@ impl crate::Component for AffixFuzzer1 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer2(pub crate::datatypes::AffixFuzzer1);
 
 impl<'a> From<AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
@@ -342,8 +340,7 @@ impl crate::Component for AffixFuzzer2 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer3 {
     pub single_required: crate::datatypes::AffixFuzzer1,
 }
@@ -508,8 +505,7 @@ impl crate::Component for AffixFuzzer3 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer4 {
     pub single_optional: Option<crate::datatypes::AffixFuzzer1>,
 }
@@ -672,8 +668,7 @@ impl crate::Component for AffixFuzzer4 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer5(pub Option<crate::datatypes::AffixFuzzer1>);
 
 impl<'a> From<AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
@@ -834,8 +829,7 @@ impl crate::Component for AffixFuzzer5 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer6 {
     pub single_optional: Option<crate::datatypes::AffixFuzzer1>,
 }
@@ -998,8 +992,7 @@ impl crate::Component for AffixFuzzer6 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer7 {
     pub many_optional: Option<Vec<crate::datatypes::AffixFuzzer1>>,
 }
@@ -1394,8 +1387,7 @@ impl crate::Component for AffixFuzzer7 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer8 {
     pub single_float_optional: Option<f32>,
 }
@@ -1505,8 +1497,7 @@ impl crate::Component for AffixFuzzer8 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AffixFuzzer9 {
     pub single_string_required: String,
 }
@@ -1633,8 +1624,7 @@ impl crate::Component for AffixFuzzer9 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AffixFuzzer10 {
     pub single_string_optional: Option<String>,
 }
@@ -1759,8 +1749,7 @@ impl crate::Component for AffixFuzzer10 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer11 {
     pub many_floats_optional: Option<Vec<f32>>,
 }
@@ -1952,8 +1941,7 @@ impl crate::Component for AffixFuzzer11 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AffixFuzzer12 {
     pub many_strings_required: Vec<String>,
 }
@@ -2163,8 +2151,7 @@ impl crate::Component for AffixFuzzer12 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AffixFuzzer13 {
     pub many_strings_optional: Option<Vec<String>>,
 }
@@ -2372,8 +2359,7 @@ impl crate::Component for AffixFuzzer13 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer14 {
     pub single_required_union: crate::datatypes::AffixFuzzer3,
 }
@@ -2574,8 +2560,7 @@ impl crate::Component for AffixFuzzer14 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer16 {
     pub many_required_unions: Vec<crate::datatypes::AffixFuzzer3>,
 }
@@ -3070,8 +3055,7 @@ impl crate::Component for AffixFuzzer16 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer17 {
     pub many_optional_unions: Option<Vec<crate::datatypes::AffixFuzzer3>>,
 }
@@ -3564,8 +3548,7 @@ impl crate::Component for AffixFuzzer17 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer18 {
     pub many_optional_unions: Option<Vec<crate::datatypes::AffixFuzzer4>>,
 }
@@ -4566,8 +4549,7 @@ impl crate::Component for AffixFuzzer18 {
     }
 }
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer19 {
     pub just_a_table_nothing_shady: crate::datatypes::AffixFuzzer5,
 }

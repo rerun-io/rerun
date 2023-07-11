@@ -13,8 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "Angle in either radians or degrees."]
-#[derive(Clone, Debug)]
-#[derive(Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Angle {
     Radians(f32),
     Degrees(f32),

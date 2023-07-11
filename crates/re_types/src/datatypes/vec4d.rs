@@ -13,8 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A vector in 4D space."]
-#[derive(Clone, Debug)]
-#[derive(Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Vec4D(pub [f32; 4usize]);
 
 impl<'a> From<Vec4D> for ::std::borrow::Cow<'a, Vec4D> {
