@@ -226,6 +226,12 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
     let start_pattern = "# [doc = \"";
     let end_pattern = "\"]"; // assues there is no escaped quote followed by a bracket
 
+    let problematic = r#"\"]"#;
+    assert!(
+        !code.contains(problematic),
+        "The codegen cannot handle the string {problematic} yet"
+    );
+
     let mut new_code = String::new();
 
     let mut i = 0;
