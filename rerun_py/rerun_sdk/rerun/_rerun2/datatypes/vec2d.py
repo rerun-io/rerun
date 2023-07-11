@@ -27,7 +27,7 @@ class Vec2D:
 
     xy: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.xy, dtype=dtype)
 
 

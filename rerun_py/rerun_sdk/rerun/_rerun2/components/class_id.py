@@ -22,9 +22,9 @@ __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassI
 class ClassId:
     """A 16-bit ID representing a type of semantic class."""
 
-    id: int = field()
+    id: int = field(converter=int)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
-from attrs import define
+from attrs import define, field
 
 from .. import datatypes
 from .._baseclasses import (
@@ -21,15 +21,24 @@ __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform
 class Transform3D:
     """Representation of a 3D affine transform."""
 
-    TranslationAndMat3x3: datatypes.TranslationAndMat3x3 | None = None
-    TranslationRotationScale: datatypes.TranslationRotationScale3D | None = None
+    inner: Union[datatypes.TranslationAndMat3x3, datatypes.TranslationRotationScale3D] = field()
+    """
+    TranslationAndMat3 (datatypes.TranslationAndMat3x3):
+
+    TranslationRotationScale (datatypes.TranslationRotationScale3D):
+    """
 
 
 if TYPE_CHECKING:
-    Transform3DLike = Transform3D
-
+    Transform3DLike = Union[
+        Transform3D,
+        datatypes.TranslationAndMat3x3,
+        datatypes.TranslationRotationScale3D,
+    ]
     Transform3DArrayLike = Union[
         Transform3D,
+        datatypes.TranslationAndMat3x3,
+        datatypes.TranslationRotationScale3D,
         Sequence[Transform3DLike],
     ]
 else:
@@ -47,7 +56,7 @@ class Transform3DType(BaseExtensionType):
             pa.dense_union(
                 [
                     pa.field(
-                        "TranslationAndMat3x3",
+                        "TranslationAndMat3",
                         pa.struct(
                             [
                                 pa.field(

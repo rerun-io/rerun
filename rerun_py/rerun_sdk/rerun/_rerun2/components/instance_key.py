@@ -22,9 +22,9 @@ __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceK
 class InstanceKey:
     """A unique numeric identifier for each individual instance within a batch."""
 
-    value: int = field()
+    value: int = field(converter=int)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.value, dtype=dtype)
 
     def __int__(self) -> int:

@@ -22,10 +22,10 @@ __all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2
 class Point2D:
     """A point in 2D space."""
 
-    x: float = field()
-    y: float = field()
+    x: float = field(converter=float)
+    y: float = field(converter=float)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return point2d_as_array(self, dtype=dtype)
 
 

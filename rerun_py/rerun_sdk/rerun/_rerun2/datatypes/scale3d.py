@@ -5,13 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
-from attrs import define
+from attrs import define, field
 
 from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from ._overrides import scale3d_inner_converter  # noqa: F401
 
 __all__ = ["Scale3D", "Scale3DArray", "Scale3DArrayLike", "Scale3DLike", "Scale3DType"]
 
@@ -33,22 +34,22 @@ class Scale3D:
     ```
     """
 
-    ThreeD: datatypes.Vec3D | None = None
+    inner: Union[datatypes.Vec3D, float] = field(converter=scale3d_inner_converter)
     """
-    Individual scaling factors for each axis, distorting the original object.
-    """
+    ThreeD (datatypes.Vec3D):
+        Individual scaling factors for each axis, distorting the original object.
 
-    Uniform: float | None = None
-    """
-    Uniform scaling factor along all axis.
+    Uniform (float):
+        Uniform scaling factor along all axis.
     """
 
 
 if TYPE_CHECKING:
-    Scale3DLike = Union[Scale3D, datatypes.Vec3DLike]
-
+    Scale3DLike = Union[Scale3D, datatypes.Vec3D, float, datatypes.Vec3DLike]
     Scale3DArrayLike = Union[
         Scale3D,
+        datatypes.Vec3D,
+        float,
         Sequence[Scale3DLike],
     ]
 else:

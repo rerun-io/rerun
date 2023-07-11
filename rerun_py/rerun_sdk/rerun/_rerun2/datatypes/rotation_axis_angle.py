@@ -22,11 +22,25 @@ __all__ = [
 ]
 
 
+def _rotationaxisangle_axis_converter(x: datatypes.Vec3DLike) -> datatypes.Vec3D:
+    if isinstance(x, datatypes.Vec3D):
+        return x
+    else:
+        return datatypes.Vec3D(x)
+
+
+def _rotationaxisangle_angle_converter(x: datatypes.AngleLike) -> datatypes.Angle:
+    if isinstance(x, datatypes.Angle):
+        return x
+    else:
+        return datatypes.Angle(x)
+
+
 @define
 class RotationAxisAngle:
     """3D rotation represented by a rotation around a given axis."""
 
-    axis: datatypes.Vec3D = field()
+    axis: datatypes.Vec3D = field(converter=_rotationaxisangle_axis_converter)
     """
     Axis to rotate around.
 
@@ -35,7 +49,7 @@ class RotationAxisAngle:
     ignored.
     """
 
-    angle: datatypes.Angle = field()
+    angle: datatypes.Angle = field(converter=_rotationaxisangle_angle_converter)
     """
     How much to rotate around the axis.
     """

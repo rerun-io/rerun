@@ -17,6 +17,8 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from .._converters import (
+    float_or_none,
+    str_or_none,
     to_np_float32,
 )
 
@@ -268,9 +270,9 @@ AffixFuzzer7Type._ARRAY_TYPE = AffixFuzzer7Array
 
 @define
 class AffixFuzzer8:
-    single_float_optional: float | None = field(default=None)
+    single_float_optional: float | None = field(default=None, converter=float_or_none)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.single_float_optional, dtype=dtype)
 
 
@@ -311,7 +313,7 @@ AffixFuzzer8Type._ARRAY_TYPE = AffixFuzzer8Array
 
 @define
 class AffixFuzzer9:
-    single_string_required: str = field()
+    single_string_required: str = field(converter=str)
 
     def __str__(self) -> str:
         return str(self.single_string_required)
@@ -354,7 +356,7 @@ AffixFuzzer9Type._ARRAY_TYPE = AffixFuzzer9Array
 
 @define
 class AffixFuzzer10:
-    single_string_optional: str | None = field(default=None)
+    single_string_optional: str | None = field(default=None, converter=str_or_none)
 
 
 if TYPE_CHECKING:
@@ -396,7 +398,7 @@ AffixFuzzer10Type._ARRAY_TYPE = AffixFuzzer10Array
 class AffixFuzzer11:
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.many_floats_optional, dtype=dtype)
 
 

@@ -30,9 +30,9 @@ class DrawOrder:
     Draw order for entities with the same draw order is generally undefined.
     """
 
-    value: float = field()
+    value: float = field(converter=float)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:

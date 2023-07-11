@@ -30,7 +30,7 @@ class Color:
 
     rgba: int = field(converter=color_rgba_converter)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.rgba, dtype=dtype)
 
     def __int__(self) -> int:

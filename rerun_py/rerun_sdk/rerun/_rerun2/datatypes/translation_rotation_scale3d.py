@@ -12,6 +12,9 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from .._converters import (
+    bool_or_none,
+)
 
 __all__ = [
     "TranslationRotationScale3D",
@@ -22,26 +25,57 @@ __all__ = [
 ]
 
 
+def _translationrotationscale3d_translation_converter(x: datatypes.Vec3DLike | None) -> datatypes.Vec3D | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.Vec3D):
+        return x
+    else:
+        return datatypes.Vec3D(x)
+
+
+def _translationrotationscale3d_rotation_converter(x: datatypes.Rotation3DLike | None) -> datatypes.Rotation3D | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.Rotation3D):
+        return x
+    else:
+        return datatypes.Rotation3D(x)
+
+
+def _translationrotationscale3d_scale_converter(x: datatypes.Scale3DLike | None) -> datatypes.Scale3D | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.Scale3D):
+        return x
+    else:
+        return datatypes.Scale3D(x)
+
+
 @define
 class TranslationRotationScale3D:
     """Representation of an affine transform via separate translation, rotation & scale."""
 
-    translation: datatypes.Vec3D | None = field(default=None)
+    translation: datatypes.Vec3D | None = field(
+        default=None, converter=_translationrotationscale3d_translation_converter
+    )
     """
     3D translation vector, applied last.
     """
 
-    rotation: datatypes.Rotation3D | None = field(default=None)
+    rotation: datatypes.Rotation3D | None = field(
+        default=None, converter=_translationrotationscale3d_rotation_converter
+    )
     """
     3D rotation, applied second.
     """
 
-    scale: datatypes.Scale3D | None = field(default=None)
+    scale: datatypes.Scale3D | None = field(default=None, converter=_translationrotationscale3d_scale_converter)
     """
     3D scale, applied first.
     """
 
-    from_parent: bool | None = field(default=None)
+    from_parent: bool | None = field(default=None, converter=bool_or_none)
     """
     If true, the transform maps from the parent space to the space where the transform was logged.
     Otherwise, the transform maps from the space to its parent.

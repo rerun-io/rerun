@@ -13,9 +13,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from .._converters import (
-    to_np_float32,
-)
+from ._overrides import mat4x4_coeffs_converter  # noqa: F401
 
 __all__ = ["Mat4x4", "Mat4x4Array", "Mat4x4ArrayLike", "Mat4x4Like", "Mat4x4Type"]
 
@@ -24,9 +22,9 @@ __all__ = ["Mat4x4", "Mat4x4Array", "Mat4x4ArrayLike", "Mat4x4Like", "Mat4x4Type
 class Mat4x4:
     """A 4x4 column-major Matrix."""
 
-    coeffs: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    coeffs: npt.NDArray[np.float32] = field(converter=mat4x4_coeffs_converter)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.coeffs, dtype=dtype)
 
 

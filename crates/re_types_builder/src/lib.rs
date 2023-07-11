@@ -271,10 +271,8 @@ pub fn generate_rust_code(
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
 
-    // TODO(cmc): thread 'main' panicked at 'not implemented: Boolean',
-    //  re_types_builder/src/codegen/rust.rs:1490:14
-    //let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    //let _filepaths = gen.generate(&objects, &arrow_registry);
+    let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
+    let _filepaths = gen.generate(&objects, &arrow_registry);
 }
 
 /// Generates Python code from a set of flatbuffers definitions.

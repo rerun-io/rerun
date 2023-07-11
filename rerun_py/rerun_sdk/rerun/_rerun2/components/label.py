@@ -20,7 +20,7 @@ __all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
 class Label:
     """A String label component."""
 
-    value: str = field()
+    value: str = field(converter=str)
 
     def __str__(self) -> str:
         return str(self.value)

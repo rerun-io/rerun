@@ -46,7 +46,7 @@ impl crate::Component for Transform3D {
         DataType::Union(
             vec![
                 Field {
-                    name: "TranslationAndMat3x3".to_owned(),
+                    name: "TranslationAndMat3".to_owned(),
                     data_type: DataType::Struct(vec![
                         Field {
                             name: "translation".to_owned(),

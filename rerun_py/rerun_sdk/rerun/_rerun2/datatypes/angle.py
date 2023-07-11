@@ -2,39 +2,47 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
 
 import pyarrow as pa
-from attrs import define
+from attrs import define, field
 
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from ._overrides import angle_init  # noqa: F401
 
 __all__ = ["Angle", "AngleArray", "AngleArrayLike", "AngleLike", "AngleType"]
 
 
-@define
+@define(init=False)
 class Angle:
     """Angle in either radians or degrees."""
 
-    Radians: float | None = None
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        angle_init(self, *args, **kwargs)
+
+    inner: float = field(converter=float)
     """
-    3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
+    Radians (float):
+        3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
+
+    Degrees (float):
+        3D rotation angle in degrees. Only one of `degrees` or `radians` should be set.
     """
 
-    Degrees: float | None = None
-    """
-    3D rotation angle in degrees. Only one of `degrees` or `radians` should be set.
-    """
+    kind: Literal["radians", "degrees"] = field(default="radians")
 
 
 if TYPE_CHECKING:
-    AngleLike = Angle
-
+    AngleLike = Union[
+        Angle,
+        float,
+    ]
     AngleArrayLike = Union[
         Angle,
+        float,
         Sequence[AngleLike],
     ]
 else:

@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, SupportsFloat, Union
 
 import pyarrow as pa
-from attrs import define
+from attrs import define, field
 
 from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from ._overrides import rotation3d_inner_converter  # noqa: F401
 
 __all__ = ["Rotation3D", "Rotation3DArray", "Rotation3DArrayLike", "Rotation3DLike", "Rotation3DType"]
 
@@ -20,22 +21,22 @@ __all__ = ["Rotation3D", "Rotation3DArray", "Rotation3DArrayLike", "Rotation3DLi
 class Rotation3D:
     """A 3D rotation."""
 
-    Quaternion: datatypes.Quaternion | None = None
+    inner: Union[datatypes.Quaternion, datatypes.RotationAxisAngle] = field(converter=rotation3d_inner_converter)
     """
-    Rotation defined by a quaternion.
-    """
+    Quaternion (datatypes.Quaternion):
+        Rotation defined by a quaternion.
 
-    AxisAngle: datatypes.RotationAxisAngle | None = None
-    """
-    Rotation defined with an axis and an angle.
+    AxisAngle (datatypes.RotationAxisAngle):
+        Rotation defined with an axis and an angle.
     """
 
 
 if TYPE_CHECKING:
-    Rotation3DLike = Rotation3D
-
+    Rotation3DLike = Union[Rotation3D, datatypes.Quaternion, datatypes.RotationAxisAngle, Sequence[SupportsFloat]]
     Rotation3DArrayLike = Union[
         Rotation3D,
+        datatypes.Quaternion,
+        datatypes.RotationAxisAngle,
         Sequence[Rotation3DLike],
     ]
 else:

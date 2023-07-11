@@ -16,6 +16,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
+from ._overrides import vec3d_native_to_pa_array  # noqa: F401
 
 __all__ = ["Vec3D", "Vec3DArray", "Vec3DArrayLike", "Vec3DLike", "Vec3DType"]
 
@@ -26,7 +27,7 @@ class Vec3D:
 
     xyz: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.xyz, dtype=dtype)
 
 
@@ -53,7 +54,7 @@ class Vec3DArray(BaseExtensionArray[Vec3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Vec3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError
+        return vec3d_native_to_pa_array(data, data_type)
 
 
 Vec3DType._ARRAY_TYPE = Vec3DArray

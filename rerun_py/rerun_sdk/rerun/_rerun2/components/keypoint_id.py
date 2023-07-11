@@ -29,9 +29,9 @@ class KeypointId:
     [`rerun.components.AnnotationContext`].
     """
 
-    id: int = field()
+    id: int = field(converter=int)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:

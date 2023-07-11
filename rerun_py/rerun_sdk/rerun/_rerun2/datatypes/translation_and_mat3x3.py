@@ -12,6 +12,9 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from .._converters import (
+    bool_or_none,
+)
 
 __all__ = [
     "TranslationAndMat3x3",
@@ -22,6 +25,24 @@ __all__ = [
 ]
 
 
+def _translationandmat3x3_translation_converter(x: datatypes.Vec3DLike | None) -> datatypes.Vec3D | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.Vec3D):
+        return x
+    else:
+        return datatypes.Vec3D(x)
+
+
+def _translationandmat3x3_matrix_converter(x: datatypes.Mat3x3Like | None) -> datatypes.Mat3x3 | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.Mat3x3):
+        return x
+    else:
+        return datatypes.Mat3x3(x)
+
+
 @define
 class TranslationAndMat3x3:
     """
@@ -30,17 +51,17 @@ class TranslationAndMat3x3:
     First applies the matrix, then the translation.
     """
 
-    translation: datatypes.Vec3D | None = field(default=None)
+    translation: datatypes.Vec3D | None = field(default=None, converter=_translationandmat3x3_translation_converter)
     """
     3D translation, applied after the matrix.
     """
 
-    matrix: datatypes.Mat3x3 | None = field(default=None)
+    matrix: datatypes.Mat3x3 | None = field(default=None, converter=_translationandmat3x3_matrix_converter)
     """
     3x3 matrix for scale, rotation & shear.
     """
 
-    from_parent: bool | None = field(default=None)
+    from_parent: bool | None = field(default=None, converter=bool_or_none)
     """
     If true, the transform maps from the parent space to the space where the transform was logged.
     Otherwise, the transform maps from the space to its parent.
