@@ -1,4 +1,4 @@
-//! Rerun Spatial Scene Views
+//! Rerun Spatial Space Views
 //!
 //! Space Views that show entities in a 2D or 3D spatial relationship.
 

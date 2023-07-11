@@ -91,7 +91,7 @@ impl ViewPartSystem<SpatialSpaceView> for Lines3DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SpaceViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
-        scene_context: &SpatialViewContext,
+        context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Lines3DPart");
@@ -99,12 +99,12 @@ impl ViewPartSystem<SpatialSpaceView> for Lines3DPart {
         process_entity_views::<LineStrip3D, 4, _>(
             ctx,
             query,
-            scene_context,
+            context,
             highlights,
-            scene_context.depth_offsets.points,
+            context.depth_offsets.points,
             self.archetype(),
             |_ctx, ent_path, entity_view, ent_context| {
-                scene_context
+                context
                     .num_3d_primitives
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)

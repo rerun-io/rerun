@@ -30,7 +30,7 @@ pub trait ViewPartSystem<C: SpaceViewClass> {
         ctx: &mut ViewerContext<'_>,
         query: &SpaceViewQuery<'_>,
         space_view_state: &C::State,
-        scene_context: &C::Context,
+        context: &C::Context,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData>;
 

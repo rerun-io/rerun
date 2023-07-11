@@ -116,7 +116,7 @@ impl ViewPartSystem<SpatialSpaceView> for Boxes2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SpaceViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
-        scene_context: &SpatialViewContext,
+        context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Boxes2DPart");
@@ -124,9 +124,9 @@ impl ViewPartSystem<SpatialSpaceView> for Boxes2DPart {
         process_entity_views::<Rect2D, 6, _>(
             ctx,
             query,
-            scene_context,
+            context,
             highlights,
-            scene_context.depth_offsets.points,
+            context.depth_offsets.points,
             self.archetype(),
             |_ctx, ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)

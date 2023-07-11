@@ -181,7 +181,7 @@ impl ImagesPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
-        scene_context: &SpatialViewContext,
+        context: &SpatialViewContext,
         ent_props: &EntityProperties,
         ent_view: &EntityView<Tensor>,
         ent_path: &EntityPath,
@@ -189,7 +189,7 @@ impl ImagesPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let parent_pinhole_path = scene_context.transforms.parent_pinhole(ent_path);
+        let parent_pinhole_path = context.transforms.parent_pinhole(ent_path);
 
         // Instance ids of tensors refer to entries inside the tensor.
         for (tensor, color, draw_order) in itertools::izip!(
@@ -215,14 +215,13 @@ impl ImagesPart {
             };
 
             if *ent_props.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth {
-                if let Some(parent_pinhole_path) = scene_context.transforms.parent_pinhole(ent_path)
-                {
+                if let Some(parent_pinhole_path) = context.transforms.parent_pinhole(ent_path) {
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
                     // What we want are the extrinsics of the depth camera!
                     match Self::process_entity_view_as_depth_cloud(
                         ctx,
-                        scene_context,
+                        context,
                         ent_context,
                         ent_props,
                         &tensor,
@@ -284,7 +283,7 @@ impl ImagesPart {
 
     fn process_entity_view_as_depth_cloud(
         ctx: &mut ViewerContext<'_>,
-        scene_context: &SpatialViewContext,
+        context: &SpatialViewContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,
         tensor: &DecodedTensor,
@@ -311,7 +310,7 @@ impl ImagesPart {
         // TODO(cmc): getting to those extrinsics is no easy task :|
         let world_from_view = parent_pinhole_path
             .parent()
-            .and_then(|ent_path| scene_context.transforms.reference_from_entity(&ent_path));
+            .and_then(|ent_path| context.transforms.reference_from_entity(&ent_path));
         let Some(world_from_view) = world_from_view else {
             anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
         };
@@ -385,7 +384,7 @@ impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
         ctx: &mut ViewerContext<'_>,
         query: &SpaceViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
-        scene_context: &SpatialViewContext,
+        context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("ImagesPart");
@@ -395,16 +394,16 @@ impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
         process_entity_views::<_, 4, _>(
             ctx,
             query,
-            scene_context,
+            context,
             highlights,
-            scene_context.depth_offsets.points,
+            context.depth_offsets.points,
             self.archetype(),
             |ctx, ent_path, ent_view, ent_context| {
                 let ent_props = query.entity_props_map.get(ent_path);
                 self.process_entity_view(
                     ctx,
                     &mut depth_clouds,
-                    scene_context,
+                    context,
                     &ent_props,
                     &ent_view,
                     ent_path,

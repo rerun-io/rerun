@@ -25,7 +25,7 @@ impl ViewPartSystem<TensorSpaceView> for SceneTensor {
         ctx: &mut ViewerContext<'_>,
         query: &SpaceViewQuery<'_>,
         _state: &<TensorSpaceView as SpaceViewClass>::State,
-        _scene_context: &<TensorSpaceView as SpaceViewClass>::Context,
+        _context: &<TensorSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();

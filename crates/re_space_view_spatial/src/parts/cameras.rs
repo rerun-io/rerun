@@ -28,7 +28,7 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        scene_context: &SpatialViewContext,
+        context: &SpatialViewContext,
         ent_path: &EntityPath,
         props: &EntityProperties,
         pinhole: Pinhole,
@@ -44,14 +44,14 @@ impl CamerasPart {
         let parent_path = ent_path
             .parent()
             .expect("root path can't be part of scene query");
-        let Some(mut world_from_camera) = scene_context.transforms.reference_from_entity(&parent_path) else {
+        let Some(mut world_from_camera) = context.transforms.reference_from_entity(&parent_path) else {
                 return;
             };
 
         let frustum_length = *props.pinhole_image_plane_distance.get();
 
         // If the camera is our reference, there is nothing for us to display.
-        if scene_context.transforms.reference_path() == ent_path {
+        if context.transforms.reference_path() == ent_path {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates,
@@ -130,7 +130,7 @@ impl CamerasPart {
             re_data_store::InstancePathHash::instance(ent_path, instance_key);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
-        let mut line_builder = scene_context.shared_render_builders.lines();
+        let mut line_builder = context.shared_render_builders.lines();
         let mut batch = line_builder
             .batch("camera frustum")
             // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
@@ -151,7 +151,7 @@ impl CamerasPart {
             lines.outline_mask_ids(*outline_mask_ids);
         }
 
-        scene_context
+        context
             .num_3d_primitives
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
@@ -167,7 +167,7 @@ impl ViewPartSystem<SpatialSpaceView> for CamerasPart {
         ctx: &mut ViewerContext<'_>,
         query: &SpaceViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
-        scene_context: &SpatialViewContext,
+        context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("CamerasPart");
@@ -185,7 +185,7 @@ impl ViewPartSystem<SpatialSpaceView> for CamerasPart {
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
                 self.visit_instance(
-                    scene_context,
+                    context,
                     ent_path,
                     &props,
                     pinhole,

@@ -27,7 +27,7 @@ impl ViewPartSystem<BarChartSpaceView> for BarChartViewPartSystem {
         ctx: &mut ViewerContext<'_>,
         query: &SpaceViewQuery<'_>,
         _state: &<BarChartSpaceView as SpaceViewClass>::State,
-        _scene_context: &<BarChartSpaceView as SpaceViewClass>::Context,
+        _context: &<BarChartSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();
