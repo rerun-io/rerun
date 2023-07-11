@@ -1867,7 +1867,7 @@ fn quote_arrow_field_deserializer(
                     .unwrap(); // safe
 
                 let bitmap = #data_src.validity().cloned();
-                let offsets = (0..).step_by(#length).zip((#length..).step_by(#length));
+                let offsets = (0..).step_by(#length).zip((#length..).step_by(#length).take(#data_src.len()));
 
                 let #data_src = &**#data_src.values();
 
