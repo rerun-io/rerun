@@ -1,4 +1,6 @@
-use crate::{ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext};
+use crate::{
+    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, SpaceViewQuery, ViewerContext,
+};
 
 /// Scene part collection, consisting of several [`ViewPartSystem`] which may be populated in parallel.
 pub trait ViewPartSystemCollection<C: SpaceViewClass> {
@@ -26,7 +28,7 @@ pub trait ViewPartSystem<C: SpaceViewClass> {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
+        query: &SpaceViewQuery<'_>,
         space_view_state: &C::State,
         scene_context: &C::Context,
         highlights: &SpaceViewHighlights,

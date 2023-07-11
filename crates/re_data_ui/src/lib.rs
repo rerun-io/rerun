@@ -158,13 +158,13 @@ pub fn annotations(
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
     let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
     let entity_props_map = re_data_store::EntityPropertyMap::default();
-    let scene_query = re_viewer_context::SceneQuery::new(
+    let query = re_viewer_context::SpaceViewQuery::new(
         entity_path,
         &entity_paths,
         query.timeline,
         query.at,
         &entity_props_map,
     );
-    annotation_map.load(ctx, &scene_query);
+    annotation_map.load(ctx, &query);
     annotation_map.find(entity_path)
 }

@@ -71,32 +71,32 @@ impl ViewContextSystem for TransformContext {
     fn populate(
         &mut self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
-        scene_query: &re_viewer_context::SceneQuery<'_>,
+        query: &re_viewer_context::SpaceViewQuery<'_>,
         _space_view_state: &dyn re_viewer_context::SpaceViewState,
     ) {
         re_tracing::profile_function!();
 
         let entity_db = &ctx.store_db.entity_db;
         let time_ctrl = &ctx.rec_cfg.time_ctrl;
-        let entity_prop_map = scene_query.entity_props_map;
+        let entity_prop_map = query.entity_props_map;
 
-        self.space_origin = scene_query.space_origin.clone();
+        self.space_origin = query.space_origin.clone();
 
         // Find the entity path tree for the root.
-        let Some(mut current_tree) = &entity_db.tree.subtree(scene_query.space_origin) else {
+        let Some(mut current_tree) = &entity_db.tree.subtree(query.space_origin) else {
             // It seems the space path is not part of the object tree!
             // This happens frequently when the viewer remembers space views from a previous run that weren't shown yet.
             // Naturally, in this case we don't have any transforms yet.
             return;
         };
 
-        let query = time_ctrl.current_query();
+        let latest_at_query = time_ctrl.current_query();
 
         // Child transforms of this space
         self.gather_descendants_transforms(
             current_tree,
             &entity_db.data_store,
-            &query,
+            &latest_at_query,
             entity_prop_map,
             glam::Affine3A::IDENTITY,
             &None, // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
@@ -110,7 +110,7 @@ impl ViewContextSystem for TransformContext {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
                     "Path {} is not part of the global Entity tree whereas its child {} is",
-                    parent_path, scene_query.space_origin
+                    parent_path, query.space_origin
                 );
                 return;
             };
@@ -120,7 +120,7 @@ impl ViewContextSystem for TransformContext {
             match transform_at(
                 &current_tree.path,
                 &entity_db.data_store,
-                &query,
+                &latest_at_query,
                 // TODO(#1988): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
                 |_| 500.0,
@@ -141,7 +141,7 @@ impl ViewContextSystem for TransformContext {
             self.gather_descendants_transforms(
                 parent_tree,
                 &entity_db.data_store,
-                &query,
+                &latest_at_query,
                 entity_prop_map,
                 reference_from_ancestor,
                 &encountered_pinhole,

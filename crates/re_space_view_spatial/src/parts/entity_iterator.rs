@@ -1,7 +1,7 @@
 use re_log_types::{Component, EntityPath};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
-use re_viewer_context::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, ViewerContext};
+use re_viewer_context::{ArchetypeDefinition, SpaceViewHighlights, SpaceViewQuery, ViewerContext};
 
 use crate::contexts::{SpatialSceneEntityContext, SpatialViewContext};
 
@@ -11,7 +11,7 @@ use crate::contexts::{SpatialSceneEntityContext, SpatialViewContext};
 /// various useful information about an entity in the context of the current scene.
 pub fn process_entity_views<'a, Primary, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
-    query: &SceneQuery<'_>,
+    query: &SpaceViewQuery<'_>,
     context: &SpatialViewContext,
     highlights: &SpaceViewHighlights,
     default_depth_offset: DepthOffset,

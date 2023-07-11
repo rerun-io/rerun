@@ -1,7 +1,9 @@
 use re_arrow_store::TimeRange;
 use re_log_types::{Component, ComponentName, InstanceKey};
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::{AnnotationMap, DefaultColor, SceneQuery, ViewPartSystem, ViewerContext};
+use re_viewer_context::{
+    AnnotationMap, DefaultColor, SpaceViewQuery, ViewPartSystem, ViewerContext,
+};
 
 use crate::TimeSeriesSpaceView;
 
@@ -67,7 +69,7 @@ impl ViewPartSystem<TimeSeriesSpaceView> for SceneTimeSeries {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
+        query: &SpaceViewQuery<'_>,
         _space_view_state: &<TimeSeriesSpaceView as re_viewer_context::SpaceViewClass>::State,
         _scene_context: &<TimeSeriesSpaceView as re_viewer_context::SpaceViewClass>::Context,
         _highlights: &re_viewer_context::SpaceViewHighlights,
@@ -94,7 +96,7 @@ impl SceneTimeSeries {
         ]
     }
 
-    fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SpaceViewQuery<'_>) {
         re_tracing::profile_function!();
 
         let store = &ctx.store_db.entity_db.data_store;

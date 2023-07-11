@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, SceneQuery, SpaceViewHighlights, ViewPartSystem,
+    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, SpaceViewQuery, ViewPartSystem,
     ViewerContext,
 };
 
@@ -21,7 +21,7 @@ pub struct Lines2DPart(SpatialViewPartSystemData);
 impl Lines2DPart {
     fn process_entity_view(
         &mut self,
-        _query: &SceneQuery<'_>,
+        _query: &SpaceViewQuery<'_>,
         ent_view: &EntityView<LineStrip2D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -89,7 +89,7 @@ impl ViewPartSystem<SpatialSpaceView> for Lines2DPart {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
+        query: &SpaceViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
         scene_context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,

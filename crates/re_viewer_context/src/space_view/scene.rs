@@ -1,5 +1,5 @@
 use crate::{
-    SceneQuery, SpaceViewClass, SpaceViewHighlights, SpaceViewState, ViewContext,
+    SpaceViewClass, SpaceViewHighlights, SpaceViewQuery, SpaceViewState, ViewContext,
     ViewPartSystemCollection, ViewerContext,
 };
 
@@ -15,7 +15,7 @@ pub trait Scene {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
+        query: &SpaceViewQuery<'_>,
         space_view_state: &dyn SpaceViewState,
         highlights: SpaceViewHighlights,
     );
@@ -53,7 +53,7 @@ impl<C: SpaceViewClass + 'static> Scene for TypedScene<C> {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
+        query: &SpaceViewQuery<'_>,
         space_view_state: &dyn SpaceViewState,
         highlights: SpaceViewHighlights,
     ) {

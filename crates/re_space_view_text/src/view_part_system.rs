@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewPartSystem,
+    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, SpaceViewQuery, ViewPartSystem,
     ViewerContext,
 };
 
@@ -40,7 +40,7 @@ impl ViewPartSystem<TextSpaceView> for SceneText {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
+        query: &SpaceViewQuery<'_>,
         state: &<TextSpaceView as SpaceViewClass>::State,
         _scene_context: &<TextSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,

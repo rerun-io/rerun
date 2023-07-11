@@ -3,8 +3,8 @@ use re_components::{Component, InstanceKey, Pinhole, Transform3D, ViewCoordinate
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::{
-    ArchetypeDefinition, SceneQuery, SpaceViewHighlights, SpaceViewOutlineMasks, ViewPartSystem,
-    ViewerContext,
+    ArchetypeDefinition, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewQuery,
+    ViewPartSystem, ViewerContext,
 };
 
 use crate::{
@@ -165,7 +165,7 @@ impl ViewPartSystem<SpatialSpaceView> for CamerasPart {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
+        query: &SpaceViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
         scene_context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,
