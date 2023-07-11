@@ -217,11 +217,14 @@ impl TransformContext {
 
     /// Like [`Self::reference_from_entity`], but if `ent_path` has a pinhole camera, it won't affect the transform.
     ///
+    /// Normally, the transform we compute for an entity with a pinhole transform places all objects
+    /// in front (defined by view coordinates) of the camera with a given image plane distance.
+    /// In some cases like drawing the lines for a frustum or arrows for the 3D transform, this is not the desired transformation.
     /// Returns None if the path is not reachable.
     ///
-    /// TODO(andreas): Going forward we should have separate transform hierarchies for 2D (i.e. projected) and 3D,
+    /// TODO(#2663, #1025): Going forward we should have separate transform hierarchies for 2D (i.e. projected) and 3D,
     /// which would remove the need for this.
-    pub fn reference_from_entity_ignore_pinhole(
+    pub fn reference_from_entity_ignore_image_plane_transform(
         &self,
         ent_path: &EntityPath,
         store: &re_arrow_store::DataStore,

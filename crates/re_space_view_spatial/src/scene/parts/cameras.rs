@@ -40,8 +40,9 @@ impl CamerasPart {
     ) {
         let instance_key = InstanceKey(0);
 
-        // Need to ignore the pinhole transform for drawing the frustum.
-        let Some(world_from_camera) = scene_context.transforms.reference_from_entity_ignore_pinhole(ent_path, store, query) else {
+        // Need to ignore the image plane dependent derived transform we generate for pinhole cameras,
+        // otherwise we'd put the frustum lines in front of the camera.
+        let Some(world_from_camera) = scene_context.transforms.reference_from_entity_ignore_image_plane_transform(ent_path, store, query) else {
             return;
         };
 
@@ -61,7 +62,7 @@ impl CamerasPart {
             return;
         }
 
-        // If this transform is not representable an iso transform transform we can't use it as a space camera yet.
+        // If this transform is not representable an iso transform we can't use it as a space camera yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
         let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into()) else {
             return;

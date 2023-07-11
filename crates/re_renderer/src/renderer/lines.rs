@@ -297,7 +297,7 @@ pub struct LineBatchInfo {
 impl Default for LineBatchInfo {
     fn default() -> Self {
         Self {
-            label: "unknown".into(),
+            label: "unknown_line_batch".into(),
             world_from_obj: glam::Affine3A::IDENTITY,
             line_vertex_count: 0,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,

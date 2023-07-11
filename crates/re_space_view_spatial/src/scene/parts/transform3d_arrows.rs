@@ -64,7 +64,7 @@ impl ScenePart<SpatialSpaceView> for Transform3DArrowsPart {
 
             // Apply the transform _and_ the parent transform, but if we're at a pinhole camera ignore that part.
             let Some(world_from_obj) = scene_context.transforms.
-                reference_from_entity_ignore_pinhole(ent_path, store, &latest_at_query) else {
+                reference_from_entity_ignore_image_plane_transform(ent_path, store, &latest_at_query) else {
                 continue;
             };
 
