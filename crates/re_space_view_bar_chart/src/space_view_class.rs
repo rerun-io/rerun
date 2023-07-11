@@ -6,7 +6,7 @@ use re_viewer_context::{
     auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
 };
 
-use super::view_part_system::SceneBarChart;
+use super::view_part_system::BarChartViewPartSystem;
 
 #[derive(Default)]
 pub struct BarChartSpaceView;
@@ -14,8 +14,8 @@ pub struct BarChartSpaceView;
 impl SpaceViewClass for BarChartSpaceView {
     type State = ();
     type Context = ();
-    type SceneParts = SceneBarChart;
-    type ScenePartData = ();
+    type ViewPartSystems = BarChartViewPartSystem;
+    type ViewPartSystemData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Bar Chart".into()

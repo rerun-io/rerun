@@ -14,13 +14,13 @@ use crate::{
     SpatialSpaceView,
 };
 
-use super::{SpatialScenePartData, SpatialSpaceViewState};
+use super::{SpatialSpaceViewState, SpatialViewPartSystemData};
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
 #[derive(Default)]
 pub struct CamerasPart {
-    pub data: SpatialScenePartData,
+    pub data: SpatialViewPartSystemData,
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
@@ -199,7 +199,7 @@ impl ViewPartSystem<SpatialSpaceView> for CamerasPart {
         Vec::new()
     }
 
-    fn data(&self) -> Option<&SpatialScenePartData> {
+    fn data(&self) -> Option<&SpatialViewPartSystemData> {
         Some(&self.data)
     }
 }

@@ -4,8 +4,8 @@ use re_viewer::external::{
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
-        ArchetypeDefinition, ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewHighlights,
-        ViewPartSystem, ViewerContext,
+        ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewPartSystem,
+        ViewPartSystemCollection, ViewerContext,
     },
 };
 
@@ -16,11 +16,11 @@ use crate::color_coordinates_space_view::ColorCoordinatesSpaceView;
 /// This is a collection of all information needed to display a single frame for this Space View.
 /// The data is queried from the data store here and processed to consumption by the Space View's ui method.
 #[derive(Default)]
-pub struct ColorCoordinatesSceneParts {
+pub struct ColorCoordinatesViewPartSystems {
     pub colors: InstanceColors,
 }
 
-impl ScenePartCollection<ColorCoordinatesSpaceView> for ColorCoordinatesSceneParts {
+impl ViewPartSystemCollection<ColorCoordinatesSpaceView> for ColorCoordinatesViewPartSystems {
     fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<ColorCoordinatesSpaceView>> {
         vec![&mut self.colors]
     }

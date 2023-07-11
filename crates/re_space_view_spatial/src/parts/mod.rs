@@ -14,7 +14,7 @@ mod points3d;
 mod spatial_scene_part_data;
 
 pub use images::Image;
-pub use spatial_scene_part_data::SpatialScenePartData;
+pub use spatial_scene_part_data::SpatialViewPartSystemData;
 
 use ahash::HashMap;
 use std::sync::Arc;
@@ -22,8 +22,8 @@ use std::sync::Arc;
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_viewer_context::{
-    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, ScenePartCollection, SceneQuery,
-    TypedScene,
+    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SceneQuery, TypedScene,
+    ViewPartSystemCollection,
 };
 
 use crate::{
@@ -40,7 +40,7 @@ pub const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
 #[derive(Default)]
-pub struct SpatialScenePartCollection {
+pub struct SpatialViewPartSystemCollection {
     pub points2d: points2d::Points2DPart,
     pub points3d: points3d::Points3DPart,
     pub arrows3d: arrows3d::Arrows3DPart,
@@ -53,7 +53,7 @@ pub struct SpatialScenePartCollection {
     pub images: images::ImagesPart,
 }
 
-impl ScenePartCollection<SpatialSpaceView> for SpatialScenePartCollection {
+impl ViewPartSystemCollection<SpatialSpaceView> for SpatialViewPartSystemCollection {
     fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ViewPartSystem<SpatialSpaceView>> {
         let Self {
             points2d,
@@ -78,7 +78,7 @@ impl ScenePartCollection<SpatialSpaceView> for SpatialScenePartCollection {
     }
 }
 
-impl SpatialScenePartCollection {
+impl SpatialViewPartSystemCollection {
     fn vec(&self) -> Vec<&dyn re_viewer_context::ViewPartSystem<SpatialSpaceView>> {
         let Self {
             points2d,

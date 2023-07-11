@@ -1,7 +1,7 @@
 use crate::{ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext};
 
-/// Scene part collection, consisting of several [`ScenePart`] which may be populated in parallel.
-pub trait ScenePartCollection<C: SpaceViewClass> {
+/// Scene part collection, consisting of several [`ViewPartSystem`] which may be populated in parallel.
+pub trait ViewPartSystemCollection<C: SpaceViewClass> {
     /// Retrieves a list of all underlying scene context part for parallel population.
     fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<C>>;
 
@@ -22,7 +22,7 @@ pub trait ViewPartSystem<C: SpaceViewClass> {
     ///
     /// TODO(andreas): don't pass in `ViewerContext` if we want to restrict the queries here.
     /// If we want to make this restriction, then the trait-contract should be that something external
-    /// to the `ScenePartImpl` does the query and then passes an `ArchetypeQueryResult` into populate.
+    /// to the `ViewPartSystemImpl` does the query and then passes an `ArchetypeQueryResult` into populate.
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -37,13 +37,13 @@ pub trait ViewPartSystem<C: SpaceViewClass> {
     /// This is useful for retrieving data that is common to all scene parts of a [`crate::SpaceViewClass`].
     /// For example, if most scene parts produce ui elements, a concrete [`crate::SpaceViewClass`]
     /// can pick those up in its [`crate::SpaceViewClass::ui`] method by iterating over all scene parts.
-    fn data(&self) -> Option<&C::ScenePartData> {
+    fn data(&self) -> Option<&C::ViewPartSystemData> {
         None
     }
 }
 
 /// Trivial implementation of a scene collection that consists only of a single scene part.
-impl<C: SpaceViewClass, T: ViewPartSystem<C> + 'static> ScenePartCollection<C> for T {
+impl<C: SpaceViewClass, T: ViewPartSystem<C> + 'static> ViewPartSystemCollection<C> for T {
     fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<C>> {
         vec![self]
     }

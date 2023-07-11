@@ -7,7 +7,7 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use super::{SpatialScenePartData, SpatialSpaceViewState};
+use super::{SpatialSpaceViewState, SpatialViewPartSystemData};
 use crate::{
     contexts::{SpatialSceneEntityContext, SpatialViewContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct MeshPart(SpatialScenePartData);
+pub struct MeshPart(SpatialViewPartSystemData);
 
 impl MeshPart {
     fn process_entity_view(
@@ -108,7 +108,7 @@ impl ViewPartSystem<SpatialSpaceView> for MeshPart {
         }
     }
 
-    fn data(&self) -> Option<&SpatialScenePartData> {
+    fn data(&self) -> Option<&SpatialViewPartSystemData> {
         Some(&self.0)
     }
 }

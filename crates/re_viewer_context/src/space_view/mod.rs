@@ -24,4 +24,4 @@ pub use scene_query::SceneQuery;
 pub use space_view_class::SpaceViewClass;
 pub use space_view_class_registry::{SpaceViewClassRegistry, SpaceViewClassRegistryError};
 pub use view_context_system::{ViewContext, ViewContextSystem};
-pub use view_part_system::{ScenePartCollection, ViewPartSystem};
+pub use view_part_system::{ViewPartSystem, ViewPartSystemCollection};

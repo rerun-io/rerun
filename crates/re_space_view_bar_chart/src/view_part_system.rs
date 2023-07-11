@@ -11,13 +11,13 @@ use re_viewer_context::{
 
 use crate::BarChartSpaceView;
 
-/// A bar chart scene, with everything needed to render it.
+/// A bar chart system, with everything needed to render it.
 #[derive(Default)]
-pub struct SceneBarChart {
+pub struct BarChartViewPartSystem {
     pub charts: BTreeMap<EntityPath, Tensor>,
 }
 
-impl ViewPartSystem<BarChartSpaceView> for SceneBarChart {
+impl ViewPartSystem<BarChartSpaceView> for BarChartViewPartSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Tensor::name()]
     }

@@ -3,12 +3,12 @@ use crate::parts::UiLabel;
 /// Common data struct for all spatial scene elements.
 ///
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
-pub struct SpatialScenePartData {
+pub struct SpatialViewPartSystemData {
     pub ui_labels: Vec<UiLabel>,
     pub bounding_box: macaw::BoundingBox,
 }
 
-impl SpatialScenePartData {
+impl SpatialViewPartSystemData {
     pub fn extend_bounding_box(
         &mut self,
         other: macaw::BoundingBox,
@@ -29,7 +29,7 @@ impl SpatialScenePartData {
     }
 }
 
-impl Default for SpatialScenePartData {
+impl Default for SpatialViewPartSystemData {
     fn default() -> Self {
         Self {
             ui_labels: Vec::new(),

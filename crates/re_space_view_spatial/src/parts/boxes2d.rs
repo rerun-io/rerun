@@ -13,10 +13,10 @@ use crate::{
     SpatialSpaceView,
 };
 
-use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
+use super::{picking_id_from_instance_key, SpatialSpaceViewState, SpatialViewPartSystemData};
 
 #[derive(Default)]
-pub struct Boxes2DPart(SpatialScenePartData);
+pub struct Boxes2DPart(SpatialViewPartSystemData);
 
 impl Boxes2DPart {
     fn process_entity_view(
@@ -136,7 +136,7 @@ impl ViewPartSystem<SpatialSpaceView> for Boxes2DPart {
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> Option<&SpatialScenePartData> {
+    fn data(&self) -> Option<&SpatialViewPartSystemData> {
         Some(&self.0)
     }
 }
