@@ -3,8 +3,8 @@ use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::{Component as _, InstanceKey};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights,
-    TensorDecodeCache, ViewerContext,
+    ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, TensorDecodeCache,
+    ViewPartSystem, ViewerContext,
 };
 
 use crate::TensorSpaceView;
@@ -15,7 +15,7 @@ pub struct SceneTensor {
     pub tensors: std::collections::BTreeMap<InstancePath, DecodedTensor>,
 }
 
-impl ScenePart<TensorSpaceView> for SceneTensor {
+impl ViewPartSystem<TensorSpaceView> for SceneTensor {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Tensor::name()]
     }

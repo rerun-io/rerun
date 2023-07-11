@@ -4,7 +4,7 @@ use re_components::{
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{EntityView, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, ScenePart, SceneQuery, SpaceViewHighlights,
+    ArchetypeDefinition, ResolvedAnnotationInfo, SceneQuery, SpaceViewHighlights, ViewPartSystem,
     ViewerContext,
 };
 
@@ -166,7 +166,7 @@ impl Points3DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for Points3DPart {
+impl ViewPartSystem<SpatialSpaceView> for Points3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Point3D::name(),

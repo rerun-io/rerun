@@ -3,7 +3,7 @@ use re_components::{Component, InstanceKey, Pinhole, Transform3D, ViewCoordinate
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewHighlights, SpaceViewOutlineMasks,
+    ArchetypeDefinition, SceneQuery, SpaceViewHighlights, SpaceViewOutlineMasks, ViewPartSystem,
     ViewerContext,
 };
 
@@ -157,7 +157,7 @@ impl CamerasPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for CamerasPart {
+impl ViewPartSystem<SpatialSpaceView> for CamerasPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Pinhole::name(),]
     }

@@ -3,7 +3,8 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, DefaultColor, SceneQuery, SpaceViewHighlights, ViewPartSystem,
+    ViewerContext,
 };
 
 use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
@@ -89,7 +90,7 @@ impl Arrows3DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for Arrows3DPart {
+impl ViewPartSystem<SpatialSpaceView> for Arrows3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Arrow3D::name(),

@@ -1,7 +1,7 @@
 use re_arrow_store::TimeRange;
 use re_log_types::{Component, ComponentName, InstanceKey};
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::{AnnotationMap, DefaultColor, ScenePart, SceneQuery, ViewerContext};
+use re_viewer_context::{AnnotationMap, DefaultColor, SceneQuery, ViewPartSystem, ViewerContext};
 
 use crate::TimeSeriesSpaceView;
 
@@ -59,7 +59,7 @@ pub struct SceneTimeSeries {
     pub lines: Vec<PlotSeries>,
 }
 
-impl ScenePart<TimeSeriesSpaceView> for SceneTimeSeries {
+impl ViewPartSystem<TimeSeriesSpaceView> for SceneTimeSeries {
     fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
         vec1::Vec1::try_from(Self::archetype_array()).unwrap() // TODO(wumpf): `archetype` should return a fixed sized array.
     }

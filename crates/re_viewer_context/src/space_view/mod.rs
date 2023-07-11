@@ -21,7 +21,7 @@ pub use dyn_space_view_class::{
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use scene::{Scene, TypedScene};
 pub use scene_context::{SceneContext, SceneContextPart};
-pub use scene_part::{ScenePart, ScenePartCollection};
+pub use scene_part::{ScenePartCollection, ViewPartSystem};
 pub use scene_query::SceneQuery;
 pub use space_view_class::SpaceViewClass;
 pub use space_view_class_registry::{SpaceViewClassRegistry, SpaceViewClassRegistryError};

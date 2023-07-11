@@ -2,7 +2,8 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewPartSystem,
+    ViewerContext,
 };
 
 use crate::TextBoxSpaceView;
@@ -20,7 +21,7 @@ pub struct SceneTextBox {
     pub text_entries: Vec<TextBoxEntry>,
 }
 
-impl ScenePart<TextBoxSpaceView> for SceneTextBox {
+impl ViewPartSystem<TextBoxSpaceView> for SceneTextBox {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextBox::name()]
     }

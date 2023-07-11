@@ -5,7 +5,8 @@ use re_components::Tensor;
 use re_data_store::EntityPath;
 use re_log_types::Component as _;
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewPartSystem,
+    ViewerContext,
 };
 
 use crate::BarChartSpaceView;
@@ -16,7 +17,7 @@ pub struct SceneBarChart {
     pub charts: BTreeMap<EntityPath, Tensor>,
 }
 
-impl ScenePart<BarChartSpaceView> for SceneBarChart {
+impl ViewPartSystem<BarChartSpaceView> for SceneBarChart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Tensor::name()]
     }

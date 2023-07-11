@@ -3,7 +3,8 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, DefaultColor, SceneQuery, SpaceViewHighlights, ViewPartSystem,
+    ViewerContext,
 };
 
 use crate::{
@@ -101,7 +102,7 @@ impl Boxes2DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for Boxes2DPart {
+impl ViewPartSystem<SpatialSpaceView> for Boxes2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Rect2D::name(),

@@ -44,7 +44,7 @@ pub struct SpatialScenePartCollection {
 }
 
 impl ScenePartCollection<SpatialSpaceView> for SpatialScenePartCollection {
-    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart<SpatialSpaceView>> {
+    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ViewPartSystem<SpatialSpaceView>> {
         let Self {
             points2d,
             points3d,
@@ -69,7 +69,7 @@ impl ScenePartCollection<SpatialSpaceView> for SpatialScenePartCollection {
 }
 
 impl SpatialScenePartCollection {
-    fn vec(&self) -> Vec<&dyn re_viewer_context::ScenePart<SpatialSpaceView>> {
+    fn vec(&self) -> Vec<&dyn re_viewer_context::ViewPartSystem<SpatialSpaceView>> {
         let Self {
             points2d,
             points3d,

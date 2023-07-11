@@ -3,7 +3,8 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, DefaultColor, SceneQuery, SpaceViewHighlights, ViewPartSystem,
+    ViewerContext,
 };
 
 use crate::{
@@ -77,7 +78,7 @@ impl Lines3DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for Lines3DPart {
+impl ViewPartSystem<SpatialSpaceView> for Lines3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             LineStrip3D::name(),

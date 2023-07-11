@@ -3,7 +3,7 @@ use crate::{ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights
 /// Scene part collection, consisting of several [`ScenePart`] which may be populated in parallel.
 pub trait ScenePartCollection<C: SpaceViewClass> {
     /// Retrieves a list of all underlying scene context part for parallel population.
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<C>>;
+    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<C>>;
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
@@ -12,7 +12,7 @@ pub trait ScenePartCollection<C: SpaceViewClass> {
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-pub trait ScenePart<C: SpaceViewClass> {
+pub trait ViewPartSystem<C: SpaceViewClass> {
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
 
@@ -43,8 +43,8 @@ pub trait ScenePart<C: SpaceViewClass> {
 }
 
 /// Trivial implementation of a scene collection that consists only of a single scene part.
-impl<C: SpaceViewClass, T: ScenePart<C> + 'static> ScenePartCollection<C> for T {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<C>> {
+impl<C: SpaceViewClass, T: ViewPartSystem<C> + 'static> ScenePartCollection<C> for T {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<C>> {
         vec![self]
     }
 

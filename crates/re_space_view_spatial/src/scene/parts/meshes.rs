@@ -3,7 +3,8 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, DefaultColor, SceneQuery, SpaceViewHighlights, ViewPartSystem,
+    ViewerContext,
 };
 
 use crate::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
@@ -65,7 +66,7 @@ impl MeshPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for MeshPart {
+impl ViewPartSystem<SpatialSpaceView> for MeshPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Mesh3D::name(), InstanceKey::name(), ColorRGBA::name()]
     }

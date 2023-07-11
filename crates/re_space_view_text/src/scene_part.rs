@@ -3,7 +3,8 @@ use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewPartSystem,
+    ViewerContext,
 };
 
 use crate::TextSpaceView;
@@ -31,7 +32,7 @@ pub struct SceneText {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl ScenePart<TextSpaceView> for SceneText {
+impl ViewPartSystem<TextSpaceView> for SceneText {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextEntry::name()]
     }

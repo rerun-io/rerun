@@ -4,8 +4,8 @@ use re_viewer::external::{
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
-        ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass,
-        SpaceViewHighlights, ViewerContext,
+        ArchetypeDefinition, ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewHighlights,
+        ViewPartSystem, ViewerContext,
     },
 };
 
@@ -21,7 +21,7 @@ pub struct ColorCoordinatesSceneParts {
 }
 
 impl ScenePartCollection<ColorCoordinatesSpaceView> for ColorCoordinatesSceneParts {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<ColorCoordinatesSpaceView>> {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<ColorCoordinatesSpaceView>> {
         vec![&mut self.colors]
     }
 
@@ -41,7 +41,7 @@ pub struct ColorWithInstanceKey {
     pub instance_key: InstanceKey,
 }
 
-impl ScenePart<ColorCoordinatesSpaceView> for InstanceColors {
+impl ViewPartSystem<ColorCoordinatesSpaceView> for InstanceColors {
     /// The archetype this scene part is querying from the store.
     ///
     /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries

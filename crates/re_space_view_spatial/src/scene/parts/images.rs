@@ -17,8 +17,8 @@ use re_renderer::{
 };
 use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
-    gpu_bridge, ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, TensorDecodeCache,
-    TensorStatsCache, ViewerContext,
+    gpu_bridge, ArchetypeDefinition, DefaultColor, SceneQuery, TensorDecodeCache, TensorStatsCache,
+    ViewPartSystem, ViewerContext,
 };
 
 use crate::{
@@ -373,7 +373,7 @@ impl ImagesPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for ImagesPart {
+impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Tensor::name(),
