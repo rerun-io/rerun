@@ -11,8 +11,9 @@ use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
 use re_viewer_context::{
-    HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
-    SpaceViewState, TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
+    resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
+    SpaceViewHighlights, SpaceViewId, SpaceViewState, TensorDecodeCache, TensorStatsCache,
+    UiVerbosity, ViewerContext,
 };
 
 use super::{
@@ -731,8 +732,8 @@ pub fn picking(
         let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
             || is_depth_cloud
         {
-            let store = &ctx.store_db.entity_db.data_store;
-            store
+            ctx.store_db
+                .store()
                 .query_latest_component::<Tensor>(&instance_path.entity_path, &ctx.current_query())
                 .and_then(|tensor| {
                     // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
@@ -758,6 +759,12 @@ pub fn picking(
         if picked_image_with_coords.is_some() {
             // We don't support selecting pixels yet.
             instance_path.instance_key = re_log_types::InstanceKey::SPLAT;
+        } else {
+            instance_path = resolve_mono_instance_path(
+                &ctx.current_query(),
+                ctx.store_db.store(),
+                &instance_path,
+            );
         }
 
         hovered_items.push(Item::InstancePath(
@@ -844,8 +851,7 @@ pub fn picking(
         };
     }
 
-    item_ui::select_hovered_on_click(&response, ctx.selection_state_mut(), &hovered_items);
-    ctx.set_hovered(hovered_items.into_iter());
+    item_ui::select_hovered_on_click(ctx, &response, &hovered_items);
 
     let hovered_space = match state.nav_mode.get() {
         SpatialNavigationMode::TwoD => HoveredSpace::TwoD {

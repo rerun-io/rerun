@@ -247,8 +247,8 @@ fn color_space_ui(
                 instance.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
             });
             item_ui::select_hovered_on_click(
+                ctx,
                 &interact,
-                ctx.selection_state_mut(),
                 &[Item::InstancePath(Some(space_view_id), instance)],
             );
         }

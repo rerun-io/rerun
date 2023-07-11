@@ -51,6 +51,6 @@ pub mod item_ui {
                 is_selected,
             )
             .on_hover_text("Space View");
-        item_ui::cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
+        item_ui::cursor_interact_with_selectable(ctx, response, item)
     }
 }

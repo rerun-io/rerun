@@ -448,7 +448,7 @@ impl TimePanel {
                 num_messages_at_time,
                 row_rect,
                 &self.time_ranges_ui,
-                item,
+                &item,
             );
         }
     }
@@ -544,7 +544,7 @@ impl TimePanel {
                         messages_over_time,
                         row_rect,
                         &self.time_ranges_ui,
-                        item,
+                        &item,
                     );
                 }
             }
