@@ -2,7 +2,7 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, SpaceViewQuery, ViewPartSystem,
+    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, ViewPartSystem, ViewQuery,
     ViewerContext,
 };
 
@@ -29,7 +29,7 @@ impl ViewPartSystem<TextBoxSpaceView> for SceneTextBox {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _space_view_state: &<TextBoxSpaceView as SpaceViewClass>::State,
         _context: &<TextBoxSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,

@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap, TimeInt, Timeline};
 
-pub struct SpaceViewQuery<'s> {
+pub struct ViewQuery<'s> {
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,
 
@@ -22,7 +22,7 @@ pub struct SpaceViewQuery<'s> {
     pub entity_props_map: &'s EntityPropertyMap,
 }
 
-impl<'s> SpaceViewQuery<'s> {
+impl<'s> ViewQuery<'s> {
     pub fn new(
         space_origin: &'s EntityPath,
         entity_paths: &'s IntSet<EntityPath>,

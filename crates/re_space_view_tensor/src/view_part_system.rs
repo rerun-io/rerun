@@ -3,8 +3,8 @@ use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::{Component as _, InstanceKey};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, SpaceViewQuery, TensorDecodeCache,
-    ViewPartSystem, ViewerContext,
+    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, TensorDecodeCache, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 use crate::TensorSpaceView;
@@ -23,7 +23,7 @@ impl ViewPartSystem<TensorSpaceView> for SceneTensor {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _state: &<TensorSpaceView as SpaceViewClass>::State,
         _context: &<TensorSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,

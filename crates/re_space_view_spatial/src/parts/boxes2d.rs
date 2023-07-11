@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, SpaceViewQuery, ViewPartSystem,
+    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, ViewPartSystem, ViewQuery,
     ViewerContext,
 };
 
@@ -21,7 +21,7 @@ pub struct Boxes2DPart(SpatialViewPartSystemData);
 impl Boxes2DPart {
     fn process_entity_view(
         &mut self,
-        _query: &SpaceViewQuery<'_>,
+        _query: &ViewQuery<'_>,
         ent_view: &EntityView<Rect2D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -114,7 +114,7 @@ impl ViewPartSystem<SpatialSpaceView> for Boxes2DPart {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
         context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,

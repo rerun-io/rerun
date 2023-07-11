@@ -22,8 +22,8 @@ use std::sync::Arc;
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_viewer_context::{
-    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewQuery, TypedScene,
-    ViewPartSystemCollection,
+    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, TypedScene,
+    ViewPartSystemCollection, ViewQuery,
 };
 
 use crate::{
@@ -178,7 +178,7 @@ where
 
 /// Resolves all annotations and keypoints for the given entity view.
 fn process_annotations_and_keypoints<Primary>(
-    query: &SpaceViewQuery<'_>,
+    query: &ViewQuery<'_>,
     entity_view: &re_query::EntityView<Primary>,
     annotations: &Arc<Annotations>,
 ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), re_query::QueryError>

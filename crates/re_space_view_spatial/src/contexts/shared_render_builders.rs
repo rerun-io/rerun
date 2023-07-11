@@ -54,7 +54,7 @@ impl ViewContextSystem for SharedRenderBuilders {
     fn populate(
         &mut self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
-        _query: &re_viewer_context::SpaceViewQuery<'_>,
+        _query: &re_viewer_context::ViewQuery<'_>,
         _space_view_state: &dyn re_viewer_context::SpaceViewState,
     ) {
         self.lines = Some(Mutex::new(

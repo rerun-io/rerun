@@ -198,7 +198,7 @@ impl SpaceViewBlueprint {
             self.data_blueprint.data_blueprints_individual(),
         );
 
-        let query = re_viewer_context::SpaceViewQuery::new(
+        let query = re_viewer_context::ViewQuery::new(
             &self.space_origin,
             self.data_blueprint.entity_paths(),
             *ctx.rec_cfg.time_ctrl.timeline(),

@@ -5,7 +5,7 @@ use re_components::Tensor;
 use re_data_store::EntityPath;
 use re_log_types::Component as _;
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, SpaceViewQuery, ViewPartSystem,
+    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, ViewPartSystem, ViewQuery,
     ViewerContext,
 };
 
@@ -25,7 +25,7 @@ impl ViewPartSystem<BarChartSpaceView> for BarChartViewPartSystem {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _state: &<BarChartSpaceView as SpaceViewClass>::State,
         _context: &<BarChartSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,

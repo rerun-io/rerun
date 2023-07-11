@@ -4,8 +4,8 @@ use re_components::{
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{EntityView, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewHighlights, SpaceViewQuery,
-    ViewPartSystem, ViewerContext,
+    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewHighlights, ViewPartSystem, ViewQuery,
+    ViewerContext,
 };
 
 use crate::{
@@ -72,7 +72,7 @@ impl Points3DPart {
 
     fn process_entity_view(
         &mut self,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         ent_view: &EntityView<Point3D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -180,7 +180,7 @@ impl ViewPartSystem<SpatialSpaceView> for Points3DPart {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
         context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,

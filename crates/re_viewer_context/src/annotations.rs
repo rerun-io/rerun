@@ -14,7 +14,7 @@ use re_query::query_entity_with_primary;
 
 use crate::DefaultColor;
 
-use super::{auto_color, SpaceViewQuery, ViewerContext};
+use super::{auto_color, ViewQuery, ViewerContext};
 
 #[derive(Clone, Debug)]
 pub struct Annotations {
@@ -125,7 +125,7 @@ impl AnnotationMap {
     /// For each `EntityPath` in the `SceneQuery`, walk up the tree and find the nearest ancestor
     ///
     /// An entity is considered its own (nearest) ancestor.
-    pub fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SpaceViewQuery<'_>) {
+    pub fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
         let mut visited = IntSet::<EntityPath>::default();

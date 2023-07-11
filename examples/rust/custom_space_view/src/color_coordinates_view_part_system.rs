@@ -4,8 +4,8 @@ use re_viewer::external::{
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
-        ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, SpaceViewQuery, ViewPartSystem,
-        ViewPartSystemCollection, ViewerContext,
+        ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, ViewPartSystem,
+        ViewPartSystemCollection, ViewQuery, ViewerContext,
     },
 };
 
@@ -54,7 +54,7 @@ impl ViewPartSystem<ColorCoordinatesSpaceView> for InstanceColors {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _space_view_state: &<ColorCoordinatesSpaceView as SpaceViewClass>::State,
         _context: &<ColorCoordinatesSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,

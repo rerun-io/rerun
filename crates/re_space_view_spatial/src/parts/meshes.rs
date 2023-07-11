@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, SpaceViewQuery, ViewPartSystem,
+    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, ViewPartSystem, ViewQuery,
     ViewerContext,
 };
 
@@ -73,7 +73,7 @@ impl ViewPartSystem<SpatialSpaceView> for MeshPart {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
         context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,

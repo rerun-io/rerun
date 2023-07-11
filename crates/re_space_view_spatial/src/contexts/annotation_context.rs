@@ -13,7 +13,7 @@ impl ViewContextSystem for AnnotationSceneContext {
     fn populate(
         &mut self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
-        query: &re_viewer_context::SpaceViewQuery<'_>,
+        query: &re_viewer_context::ViewQuery<'_>,
         _space_view_state: &dyn re_viewer_context::SpaceViewState,
     ) {
         self.0.load(ctx, query);

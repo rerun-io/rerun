@@ -17,8 +17,8 @@ use re_renderer::{
 };
 use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
-    gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewQuery, TensorDecodeCache,
-    TensorStatsCache, ViewPartSystem, ViewerContext,
+    gpu_bridge, ArchetypeDefinition, DefaultColor, TensorDecodeCache, TensorStatsCache,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -382,7 +382,7 @@ impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
         context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,

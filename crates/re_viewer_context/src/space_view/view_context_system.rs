@@ -1,4 +1,4 @@
-use crate::{ArchetypeDefinition, SpaceViewQuery, SpaceViewState, ViewerContext};
+use crate::{ArchetypeDefinition, SpaceViewState, ViewQuery, ViewerContext};
 
 /// Scene context, consisting of several [`ViewContextSystem`] which may be populated in parallel.
 pub trait ViewContext {
@@ -42,7 +42,7 @@ pub trait ViewContextSystem {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SpaceViewQuery<'_>,
+        query: &ViewQuery<'_>,
         space_view_state: &dyn SpaceViewState,
     );
 }

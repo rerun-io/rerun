@@ -10,9 +10,9 @@ mod scene;
 mod space_view_class;
 mod space_view_class_placeholder;
 mod space_view_class_registry;
-mod space_view_query;
 mod view_context_system;
 mod view_part_system;
+mod view_query;
 
 pub use dyn_space_view_class::{
     ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName,
@@ -22,6 +22,6 @@ pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOut
 pub use scene::{Scene, TypedScene};
 pub use space_view_class::SpaceViewClass;
 pub use space_view_class_registry::{SpaceViewClassRegistry, SpaceViewClassRegistryError};
-pub use space_view_query::SpaceViewQuery;
 pub use view_context_system::{ViewContext, ViewContextSystem};
 pub use view_part_system::{ViewPartSystem, ViewPartSystemCollection};
+pub use view_query::ViewQuery;
