@@ -22,7 +22,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    contexts::{SpatialSceneEntityContext, SpatialViewContext},
     parts::{entity_iterator::process_entity_views, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     SpatialSpaceView,
 };
@@ -181,7 +181,7 @@ impl ImagesPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
-        scene_context: &SpatialSceneContext,
+        scene_context: &SpatialViewContext,
         ent_props: &EntityProperties,
         ent_view: &EntityView<Tensor>,
         ent_path: &EntityPath,
@@ -284,7 +284,7 @@ impl ImagesPart {
 
     fn process_entity_view_as_depth_cloud(
         ctx: &mut ViewerContext<'_>,
-        scene_context: &SpatialSceneContext,
+        scene_context: &SpatialViewContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,
         tensor: &DecodedTensor,
@@ -385,7 +385,7 @@ impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
-        scene_context: &SpatialSceneContext,
+        scene_context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("ImagesPart");

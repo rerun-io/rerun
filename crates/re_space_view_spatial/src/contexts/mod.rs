@@ -15,12 +15,12 @@ pub use transform_context::{pinhole_camera_view_coordinates, TransformContext};
 
 use re_log_types::EntityPath;
 use re_renderer::DepthOffset;
-use re_viewer_context::{Annotations, SceneContext};
+use re_viewer_context::{Annotations, ViewContext};
 
 use self::non_interactive_entities::NonInteractiveEntities;
 
 #[derive(Default)]
-pub struct SpatialSceneContext {
+pub struct SpatialViewContext {
     pub transforms: TransformContext,
     pub depth_offsets: EntityDepthOffsets,
     pub annotations: AnnotationSceneContext,
@@ -31,8 +31,8 @@ pub struct SpatialSceneContext {
     pub num_3d_primitives: AtomicUsize,
 }
 
-impl SceneContext for SpatialSceneContext {
-    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::SceneContextPart> {
+impl ViewContext for SpatialViewContext {
+    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ViewContextSystem> {
         let Self {
             transforms,
             depth_offsets,
@@ -60,7 +60,7 @@ impl SceneContext for SpatialSceneContext {
     }
 }
 
-impl SpatialSceneContext {
+impl SpatialViewContext {
     pub fn lookup_entity_context<'a>(
         &'a self,
         ent_path: &EntityPath,

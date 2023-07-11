@@ -1,6 +1,6 @@
 use crate::{
-    SceneContext, ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewHighlights,
-    SpaceViewState, ViewerContext,
+    ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewHighlights, SpaceViewState,
+    ViewContext, ViewerContext,
 };
 
 /// Every [`crate::SpaceViewClass`] creates and populates a scene to draw a frame and inform the ui about relevant data.

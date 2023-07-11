@@ -5,7 +5,7 @@ use re_components::{DisconnectedSpace, Pinhole, Transform3D, ViewCoordinates};
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_log_types::Component;
 use re_space_view::UnreachableTransformReason;
-use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
+use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};
 
 use crate::parts::image_view_coordinates;
 
@@ -54,7 +54,7 @@ impl Default for TransformContext {
     }
 }
 
-impl SceneContextPart for TransformContext {
+impl ViewContextSystem for TransformContext {
     fn archetypes(&self) -> Vec<ArchetypeDefinition> {
         vec![
             vec1::vec1![Transform3D::name()],

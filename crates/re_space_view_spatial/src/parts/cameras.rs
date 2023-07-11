@@ -8,7 +8,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{pinhole_camera_view_coordinates, SpatialSceneContext},
+    contexts::{pinhole_camera_view_coordinates, SpatialViewContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     space_camera_3d::SpaceCamera3D,
     SpatialSpaceView,
@@ -28,7 +28,7 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        scene_context: &SpatialSceneContext,
+        scene_context: &SpatialViewContext,
         ent_path: &EntityPath,
         props: &EntityProperties,
         pinhole: Pinhole,
@@ -167,7 +167,7 @@ impl ViewPartSystem<SpatialSpaceView> for CamerasPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
-        scene_context: &SpatialSceneContext,
+        scene_context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("CamerasPart");

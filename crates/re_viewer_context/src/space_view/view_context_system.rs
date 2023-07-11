@@ -1,9 +1,9 @@
 use crate::{ArchetypeDefinition, SceneQuery, SpaceViewState, ViewerContext};
 
-/// Scene context, consisting of several [`SceneContextPart`] which may be populated in parallel.
-pub trait SceneContext {
+/// Scene context, consisting of several [`ViewContextSystem`] which may be populated in parallel.
+pub trait ViewContext {
     /// Retrieves a list of all underlying scene context part for parallel population.
-    fn vec_mut(&mut self) -> Vec<&mut dyn SceneContextPart>;
+    fn vec_mut(&mut self) -> Vec<&mut dyn ViewContextSystem>;
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
@@ -14,8 +14,8 @@ pub trait SceneContext {
 }
 
 /// Implementation of an empty scene context.
-impl SceneContext for () {
-    fn vec_mut(&mut self) -> Vec<&mut dyn SceneContextPart> {
+impl ViewContext for () {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ViewContextSystem> {
         Vec::new()
     }
 
@@ -28,10 +28,10 @@ impl SceneContext for () {
     }
 }
 
-/// Scene context that can be used by scene elements and ui methods to retrieve information about the scene as a whole.
+/// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.
 ///
-/// Is always populated before scene elements.
-pub trait SceneContextPart {
+/// Is always populated before view part systems.
+pub trait ViewContextSystem {
     /// Each scene context may query several archetypes.
     ///
     /// This lists all archetypes that the context queries.

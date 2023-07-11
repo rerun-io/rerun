@@ -9,7 +9,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    contexts::{SpatialSceneEntityContext, SpatialViewContext},
     parts::{
         entity_iterator::process_entity_views, load_keypoint_connections, UiLabel, UiLabelTarget,
     },
@@ -184,7 +184,7 @@ impl ViewPartSystem<SpatialSpaceView> for Points2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
-        scene_context: &SpatialSceneContext,
+        scene_context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points2DPart");

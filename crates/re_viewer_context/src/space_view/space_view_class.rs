@@ -3,8 +3,8 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, DynSpaceViewClass, Scene, SceneContext, ScenePartCollection,
-    SpaceViewClassName, SpaceViewId, SpaceViewState, ViewerContext,
+    ArchetypeDefinition, DynSpaceViewClass, Scene, ScenePartCollection, SpaceViewClassName,
+    SpaceViewId, SpaceViewState, ViewContext, ViewerContext,
 };
 
 use super::scene::TypedScene;
@@ -19,7 +19,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     type State: SpaceViewState + Default + 'static;
 
     /// Context of the scene, which is passed to all [`crate::ScenePart`]s and ui drawing on population.
-    type Context: SceneContext + Default + 'static;
+    type Context: ViewContext + Default + 'static;
 
     /// Collection of [`crate::ScenePart`]s that this scene populates.
     type SceneParts: ScenePartCollection<Self> + Default + 'static;

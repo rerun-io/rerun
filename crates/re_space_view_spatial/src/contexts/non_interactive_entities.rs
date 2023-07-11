@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPathHash;
-use re_viewer_context::SceneContextPart;
+use re_viewer_context::ViewContextSystem;
 
 /// List of all non-interactive entities for lookup during picking evaluation.
 ///
@@ -8,7 +8,7 @@ use re_viewer_context::SceneContextPart;
 #[derive(Default)]
 pub struct NonInteractiveEntities(pub IntSet<EntityPathHash>);
 
-impl SceneContextPart for NonInteractiveEntities {
+impl ViewContextSystem for NonInteractiveEntities {
     fn archetypes(&self) -> Vec<re_viewer_context::ArchetypeDefinition> {
         Vec::new()
     }

@@ -9,7 +9,7 @@ use re_viewer_context::{
 
 use super::{SpatialScenePartData, SpatialSpaceViewState};
 use crate::{
-    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    contexts::{SpatialSceneEntityContext, SpatialViewContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     mesh_cache::MeshCache,
     parts::entity_iterator::process_entity_views,
@@ -75,7 +75,7 @@ impl ViewPartSystem<SpatialSpaceView> for MeshPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         _space_view_state: &SpatialSpaceViewState,
-        scene_context: &SpatialSceneContext,
+        scene_context: &SpatialViewContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("MeshPart");

@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use nohash_hasher::IntMap;
 use re_components::DrawOrder;
 use re_log_types::{Component, EntityPath, EntityPathHash};
-use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
+use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};
 
 /// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].
 #[derive(Default)]
@@ -18,7 +18,7 @@ pub struct EntityDepthOffsets {
     pub points: re_renderer::DepthOffset,
 }
 
-impl SceneContextPart for EntityDepthOffsets {
+impl ViewContextSystem for EntityDepthOffsets {
     fn archetypes(&self) -> Vec<ArchetypeDefinition> {
         vec![vec1::vec1![DrawOrder::name()]]
     }
