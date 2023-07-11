@@ -4,7 +4,6 @@
 
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
-use re_query::get_component_with_instances;
 use re_viewer_context::{
     DataBlueprintGroupHandle, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
 };
@@ -255,22 +254,6 @@ pub fn select_hovered_on_click(
     }
 
     if response.clicked() {
-        // Resolve to entity path if there's only a single instance.
-        let mut selected_items = Vec::new();
-        for item in items {
-            match item {
-                Item::InstancePath(space_view, instance) => {
-                    selected_items.push(Item::InstancePath(
-                        *space_view,
-                        resolve_to_entity_if_single_instance(ctx, instance),
-                    ));
-                }
-                Item::ComponentPath(_) | Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
-                    selected_items.push(item.clone());
-                }
-            }
-        }
-
         if response.ctx.input(|i| i.modifiers.command) {
             ctx.selection_state_mut().toggle_selection(items.to_vec());
         } else {
@@ -278,36 +261,4 @@ pub fn select_hovered_on_click(
                 .set_selection(items.iter().cloned());
         }
     }
-}
-
-fn resolve_to_entity_if_single_instance(
-    ctx: &ViewerContext<'_>,
-    instance: &InstancePath,
-) -> InstancePath {
-    if instance.instance_key.0 == 0 {
-        let Some(components) = ctx
-                .store_db
-                .store()
-                .all_components(&ctx.current_query().timeline, &instance.entity_path) else {
-            // No components at all, return splatted entity.
-            return InstancePath::entity_splat(instance.entity_path.clone());
-        };
-        for component in components {
-            if let Some((_row_id, instances)) = get_component_with_instances(
-                ctx.store_db.store(),
-                &ctx.current_query(),
-                &instance.entity_path,
-                component,
-            ) {
-                if instances.len() > 1 {
-                    return instance.clone();
-                }
-            }
-        }
-
-        // All instances had only a single element or less, resolve to splatted entity.
-        return InstancePath::entity_splat(instance.entity_path.clone());
-    }
-
-    instance.clone()
 }
