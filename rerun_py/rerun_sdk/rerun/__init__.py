@@ -160,7 +160,7 @@ def init(
 
     # Always check for fork when calling init.  This should have happened via `_register_on_fork`
     # but it's worth being conservative.
-    # cleanup_if_forked()
+    cleanup_if_forked()
 
     if init_logging:
         new_recording(
