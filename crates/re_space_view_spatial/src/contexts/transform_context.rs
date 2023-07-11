@@ -7,7 +7,7 @@ use re_log_types::Component;
 use re_space_view::UnreachableTransformReason;
 use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
-use crate::scene::image_view_coordinates;
+use crate::parts::image_view_coordinates;
 
 #[derive(Clone)]
 struct TransformInfo {

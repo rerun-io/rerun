@@ -1,4 +1,4 @@
-use crate::scene::UiLabel;
+use crate::parts::UiLabel;
 
 /// Common data struct for all spatial scene elements.
 ///

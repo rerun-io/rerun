@@ -7,15 +7,14 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
-use crate::mesh_cache::MeshCache;
-use crate::scene::{
-    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-    parts::entity_iterator::process_entity_views,
-};
-use crate::SpatialSpaceView;
-
 use super::{SpatialScenePartData, SpatialSpaceViewState};
+use crate::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    instance_hash_conversions::picking_layer_id_from_instance_path_hash,
+    mesh_cache::MeshCache,
+    parts::entity_iterator::process_entity_views,
+    SpatialSpaceView,
+};
 
 #[derive(Default)]
 pub struct MeshPart(SpatialScenePartData);

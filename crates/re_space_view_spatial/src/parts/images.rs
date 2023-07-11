@@ -22,11 +22,8 @@ use re_viewer_context::{
 };
 
 use crate::{
-    scene::{
-        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-        parts::entity_iterator::process_entity_views,
-        SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-    },
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::{entity_iterator::process_entity_views, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     SpatialSpaceView,
 };
 
@@ -305,7 +302,7 @@ impl ImagesPart {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 
-        let view_coordinates = crate::scene::contexts::pinhole_camera_view_coordinates(
+        let view_coordinates = crate::contexts::pinhole_camera_view_coordinates(
             ctx.store_db.store(),
             &ctx.current_query(),
             parent_pinhole_path,

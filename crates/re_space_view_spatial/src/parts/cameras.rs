@@ -8,8 +8,8 @@ use re_viewer_context::{
 };
 
 use crate::{
+    contexts::{pinhole_camera_view_coordinates, SpatialSceneContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    scene::contexts::{pinhole_camera_view_coordinates, SpatialSceneContext},
     space_camera_3d::SpaceCamera3D,
     SpatialSpaceView,
 };

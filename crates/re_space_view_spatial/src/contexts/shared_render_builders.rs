@@ -2,7 +2,7 @@ use parking_lot::{Mutex, MutexGuard};
 use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder, RenderContext};
 use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
-use crate::scene::{
+use crate::parts::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 

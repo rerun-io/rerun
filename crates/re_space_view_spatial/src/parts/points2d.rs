@@ -1,5 +1,5 @@
 use re_components::{
-    ClassId, ColorRGBA, Component as _, InstanceKey, KeypointId, Label, Point3D, Radius,
+    ClassId, ColorRGBA, Component, InstanceKey, KeypointId, Label, Point2D, Radius,
 };
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{EntityView, QueryError};
@@ -9,11 +9,9 @@ use re_viewer_context::{
 };
 
 use crate::{
-    scene::{
-        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-        load_keypoint_connections,
-        parts::entity_iterator::process_entity_views,
-        UiLabel, UiLabelTarget,
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::{
+        entity_iterator::process_entity_views, load_keypoint_connections, UiLabel, UiLabelTarget,
     },
     SpatialSpaceView,
 };
@@ -23,13 +21,13 @@ use super::{
     SpatialScenePartData, SpatialSpaceViewState,
 };
 
-pub struct Points3DPart {
+pub struct Points2DPart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub data: SpatialScenePartData,
 }
 
-impl Default for Points3DPart {
+impl Default for Points2DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
@@ -38,13 +36,12 @@ impl Default for Points3DPart {
     }
 }
 
-impl Points3DPart {
+impl Points2DPart {
     fn process_labels<'a>(
-        entity_view: &'a EntityView<Point3D>,
+        entity_view: &'a EntityView<Point2D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a [ResolvedAnnotationInfo],
-        world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
@@ -60,9 +57,7 @@ impl Points3DPart {
                     (Some(point), Some(label)) => Some(UiLabel {
                         text: label,
                         color: *color,
-                        target: UiLabelTarget::Position3D(
-                            world_from_obj.transform_point3(point.into()),
-                        ),
+                        target: UiLabelTarget::Point2D(egui::pos2(point.x, point.y)),
                         labeled_instance: *labeled_instance,
                     }),
                     _ => None,
@@ -75,7 +70,7 @@ impl Points3DPart {
     fn process_entity_view(
         &mut self,
         query: &SceneQuery<'_>,
-        ent_view: &EntityView<Point3D>,
+        ent_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
@@ -104,14 +99,18 @@ impl Points3DPart {
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
-                ent_context.world_from_obj,
             )?);
         }
 
         {
             let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
-                .batch("3d points")
+                .batch("2d points")
+                .depth_offset(ent_context.depth_offset)
+                .flags(
+                    re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
+                        | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
+                )
                 .world_from_obj(ent_context.world_from_obj)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
@@ -120,13 +119,14 @@ impl Points3DPart {
                 re_tracing::profile_scope!("collect_points");
                 ent_view
                     .iter_primary()?
-                    .filter_map(|pt| pt.map(glam::Vec3::from))
+                    .filter_map(|pt| pt.map(glam::Vec2::from))
             };
 
             let picking_instance_ids = ent_view
                 .iter_instance_keys()
                 .map(picking_id_from_instance_key);
-            let mut point_range_builder = point_batch.add_points(
+
+            let mut point_range_builder = point_batch.add_points_2d(
                 ent_view.num_instances(),
                 point_positions,
                 radii,
@@ -151,14 +151,14 @@ impl Points3DPart {
                     }
                 }
             }
-        }
+        };
 
         load_keypoint_connections(ent_context, ent_path, keypoints);
 
         self.data.extend_bounding_box_with_points(
             ent_view
                 .iter_primary()?
-                .filter_map(|pt| pt.map(|pt| pt.into())),
+                .filter_map(|pt| pt.map(|pt| glam::vec3(pt.x, pt.y, 0.0))),
             ent_context.world_from_obj,
         );
 
@@ -166,10 +166,10 @@ impl Points3DPart {
     }
 }
 
-impl ViewPartSystem<SpatialSpaceView> for Points3DPart {
+impl ViewPartSystem<SpatialSpaceView> for Points2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
-            Point3D::name(),
+            Point2D::name(),
             InstanceKey::name(),
             ColorRGBA::name(),
             Radius::name(),
@@ -187,9 +187,9 @@ impl ViewPartSystem<SpatialSpaceView> for Points3DPart {
         scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
-        re_tracing::profile_scope!("Points3DPart");
+        re_tracing::profile_scope!("Points2DPart");
 
-        process_entity_views::<re_components::Point3D, 7, _>(
+        process_entity_views::<re_components::Point2D, 7, _>(
             ctx,
             query,
             scene_context,
@@ -197,9 +197,6 @@ impl ViewPartSystem<SpatialSpaceView> for Points3DPart {
             scene_context.depth_offsets.points,
             self.archetype(),
             |_ctx, ent_path, entity_view, ent_context| {
-                scene_context
-                    .num_3d_primitives
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
         );

@@ -10,11 +10,8 @@ use re_viewer_context::{
 };
 
 use crate::{
-    scene::{
-        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-        parts::entity_iterator::process_entity_views,
-        UiLabel, UiLabelTarget,
-    },
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::{entity_iterator::process_entity_views, UiLabel, UiLabelTarget},
     SpatialSpaceView,
 };
 

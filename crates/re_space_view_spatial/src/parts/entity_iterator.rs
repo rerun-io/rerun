@@ -3,7 +3,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
 use re_viewer_context::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, ViewerContext};
 
-use crate::scene::contexts::{SpatialSceneContext, SpatialSceneEntityContext};
+use crate::contexts::{SpatialSceneContext, SpatialSceneEntityContext};
 
 /// Iterates through all entity views for a given archetype.
 ///

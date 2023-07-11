@@ -3,7 +3,8 @@ use re_log_types::EntityPath;
 use re_viewer_context::{SpaceViewClass, SpaceViewId};
 
 use crate::{
-    scene::{SpatialSceneContext, SpatialScenePartCollection, SpatialScenePartData},
+    contexts::SpatialSceneContext,
+    parts::{SpatialScenePartCollection, SpatialScenePartData},
     ui::{SpatialNavigationMode, SpatialSpaceViewState},
 };
 

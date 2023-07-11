@@ -9,10 +9,8 @@ use re_viewer_context::{
 
 use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
 use crate::{
-    scene::{
-        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-        parts::entity_iterator::process_entity_views,
-    },
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::entity_iterator::process_entity_views,
     SpatialSpaceView,
 };
 

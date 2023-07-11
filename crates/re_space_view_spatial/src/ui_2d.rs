@@ -12,7 +12,7 @@ use super::{
     ui::{create_labels, picking, screenshot_context_menu},
 };
 use crate::{
-    scene::SceneSpatial,
+    parts::SceneSpatial,
     ui::{outline_config, SpatialNavigationMode, SpatialSpaceViewState},
 };
 
