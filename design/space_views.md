@@ -97,20 +97,33 @@ This is typically used for animation/transition state.
 ⚠️ As of writing, we're using this also for state that *should* be be persisted and needs to be moved to
 blueprint components.
 
+### `ViewPartSystem`
+A `ViewPartSystem` defines how a given archetype is processed during the scene buildup.
+Every frame, an instance for every registered `ViewPartSystem` is instantiated.
+During instantiation it can access the query results for its archetype and emit `re_renderer` drawables
+as well as custom state that can be processed during the `SpaceViewClass`'s drawing method.
 
-### Scene
-Scenes are created every frame from the data blueprint in order to draw the view.
-Each Space View Class defines which scene parts and scene context parts it needs to create its scene.
+TODO: talk about registration
+TODO: talk about shared state more
+TODO(andreas): Expand drawables concept
 
-#### `ScenePart`
-A scene part defines how a **single given archetype** is processed during the scene buildup.
-As part of its population it may set arbitrary temporary internal state and emit re_renderer drawables.
+Note on naming:
+`ViewPartSystem` was called `ScenePart` in earlier versions since it formed a _part_ of a per-frame built-up _Scene_.
+We discarded _Scene_ since in most applications scenes are permanent and not per-frame.
+However, we determined that they still make up the essential parts of a `SpaceView`.
+Their behavior is a match to what in ECS implementations is referred to as a System -
+i.e. an object or function that queries a set of components (an Archetype) and executes some logic as a result.
 
-#### `SceneContextPart`
-Similar to `ScenePart` but does not emit drawables. Accessible while scene parts are populated.
+### `ViewContextSystem`
+Similarly to `ViewPartSystem`, all registered `ViewContextSystem` are instantiated every frame.
+Instantiation happens before `ViewPartSystem` and can not emit drawables, only set custom data.
+The results are available during `ViewPartSystem` execution.
 This is used e.g. to prepare the transform tree.
 
-#### Scene Lifecycle
+TODO: talk about registration
+
+### Frame Lifecycle
+TODO: update this
 Each frame, each `SpaceView` instance builds up a scene. The framework defines a fixed lifecycle for all views.
 Given a `SpaceViewClass` `MyClass`:
 * default instantiate a new `TypedScene<MyClass>`
@@ -138,16 +151,6 @@ extensibility hooks.
 These user defined Space Views have no limitations over built-in Space Views and are able
 to completely reimplement existing Space Views if desired.
 
+TODO: update and details
 A more common extension point in the future will be extension of the Spatial Space View Classes
 by adding new `ScenePart` to them.
-
-
-
-## Rename suggestions
-* `Scene` -> `SpaceViewFrame`
-* `SceneContext` -> `SpaceViewFrameContext`
-* `ScenePartCollection` -> `SpaceViewRenderer`
-  * misnomer? actual rendering happens in `SpaceViewClass::ui`
-  * note that starting in https://github.com/rerun-io/rerun/pull/2522/ this also defines the type of the used context
-  * merge with `SceneContext`?
-* `SceneParts` -> `ArchetypeProcessor`
