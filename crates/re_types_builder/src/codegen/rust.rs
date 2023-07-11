@@ -150,7 +150,7 @@ fn create_files(
                             .to_string()
                             .replace('}', "}\n\n")
                             .replace("] ;", "];\n\n")
-                            .replace("# [doc", "\n\n#[doc")
+                            .replace("# [doc", "\n\n# [doc")
                             .replace("impl ", "\n\nimpl ");
                         code.push_text(tokens_str, 1, 0);
                         acc = TokenStream::new();
@@ -169,11 +169,14 @@ fn create_files(
                 .to_string()
                 .replace('}', "}\n\n")
                 .replace("] ;", "];\n\n")
-                .replace("# [doc", "\n\n#[doc")
+                .replace("# [doc", "\n\n# [doc")
                 .replace("impl ", "\n\nimpl ");
 
             code.push_text(tokens_str, 1, 0);
         }
+
+        code = replace_doc_attrb_with_doc_comment(&code);
+
         file.write_all(code.as_bytes())
             .with_context(|| format!("{filepath:?}"))
             .unwrap();
@@ -213,6 +216,44 @@ fn create_files(
     }
 
     filepaths
+}
+
+/// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
+/// while also removing trailing whitespace.
+fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
+    // This is difficult to do with regex, because the patterns with newlines overlap.
+
+    let start_pattern = "# [doc = \"";
+    let end_pattern = "\"]"; // assues there is no escaped quote followed by a bracket
+
+    let mut new_code = String::new();
+
+    let mut i = 0;
+    while i < code.len() {
+        if let Some(off) = code[i..].find(start_pattern) {
+            let doc_start = i + off;
+            let content_start = doc_start + start_pattern.len();
+            if let Some(off) = code[content_start..].find(end_pattern) {
+                let content_end = content_start + off;
+                new_code.push_str(&code[i..doc_start]);
+                new_code.push_str("/// ");
+                new_code.push_str(&code[content_start..content_end]);
+                new_code.push('\n');
+
+                i = content_end + end_pattern.len();
+                // Skip trailing shitespace (extra newlines)
+                while matches!(code.as_bytes().get(i), Some(b'\n' | b' ')) {
+                    i += 1;
+                }
+                continue;
+            }
+        }
+
+        // No more doc attributes found
+        new_code.push_str(&code[i..]);
+        break;
+    }
+    new_code
 }
 
 // --- Codegen core loop ---
@@ -425,7 +466,7 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
 
     impl quote::ToTokens for DocCommentTokenizer<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            tokens.extend(self.0.iter().map(|line| quote!(#[doc = #line])));
+            tokens.extend(self.0.iter().map(|line| quote!(# [doc = #line])));
         }
     }
 
