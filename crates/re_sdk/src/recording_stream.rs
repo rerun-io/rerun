@@ -356,7 +356,7 @@ struct RecordingStreamInner {
 impl Drop for RecordingStreamInner {
     fn drop(&mut self) {
         if self.has_forked() {
-            re_log::warn_once!("Process-id mismatch while dropping RecordingStreamInner. Likely forked without calling cleanup_if_forked().");
+            re_log::error_once!("Fork detected while dropping RecordingStreamInner. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
             return;
         }
 
@@ -763,7 +763,7 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_blocking(&self) {
         if self.has_forked() {
-            re_log::warn_once!("Fork detected - call to flush_blocking() ignored. Likely forked without calling cleanup_if_forked().");
+            re_log::error_once!("Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
             return;
         }
 
