@@ -113,7 +113,34 @@ fn main() {
     // there's still no good reason to fail the build.
     //
     // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
-    cmd!(sh, "cargo fmt").run().ok();
+    cmd!(sh, "cargo fmt -p re_types").run().ok();
+    // RUN IT TWICE!!! `rustfmt` is __not__ idempotent until its second run!
+    //
+    // You can try it out yourself with e.g. this snippet:
+    // ```
+    // # [derive (Clone , Debug)]
+    //
+    // # [derive (Default , Copy , PartialEq , PartialOrd)]
+    // pub struct Vec2D (pub [f32 ; 2usize] ,) ;
+    // ```
+    //
+    // First run will take care of most things, but since `rustfmt` isn't recursive, it will also
+    // miss the opportunity to merge the two #derive clauses after it took care of removing the
+    // superfluous linefeeds:
+    // ```
+    // #[derive(Clone, Debug)]
+    // #[derive(Default, Copy, PartialEq, PartialOrd)]
+    // pub struct Vec2D(pub [f32; 2usize]);
+    // ```
+    //
+    // Now if you run it a second time on the other hand...:
+    // ```
+    // #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+    // pub struct Vec2D(pub [f32; 2usize]);
+    // ```
+    //
+    // And finally things are idempotent, for real this time.
+    cmd!(sh, "cargo fmt -p re_types").run().ok();
 
     re_types_builder::generate_python_code(
         DEFINITIONS_DIR_PATH,
