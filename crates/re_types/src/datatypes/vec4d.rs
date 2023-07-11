@@ -146,46 +146,54 @@ impl crate::Datatype for Vec4D {
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .unwrap();
-            let bitmap = data.validity().cloned();
-            let offsets = (0..).step_by(4usize).zip((4usize..).step_by(4usize));
-            let data = &**data.values();
-            let data = data
-                .as_any()
-                .downcast_ref::<Float32Array>()
-                .unwrap()
-                .into_iter()
-                .map(|v| v.copied())
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: DataType::Float32,
-                    })
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-            offsets
-                .enumerate()
-                .map(move |(i, (start, end))| {
-                    bitmap
-                        .as_ref()
-                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                        .then(|| {
-                            data.get(start as usize..end as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data.len(),
-                                    datatype: datatype.clone(),
-                                })?
-                                .to_vec()
-                                .try_into()
-                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                    expected: 4usize,
-                                    got: (end - start) as usize,
-                                    datatype: datatype.clone(),
-                                })
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let bitmap = data.validity().cloned();
+                let offsets = (0..)
+                    .step_by(4usize)
+                    .zip((4usize..).step_by(4usize).take(data.len()));
+                let data = &**data.values();
+                let data = data
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: DataType::Float32,
                         })
-                        .transpose()
-                })
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                .into_iter()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                data.get(start as usize..end as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        datatype: datatype.clone(),
+                                    })?
+                                    .to_vec()
+                                    .try_into()
+                                    .map_err(|_err| {
+                                        crate::DeserializationError::ArrayLengthMismatch {
+                                            expected: 4usize,
+                                            got: (end - start) as usize,
+                                            datatype: datatype.clone(),
+                                        }
+                                    })
+                            })
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+            }
+            .into_iter()
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {

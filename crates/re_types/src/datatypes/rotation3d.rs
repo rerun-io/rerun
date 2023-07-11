@@ -284,105 +284,71 @@ impl crate::Datatype for Rotation3D {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_types, data_arrays, data_offsets) =
-                (data.types(), data.fields(), data.offsets().unwrap());
-            let quaternion = {
-                let data = &*data_arrays[0usize];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_types, data_arrays, data_offsets) =
+                    (data.types(), data.fields(), data.offsets().unwrap());
+                let quaternion = {
+                    let data = &*data_arrays[0usize];
 
-                {
-                    let datatype = data.data_type();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                        .unwrap();
-                    let bitmap = data.validity().cloned();
-                    let offsets = (0..).step_by(4usize).zip((4usize..).step_by(4usize));
-                    let data = &**data.values();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .unwrap()
+                    { let datatype = data . data_type () ; let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (4usize) . zip ((4usize ..) . step_by (4usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { datatype : DataType :: Float32 , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or_else (|| crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , datatype : datatype . clone () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 4usize , got : (end - start) as usize , datatype : datatype . clone () , }
+
+) }
+
+) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Quaternion (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> ()
+                };
+                let axis_angle = {
+                    let data = &*data_arrays[1usize];
+
+                    crate::datatypes::RotationAxisAngle::try_from_arrow_opt(data)?
                         .into_iter()
-                        .map(|v| v.copied())
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                datatype: DataType::Float32,
-                            })
-                        })
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| {
-                            bitmap
-                                .as_ref()
-                                .map_or(true, |bitmap| bitmap.get_bit(i))
-                                .then(|| {
-                                    data.get(start as usize..end as usize)
-                                        .ok_or_else(|| {
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                datatype: datatype.clone(),
-                                            }
-                                        })?
-                                        .to_vec()
-                                        .try_into()
-                                        .map_err(|_err| {
-                                            crate::DeserializationError::ArrayLengthMismatch {
-                                                expected: 4usize,
-                                                got: (end - start) as usize,
-                                                datatype: datatype.clone(),
-                                            }
-                                        })
-                                })
-                                .transpose()
-                        })
-                        .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Quaternion(v))))
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        .into_iter()
-                }
-                .collect::<Vec<_>>()
-            };
-            let axis_angle = {
-                let data = &*data_arrays[1usize];
+                        .collect::<Vec<_>>()
+                };
+                data_types
+                    .iter()
+                    .enumerate()
+                    .map(|(i, typ)| {
+                        let offset = data_offsets[i];
 
-                crate::datatypes::RotationAxisAngle::try_from_arrow_opt(data)?
-                    .into_iter()
-                    .collect::<Vec<_>>()
-            };
-            data_types
-                .iter()
-                .enumerate()
-                .map(|(i, typ)| {
-                    let offset = data_offsets[i];
-
-                    Ok(Some(match typ {
-                        0i8 => Rotation3D::Quaternion(
-                            quaternion
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: quaternion.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone()
-                                .unwrap(),
-                        ),
-                        1i8 => Rotation3D::AxisAngle(
-                            axis_angle
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: axis_angle.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone()
-                                .unwrap(),
-                        ),
-                        _ => unreachable!(),
-                    }))
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        Ok(Some(match typ {
+                            0i8 => Rotation3D::Quaternion(
+                                quaternion
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: quaternion.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone()
+                                    .unwrap(),
+                            ),
+                            1i8 => Rotation3D::AxisAngle(
+                                axis_angle
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: axis_angle.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone()
+                                    .unwrap(),
+                            ),
+                            _ => unreachable!(),
+                        }))
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }
