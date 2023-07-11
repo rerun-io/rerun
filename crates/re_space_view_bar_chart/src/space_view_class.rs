@@ -46,6 +46,8 @@ impl SpaceViewClass for BarChartSpaceView {
         layout.layout_job.into()
     }
 
+    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewClassRegistryEntry) {}
+
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         None
     }

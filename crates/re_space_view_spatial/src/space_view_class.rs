@@ -29,6 +29,8 @@ impl SpaceViewClass for SpatialSpaceView {
         state.help_text(re_ui)
     }
 
+    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewClassRegistryEntry) {}
+
     fn preferred_tile_aspect_ratio(&self, state: &Self::State) -> Option<f32> {
         match state.nav_mode.get() {
             SpatialNavigationMode::TwoD => {

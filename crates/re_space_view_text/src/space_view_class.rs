@@ -54,6 +54,8 @@ impl SpaceViewClass for TextSpaceView {
         "Shows text entries over time.\nSelect the Space View for filtering options.".into()
     }
 
+    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewClassRegistryEntry) {}
+
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         Some(2.0) // Make text logs wide
     }

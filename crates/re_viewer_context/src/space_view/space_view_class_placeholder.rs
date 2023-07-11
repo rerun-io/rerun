@@ -1,4 +1,7 @@
-use crate::{SpaceViewClass, SpaceViewClassName, ViewPartSystem, ViewPartSystemCollection};
+use crate::{
+    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryEntry, ViewPartSystem,
+    ViewPartSystemCollection,
+};
 
 /// A placeholder space view class that can be used when the actual class is not registered.
 #[derive(Default)]
@@ -21,6 +24,8 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
     fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &()) -> egui::WidgetText {
         "The Space View Class was not recognized.\nThis happens if either the Blueprint specifies an invalid Space View Class or this version of the Viewer does not know about this type.".into()
     }
+
+    fn on_register(&self, _registry_entry: &mut SpaceViewClassRegistryEntry) {}
 
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
         crate::SpaceViewClassLayoutPriority::Low

@@ -6,7 +6,8 @@ use re_viewer::external::{
     re_ui,
     re_viewer_context::{
         HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
-        SpaceViewClassName, SpaceViewId, SpaceViewState, TypedScene, UiVerbosity, ViewerContext,
+        SpaceViewClassName, SpaceViewClassRegistryEntry, SpaceViewId, SpaceViewState, TypedScene,
+        UiVerbosity, ViewerContext,
     },
 };
 
@@ -91,6 +92,8 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
         "A demo space view that shows colors as coordinates on a 2D plane.".into()
     }
+
+    fn on_register(&self, _registry_entry: &mut SpaceViewClassRegistryEntry) {}
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         // Prefer a square tile if possible.

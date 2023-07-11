@@ -135,6 +135,8 @@ impl SpaceViewClass for TensorSpaceView {
         "Select the Space View to configure which dimensions are shown.".into()
     }
 
+    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewClassRegistryEntry) {}
+
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         None
     }

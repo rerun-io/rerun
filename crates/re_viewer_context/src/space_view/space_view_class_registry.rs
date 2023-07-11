@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use crate::{DynSpaceViewClass, SpaceViewClassName};
+use crate::{DynSpaceViewClass, SpaceViewClassName, ViewContextSystem};
 
 use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
 
@@ -10,12 +10,27 @@ pub enum SpaceViewClassRegistryError {
     DuplicateClassName(SpaceViewClassName),
 }
 
+/// Entry in [`SpaceViewClassRegistry`]
+pub struct SpaceViewClassRegistryEntry {
+    class: Box<dyn DynSpaceViewClass>,
+    context_creators: Vec<Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
+}
+
+impl SpaceViewClassRegistryEntry {
+    /// Registers a new [`ViewContextSystem`] type for this space view class that will be created and executed every frame.
+    ///
+    /// It is not allowed to register a given type more than once.
+    pub fn register_context<T: ViewContextSystem + Default + 'static>(&mut self) {
+        self.context_creators.push(Box::new(|| Box::<T>::default()));
+    }
+}
+
 /// Registry of all known space view types.
 ///
 /// Expected to be populated on viewer startup.
 #[derive(Default)]
 pub struct SpaceViewClassRegistry {
-    registry: HashMap<SpaceViewClassName, Box<dyn DynSpaceViewClass>>,
+    registry: HashMap<SpaceViewClassName, SpaceViewClassRegistryEntry>,
     placeholder: SpaceViewClassPlaceholder,
 }
 
@@ -26,13 +41,17 @@ impl SpaceViewClassRegistry {
     pub fn add<T: DynSpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        let space_view_type = T::default();
-        let type_name = space_view_type.name();
-        if self
-            .registry
-            .insert(type_name, Box::new(space_view_type))
-            .is_some()
-        {
+        let mut entry = SpaceViewClassRegistryEntry {
+            class: Box::<T>::default(),
+            context_creators: Vec::new(),
+        };
+
+        // We can't call on_register on entry.class since we require a mutable reference to entry.
+        // Working around this by creating a new, identical instance of the class.
+        T::default().on_register(&mut entry);
+
+        let type_name = entry.class.name();
+        if self.registry.insert(type_name, entry).is_some() {
             return Err(SpaceViewClassRegistryError::DuplicateClassName(type_name));
         }
 
@@ -41,7 +60,7 @@ impl SpaceViewClassRegistry {
 
     /// Queries a Space View type by class name, returning `None` if it is not registered.
     fn get(&self, name: &SpaceViewClassName) -> Option<&dyn DynSpaceViewClass> {
-        self.registry.get(name).map(|boxed| boxed.as_ref())
+        self.registry.get(name).map(|boxed| boxed.class.as_ref())
     }
 
     /// Queries a Space View type by class name and logs if it fails, returning a placeholder class.
@@ -55,6 +74,6 @@ impl SpaceViewClassRegistry {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &dyn DynSpaceViewClass> {
-        self.registry.values().map(|boxed| boxed.as_ref())
+        self.registry.values().map(|entry| entry.class.as_ref())
     }
 }
