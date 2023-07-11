@@ -76,19 +76,19 @@ def color_native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa
                     data = data.reshape((1, -1))
             array = _numpy_array_to_u32(cast(npt.NDArray[Union[np.uint8, np.float32, np.float64]], data))
     else:
-        data = list(data)
+        data_list = list(data)
 
         # does that array d
         try:
             # try to build a single color with that
             # if we cannot, data must represent an array of colors
-            data = [Color(data)]
+            data_list = [Color(data_list)]  # type: ignore[arg-type]
         except (IndexError, ValueError):
             pass
 
         # Handle heterogeneous sequence of Color-like object, such as Color instances, ints, sub-sequence, etc.
         # Note how this is simplified by the flexible implementation of `Color`, thanks to its converter function and
         # the auto-generated `__int__()` method.
-        array = np.array([Color(datum) for datum in data], np.uint32)
+        array = np.array([Color(datum) for datum in data_list], np.uint32)
 
     return pa.array(array, type=data_type)

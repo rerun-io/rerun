@@ -56,7 +56,6 @@ else:
     Scale3DLike = Any
     Scale3DArrayLike = Any
 
-
 # --- Arrow support ---
 
 

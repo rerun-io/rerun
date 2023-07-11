@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -26,13 +26,9 @@ class Label:
         return str(self.value)
 
 
-if TYPE_CHECKING:
-    LabelLike = Union[Label, str]
+LabelLike = Union[Label, str]
 
-    LabelArrayLike = Union[Label, Sequence[LabelLike], str, Sequence[str]]
-else:
-    LabelLike = Any
-    LabelArrayLike = Any
+LabelArrayLike = Union[Label, Sequence[LabelLike], str, Sequence[str]]
 
 
 # --- Arrow support ---

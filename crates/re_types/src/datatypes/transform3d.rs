@@ -18,7 +18,7 @@
 #[doc = "directly to `Transform3D::child_from_parent` or `Transform3D::parent_from_child`."]
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Transform3D {
-    TranslationAndMat3(crate::datatypes::TranslationAndMat3x3),
+    TranslationAndMat3X3(crate::datatypes::TranslationAndMat3x3),
     TranslationRotationScale(crate::datatypes::TranslationRotationScale3D),
 }
 
@@ -49,7 +49,7 @@ impl crate::Datatype for Transform3D {
         DataType::Union(
             vec![
                 Field {
-                    name: "TranslationAndMat3".to_owned(),
+                    name: "TranslationAndMat3x3".to_owned(),
                     data_type: DataType::Struct(vec![
                         Field {
                             name: "translation".to_owned(),
@@ -82,7 +82,7 @@ impl crate::Datatype for Transform3D {
                         Field {
                             name: "from_parent".to_owned(),
                             data_type: DataType::Boolean,
-                            is_nullable: true,
+                            is_nullable: false,
                             metadata: [].into(),
                         },
                     ]),
@@ -209,7 +209,7 @@ impl crate::Datatype for Transform3D {
                         Field {
                             name: "from_parent".to_owned(),
                             data_type: DataType::Boolean,
-                            is_nullable: true,
+                            is_nullable: false,
                             metadata: [].into(),
                         },
                     ]),
@@ -256,34 +256,36 @@ impl crate::Datatype for Transform3D {
                     data.iter()
                         .flatten()
                         .map(|v| match **v {
-                            Transform3D::TranslationAndMat3(_) => 0i8,
+                            Transform3D::TranslationAndMat3X3(_) => 0i8,
                             Transform3D::TranslationRotationScale(_) => 1i8,
                         })
                         .collect()
                 },
                 vec![
                     {
-                        let (somes, translation_and_mat_3): (Vec<_>, Vec<_>) = data
+                        let (somes, translation_and_mat_3_x_3): (Vec<_>, Vec<_>) = data
                             .iter()
                             .flatten()
-                            .filter(|datum| matches!(***datum, Transform3D::TranslationAndMat3(_)))
+                            .filter(|datum| {
+                                matches!(***datum, Transform3D::TranslationAndMat3X3(_))
+                            })
                             .map(|datum| {
                                 let datum = match &**datum {
-                                    Transform3D::TranslationAndMat3(v) => Some(v.clone()),
+                                    Transform3D::TranslationAndMat3X3(v) => Some(v.clone()),
                                     _ => None,
                                 };
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let translation_and_mat_3_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let translation_and_mat_3_x_3_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = translation_and_mat_3_bitmap;
+                            _ = translation_and_mat_3_x_3_bitmap;
                             _ = extension_wrapper;
                             crate::datatypes::TranslationAndMat3x3::try_to_arrow_opt(
-                                translation_and_mat_3,
+                                translation_and_mat_3_x_3,
                                 None::<&str>,
                             )?
                         }
@@ -318,14 +320,14 @@ impl crate::Datatype for Transform3D {
                     },
                 ],
                 Some({
-                    let mut translation_and_mat_3_offset = 0;
+                    let mut translation_and_mat_3_x_3_offset = 0;
                     let mut translation_rotation_scale_offset = 0;
                     data.iter()
                         .flatten()
                         .map(|v| match **v {
-                            Transform3D::TranslationAndMat3(_) => {
-                                let offset = translation_and_mat_3_offset;
-                                translation_and_mat_3_offset += 1;
+                            Transform3D::TranslationAndMat3X3(_) => {
+                                let offset = translation_and_mat_3_x_3_offset;
+                                translation_and_mat_3_x_3_offset += 1;
                                 offset
                             }
 
@@ -361,7 +363,7 @@ impl crate::Datatype for Transform3D {
                 })?;
             let (data_types, data_arrays, data_offsets) =
                 (data.types(), data.fields(), data.offsets().unwrap());
-            let translation_and_mat_3 = {
+            let translation_and_mat_3_x_3 = {
                 let data = &*data_arrays[0usize];
 
                 crate::datatypes::TranslationAndMat3x3::try_from_arrow_opt(data)?
@@ -382,12 +384,12 @@ impl crate::Datatype for Transform3D {
                     let offset = data_offsets[i];
 
                     Ok(Some(match typ {
-                        0i8 => Transform3D::TranslationAndMat3(
-                            translation_and_mat_3
+                        0i8 => Transform3D::TranslationAndMat3X3(
+                            translation_and_mat_3_x_3
                                 .get(offset as usize)
                                 .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
                                     bounds: (offset as usize, offset as usize),
-                                    len: translation_and_mat_3.len(),
+                                    len: translation_and_mat_3_x_3.len(),
                                     datatype: data.data_type().clone(),
                                 })?
                                 .clone()

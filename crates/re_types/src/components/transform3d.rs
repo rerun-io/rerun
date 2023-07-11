@@ -36,7 +36,7 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
 impl crate::Component for Transform3D {
     #[inline]
     fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.Transform3D")
+        crate::ComponentName::Borrowed("rerun.transform3d")
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -46,7 +46,7 @@ impl crate::Component for Transform3D {
         DataType::Union(
             vec![
                 Field {
-                    name: "TranslationAndMat3".to_owned(),
+                    name: "TranslationAndMat3x3".to_owned(),
                     data_type: DataType::Struct(vec![
                         Field {
                             name: "translation".to_owned(),
@@ -79,7 +79,7 @@ impl crate::Component for Transform3D {
                         Field {
                             name: "from_parent".to_owned(),
                             data_type: DataType::Boolean,
-                            is_nullable: true,
+                            is_nullable: false,
                             metadata: [].into(),
                         },
                     ]),
@@ -206,7 +206,7 @@ impl crate::Component for Transform3D {
                         Field {
                             name: "from_parent".to_owned(),
                             data_type: DataType::Boolean,
-                            is_nullable: true,
+                            is_nullable: false,
                             metadata: [].into(),
                         },
                     ]),

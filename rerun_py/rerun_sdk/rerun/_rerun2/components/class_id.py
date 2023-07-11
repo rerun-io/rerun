@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -31,21 +31,17 @@ class ClassId:
         return int(self.id)
 
 
-if TYPE_CHECKING:
-    ClassIdLike = Union[ClassId, int]
+ClassIdLike = Union[ClassId, int]
 
-    ClassIdArrayLike = Union[
-        ClassId,
-        Sequence[ClassIdLike],
-        int,
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.uint16],
-        npt.NDArray[np.uint32],
-        npt.NDArray[np.uint64],
-    ]
-else:
-    ClassIdLike = Any
-    ClassIdArrayLike = Any
+ClassIdArrayLike = Union[
+    ClassId,
+    Sequence[ClassIdLike],
+    int,
+    npt.NDArray[np.uint8],
+    npt.NDArray[np.uint16],
+    npt.NDArray[np.uint32],
+    npt.NDArray[np.uint64],
+]
 
 
 # --- Arrow support ---

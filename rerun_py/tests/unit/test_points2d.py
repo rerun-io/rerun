@@ -5,7 +5,6 @@ from typing import Optional, cast
 
 import numpy as np
 import pytest
-
 import rerun as rr
 from rerun import cmp as rrc
 from rerun import dt as rrd
@@ -292,7 +291,7 @@ def non_empty(v: object) -> bool:
         np.array((0.0, 0.5, 0.0, 1.0)),
     ],
 )
-def test_point2d_single_color(data: rrc.ColorArrayLike):
+def test_point2d_single_color(data: rrc.ColorArrayLike) -> None:
     pts = rr.Points2D(points=np.zeros((5, 2)), colors=data)
 
     assert pts.colors == rrc.ColorArray.from_similar(rrc.Color([0, 128, 0, 255]))
@@ -318,7 +317,7 @@ def test_point2d_single_color(data: rrc.ColorArrayLike):
         [8388863, 2147483903],
     ],
 )
-def test_point2d_multiple_colors(data: rrc.ColorArrayLike):
+def test_point2d_multiple_colors(data: rrc.ColorArrayLike) -> None:
     pts = rr.Points2D(points=np.zeros((5, 2)), colors=data)
 
     assert pts.colors == rrc.ColorArray.from_similar(

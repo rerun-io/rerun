@@ -15,13 +15,19 @@ table TranslationAndMat3x3 (
   order: 500
 ) {
   /// 3D translation, applied after the matrix.
+  //
+  // NOTE: Nullable rather than defaulting to an identity-like value because we want to be able
+  // to differentiate between no value vs. default value in the backend.
   translation: rerun.datatypes.Vec3D (nullable, order: 100);
 
   /// 3x3 matrix for scale, rotation & shear.
+  //
+  // NOTE: Nullable rather than defaulting to an identity-like value because we want to be able
+  // to differentiate between no value vs. default value in the backend.
   matrix: Mat3x3 (nullable, order: 200);
 
   // TODO(#2641): make this field non-nullable when default values are supported
   /// If true, the transform maps from the parent space to the space where the transform was logged.
   /// Otherwise, the transform maps from the space to its parent.
-  from_parent: bool = false (nullable, order: 300);
+  from_parent: bool = false (order: 300);
 }

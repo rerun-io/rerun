@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -28,16 +28,12 @@ class Mat3x3:
         return np.asarray(self.coeffs, dtype=dtype)
 
 
-if TYPE_CHECKING:
-    Mat3x3Like = Union[Mat3x3, Sequence[float], Sequence[Sequence[float]]]
+Mat3x3Like = Union[Mat3x3, Sequence[float], Sequence[Sequence[float]]]
 
-    Mat3x3ArrayLike = Union[
-        Mat3x3,
-        Sequence[Mat3x3Like],
-    ]
-else:
-    Mat3x3Like = Any
-    Mat3x3ArrayLike = Any
+Mat3x3ArrayLike = Union[
+    Mat3x3,
+    Sequence[Mat3x3Like],
+]
 
 
 # --- Arrow support ---

@@ -26,7 +26,7 @@ pub struct TranslationRotationScale3D {
 
     #[doc = "If true, the transform maps from the parent space to the space where the transform was logged."]
     #[doc = "Otherwise, the transform maps from the space to its parent."]
-    pub from_parent: Option<bool>,
+    pub from_parent: bool,
 }
 
 impl<'a> From<TranslationRotationScale3D> for ::std::borrow::Cow<'a, TranslationRotationScale3D> {
@@ -173,7 +173,7 @@ impl crate::Datatype for TranslationRotationScale3D {
             Field {
                 name: "from_parent".to_owned(),
                 data_type: DataType::Boolean,
-                is_nullable: true,
+                is_nullable: false,
                 metadata: [].into(),
             },
         ])
@@ -332,13 +332,10 @@ impl crate::Datatype for TranslationRotationScale3D {
                         let (somes, from_parent): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { from_parent, .. } = &**datum;
-                                        from_parent.clone()
-                                    })
-                                    .flatten();
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { from_parent, .. } = &**datum;
+                                    from_parent.clone()
+                                });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -474,7 +471,11 @@ impl crate::Datatype for TranslationRotationScale3D {
                                 translation,
                                 rotation,
                                 scale,
-                                from_parent,
+                                from_parent: from_parent.ok_or_else(|| {
+                                    crate::DeserializationError::MissingData {
+                                        datatype: data.data_type().clone(),
+                                    }
+                                })?,
                             })
                         })
                         .transpose()

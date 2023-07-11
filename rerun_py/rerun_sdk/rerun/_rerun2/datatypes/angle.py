@@ -49,7 +49,6 @@ else:
     AngleLike = Any
     AngleArrayLike = Any
 
-
 # --- Arrow support ---
 
 

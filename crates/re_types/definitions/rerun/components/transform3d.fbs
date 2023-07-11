@@ -8,7 +8,7 @@ namespace rerun.components;
 
 /// An affine transform between two 3D spaces, represented in a given direction.
 table Transform3D (
-  //"attr.rerun.legacy_fqname": "rerun.transform3d",
+  "attr.rerun.legacy_fqname": "rerun.transform3d",
   order: 100
 ) {
   /// Representation of the transform.

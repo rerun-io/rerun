@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -12,6 +12,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from ._overrides import rotationaxisangle_angle_converter  # noqa: F401
 
 __all__ = [
     "RotationAxisAngle",
@@ -29,13 +30,6 @@ def _rotationaxisangle_axis_converter(x: datatypes.Vec3DLike) -> datatypes.Vec3D
         return datatypes.Vec3D(x)
 
 
-def _rotationaxisangle_angle_converter(x: datatypes.AngleLike) -> datatypes.Angle:
-    if isinstance(x, datatypes.Angle):
-        return x
-    else:
-        return datatypes.Angle(x)
-
-
 @define
 class RotationAxisAngle:
     """3D rotation represented by a rotation around a given axis."""
@@ -49,22 +43,17 @@ class RotationAxisAngle:
     ignored.
     """
 
-    angle: datatypes.Angle = field(converter=_rotationaxisangle_angle_converter)
+    angle: datatypes.Angle = field(converter=rotationaxisangle_angle_converter)
     """
     How much to rotate around the axis.
     """
 
 
-if TYPE_CHECKING:
-    RotationAxisAngleLike = RotationAxisAngle
-
-    RotationAxisAngleArrayLike = Union[
-        RotationAxisAngle,
-        Sequence[RotationAxisAngleLike],
-    ]
-else:
-    RotationAxisAngleLike = Any
-    RotationAxisAngleArrayLike = Any
+RotationAxisAngleLike = RotationAxisAngle
+RotationAxisAngleArrayLike = Union[
+    RotationAxisAngle,
+    Sequence[RotationAxisAngleLike],
+]
 
 
 # --- Arrow support ---

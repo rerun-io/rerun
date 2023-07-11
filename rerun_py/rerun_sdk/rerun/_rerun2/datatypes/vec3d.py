@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -31,13 +31,9 @@ class Vec3D:
         return np.asarray(self.xyz, dtype=dtype)
 
 
-if TYPE_CHECKING:
-    Vec3DLike = Union[Vec3D, npt.NDArray[Any], Sequence[float]]
+Vec3DLike = Union[Vec3D, npt.NDArray[Any], Sequence[float]]
 
-    Vec3DArrayLike = Union[Vec3D, Sequence[Vec3DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
-else:
-    Vec3DLike = Any
-    Vec3DArrayLike = Any
+Vec3DArrayLike = Union[Vec3D, Sequence[Vec3DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
 
 
 # --- Arrow support ---

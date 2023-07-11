@@ -43,7 +43,6 @@ else:
     Rotation3DLike = Any
     Rotation3DArrayLike = Any
 
-
 # --- Arrow support ---
 
 

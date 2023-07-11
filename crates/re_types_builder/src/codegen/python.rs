@@ -441,21 +441,41 @@ impl QuotedObject {
                 field_converters.insert(field.fqname.clone(), converter);
             }
 
+            // init override handling
+            let override_name = format!("{}_init", name.to_lowercase());
+            let (init_define_arg, init_func) = if overrides.contains(&override_name) {
+                ("init=False".to_owned(), override_name)
+            } else {
+                (String::new(), String::new())
+            };
+
+            if !init_func.is_empty() {
+                code.push_text(format!("__init__ = {init_func}"), 2, 4);
+            }
+
             let superclass = match *kind {
                 ObjectKind::Archetype => "(Archetype)",
                 ObjectKind::Component | ObjectKind::Datatype => "",
             };
 
             let define_args = if *kind == ObjectKind::Archetype {
-                "(str=False, repr=False)"
+                format!(
+                    "str=False, repr=False{}{init_define_arg}",
+                    if init_define_arg.is_empty() { "" } else { ", " }
+                )
             } else {
-                ""
+                init_define_arg
+            };
+
+            let define_args = if !define_args.is_empty() {
+                format!("({define_args})")
+            } else {
+                define_args
             };
 
             code.push_unindented_text(
                 format!(
                     r#"
-
                 @define{define_args}
                 class {name}{superclass}:
                 "#
@@ -465,10 +485,22 @@ impl QuotedObject {
 
             code.push_text(quote_doc_from_docs(docs), 0, 4);
 
+            if !init_func.is_empty() {
+                code.push_text(
+                    "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
+                    1,
+                    4,
+                );
+                code.push_text(format!("{init_func}(self, *args, **kwargs)"), 2, 8);
+            }
+
             // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
             // complains.
-            // TODO(ab): if we ever support fields with default values, they should be sorted with
-            //           the nullable fields
+            // TODO(ab): this is required because fields without default should appear before fields
+            //  with default. Now, `TranslationXXX.from_parent` *should* have a default value,
+            //  and appear at the end of the list, but it currently doesn't. This is unfortunate as
+            //  the apparent field order is inconsistent with what the `xxxx_init()` override
+            //  accepts.
             let fields_in_order = fields
                 .iter()
                 .filter(|field| !field.is_nullable)
@@ -847,46 +879,31 @@ fn quote_aliases_from_object(obj: &Object) -> String {
 
     let mut code = String::new();
 
-    code.push_unindented_text("if TYPE_CHECKING:", 1);
-
-    code.push_text(
+    code.push_unindented_text(
         &if let Some(aliases) = aliases {
             format!(
                 r#"
-{name}Like = Union[
-    {name},
-    {aliases}
-]
-"#,
+                {name}Like = Union[
+                    {name},
+                    {aliases}
+                ]
+                "#,
             )
         } else {
             format!("{name}Like = {name}")
         },
         1,
-        4,
-    );
-
-    code.push_text(
-        format!(
-            r#"
-{name}ArrayLike = Union[
-    {name},
-    Sequence[{name}Like],
-    {array_aliases}
-]
-"#,
-        ),
-        0,
-        4,
     );
 
     code.push_unindented_text(
         format!(
             r#"
-        else:
-            {name}Like = Any
-            {name}ArrayLike = Any
-        "#
+            {name}ArrayLike = Union[
+                {name},
+                Sequence[{name}Like],
+                {array_aliases}
+            ]
+            "#,
         ),
         0,
     );
@@ -909,56 +926,28 @@ fn quote_union_aliases_from_object<'a>(
 
     let name = &obj.name;
 
-    let union_fields = field_types.join(",\n");
+    let union_fields = field_types.join(",");
     let aliases = if let Some(aliases) = aliases {
         aliases
     } else {
         String::new()
     };
 
-    // TODO(cmc): help, please fix this mess :)
-
-    // unindent::unindent(&format!(
-    //     "
-    //     if TYPE_CHECKING:
-    //         from .. import datatypes
-    //
-    //         {name}Like = Union[
-    //             {name},
-    //             {union_fields},
-    //             {aliases}
-    //         ]
-    //         {name}ArrayLike = Union[
-    //             {name},
-    //             {union_fields},
-    //             Sequence[{name}Like],
-    //             {array_aliases}
-    //         ]
-    //     else:
-    //         {name}Like = Any
-    //         {name}ArrayLike = Any
-    //     ",
-    // ))
-
-    format!(
-        "
-if TYPE_CHECKING:
-    {name}Like = Union[
-        {name},
-        {union_fields},
-        {aliases}
-    ]
-    {name}ArrayLike = Union[
-        {name},
-        {union_fields},
-        Sequence[{name}Like],
-        {array_aliases}
-    ]
-else:
-    {name}Like = Any
-    {name}ArrayLike = Any
-        ",
-    )
+    unindent::unindent(&format!(
+        r#"
+            if TYPE_CHECKING:
+                {name}Like = Union[
+                    {name},{union_fields},{aliases}
+                ]
+                {name}ArrayLike = Union[
+                    {name},{union_fields},
+                    Sequence[{name}Like],{array_aliases}
+                ]
+            else:
+                {name}Like = Any
+                {name}ArrayLike = Any
+            "#,
+    ))
 }
 
 fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {

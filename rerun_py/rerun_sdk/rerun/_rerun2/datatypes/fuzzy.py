@@ -66,16 +66,11 @@ class FlattenedScalar:
         return float(self.value)
 
 
-if TYPE_CHECKING:
-    FlattenedScalarLike = FlattenedScalar
-
-    FlattenedScalarArrayLike = Union[
-        FlattenedScalar,
-        Sequence[FlattenedScalarLike],
-    ]
-else:
-    FlattenedScalarLike = Any
-    FlattenedScalarArrayLike = Any
+FlattenedScalarLike = FlattenedScalar
+FlattenedScalarArrayLike = Union[
+    FlattenedScalar,
+    Sequence[FlattenedScalarLike],
+]
 
 
 # --- Arrow support ---
@@ -125,16 +120,11 @@ class AffixFuzzer1:
     from_parent: bool | None = field(default=None, converter=bool_or_none)
 
 
-if TYPE_CHECKING:
-    AffixFuzzer1Like = AffixFuzzer1
-
-    AffixFuzzer1ArrayLike = Union[
-        AffixFuzzer1,
-        Sequence[AffixFuzzer1Like],
-    ]
-else:
-    AffixFuzzer1Like = Any
-    AffixFuzzer1ArrayLike = Any
+AffixFuzzer1Like = AffixFuzzer1
+AffixFuzzer1ArrayLike = Union[
+    AffixFuzzer1,
+    Sequence[AffixFuzzer1Like],
+]
 
 
 # --- Arrow support ---
@@ -186,16 +176,11 @@ class AffixFuzzer2:
         return np.asarray(self.single_float_optional, dtype=dtype)
 
 
-if TYPE_CHECKING:
-    AffixFuzzer2Like = AffixFuzzer2
-
-    AffixFuzzer2ArrayLike = Union[
-        AffixFuzzer2,
-        Sequence[AffixFuzzer2Like],
-    ]
-else:
-    AffixFuzzer2Like = Any
-    AffixFuzzer2ArrayLike = Any
+AffixFuzzer2Like = AffixFuzzer2
+AffixFuzzer2ArrayLike = Union[
+    AffixFuzzer2,
+    Sequence[AffixFuzzer2Like],
+]
 
 
 # --- Arrow support ---
@@ -250,7 +235,6 @@ if TYPE_CHECKING:
 else:
     AffixFuzzer3Like = Any
     AffixFuzzer3ArrayLike = Any
-
 
 # --- Arrow support ---
 
@@ -358,7 +342,6 @@ if TYPE_CHECKING:
 else:
     AffixFuzzer4Like = Any
     AffixFuzzer4ArrayLike = Any
-
 
 # --- Arrow support ---
 
@@ -590,16 +573,11 @@ class AffixFuzzer5:
     )
 
 
-if TYPE_CHECKING:
-    AffixFuzzer5Like = AffixFuzzer5
-
-    AffixFuzzer5ArrayLike = Union[
-        AffixFuzzer5,
-        Sequence[AffixFuzzer5Like],
-    ]
-else:
-    AffixFuzzer5Like = Any
-    AffixFuzzer5ArrayLike = Any
+AffixFuzzer5Like = AffixFuzzer5
+AffixFuzzer5ArrayLike = Union[
+    AffixFuzzer5,
+    Sequence[AffixFuzzer5Like],
+]
 
 
 # --- Arrow support ---

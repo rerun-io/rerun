@@ -120,8 +120,7 @@ def test_translation_rotation_rotation(input: rr.dt.Rotation3DLike) -> None:
 
 
 def test_translation_rotation_from_parent() -> None:
-    # TODO(#2641): default should be False, not None
-    assert rr.dt.TranslationRotationScale3D().from_parent is None
+    assert not rr.dt.TranslationRotationScale3D().from_parent
     assert rr.dt.TranslationRotationScale3D(from_parent=True).from_parent
     assert not rr.dt.TranslationRotationScale3D(from_parent=False).from_parent
 
@@ -141,8 +140,7 @@ def test_translation_and_mat3x3(trans: rr.dt.Vec3DLike | None, mat: rr.dt.Mat3x3
 
 
 def test_translation_and_mat3x3_from_parent() -> None:
-    # TODO(#2641): default should be False, not None
-    assert rr.dt.TranslationAndMat3x3().from_parent is None
+    assert not rr.dt.TranslationAndMat3x3().from_parent
     assert rr.dt.TranslationAndMat3x3(from_parent=True).from_parent
     assert not rr.dt.TranslationAndMat3x3(from_parent=False).from_parent
 

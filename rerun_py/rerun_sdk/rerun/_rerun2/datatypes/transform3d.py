@@ -23,7 +23,7 @@ class Transform3D:
 
     inner: Union[datatypes.TranslationAndMat3x3, datatypes.TranslationRotationScale3D] = field()
     """
-    TranslationAndMat3 (datatypes.TranslationAndMat3x3):
+    TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):
 
     TranslationRotationScale (datatypes.TranslationRotationScale3D):
     """
@@ -45,7 +45,6 @@ else:
     Transform3DLike = Any
     Transform3DArrayLike = Any
 
-
 # --- Arrow support ---
 
 
@@ -56,14 +55,14 @@ class Transform3DType(BaseExtensionType):
             pa.dense_union(
                 [
                     pa.field(
-                        "TranslationAndMat3",
+                        "TranslationAndMat3x3",
                         pa.struct(
                             [
                                 pa.field(
                                     "translation", pa.list_(pa.field("item", pa.float32(), False, {}), 3), True, {}
                                 ),
                                 pa.field("matrix", pa.list_(pa.field("item", pa.float32(), False, {}), 9), True, {}),
-                                pa.field("from_parent", pa.bool_(), True, {}),
+                                pa.field("from_parent", pa.bool_(), False, {}),
                             ]
                         ),
                         False,
@@ -133,7 +132,7 @@ class Transform3DType(BaseExtensionType):
                                     True,
                                     {},
                                 ),
-                                pa.field("from_parent", pa.bool_(), True, {}),
+                                pa.field("from_parent", pa.bool_(), False, {}),
                             ]
                         ),
                         False,

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Tuple, Union
+from typing import Any, Sequence, Tuple, Union
 
-import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
@@ -29,20 +28,16 @@ class Point2D:
         return point2d_as_array(self, dtype=dtype)
 
 
-if TYPE_CHECKING:
-    Point2DLike = Union[Point2D, Sequence[float]]
+Point2DLike = Union[Point2D, Sequence[float]]
 
-    Point2DArrayLike = Union[
-        Point2D,
-        Sequence[Point2DLike],
-        npt.NDArray[np.float32],
-        Sequence[npt.NDArray[np.float32]],
-        Sequence[Tuple[float, float]],
-        Sequence[float],
-    ]
-else:
-    Point2DLike = Any
-    Point2DArrayLike = Any
+Point2DArrayLike = Union[
+    Point2D,
+    Sequence[Point2DLike],
+    npt.NDArray[Any],
+    Sequence[npt.NDArray[Any]],
+    Sequence[Tuple[float, float]],
+    Sequence[float],
+]
 
 
 # --- Arrow support ---

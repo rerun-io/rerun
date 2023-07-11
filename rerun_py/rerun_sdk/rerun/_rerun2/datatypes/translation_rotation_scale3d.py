@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -12,9 +12,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from .._converters import (
-    bool_or_none,
-)
+from ._overrides import translationrotationscale3d_init  # noqa: F401
 
 __all__ = [
     "TranslationRotationScale3D",
@@ -52,9 +50,18 @@ def _translationrotationscale3d_scale_converter(x: datatypes.Scale3DLike | None)
         return datatypes.Scale3D(x)
 
 
-@define
+@define(init=False)
 class TranslationRotationScale3D:
     """Representation of an affine transform via separate translation, rotation & scale."""
+
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        translationrotationscale3d_init(self, *args, **kwargs)
+
+    from_parent: bool = field(converter=bool)
+    """
+    If true, the transform maps from the parent space to the space where the transform was logged.
+    Otherwise, the transform maps from the space to its parent.
+    """
 
     translation: datatypes.Vec3D | None = field(
         default=None, converter=_translationrotationscale3d_translation_converter
@@ -75,23 +82,12 @@ class TranslationRotationScale3D:
     3D scale, applied first.
     """
 
-    from_parent: bool | None = field(default=None, converter=bool_or_none)
-    """
-    If true, the transform maps from the parent space to the space where the transform was logged.
-    Otherwise, the transform maps from the space to its parent.
-    """
 
-
-if TYPE_CHECKING:
-    TranslationRotationScale3DLike = TranslationRotationScale3D
-
-    TranslationRotationScale3DArrayLike = Union[
-        TranslationRotationScale3D,
-        Sequence[TranslationRotationScale3DLike],
-    ]
-else:
-    TranslationRotationScale3DLike = Any
-    TranslationRotationScale3DArrayLike = Any
+TranslationRotationScale3DLike = TranslationRotationScale3D
+TranslationRotationScale3DArrayLike = Union[
+    TranslationRotationScale3D,
+    Sequence[TranslationRotationScale3DLike],
+]
 
 
 # --- Arrow support ---
@@ -153,7 +149,7 @@ class TranslationRotationScale3DType(BaseExtensionType):
                         True,
                         {},
                     ),
-                    pa.field("from_parent", pa.bool_(), True, {}),
+                    pa.field("from_parent", pa.bool_(), False, {}),
                 ]
             ),
             "rerun.datatypes.TranslationRotationScale3D",
