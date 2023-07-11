@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A Quaternion represented by 4 real numbers.
+//
+// Expectations:
+struct Quaternion (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.rust.tuple_struct",
+  order: 100
+) {
+  xyzw: [float: 4] (order: 100);
+}

@@ -3,8 +3,11 @@
 #![allow(trivial_numeric_casts)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
@@ -14,7 +17,7 @@
 #[doc = "`KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`."]
 #[doc = ""]
 #[doc = "Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`."]
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeypointId(pub u16);
 
 impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {

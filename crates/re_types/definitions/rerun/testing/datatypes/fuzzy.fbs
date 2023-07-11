@@ -34,6 +34,7 @@ table AffixFuzzer1 (
   many_strings_optional: [string] (nullable, order: 106);
   flattened_scalar: VeryDeeplyFlattenedScalar (order: 107, transparent);
   almost_flattened_scalar: SurprisinglyShallowScalar (order: 108, transparent);
+  from_parent: bool = false (nullable, order: 109);
 }
 
 table __AffixFuzzer1Vec (transparent, order: 0) {
@@ -73,4 +74,11 @@ union AffixFuzzer4 (
   single_required: __AffixFuzzer3 (transparent, order: 100),
   many_required: __AffixFuzzer3Vec (transparent, order: 101),
   many_optional: __AffixFuzzer3Vec (transparent, order: 102, nullable),
+}
+
+table AffixFuzzer5 (
+  "attr.rust.derive": "PartialEq",
+  order: 500
+) {
+  single_optional_union: AffixFuzzer4 (order: 100, nullable);
 }

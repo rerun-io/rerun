@@ -4956,6 +4956,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_transform3d"
+version = "0.8.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "run_wasm"
 version = "0.8.0-alpha.2"
 dependencies = [

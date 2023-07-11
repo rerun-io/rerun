@@ -3,8 +3,11 @@
 #![allow(trivial_numeric_casts)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
@@ -16,7 +19,7 @@
 #[doc = "Within an entity draw order is governed by the order of the components."]
 #[doc = ""]
 #[doc = "Draw order for entities with the same draw order is generally undefined."]
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Debug, Copy)]
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);
 

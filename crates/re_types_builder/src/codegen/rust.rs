@@ -4,6 +4,7 @@ use std::{collections::HashMap, io::Write};
 
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
+use convert_case::{Case, Casing as _};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -117,15 +118,21 @@ fn create_files(
             .unwrap();
 
         let mut code = String::new();
-        code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
-        code.push_text("#![allow(trivial_numeric_casts)]", 2, 0);
-        code.push_text("#![allow(unused_parens)]", 2, 0);
-        code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
-        code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
-        code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
-        code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
-        code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
-        code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
+        #[rustfmt::skip]
+        {
+            code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
+            code.push_text("#![allow(trivial_numeric_casts)]", 2, 0);
+            code.push_text("#![allow(unused_parens)]", 2, 0);
+            code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
+            code.push_text("#![allow(clippy::iter_on_single_items)]", 2, 0);
+            code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
+            code.push_text("#![allow(clippy::match_wildcard_for_single_variants)]", 2, 0);
+            code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
+            code.push_text("#![allow(clippy::redundant_closure)]", 2, 0);
+            code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
+            code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
+            code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
+        };
 
         for obj in objs {
             let mut acc = TokenStream::new();
@@ -239,6 +246,7 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
+        let quoted_derive_clone_debug = quote_derive_clone_debug();
         let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
 
@@ -259,6 +267,7 @@ impl QuotedObject {
 
         let tokens = quote! {
             #quoted_doc
+            #quoted_derive_clone_debug
             #quoted_derive_clause
             #quoted_repr_clause
             #quoted_struct
@@ -300,6 +309,7 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
+        let quoted_derive_clone_debug = quote_derive_clone_debug();
         let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
 
@@ -319,7 +329,6 @@ impl QuotedObject {
                 datatype: _,
             } = obj_field;
 
-            use convert_case::{Case, Casing};
             let name = format_ident!("{}", name.to_case(Case::UpperCamel));
 
             let quoted_doc = quote_doc_from_docs(docs);
@@ -340,6 +349,7 @@ impl QuotedObject {
 
         let tokens = quote! {
             #quoted_doc
+            #quoted_derive_clone_debug
             #quoted_derive_clause
             #quoted_repr_clause
             pub enum #name {
@@ -497,15 +507,14 @@ impl quote::ToTokens for &ElementType {
     }
 }
 
+fn quote_derive_clone_debug() -> TokenStream {
+    quote!(#[derive(Clone, Debug)])
+}
+
 fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenStream {
     let quoted = obj
         .try_get_attr::<String>(attr)
         .map(|what| {
-            let what = if clause == "derive" {
-                format!("Debug, Clone, {what}")
-            } else {
-                what
-            };
             syn::parse_str::<syn::MetaList>(&format!("{clause}({what})"))
                 .with_context(|| format!("illegal meta clause: {what:?}"))
                 .unwrap()
@@ -553,7 +562,7 @@ fn quote_trait_impls_from_obj(
                 .unwrap_or_else(|| fqname.clone());
 
             let quoted_serializer =
-                quote_arrow_serializer(arrow_registry, obj, &format_ident!("data"));
+                quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
             let quoted_deserializer =
                 quote_arrow_deserializer(arrow_registry, objects, obj, &format_ident!("data"));
 
@@ -1063,6 +1072,7 @@ fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
 
 fn quote_arrow_serializer(
     arrow_registry: &ArrowRegistry,
+    objects: &Objects,
     obj: &Object,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
@@ -1126,6 +1136,7 @@ fn quote_arrow_serializer(
         };
 
         let quoted_serializer = quote_arrow_field_serializer(
+            objects,
             Some(obj.fqname.as_str()),
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
@@ -1170,6 +1181,7 @@ fn quote_arrow_serializer(
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
                     let quoted_serializer = quote_arrow_field_serializer(
+                        objects,
                         None,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
@@ -1226,10 +1238,11 @@ fn quote_arrow_serializer(
             }
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
-                    let data_dst = format_ident!("{}", obj_field.name);
+                    let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
                     let quoted_serializer = quote_arrow_field_serializer(
+                        objects,
                         None,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
@@ -1241,10 +1254,7 @@ fn quote_arrow_serializer(
                     let quoted_bitmap = quoted_bitmap(bitmap_dst);
 
                     let quoted_obj_name = format_ident!("{}", obj.name);
-                    let quoted_obj_field_name = {
-                        use convert_case::{Case, Casing};
-                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                    };
+                    let quoted_obj_field_name = format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
                     quote! {{
                         let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
@@ -1272,10 +1282,8 @@ fn quote_arrow_serializer(
                     let quoted_obj_name = format_ident!("{}", obj.name);
                     let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
                         let i = i as i8;
-                        let quoted_obj_field_name = {
-                            use convert_case::{Case, Casing};
-                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                        };
+                        let quoted_obj_field_name =
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
                         quote!(#quoted_obj_name::#quoted_obj_field_name(_) => #i)
                     });
 
@@ -1294,16 +1302,16 @@ fn quote_arrow_serializer(
                     let quoted_obj_name = format_ident!("{}", obj.name);
 
                     let quoted_counters = obj.fields.iter().map(|obj_field| {
-                        let quoted_obj_field_name = format_ident!("{}_offset", obj_field.name);
+                        let quoted_obj_field_name =
+                            format_ident!("{}_offset", obj_field.name.to_case(Case::Snake));
                         quote!(let mut #quoted_obj_field_name = 0)
                     });
 
                     let quoted_branches = obj.fields.iter().map(|obj_field| {
-                        let quoted_counter_name = format_ident!("{}_offset", obj_field.name);
-                        let quoted_obj_field_name = {
-                            use convert_case::{Case, Casing};
-                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                        };
+                        let quoted_counter_name =
+                            format_ident!("{}_offset", obj_field.name.to_case(Case::Snake));
+                        let quoted_obj_field_name =
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
                         quote! {
                             #quoted_obj_name::#quoted_obj_field_name(_) => {
                                 let offset = #quoted_counter_name;
@@ -1348,6 +1356,7 @@ fn quote_arrow_serializer(
 }
 
 fn quote_arrow_field_serializer(
+    objects: &Objects,
     extension_wrapper: Option<&str>,
     datatype: &DataType,
     is_nullable: bool,
@@ -1391,6 +1400,18 @@ fn quote_arrow_field_serializer(
             }
         }
 
+        DataType::Boolean => {
+            quote! {
+                BooleanArray::new(
+                    #quoted_datatype,
+                    // NOTE: We need values for all slots, regardless of what the bitmap says,
+                    // hence `unwrap_or_default`.
+                    #data_src.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                    #bitmap_src,
+                ).boxed()
+            }
+        }
+
         DataType::Utf8 => {
             quote! {{
                 // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
@@ -1415,12 +1436,47 @@ fn quote_arrow_field_serializer(
             let quoted_inner_bitmap = format_ident!("{data_src}_inner_bitmap");
 
             let quoted_inner = quote_arrow_field_serializer(
+                objects,
                 extension_wrapper,
                 inner_datatype,
                 inner.is_nullable,
                 &quoted_inner_bitmap,
                 &quoted_inner_data,
             );
+
+            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+                Some(objects.get(fqname))
+            } else {
+                None
+            };
+            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+
+            let quoted_transparent_mapping = if inner_is_arrow_transparent {
+                let inner_obj = inner_obj.as_ref().unwrap();
+                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
+                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+                let quoted_data_dst = format_ident!(
+                    "{}",
+                    if is_tuple_struct {
+                        "data0"
+                    } else {
+                        inner_obj.fields[0].name.as_str()
+                    }
+                );
+                let quoted_binding = if is_tuple_struct {
+                    quote!(#quoted_inner_obj_type(#quoted_data_dst))
+                } else {
+                    quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                };
+                quote! {
+                    .map(|datum| {
+                        let #quoted_binding = datum;
+                        #quoted_data_dst
+                    })
+                }
+            } else {
+                quote!()
+            };
 
             let quoted_create = if let DataType::List(_) = datatype {
                 quote! {
@@ -1456,6 +1512,7 @@ fn quote_arrow_field_serializer(
                     // NOTE: Flattening to remove the guaranteed layer of nullability, we don't care
                     // about it while building the backing buffer.
                     .flatten()
+                    #quoted_transparent_mapping
                     // NOTE: Flattening yet again since we have to deconstruct the inner list.
                     .flatten()
                     .map(ToOwned::to_owned)
@@ -1464,10 +1521,8 @@ fn quote_arrow_field_serializer(
                     .map(Some)
                     .collect();
 
-                let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = #quoted_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| #quoted_inner_data.iter().map(|v| v.is_some()).collect())
-                };
+                // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
+                let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
 
                 #quoted_create
             }}
@@ -1492,7 +1547,7 @@ fn quote_arrow_field_serializer(
 
 fn quote_arrow_deserializer(
     arrow_registry: &ArrowRegistry,
-    _objects: &Objects,
+    objects: &Objects,
     obj: &Object,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
@@ -1517,6 +1572,7 @@ fn quote_arrow_deserializer(
         );
 
         let quoted_deserializer = quote_arrow_field_deserializer(
+            objects,
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
             &data_src,
@@ -1560,6 +1616,7 @@ fn quote_arrow_deserializer(
                     let data_dst = format_ident!("{}", obj_field.name);
 
                     let quoted_deserializer = quote_arrow_field_deserializer(
+                        objects,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
                         &data_src,
@@ -1633,9 +1690,10 @@ fn quote_arrow_deserializer(
 
                 let quoted_field_deserializers =
                     obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                        let data_dst = format_ident!("{}", obj_field.name);
+                        let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
 
                         let quoted_deserializer = quote_arrow_field_deserializer(
+                            objects,
                             &arrow_registry.get(&obj_field.fqname),
                             obj_field.is_nullable,
                             &data_src,
@@ -1652,11 +1710,10 @@ fn quote_arrow_deserializer(
                 let quoted_obj_name = format_ident!("{}", obj.name);
                 let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
                     let i = i as i8;
-                    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
-                    let quoted_obj_field_type = {
-                        use convert_case::{Case, Casing};
-                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                    };
+                    let quoted_obj_field_name =
+                        format_ident!("{}", obj_field.name.to_case(Case::Snake));
+                    let quoted_obj_field_type =
+                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
                     let quoted_unwrap = if obj_field.is_nullable {
                         quote!()
@@ -1716,6 +1773,7 @@ fn quote_arrow_deserializer(
 }
 
 fn quote_arrow_field_deserializer(
+    objects: &Objects,
     datatype: &DataType,
     is_nullable: bool,
     data_src: &proc_macro2::Ident,
@@ -1732,16 +1790,22 @@ fn quote_arrow_field_deserializer(
         | DataType::UInt64
         | DataType::Float16
         | DataType::Float32
-        | DataType::Float64 => {
+        | DataType::Float64
+        | DataType::Boolean => {
             let arrow_type = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
             let arrow_type = format_ident!("{arrow_type}Array");
+            let quoted_map_copy = if *datatype.to_logical_type() == DataType::Boolean {
+                quote!()
+            } else {
+                quote!(.map(|v| v.copied()))
+            };
             quote! {
                 #data_src
                     .as_any()
                     .downcast_ref::<#arrow_type>()
                     .unwrap() // safe
                     .into_iter()
-                    .map(|v| v.copied())
+                    #quoted_map_copy
             }
         }
 
@@ -1760,14 +1824,46 @@ fn quote_arrow_field_deserializer(
             let inner_datatype = inner.data_type();
             let quoted_inner_datatype = ArrowDataTypeTokenizer(inner_datatype);
 
-            let quoted_inner =
-                quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
+            let quoted_inner = quote_arrow_field_deserializer(
+                objects,
+                inner_datatype,
+                inner.is_nullable,
+                data_src,
+            );
+
+            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+                Some(objects.get(fqname))
+            } else {
+                None
+            };
+            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+
+            let quoted_transparent_unmapping = if inner_is_arrow_transparent {
+                let inner_obj = inner_obj.as_ref().unwrap();
+                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
+                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+                let quoted_data_dst = format_ident!(
+                    "{}",
+                    if is_tuple_struct {
+                        "data0"
+                    } else {
+                        inner_obj.fields[0].name.as_str()
+                    }
+                );
+                if is_tuple_struct {
+                    quote!(.map(|res| res.map(|opt| opt.map(|v| #quoted_inner_obj_type(v)))))
+                } else {
+                    quote!(.map(|res| res.map(|opt| opt.map(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst }))))
+                }
+            } else {
+                quote!()
+            };
 
             quote! {{
                 let datatype = #data_src.data_type();
                 let #data_src = #data_src
                     .as_any()
-                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                     .unwrap(); // safe
 
                 let bitmap = #data_src.validity().cloned();
@@ -1800,6 +1896,7 @@ fn quote_arrow_field_deserializer(
                             })
                         }).transpose()
                     )
+                    #quoted_transparent_unmapping
                     // NOTE: implicit Vec<Result> to Result<Vec>
                     .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                     .into_iter()
@@ -1810,8 +1907,12 @@ fn quote_arrow_field_deserializer(
             let inner_datatype = inner.data_type();
             let quoted_inner_datatype = ArrowDataTypeTokenizer(inner_datatype);
 
-            let quoted_inner =
-                quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
+            let quoted_inner = quote_arrow_field_deserializer(
+                objects,
+                inner_datatype,
+                inner.is_nullable,
+                data_src,
+            );
 
             quote! {{
                 let datatype = #data_src.data_type();

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -37,11 +37,19 @@ class Color:
         return int(self.rgba)
 
 
-ColorLike = Union[Color, int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]
+if TYPE_CHECKING:
+    ColorLike = Union[Color, int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]
 
-ColorArrayLike = Union[
-    Color, Sequence[ColorLike], Sequence[Sequence[int]], npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]]
-]
+    ColorArrayLike = Union[
+        Color,
+        Sequence[ColorLike],
+        int,
+        Sequence[Sequence[int]],
+        npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]],
+    ]
+else:
+    ColorLike = Any
+    ColorArrayLike = Any
 
 
 # --- Arrow support ---

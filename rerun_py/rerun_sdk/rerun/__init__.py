@@ -63,7 +63,7 @@ if ENABLE_NEXT_GEN_API:
     # we bring them in the `rr.cmp` and `rr.dt` sub-namespaces, respectively.
     from ._rerun2 import components as cmp
     from ._rerun2 import datatypes as dt
-    from ._rerun2.archetypes import *
+    from ._rerun2.archetypes import *  # type: ignore[assignment]
     from ._rerun2.log_any import log_any
 
 

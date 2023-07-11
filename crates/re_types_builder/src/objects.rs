@@ -124,15 +124,16 @@ impl Objects {
             .filter(|(_, obj)| !obj.is_transparent())
             .collect();
 
-        // Check for nullable unions -- these cannot be represented in Arrow!
+        // Check for top-level nullable unions -- these cannot be represented in Arrow!
         for obj in this.objects.values() {
             for field in &obj.fields {
-                if !field.is_nullable {
+                if !obj.is_arrow_transparent() || !field.is_nullable {
                     continue;
                 }
 
                 if let Type::Object(fqname) = &field.typ {
                     let target = &this.objects[fqname];
+
                     assert!(
                         !(target.is_enum() || target.is_union()),
                         "nullable unions cannot be represented in Arrow, found one at {:?}",

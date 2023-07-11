@@ -3,8 +3,11 @@
 #![allow(trivial_numeric_casts)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
@@ -38,7 +41,7 @@
 #[doc = "   Ok(())"]
 #[doc = "}"]
 #[doc = "```"]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Points2D {
     #[doc = "All the actual 2D points that make up the point cloud."]
     pub points: Vec<crate::components::Point2D>,

@@ -20,7 +20,7 @@ namespace rerun.components;
 /// \rs Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`.
 struct KeypointId (
   "attr.python.aliases": "float",
-  "attr.python.array_aliases": "npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]",
+  "attr.python.array_aliases": "float, npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]",
   "attr.rerun.legacy_fqname": "rerun.keypoint_id",
   "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.tuple_struct",

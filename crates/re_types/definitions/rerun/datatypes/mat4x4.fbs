@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A 4x4 column-major Matrix.
+struct Mat4x4 (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "Sequence[float], Sequence[Sequence[float]]",
+  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  "attr.rust.tuple_struct",
+  order: 600
+) {
+  /// \py: matrix coefficients in column-major order
+  coeffs: [float32: 16] (order: 100);
+}

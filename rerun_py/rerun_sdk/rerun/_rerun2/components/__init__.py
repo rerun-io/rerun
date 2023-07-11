@@ -70,12 +70,15 @@ from .fuzzy import (
     AffixFuzzer18ArrayLike,
     AffixFuzzer18Like,
     AffixFuzzer18Type,
+    AffixFuzzer19Array,
+    AffixFuzzer19Type,
 )
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
 from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
 from .point2d import Point2DArray, Point2DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
+from .transform3d import Transform3DArray, Transform3DType
 
 __all__ = [
     "AffixFuzzer10",
@@ -115,6 +118,8 @@ __all__ = [
     "AffixFuzzer18ArrayLike",
     "AffixFuzzer18Like",
     "AffixFuzzer18Type",
+    "AffixFuzzer19Array",
+    "AffixFuzzer19Type",
     "AffixFuzzer1Array",
     "AffixFuzzer1Type",
     "AffixFuzzer2Array",
@@ -179,4 +184,6 @@ __all__ = [
     "RadiusArrayLike",
     "RadiusLike",
     "RadiusType",
+    "Transform3DArray",
+    "Transform3DType",
 ]

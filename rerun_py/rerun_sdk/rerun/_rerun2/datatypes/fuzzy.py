@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -39,6 +39,11 @@ __all__ = [
     "AffixFuzzer4ArrayLike",
     "AffixFuzzer4Like",
     "AffixFuzzer4Type",
+    "AffixFuzzer5",
+    "AffixFuzzer5Array",
+    "AffixFuzzer5ArrayLike",
+    "AffixFuzzer5Like",
+    "AffixFuzzer5Type",
     "FlattenedScalar",
     "FlattenedScalarArray",
     "FlattenedScalarArrayLike",
@@ -58,11 +63,16 @@ class FlattenedScalar:
         return float(self.value)
 
 
-FlattenedScalarLike = FlattenedScalar
-FlattenedScalarArrayLike = Union[
-    FlattenedScalar,
-    Sequence[FlattenedScalarLike],
-]
+if TYPE_CHECKING:
+    FlattenedScalarLike = FlattenedScalar
+
+    FlattenedScalarArrayLike = Union[
+        FlattenedScalar,
+        Sequence[FlattenedScalarLike],
+    ]
+else:
+    FlattenedScalarLike = Any
+    FlattenedScalarArrayLike = Any
 
 
 # --- Arrow support ---
@@ -100,13 +110,19 @@ class AffixFuzzer1:
     single_string_optional: str | None = field(default=None)
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
     many_strings_optional: list[str] | None = field(default=None)
+    from_parent: bool | None = field(default=None)
 
 
-AffixFuzzer1Like = AffixFuzzer1
-AffixFuzzer1ArrayLike = Union[
-    AffixFuzzer1,
-    Sequence[AffixFuzzer1Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer1Like = AffixFuzzer1
+
+    AffixFuzzer1ArrayLike = Union[
+        AffixFuzzer1,
+        Sequence[AffixFuzzer1Like],
+    ]
+else:
+    AffixFuzzer1Like = Any
+    AffixFuzzer1ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -128,6 +144,7 @@ class AffixFuzzer1Type(BaseExtensionType):
                     pa.field(
                         "almost_flattened_scalar", pa.struct([pa.field("value", pa.float32(), False, {})]), False, {}
                     ),
+                    pa.field("from_parent", pa.bool_(), True, {}),
                 ]
             ),
             "rerun.testing.datatypes.AffixFuzzer1",
@@ -157,11 +174,16 @@ class AffixFuzzer2:
         return np.asarray(self.single_float_optional, dtype=dtype)
 
 
-AffixFuzzer2Like = AffixFuzzer2
-AffixFuzzer2ArrayLike = Union[
-    AffixFuzzer2,
-    Sequence[AffixFuzzer2Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer2Like = AffixFuzzer2
+
+    AffixFuzzer2ArrayLike = Union[
+        AffixFuzzer2,
+        Sequence[AffixFuzzer2Like],
+    ]
+else:
+    AffixFuzzer2Like = Any
+    AffixFuzzer2ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -194,11 +216,16 @@ class AffixFuzzer3:
     craziness: list[datatypes.AffixFuzzer1] | None = None
 
 
-AffixFuzzer3Like = AffixFuzzer3
-AffixFuzzer3ArrayLike = Union[
-    AffixFuzzer3,
-    Sequence[AffixFuzzer3Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer3Like = AffixFuzzer3
+
+    AffixFuzzer3ArrayLike = Union[
+        AffixFuzzer3,
+        Sequence[AffixFuzzer3Like],
+    ]
+else:
+    AffixFuzzer3Like = Any
+    AffixFuzzer3ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -247,6 +274,7 @@ class AffixFuzzer3Type(BaseExtensionType):
                                             False,
                                             {},
                                         ),
+                                        pa.field("from_parent", pa.bool_(), True, {}),
                                     ]
                                 ),
                                 False,
@@ -284,11 +312,16 @@ class AffixFuzzer4:
     many_optional: list[datatypes.AffixFuzzer3] | None = None
 
 
-AffixFuzzer4Like = AffixFuzzer4
-AffixFuzzer4ArrayLike = Union[
-    AffixFuzzer4,
-    Sequence[AffixFuzzer4Like],
-]
+if TYPE_CHECKING:
+    AffixFuzzer4Like = AffixFuzzer4
+
+    AffixFuzzer4ArrayLike = Union[
+        AffixFuzzer4,
+        Sequence[AffixFuzzer4Like],
+    ]
+else:
+    AffixFuzzer4Like = Any
+    AffixFuzzer4ArrayLike = Any
 
 
 # --- Arrow support ---
@@ -341,6 +374,7 @@ class AffixFuzzer4Type(BaseExtensionType):
                                                         False,
                                                         {},
                                                     ),
+                                                    pa.field("from_parent", pa.bool_(), True, {}),
                                                 ]
                                             ),
                                             False,
@@ -399,6 +433,7 @@ class AffixFuzzer4Type(BaseExtensionType):
                                                                 False,
                                                                 {},
                                                             ),
+                                                            pa.field("from_parent", pa.bool_(), True, {}),
                                                         ]
                                                     ),
                                                     False,
@@ -461,6 +496,7 @@ class AffixFuzzer4Type(BaseExtensionType):
                                                                 False,
                                                                 {},
                                                             ),
+                                                            pa.field("from_parent", pa.bool_(), True, {}),
                                                         ]
                                                     ),
                                                     False,
@@ -498,3 +534,305 @@ AffixFuzzer4Type._ARRAY_TYPE = AffixFuzzer4Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer4Type())
+
+
+@define
+class AffixFuzzer5:
+    single_optional_union: datatypes.AffixFuzzer4 | None = field(default=None)
+
+
+if TYPE_CHECKING:
+    AffixFuzzer5Like = AffixFuzzer5
+
+    AffixFuzzer5ArrayLike = Union[
+        AffixFuzzer5,
+        Sequence[AffixFuzzer5Like],
+    ]
+else:
+    AffixFuzzer5Like = Any
+    AffixFuzzer5ArrayLike = Any
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer5Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.struct(
+                [
+                    pa.field(
+                        "single_optional_union",
+                        pa.dense_union(
+                            [
+                                pa.field(
+                                    "single_required",
+                                    pa.dense_union(
+                                        [
+                                            pa.field("degrees", pa.float32(), False, {}),
+                                            pa.field("radians", pa.float32(), False, {}),
+                                            pa.field(
+                                                "craziness",
+                                                pa.list_(
+                                                    pa.field(
+                                                        "item",
+                                                        pa.struct(
+                                                            [
+                                                                pa.field(
+                                                                    "single_float_optional", pa.float32(), True, {}
+                                                                ),
+                                                                pa.field(
+                                                                    "single_string_required", pa.utf8(), False, {}
+                                                                ),
+                                                                pa.field("single_string_optional", pa.utf8(), True, {}),
+                                                                pa.field(
+                                                                    "many_floats_optional",
+                                                                    pa.list_(pa.field("item", pa.float32(), True, {})),
+                                                                    True,
+                                                                    {},
+                                                                ),
+                                                                pa.field(
+                                                                    "many_strings_required",
+                                                                    pa.list_(pa.field("item", pa.utf8(), False, {})),
+                                                                    False,
+                                                                    {},
+                                                                ),
+                                                                pa.field(
+                                                                    "many_strings_optional",
+                                                                    pa.list_(pa.field("item", pa.utf8(), True, {})),
+                                                                    True,
+                                                                    {},
+                                                                ),
+                                                                pa.field("flattened_scalar", pa.float32(), False, {}),
+                                                                pa.field(
+                                                                    "almost_flattened_scalar",
+                                                                    pa.struct(
+                                                                        [pa.field("value", pa.float32(), False, {})]
+                                                                    ),
+                                                                    False,
+                                                                    {},
+                                                                ),
+                                                                pa.field("from_parent", pa.bool_(), True, {}),
+                                                            ]
+                                                        ),
+                                                        False,
+                                                        {},
+                                                    )
+                                                ),
+                                                False,
+                                                {},
+                                            ),
+                                        ]
+                                    ),
+                                    False,
+                                    {},
+                                ),
+                                pa.field(
+                                    "many_required",
+                                    pa.list_(
+                                        pa.field(
+                                            "item",
+                                            pa.dense_union(
+                                                [
+                                                    pa.field("degrees", pa.float32(), False, {}),
+                                                    pa.field("radians", pa.float32(), False, {}),
+                                                    pa.field(
+                                                        "craziness",
+                                                        pa.list_(
+                                                            pa.field(
+                                                                "item",
+                                                                pa.struct(
+                                                                    [
+                                                                        pa.field(
+                                                                            "single_float_optional",
+                                                                            pa.float32(),
+                                                                            True,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "single_string_required",
+                                                                            pa.utf8(),
+                                                                            False,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "single_string_optional",
+                                                                            pa.utf8(),
+                                                                            True,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "many_floats_optional",
+                                                                            pa.list_(
+                                                                                pa.field("item", pa.float32(), True, {})
+                                                                            ),
+                                                                            True,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "many_strings_required",
+                                                                            pa.list_(
+                                                                                pa.field("item", pa.utf8(), False, {})
+                                                                            ),
+                                                                            False,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "many_strings_optional",
+                                                                            pa.list_(
+                                                                                pa.field("item", pa.utf8(), True, {})
+                                                                            ),
+                                                                            True,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "flattened_scalar", pa.float32(), False, {}
+                                                                        ),
+                                                                        pa.field(
+                                                                            "almost_flattened_scalar",
+                                                                            pa.struct(
+                                                                                [
+                                                                                    pa.field(
+                                                                                        "value", pa.float32(), False, {}
+                                                                                    )
+                                                                                ]
+                                                                            ),
+                                                                            False,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field("from_parent", pa.bool_(), True, {}),
+                                                                    ]
+                                                                ),
+                                                                False,
+                                                                {},
+                                                            )
+                                                        ),
+                                                        False,
+                                                        {},
+                                                    ),
+                                                ]
+                                            ),
+                                            False,
+                                            {},
+                                        )
+                                    ),
+                                    False,
+                                    {},
+                                ),
+                                pa.field(
+                                    "many_optional",
+                                    pa.list_(
+                                        pa.field(
+                                            "item",
+                                            pa.dense_union(
+                                                [
+                                                    pa.field("degrees", pa.float32(), False, {}),
+                                                    pa.field("radians", pa.float32(), False, {}),
+                                                    pa.field(
+                                                        "craziness",
+                                                        pa.list_(
+                                                            pa.field(
+                                                                "item",
+                                                                pa.struct(
+                                                                    [
+                                                                        pa.field(
+                                                                            "single_float_optional",
+                                                                            pa.float32(),
+                                                                            True,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "single_string_required",
+                                                                            pa.utf8(),
+                                                                            False,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "single_string_optional",
+                                                                            pa.utf8(),
+                                                                            True,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "many_floats_optional",
+                                                                            pa.list_(
+                                                                                pa.field("item", pa.float32(), True, {})
+                                                                            ),
+                                                                            True,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "many_strings_required",
+                                                                            pa.list_(
+                                                                                pa.field("item", pa.utf8(), False, {})
+                                                                            ),
+                                                                            False,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "many_strings_optional",
+                                                                            pa.list_(
+                                                                                pa.field("item", pa.utf8(), True, {})
+                                                                            ),
+                                                                            True,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field(
+                                                                            "flattened_scalar", pa.float32(), False, {}
+                                                                        ),
+                                                                        pa.field(
+                                                                            "almost_flattened_scalar",
+                                                                            pa.struct(
+                                                                                [
+                                                                                    pa.field(
+                                                                                        "value", pa.float32(), False, {}
+                                                                                    )
+                                                                                ]
+                                                                            ),
+                                                                            False,
+                                                                            {},
+                                                                        ),
+                                                                        pa.field("from_parent", pa.bool_(), True, {}),
+                                                                    ]
+                                                                ),
+                                                                False,
+                                                                {},
+                                                            )
+                                                        ),
+                                                        False,
+                                                        {},
+                                                    ),
+                                                ]
+                                            ),
+                                            True,
+                                            {},
+                                        )
+                                    ),
+                                    False,
+                                    {},
+                                ),
+                            ]
+                        ),
+                        True,
+                        {},
+                    )
+                ]
+            ),
+            "rerun.testing.datatypes.AffixFuzzer5",
+        )
+
+
+class AffixFuzzer5Array(BaseExtensionArray[AffixFuzzer5ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.datatypes.AffixFuzzer5"
+    _EXTENSION_TYPE = AffixFuzzer5Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer5ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer5Type._ARRAY_TYPE = AffixFuzzer5Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer5Type())
