@@ -119,6 +119,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(new_recording, m)?)?;
     m.add_function(wrap_pyfunction!(new_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
+    m.add_function(wrap_pyfunction!(cleanup_if_forked, m)?)?;
 
     // recordings
     m.add_function(wrap_pyfunction!(get_application_id, m)?)?;
@@ -347,6 +348,12 @@ fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordi
 #[pyfunction]
 fn get_global_data_recording() -> Option<PyRecordingStream> {
     RecordingStream::global(rerun::StoreKind::Recording).map(PyRecordingStream)
+}
+
+/// Cleans up internal state if the process was forked
+#[pyfunction]
+fn cleanup_if_forked() {
+    rerun::cleanup_if_forked();
 }
 
 /// Replaces the currently active recording in the global scope with the specified one.

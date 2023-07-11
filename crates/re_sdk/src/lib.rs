@@ -26,6 +26,8 @@ pub use re_log_types::{
     ApplicationId, Component, ComponentName, EntityPath, SerializableComponent, StoreId, StoreKind,
 };
 
+pub use global::cleanup_if_forked;
+
 #[cfg(not(target_arch = "wasm32"))]
 impl crate::sink::LogSink for re_log_encoding::FileSink {
     fn send(&self, msg: re_log_types::LogMsg) {

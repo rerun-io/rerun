@@ -155,6 +155,10 @@ def init(
     global _strict_mode
     _strict_mode = strict
 
+    # Always check for fork when calling init.  This should have happened via `_register_on_fork`
+    # but it's worth being conservative.
+    # cleanup_if_forked()
+
     if init_logging:
         new_recording(
             application_id,
@@ -310,6 +314,22 @@ def unregister_shutdown() -> None:
 
     atexit.unregister(rerun_shutdown)
 
+
+def cleanup_if_forked() -> None:
+    bindings.cleanup_if_forked()
+
+
+def _register_on_fork() -> None:
+    # Only relevant on Linux
+    try:
+        import os
+
+        os.register_at_fork(after_in_child=cleanup_if_forked)
+    except NotImplementedError:
+        pass
+
+
+_register_on_fork()
 
 # ---
 
