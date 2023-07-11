@@ -12,17 +12,17 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "3D rotation represented by a rotation around a given axis."]
+/// 3D rotation represented by a rotation around a given axis.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct RotationAxisAngle {
-    #[doc = "Axis to rotate around."]
-    #[doc = ""]
-    #[doc = "This is not required to be normalized."]
-    #[doc = "If normalization fails (typically because the vector is length zero), the rotation is silently"]
-    #[doc = "ignored."]
+    /// Axis to rotate around.
+    ///
+    /// This is not required to be normalized.
+    /// If normalization fails (typically because the vector is length zero), the rotation is silently
+    /// ignored.
     pub axis: crate::datatypes::Vec3D,
 
-    #[doc = "How much to rotate around the axis."]
+    /// How much to rotate around the axis.
     pub angle: crate::datatypes::Angle,
 }
 

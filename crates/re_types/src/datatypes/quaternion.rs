@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A Quaternion represented by 4 real numbers."]
+/// A Quaternion represented by 4 real numbers.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Quaternion(pub [f32; 4usize]);
 
