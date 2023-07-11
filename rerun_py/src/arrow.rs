@@ -45,11 +45,9 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
                 field.data_type = <re_components::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             } else if name == <re_components::Rect2D as re_log_types::Component>::name() {
                 field.data_type = <re_components::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            }
-            // TODO: this needs to be cleaned up
-            /* else if name == <re_components::Transform3D as re_log_types::Component>::name() {
+            } else if name == <re_components::Transform3D as re_log_types::Component>::name() {
                 field.data_type = <re_components::Transform3D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            }*/
+            }
         }
 
         let array = ffi::import_array_from_c(*array, field.data_type.clone())

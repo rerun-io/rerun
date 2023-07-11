@@ -36,7 +36,7 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
 impl crate::Component for Transform3D {
     #[inline]
     fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.transform3d")
+        crate::ComponentName::Borrowed("rerun.components.Transform3D")
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

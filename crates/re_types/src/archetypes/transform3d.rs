@@ -69,7 +69,7 @@ impl crate::Archetype for Transform3D {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.Transform3D".into(),
                         Box::new(array.data_type().clone()),
-                        Some("rerun.transform3d".into()),
+                        Some("rerun.components.Transform3D".into()),
                     );
                     (
                         ::arrow2::datatypes::Field::new("transform", datatype, false),

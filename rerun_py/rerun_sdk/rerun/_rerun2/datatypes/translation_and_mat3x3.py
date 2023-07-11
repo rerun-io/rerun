@@ -41,6 +41,7 @@ def _translationandmat3x3_matrix_converter(x: datatypes.Mat3x3Like | None) -> da
         return datatypes.Mat3x3(x)
 
 
+
 @define(init=False)
 class TranslationAndMat3x3:
     """

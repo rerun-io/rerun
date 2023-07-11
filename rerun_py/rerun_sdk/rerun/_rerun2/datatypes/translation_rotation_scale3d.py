@@ -50,6 +50,7 @@ def _translationrotationscale3d_scale_converter(x: datatypes.Scale3DLike | None)
         return datatypes.Scale3D(x)
 
 
+
 @define(init=False)
 class TranslationRotationScale3D:
     """Representation of an affine transform via separate translation, rotation & scale."""
