@@ -4,4 +4,4 @@ from __future__ import annotations
 
 __all__ = ["AffixFuzzer1", "Points2D", "Transform3D"]
 
-from .archetypes import AffixFuzzer1, Points2D, Transform3D
+from .archetypes import AffixFuzzer1, Transform3D, Points2D

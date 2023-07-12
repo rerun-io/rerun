@@ -4,7 +4,7 @@ use macaw::IsoTransform;
 use re_components::{Pinhole, ViewCoordinates};
 use re_log_types::EntityPath;
 
-use crate::scene::image_view_coordinates;
+use crate::parts::image_view_coordinates;
 
 /// A logged camera that connects spaces.
 #[derive(Clone, PartialEq)]

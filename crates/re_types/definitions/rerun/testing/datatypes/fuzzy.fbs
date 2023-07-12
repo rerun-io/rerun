@@ -22,6 +22,10 @@ table SurprisinglyShallowScalar (transparent, order: 001) {
   value: FlattenedScalar (order: 100);
 }
 
+struct ArrayOfFloats (transparent, order: 001) {
+  values: [float: 3] (order: 100);
+}
+
 table AffixFuzzer1 (
   "attr.rust.derive": "PartialEq",
   order: 100
@@ -57,6 +61,7 @@ union AffixFuzzer3 (
   degrees: FlattenedScalar (transparent, order: 100),
   radians: FlattenedScalar (transparent, nullable, order: 101),
   craziness: __AffixFuzzer1Vec (transparent, order: 102),
+  fixed_size_shenanigans: ArrayOfFloats (transparent, order: 103),
 }
 
 table __AffixFuzzer3 (transparent, order: 0) {

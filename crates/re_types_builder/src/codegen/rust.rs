@@ -1660,26 +1660,34 @@ fn quote_arrow_deserializer(
                             got: #data_src.data_type().clone(),
                         })?;
 
-                    let (#data_src_fields, #data_src_arrays, #data_src_bitmap) =
-                        (#data_src.fields(), #data_src.values(), #data_src.validity());
+                    if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
+                        Vec::new()
+                    } else {
+                        let (#data_src_fields, #data_src_arrays, #data_src_bitmap) =
+                            (#data_src.fields(), #data_src.values(), #data_src.validity());
 
-                    let is_valid = |i| #data_src_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                        let is_valid = |i| #data_src_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
 
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = #data_src_fields
-                        .iter()
-                        .map(|field| field.name.as_str())
-                        .zip(#data_src_arrays)
-                        .collect();
+                        let arrays_by_name: ::std::collections::HashMap<_, _> = #data_src_fields
+                            .iter()
+                            .map(|field| field.name.as_str())
+                            .zip(#data_src_arrays)
+                            .collect();
 
-                    #(#quoted_field_deserializers;)*
+                        #(#quoted_field_deserializers;)*
 
-                    ::itertools::izip!(#(#quoted_field_names),*)
-                        .enumerate()
-                        .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
-                            #(#quoted_unwrappings,)*
-                        })).transpose())
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        ::itertools::izip!(#(#quoted_field_names),*)
+                            .enumerate()
+                            .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
+                                #(#quoted_unwrappings,)*
+                            })).transpose())
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    }
                 }}
             }
 
@@ -1745,25 +1753,33 @@ fn quote_arrow_deserializer(
                             got: #data_src.data_type().clone(),
                         })?;
 
-                    let (#data_src_types, #data_src_arrays, #data_src_offsets) =
-                        // NOTE: unwrapping of offsets is safe because this is a dense union
-                        (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
+                    if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
+                        Vec::new()
+                    } else {
+                        let (#data_src_types, #data_src_arrays, #data_src_offsets) =
+                            // NOTE: unwrapping of offsets is safe because this is a dense union
+                            (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
 
-                    #(#quoted_field_deserializers;)*
+                        #(#quoted_field_deserializers;)*
 
-                    #data_src_types
-                        .iter()
-                        .enumerate()
-                        .map(|(i, typ)| {
-                            let offset = #data_src_offsets[i];
+                        #data_src_types
+                            .iter()
+                            .enumerate()
+                            .map(|(i, typ)| {
+                                let offset = #data_src_offsets[i];
 
-                            Ok(Some(match typ {
-                                #(#quoted_branches,)*
-                                _ => unreachable!(),
-                            }))
-                        })
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                                Ok(Some(match typ {
+                                    #(#quoted_branches,)*
+                                    _ => unreachable!(),
+                                }))
+                            })
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    }
                 }}
             }
 
@@ -1866,40 +1882,48 @@ fn quote_arrow_field_deserializer(
                     .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                     .unwrap(); // safe
 
-                let bitmap = #data_src.validity().cloned();
-                let offsets = (0..).step_by(#length).zip((#length..).step_by(#length));
+                if #data_src.is_empty() {
+                    // NOTE: The outer container is empty and so we already know that the end result
+                    // is also going to be an empty vec.
+                    // Early out right now rather than waste time computing possibly many empty
+                    // datastructures for all of our children.
+                    Vec::new()
+                } else {
+                    let bitmap = #data_src.validity().cloned();
+                    let offsets = (0..).step_by(#length).zip((#length..).step_by(#length).take(#data_src.len()));
 
-                let #data_src = &**#data_src.values();
+                    let #data_src = &**#data_src.values();
 
-                let data = #quoted_inner
-                    .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: #quoted_inner_datatype,
-                    }))
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    let data = #quoted_inner
+                        .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: #quoted_inner_datatype,
+                        }))
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
 
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                        data.get(start as usize .. end as usize)
-                            .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data.len(),
-                                datatype: datatype.clone(),
-                            })?
-                            .to_vec()
-                            .try_into()
-                            .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                expected: #length,
-                                got: (end - start) as usize,
-                                datatype: datatype.clone(),
-                            })
-                        }).transpose()
-                    )
-                    #quoted_transparent_unmapping
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                    .into_iter()
+                    offsets
+                        .enumerate()
+                        .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
+                            data.get(start as usize .. end as usize)
+                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                    bounds: (start as usize, end as usize),
+                                    len: data.len(),
+                                    datatype: datatype.clone(),
+                                })?
+                                .to_vec()
+                                .try_into()
+                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
+                                    expected: #length,
+                                    got: (end - start) as usize,
+                                    datatype: datatype.clone(),
+                                })
+                            }).transpose()
+                        )
+                        #quoted_transparent_unmapping
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                }
+                .into_iter()
             }}
         }
 
@@ -1921,37 +1945,45 @@ fn quote_arrow_field_deserializer(
                     .downcast_ref::<::arrow2::array::ListArray<i32>>()
                     .unwrap(); // safe
 
-                let bitmap = #data_src.validity().cloned();
-                let offsets = {
-                    let offsets = #data_src.offsets();
-                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                };
+                if #data_src.is_empty() {
+                    // NOTE: The outer container is empty and so we already know that the end result
+                    // is also going to be an empty vec.
+                    // Early out right now rather than waste time computing possibly many empty
+                    // datastructures for all of our children.
+                    Vec::new()
+                } else {
+                    let bitmap = #data_src.validity().cloned();
+                    let offsets = {
+                        let offsets = #data_src.offsets();
+                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                    };
 
-                let #data_src = &**#data_src.values();
+                    let #data_src = &**#data_src.values();
 
-                let data = #quoted_inner
-                    .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: #quoted_inner_datatype,
-                    }))
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    let data = #quoted_inner
+                        .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: #quoted_inner_datatype,
+                        }))
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
 
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                            Ok(data.get(start as usize .. end as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data.len(),
-                                    datatype: datatype.clone(),
-                                })?
-                                .to_vec()
-                            )
-                        }).transpose()
-                    )
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                    .into_iter()
+                    offsets
+                        .enumerate()
+                        .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
+                                Ok(data.get(start as usize .. end as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        datatype: datatype.clone(),
+                                    })?
+                                    .to_vec()
+                                )
+                            }).transpose()
+                        )
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                }
+                .into_iter()
             }}
         }
 
