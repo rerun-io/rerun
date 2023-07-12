@@ -4,7 +4,7 @@ order: 2
 ---
 
 Making selections is one of the primary ways of exploring data in Rerun.
-The current selection can be changed with a mouse click on most elements of the - 
+The current selection can be changed with a mouse click on most elements of the -
 including the [Blueprint](blueprint.md), [Viewport](viewport.md),
 [Timeline](timeline.md), [Event Log](overview.md#event-log)
 and even the Selection view itself.

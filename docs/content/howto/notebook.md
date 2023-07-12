@@ -20,7 +20,7 @@ Rather than logging to a file or a remote server, you can also configure the Rer
 
 This `MemoryRecording` can then used to produce an inline HTML snippet to be directly displayed in most notebook
 environments. The snippet includes an embedded copy of an RRD file and some javascript that loads that RRD file into an
-IFrame. 
+IFrame.
 
 Each cell in the notebook is fully isolated from the other cells and will only display the data from the source
 `MemoryRecording`.
@@ -32,7 +32,7 @@ In order to create a new `MemoryRecording`, you call:
 rec = rr.memory_recording()
 ```
 This is similar to calling `rr.connect()` or `rr.save()` in that it configures the Rerun SDK to use this new
-recording as a target for future API calls. 
+recording as a target for future API calls.
 
 After logging data to the recording you can display it in a cell by calling the
 [show()](https://ref.rerun.io/docs/python/latest/package/rerun/recording/#rerun.recording.MemoryRecording.show) method
@@ -87,7 +87,7 @@ This will create a new file `cube.html` that can be hosted on any static web ser
 
 ## Limitations
 
-Although convenient, the approach of fully inlining an RRD file as an HTML snippet has some drawbacks. In particular, 
+Although convenient, the approach of fully inlining an RRD file as an HTML snippet has some drawbacks. In particular,
 it is not suited to large RRD files.  The RRD file is embedded as a base64 encoded string which can
 result in a very large HTML file. This can cause problems in some browsers. If you want to share large datasets,
 we recommend using the `save()` API to create a separate file and hosting it as a separate standalone asset.
