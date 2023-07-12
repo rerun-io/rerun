@@ -3,7 +3,8 @@ use re_log_types::EntityPath;
 use re_viewer_context::{SpaceViewClass, SpaceViewId};
 
 use crate::{
-    scene::{SpatialSceneContext, SpatialScenePartCollection, SpatialScenePartData},
+    contexts::SpatialViewContext,
+    parts::{SpatialViewPartData, SpatialViewPartSystemCollection},
     ui::{SpatialNavigationMode, SpatialSpaceViewState},
 };
 
@@ -12,9 +13,9 @@ pub struct SpatialSpaceView;
 
 impl SpaceViewClass for SpatialSpaceView {
     type State = SpatialSpaceViewState;
-    type Context = SpatialSceneContext;
-    type SceneParts = SpatialScenePartCollection;
-    type ScenePartData = SpatialScenePartData;
+    type Context = SpatialViewContext;
+    type SystemCollection = SpatialViewPartSystemCollection;
+    type ViewPartData = SpatialViewPartData;
 
     fn name(&self) -> re_viewer_context::SpaceViewClassName {
         "Spatial".into()

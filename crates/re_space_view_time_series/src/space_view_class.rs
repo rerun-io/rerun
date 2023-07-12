@@ -11,7 +11,7 @@ use re_viewer_context::{
     SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
 };
 
-use crate::scene_part::{PlotSeriesKind, SceneTimeSeries};
+use crate::view_part_system::{PlotSeriesKind, SceneTimeSeries};
 
 #[derive(Default)]
 pub struct TimeSeriesSpaceView;
@@ -19,8 +19,8 @@ pub struct TimeSeriesSpaceView;
 impl SpaceViewClass for TimeSeriesSpaceView {
     type State = ();
     type Context = ();
-    type SceneParts = SceneTimeSeries;
-    type ScenePartData = ();
+    type SystemCollection = SceneTimeSeries;
+    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Time Series".into()

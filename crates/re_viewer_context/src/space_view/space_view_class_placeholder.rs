@@ -1,4 +1,4 @@
-use crate::{ScenePart, ScenePartCollection, SpaceViewClass, SpaceViewClassName};
+use crate::{SpaceViewClass, SpaceViewClassName, ViewPartSystem, ViewPartSystemCollection};
 
 /// A placeholder space view class that can be used when the actual class is not registered.
 #[derive(Default)]
@@ -7,8 +7,8 @@ pub struct SpaceViewClassPlaceholder;
 impl SpaceViewClass for SpaceViewClassPlaceholder {
     type State = ();
     type Context = ();
-    type SceneParts = ();
-    type ScenePartData = ();
+    type SystemCollection = ();
+    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Unknown Space View Class".into()
@@ -49,8 +49,8 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
     }
 }
 
-impl ScenePartCollection<SpaceViewClassPlaceholder> for () {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<SpaceViewClassPlaceholder>> {
+impl ViewPartSystemCollection<SpaceViewClassPlaceholder> for () {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<SpaceViewClassPlaceholder>> {
         Vec::new()
     }
 
