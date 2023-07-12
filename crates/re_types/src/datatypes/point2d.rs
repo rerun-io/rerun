@@ -168,49 +168,53 @@ impl crate::Datatype for Point2D {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_fields, data_arrays, data_bitmap) =
-                (data.fields(), data.values(), data.validity());
-            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
-            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
-                .iter()
-                .map(|field| field.name.as_str())
-                .zip(data_arrays)
-                .collect();
-            let x = {
-                let data = &**arrays_by_name["x"];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_fields, data_arrays, data_bitmap) =
+                    (data.fields(), data.values(), data.validity());
+                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(data_arrays)
+                    .collect();
+                let x = {
+                    let data = &**arrays_by_name["x"];
 
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-            };
-            let y = {
-                let data = &**arrays_by_name["y"];
+                    data.as_any()
+                        .downcast_ref::<Float32Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|v| v.copied())
+                };
+                let y = {
+                    let data = &**arrays_by_name["y"];
 
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-            };
-            ::itertools::izip!(x, y)
-                .enumerate()
-                .map(|(i, (x, y))| {
-                    is_valid(i)
-                        .then(|| {
-                            Ok(Self {
-                                x: x.ok_or_else(|| crate::DeserializationError::MissingData {
-                                    datatype: data.data_type().clone(),
-                                })?,
-                                y: y.ok_or_else(|| crate::DeserializationError::MissingData {
-                                    datatype: data.data_type().clone(),
-                                })?,
+                    data.as_any()
+                        .downcast_ref::<Float32Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|v| v.copied())
+                };
+                ::itertools::izip!(x, y)
+                    .enumerate()
+                    .map(|(i, (x, y))| {
+                        is_valid(i)
+                            .then(|| {
+                                Ok(Self {
+                                    x: x.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        datatype: data.data_type().clone(),
+                                    })?,
+                                    y: y.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        datatype: data.data_type().clone(),
+                                    })?,
+                                })
                             })
-                        })
-                        .transpose()
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }

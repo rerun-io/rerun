@@ -232,96 +232,68 @@ impl crate::Datatype for RotationAxisAngle {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_fields, data_arrays, data_bitmap) =
-                (data.fields(), data.values(), data.validity());
-            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
-            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
-                .iter()
-                .map(|field| field.name.as_str())
-                .zip(data_arrays)
-                .collect();
-            let axis = {
-                let data = &**arrays_by_name["axis"];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_fields, data_arrays, data_bitmap) =
+                    (data.fields(), data.values(), data.validity());
+                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(data_arrays)
+                    .collect();
+                let axis = {
+                    let data = &**arrays_by_name["axis"];
 
-                {
-                    let datatype = data.data_type();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                        .unwrap();
-                    let bitmap = data.validity().cloned();
-                    let offsets = (0..).step_by(3usize).zip((3usize..).step_by(3usize));
-                    let data = &**data.values();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .unwrap()
-                        .into_iter()
-                        .map(|v| v.copied())
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                datatype: DataType::Float32,
-                            })
-                        })
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| {
-                            bitmap
-                                .as_ref()
-                                .map_or(true, |bitmap| bitmap.get_bit(i))
-                                .then(|| {
-                                    data.get(start as usize..end as usize)
-                                        .ok_or_else(|| {
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                datatype: datatype.clone(),
-                                            }
-                                        })?
-                                        .to_vec()
-                                        .try_into()
-                                        .map_err(|_err| {
-                                            crate::DeserializationError::ArrayLengthMismatch {
-                                                expected: 3usize,
-                                                got: (end - start) as usize,
-                                                datatype: datatype.clone(),
-                                            }
-                                        })
+                    {
+                        let datatype = data.data_type();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .unwrap();
+                        if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { datatype : DataType :: Float32 , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or_else (|| crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , datatype : datatype . clone () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , datatype : datatype . clone () , }
+
+) }
+
+) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter ()
+                    }
+                };
+                let angle = {
+                    let data = &**arrays_by_name["angle"];
+
+                    crate::datatypes::Angle::try_from_arrow_opt(data)?.into_iter()
+                };
+                ::itertools::izip!(axis, angle)
+                    .enumerate()
+                    .map(|(i, (axis, angle))| {
+                        is_valid(i)
+                            .then(|| {
+                                Ok(Self {
+                                    axis: axis.ok_or_else(|| {
+                                        crate::DeserializationError::MissingData {
+                                            datatype: data.data_type().clone(),
+                                        }
+                                    })?,
+                                    angle: angle.ok_or_else(|| {
+                                        crate::DeserializationError::MissingData {
+                                            datatype: data.data_type().clone(),
+                                        }
+                                    })?,
                                 })
-                                .transpose()
-                        })
-                        .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        .into_iter()
-                }
-            };
-            let angle = {
-                let data = &**arrays_by_name["angle"];
-
-                crate::datatypes::Angle::try_from_arrow_opt(data)?.into_iter()
-            };
-            ::itertools::izip!(axis, angle)
-                .enumerate()
-                .map(|(i, (axis, angle))| {
-                    is_valid(i)
-                        .then(|| {
-                            Ok(Self {
-                                axis: axis.ok_or_else(|| {
-                                    crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    }
-                                })?,
-                                angle: angle.ok_or_else(|| {
-                                    crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    }
-                                })?,
                             })
-                        })
-                        .transpose()
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }

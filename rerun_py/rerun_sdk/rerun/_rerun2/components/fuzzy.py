@@ -614,6 +614,12 @@ class AffixFuzzer16Type(BaseExtensionType):
                                 False,
                                 {},
                             ),
+                            pa.field(
+                                "fixed_size_shenanigans",
+                                pa.list_(pa.field("item", pa.float32(), False, {}), 3),
+                                False,
+                                {},
+                            ),
                         ]
                     ),
                     False,
@@ -712,6 +718,12 @@ class AffixFuzzer17Type(BaseExtensionType):
                                         {},
                                     )
                                 ),
+                                False,
+                                {},
+                            ),
+                            pa.field(
+                                "fixed_size_shenanigans",
+                                pa.list_(pa.field("item", pa.float32(), False, {}), 3),
                                 False,
                                 {},
                             ),
@@ -820,6 +832,12 @@ class AffixFuzzer18Type(BaseExtensionType):
                                             False,
                                             {},
                                         ),
+                                        pa.field(
+                                            "fixed_size_shenanigans",
+                                            pa.list_(pa.field("item", pa.float32(), False, {}), 3),
+                                            False,
+                                            {},
+                                        ),
                                     ]
                                 ),
                                 False,
@@ -890,6 +908,12 @@ class AffixFuzzer18Type(BaseExtensionType):
                                                             {},
                                                         )
                                                     ),
+                                                    False,
+                                                    {},
+                                                ),
+                                                pa.field(
+                                                    "fixed_size_shenanigans",
+                                                    pa.list_(pa.field("item", pa.float32(), False, {}), 3),
                                                     False,
                                                     {},
                                                 ),
@@ -967,6 +991,12 @@ class AffixFuzzer18Type(BaseExtensionType):
                                                             {},
                                                         )
                                                     ),
+                                                    False,
+                                                    {},
+                                                ),
+                                                pa.field(
+                                                    "fixed_size_shenanigans",
+                                                    pa.list_(pa.field("item", pa.float32(), False, {}), 3),
                                                     False,
                                                     {},
                                                 ),
