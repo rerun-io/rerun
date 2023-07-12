@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from .. import Angle, AngleLike
 
 
-# needed because the default converter doesn't handle well Angle, which has an overriden __init__
+# needed because the default converter doesn't handle well Angle, which has an overridden __init__
 def rotationaxisangle_angle_converter(x: AngleLike) -> Angle:
     from .. import Angle
 
