@@ -101,17 +101,24 @@ fn main() {
         panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 
-    let sh = Shell::new().unwrap();
-
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(DEFINITIONS_DIR_PATH, ENTRYPOINT_PATH);
 
-    re_types_builder::generate_cpp_code(CPP_OUTPUT_DIR_PATH, &objects, &arrow_registry);
+    join3(
+        || re_types_builder::generate_cpp_code(CPP_OUTPUT_DIR_PATH, &objects, &arrow_registry),
+        || re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry),
+        || generate_and_format_python_code(&objects, &arrow_registry),
+    );
 
-    re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry);
+    write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+}
 
-    re_types_builder::generate_python_code(PYTHON_OUTPUT_DIR_PATH, &objects, &arrow_registry);
+fn generate_and_format_python_code(
+    objects: &re_types_builder::Objects,
+    arrow_registry: &re_types_builder::ArrowRegistry,
+) {
+    re_types_builder::generate_python_code(PYTHON_OUTPUT_DIR_PATH, objects, arrow_registry);
 
     let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
         .parent()
@@ -144,11 +151,15 @@ fn main() {
     // 2) Call ruff, which requires line-lengths to be correct
     // 3) Call black again to cleanup some whitespace issues ruff might introduce
 
+    let sh = Shell::new().unwrap();
     call_black(&sh, &pyproject_path);
     call_ruff(&sh, &pyproject_path);
     call_black(&sh, &pyproject_path);
+}
 
-    write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+// Do 3 things in parallel
+fn join3(a: impl FnOnce() + Send, b: impl FnOnce() + Send, c: impl FnOnce() + Send) {
+    rayon::join(a, || rayon::join(b, c));
 }
 
 fn call_black(sh: &Shell, pyproject_path: &String) {
