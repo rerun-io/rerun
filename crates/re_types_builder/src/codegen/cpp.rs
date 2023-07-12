@@ -1,11 +1,11 @@
 use std::collections::BTreeSet;
 
 use anyhow::Context as _;
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{codegen::AUTOGEN_WARNING, ArrowRegistry, Object, ObjectKind, Objects};
+use crate::{codegen::AUTOGEN_WARNING, ArrowRegistry, ObjectKind, Objects};
 
 const NEWLINE_TOKEN: &str = "RE_TOKEN_NEWLINE";
 
@@ -27,21 +27,44 @@ impl CppCodeGenerator {
         object_kind: ObjectKind,
         folder_name: &str,
     ) -> BTreeSet<Utf8PathBuf> {
-        let mut filepaths = BTreeSet::default();
-
         let folder_path = self.output_path.join(folder_name);
         std::fs::create_dir_all(&folder_path)
             .with_context(|| format!("{folder_path:?}"))
             .unwrap();
-        for obj in objects.ordered_objects(object_kind.into()) {
+
+        let mut filepaths = BTreeSet::default();
+
+        // Generate folder contents:
+        let ordered_objects = objects.ordered_objects(object_kind.into());
+        for &obj in &ordered_objects {
             let filename = obj.snake_case_name();
             let (hpp, cpp) = generate_hpp_cpp(objects, arrow_registry, obj);
             for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
-                let string = string_from_token_stream(obj, &tokens);
+                let string = string_from_token_stream(&tokens, obj.relative_filepath());
                 let filepath = folder_path.join(format!("{filename}.{extension}"));
                 write_file(&filepath, string);
                 filepaths.insert(filepath);
             }
+        }
+
+        {
+            // Generate module file that includes all the headers:
+            let hash = quote! { # };
+            let pragma_once = pragma_once();
+            let header_file_names = ordered_objects
+                .iter()
+                .map(|obj| format!("{folder_name}/{}.hpp", obj.snake_case_name()));
+            let tokens = quote! {
+                #pragma_once
+                #(#hash include #header_file_names "RE_TOKEN_NEWLINE")*
+            };
+            let filepath = folder_path
+                .parent()
+                .unwrap()
+                .join(format!("{folder_name}.hpp"));
+            let string = string_from_token_stream(&tokens, None);
+            write_file(&filepath, string);
+            filepaths.insert(filepath);
         }
 
         // Clean up old files:
@@ -78,11 +101,11 @@ impl crate::CodeGenerator for CppCodeGenerator {
     }
 }
 
-fn string_from_token_stream(obj: &Object, token_stream: &TokenStream) -> String {
+fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {AUTOGEN_WARNING}\n"));
-    if let Some(relative_path) = obj.relative_filepath() {
-        code.push_str(&format!("// Based on {relative_path:?}"));
+    if let Some(source_path) = source_path {
+        code.push_str(&format!("// Based on {source_path:?}"));
     }
 
     code.push('\n');
@@ -127,11 +150,11 @@ fn generate_hpp_cpp(
     let snake_case_name = obj.snake_case_name();
 
     let hash = quote! { # };
+    let pragma_once = pragma_once();
     let header_file_name = format!("{snake_case_name}.hpp");
 
     let hpp = quote! {
-        #hash pragma once #NEWLINE_TOKEN #NEWLINE_TOKEN
-
+        #pragma_once
         namespace rr {
             namespace #obj_kind_ident {
                 struct #pascal_case_ident { };
@@ -141,4 +164,11 @@ fn generate_hpp_cpp(
     let cpp = quote! { #hash include #header_file_name };
 
     (hpp, cpp)
+}
+
+fn pragma_once() -> TokenStream {
+    let hash = quote! { # };
+    quote! {
+        #hash pragma once #NEWLINE_TOKEN #NEWLINE_TOKEN
+    }
 }
