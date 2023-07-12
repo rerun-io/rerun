@@ -410,7 +410,8 @@ impl App {
             UICommand::PrintDatastore => {
                 if let Some(ctx) = store_context {
                     if let Some(recording) = ctx.recording {
-                        eprintln!("{}", recording.entity_db.data_store);
+                        let table = recording.entity_db.data_store.to_data_table();
+                        println!("{table}");
                     }
                 }
             }

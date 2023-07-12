@@ -328,7 +328,7 @@ def _register_on_fork() -> None:
         import os
 
         os.register_at_fork(after_in_child=cleanup_if_forked_child)
-    except NotImplementedError:
+    except AttributeError:
         pass
 
 
