@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A Radius component."]
+/// A Radius component.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Radius(pub f32);
 

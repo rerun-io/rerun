@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A unique numeric identifier for each individual instance within a batch."]
+/// A unique numeric identifier for each individual instance within a batch.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InstanceKey(pub u64);
 

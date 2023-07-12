@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A vector in 3D space."]
+/// A vector in 3D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Vec3D(pub [f32; 3usize]);
 

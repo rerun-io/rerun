@@ -12,13 +12,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "Draw order used for the display order of 2D elements."]
-#[doc = ""]
-#[doc = "Higher values are drawn on top of lower values."]
-#[doc = "An entity can have only a single draw order component."]
-#[doc = "Within an entity draw order is governed by the order of the components."]
-#[doc = ""]
-#[doc = "Draw order for entities with the same draw order is generally undefined."]
+/// Draw order used for the display order of 2D elements.
+///
+/// Higher values are drawn on top of lower values.
+/// An entity can have only a single draw order component.
+/// Within an entity draw order is governed by the order of the components.
+///
+/// Draw order for entities with the same draw order is generally undefined.
 #[derive(Clone, Debug, Copy)]
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);

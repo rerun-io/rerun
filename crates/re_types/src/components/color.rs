@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha."]
+/// An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 #[derive(
     Clone,
     Debug,

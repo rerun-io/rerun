@@ -12,13 +12,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "3D scaling factor, part of a transform representation."]
+/// 3D scaling factor, part of a transform representation.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Scale3D {
-    #[doc = "Individual scaling factors for each axis, distorting the original object."]
+    /// Individual scaling factors for each axis, distorting the original object.
     ThreeD(crate::datatypes::Vec3D),
 
-    #[doc = "Uniform scaling factor along all axis."]
+    /// Uniform scaling factor along all axis.
     Uniform(f32),
 }
 

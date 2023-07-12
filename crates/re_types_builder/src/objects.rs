@@ -265,7 +265,7 @@ impl Docs {
                 .with_context(|| format!("couldn't parse included path: {raw_path:?}"))
                 .unwrap();
 
-            let path = filepath.join(path);
+            let path = filepath.parent().unwrap().join(path);
 
             included_files
                 .entry(path.clone())
@@ -416,7 +416,13 @@ impl Object {
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        assert!(virtpath.ends_with(".fbs"), "Bad virtpath: {virtpath:?}");
+
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
+        assert!(
+            filepath.to_string().ends_with(".fbs"),
+            "Bad filepath: {filepath:?}"
+        );
 
         let docs = Docs::from_raw_docs(&filepath, obj.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
@@ -1075,8 +1081,6 @@ fn filepath_from_declaration_file(
 ) -> Utf8PathBuf {
     include_dir_path.as_ref().join("rerun").join(
         Utf8PathBuf::from(declaration_file.as_ref())
-            .parent()
-            .unwrap() // NOTE: safe, this _must_ be a file
             .to_string()
             .replace("//", ""),
     )

@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A 4x4 column-major Matrix."]
+/// A 4x4 column-major Matrix.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Mat4x4(pub [f32; 16usize]);
 

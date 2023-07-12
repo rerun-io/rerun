@@ -1,7 +1,7 @@
 //! Implements the Python codegen pass.
 
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     io::Write,
 };
 
@@ -85,8 +85,12 @@ fn load_overrides(path: &Utf8Path) -> HashSet<String> {
 }
 
 impl CodeGenerator for PythonCodeGenerator {
-    fn generate(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<Utf8PathBuf> {
-        let mut filepaths = Vec::new();
+    fn generate(
+        &mut self,
+        objs: &Objects,
+        arrow_registry: &ArrowRegistry,
+    ) -> BTreeSet<Utf8PathBuf> {
+        let mut filepaths = BTreeSet::new();
 
         let datatypes_path = self.pkg_path.join("datatypes");
         let datatype_overrides = load_overrides(&datatypes_path);
@@ -137,7 +141,7 @@ impl CodeGenerator for PythonCodeGenerator {
         );
         filepaths.extend(paths);
 
-        filepaths.push(quote_lib(&self.pkg_path, &archetype_names));
+        filepaths.insert(quote_lib(&self.pkg_path, &archetype_names));
 
         filepaths
     }
@@ -185,10 +189,10 @@ fn quote_objects(
     all_objects: &Objects,
     _kind: ObjectKind,
     objs: &[&Object],
-) -> (Vec<Utf8PathBuf>, Vec<String>) {
+) -> (BTreeSet<Utf8PathBuf>, Vec<String>) {
     let out_path = out_path.as_ref();
 
-    let mut filepaths = Vec::new();
+    let mut filepaths = BTreeSet::new();
     let mut all_names = Vec::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
@@ -238,7 +242,7 @@ fn quote_objects(
             .or_default()
             .extend(names.iter().cloned());
 
-        filepaths.push(filepath.clone());
+        filepaths.insert(filepath.clone());
         let mut file = std::fs::File::create(&filepath)
             .with_context(|| format!("{filepath:?}"))
             .unwrap();
@@ -361,7 +365,7 @@ fn quote_objects(
 
         code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
 
-        filepaths.push(path.clone());
+        filepaths.insert(path.clone());
         std::fs::write(&path, code)
             .with_context(|| format!("{path:?}"))
             .unwrap();

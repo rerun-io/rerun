@@ -12,13 +12,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A 3D rotation."]
+/// A 3D rotation.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Rotation3D {
-    #[doc = "Rotation defined by a quaternion."]
+    /// Rotation defined by a quaternion.
     Quaternion(crate::datatypes::Quaternion),
 
-    #[doc = "Rotation defined with an axis and an angle."]
+    /// Rotation defined with an axis and an angle.
     AxisAngle(crate::datatypes::RotationAxisAngle),
 }
 
