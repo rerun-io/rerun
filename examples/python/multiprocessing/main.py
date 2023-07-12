@@ -15,9 +15,11 @@ import rerun as rr  # pip install rerun-sdk
 # decorator to ensure data is flushed when the task completes.
 @rr.shutdown_at_exit
 def task(child_index: int) -> None:
-    # In the new process, we always need to call init with the same application id.
-    # The internal recording-id is carried over from the parent process, so all
-    # of these processes will have their log data merged in the viewer.
+    # In the new process, we always need to call init with the same `application_id`.
+    # By default, the `recording_id`` will match the `recording_id`` of the parent process,
+    # so all of these processes will have their log data merged in the viewer.
+    # Caution: if you manually specified `recording_id` in the parent, you also must
+    # pass the same `recording_id` here.
     rr.init("multiprocessing")
 
     # We then have to connect to the viewer instance.
