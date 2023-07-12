@@ -27,7 +27,7 @@ use crate::{
     SpatialSpaceView,
 };
 
-use super::{SpatialSpaceViewState, SpatialViewPartSystemData};
+use super::{SpatialSpaceViewState, SpatialViewPartData};
 
 pub struct Image {
     /// Path to the image (note image instance ids would refer to pixels!)
@@ -120,7 +120,7 @@ struct ImageGrouping {
 
 #[derive(Default)]
 pub struct ImagesPart {
-    pub data: SpatialViewPartSystemData,
+    pub data: SpatialViewPartData,
     pub images: Vec<Image>,
     pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
@@ -450,7 +450,7 @@ impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
         draw_data_list
     }
 
-    fn data(&self) -> Option<&SpatialViewPartSystemData> {
+    fn data(&self) -> Option<&SpatialViewPartData> {
         Some(&self.data)
     }
 }

@@ -7,8 +7,8 @@ pub struct SpaceViewClassPlaceholder;
 impl SpaceViewClass for SpaceViewClassPlaceholder {
     type State = ();
     type Context = ();
-    type ViewPartSystems = ();
-    type ViewPartSystemData = ();
+    type SystemCollection = ();
+    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Unknown Space View Class".into()

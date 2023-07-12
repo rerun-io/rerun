@@ -22,14 +22,14 @@ pub trait SpaceViewClass: std::marker::Sized {
     type Context: ViewContext + Default + 'static;
 
     /// Collection of [`crate::ViewPartSystem`]s that this scene populates.
-    type ViewPartSystems: ViewPartSystemCollection<Self> + Default + 'static;
+    type SystemCollection: ViewPartSystemCollection<Self> + Default + 'static;
 
     /// A piece of data that all scene parts have in common, useful for iterating over them.
     ///
     /// This is useful for retrieving data that is common to all scene parts of a [`SpaceViewClass`].
     /// For example, if most scene parts produce ui elements, a concrete [`SpaceViewClass`]
     /// can pick those up in its [`SpaceViewClass::ui`] method by iterating over all scene parts.
-    type ViewPartSystemData;
+    type ViewPartData;
 
     /// Name of this space view class.
     ///

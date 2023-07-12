@@ -27,7 +27,7 @@ pub trait Scene {
 /// Implementation of [`Scene`] for a specific [`SpaceViewClass`].
 pub struct TypedScene<C: SpaceViewClass> {
     pub context: C::Context,
-    pub parts: C::ViewPartSystems,
+    pub parts: C::SystemCollection,
     pub highlights: SpaceViewHighlights,
 
     /// All draw data gathered during the last call to [`Self::populate`].

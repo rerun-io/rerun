@@ -37,7 +37,7 @@ pub trait ViewPartSystem<C: SpaceViewClass> {
     /// This is useful for retrieving data that is common to all scene parts of a [`crate::SpaceViewClass`].
     /// For example, if most scene parts produce ui elements, a concrete [`crate::SpaceViewClass`]
     /// can pick those up in its [`crate::SpaceViewClass::ui`] method by iterating over all scene parts.
-    fn data(&self) -> Option<&C::ViewPartSystemData> {
+    fn data(&self) -> Option<&C::ViewPartData> {
         None
     }
 }

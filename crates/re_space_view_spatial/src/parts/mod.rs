@@ -14,7 +14,7 @@ mod points3d;
 mod spatial_scene_part_data;
 
 pub use images::Image;
-pub use spatial_scene_part_data::SpatialViewPartSystemData;
+pub use spatial_scene_part_data::SpatialViewPartData;
 
 use ahash::HashMap;
 use std::sync::Arc;

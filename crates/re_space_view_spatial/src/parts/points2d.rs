@@ -18,13 +18,13 @@ use crate::{
 
 use super::{
     picking_id_from_instance_key, process_annotations_and_keypoints, process_colors, process_radii,
-    SpatialSpaceViewState, SpatialViewPartSystemData,
+    SpatialSpaceViewState, SpatialViewPartData,
 };
 
 pub struct Points2DPart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub data: SpatialViewPartSystemData,
+    pub data: SpatialViewPartData,
 }
 
 impl Default for Points2DPart {
@@ -204,7 +204,7 @@ impl ViewPartSystem<SpatialSpaceView> for Points2DPart {
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> Option<&SpatialViewPartSystemData> {
+    fn data(&self) -> Option<&SpatialViewPartData> {
         Some(&self.data)
     }
 }

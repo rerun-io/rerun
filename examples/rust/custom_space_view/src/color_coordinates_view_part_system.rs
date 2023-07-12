@@ -16,11 +16,13 @@ use crate::color_coordinates_space_view::ColorCoordinatesSpaceView;
 /// This is a collection of all information needed to display a single frame for this Space View.
 /// The data is queried from the data store here and processed to consumption by the Space View's ui method.
 #[derive(Default)]
-pub struct ColorCoordinatesViewPartSystems {
+pub struct ColorCoordinatesViewPartSystemCollection {
     pub colors: InstanceColors,
 }
 
-impl ViewPartSystemCollection<ColorCoordinatesSpaceView> for ColorCoordinatesViewPartSystems {
+impl ViewPartSystemCollection<ColorCoordinatesSpaceView>
+    for ColorCoordinatesViewPartSystemCollection
+{
     fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<ColorCoordinatesSpaceView>> {
         vec![&mut self.colors]
     }

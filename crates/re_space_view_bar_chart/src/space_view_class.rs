@@ -14,8 +14,8 @@ pub struct BarChartSpaceView;
 impl SpaceViewClass for BarChartSpaceView {
     type State = ();
     type Context = ();
-    type ViewPartSystems = BarChartViewPartSystem;
-    type ViewPartSystemData = ();
+    type SystemCollection = BarChartViewPartSystem;
+    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Bar Chart".into()

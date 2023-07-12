@@ -90,13 +90,13 @@ impl ViewContextSystem for TransformContext {
             return;
         };
 
-        let latest_at_query = time_ctrl.current_query();
+        let time_query = time_ctrl.current_query();
 
         // Child transforms of this space
         self.gather_descendants_transforms(
             current_tree,
             &entity_db.data_store,
-            &latest_at_query,
+            &time_query,
             entity_prop_map,
             glam::Affine3A::IDENTITY,
             &None, // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
@@ -120,7 +120,7 @@ impl ViewContextSystem for TransformContext {
             match transform_at(
                 &current_tree.path,
                 &entity_db.data_store,
-                &latest_at_query,
+                &time_query,
                 // TODO(#1988): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
                 |_| 500.0,
@@ -141,7 +141,7 @@ impl ViewContextSystem for TransformContext {
             self.gather_descendants_transforms(
                 parent_tree,
                 &entity_db.data_store,
-                &latest_at_query,
+                &time_query,
                 entity_prop_map,
                 reference_from_ancestor,
                 &encountered_pinhole,

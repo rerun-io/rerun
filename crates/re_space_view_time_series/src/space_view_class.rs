@@ -19,8 +19,8 @@ pub struct TimeSeriesSpaceView;
 impl SpaceViewClass for TimeSeriesSpaceView {
     type State = ();
     type Context = ();
-    type ViewPartSystems = SceneTimeSeries;
-    type ViewPartSystemData = ();
+    type SystemCollection = SceneTimeSeries;
+    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Time Series".into()

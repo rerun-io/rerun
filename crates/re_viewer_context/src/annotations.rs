@@ -131,7 +131,7 @@ impl AnnotationMap {
         let mut visited = IntSet::<EntityPath>::default();
 
         let data_store = &ctx.store_db.entity_db.data_store;
-        let latest_at_query = LatestAtQuery::new(query.timeline, query.latest_at);
+        let time_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function
@@ -153,7 +153,7 @@ impl AnnotationMap {
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         if query_entity_with_primary::<AnnotationContext>(
                             data_store,
-                            &latest_at_query,
+                            &time_query,
                             &parent,
                             &[],
                         )

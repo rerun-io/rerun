@@ -39,8 +39,8 @@ pub struct TextSpaceView;
 impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
     type Context = ();
-    type ViewPartSystems = SceneText;
-    type ViewPartSystemData = ();
+    type SystemCollection = SceneText;
+    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Text".into()

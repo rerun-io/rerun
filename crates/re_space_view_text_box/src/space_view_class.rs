@@ -38,8 +38,8 @@ pub struct TextBoxSpaceView;
 impl SpaceViewClass for TextBoxSpaceView {
     type State = TextBoxSpaceViewState;
     type Context = ();
-    type ViewPartSystems = SceneTextBox;
-    type ViewPartSystemData = ();
+    type SystemCollection = SceneTextBox;
+    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Text Box".into()

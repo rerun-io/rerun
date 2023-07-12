@@ -7,7 +7,7 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use super::{picking_id_from_instance_key, SpatialSpaceViewState, SpatialViewPartSystemData};
+use super::{picking_id_from_instance_key, SpatialSpaceViewState, SpatialViewPartData};
 use crate::{
     contexts::{SpatialSceneEntityContext, SpatialViewContext},
     parts::entity_iterator::process_entity_views,
@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct Arrows3DPart(SpatialViewPartSystemData);
+pub struct Arrows3DPart(SpatialViewPartData);
 
 impl Arrows3DPart {
     fn process_entity_view(
@@ -127,7 +127,7 @@ impl ViewPartSystem<SpatialSpaceView> for Arrows3DPart {
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> Option<&SpatialViewPartSystemData> {
+    fn data(&self) -> Option<&SpatialViewPartData> {
         Some(&self.0)
     }
 }

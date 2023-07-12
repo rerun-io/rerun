@@ -11,7 +11,7 @@ use re_viewer::external::{
 };
 
 use crate::color_coordinates_view_part_system::{
-    ColorCoordinatesViewPartSystems, ColorWithInstanceKey,
+    ColorCoordinatesViewPartSystemCollection, ColorWithInstanceKey,
 };
 
 /// The different modes for displaying color coordinates in the custom space view.
@@ -73,11 +73,11 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     type Context = ();
 
     // Collection of scene parts that are needed to display a frame.
-    type ViewPartSystems = ColorCoordinatesViewPartSystems;
+    type SystemCollection = ColorCoordinatesViewPartSystemCollection;
 
     // Scene parts can have a common data object that they expose.
     // For this Space View this is not needed.
-    type ViewPartSystemData = ();
+    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         // Name and identifier of this Space View.
