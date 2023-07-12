@@ -111,18 +111,6 @@ fn main() {
 
     re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry);
 
-    // We need to run `cago fmt` several times because it is not idempotent!
-    // See https://github.com/rust-lang/rustfmt/issues/5824
-    for _ in 0..2 {
-        // NOTE: We're purposefully ignoring the error here.
-        //
-        // In the very unlikely chance that the user doesn't have the `fmt` component installed,
-        // there's still no good reason to fail the build.
-        //
-        // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
-        cmd!(sh, "cargo fmt -p re_types").run().ok();
-    }
-
     re_types_builder::generate_python_code(PYTHON_OUTPUT_DIR_PATH, &objects, &arrow_registry);
 
     let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
