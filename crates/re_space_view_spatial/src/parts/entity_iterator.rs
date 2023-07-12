@@ -2,7 +2,7 @@ use re_log_types::{Component, EntityPath};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewHighlights, SpaceViewSystemExecutionError, ViewContextCollection,
+    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewQuery, ViewerContext,
 };
 

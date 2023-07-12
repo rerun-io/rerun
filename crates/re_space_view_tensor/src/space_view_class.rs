@@ -165,10 +165,10 @@ impl SpaceViewClass for TensorSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        view_ctx: &ViewContextCollection,
+        _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
-        query: &ViewQuery<'_>,
-        draw_data: Vec<re_renderer::QueueableDrawData>,
+        _query: &ViewQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 

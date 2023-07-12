@@ -15,18 +15,15 @@ use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,
 };
+use re_viewer_context::ViewContextCollection;
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,
     TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery, ViewerContext,
 };
-use re_viewer_context::{SpaceViewHighlights, ViewContextCollection};
 
 use crate::{
-    contexts::{
-        EntityDepthOffsets, SpatialSceneEntityContext, SpatialViewContext, TransformContext,
-    },
+    contexts::{EntityDepthOffsets, SpatialSceneEntityContext, SpatialViewContext},
     parts::{entity_iterator::process_entity_views, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
-    SpatialSpaceView,
 };
 
 use super::SpatialViewPartData;
@@ -409,7 +406,7 @@ impl ViewPartSystem for ImagesPart {
                     ent_context,
                 )
             },
-        );
+        )?;
 
         self.handle_image_layering();
 

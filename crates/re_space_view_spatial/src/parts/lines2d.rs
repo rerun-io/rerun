@@ -3,14 +3,13 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext, SpatialViewContext},
+    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     parts::entity_iterator::process_entity_views,
-    SpatialSpaceView,
 };
 
 use super::{picking_id_from_instance_key, SpatialViewPartData};
@@ -103,7 +102,7 @@ impl ViewPartSystem for Lines2DPart {
             |_ctx, ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
-        );
+        )?;
 
         Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }

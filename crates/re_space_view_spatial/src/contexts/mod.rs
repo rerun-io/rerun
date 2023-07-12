@@ -20,7 +20,7 @@ use re_viewer_context::{
     Annotations, SpaceViewSystemExecutionError, ViewContextCollection, ViewContextSystem,
 };
 
-// TODO: DOC
+///
 pub struct SpatialViewContext<'a> {
     pub transforms: &'a TransformContext,
     pub depth_offsets: &'a EntityDepthOffsets,
@@ -56,7 +56,7 @@ impl<'a> SpatialViewContext<'a> {
                 .get(&ent_path.hash())
                 .unwrap_or(&default_depth_offset),
             annotations: self.annotations.0.find(ent_path),
-            shared_render_builders: &self.shared_render_builders,
+            shared_render_builders: self.shared_render_builders,
             highlight: highlights.entity_outline_mask(ent_path.hash()),
             ctx: self,
         })

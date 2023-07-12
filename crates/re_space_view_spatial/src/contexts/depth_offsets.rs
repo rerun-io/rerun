@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use nohash_hasher::IntMap;
 use re_components::DrawOrder;
-use re_log_types::{Component, EntityPath, EntityPathHash};
+use re_log_types::{Component, EntityPathHash};
 use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};
 
 /// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].
@@ -119,11 +119,5 @@ impl ViewContextSystem for EntityDepthOffsets {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
-    }
-}
-
-impl EntityDepthOffsets {
-    pub fn get(&self, ent_path: &EntityPath) -> Option<re_renderer::DepthOffset> {
-        self.per_entity.get(&ent_path.hash()).cloned()
     }
 }

@@ -3,15 +3,14 @@ use re_components::{Component, InstanceKey, Pinhole, Transform3D, ViewCoordinate
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
-    contexts::{pinhole_camera_view_coordinates, SharedRenderBuilders, SpatialViewContext},
+    contexts::{pinhole_camera_view_coordinates, SpatialViewContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     space_camera_3d::SpaceCamera3D,
-    SpatialSpaceView,
 };
 
 use super::SpatialViewPartData;

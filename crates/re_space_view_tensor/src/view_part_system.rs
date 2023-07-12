@@ -3,11 +3,9 @@ use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::{Component as _, InstanceKey};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, SpaceViewSystemExecutionError,
-    TensorDecodeCache, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
-
-use crate::TensorSpaceView;
 
 /// A bar chart scene, with everything needed to render it.
 #[derive(Default)]

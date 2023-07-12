@@ -3,17 +3,15 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::SpatialViewPartData;
 use crate::{
-    contexts::{SpatialSceneEntityContext, SpatialViewContext},
-    instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    mesh_cache::MeshCache,
+    contexts::SpatialSceneEntityContext,
+    instance_hash_conversions::picking_layer_id_from_instance_path_hash, mesh_cache::MeshCache,
     parts::entity_iterator::process_entity_views,
-    SpatialSpaceView,
 };
 
 #[derive(Default)]

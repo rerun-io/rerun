@@ -1,12 +1,10 @@
-use re_arrow_store::{LatestAtQuery, TimeRange};
+use re_arrow_store::TimeRange;
 use re_log_types::{Component, ComponentName, InstanceKey};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
     AnnotationMap, DefaultColor, SpaceViewSystemExecutionError, ViewPartSystem, ViewQuery,
     ViewerContext,
 };
-
-use crate::TimeSeriesSpaceView;
 
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {

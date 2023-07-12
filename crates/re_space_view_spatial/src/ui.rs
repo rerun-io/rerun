@@ -20,7 +20,7 @@ use re_viewer_context::{
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::contexts::{AnnotationSceneContext, NonInteractiveEntities, PrimitiveCounter};
 use crate::parts::{calculate_bounding_box, CamerasPart, ImagesPart};
-use crate::space_camera_3d::SpaceCamera3D;
+
 use crate::{
     parts::{preferred_navigation_mode, UiLabel, UiLabelTarget},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
@@ -409,7 +409,7 @@ impl SpatialSpaceViewState {
 
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                view_3d(ctx, ui, self, view_ctx, parts, query, draw_data);
+                view_3d(ctx, ui, self, view_ctx, parts, query, draw_data)
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
@@ -425,10 +425,9 @@ impl SpatialSpaceViewState {
                     query,
                     scene_rect_accum,
                     draw_data,
-                );
+                )
             }
         }
-        Ok(())
     }
 
     pub fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {

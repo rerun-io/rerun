@@ -68,13 +68,13 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
-        view_ctx: &ViewContextCollection,
+        _state: &mut Self::State,
+        _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
-        query: &ViewQuery<'_>,
-        draw_data: Vec<re_renderer::QueueableDrawData>,
+        _query: &ViewQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         use egui::plot::{Bar, BarChart, Legend, Plot};
 

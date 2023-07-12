@@ -1,17 +1,16 @@
 use re_components::{Arrow3D, ColorRGBA, Component as _, InstanceKey, Label, Radius};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
-use re_renderer::{renderer::LineStripFlags, DepthOffset, Size};
+use re_renderer::{renderer::LineStripFlags, Size};
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::{picking_id_from_instance_key, SpatialViewPartData};
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext, SpatialViewContext},
+    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     parts::entity_iterator::process_entity_views,
-    SpatialSpaceView,
 };
 
 #[derive(Default)]
@@ -121,7 +120,7 @@ impl ViewPartSystem for Arrows3DPart {
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
-        );
+        )?;
 
         Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }

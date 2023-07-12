@@ -4,16 +4,15 @@ use re_components::{
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{EntityView, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewHighlights,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
-    contexts::{SpatialSceneEntityContext, SpatialViewContext},
+    contexts::SpatialSceneEntityContext,
     parts::{
         entity_iterator::process_entity_views, load_keypoint_connections, UiLabel, UiLabelTarget,
     },
-    SpatialSpaceView,
 };
 
 use super::{
@@ -199,7 +198,7 @@ impl ViewPartSystem for Points3DPart {
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
-        );
+        )?;
 
         Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }

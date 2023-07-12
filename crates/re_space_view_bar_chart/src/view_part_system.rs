@@ -5,11 +5,9 @@ use re_components::Tensor;
 use re_data_store::EntityPath;
 use re_log_types::Component as _;
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
-
-use crate::BarChartSpaceView;
 
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]

@@ -6,8 +6,8 @@ use re_data_store::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{
-    gpu_bridge, HoveredSpace, SpaceViewId, ViewContextCollection, ViewPartCollection, ViewQuery,
-    ViewerContext,
+    gpu_bridge, HoveredSpace, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use super::{
@@ -219,6 +219,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
+#[allow(clippy::too_many_arguments)]
 pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -228,7 +229,7 @@ pub fn view_2d(
     query: &ViewQuery<'_>,
     scene_rect_accum: Rect,
     mut draw_data: Vec<re_renderer::QueueableDrawData>,
-) -> egui::Response {
+) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
     // Save off the available_size since this is used for some of the layout updates later
@@ -269,13 +270,13 @@ pub fn view_2d(
         .scroll_offset(offset)
         .auto_shrink([false, false]);
 
-    let scroll_out = scroll_area.show(ui, |ui| {
+    let scroll_out = scroll_area.show(ui, |ui| -> Result<(), SpaceViewSystemExecutionError> {
         let desired_size = desired_size.at_least(Vec2::ZERO);
         let (mut response, painter) =
             ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
         if !response.rect.is_positive() {
-            return response; // protect against problems with zero-sized views
+            return Ok(());
         }
 
         let ui_from_canvas = egui::emath::RectTransform::from_to(canvas_rect, response.rect);
@@ -299,7 +300,7 @@ pub fn view_2d(
                 query.highlights.any_outlines(),
                 pinhole
             ) else {
-                return response;
+                return Ok(());
             };
 
         let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
@@ -310,13 +311,12 @@ pub fn view_2d(
             ui_from_canvas,
             &eye,
             ui,
-            &query.highlights,
+            query.highlights,
             SpatialNavigationMode::TwoD,
         );
 
         if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
-            let skipped_picking_response = response.clone();
-            response = match picking(
+            response = picking(
                 ctx,
                 response,
                 canvas_from_ui,
@@ -329,14 +329,7 @@ pub fn view_2d(
                 parts,
                 &ui_rects,
                 query,
-            ) {
-                Ok(response) => response,
-                Err(err) => {
-                    // TODO(andreas): Should pass error on but scroll area (which is to be removed) makes this hard.
-                    re_log::error_once!("Picking failed: {}", err);
-                    skipped_picking_response
-                }
-            };
+            )?;
         }
 
         for draw_data in draw_data.drain(..) {
@@ -351,7 +344,7 @@ pub fn view_2d(
         // ------------------------------------------------------------------------
 
         // Screenshot context menu.
-        let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
+        let (_, screenshot_mode) = screenshot_context_menu(ctx, response);
         if let Some(mode) = screenshot_mode {
             view_builder
                 .schedule_screenshot(ctx.render_ctx, query.space_view_id.gpu_readback_id(), mode)
@@ -366,7 +359,7 @@ pub fn view_2d(
                     Ok(command_buffer) => command_buffer,
                     Err(err) => {
                         re_log::error_once!("Failed to fill view builder: {err}");
-                        return response;
+                        return Ok(()); // TODO(andreas): Should make it possible to pass the error on.
                     }
                 };
             painter.add(gpu_bridge::renderer_paint_callback(
@@ -388,15 +381,16 @@ pub fn view_2d(
         // Add egui driven labels on top of re_renderer content.
         painter.extend(label_shapes);
 
-        response
+        Ok(())
     });
+    scroll_out.inner?;
 
     // Update the scroll area based on the computed offset
     // This handles cases of dragging/zooming the space
     state
         .state_2d
         .capture_scroll(scroll_out.state.offset, available_size, scene_rect_accum);
-    scroll_out.inner
+    Ok(())
 }
 
 fn setup_target_config(

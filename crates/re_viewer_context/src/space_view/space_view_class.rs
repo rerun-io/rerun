@@ -76,15 +76,16 @@ pub trait SpaceViewClass: std::marker::Sized {
 
     /// Draws the ui for this space view class and handles ui events.
     ///
-    /// The passed systems (context and parts) are only valid for the duration of this frame and
-    /// were already executed upon entering this method.
-    ///
     /// The passed state is kept frame-to-frame.
     ///
-    /// draw_data is all draw data gathered by executing the view part systems.
+    /// The passed systems (`view_ctx` and `parts`) are only valid for the duration of this frame and
+    /// were already executed upon entering this method.
+    ///
+    /// `draw_data` is all draw data gathered by executing the view part systems.
     /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
     ///              In the future, we likely want to move view builder handling to `re_viewport` with
     ///              minimal configuration options exposed via [`crate::SpaceViewClass`].
+    #[allow(clippy::too_many_arguments)]
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -187,8 +188,10 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         }
 
         typed_state_wrapper_mut(state, |state| {
-            // TODO: Error handling
-            self.ui(ctx, ui, state, &view_ctx, &parts, query, draw_data);
+            if let Err(err) = self.ui(ctx, ui, state, &view_ctx, &parts, query, draw_data) {
+                // TODO(andreas): Draw an error message on top of the space view ui instead of logging.
+                re_log::error_once!("Error drawing ui for space view: {}", err);
+            }
         });
     }
 }

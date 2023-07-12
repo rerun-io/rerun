@@ -34,7 +34,7 @@ impl ViewPartSystem for InstanceColorSystem {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        view_ctx: &ViewContextCollection,
+        _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         // For each entity in the space view...
         for (ent_path, props) in query.iter_entities() {
