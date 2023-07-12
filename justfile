@@ -75,6 +75,13 @@ py-format:
     # Note: proto.py relies on old-style annotation to work, and pyupgrade is too opinionated to be disabled from comments
     # See https://github.com/rerun-io/rerun/pull/2559 for details
     pyupgrade --py38-plus `find {{py_folders}} -name "*.py" -type f ! -path "examples/python/objectron/proto/objectron/proto.py"`
+    # The order below is important and sadly we need to call black twice. Ruff does not yet
+    # fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
+    #
+    # 1) Call black, which among others things fixes line-length
+    # 2) Call ruff, which requires line-lengths to be correct
+    # 3) Call black again to cleanup some whitespace issues ruff might introduce
+    black --config rerun_py/pyproject.toml {{py_folders}}
     ruff --fix --config rerun_py/pyproject.toml  {{py_folders}}
     black --config rerun_py/pyproject.toml {{py_folders}}
     blackdoc {{py_folders}}

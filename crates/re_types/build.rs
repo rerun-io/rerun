@@ -133,25 +133,27 @@ fn main() {
         .to_string_lossy()
         .to_string();
 
-    // NOTE: We're purposefully ignoring the error here.
-    //
-    // If the user doesn't have `ruff` in their $PATH, there's still no good reason to fail
-    // the build.
-    //
-    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(
-        sh,
-        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
-    )
-    .run()
-    .ok();
-
     // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
     // not end users.
     // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
     // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
     // the CI!
+    //
+    // The order below is important and sadly we need to call black twice. Ruff does not yet
+    // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
+    //
+    // 1) Call black, which among others things fixes line-length
+    // 2) Call ruff, which requires line-lengths to be correct
+    // 3) Call black again to cleanup some whitespace issues ruff might introduce
 
+    call_black(&sh, &pyproject_path);
+    call_ruff(&sh, &pyproject_path);
+    call_black(&sh, &pyproject_path);
+
+    write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+}
+
+fn call_black(sh: &Shell, pyproject_path: &String) {
     // NOTE: We're purposefully ignoring the error here.
     //
     // If the user doesn't have `black` in their $PATH, there's still no good reason to fail
@@ -164,6 +166,19 @@ fn main() {
     )
     .run()
     .ok();
+}
 
-    write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+fn call_ruff(sh: &Shell, pyproject_path: &String) {
+    // NOTE: We're purposefully ignoring the error here.
+    //
+    // If the user doesn't have `ruff` in their $PATH, there's still no good reason to fail
+    // the build.
+    //
+    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
+    cmd!(
+        sh,
+        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
+    )
+    .run()
+    .ok();
 }
