@@ -1,4 +1,3 @@
-use itertools::Itertools as _;
 use web_time::Instant;
 
 use re_data_store::store_db::StoreDb;
