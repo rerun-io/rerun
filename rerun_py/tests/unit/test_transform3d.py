@@ -4,7 +4,6 @@ from fractions import Fraction
 
 import numpy as np
 import pytest
-import rerun as rr
 from rerun.experimental import arch as rr_arch
 from rerun.experimental import cmp as rr_cmp
 from rerun.experimental import dt as rr_dt
