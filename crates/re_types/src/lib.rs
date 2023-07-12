@@ -76,290 +76,160 @@
 
 // ---
 
+/// Anything that can be serialized to and deserialized from Arrow data.
+pub trait Loggable {
+    type Name;
+
+    /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.
+    fn name() -> Self::Name;
+
+    /// The underlying [`arrow2::datatypes::DataType`].
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType;
+
+    // ---
+
+    /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
+    /// them into an Arrow array.
+    /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
+    ///
+    /// Panics on failure.
+    /// This will _never_ fail for Rerun's builtin [`Loggable`]s.
+    ///
+    /// For the fallible version, see [`Loggable::try_to_arrow`].
+    #[inline]
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+        extension_wrapper: Option<&str>,
+    ) -> Box<dyn ::arrow2::array::Array>
+    where
+        Self: Clone + 'a,
+    {
+        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper).unwrap()
+    }
+
+    /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
+    /// them into an Arrow array.
+    /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
+    ///
+    /// This will _never_ fail for Rerun's builtin [`Loggable`].
+    /// For the non-fallible version, see [`Loggable::to_arrow`].
+    #[inline]
+    fn try_to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+        extension_wrapper: Option<&str>,
+    ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper)
+    }
+
+    /// Given an iterator of options of owned or reference values to the current
+    /// [`Loggable`], serializes them into an Arrow array.
+    /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
+    ///
+    /// Panics on failure.
+    /// This will _never_ fail for Rerun's builtin [`Loggable`].
+    ///
+    /// For the fallible version, see [`Loggable::try_to_arrow_opt`].
+    #[inline]
+    fn to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> Box<dyn ::arrow2::array::Array>
+    where
+        Self: Clone + 'a,
+    {
+        Self::try_to_arrow_opt(data, extension_wrapper).unwrap()
+    }
+
+    /// Given an iterator of options of owned or reference values to the current
+    /// [`Loggable`], serializes them into an Arrow array.
+    /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
+    ///
+    /// This will _never_ fail for Rerun's builtin [`Loggable`].
+    /// For the non-fallible version, see [`Loggable::to_arrow_opt`].
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a;
+
+    // ---
+
+    /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
+    ///
+    /// Panics if the data schema doesn't match, or if optional entries were missing at runtime.
+    /// For the non-fallible version, see [`Loggable::try_from_arrow`].
+    #[inline]
+    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        Self::from_arrow_opt(data)
+            .into_iter()
+            .map(Option::unwrap)
+            .collect()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Loggable::to_arrow_datatype`].
+    /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
+    #[inline]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        Self::try_from_arrow_opt(data)?
+            .into_iter()
+            .map(|v| {
+                v.ok_or_else(|| DeserializationError::MissingData {
+                    datatype: data.data_type().clone(),
+                })
+            })
+            .collect()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Loggable::to_arrow_datatype`].
+    /// For the fallible version, see [`Loggable::try_from_arrow_opt`].
+    #[inline]
+    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>>
+    where
+        Self: Sized,
+    {
+        Self::try_from_arrow_opt(data).unwrap()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Loggable::to_arrow_datatype`].
+    /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized;
+}
+
 /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
 pub type DatatypeName = ::std::borrow::Cow<'static, str>;
 
 /// A [`Datatype`] describes plain old data that can be used by any number of [`Component`].
-pub trait Datatype {
-    /// The fully-qualified name of this datatype, e.g. `rerun.datatypes.Vec2D`.
-    fn name() -> DatatypeName;
-
-    /// The underlying [`arrow2::datatypes::DataType`].
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType;
-
-    // ---
-
-    /// Given an iterator of owned or reference values to the current [`Datatype`], serializes
-    /// them into an Arrow array.
-    /// The Arrow array's datatype will match [`Datatype::to_arrow_datatype`].
-    ///
-    /// Panics on failure.
-    /// This will _never_ fail for Rerun's builtin [`Datatype`].
-    ///
-    /// For the fallible version, see [`Datatype::try_to_arrow`].
-    #[inline]
-    fn to_arrow<'a>(
-        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
-        extension_wrapper: Option<&str>,
-    ) -> Box<dyn ::arrow2::array::Array>
-    where
-        Self: Clone + 'a,
-    {
-        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper).unwrap()
-    }
-
-    /// Given an iterator of owned or reference values to the current [`Datatype`], serializes
-    /// them into an Arrow array.
-    /// The Arrow array's datatype will match [`Datatype::to_arrow_datatype`].
-    ///
-    /// This will _never_ fail for Rerun's builtin [`Datatype`].
-    /// For the non-fallible version, see [`Datatype::to_arrow`].
-    #[inline]
-    fn try_to_arrow<'a>(
-        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
-        extension_wrapper: Option<&str>,
-    ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
-    where
-        Self: Clone + 'a,
-    {
-        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper)
-    }
-
-    /// Given an iterator of options of owned or reference values to the current
-    /// [`Datatype`], serializes them into an Arrow array.
-    /// The Arrow array's datatype will match [`Datatype::to_arrow_datatype`].
-    ///
-    /// Panics on failure.
-    /// This will _never_ fail for Rerun's builtin [`Datatype`].
-    ///
-    /// For the fallible version, see [`Datatype::try_to_arrow_opt`].
-    #[inline]
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
-    ) -> Box<dyn ::arrow2::array::Array>
-    where
-        Self: Clone + 'a,
-    {
-        Self::try_to_arrow_opt(data, extension_wrapper).unwrap()
-    }
-
-    /// Given an iterator of options of owned or reference values to the current
-    /// [`Datatype`], serializes them into an Arrow array.
-    /// The Arrow array's datatype will match [`Datatype::to_arrow_datatype`].
-    ///
-    /// This will _never_ fail for Rerun's builtin [`Datatype`].
-    /// For the non-fallible version, see [`Datatype::to_arrow_opt`].
-    fn try_to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
-    ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
-    where
-        Self: Clone + 'a;
-
-    // ---
-
-    /// Given an Arrow array, deserializes it into a collection of [`Datatype`]s.
-    ///
-    /// Panics if the data schema doesn't match, or if optional entries were missing at runtime.
-    /// For the non-fallible version, see [`Datatype::try_from_arrow`].
-    #[inline]
-    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self>
-    where
-        Self: Sized,
-    {
-        Self::from_arrow_opt(data)
-            .into_iter()
-            .map(Option::unwrap)
-            .collect()
-    }
-
-    /// Given an Arrow array, deserializes it into a collection of optional [`Datatype`]s.
-    ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
-    /// [`Datatype::to_arrow_datatype`].
-    /// For the non-fallible version, see [`Datatype::from_arrow_opt`].
-    #[inline]
-    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        Self::try_from_arrow_opt(data)?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
-                })
-            })
-            .collect()
-    }
-
-    /// Given an Arrow array, deserializes it into a collection of optional [`Datatype`]s.
-    ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
-    /// [`Datatype::to_arrow_datatype`].
-    /// For the fallible version, see [`Datatype::try_from_arrow_opt`].
-    #[inline]
-    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>>
-    where
-        Self: Sized,
-    {
-        Self::try_from_arrow_opt(data).unwrap()
-    }
-
-    /// Given an Arrow array, deserializes it into a collection of optional [`Datatype`]s.
-    ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
-    /// [`Datatype::to_arrow_datatype`].
-    /// For the non-fallible version, see [`Datatype::from_arrow_opt`].
-    fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized;
-}
+pub trait Datatype: Loggable {}
 
 /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Point2D`.
 pub type ComponentName = ::std::borrow::Cow<'static, str>;
 
-pub trait Component {
-    /// The fully-qualified name of this component, e.g. `rerun.components.Point2D`.
-    fn name() -> ComponentName;
+pub trait Component: Loggable {}
 
-    /// The underlying [`arrow2::datatypes::DataType`].
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType;
-
-    // ---
-
-    /// Given an iterator of owned or reference values to the current [`Component`], serializes
-    /// them into an Arrow array.
-    /// The Arrow array's datatype will match [`Component::to_arrow_datatype`].
-    ///
-    /// Panics on failure.
-    /// This will _never_ fail for Rerun's builtin [`Datatype`].
-    ///
-    /// For the fallible version, see [`Component::try_to_arrow`].
-    #[inline]
-    fn to_arrow<'a>(
-        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
-        extension_wrapper: Option<&str>,
-    ) -> Box<dyn ::arrow2::array::Array>
-    where
-        Self: Clone + 'a,
-    {
-        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper).unwrap()
-    }
-
-    /// Given an iterator of owned or reference values to the current [`Component`], serializes
-    /// them into an Arrow array.
-    /// The Arrow array's datatype will match [`Component::to_arrow_datatype`].
-    ///
-    /// This will _never_ fail for Rerun's builtin [`Datatype`].
-    /// For the non-fallible version, see [`Component::to_arrow`].
-    #[inline]
-    fn try_to_arrow<'a>(
-        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
-        extension_wrapper: Option<&str>,
-    ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
-    where
-        Self: Clone + 'a,
-    {
-        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper)
-    }
-
-    /// Given an iterator of options of owned or reference values to the current
-    /// [`Component`], serializes them into an Arrow array.
-    /// The Arrow array's datatype will match [`Component::to_arrow_datatype`].
-    ///
-    /// Panics on failure.
-    /// This will _never_ fail for Rerun's builtin [`Datatype`].
-    ///
-    /// For the fallible version, see [`Component::try_to_arrow_opt`].
-    #[inline]
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
-    ) -> Box<dyn ::arrow2::array::Array>
-    where
-        Self: Clone + 'a,
-    {
-        Self::try_to_arrow_opt(data, extension_wrapper).unwrap()
-    }
-
-    /// Given an iterator of options of owned or reference values to the current
-    /// [`Component`], serializes them into an Arrow array.
-    /// The Arrow array's datatype will match [`Component::to_arrow_datatype`].
-    ///
-    /// This will _never_ fail for Rerun's builtin [`Datatype`].
-    /// For the non-fallible version, see [`Component::to_arrow_opt`].
-    fn try_to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
-    ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
-    where
-        Self: Clone + 'a;
-
-    // ---
-
-    /// Given an Arrow array, deserializes it into a collection of [`Component`]s.
-    ///
-    /// Panics if the data schema doesn't match, or if optional entries were missing at runtime.
-    /// For the non-fallible version, see [`Component::try_from_arrow`].
-    #[inline]
-    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self>
-    where
-        Self: Sized,
-    {
-        Self::from_arrow_opt(data)
-            .into_iter()
-            .map(Option::unwrap)
-            .collect()
-    }
-
-    /// Given an Arrow array, deserializes it into a collection of optional [`Component`]s.
-    ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
-    /// [`Component::to_arrow_datatype`].
-    /// For the non-fallible version, see [`Component::from_arrow_opt`].
-    #[inline]
-    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        Self::try_from_arrow_opt(data)?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
-                })
-            })
-            .collect()
-    }
-
-    /// Given an Arrow array, deserializes it into a collection of optional [`Component`]s.
-    ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
-    /// [`Component::to_arrow_datatype`].
-    /// For the fallible version, see [`Component::try_from_arrow_opt`].
-    #[inline]
-    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>>
-    where
-        Self: Sized,
-    {
-        Self::try_from_arrow_opt(data).unwrap()
-    }
-
-    /// Given an Arrow array, deserializes it into a collection of optional [`Component`]s.
-    ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
-    /// [`Component::to_arrow_datatype`].
-    /// For the non-fallible version, see [`Component::from_arrow_opt`].
-    fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized;
-}
+// ---
 
 /// The fully-qualified name of an [`Archetype`], e.g. `rerun.archetypes.Points2D`.
 pub type ArchetypeName = ::std::borrow::Cow<'static, str>;

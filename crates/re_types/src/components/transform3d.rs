@@ -33,9 +33,10 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
     }
 }
 
-impl crate::Component for Transform3D {
+impl crate::Loggable for Transform3D {
+    type Name = crate::ComponentName;
     #[inline]
-    fn name() -> crate::ComponentName {
+    fn name() -> Self::Name {
         crate::ComponentName::Borrowed("rerun.components.Transform3D")
     }
 
@@ -227,7 +228,7 @@ impl crate::Component for Transform3D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, repr): (Vec<_>, Vec<_>) = data
@@ -263,7 +264,7 @@ impl crate::Component for Transform3D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(crate::datatypes::Transform3D::try_from_arrow_opt(data)?
             .into_iter()
@@ -276,3 +277,5 @@ impl crate::Component for Transform3D {
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Component for Transform3D {}

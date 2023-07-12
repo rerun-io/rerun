@@ -36,9 +36,10 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
     }
 }
 
-impl crate::Datatype for Transform3D {
+impl crate::Loggable for Transform3D {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.Transform3D")
     }
 
@@ -230,7 +231,7 @@ impl crate::Datatype for Transform3D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -351,7 +352,7 @@ impl crate::Datatype for Transform3D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -417,3 +418,5 @@ impl crate::Datatype for Transform3D {
         })
     }
 }
+
+impl crate::Datatype for Transform3D {}

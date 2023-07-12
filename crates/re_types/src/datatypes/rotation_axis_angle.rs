@@ -40,9 +40,10 @@ impl<'a> From<&'a RotationAxisAngle> for ::std::borrow::Cow<'a, RotationAxisAngl
     }
 }
 
-impl crate::Datatype for RotationAxisAngle {
+impl crate::Loggable for RotationAxisAngle {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.RotationAxisAngle")
     }
 
@@ -99,7 +100,7 @@ impl crate::Datatype for RotationAxisAngle {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -222,7 +223,7 @@ impl crate::Datatype for RotationAxisAngle {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -297,3 +298,5 @@ impl crate::Datatype for RotationAxisAngle {
         })
     }
 }
+
+impl crate::Datatype for RotationAxisAngle {}

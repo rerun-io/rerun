@@ -32,9 +32,10 @@ impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
     }
 }
 
-impl crate::Component for ClassId {
+impl crate::Loggable for ClassId {
+    type Name = crate::ComponentName;
     #[inline]
-    fn name() -> crate::ComponentName {
+    fn name() -> Self::Name {
         crate::ComponentName::Borrowed("rerun.class_id")
     }
 
@@ -53,7 +54,7 @@ impl crate::Component for ClassId {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -96,7 +97,7 @@ impl crate::Component for ClassId {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
@@ -113,3 +114,5 @@ impl crate::Component for ClassId {
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Component for ClassId {}

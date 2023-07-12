@@ -30,9 +30,10 @@ impl<'a> From<&'a Vec4D> for ::std::borrow::Cow<'a, Vec4D> {
     }
 }
 
-impl crate::Datatype for Vec4D {
+impl crate::Loggable for Vec4D {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.Vec4D")
     }
 
@@ -59,7 +60,7 @@ impl crate::Datatype for Vec4D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -138,7 +139,7 @@ impl crate::Datatype for Vec4D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let datatype = data.data_type();
@@ -204,3 +205,5 @@ impl crate::Datatype for Vec4D {
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Datatype for Vec4D {}
