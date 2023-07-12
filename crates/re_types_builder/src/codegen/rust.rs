@@ -664,9 +664,11 @@ fn quote_trait_impls_from_obj(
             quote! {
                 #into_cow
 
-                impl crate::#kind for #name {
+                impl crate::Loggable for #name {
+                    type Name = crate::#kind_name;
+
                     #[inline]
-                    fn name() -> crate::#kind_name {
+                    fn name() -> Self::Name {
                         crate::#kind_name::Borrowed(#legacy_fqname)
                     }
 
@@ -687,7 +689,7 @@ fn quote_trait_impls_from_obj(
                         Self: Clone + 'a
                     {
                         use ::arrow2::{datatypes::*, array::*};
-                        use crate::{Component as _, Datatype as _};
+                        use crate::Loggable as _;
                         Ok(#quoted_serializer)
                     }
 
@@ -697,10 +699,12 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*};
-                        use crate::{Component as _, Datatype as _};
+                        use crate::Loggable as _;
                         Ok(#quoted_deserializer)
                     }
                 }
+
+                impl crate::#kind for #name {}
             }
         }
         ObjectKind::Archetype => {
@@ -888,7 +892,7 @@ fn quote_trait_impls_from_obj(
                     fn try_to_arrow(
                         &self,
                     ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
-                        use crate::Component as _;
+                        use crate::Loggable as _;
                         Ok([ #({ #all_serializers },)* ].into_iter().flatten().collect())
                     }
 
@@ -896,7 +900,7 @@ fn quote_trait_impls_from_obj(
                     fn try_from_arrow(
                         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
-                        use crate::Component as _;
+                        use crate::Loggable as _;
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = data
                             .into_iter()
