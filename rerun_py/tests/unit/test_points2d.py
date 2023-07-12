@@ -5,9 +5,9 @@ from typing import Optional, cast
 
 import numpy as np
 import pytest
-import rerun as rr
-from rerun import cmp as rrc
-from rerun import dt as rrd
+import rerun.experimental as rr_exp
+from rerun.experimental import cmp as rr_cmp
+from rerun.experimental import dt as rr_dt
 
 # TODO(cmc): roundtrips (serialize in python, deserialize in rust)
 
@@ -16,13 +16,13 @@ U64_MAX = 2**64 - 1
 
 
 def test_points2d() -> None:
-    points_arrays: list[rrd.Point2DArrayLike] = [
+    points_arrays: list[rr_dt.Point2DArrayLike] = [
         [],
         np.array([]),
         # Point2DArrayLike: Sequence[Point2DLike]: Point2D
         [
-            rrd.Point2D(1, 2),
-            rrd.Point2D(3, 4),
+            rr_dt.Point2D(1, 2),
+            rr_dt.Point2D(3, 4),
         ],
         # Point2DArrayLike: Sequence[Point2DLike]: npt.NDArray[np.float32]
         [
@@ -39,7 +39,7 @@ def test_points2d() -> None:
         np.array([1, 2, 3, 4], dtype=np.float32),
     ]
 
-    radii_arrays: list[rrc.RadiusArrayLike | None] = [
+    radii_arrays: list[rr_cmp.RadiusArrayLike | None] = [
         None,
         [],
         np.array([]),
@@ -47,14 +47,14 @@ def test_points2d() -> None:
         [42, 43],
         # RadiusArrayLike: Sequence[RadiusLike]: Radius
         [
-            rrc.Radius(42),
-            rrc.Radius(43),
+            rr_cmp.Radius(42),
+            rr_cmp.Radius(43),
         ],
         # RadiusArrayLike: npt.NDArray[np.float32]
         np.array([42, 43], dtype=np.float32),
     ]
 
-    colors_arrays: list[rrc.ColorArrayLike | None] = [
+    colors_arrays: list[rr_cmp.ColorArrayLike | None] = [
         None,
         [],
         np.array([]),
@@ -65,8 +65,8 @@ def test_points2d() -> None:
         ],
         # ColorArrayLike: Sequence[ColorLike]: Color
         [
-            rrc.Color(0xAA0000CC),
-            rrc.Color(0x00BB00DD),
+            rr_cmp.Color(0xAA0000CC),
+            rr_cmp.Color(0x00BB00DD),
         ],
         # ColorArrayLike: Sequence[ColorLike]: npt.NDArray[np.uint8]
         np.array(
@@ -152,24 +152,24 @@ def test_points2d() -> None:
         ),
     ]
 
-    labels_arrays: list[rrc.LabelArrayLike | None] = [
+    labels_arrays: list[rr_cmp.LabelArrayLike | None] = [
         None,
         [],
         # LabelArrayLike: Sequence[LabelLike]: str
         ["hello", "friend"],
         # LabelArrayLike: Sequence[LabelLike]: Label
         [
-            rrc.Label("hello"),
-            rrc.Label("friend"),
+            rr_cmp.Label("hello"),
+            rr_cmp.Label("friend"),
         ],
     ]
 
-    draw_orders: list[rrc.DrawOrderLike | None] = [
+    draw_orders: list[rr_cmp.DrawOrderLike | None] = [
         None,
         # DrawOrderLike: float
         300,
         # DrawOrderLike: DrawOrder
-        rrc.DrawOrder(300),
+        rr_cmp.DrawOrder(300),
     ]
 
     class_id_arrays = [
@@ -178,7 +178,7 @@ def test_points2d() -> None:
         # ClassIdArrayLike: Sequence[ClassIdLike]: int
         [126, 127],
         # ClassIdArrayLike: Sequence[ClassIdLike]: ClassId
-        [rrc.ClassId(126), rrc.ClassId(127)],
+        [rr_cmp.ClassId(126), rr_cmp.ClassId(127)],
         # ClassIdArrayLike: np.NDArray[np.uint8]
         np.array([126, 127], dtype=np.uint8),
         # ClassIdArrayLike: np.NDArray[np.uint16]
@@ -195,7 +195,7 @@ def test_points2d() -> None:
         # KeypointIdArrayLike: Sequence[KeypointIdLike]: int
         [2, 3],
         # KeypointIdArrayLike: Sequence[KeypointIdLike]: KeypointId
-        [rrc.KeypointId(2), rrc.KeypointId(3)],
+        [rr_cmp.KeypointId(2), rr_cmp.KeypointId(3)],
         # KeypointIdArrayLike: np.NDArray[np.uint8]
         np.array([2, 3], dtype=np.uint8),
         # KeypointIdArrayLike: np.NDArray[np.uint16]
@@ -212,7 +212,7 @@ def test_points2d() -> None:
         # InstanceKeyArrayLike: Sequence[InstanceKeyLike]: int
         [U64_MAX_MINUS_1, U64_MAX],
         # InstanceKeyArrayLike: Sequence[InstanceKeyLike]: InstanceKey
-        [rrc.InstanceKey(U64_MAX_MINUS_1), rrc.InstanceKey(U64_MAX)],
+        [rr_cmp.InstanceKey(U64_MAX_MINUS_1), rr_cmp.InstanceKey(U64_MAX)],
         # InstanceKeyArrayLike: np.NDArray[np.uint64]
         np.array([U64_MAX_MINUS_1, U64_MAX], dtype=np.uint64),
     ]
@@ -232,17 +232,17 @@ def test_points2d() -> None:
         points = points if points is not None else points_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        points = cast(Optional[rrd.Point2DArrayLike], points)
-        radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrc.ColorArrayLike], colors)
-        labels = cast(Optional[rrc.LabelArrayLike], labels)
-        draw_order = cast(Optional[rrc.DrawOrderArrayLike], draw_order)
-        class_ids = cast(Optional[rrc.ClassIdArrayLike], class_ids)
-        keypoint_ids = cast(Optional[rrc.KeypointIdArrayLike], keypoint_ids)
-        instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
+        points = cast(Optional[rr_dt.Point2DArrayLike], points)
+        radii = cast(Optional[rr_cmp.RadiusArrayLike], radii)
+        colors = cast(Optional[rr_cmp.ColorArrayLike], colors)
+        labels = cast(Optional[rr_cmp.LabelArrayLike], labels)
+        draw_order = cast(Optional[rr_cmp.DrawOrderArrayLike], draw_order)
+        class_ids = cast(Optional[rr_cmp.ClassIdArrayLike], class_ids)
+        keypoint_ids = cast(Optional[rr_cmp.KeypointIdArrayLike], keypoint_ids)
+        instance_keys = cast(Optional[rr_cmp.InstanceKeyArrayLike], instance_keys)
 
         print(
-            f"rr.Points2D(\n"
+            f"rr_exp.Points2D(\n"
             f"    {points}\n"
             f"    radii={radii}\n"
             f"    colors={colors}\n"
@@ -253,7 +253,7 @@ def test_points2d() -> None:
             f"    instance_keys={instance_keys}\n"
             f")"
         )
-        arch = rr.Points2D(
+        arch = rr_exp.Points2D(
             points,
             radii=radii,
             colors=colors,
@@ -265,14 +265,14 @@ def test_points2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.points == rrc.Point2DArray.from_similar([[1.0, 2.0], [3.0, 4.0]] if non_empty(points) else [])
-        assert arch.radii == rrc.RadiusArray.from_similar([42, 43] if non_empty(radii) else [])
-        assert arch.colors == rrc.ColorArray.from_similar([0xAA0000CC, 0x00BB00DD] if non_empty(colors) else [])
-        assert arch.labels == rrc.LabelArray.from_similar(["hello", "friend"] if non_empty(labels) else [])
-        assert arch.draw_order == rrc.DrawOrderArray.from_similar([300] if draw_order is not None else [])
-        assert arch.class_ids == rrc.ClassIdArray.from_similar([126, 127] if non_empty(class_ids) else [])
-        assert arch.keypoint_ids == rrc.KeypointIdArray.from_similar([2, 3] if non_empty(keypoint_ids) else [])
-        assert arch.instance_keys == rrc.InstanceKeyArray.from_similar(
+        assert arch.points == rr_cmp.Point2DArray.from_similar([[1.0, 2.0], [3.0, 4.0]] if non_empty(points) else [])
+        assert arch.radii == rr_cmp.RadiusArray.from_similar([42, 43] if non_empty(radii) else [])
+        assert arch.colors == rr_cmp.ColorArray.from_similar([0xAA0000CC, 0x00BB00DD] if non_empty(colors) else [])
+        assert arch.labels == rr_cmp.LabelArray.from_similar(["hello", "friend"] if non_empty(labels) else [])
+        assert arch.draw_order == rr_cmp.DrawOrderArray.from_similar([300] if draw_order is not None else [])
+        assert arch.class_ids == rr_cmp.ClassIdArray.from_similar([126, 127] if non_empty(class_ids) else [])
+        assert arch.keypoint_ids == rr_cmp.KeypointIdArray.from_similar([2, 3] if non_empty(keypoint_ids) else [])
+        assert arch.instance_keys == rr_cmp.InstanceKeyArray.from_similar(
             [U64_MAX_MINUS_1, U64_MAX] if non_empty(instance_keys) else []
         )
 
@@ -291,10 +291,10 @@ def non_empty(v: object) -> bool:
         np.array((0.0, 0.5, 0.0, 1.0)),
     ],
 )
-def test_point2d_single_color(data: rrc.ColorArrayLike) -> None:
-    pts = rr.Points2D(points=np.zeros((5, 2)), colors=data)
+def test_point2d_single_color(data: rr_cmp.ColorArrayLike) -> None:
+    pts = rr_exp.Points2D(points=np.zeros((5, 2)), colors=data)
 
-    assert pts.colors == rrc.ColorArray.from_similar(rrc.Color([0, 128, 0, 255]))
+    assert pts.colors == rr_cmp.ColorArray.from_similar(rr_cmp.Color([0, 128, 0, 255]))
 
 
 @pytest.mark.parametrize(
@@ -317,13 +317,13 @@ def test_point2d_single_color(data: rrc.ColorArrayLike) -> None:
         [8388863, 2147483903],
     ],
 )
-def test_point2d_multiple_colors(data: rrc.ColorArrayLike) -> None:
-    pts = rr.Points2D(points=np.zeros((5, 2)), colors=data)
+def test_point2d_multiple_colors(data: rr_cmp.ColorArrayLike) -> None:
+    pts = rr_exp.Points2D(points=np.zeros((5, 2)), colors=data)
 
-    assert pts.colors == rrc.ColorArray.from_similar(
+    assert pts.colors == rr_cmp.ColorArray.from_similar(
         [
-            rrc.Color([0, 128, 0, 255]),
-            rrc.Color([128, 0, 0, 255]),
+            rr_cmp.Color([0, 128, 0, 255]),
+            rr_cmp.Color([128, 0, 0, 255]),
         ]
     )
 

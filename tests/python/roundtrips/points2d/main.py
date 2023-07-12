@@ -8,6 +8,7 @@ import argparse
 
 import numpy as np
 import rerun as rr
+import rerun.experimental as rr_exp
 
 
 def main() -> None:
@@ -26,7 +27,7 @@ def main() -> None:
     keypoint_ids = np.array([2, 3], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
-    points2d = rr.Points2D(
+    points2d = rr_exp.Points2D(
         points,
         radii=radii,
         colors=colors,

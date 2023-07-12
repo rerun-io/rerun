@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import rerun as rr
+from rerun.experimental import dt as rr_dt
 
 MAT_3X3_INPUT = [
     [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
@@ -14,7 +14,7 @@ MAT_3X3_INPUT = [
 ]
 
 
-def assert_correct_mat3x3(m: rr.dt.Mat3x3 | None) -> None:
+def assert_correct_mat3x3(m: rr_dt.Mat3x3 | None) -> None:
     assert m is not None
     assert np.all(m.coeffs == np.array([1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 9.0]))
     assert m.coeffs.dtype == np.float32
@@ -30,7 +30,7 @@ MAT_4X4_INPUT = [
 ]
 
 
-def assert_correct_mat4x4(m: rr.dt.Mat4x4 | None) -> None:
+def assert_correct_mat4x4(m: rr_dt.Mat4x4 | None) -> None:
     assert m is not None
     assert np.all(
         m.coeffs == np.array([1.0, 5.0, 9.0, 13.0, 2.0, 6.0, 10.0, 14.0, 3.0, 7.0, 11.0, 15.0, 4.0, 8.0, 12.0, 16.0])
@@ -39,12 +39,12 @@ def assert_correct_mat4x4(m: rr.dt.Mat4x4 | None) -> None:
 
 
 @pytest.mark.parametrize("data", MAT_3X3_INPUT)
-def test_mat3x3(data: rr.dt.Mat3x3Like) -> None:
-    m = rr.dt.Mat3x3(data)
+def test_mat3x3(data: rr_dt.Mat3x3Like) -> None:
+    m = rr_dt.Mat3x3(data)
     assert_correct_mat3x3(m)
 
 
 @pytest.mark.parametrize("data", MAT_4X4_INPUT)
-def test_mat4x4(data: rr.dt.Mat4x4Like) -> None:
-    m = rr.dt.Mat4x4(data)
+def test_mat4x4(data: rr_dt.Mat4x4Like) -> None:
+    m = rr_dt.Mat4x4(data)
     assert_correct_mat4x4(m)

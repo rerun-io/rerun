@@ -10,3 +10,10 @@ from rerun.log.experimental.blueprint import add_space_view, new_blueprint, set_
 from rerun.log.experimental.text import log_text_box
 
 __all__ = ["log_text_box", "add_space_view", "set_panels", "set_auto_space_views", "new_blueprint"]
+
+# Next-gen API imports
+from ._rerun2 import archetypes as arch
+from ._rerun2 import components as cmp
+from ._rerun2 import datatypes as dt
+from ._rerun2.archetypes import Points2D
+from ._rerun2.log_any import log_any

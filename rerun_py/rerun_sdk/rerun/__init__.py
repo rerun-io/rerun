@@ -8,7 +8,6 @@ from typing import Any, Callable, TypeVar, cast
 # (private) function and local import if needed.
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
-from . import experimental
 from .components.transform3d import (
     Quaternion,
     Rigid3D,
@@ -58,17 +57,8 @@ from .script_helpers import script_add_args, script_setup, script_teardown
 from .sinks import connect, disconnect, memory_recording, save, serve, spawn
 from .time import reset_time, set_time_nanos, set_time_seconds, set_time_sequence
 
-# Next-gen API imports
-ENABLE_NEXT_GEN_API = True
-if ENABLE_NEXT_GEN_API:
-    # As temporary next-gen API namespacing, we bring to the top level `rr` namespace the `log_any` function as well as
-    # those archetypes which don't name-clash with the legacy API. For the rest, we bring them in the `rr.arch`,
-    # `rr.cmp`,  and `rr.dt` sub-namespaces, respectively.
-    from ._rerun2 import archetypes as arch
-    from ._rerun2 import components as cmp
-    from ._rerun2 import datatypes as dt
-    from ._rerun2.archetypes import Points2D
-    from ._rerun2.log_any import log_any
+# Import experimental last
+from . import experimental  # isort: skip
 
 
 def _init_recording_stream() -> None:
