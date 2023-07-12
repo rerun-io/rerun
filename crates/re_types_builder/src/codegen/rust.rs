@@ -254,7 +254,7 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
                 new_code.push('\n');
 
                 i = content_end + end_pattern.len();
-                // Skip trailing shitespace (extra newlines)
+                // Skip trailing whitespace (extra newlines)
                 while matches!(code.as_bytes().get(i), Some(b'\n' | b' ')) {
                     i += 1;
                 }
