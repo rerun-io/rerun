@@ -614,7 +614,7 @@ impl Object {
             .and_then(|manifest_dir| self.filepath.strip_prefix(manifest_dir).ok())
     }
 
-    /// The snake_case name of the object, e.g. `translation_and_mat3x3`.
+    /// The `snake_case` name of the object, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
         to_snake_case(&self.name)
     }
