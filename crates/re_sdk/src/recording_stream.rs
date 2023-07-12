@@ -349,10 +349,17 @@ struct RecordingStreamInner {
 
     batcher: DataTableBatcher,
     batcher_to_sink_handle: Option<std::thread::JoinHandle<()>>,
+
+    pid_at_creation: u32,
 }
 
 impl Drop for RecordingStreamInner {
     fn drop(&mut self) {
+        if self.is_forked_child() {
+            re_log::error_once!("Fork detected while dropping RecordingStreamInner. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            return;
+        }
+
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
         // sending data down the pipeline.
         self.batcher.flush_blocking();
@@ -410,7 +417,13 @@ impl RecordingStreamInner {
             cmds_tx,
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
+            pid_at_creation: std::process::id(),
         })
+    }
+
+    #[inline]
+    pub fn is_forked_child(&self) -> bool {
+        self.pid_at_creation != std::process::id()
     }
 }
 
@@ -591,6 +604,18 @@ impl RecordingStream {
     pub fn store_info(&self) -> Option<&StoreInfo> {
         (*self.inner).as_ref().map(|inner| &inner.info)
     }
+
+    /// Determine whether a fork has happened since creating this `RecordingStream`. In general, this means our
+    /// batcher/sink threads are gone and all data logged since the fork has been dropped.
+    ///
+    /// It is essential that [`crate::cleanup_if_forked_child`] be called after forking the process. SDK-implementations
+    /// should do this during their initialization phase.
+    #[inline]
+    pub fn is_forked_child(&self) -> bool {
+        (*self.inner)
+            .as_ref()
+            .map_or(false, |inner| inner.is_forked_child())
+    }
 }
 
 impl RecordingStream {
@@ -737,6 +762,11 @@ impl RecordingStream {
     ///
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_blocking(&self) {
+        if self.is_forked_child() {
+            re_log::error_once!("Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            return;
+        }
+
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to flush_blocking() ignored");
             return;
