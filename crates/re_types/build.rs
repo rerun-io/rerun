@@ -133,6 +133,19 @@ fn main() {
         .to_string_lossy()
         .to_string();
 
+    // NOTE: We're purposefully ignoring the error here.
+    //
+    // If the user doesn't have `ruff` in their $PATH, there's still no good reason to fail
+    // the build.
+    //
+    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
+    cmd!(
+        sh,
+        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
+    )
+    .run()
+    .ok();
+
     // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
     // not end users.
     // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
@@ -148,19 +161,6 @@ fn main() {
     cmd!(
         sh,
         "black --config {pyproject_path} {PYTHON_OUTPUT_DIR_PATH}"
-    )
-    .run()
-    .ok();
-
-    // NOTE: We're purposefully ignoring the error here.
-    //
-    // If the user doesn't have `ruff` in their $PATH, there's still no good reason to fail
-    // the build.
-    //
-    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(
-        sh,
-        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
     )
     .run()
     .ok();
