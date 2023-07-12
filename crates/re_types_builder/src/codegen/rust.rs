@@ -1,6 +1,9 @@
 //! Implements the Rust codegen pass.
 
-use std::{collections::HashMap, io::Write};
+use std::{
+    collections::{BTreeSet, HashMap},
+    io::Write,
+};
 
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
@@ -36,8 +39,12 @@ impl RustCodeGenerator {
 }
 
 impl CodeGenerator for RustCodeGenerator {
-    fn generate(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<Utf8PathBuf> {
-        let mut filepaths = Vec::new();
+    fn generate(
+        &mut self,
+        objects: &Objects,
+        arrow_registry: &ArrowRegistry,
+    ) -> BTreeSet<Utf8PathBuf> {
+        let mut filepaths = BTreeSet::new();
 
         let datatypes_path = self.crate_path.join("src/datatypes");
         std::fs::create_dir_all(&datatypes_path)
@@ -83,10 +90,10 @@ fn create_files(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     objs: &[&Object],
-) -> Vec<Utf8PathBuf> {
+) -> BTreeSet<Utf8PathBuf> {
     let out_path = out_path.as_ref();
 
-    let mut filepaths = Vec::new();
+    let mut filepaths = BTreeSet::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
@@ -112,7 +119,7 @@ fn create_files(
             .or_default()
             .extend(names);
 
-        filepaths.push(filepath.clone());
+        filepaths.insert(filepath.clone());
         let mut file = std::fs::File::create(&filepath)
             .with_context(|| format!("{filepath:?}"))
             .unwrap();
@@ -209,7 +216,7 @@ fn create_files(
             code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
         }
 
-        filepaths.push(path.clone());
+        filepaths.insert(path.clone());
         std::fs::write(&path, code)
             .with_context(|| format!("{path:?}"))
             .unwrap();
