@@ -608,7 +608,7 @@ impl RecordingStream {
     /// Determine whether a fork has happened since creating this `RecordingStream`. In general, this means our
     /// batcher/sink threads are gone and all data logged since the fork has been dropped.
     ///
-    /// It is essential that [`crate::cleanup_if_forked`] be called after forking the process. SDK-implementations
+    /// It is essential that [`crate::cleanup_if_forked_child`] be called after forking the process. SDK-implementations
     /// should do this during their initialization phase.
     #[inline]
     pub fn is_forked_child(&self) -> bool {
