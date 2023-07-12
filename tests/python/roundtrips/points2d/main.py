@@ -44,7 +44,7 @@ def main() -> None:
 
     rr.script_setup(args, "roundtrip_points2d")
 
-    rr.log_any("points2d", points2d)
+    rr_exp.log_any("points2d", points2d)
     # Hack to establish 2d view bounds
     rr.log_rect("rect", [0, 0, 4, 6])
 
