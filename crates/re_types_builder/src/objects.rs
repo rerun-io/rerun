@@ -207,6 +207,8 @@ pub enum ObjectKind {
 }
 
 impl ObjectKind {
+    pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
+
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
         let pkg_name = pkg_name.as_ref().replace(".testing", "");
@@ -218,6 +220,14 @@ impl ObjectKind {
             ObjectKind::Archetype
         } else {
             panic!("unknown package {pkg_name:?}");
+        }
+    }
+
+    pub fn plural_snake_case(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "datatypes",
+            ObjectKind::Component => "components",
+            ObjectKind::Archetype => "archetypes",
         }
     }
 }
@@ -595,6 +605,21 @@ impl Object {
         self.attrs
             .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
             .is_some()
+    }
+
+    /// Try to find the relative file path of the `.fbs` source file.
+    pub fn relative_filepath(&self) -> Option<&Utf8Path> {
+        std::env::var("CARGO_MANIFEST_DIR")
+            .ok()
+            .and_then(|manifest_dir| self.filepath.strip_prefix(manifest_dir).ok())
+    }
+
+    /// The snake-case filename of the object, e.g. `point2d`.
+    pub fn snake_case_name(&self) -> String {
+        Utf8PathBuf::from(&self.virtpath)
+            .file_stem()
+            .unwrap()
+            .to_owned()
     }
 }
 

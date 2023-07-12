@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 # manually listing all the files, like it's 1972.
 # However, that won't work for use since we auto-generate the source tree.
 # See https://cmake.org/cmake/help/latest/command/file.html#glob
-file(GLOB rerun_sdk_SRC CONFIGURE_DEPENDS
+file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
     "*.hpp"
     "*.cpp"
 )
@@ -36,6 +36,10 @@ set(LOGURU_STACKTRACES 1)
 FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 
 target_link_libraries(rerun_sdk PRIVATE loguru::loguru)
+
+# ------------------------------------------------------------------------------
+execute_process(COMMAND cargo build -p re_types) # Generates most of the C++ source files
+execute_process(COMMAND cargo build -p rerun_c) # We link against this, so must be up-to-date
 
 # ------------------------------------------------------------------------------
 if(APPLE)

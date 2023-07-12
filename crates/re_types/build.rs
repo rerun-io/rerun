@@ -18,6 +18,7 @@ const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
 const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
 const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
+const CPP_OUTPUT_DIR_PATH: &str = "../../rerun_cpp/src";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
 
@@ -105,6 +106,8 @@ fn main() {
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(DEFINITIONS_DIR_PATH, ENTRYPOINT_PATH);
+
+    re_types_builder::generate_cpp_code(CPP_OUTPUT_DIR_PATH, &objects, &arrow_registry);
 
     re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry);
 

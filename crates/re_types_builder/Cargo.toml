@@ -23,6 +23,7 @@ all-features = true
 anyhow.workspace = true
 arrow2.workspace = true
 camino.workspace = true
+clang-format = "0.1"
 convert_case = "0.6"
 flatbuffers = "23.0"
 indent = "0.1"

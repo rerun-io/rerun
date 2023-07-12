@@ -1,7 +1,3 @@
-#include <iostream>
-
-#define RERUN_WITH_ARROW 1
-
 #include <loguru.hpp>
 #include <rerun.hpp>
 

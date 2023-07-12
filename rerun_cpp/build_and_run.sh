@@ -7,9 +7,8 @@ set -x
 
 mkdir -p build
 pushd build
-    cargo build -p rerun_c # TODO(emilk): add this to CMakelists.txt instead?
     cmake -DCMAKE_BUILD_TYPE=Debug ..
-    make # VERBOSE=1
+    make -j8 # VERBOSE=1
 popd
 
 ./build/example/rerun_example
