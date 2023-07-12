@@ -144,7 +144,7 @@ fn main() {
     //
     // 1) Call black, which among others things fixes line-length
     // 2) Call ruff, which requires line-lengths to be correct
-    // 3) Call black again to cleanup some whitespace issues
+    // 3) Call black again to cleanup some whitespace issues ruff might introduce
 
     call_black(&sh, &pyproject_path);
     call_ruff(&sh, &pyproject_path);
