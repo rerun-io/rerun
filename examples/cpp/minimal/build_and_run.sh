@@ -2,7 +2,7 @@
 
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-cd "$script_path"
+cd "$script_path/../../.."
 set -x
 
 mkdir -p build
@@ -11,5 +11,4 @@ pushd build
     make -j8 # VERBOSE=1
 popd
 
-./build/example/rerun_example
-
+./build/examples/cpp/minimal/rerun_example

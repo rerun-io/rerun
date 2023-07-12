@@ -21,6 +21,6 @@ else()
   target_compile_options(rerun_example PRIVATE -Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wformat=2 -Wmissing-include-dirs -Wnull-dereference -Woverloaded-virtual -Wpointer-arith -Wshadow -Wswitch-enum -Wvla -Wno-sign-compare -Wconversion -Wunused -Wold-style-cast -Wno-missing-braces)
 endif()
 
-include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../src) # For rerun.hpp (Rerun C++ SDK)
+include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../../../rerun_cpp/src) # For rerun.hpp (Rerun C++ SDK)
 
 target_link_libraries(rerun_example PRIVATE loguru::loguru rerun_sdk)
