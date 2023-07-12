@@ -263,7 +263,7 @@ impl crate::Archetype for AffixFuzzer1 {
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
-        use crate::Component as _;
+        use crate::Loggable as _;
         Ok([
             {
                 Some({
@@ -1592,7 +1592,7 @@ impl crate::Archetype for AffixFuzzer1 {
     fn try_from_arrow(
         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     ) -> crate::DeserializationResult<Self> {
-        use crate::Component as _;
+        use crate::Loggable as _;
         let arrays_by_name: ::std::collections::HashMap<_, _> = data
             .into_iter()
             .map(|(field, array)| (field.name, array))

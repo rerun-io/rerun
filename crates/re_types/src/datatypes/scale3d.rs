@@ -36,9 +36,10 @@ impl<'a> From<&'a Scale3D> for ::std::borrow::Cow<'a, Scale3D> {
     }
 }
 
-impl crate::Datatype for Scale3D {
+impl crate::Loggable for Scale3D {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.Scale3D")
     }
 
@@ -82,7 +83,7 @@ impl crate::Datatype for Scale3D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -237,7 +238,7 @@ impl crate::Datatype for Scale3D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -318,3 +319,5 @@ impl crate::Datatype for Scale3D {
         })
     }
 }
+
+impl crate::Datatype for Scale3D {}
