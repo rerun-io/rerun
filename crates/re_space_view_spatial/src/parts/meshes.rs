@@ -98,7 +98,7 @@ impl ViewPartSystem for MeshPart {
             Ok(draw_data) => Ok(vec![draw_data.into()]),
             Err(err) => {
                 re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");
-                Ok(Vec::new()) // TODO: Pass error on?
+                Ok(Vec::new()) // TODO(andreas): Pass error on?
             }
         }
     }

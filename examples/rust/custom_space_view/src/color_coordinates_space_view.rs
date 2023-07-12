@@ -6,9 +6,9 @@ use re_viewer::external::{
     re_renderer, re_ui,
     re_viewer_context::{
         HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
-        SpaceViewClassName, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-        SpaceViewSystemRegistry, UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery,
-        ViewerContext,
+        SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+        SpaceViewSystemExecutionError, SpaceViewSystemRegistry, UiVerbosity, ViewContextCollection,
+        ViewPartCollection, ViewQuery, ViewerContext,
     },
 };
 
@@ -81,8 +81,12 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         "A demo space view that shows colors as coordinates on a 2D plane.".into()
     }
 
-    fn on_register(&self, _system_registry: &mut SpaceViewSystemRegistry) {
-        // TODO:
+    /// Register all systems (contexts & parts) that the space view needs.
+    fn on_register(
+        &self,
+        system_registry: &mut SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry.register_part_system::<InstanceColorSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {

@@ -2,7 +2,9 @@ use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
 use re_log_types::{ComponentName, EntityPath};
 
-use crate::{SpaceViewId, SpaceViewSystemRegistry, ViewQuery, ViewerContext};
+use crate::{
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemRegistry, ViewQuery, ViewerContext,
+};
 
 /// First element is the primary component, all others are optional.
 ///
@@ -55,7 +57,10 @@ pub trait DynSpaceViewClass {
     /// Called once upon registration of the class
     ///
     /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
-    fn on_register(&self, system_registry: &mut SpaceViewSystemRegistry);
+    fn on_register(
+        &self,
+        system_registry: &mut SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError>;
 
     /// Called once for every new space view instance of this class.
     ///

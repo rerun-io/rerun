@@ -16,6 +16,7 @@ mod spatial_view_part;
 pub use cameras::CamerasPart;
 pub use images::Image;
 pub use images::ImagesPart;
+use re_viewer_context::SpaceViewClassRegistryError;
 pub use spatial_view_part::SpatialViewPartData;
 
 use ahash::HashMap;
@@ -37,17 +38,20 @@ pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 pub const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
-pub fn register_parts(system_registry: &mut SpaceViewSystemRegistry) {
-    system_registry.register_part_system::<points2d::Points2DPart>();
-    system_registry.register_part_system::<points3d::Points3DPart>();
-    system_registry.register_part_system::<arrows3d::Arrows3DPart>();
-    system_registry.register_part_system::<boxes2d::Boxes2DPart>();
-    system_registry.register_part_system::<boxes3d::Boxes3DPart>();
-    system_registry.register_part_system::<cameras::CamerasPart>();
-    system_registry.register_part_system::<lines2d::Lines2DPart>();
-    system_registry.register_part_system::<lines3d::Lines3DPart>();
-    system_registry.register_part_system::<meshes::MeshPart>();
-    system_registry.register_part_system::<images::ImagesPart>();
+pub fn register_parts(
+    system_registry: &mut SpaceViewSystemRegistry,
+) -> Result<(), SpaceViewClassRegistryError> {
+    system_registry.register_part_system::<points2d::Points2DPart>()?;
+    system_registry.register_part_system::<points3d::Points3DPart>()?;
+    system_registry.register_part_system::<arrows3d::Arrows3DPart>()?;
+    system_registry.register_part_system::<boxes2d::Boxes2DPart>()?;
+    system_registry.register_part_system::<boxes3d::Boxes3DPart>()?;
+    system_registry.register_part_system::<cameras::CamerasPart>()?;
+    system_registry.register_part_system::<lines2d::Lines2DPart>()?;
+    system_registry.register_part_system::<lines3d::Lines3DPart>()?;
+    system_registry.register_part_system::<meshes::MeshPart>()?;
+    system_registry.register_part_system::<images::ImagesPart>()?;
+    Ok(())
 }
 
 pub fn calculate_bounding_box(parts: &ViewPartCollection) -> macaw::BoundingBox {

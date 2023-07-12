@@ -8,42 +8,78 @@ use crate::{
 use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
 
 #[derive(Debug, thiserror::Error)]
+#[allow(clippy::enum_variant_names)]
 pub enum SpaceViewClassRegistryError {
     #[error("Space view with class name {0:?} was already registered.")]
     DuplicateClassName(SpaceViewClassName),
+
+    #[error("Context system {0:?} was already registered.")]
+    DuplicateContextSystem(&'static str),
+
+    #[error("Part system {0:?} was already registered.")]
+    DuplicatePartSystem(&'static str),
 }
 
-// TODO: docs
+/// System registry for a space view class.
+///
+/// All context & part systems that are registered here will be created and executed every frame
+/// for every instance of the space view class this belongs to.
 #[derive(Default)]
 pub struct SpaceViewSystemRegistry {
-    contexts: Vec<Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
-    parts: Vec<Box<dyn Fn() -> Box<dyn ViewPartSystem>>>,
+    contexts: HashMap<std::any::TypeId, Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
+    parts: HashMap<std::any::TypeId, Box<dyn Fn() -> Box<dyn ViewPartSystem>>>,
 }
 
 impl SpaceViewSystemRegistry {
     /// Registers a new [`ViewContextSystem`] type for this space view class that will be created and executed every frame.
     ///
     /// It is not allowed to register a given type more than once.
-    pub fn register_context_system<T: ViewContextSystem + Default + std::any::Any + 'static>(
+    pub fn register_context_system<T: ViewContextSystem + Default + 'static>(
         &mut self,
-    ) {
-        // TODO: Handle error for duplicated types.
-        self.contexts.push(Box::new(|| Box::<T>::default()));
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        if self
+            .contexts
+            .insert(
+                std::any::TypeId::of::<T>(),
+                Box::new(|| Box::<T>::default()),
+            )
+            .is_some()
+        {
+            Err(SpaceViewClassRegistryError::DuplicateContextSystem(
+                std::any::type_name::<T>(),
+            ))
+        } else {
+            Ok(())
+        }
     }
 
     /// Registers a new [`ViewPartSystem`] type for this space view class that will be created and executed every frame.
     ///
     /// It is not allowed to register a given type more than once.
-    pub fn register_part_system<T: ViewPartSystem + Default + 'static>(&mut self) {
-        // TODO: Handle error for duplicated types.
-        self.parts.push(Box::new(|| Box::<T>::default()));
+    pub fn register_part_system<T: ViewPartSystem + Default + 'static>(
+        &mut self,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        if self
+            .parts
+            .insert(
+                std::any::TypeId::of::<T>(),
+                Box::new(|| Box::<T>::default()),
+            )
+            .is_some()
+        {
+            Err(SpaceViewClassRegistryError::DuplicateContextSystem(
+                std::any::type_name::<T>(),
+            ))
+        } else {
+            Ok(())
+        }
     }
 
     pub(crate) fn new_context_collection(&self) -> ViewContextCollection {
         ViewContextCollection {
             systems: self
                 .contexts
-                .iter()
+                .values()
                 .map(|f| {
                     let context = f();
                     (context.as_any().type_id(), context)
@@ -56,7 +92,7 @@ impl SpaceViewSystemRegistry {
         ViewPartCollection {
             systems: self
                 .parts
-                .iter()
+                .values()
                 .map(|f| {
                     let part = f();
                     (part.as_any().type_id(), part)
@@ -103,7 +139,7 @@ impl SpaceViewClassRegistry {
             systems: SpaceViewSystemRegistry::default(),
         };
 
-        entry.class.on_register(&mut entry.systems);
+        entry.class.on_register(&mut entry.systems)?;
 
         let type_name = entry.class.name();
         if self.registry.insert(type_name, entry).is_some() {

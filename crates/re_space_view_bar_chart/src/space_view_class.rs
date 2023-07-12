@@ -3,8 +3,9 @@ use re_components::TensorData;
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_viewer_context::{
-    auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
+    ViewerContext,
 };
 
 use super::view_part_system::BarChartViewPartSystem;
@@ -44,8 +45,11 @@ impl SpaceViewClass for BarChartSpaceView {
         layout.layout_job.into()
     }
 
-    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
-        system_registry.register_part_system::<BarChartViewPartSystem>();
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry.register_part_system::<BarChartViewPartSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {

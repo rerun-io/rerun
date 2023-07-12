@@ -1,6 +1,6 @@
 use crate::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 /// A placeholder space view class that can be used when the actual class is not registered.
@@ -22,7 +22,12 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         "The Space View Class was not recognized.\nThis happens if either the Blueprint specifies an invalid Space View Class or this version of the Viewer does not know about this type.".into()
     }
 
-    fn on_register(&self, _system_registry: &mut SpaceViewSystemRegistry) {}
+    fn on_register(
+        &self,
+        _system_registry: &mut SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        Ok(())
+    }
 
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
         crate::SpaceViewClassLayoutPriority::Low

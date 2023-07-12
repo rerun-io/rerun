@@ -1,8 +1,8 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewId, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartCollection, ViewQuery, ViewerContext,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -29,9 +29,13 @@ impl SpaceViewClass for SpatialSpaceView {
         state.help_text(re_ui)
     }
 
-    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
-        register_contexts(system_registry);
-        register_parts(system_registry);
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        register_contexts(system_registry)?;
+        register_parts(system_registry)?;
+        Ok(())
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &Self::State) -> Option<f32> {

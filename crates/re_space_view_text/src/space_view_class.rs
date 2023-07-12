@@ -3,9 +3,9 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
-    ViewerContext,
+    level_to_rich_text, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use super::view_part_system::{TextEntry, TextSystem};
@@ -52,8 +52,11 @@ impl SpaceViewClass for TextSpaceView {
         "Shows text entries over time.\nSelect the Space View for filtering options.".into()
     }
 
-    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
-        system_registry.register_part_system::<TextSystem>();
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry.register_part_system::<TextSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {

@@ -17,7 +17,8 @@ pub use transform_context::{pinhole_camera_view_coordinates, TransformContext};
 use re_log_types::EntityPath;
 use re_renderer::DepthOffset;
 use re_viewer_context::{
-    Annotations, SpaceViewSystemExecutionError, ViewContextCollection, ViewContextSystem,
+    Annotations, SpaceViewClassRegistryError, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewContextSystem,
 };
 
 ///
@@ -97,11 +98,14 @@ impl ViewContextSystem for PrimitiveCounter {
     }
 }
 
-pub fn register_contexts(system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
-    system_registry.register_context_system::<TransformContext>();
-    system_registry.register_context_system::<EntityDepthOffsets>();
-    system_registry.register_context_system::<AnnotationSceneContext>();
-    system_registry.register_context_system::<SharedRenderBuilders>();
-    system_registry.register_context_system::<NonInteractiveEntities>();
-    system_registry.register_context_system::<PrimitiveCounter>();
+pub fn register_contexts(
+    system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+) -> Result<(), SpaceViewClassRegistryError> {
+    system_registry.register_context_system::<TransformContext>()?;
+    system_registry.register_context_system::<EntityDepthOffsets>()?;
+    system_registry.register_context_system::<AnnotationSceneContext>()?;
+    system_registry.register_context_system::<SharedRenderBuilders>()?;
+    system_registry.register_context_system::<NonInteractiveEntities>()?;
+    system_registry.register_context_system::<PrimitiveCounter>()?;
+    Ok(())
 }

@@ -11,9 +11,9 @@ use re_log_types::EntityPath;
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_viewer_context::{
-    gpu_bridge, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, TensorStatsCache, ViewContextCollection, ViewPartCollection,
-    ViewQuery, ViewerContext,
+    gpu_bridge, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, view_part_system::TensorSystem};
@@ -133,8 +133,11 @@ impl SpaceViewClass for TensorSpaceView {
         "Select the Space View to configure which dimensions are shown.".into()
     }
 
-    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
-        system_registry.register_part_system::<TensorSystem>();
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry.register_part_system::<TensorSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {

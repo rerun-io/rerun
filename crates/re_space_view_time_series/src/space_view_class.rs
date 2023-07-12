@@ -8,8 +8,9 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
+    ViewerContext,
 };
 
 use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
@@ -53,8 +54,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         layout.layout_job.into()
     }
 
-    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
-        system_registry.register_part_system::<TimeSeriesSystem>();
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry.register_part_system::<TimeSeriesSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {

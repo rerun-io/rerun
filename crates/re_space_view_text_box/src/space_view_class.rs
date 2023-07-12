@@ -1,8 +1,8 @@
 use egui::Label;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName, SpaceViewId,
-    SpaceViewState, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection,
-    ViewQuery, ViewerContext,
+    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use super::view_part_system::TextBoxSystem;
@@ -51,8 +51,11 @@ impl SpaceViewClass for TextBoxSpaceView {
         "Displays text from a text entry components.".into()
     }
 
-    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
-        system_registry.register_part_system::<TextBoxSystem>();
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry.register_part_system::<TextBoxSystem>()
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {

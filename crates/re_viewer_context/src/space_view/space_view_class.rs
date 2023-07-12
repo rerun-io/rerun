@@ -3,9 +3,9 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistry, ViewContextCollection,
-    ViewPartCollection, ViewQuery, ViewerContext,
+    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 /// Defines a class of space view.
@@ -32,7 +32,10 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Called once upon registration of the class
     ///
     /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
-    fn on_register(&self, system_registry: &mut SpaceViewSystemRegistry);
+    fn on_register(
+        &self,
+        system_registry: &mut SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError>;
 
     /// Preferred aspect ratio for the ui tiles of this space view.
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
@@ -119,8 +122,11 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         Box::<T::State>::default()
     }
 
-    fn on_register(&self, system_registry: &mut SpaceViewSystemRegistry) {
-        self.on_register(system_registry);
+    fn on_register(
+        &self,
+        system_registry: &mut SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        self.on_register(system_registry)
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
