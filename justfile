@@ -72,12 +72,12 @@ py-build *ARGS:
 py-format:
     #!/usr/bin/env bash
     set -euxo pipefail
-    black --config rerun_py/pyproject.toml {{py_folders}}
-    blackdoc {{py_folders}}
     # Note: proto.py relies on old-style annotation to work, and pyupgrade is too opinionated to be disabled from comments
     # See https://github.com/rerun-io/rerun/pull/2559 for details
     pyupgrade --py38-plus `find {{py_folders}} -name "*.py" -type f ! -path "examples/python/objectron/proto/objectron/proto.py"`
     ruff --fix --config rerun_py/pyproject.toml  {{py_folders}}
+    black --config rerun_py/pyproject.toml {{py_folders}}
+    blackdoc {{py_folders}}
 
 # Check that all the requirements.txt files for all the examples are correct
 py-requirements:
@@ -89,9 +89,9 @@ py-requirements:
 py-lint:
     #!/usr/bin/env bash
     set -euxo pipefail
+    ruff check --config rerun_py/pyproject.toml  {{py_folders}}
     black --check --config rerun_py/pyproject.toml --diff {{py_folders}}
     blackdoc --check {{py_folders}}
-    ruff check --config rerun_py/pyproject.toml  {{py_folders}}
     mypy --no-warn-unused-ignore
 
 # Run fast unittests

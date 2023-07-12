@@ -131,19 +131,6 @@ fn main() {
 
     // NOTE: We're purposefully ignoring the error here.
     //
-    // If the user doesn't have `black` in their $PATH, there's still no good reason to fail
-    // the build.
-    //
-    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(
-        sh,
-        "black --config {PYTHON_PYPROJECT_PATH} {PYTHON_OUTPUT_DIR_PATH}"
-    )
-    .run()
-    .ok();
-
-    // NOTE: We're purposefully ignoring the error here.
-    //
     // If the user doesn't have `ruff` in their $PATH, there's still no good reason to fail
     // the build.
     //
@@ -151,6 +138,19 @@ fn main() {
     cmd!(
         sh,
         "ruff --config {PYTHON_PYPROJECT_PATH} --fix {PYTHON_OUTPUT_DIR_PATH}"
+    )
+    .run()
+    .ok();
+
+    // NOTE: We're purposefully ignoring the error here.
+    //
+    // If the user doesn't have `black` in their $PATH, there's still no good reason to fail
+    // the build.
+    //
+    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
+    cmd!(
+        sh,
+        "black --config {PYTHON_PYPROJECT_PATH} {PYTHON_OUTPUT_DIR_PATH}"
     )
     .run()
     .ok();

@@ -156,7 +156,7 @@ pub fn write_versioning_hash(path: impl AsRef<Path>, hash: impl AsRef<str>) {
         {hash}
         "
     ));
-    std::fs::write(path, contents.trim())
+    std::fs::write(path, contents.trim_start())
         .with_context(|| format!("couldn't write to {path:?}"))
         .unwrap();
 }

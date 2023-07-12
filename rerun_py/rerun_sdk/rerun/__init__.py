@@ -1,6 +1,9 @@
 """The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 from __future__ import annotations
 
+import functools
+from typing import Any, Callable, TypeVar, cast
+
 # NOTE: The imports determine what is public API. Avoid importing globally anything that is not public API. Use
 # (private) function and local import if needed.
 import rerun_bindings as bindings  # type: ignore[attr-defined]
@@ -156,6 +159,10 @@ def init(
     global _strict_mode
     _strict_mode = strict
 
+    # Always check whether we are a forked child when calling init.  This should have happened
+    # via `_register_on_fork` but it's worth being conservative.
+    cleanup_if_forked_child()
+
     if init_logging:
         new_recording(
             application_id,
@@ -310,6 +317,47 @@ def unregister_shutdown() -> None:
     import atexit
 
     atexit.unregister(rerun_shutdown)
+
+
+def cleanup_if_forked_child() -> None:
+    bindings.cleanup_if_forked_child()
+
+
+def _register_on_fork() -> None:
+    # Only relevant on Linux
+    try:
+        import os
+
+        os.register_at_fork(after_in_child=cleanup_if_forked_child)
+    except NotImplementedError:
+        pass
+
+
+_register_on_fork()
+
+
+_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
+
+
+def shutdown_at_exit(func: _TFunc) -> _TFunc:
+    """
+    Decorator to shutdown Rerun cleanly when this function exits.
+
+    Normally, Rerun installs an atexit-handler that attempts to shutdown cleanly and
+    flush all outgoing data before terminating. However, some cases, such as forked
+    processes will always skip this at-exit handler. In these cases, you can use this
+    decorator on the entry-point to your subprocess to ensure cleanup happens as
+    expected without losing data.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        finally:
+            rerun_shutdown()
+
+    return cast(_TFunc, wrapper)
 
 
 # ---
