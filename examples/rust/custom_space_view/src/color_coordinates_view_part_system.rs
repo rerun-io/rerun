@@ -4,8 +4,8 @@ use re_viewer::external::{
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
-        ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, ViewPartSystem,
-        ViewPartSystemCollection, ViewQuery, ViewerContext,
+        ArchetypeDefinition, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
+        ViewPartSystem, ViewPartSystemCollection, ViewQuery, ViewerContext,
     },
 };
 
@@ -20,10 +20,8 @@ pub struct ColorCoordinatesViewPartSystemCollection {
     pub colors: InstanceColors,
 }
 
-impl ViewPartSystemCollection<ColorCoordinatesSpaceView>
-    for ColorCoordinatesViewPartSystemCollection
-{
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<ColorCoordinatesSpaceView>> {
+impl ViewPartSystemCollection for ColorCoordinatesViewPartSystemCollection {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem> {
         vec![&mut self.colors]
     }
 
@@ -43,7 +41,7 @@ pub struct ColorWithInstanceKey {
     pub instance_key: InstanceKey,
 }
 
-impl ViewPartSystem<ColorCoordinatesSpaceView> for InstanceColors {
+impl ViewPartSystem for InstanceColors {
     /// The archetype this scene part is querying from the store.
     ///
     /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries
@@ -53,14 +51,12 @@ impl ViewPartSystem<ColorCoordinatesSpaceView> for InstanceColors {
     }
 
     /// Populates the scene part with data from the store.
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _space_view_state: &<ColorCoordinatesSpaceView as SpaceViewClass>::State,
-        _context: &<ColorCoordinatesSpaceView as SpaceViewClass>::Context,
-        _highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         // For each entity in the space view...
         for (ent_path, props) in query.iter_entities() {
             if !props.visible {
@@ -97,6 +93,10 @@ impl ViewPartSystem<ColorCoordinatesSpaceView> for InstanceColors {
 
         // We're not using `re_renderer` here, so return an empty vector.
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly.
-        Vec::new()
+        Ok(Vec::new())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

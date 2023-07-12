@@ -15,19 +15,21 @@ use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,
 };
-use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
-    gpu_bridge, ArchetypeDefinition, DefaultColor, TensorDecodeCache, TensorStatsCache,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,
+    TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery, ViewerContext,
 };
+use re_viewer_context::{SpaceViewHighlights, ViewContextCollection};
 
 use crate::{
-    contexts::{SpatialSceneEntityContext, SpatialViewContext},
+    contexts::{
+        EntityDepthOffsets, SpatialSceneEntityContext, SpatialViewContext, TransformContext,
+    },
     parts::{entity_iterator::process_entity_views, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     SpatialSpaceView,
 };
 
-use super::{SpatialSpaceViewState, SpatialViewPartData};
+use super::SpatialViewPartData;
 
 pub struct Image {
     /// Path to the image (note image instance ids would refer to pixels!)
@@ -181,7 +183,7 @@ impl ImagesPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
-        context: &SpatialViewContext,
+        context: &SpatialViewContext<'_>,
         ent_props: &EntityProperties,
         ent_view: &EntityView<Tensor>,
         ent_path: &EntityPath,
@@ -283,7 +285,7 @@ impl ImagesPart {
 
     fn process_entity_view_as_depth_cloud(
         ctx: &mut ViewerContext<'_>,
-        context: &SpatialViewContext,
+        context: &SpatialViewContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,
         tensor: &DecodedTensor,
@@ -369,7 +371,7 @@ impl ImagesPart {
     }
 }
 
-impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
+impl ViewPartSystem for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Tensor::name(),
@@ -379,14 +381,12 @@ impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
         ]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
-        context: &SpatialViewContext,
-        highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_scope!("ImagesPart");
 
         let mut depth_clouds = Vec::new();
@@ -394,16 +394,15 @@ impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
         process_entity_views::<_, 4, _>(
             ctx,
             query,
-            context,
-            highlights,
-            context.depth_offsets.points,
+            view_ctx,
+            view_ctx.get::<EntityDepthOffsets>()?.image,
             self.archetype(),
             |ctx, ent_path, ent_view, ent_context| {
                 let ent_props = query.entity_props_map.get(ent_path);
                 self.process_entity_view(
                     ctx,
                     &mut depth_clouds,
-                    context,
+                    ent_context.ctx,
                     &ent_props,
                     &ent_view,
                     ent_path,
@@ -447,10 +446,14 @@ impl ViewPartSystem<SpatialSpaceView> for ImagesPart {
             }
         }
 
-        draw_data_list
+        Ok(draw_data_list)
     }
 
-    fn data(&self) -> Option<&SpatialViewPartData> {
-        Some(&self.data)
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(self.data.as_any())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

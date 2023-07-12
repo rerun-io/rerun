@@ -38,7 +38,7 @@ impl ViewportState {
             .entry(space_view_id)
             .or_insert_with(|| {
                 space_view_class_registry
-                    .get_or_log_error(space_view_class)
+                    .get_class_or_log_error(space_view_class)
                     .new_state()
             })
             .as_mut()
@@ -364,5 +364,5 @@ fn space_view_ui(
         return
     };
 
-    space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, space_view_highlights);
+    space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, &space_view_highlights);
 }

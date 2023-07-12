@@ -56,18 +56,22 @@ pub fn all_possible_space_views(
                 .collect::<Vec<_>>()
         })
         // TODO(wumpf): Workaround to add custom space views.
-        .chain(ctx.space_view_class_registry.iter().filter_map(|class| {
-            if category_from_class_name(class.name()).is_none() {
-                Some(SpaceViewBlueprint::new(
-                    class.name(),
-                    ViewCategory::Text,
-                    &EntityPath::root(),
-                    &root_entities,
-                ))
-            } else {
-                None
-            }
-        }))
+        .chain(
+            ctx.space_view_class_registry
+                .iter_classes()
+                .filter_map(|class| {
+                    if category_from_class_name(class.name()).is_none() {
+                        Some(SpaceViewBlueprint::new(
+                            class.name(),
+                            ViewCategory::Text,
+                            &EntityPath::root(),
+                            &root_entities,
+                        ))
+                    } else {
+                        None
+                    }
+                }),
+        )
         .collect()
 }
 

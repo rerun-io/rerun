@@ -1,6 +1,5 @@
 use crate::{
-    SpaceViewClass, SpaceViewHighlights, SpaceViewState, ViewContext, ViewPartSystemCollection,
-    ViewQuery, ViewerContext,
+    SpaceViewClass, ViewContextCollection, ViewPartSystemCollection, ViewQuery, ViewerContext,
 };
 
 /// Every [`crate::SpaceViewClass`] creates and populates a scene to draw a frame and inform the ui about relevant data.
@@ -16,8 +15,7 @@ pub trait Scene {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        space_view_state: &dyn SpaceViewState,
-        highlights: SpaceViewHighlights,
+        view_ctx: &ViewContextCollection,
     );
 
     /// Converts itself to a mutable reference of [`std::any::Any`], which enables downcasting to concrete types.
@@ -26,9 +24,7 @@ pub trait Scene {
 
 /// Implementation of [`Scene`] for a specific [`SpaceViewClass`].
 pub struct TypedScene<C: SpaceViewClass> {
-    pub context: C::Context,
     pub parts: C::SystemCollection,
-    pub highlights: SpaceViewHighlights,
 
     /// All draw data gathered during the last call to [`Self::populate`].
     ///
@@ -41,9 +37,7 @@ pub struct TypedScene<C: SpaceViewClass> {
 impl<C: SpaceViewClass> Default for TypedScene<C> {
     fn default() -> Self {
         Self {
-            context: Default::default(),
             parts: Default::default(),
-            highlights: Default::default(),
             draw_data: Default::default(),
         }
     }
@@ -54,34 +48,23 @@ impl<C: SpaceViewClass + 'static> Scene for TypedScene<C> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        space_view_state: &dyn SpaceViewState,
-        highlights: SpaceViewHighlights,
+        view_ctx: &ViewContextCollection,
     ) {
         re_tracing::profile_function!();
 
-        self.highlights = highlights;
-
-        let Some(state) = space_view_state
-            .as_any()
-            .downcast_ref::<C::State>()
-            else {
-                re_log::error_once!("Unexpected space view state type. Expected {}",
-                                    std::any::type_name::<C::State>());
-                return;
-            };
-
-        // TODO(andreas): Both loops are great candidates for parallelization.
-        for context in self.context.vec_mut() {
-            // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
-            context.populate(ctx, query, state);
-        }
         self.draw_data = self
             .parts
             .vec_mut()
             .into_iter()
             .flat_map(|element| {
                 // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
-                element.populate(ctx, query, state, &self.context, &self.highlights)
+                match element.execute(ctx, query, view_ctx) {
+                    Ok(draw_data) => draw_data,
+                    Err(err) => {
+                        re_log::error_once!("Failed to execute space view part system: {}", err);
+                        Vec::new()
+                    }
+                }
             })
             .collect();
     }

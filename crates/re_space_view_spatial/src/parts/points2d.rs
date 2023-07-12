@@ -4,12 +4,12 @@ use re_components::{
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{EntityView, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewHighlights, ViewPartSystem, ViewQuery,
-    ViewerContext,
+    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewHighlights,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
-    contexts::{SpatialSceneEntityContext, SpatialViewContext},
+    contexts::{EntityDepthOffsets, SpatialSceneEntityContext, SpatialViewContext},
     parts::{
         entity_iterator::process_entity_views, load_keypoint_connections, UiLabel, UiLabelTarget,
     },
@@ -18,7 +18,7 @@ use crate::{
 
 use super::{
     picking_id_from_instance_key, process_annotations_and_keypoints, process_colors, process_radii,
-    SpatialSpaceViewState, SpatialViewPartData,
+    SpatialViewPartData,
 };
 
 pub struct Points2DPart {
@@ -166,7 +166,7 @@ impl Points2DPart {
     }
 }
 
-impl ViewPartSystem<SpatialSpaceView> for Points2DPart {
+impl ViewPartSystem for Points2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Point2D::name(),
@@ -179,32 +179,33 @@ impl ViewPartSystem<SpatialSpaceView> for Points2DPart {
         ]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
-        context: &SpatialViewContext,
-        highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_scope!("Points2DPart");
 
         process_entity_views::<re_components::Point2D, 7, _>(
             ctx,
             query,
-            context,
-            highlights,
-            context.depth_offsets.points,
+            view_ctx,
+            view_ctx.get::<EntityDepthOffsets>()?.points,
             self.archetype(),
             |_ctx, ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
         );
 
-        Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+        Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> Option<&SpatialViewPartData> {
-        Some(&self.data)
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(self.data.as_any())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

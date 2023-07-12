@@ -4,7 +4,7 @@ use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataBlueprintTree, ScreenshotMode};
 use re_viewer_context::{
     DynSpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    ViewerContext,
+    SpaceViewSystemRegistry, ViewerContext,
 };
 
 use crate::{
@@ -104,7 +104,14 @@ impl SpaceViewBlueprint {
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
     ) -> &'a dyn DynSpaceViewClass {
-        space_view_class_registry.get_or_log_error(&self.class_name)
+        space_view_class_registry.get_class_or_log_error(&self.class_name)
+    }
+
+    pub fn class_system_registry<'a>(
+        &self,
+        space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
+    ) -> &'a SpaceViewSystemRegistry {
+        space_view_class_registry.get_system_registry_or_log_error(&self.class_name)
     }
 
     pub fn on_frame_start(
@@ -180,7 +187,7 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         latest_at: TimeInt,
-        highlights: SpaceViewHighlights,
+        highlights: &SpaceViewHighlights,
     ) {
         re_tracing::profile_function!();
 
@@ -190,6 +197,7 @@ impl SpaceViewBlueprint {
         }
 
         let class = self.class(ctx.space_view_class_registry);
+        let system_registry = self.class_system_registry(ctx.space_view_class_registry);
 
         class.prepare_populate(
             ctx,
@@ -198,19 +206,17 @@ impl SpaceViewBlueprint {
             self.data_blueprint.data_blueprints_individual(),
         );
 
-        let query = re_viewer_context::ViewQuery::new(
-            &self.space_origin,
-            self.data_blueprint.entity_paths(),
-            *ctx.rec_cfg.time_ctrl.timeline(),
+        let query = re_viewer_context::ViewQuery {
+            space_origin: &self.space_origin,
+            entity_paths: self.data_blueprint.entity_paths(),
+            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            self.data_blueprint.data_blueprints_projected(),
-        );
-
-        let mut scene = class.new_scene();
-        scene.populate(ctx, &query, view_state, highlights);
+            entity_props_map: self.data_blueprint.data_blueprints_projected(),
+            highlights: &highlights,
+        };
 
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, scene, &self.space_origin, self.id);
+            class.ui(ctx, ui, view_state, system_registry, &query, self.id);
         });
     }
 

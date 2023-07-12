@@ -1,6 +1,6 @@
 use crate::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryEntry, ViewPartSystem,
-    ViewPartSystemCollection,
+    SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewSystemRegistry, TypedScene,
+    ViewContextCollection, ViewPartSystem, ViewPartSystemCollection, ViewQuery, ViewerContext,
 };
 
 /// A placeholder space view class that can be used when the actual class is not registered.
@@ -9,9 +9,7 @@ pub struct SpaceViewClassPlaceholder;
 
 impl SpaceViewClass for SpaceViewClassPlaceholder {
     type State = ();
-    type Context = ();
     type SystemCollection = ();
-    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Unknown Space View Class".into()
@@ -25,7 +23,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         "The Space View Class was not recognized.\nThis happens if either the Blueprint specifies an invalid Space View Class or this version of the Viewer does not know about this type.".into()
     }
 
-    fn on_register(&self, _registry_entry: &mut SpaceViewClassRegistryEntry) {}
+    fn on_register(&self, _system_registry: &mut SpaceViewSystemRegistry) {}
 
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
         crate::SpaceViewClassLayoutPriority::Low
@@ -43,19 +41,20 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
 
     fn ui(
         &self,
-        ctx: &mut crate::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut (),
-        _scene: &mut crate::TypedScene<Self>,
-        _space_origin: &re_log_types::EntityPath,
-        _space_view_id: crate::SpaceViewId,
+        state: &mut Self::State,
+        _view_ctx: &ViewContextCollection,
+        _scene: &mut TypedScene<Self>,
+        _query: &ViewQuery<'_>,
+        _space_view_id: SpaceViewId,
     ) {
         ui.centered_and_justified(|ui| ui.label(self.help_text(ctx.re_ui, state)));
     }
 }
 
-impl ViewPartSystemCollection<SpaceViewClassPlaceholder> for () {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<SpaceViewClassPlaceholder>> {
+impl ViewPartSystemCollection for () {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem> {
         Vec::new()
     }
 

@@ -3,18 +3,18 @@ use re_components::{Component, InstanceKey, Pinhole, Transform3D, ViewCoordinate
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewHighlights, SpaceViewOutlineMasks, ViewPartSystem, ViewQuery,
-    ViewerContext,
+    ArchetypeDefinition, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
-    contexts::{pinhole_camera_view_coordinates, SpatialViewContext},
+    contexts::{pinhole_camera_view_coordinates, SharedRenderBuilders, SpatialViewContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     space_camera_3d::SpaceCamera3D,
     SpatialSpaceView,
 };
 
-use super::{SpatialSpaceViewState, SpatialViewPartData};
+use super::SpatialViewPartData;
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
@@ -28,7 +28,7 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        context: &SpatialViewContext,
+        context: &SpatialViewContext<'_>,
         ent_path: &EntityPath,
         props: &EntityProperties,
         pinhole: Pinhole,
@@ -152,54 +152,58 @@ impl CamerasPart {
         }
 
         context
+            .counter
             .num_3d_primitives
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
-impl ViewPartSystem<SpatialSpaceView> for CamerasPart {
+impl ViewPartSystem for CamerasPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Pinhole::name(),]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
-        context: &SpatialViewContext,
-        highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_scope!("CamerasPart");
 
         let store = &ctx.store_db.entity_db.data_store;
+        let context = SpatialViewContext::new(view_ctx)?;
         for (ent_path, props) in query.iter_entities() {
-            let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
+            let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &query) {
+            if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &time_query) {
                 let pinhole_view_coordinates = pinhole_camera_view_coordinates(
                     &ctx.store_db.entity_db.data_store,
                     &ctx.rec_cfg.time_ctrl.current_query(),
                     ent_path,
                 );
-                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+                let entity_highlight = query.highlights.entity_outline_mask(ent_path.hash());
 
                 self.visit_instance(
-                    context,
+                    &context,
                     ent_path,
                     &props,
                     pinhole,
-                    store.query_latest_component::<Transform3D>(ent_path, &query),
+                    store.query_latest_component::<Transform3D>(ent_path, &time_query),
                     pinhole_view_coordinates,
                     entity_highlight,
                 );
             }
         }
 
-        Vec::new()
+        Ok(Vec::new())
     }
 
-    fn data(&self) -> Option<&SpatialViewPartData> {
-        Some(&self.data)
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(self.data.as_any())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

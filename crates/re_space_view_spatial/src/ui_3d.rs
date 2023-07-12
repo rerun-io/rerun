@@ -13,10 +13,13 @@ use re_space_view::controls::{
     DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
     ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
-use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewContextCollection, ViewQuery, ViewerContext,
+};
 
 use crate::{
     axis_lines::add_axis_lines,
+    contexts::SharedRenderBuilders,
     parts::{image_view_coordinates, SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
     space_camera_3d::SpaceCamera3D,
     ui::{
@@ -266,18 +269,19 @@ pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
-    space: &EntityPath,
     space_view_id: SpaceViewId,
     scene: &mut SceneSpatial,
+    view_ctx: &ViewContextCollection,
+    query: &ViewQuery<'_>,
 ) {
     re_tracing::profile_function!();
 
-    let highlights = &scene.highlights;
+    let highlights = query.highlights;
     let space_cameras = &scene.parts.cameras.space_cameras;
     let view_coordinates = ctx
         .store_db
         .store()
-        .query_latest_component(space, &ctx.current_query());
+        .query_latest_component(query.space_origin, &ctx.current_query());
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
@@ -336,7 +340,7 @@ pub fn view_3d(
     }
 
     let target_config = TargetConfiguration {
-        name: space.to_string().into(),
+        name: query.space_origin.to_string().into(),
 
         resolution_in_pixel,
 
@@ -351,7 +355,7 @@ pub fn view_3d(
         pixels_from_point: ui.ctx().pixels_per_point(),
         auto_size_config: state.auto_size_config(),
 
-        outline_config: scene
+        outline_config: query
             .highlights
             .any_outlines()
             .then(|| outline_config(ui.ctx())),
@@ -381,8 +385,9 @@ pub fn view_3d(
             space_view_id,
             state,
             scene,
+            view_ctx,
             &ui_rects,
-            space,
+            query.space_origin,
         );
     }
 
@@ -514,12 +519,10 @@ pub fn view_3d(
     for draw_data in scene.draw_data.drain(..) {
         view_builder.queue_draw(draw_data);
     }
-    for draw_data in scene
-        .context
-        .shared_render_builders
-        .queuable_draw_data(ctx.render_ctx)
-    {
-        view_builder.queue_draw(draw_data);
+    if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
+        for draw_data in shared_render_builders.queuable_draw_data(ctx.render_ctx) {
+            view_builder.queue_draw(draw_data);
+        }
     }
 
     // Commit ui induced lines.

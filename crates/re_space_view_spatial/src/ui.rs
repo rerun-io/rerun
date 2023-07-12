@@ -12,11 +12,13 @@ use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
 use re_viewer_context::{
     resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
-    SpaceViewHighlights, SpaceViewId, SpaceViewState, TensorDecodeCache, TensorStatsCache,
-    UiVerbosity, ViewerContext,
+    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewContextCollection, ViewQuery,
+    ViewerContext,
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
+use crate::contexts::{AnnotationSceneContext, NonInteractiveEntities, PrimitiveCounter};
 use crate::{
     parts::{preferred_navigation_mode, SceneSpatial, UiLabel, UiLabelTarget},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
@@ -380,9 +382,10 @@ impl SpatialSpaceViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         scene: &mut SceneSpatial,
-        space_origin: &EntityPath,
+        view_ctx: &ViewContextCollection,
+        query: &ViewQuery<'_>,
         space_view_id: SpaceViewId,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         self.scene_bbox = scene.parts.calculate_bounding_box();
         if self.scene_bbox_accum.is_nothing() {
             self.scene_bbox_accum = self.scene_bbox;
@@ -391,16 +394,17 @@ impl SpatialSpaceViewState {
         }
 
         if self.nav_mode.is_auto() {
-            self.nav_mode = EditableAutoValue::Auto(preferred_navigation_mode(scene, space_origin));
+            self.nav_mode =
+                EditableAutoValue::Auto(preferred_navigation_mode(scene, query.space_origin));
         }
-        self.scene_num_primitives = scene
-            .context
+        self.scene_num_primitives = view_ctx
+            .get::<PrimitiveCounter>()?
             .num_3d_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                view_3d(ctx, ui, self, space_origin, space_view_id, scene);
+                view_3d(ctx, ui, self, space_view_id, scene, view_ctx, query);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
@@ -412,12 +416,14 @@ impl SpatialSpaceViewState {
                     ui,
                     self,
                     scene,
-                    space_origin,
+                    view_ctx,
+                    query,
                     space_view_id,
                     scene_rect_accum,
                 );
             }
         }
+        Ok(())
     }
 
     pub fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
@@ -647,6 +653,7 @@ pub fn picking(
     space_view_id: SpaceViewId,
     state: &mut SpatialSpaceViewState,
     scene: &SceneSpatial,
+    view_ctx: &ViewContextCollection,
     ui_rects: &[PickableUiRect],
     space: &EntityPath,
 ) -> egui::Response {
@@ -696,6 +703,14 @@ pub fn picking(
 
     let mut hovered_items = Vec::new();
 
+    // TODO:
+    let Ok(non_interactive) = view_ctx.get::<NonInteractiveEntities>() else {
+        return response;
+    };
+    let Ok(annotations) = view_ctx.get::<AnnotationSceneContext>() else {
+        return response;
+    };
+
     // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
@@ -708,9 +723,7 @@ pub fn picking(
             instance_path.instance_key = re_log_types::InstanceKey::SPLAT;
         }
 
-        if scene
-            .context
-            .non_interactive_entities
+        if non_interactive
             .0
             .contains(&instance_path.entity_path.hash())
         {
@@ -815,7 +828,7 @@ pub fn picking(
                                 let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor));
                                 match decoded_tensor {
                                     Ok(decoded_tensor) => {
-                                        let annotations = scene.context.annotations.0.find(&instance_path.entity_path);
+                                        let annotations = annotations.0.find(&instance_path.entity_path);
                                         let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(&decoded_tensor));
                                         show_zoomed_image_region(
                                             ctx.render_ctx,

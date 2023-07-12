@@ -11,10 +11,10 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
-mod spatial_scene_part_data;
+mod spatial_view_part;
 
 pub use images::Image;
-pub use spatial_scene_part_data::SpatialViewPartData;
+pub use spatial_view_part::SpatialViewPartData;
 
 use ahash::HashMap;
 use std::sync::Arc;
@@ -53,8 +53,8 @@ pub struct SpatialViewPartSystemCollection {
     pub images: images::ImagesPart,
 }
 
-impl ViewPartSystemCollection<SpatialSpaceView> for SpatialViewPartSystemCollection {
-    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ViewPartSystem<SpatialSpaceView>> {
+impl ViewPartSystemCollection for SpatialViewPartSystemCollection {
+    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ViewPartSystem> {
         let Self {
             points2d,
             points3d,
@@ -79,7 +79,7 @@ impl ViewPartSystemCollection<SpatialSpaceView> for SpatialViewPartSystemCollect
 }
 
 impl SpatialViewPartSystemCollection {
-    fn vec(&self) -> Vec<&dyn re_viewer_context::ViewPartSystem<SpatialSpaceView>> {
+    fn vec(&self) -> Vec<&dyn re_viewer_context::ViewPartSystem> {
         let Self {
             points2d,
             points3d,
@@ -101,7 +101,10 @@ impl SpatialViewPartSystemCollection {
     pub fn calculate_bounding_box(&self) -> macaw::BoundingBox {
         let mut bounding_box = macaw::BoundingBox::nothing();
         for scene_part in self.vec() {
-            if let Some(data) = scene_part.data() {
+            if let Some(data) = scene_part
+                .data()
+                .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+            {
                 bounding_box = bounding_box.union(data.bounding_box);
             }
         }
@@ -111,7 +114,10 @@ impl SpatialViewPartSystemCollection {
     pub fn collect_ui_labels(&self) -> Vec<UiLabel> {
         let mut ui_labels = Vec::new();
         for scene_part in self.vec() {
-            if let Some(data) = scene_part.data() {
+            if let Some(data) = scene_part
+                .data()
+                .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+            {
                 ui_labels.extend(data.ui_labels.iter().cloned());
             }
         }
@@ -272,14 +278,15 @@ pub fn preferred_navigation_mode(
         return SpatialNavigationMode::TwoD;
     }
 
-    if scene
-        .context
-        .num_3d_primitives
-        .load(std::sync::atomic::Ordering::Relaxed)
-        == 0
-    {
-        return SpatialNavigationMode::TwoD;
-    }
+    // TODO:
+    // if scene
+    //     .context
+    //     .num_3d_primitives
+    //     .load(std::sync::atomic::Ordering::Relaxed)
+    //     == 0
+    // {
+    //     return SpatialNavigationMode::TwoD;
+    // }
 
     SpatialNavigationMode::ThreeD
 }

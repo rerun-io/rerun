@@ -1,9 +1,11 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
-use re_viewer_context::{SpaceViewClass, SpaceViewId};
+use re_viewer_context::{
+    SpaceViewClass, SpaceViewId, TypedScene, ViewContextCollection, ViewQuery, ViewerContext,
+};
 
 use crate::{
-    contexts::SpatialViewContext,
+    contexts::{register_contexts, SpatialViewContext},
     parts::{SpatialViewPartData, SpatialViewPartSystemCollection},
     ui::{SpatialNavigationMode, SpatialSpaceViewState},
 };
@@ -13,9 +15,7 @@ pub struct SpatialSpaceView;
 
 impl SpaceViewClass for SpatialSpaceView {
     type State = SpatialSpaceViewState;
-    type Context = SpatialViewContext;
     type SystemCollection = SpatialViewPartSystemCollection;
-    type ViewPartData = SpatialViewPartData;
 
     fn name(&self) -> re_viewer_context::SpaceViewClassName {
         "Spatial".into()
@@ -29,7 +29,10 @@ impl SpaceViewClass for SpatialSpaceView {
         state.help_text(re_ui)
     }
 
-    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewClassRegistryEntry) {}
+    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
+        register_contexts(system_registry);
+        //register_parts(registry_entry); // TODO:
+    }
 
     fn preferred_tile_aspect_ratio(&self, state: &Self::State) -> Option<f32> {
         match state.nav_mode.get() {
@@ -68,13 +71,14 @@ impl SpaceViewClass for SpatialSpaceView {
 
     fn ui(
         &self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut re_viewer_context::TypedScene<Self>,
-        space_origin: &EntityPath,
+        view_ctx: &ViewContextCollection,
+        scene: &mut TypedScene<Self>,
+        query: &ViewQuery<'_>,
         space_view_id: SpaceViewId,
     ) {
-        state.view_spatial(ctx, ui, scene, space_origin, space_view_id);
+        state.view_spatial(ctx, ui, scene, &view_ctx, query, space_view_id);
     }
 }

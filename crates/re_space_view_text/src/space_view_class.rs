@@ -4,7 +4,7 @@ use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
     level_to_rich_text, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
-    TypedScene, ViewerContext,
+    TypedScene, ViewContextCollection, ViewQuery, ViewerContext,
 };
 
 use super::view_part_system::{SceneText, TextEntry};
@@ -38,9 +38,7 @@ pub struct TextSpaceView;
 
 impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
-    type Context = ();
     type SystemCollection = SceneText;
-    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Text".into()
@@ -54,7 +52,7 @@ impl SpaceViewClass for TextSpaceView {
         "Shows text entries over time.\nSelect the Space View for filtering options.".into()
     }
 
-    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewClassRegistryEntry) {}
+    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewSystemRegistry) {}
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         Some(2.0) // Make text logs wide
@@ -112,9 +110,10 @@ impl SpaceViewClass for TextSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        view_ctx: &ViewContextCollection,
         scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        query: &ViewQuery<'_>,
+        space_view_id: SpaceViewId,
     ) {
         let scene = &scene.parts;
 

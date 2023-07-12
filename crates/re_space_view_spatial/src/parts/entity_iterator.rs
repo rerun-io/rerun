@@ -1,7 +1,10 @@
 use re_log_types::{Component, EntityPath};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
-use re_viewer_context::{ArchetypeDefinition, SpaceViewHighlights, ViewQuery, ViewerContext};
+use re_viewer_context::{
+    ArchetypeDefinition, SpaceViewHighlights, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewQuery, ViewerContext,
+};
 
 use crate::contexts::{SpatialSceneEntityContext, SpatialViewContext};
 
@@ -12,12 +15,12 @@ use crate::contexts::{SpatialSceneEntityContext, SpatialViewContext};
 pub fn process_entity_views<'a, Primary, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &ViewQuery<'_>,
-    context: &SpatialViewContext,
-    highlights: &SpaceViewHighlights,
+    view_ctx: &ViewContextCollection,
     default_depth_offset: DepthOffset,
     archetype: ArchetypeDefinition,
     mut fun: F,
-) where
+) -> Result<(), SpaceViewSystemExecutionError>
+where
     Primary: Component + 'a,
     F: FnMut(
         &mut ViewerContext<'_>,
@@ -33,12 +36,14 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
                 "Archetype {:?} has wrong number of elements, expected {N}",
                 archetype
             );
-            return;
+            return Ok(());
         }
     };
 
+    let spatial_context = SpatialViewContext::new(view_ctx)?;
+
     for (ent_path, props) in query.iter_entities() {
-        let Some(entity_context) = context.lookup_entity_context(ent_path, highlights, default_depth_offset) else {
+        let Some(entity_context) = spatial_context.lookup_entity_context(ent_path, query.highlights, default_depth_offset) else {
             continue;
         };
 
@@ -52,7 +57,7 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
         )
         .and_then(|entity_views| {
             for ent_view in entity_views {
-                context.num_primitives.fetch_add(
+                spatial_context.counter.num_primitives.fetch_add(
                     ent_view.num_instances(),
                     std::sync::atomic::Ordering::Relaxed,
                 );
@@ -67,4 +72,6 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
             }
         }
     }
+
+    Ok(())
 }

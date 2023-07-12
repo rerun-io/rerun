@@ -5,13 +5,16 @@ use re_components::Pinhole;
 use re_data_store::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
-use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge, HoveredSpace, SpaceViewId, ViewContextCollection, ViewQuery, ViewerContext,
+};
 
 use super::{
     eye::Eye,
     ui::{create_labels, picking, screenshot_context_menu},
 };
 use crate::{
+    contexts::SharedRenderBuilders,
     parts::SceneSpatial,
     ui::{outline_config, SpatialNavigationMode, SpatialSpaceViewState},
 };
@@ -220,7 +223,8 @@ pub fn view_2d(
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
     scene: &mut SceneSpatial,
-    space_origin: &EntityPath,
+    view_ctx: &ViewContextCollection,
+    query: &ViewQuery<'_>,
     space_view_id: SpaceViewId,
     scene_rect_accum: Rect,
 ) -> egui::Response {
@@ -241,8 +245,10 @@ pub fn view_2d(
     // For that we need to check if this is defined by a pinhole camera.
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
-    let pinhole = store
-        .query_latest_component::<Pinhole>(space_origin, &ctx.rec_cfg.time_ctrl.current_query());
+    let pinhole = store.query_latest_component::<Pinhole>(
+        query.space_origin,
+        &ctx.rec_cfg.time_ctrl.current_query(),
+    );
     let canvas_rect = pinhole
         .and_then(|p| p.resolution())
         .map_or(scene_rect_accum, |res| {
@@ -287,9 +293,9 @@ pub fn view_2d(
         let Ok(target_config) = setup_target_config(
                 &painter,
                 canvas_from_ui,
-                &space_origin.to_string(),
+                &query.space_origin.to_string(),
                 state.auto_size_config(),
-                scene.highlights.any_outlines(),
+                query.highlights.any_outlines(),
                 pinhole
             ) else {
                 return response;
@@ -303,7 +309,7 @@ pub fn view_2d(
             ui_from_canvas,
             &eye,
             ui,
-            &scene.highlights,
+            &query.highlights,
             SpatialNavigationMode::TwoD,
         );
 
@@ -319,20 +325,19 @@ pub fn view_2d(
                 space_view_id,
                 state,
                 scene,
+                view_ctx,
                 &ui_rects,
-                space_origin,
+                query.space_origin,
             );
         }
 
         for draw_data in scene.draw_data.drain(..) {
             view_builder.queue_draw(draw_data);
         }
-        for draw_data in scene
-            .context
-            .shared_render_builders
-            .queuable_draw_data(ctx.render_ctx)
-        {
-            view_builder.queue_draw(draw_data);
+        if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
+            for draw_data in shared_render_builders.queuable_draw_data(ctx.render_ctx) {
+                view_builder.queue_draw(draw_data);
+            }
         }
 
         // ------------------------------------------------------------------------
@@ -368,7 +373,7 @@ pub fn view_2d(
         painter.extend(show_projections_from_3d_space(
             ctx,
             ui,
-            space_origin,
+            query.space_origin,
             &ui_from_canvas,
         ));
 

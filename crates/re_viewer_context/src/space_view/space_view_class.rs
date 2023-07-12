@@ -3,8 +3,9 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, DynSpaceViewClass, Scene, SpaceViewClassName, SpaceViewClassRegistryEntry,
-    SpaceViewId, SpaceViewState, ViewContext, ViewPartSystemCollection, ViewerContext,
+    ArchetypeDefinition, DynSpaceViewClass, Scene, SpaceViewClassName, SpaceViewId, SpaceViewState,
+    SpaceViewSystemRegistry, ViewContextCollection, ViewPartSystemCollection, ViewQuery,
+    ViewerContext,
 };
 
 use super::scene::TypedScene;
@@ -18,18 +19,8 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// State of a space view.
     type State: SpaceViewState + Default + 'static;
 
-    /// Context of the scene, which is passed to all [`crate::ViewPartSystem`]s and ui drawing on population.
-    type Context: ViewContext + Default + 'static;
-
     /// Collection of [`crate::ViewPartSystem`]s that this scene populates.
-    type SystemCollection: ViewPartSystemCollection<Self> + Default + 'static;
-
-    /// A piece of data that all scene parts have in common, useful for iterating over them.
-    ///
-    /// This is useful for retrieving data that is common to all scene parts of a [`SpaceViewClass`].
-    /// For example, if most scene parts produce ui elements, a concrete [`SpaceViewClass`]
-    /// can pick those up in its [`SpaceViewClass::ui`] method by iterating over all scene parts.
-    type ViewPartData;
+    type SystemCollection: ViewPartSystemCollection + Default + 'static;
 
     /// Name of this space view class.
     ///
@@ -46,7 +37,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Called once upon registration of the class
     ///
     /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
-    fn on_register(&self, registry_entry: &mut SpaceViewClassRegistryEntry);
+    fn on_register(&self, system_registry: &mut SpaceViewSystemRegistry);
 
     /// Preferred aspect ratio for the ui tiles of this space view.
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
@@ -97,8 +88,9 @@ pub trait SpaceViewClass: std::marker::Sized {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        view_ctx: &ViewContextCollection,
         scene: &mut TypedScene<Self>,
-        space_origin: &EntityPath,
+        query: &ViewQuery<'_>,
         space_view_id: SpaceViewId,
     );
 }
@@ -129,8 +121,8 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         Box::<T::State>::default()
     }
 
-    fn on_register(&self, registry_entry: &mut SpaceViewClassRegistryEntry) {
-        self.on_register(registry_entry);
+    fn on_register(&self, system_registry: &mut SpaceViewSystemRegistry) {
+        self.on_register(system_registry);
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
@@ -172,25 +164,31 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         });
     }
 
-    #[inline]
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        mut scene: Box<dyn Scene>,
-        space_origin: &EntityPath,
+        systems: &SpaceViewSystemRegistry,
+        query: &ViewQuery<'_>,
         space_view_id: SpaceViewId,
     ) {
-        let Some(typed_scene) = scene.as_any_mut().downcast_mut()
-            else {
-                re_log::error_once!("Unexpected space view state type. Expected {}",
-                                    std::any::type_name::<TypedScene<T>>());
-                return;
-            };
+        let mut view_ctx = systems.new_context_collection();
+
+        // TODO(andreas): We should be able to parallelize this loop!
+        for system in view_ctx.systems.values_mut() {
+            system.execute(ctx, query);
+        }
+
+        let mut scene = self.new_scene();
+        scene.populate(ctx, query, &view_ctx);
+        let typed_scene = scene
+            .as_any_mut()
+            .downcast_mut::<TypedScene<Self>>()
+            .unwrap(); // TODO:
 
         typed_state_wrapper_mut(state, |state| {
-            self.ui(ctx, ui, state, typed_scene, space_origin, space_view_id);
+            self.ui(ctx, ui, state, &view_ctx, typed_scene, query, space_view_id);
         });
     }
 }

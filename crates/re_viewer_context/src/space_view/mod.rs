@@ -22,8 +22,17 @@ pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOut
 pub use scene::{Scene, TypedScene};
 pub use space_view_class::SpaceViewClass;
 pub use space_view_class_registry::{
-    SpaceViewClassRegistry, SpaceViewClassRegistryEntry, SpaceViewClassRegistryError,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistry,
 };
-pub use view_context_system::{ViewContext, ViewContextSystem};
+pub use view_context_system::{ViewContextCollection, ViewContextSystem};
 pub use view_part_system::{ViewPartSystem, ViewPartSystemCollection};
 pub use view_query::ViewQuery;
+
+// ---------------------------------------------------------------------------
+
+// TODO: move?
+#[derive(Debug, thiserror::Error)]
+pub enum SpaceViewSystemExecutionError {
+    #[error("Context system {0} not found")]
+    ContextSystemNotFound(&'static str),
+}

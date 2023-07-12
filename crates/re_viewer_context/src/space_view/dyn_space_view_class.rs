@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
 use re_log_types::{ComponentName, EntityPath};
 
-use crate::{Scene, SpaceViewClassRegistryEntry, SpaceViewId, ViewerContext};
+use crate::{Scene, SpaceViewId, SpaceViewSystemRegistry, ViewQuery, ViewerContext};
 
 /// First element is the primary component, all others are optional.
 ///
@@ -55,7 +55,7 @@ pub trait DynSpaceViewClass {
     /// Called once upon registration of the class
     ///
     /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
-    fn on_register(&self, registry_entry: &mut SpaceViewClassRegistryEntry);
+    fn on_register(&self, system_registry: &mut SpaceViewSystemRegistry);
 
     /// Called once for every new space view instance of this class.
     ///
@@ -105,15 +105,14 @@ pub trait DynSpaceViewClass {
 
     /// Draws the ui for this space view type and handles ui events.
     ///
-    /// The scene passed in was previously created by [`Self::new_scene`] and got populated by the time it is passed.
     /// The state passed in was previously created by [`Self::new_state`] and is kept frame-to-frame.
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        scene: Box<dyn Scene>,
-        space_origin: &EntityPath,
+        systems: &SpaceViewSystemRegistry,
+        query: &ViewQuery<'_>,
         space_view_id: SpaceViewId,
     );
 }

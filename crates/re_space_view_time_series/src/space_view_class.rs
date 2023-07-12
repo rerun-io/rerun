@@ -8,7 +8,8 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
+    SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewContextCollection, ViewQuery,
+    ViewerContext,
 };
 
 use crate::view_part_system::{PlotSeriesKind, SceneTimeSeries};
@@ -18,9 +19,7 @@ pub struct TimeSeriesSpaceView;
 
 impl SpaceViewClass for TimeSeriesSpaceView {
     type State = ();
-    type Context = ();
     type SystemCollection = SceneTimeSeries;
-    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Time Series".into()
@@ -55,7 +54,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         layout.layout_job.into()
     }
 
-    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewClassRegistryEntry) {}
+    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewSystemRegistry) {}
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         None
@@ -79,10 +78,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        state: &mut Self::State,
+        view_ctx: &ViewContextCollection,
         scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        query: &ViewQuery<'_>,
+        space_view_id: SpaceViewId,
     ) {
         re_tracing::profile_function!();
 

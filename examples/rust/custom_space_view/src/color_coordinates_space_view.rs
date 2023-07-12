@@ -6,8 +6,8 @@ use re_viewer::external::{
     re_ui,
     re_viewer_context::{
         HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
-        SpaceViewClassName, SpaceViewClassRegistryEntry, SpaceViewId, SpaceViewState, TypedScene,
-        UiVerbosity, ViewerContext,
+        SpaceViewClassName, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, TypedScene,
+        UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext,
     },
 };
 
@@ -69,16 +69,11 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
     type State = ColorCoordinatesSpaceViewState;
 
-    // Scene context is shared between all scene parts.
-    // For this Space View we don't need any scene context.
-    type Context = ();
-
     // Collection of scene parts that are needed to display a frame.
     type SystemCollection = ColorCoordinatesViewPartSystemCollection;
 
     // Scene parts can have a common data object that they expose.
     // For this Space View this is not needed.
-    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         // Name and identifier of this Space View.
@@ -93,7 +88,9 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         "A demo space view that shows colors as coordinates on a 2D plane.".into()
     }
 
-    fn on_register(&self, _registry_entry: &mut SpaceViewClassRegistryEntry) {}
+    fn on_register(&self, _system_registry: &mut SpaceViewSystemRegistry) {
+        // TODO:
+    }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         // Prefer a square tile if possible.
@@ -139,8 +136,9 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        view_ctx: &ViewContextCollection,
         scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
+        query: &ViewQuery<'_>,
         space_view_id: SpaceViewId,
     ) {
         egui::Frame::default().show(ui, |ui| {
@@ -163,7 +161,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
                     (rgba.r(), rgba.g())
                 },
             };
-            color_space_ui(ui, ctx, space_view_id, scene, color_at, position_at);
+            color_space_ui(ui, ctx, space_view_id, scene, query, color_at, position_at);
         });
     }
 }
@@ -175,6 +173,7 @@ fn color_space_ui(
     ctx: &mut ViewerContext<'_>,
     space_view_id: SpaceViewId,
     scene: &mut TypedScene<ColorCoordinatesSpaceView>,
+    query: &ViewQuery,
     color_at: impl Fn(f32, f32) -> egui::Color32,
     position_at: impl Fn(egui::Color32) -> (f32, f32),
 ) -> egui::Response {
@@ -212,7 +211,7 @@ fn color_space_ui(
 
     // Circles for the colors in the scene.
     for (ent_path, colors) in &scene.parts.colors.colors {
-        let ent_highlight = scene.highlights.entity_highlight(ent_path.hash());
+        let ent_highlight = query.highlights.entity_highlight(ent_path.hash());
         for ColorWithInstanceKey {
             instance_key,
             color,

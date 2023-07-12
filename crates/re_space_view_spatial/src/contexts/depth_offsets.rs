@@ -23,11 +23,10 @@ impl ViewContextSystem for EntityDepthOffsets {
         vec![vec1::vec1![DrawOrder::name()]]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
-        _space_view_state: &dyn re_viewer_context::SpaceViewState,
     ) {
         re_tracing::profile_function!();
 
@@ -116,6 +115,10 @@ impl ViewContextSystem for EntityDepthOffsets {
                     .collect::<Vec<_>>()
             })
             .collect();
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

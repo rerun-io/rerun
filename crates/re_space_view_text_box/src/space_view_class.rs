@@ -1,7 +1,7 @@
 use egui::Label;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName, SpaceViewId,
-    SpaceViewState, TypedScene, ViewerContext,
+    SpaceViewState, TypedScene, ViewContextCollection, ViewQuery, ViewerContext,
 };
 
 use super::view_part_system::SceneTextBox;
@@ -37,9 +37,7 @@ pub struct TextBoxSpaceView;
 
 impl SpaceViewClass for TextBoxSpaceView {
     type State = TextBoxSpaceViewState;
-    type Context = ();
     type SystemCollection = SceneTextBox;
-    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Text Box".into()
@@ -53,7 +51,7 @@ impl SpaceViewClass for TextBoxSpaceView {
         "Displays text from a text entry components.".into()
     }
 
-    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewClassRegistryEntry) {}
+    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewSystemRegistry) {}
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
@@ -80,12 +78,13 @@ impl SpaceViewClass for TextBoxSpaceView {
 
     fn ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        view_ctx: &ViewContextCollection,
         scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        query: &ViewQuery<'_>,
+        space_view_id: SpaceViewId,
     ) {
         let scene = &scene.parts;
 

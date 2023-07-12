@@ -3,11 +3,11 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, ViewPartSystem, ViewQuery,
-    ViewerContext,
+    ArchetypeDefinition, DefaultColor, SpaceViewHighlights, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
-use super::{SpatialSpaceViewState, SpatialViewPartData};
+use super::SpatialViewPartData;
 use crate::{
     contexts::{SpatialSceneEntityContext, SpatialViewContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -65,19 +65,17 @@ impl MeshPart {
     }
 }
 
-impl ViewPartSystem<SpatialSpaceView> for MeshPart {
+impl ViewPartSystem for MeshPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Mesh3D::name(), InstanceKey::name(), ColorRGBA::name()]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
-        context: &SpatialViewContext,
-        highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_scope!("MeshPart");
 
         let mut instances = Vec::new();
@@ -85,12 +83,13 @@ impl ViewPartSystem<SpatialSpaceView> for MeshPart {
         process_entity_views::<_, 3, _>(
             ctx,
             query,
-            context,
-            highlights,
-            context.depth_offsets.points,
+            view_ctx,
+            0,
             self.archetype(),
             |ctx, ent_path, entity_view, ent_context| {
-                context
+                ent_context
+                    .ctx
+                    .counter
                     .num_3d_primitives
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 self.process_entity_view(ctx, &mut instances, &entity_view, ent_path, ent_context)
@@ -98,17 +97,19 @@ impl ViewPartSystem<SpatialSpaceView> for MeshPart {
         );
 
         match re_renderer::renderer::MeshDrawData::new(ctx.render_ctx, &instances) {
-            Ok(draw_data) => {
-                vec![draw_data.into()]
-            }
+            Ok(draw_data) => Ok(vec![draw_data.into()]),
             Err(err) => {
                 re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");
-                Vec::new()
+                Ok(Vec::new()) // TODO: Pass error on?
             }
         }
     }
 
-    fn data(&self) -> Option<&SpatialViewPartData> {
-        Some(&self.0)
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(self.0.as_any())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

@@ -3,8 +3,8 @@ use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::{Component as _, InstanceKey};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, TensorDecodeCache, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, SpaceViewSystemExecutionError,
+    TensorDecodeCache, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::TensorSpaceView;
@@ -15,19 +15,17 @@ pub struct SceneTensor {
     pub tensors: std::collections::BTreeMap<InstancePath, DecodedTensor>,
 }
 
-impl ViewPartSystem<TensorSpaceView> for SceneTensor {
+impl ViewPartSystem for SceneTensor {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Tensor::name()]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _state: &<TensorSpaceView as SpaceViewClass>::State,
-        _context: &<TensorSpaceView as SpaceViewClass>::Context,
-        _highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        _view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let store = &ctx.store_db.entity_db.data_store;
@@ -40,7 +38,11 @@ impl ViewPartSystem<TensorSpaceView> for SceneTensor {
             }
         }
 
-        Vec::new()
+        Ok(Vec::new())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
