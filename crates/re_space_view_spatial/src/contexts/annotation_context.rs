@@ -15,7 +15,11 @@ impl ViewContextSystem for AnnotationSceneContext {
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
-        self.0.load(ctx, query);
+        self.0.load(
+            ctx,
+            &query.latest_at_query(),
+            query.iter_entities().map(|(p, _)| p),
+        );
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

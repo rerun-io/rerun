@@ -8,18 +8,17 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewContextCollection, ViewQuery,
-    ViewerContext,
+    SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
-use crate::view_part_system::{PlotSeriesKind, SceneTimeSeries};
+use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
 
 #[derive(Default)]
 pub struct TimeSeriesSpaceView;
 
 impl SpaceViewClass for TimeSeriesSpaceView {
     type State = ();
-    type SystemCollection = SceneTimeSeries;
 
     fn name(&self) -> SpaceViewClassName {
         "Time Series".into()
@@ -54,7 +53,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         layout.layout_job.into()
     }
 
-    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewSystemRegistry) {}
+    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
+        system_registry.register_part_system::<TimeSeriesSystem>();
+    }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         None
@@ -80,10 +81,10 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         view_ctx: &ViewContextCollection,
-        scene: &mut TypedScene<Self>,
+        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        space_view_id: SpaceViewId,
-    ) {
+        draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let time_ctrl = &ctx.rec_cfg.time_ctrl;
@@ -93,9 +94,10 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let timeline_name = timeline.name().to_string();
 
+        let time_series = parts.get::<TimeSeriesSystem>()?;
+
         // Compute the minimum time/X value for the entire plot…
-        let min_time = scene
-            .parts
+        let min_time = time_series
             .lines
             .iter()
             .flat_map(|line| line.points.iter().map(|p| p.0))
@@ -152,7 +154,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 ctx.rec_cfg.time_ctrl.pause();
             }
 
-            for line in &scene.parts.lines {
+            for line in &time_series.lines {
                 let points = line
                     .points
                     .iter()
@@ -215,6 +217,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             ctx.re_ui
                 .paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
         }
+        Ok(())
     }
 }
 

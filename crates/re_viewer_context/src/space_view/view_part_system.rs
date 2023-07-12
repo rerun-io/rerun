@@ -1,15 +1,8 @@
+use ahash::HashMap;
+
 use crate::{ArchetypeDefinition, SpaceViewSystemExecutionError, ViewQuery, ViewerContext};
 
 use super::view_context_system::ViewContextCollection;
-
-/// Scene part collection, consisting of several [`ViewPartSystem`] which may be populated in parallel.
-pub trait ViewPartSystemCollection {
-    /// Retrieves a list of all underlying scene context part for parallel population.
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem>;
-
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
-}
 
 /// Element of a scene derived from a single archetype query.
 ///
@@ -44,13 +37,23 @@ pub trait ViewPartSystem {
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
-/// Trivial implementation of a scene collection that consists only of a single scene part.
-impl<T: ViewPartSystem + 'static> ViewPartSystemCollection for T {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem> {
-        vec![self]
+pub struct ViewPartCollection {
+    pub(crate) systems: HashMap<std::any::TypeId, Box<dyn ViewPartSystem>>,
+}
+
+impl ViewPartCollection {
+    pub fn get<T: ViewPartSystem + Default + 'static>(
+        &self,
+    ) -> Result<&T, SpaceViewSystemExecutionError> {
+        self.systems
+            .get(&std::any::TypeId::of::<T>())
+            .and_then(|s| s.as_any().downcast_ref())
+            .ok_or_else(|| {
+                SpaceViewSystemExecutionError::PartSystemNotFound(std::any::type_name::<T>())
+            })
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+    pub fn iter(&self) -> impl Iterator<Item = &dyn ViewPartSystem> {
+        self.systems.values().map(|s| s.as_ref())
     }
 }

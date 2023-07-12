@@ -4,35 +4,14 @@ use re_viewer::external::{
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
-        ArchetypeDefinition, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
-        ViewPartSystem, ViewPartSystemCollection, ViewQuery, ViewerContext,
+        ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+        ViewQuery, ViewerContext,
     },
 };
 
-use crate::color_coordinates_space_view::ColorCoordinatesSpaceView;
-
-/// The scene for the [`ColorCoordinatesSpaceView`].
-///
-/// This is a collection of all information needed to display a single frame for this Space View.
-/// The data is queried from the data store here and processed to consumption by the Space View's ui method.
+/// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
-pub struct ColorCoordinatesViewPartSystemCollection {
-    pub colors: InstanceColors,
-}
-
-impl ViewPartSystemCollection for ColorCoordinatesViewPartSystemCollection {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem> {
-        vec![&mut self.colors]
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-/// Our scene(-parts) consist of single part which holds a list of egui colors for each entity path.
-#[derive(Default)]
-pub struct InstanceColors {
+pub struct InstanceColorSystem {
     pub colors: Vec<(EntityPath, Vec<ColorWithInstanceKey>)>,
 }
 
@@ -41,7 +20,7 @@ pub struct ColorWithInstanceKey {
     pub instance_key: InstanceKey,
 }
 
-impl ViewPartSystem for InstanceColors {
+impl ViewPartSystem for InstanceColorSystem {
     /// The archetype this scene part is querying from the store.
     ///
     /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries

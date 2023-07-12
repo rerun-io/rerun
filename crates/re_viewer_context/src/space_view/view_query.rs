@@ -1,10 +1,14 @@
 use nohash_hasher::IntSet;
 
+use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap, TimeInt, Timeline};
 
-use crate::SpaceViewHighlights;
+use crate::{SpaceViewHighlights, SpaceViewId};
 
 pub struct ViewQuery<'s> {
+    /// The id of the space in which context the query happens.
+    pub space_view_id: SpaceViewId,
+
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,
 
@@ -36,5 +40,12 @@ impl<'s> ViewQuery<'s> {
             .iter()
             .map(|entity_path| (entity_path, self.entity_props_map.get(entity_path)))
             .filter(|(_entity_path, props)| props.visible)
+    }
+
+    pub fn latest_at_query(&self) -> LatestAtQuery {
+        LatestAtQuery {
+            timeline: self.timeline,
+            at: self.latest_at,
+        }
     }
 }

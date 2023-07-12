@@ -28,11 +28,11 @@ pub struct TextEntry {
 
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
-pub struct SceneText {
+pub struct TextSystem {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl ViewPartSystem for SceneText {
+impl ViewPartSystem for TextSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextEntry::name()]
     }

@@ -1,4 +1,4 @@
-use re_arrow_store::TimeRange;
+use re_arrow_store::{LatestAtQuery, TimeRange};
 use re_log_types::{Component, ComponentName, InstanceKey};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
@@ -57,12 +57,12 @@ pub struct PlotSeries {
 
 /// A scene for a time series plot, with everything needed to render it.
 #[derive(Default, Debug)]
-pub struct SceneTimeSeries {
+pub struct TimeSeriesSystem {
     pub annotation_map: AnnotationMap,
     pub lines: Vec<PlotSeries>,
 }
 
-impl ViewPartSystem for SceneTimeSeries {
+impl ViewPartSystem for TimeSeriesSystem {
     fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
         vec1::Vec1::try_from(Self::archetype_array()).unwrap() // TODO(wumpf): `archetype` should return a fixed sized array.
     }
@@ -75,7 +75,11 @@ impl ViewPartSystem for SceneTimeSeries {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.annotation_map.load(ctx, query);
+        self.annotation_map.load(
+            ctx,
+            &query.latest_at_query(),
+            query.iter_entities().map(|(p, _)| p),
+        );
 
         self.load_scalars(ctx, query);
 
@@ -87,7 +91,7 @@ impl ViewPartSystem for SceneTimeSeries {
     }
 }
 
-impl SceneTimeSeries {
+impl TimeSeriesSystem {
     fn archetype_array() -> [ComponentName; 6] {
         [
             InstanceKey::name(),

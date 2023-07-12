@@ -94,7 +94,7 @@ impl ViewPartSystem for MeshPart {
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 self.process_entity_view(ctx, &mut instances, &entity_view, ent_path, ent_context)
             },
-        );
+        )?;
 
         match re_renderer::renderer::MeshDrawData::new(ctx.render_ctx, &instances) {
             Ok(draw_data) => Ok(vec![draw_data.into()]),

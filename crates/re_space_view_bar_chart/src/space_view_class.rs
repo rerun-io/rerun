@@ -3,8 +3,8 @@ use re_components::TensorData;
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_viewer_context::{
-    auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewContextCollection,
-    ViewQuery, ViewerContext,
+    auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use super::view_part_system::BarChartViewPartSystem;
@@ -14,7 +14,6 @@ pub struct BarChartSpaceView;
 
 impl SpaceViewClass for BarChartSpaceView {
     type State = ();
-    type SystemCollection = BarChartViewPartSystem;
 
     fn name(&self) -> SpaceViewClassName {
         "Bar Chart".into()
@@ -45,7 +44,9 @@ impl SpaceViewClass for BarChartSpaceView {
         layout.layout_job.into()
     }
 
-    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewSystemRegistry) {}
+    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
+        system_registry.register_part_system::<BarChartViewPartSystem>();
+    }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         None
@@ -71,11 +72,13 @@ impl SpaceViewClass for BarChartSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         view_ctx: &ViewContextCollection,
-        scene: &mut TypedScene<Self>,
+        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        space_view_id: SpaceViewId,
-    ) {
+        draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         use egui::plot::{Bar, BarChart, Legend, Plot};
+
+        let charts = &parts.get::<BarChartViewPartSystem>()?.charts;
 
         ui.scope(|ui| {
             Plot::new("bar_chart_plot")
@@ -104,7 +107,7 @@ impl SpaceViewClass for BarChartSpaceView {
                         .color(color)
                     }
 
-                    for (ent_path, tensor) in &scene.parts.charts {
+                    for (ent_path, tensor) in charts.iter() {
                         let chart = match &tensor.data {
                             TensorData::U8(data) => {
                                 create_bar_chart(ent_path, data.iter().copied())
@@ -152,5 +155,7 @@ impl SpaceViewClass for BarChartSpaceView {
                     }
                 });
         });
+
+        Ok(())
     }
 }

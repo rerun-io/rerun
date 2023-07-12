@@ -199,7 +199,7 @@ impl SpaceViewBlueprint {
         let class = self.class(ctx.space_view_class_registry);
         let system_registry = self.class_system_registry(ctx.space_view_class_registry);
 
-        class.prepare_populate(
+        class.prepare_ui(
             ctx,
             view_state,
             &self.data_blueprint.entity_paths().clone(), // Clone to workaround borrow checker.
@@ -207,16 +207,17 @@ impl SpaceViewBlueprint {
         );
 
         let query = re_viewer_context::ViewQuery {
+            space_view_id: self.id,
             space_origin: &self.space_origin,
             entity_paths: self.data_blueprint.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             entity_props_map: self.data_blueprint.data_blueprints_projected(),
-            highlights: &highlights,
+            highlights,
         };
 
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, system_registry, &query, self.id);
+            class.ui(ctx, ui, view_state, system_registry, &query);
         });
     }
 

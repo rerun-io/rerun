@@ -4,10 +4,11 @@ use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
     level_to_rich_text, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
-    TypedScene, ViewContextCollection, ViewQuery, ViewerContext,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
+    ViewerContext,
 };
 
-use super::view_part_system::{SceneText, TextEntry};
+use super::view_part_system::{TextEntry, TextSystem};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default)]
@@ -38,7 +39,6 @@ pub struct TextSpaceView;
 
 impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
-    type SystemCollection = SceneText;
 
     fn name(&self) -> SpaceViewClassName {
         "Text".into()
@@ -52,7 +52,9 @@ impl SpaceViewClass for TextSpaceView {
         "Shows text entries over time.\nSelect the Space View for filtering options.".into()
     }
 
-    fn on_register(&self, _registry_entry: &mut re_viewer_context::SpaceViewSystemRegistry) {}
+    fn on_register(&self, system_registry: &mut re_viewer_context::SpaceViewSystemRegistry) {
+        system_registry.register_part_system::<TextSystem>();
+    }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         Some(2.0) // Make text logs wide
@@ -111,11 +113,11 @@ impl SpaceViewClass for TextSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         view_ctx: &ViewContextCollection,
-        scene: &mut TypedScene<Self>,
+        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        space_view_id: SpaceViewId,
-    ) {
-        let scene = &scene.parts;
+        draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let text = parts.get::<TextSystem>()?;
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
@@ -123,7 +125,7 @@ impl SpaceViewClass for TextSpaceView {
         }
         .show(ui, |ui| {
             // Update filters if necessary.
-            state.filters.update(ctx, &scene.text_entries);
+            state.filters.update(ctx, &text.text_entries);
 
             let time = ctx
                 .rec_cfg
@@ -137,8 +139,7 @@ impl SpaceViewClass for TextSpaceView {
             let time_cursor_moved = state.latest_time != time;
             let scroll_to_row = time_cursor_moved.then(|| {
                 re_tracing::profile_scope!("TextEntryState - search scroll time");
-                scene
-                    .text_entries
+                text.text_entries
                     .partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
             });
 
@@ -147,10 +148,12 @@ impl SpaceViewClass for TextSpaceView {
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 egui::ScrollArea::horizontal().show(ui, |ui| {
                     re_tracing::profile_scope!("render table");
-                    table_ui(ctx, ui, state, &scene.text_entries, scroll_to_row);
+                    table_ui(ctx, ui, state, &text.text_entries, scroll_to_row);
                 })
             });
         });
+
+        Ok(())
     }
 }
 

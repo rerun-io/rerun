@@ -13,14 +13,16 @@ use re_space_view::ScreenshotMode;
 use re_viewer_context::{
     resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
     SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewContextCollection, ViewQuery,
-    ViewerContext,
+    TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewContextCollection, ViewPartCollection,
+    ViewQuery, ViewerContext,
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::contexts::{AnnotationSceneContext, NonInteractiveEntities, PrimitiveCounter};
+use crate::parts::{calculate_bounding_box, CamerasPart, ImagesPart};
+use crate::space_camera_3d::SpaceCamera3D;
 use crate::{
-    parts::{preferred_navigation_mode, SceneSpatial, UiLabel, UiLabelTarget},
+    parts::{preferred_navigation_mode, UiLabel, UiLabelTarget},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     ui_2d::view_2d,
     ui_3d::view_3d,
@@ -381,12 +383,12 @@ impl SpatialSpaceViewState {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        scene: &mut SceneSpatial,
         view_ctx: &ViewContextCollection,
+        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        space_view_id: SpaceViewId,
+        draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        self.scene_bbox = scene.parts.calculate_bounding_box();
+        self.scene_bbox = calculate_bounding_box(parts);
         if self.scene_bbox_accum.is_nothing() {
             self.scene_bbox_accum = self.scene_bbox;
         } else {
@@ -394,8 +396,11 @@ impl SpatialSpaceViewState {
         }
 
         if self.nav_mode.is_auto() {
-            self.nav_mode =
-                EditableAutoValue::Auto(preferred_navigation_mode(scene, query.space_origin));
+            self.nav_mode = EditableAutoValue::Auto(preferred_navigation_mode(
+                view_ctx,
+                parts,
+                query.space_origin,
+            ));
         }
         self.scene_num_primitives = view_ctx
             .get::<PrimitiveCounter>()?
@@ -404,7 +409,7 @@ impl SpatialSpaceViewState {
 
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                view_3d(ctx, ui, self, space_view_id, scene, view_ctx, query);
+                view_3d(ctx, ui, self, view_ctx, parts, query, draw_data);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
@@ -415,11 +420,11 @@ impl SpatialSpaceViewState {
                     ctx,
                     ui,
                     self,
-                    scene,
                     view_ctx,
+                    parts,
                     query,
-                    space_view_id,
                     scene_rect_accum,
+                    draw_data,
                 );
             }
         }
@@ -650,18 +655,17 @@ pub fn picking(
     parent_ui: &mut egui::Ui,
     eye: Eye,
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
-    space_view_id: SpaceViewId,
     state: &mut SpatialSpaceViewState,
-    scene: &SceneSpatial,
     view_ctx: &ViewContextCollection,
+    parts: &ViewPartCollection,
     ui_rects: &[PickableUiRect],
-    space: &EntityPath,
-) -> egui::Response {
+    query: &ViewQuery<'_>,
+) -> Result<egui::Response, SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
     let Some(pointer_pos_ui) = response.hover_pos() else {
         state.previous_picking_result = None;
-        return response;
+        return Ok(response);
     };
 
     let picking_context = PickingContext::new(
@@ -687,29 +691,25 @@ pub fn picking(
             picking_context.pointer_in_pixel.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
         ),
-        space_view_id.gpu_readback_id(),
+        query.space_view_id.gpu_readback_id(),
         (),
         ctx.app_options.show_picking_debug_overlay,
     );
 
+    let non_interactive = view_ctx.get::<NonInteractiveEntities>()?;
+    let annotations = view_ctx.get::<AnnotationSceneContext>()?;
+    let images = parts.get::<ImagesPart>()?;
+
     let picking_result = picking_context.pick(
         ctx.render_ctx,
-        space_view_id.gpu_readback_id(),
+        query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        &scene.parts.images.images,
+        &images.images,
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
 
     let mut hovered_items = Vec::new();
-
-    // TODO:
-    let Ok(non_interactive) = view_ctx.get::<NonInteractiveEntities>() else {
-        return response;
-    };
-    let Ok(annotations) = view_ctx.get::<AnnotationSceneContext>() else {
-        return response;
-    };
 
     // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
     // TODO(#1818): Depth at pointer only works for depth images so far.
@@ -731,9 +731,7 @@ pub fn picking(
         }
 
         // Special hover ui for images.
-        let is_depth_cloud = scene
-            .parts
-            .images
+        let is_depth_cloud = images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
         let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
@@ -775,7 +773,7 @@ pub fn picking(
         }
 
         hovered_items.push(Item::InstancePath(
-            Some(space_view_id),
+            Some(query.space_view_id),
             instance_path.clone(),
         ));
 
@@ -852,7 +850,7 @@ pub fn picking(
         } else {
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
-                item_ui::instance_path_button(ctx, ui, Some(space_view_id), &instance_path);
+                item_ui::instance_path_button(ctx, ui, Some(query.space_view_id), &instance_path);
                 instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
             })
         };
@@ -862,7 +860,7 @@ pub fn picking(
 
     let hovered_space = match state.nav_mode.get() {
         SpatialNavigationMode::TwoD => HoveredSpace::TwoD {
-            space_2d: space.clone(),
+            space_2d: query.space_origin.clone(),
             pos: picking_context
                 .pointer_in_space2d
                 .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
@@ -870,12 +868,11 @@ pub fn picking(
         SpatialNavigationMode::ThreeD => {
             let hovered_point = picking_result.space_position();
             HoveredSpace::ThreeD {
-                space_3d: space.clone(),
+                space_3d: query.space_origin.clone(),
                 pos: hovered_point,
                 tracked_space_camera: state.state_3d.tracked_camera.clone(),
-                point_in_space_cameras: scene
-                    .parts
-                    .cameras
+                point_in_space_cameras: parts
+                    .get::<CamerasPart>()?
                     .space_cameras
                     .iter()
                     .map(|cam| {
@@ -890,5 +887,5 @@ pub fn picking(
     };
     ctx.selection_state_mut().set_hovered_space(hovered_space);
 
-    response
+    Ok(response)
 }

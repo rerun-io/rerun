@@ -6,7 +6,8 @@ use re_data_store::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{
-    gpu_bridge, HoveredSpace, SpaceViewId, ViewContextCollection, ViewQuery, ViewerContext,
+    gpu_bridge, HoveredSpace, SpaceViewId, ViewContextCollection, ViewPartCollection, ViewQuery,
+    ViewerContext,
 };
 
 use super::{
@@ -15,7 +16,7 @@ use super::{
 };
 use crate::{
     contexts::SharedRenderBuilders,
-    parts::SceneSpatial,
+    parts::collect_ui_labels,
     ui::{outline_config, SpatialNavigationMode, SpatialSpaceViewState},
 };
 
@@ -222,11 +223,11 @@ pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
-    scene: &mut SceneSpatial,
     view_ctx: &ViewContextCollection,
+    parts: &ViewPartCollection,
     query: &ViewQuery<'_>,
-    space_view_id: SpaceViewId,
     scene_rect_accum: Rect,
+    mut draw_data: Vec<re_renderer::QueueableDrawData>,
 ) -> egui::Response {
     re_tracing::profile_function!();
 
@@ -305,7 +306,7 @@ pub fn view_2d(
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            &scene.parts.collect_ui_labels(),
+            &collect_ui_labels(parts),
             ui_from_canvas,
             &eye,
             ui,
@@ -314,7 +315,8 @@ pub fn view_2d(
         );
 
         if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
-            response = picking(
+            let skipped_picking_response = response.clone();
+            response = match picking(
                 ctx,
                 response,
                 canvas_from_ui,
@@ -322,16 +324,22 @@ pub fn view_2d(
                 ui,
                 eye,
                 &mut view_builder,
-                space_view_id,
                 state,
-                scene,
                 view_ctx,
+                parts,
                 &ui_rects,
-                query.space_origin,
-            );
+                query,
+            ) {
+                Ok(response) => response,
+                Err(err) => {
+                    // TODO(andreas): Should pass error on but scroll area (which is to be removed) makes this hard.
+                    re_log::error_once!("Picking failed: {}", err);
+                    skipped_picking_response
+                }
+            };
         }
 
-        for draw_data in scene.draw_data.drain(..) {
+        for draw_data in draw_data.drain(..) {
             view_builder.queue_draw(draw_data);
         }
         if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
@@ -346,7 +354,7 @@ pub fn view_2d(
         let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
         if let Some(mode) = screenshot_mode {
             view_builder
-                .schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode)
+                .schedule_screenshot(ctx.render_ctx, query.space_view_id.gpu_readback_id(), mode)
                 .ok();
         }
 

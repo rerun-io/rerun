@@ -1,6 +1,9 @@
 use ahash::HashMap;
 
-use crate::{DynSpaceViewClass, SpaceViewClassName, ViewContextCollection, ViewContextSystem};
+use crate::{
+    DynSpaceViewClass, SpaceViewClassName, ViewContextCollection, ViewContextSystem,
+    ViewPartCollection, ViewPartSystem,
+};
 
 use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
 
@@ -13,7 +16,8 @@ pub enum SpaceViewClassRegistryError {
 // TODO: docs
 #[derive(Default)]
 pub struct SpaceViewSystemRegistry {
-    context_creators: Vec<Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
+    contexts: Vec<Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
+    parts: Vec<Box<dyn Fn() -> Box<dyn ViewPartSystem>>>,
 }
 
 impl SpaceViewSystemRegistry {
@@ -24,22 +28,38 @@ impl SpaceViewSystemRegistry {
         &mut self,
     ) {
         // TODO: Handle error for duplicated types.
-        self.context_creators.push(Box::new(|| Box::<T>::default()));
+        self.contexts.push(Box::new(|| Box::<T>::default()));
     }
 
-    // pub fn register_part_system<T: ViewPartSystem + Default + 'static>(&mut self) {
-    //     // TODO: Handle error for duplicated types.
-    //     self.context_creators.push(Box::new(|| Box::<T>::default()));
-    // }
+    /// Registers a new [`ViewPartSystem`] type for this space view class that will be created and executed every frame.
+    ///
+    /// It is not allowed to register a given type more than once.
+    pub fn register_part_system<T: ViewPartSystem + Default + 'static>(&mut self) {
+        // TODO: Handle error for duplicated types.
+        self.parts.push(Box::new(|| Box::<T>::default()));
+    }
 
     pub(crate) fn new_context_collection(&self) -> ViewContextCollection {
         ViewContextCollection {
             systems: self
-                .context_creators
+                .contexts
                 .iter()
                 .map(|f| {
                     let context = f();
                     (context.as_any().type_id(), context)
+                })
+                .collect(),
+        }
+    }
+
+    pub(crate) fn new_part_collection(&self) -> ViewPartCollection {
+        ViewPartCollection {
+            systems: self
+                .parts
+                .iter()
+                .map(|f| {
+                    let part = f();
+                    (part.as_any().type_id(), part)
                 })
                 .collect(),
         }

@@ -1,6 +1,6 @@
 use crate::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewSystemRegistry, TypedScene,
-    ViewContextCollection, ViewPartSystem, ViewPartSystemCollection, ViewQuery, ViewerContext,
+    SpaceViewClass, SpaceViewClassName, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 /// A placeholder space view class that can be used when the actual class is not registered.
@@ -9,7 +9,6 @@ pub struct SpaceViewClassPlaceholder;
 
 impl SpaceViewClass for SpaceViewClassPlaceholder {
     type State = ();
-    type SystemCollection = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Unknown Space View Class".into()
@@ -45,20 +44,11 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _view_ctx: &ViewContextCollection,
-        _scene: &mut TypedScene<Self>,
+        _parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
-        _space_view_id: SpaceViewId,
-    ) {
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         ui.centered_and_justified(|ui| ui.label(self.help_text(ctx.re_ui, state)));
-    }
-}
-
-impl ViewPartSystemCollection for () {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem> {
-        Vec::new()
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+        Ok(())
     }
 }

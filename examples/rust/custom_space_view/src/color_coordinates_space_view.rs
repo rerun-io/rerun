@@ -3,17 +3,16 @@ use re_viewer::external::{
     re_data_store::InstancePath,
     re_data_ui::{item_ui, DataUi},
     re_log_types::EntityPath,
-    re_ui,
+    re_renderer, re_ui,
     re_viewer_context::{
         HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
-        SpaceViewClassName, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, TypedScene,
-        UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext,
+        SpaceViewClassName, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+        SpaceViewSystemRegistry, UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery,
+        ViewerContext,
     },
 };
 
-use crate::color_coordinates_view_part_system::{
-    ColorCoordinatesViewPartSystemCollection, ColorWithInstanceKey,
-};
+use crate::color_coordinates_view_part_system::{ColorWithInstanceKey, InstanceColorSystem};
 
 /// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -69,12 +68,6 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
     type State = ColorCoordinatesSpaceViewState;
 
-    // Collection of scene parts that are needed to display a frame.
-    type SystemCollection = ColorCoordinatesViewPartSystemCollection;
-
-    // Scene parts can have a common data object that they expose.
-    // For this Space View this is not needed.
-
     fn name(&self) -> SpaceViewClassName {
         // Name and identifier of this Space View.
         "Color Coordinates".into()
@@ -129,18 +122,19 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
 
     /// The contents of the Space View window and all interaction within it.
     ///
-    /// This is called with a fully populated scene which is a combination of all
-    /// scene contexts, parts and selection highlights.
+    /// This is called with freshly created & executed context & part systems.
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         view_ctx: &ViewContextCollection,
-        scene: &mut TypedScene<Self>,
+        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        space_view_id: SpaceViewId,
-    ) {
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let colors = parts.get::<InstanceColorSystem>()?;
+
         egui::Frame::default().show(ui, |ui| {
             let color_at = match state.mode {
                 ColorCoordinatesMode::Hs => |x, y| egui::ecolor::Hsva::new(x, y, 1.0, 1.0).into(),
@@ -161,8 +155,9 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
                     (rgba.r(), rgba.g())
                 },
             };
-            color_space_ui(ui, ctx, space_view_id, scene, query, color_at, position_at);
+            color_space_ui(ui, ctx, colors, query, color_at, position_at);
         });
+        Ok(())
     }
 }
 
@@ -171,9 +166,8 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
 fn color_space_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    space_view_id: SpaceViewId,
-    scene: &mut TypedScene<ColorCoordinatesSpaceView>,
-    query: &ViewQuery,
+    colors: &InstanceColorSystem,
+    query: &ViewQuery<'_>,
     color_at: impl Fn(f32, f32) -> egui::Color32,
     position_at: impl Fn(egui::Color32) -> (f32, f32),
 ) -> egui::Response {
@@ -210,7 +204,7 @@ fn color_space_ui(
     ui.painter().add(egui::Shape::mesh(mesh));
 
     // Circles for the colors in the scene.
-    for (ent_path, colors) in &scene.parts.colors.colors {
+    for (ent_path, colors) in &colors.colors {
         let ent_highlight = query.highlights.entity_highlight(ent_path.hash());
         for ColorWithInstanceKey {
             instance_key,
@@ -247,13 +241,13 @@ fn color_space_ui(
             // Update the global selection state if the user interacts with a point and show hover ui for the entire keypoint.
             let instance = InstancePath::instance(ent_path.clone(), *instance_key);
             let interact = interact.on_hover_ui_at_pointer(|ui| {
-                item_ui::instance_path_button(ctx, ui, Some(space_view_id), &instance);
+                item_ui::instance_path_button(ctx, ui, Some(query.space_view_id), &instance);
                 instance.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
             });
             item_ui::select_hovered_on_click(
                 ctx,
                 &interact,
-                &[Item::InstancePath(Some(space_view_id), instance)],
+                &[Item::InstancePath(Some(query.space_view_id), instance)],
             );
         }
     }

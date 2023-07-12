@@ -11,11 +11,11 @@ use crate::TensorSpaceView;
 
 /// A bar chart scene, with everything needed to render it.
 #[derive(Default)]
-pub struct SceneTensor {
+pub struct TensorSystem {
     pub tensors: std::collections::BTreeMap<InstancePath, DecodedTensor>,
 }
 
-impl ViewPartSystem for SceneTensor {
+impl ViewPartSystem for TensorSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Tensor::name()]
     }
@@ -46,7 +46,7 @@ impl ViewPartSystem for SceneTensor {
     }
 }
 
-impl SceneTensor {
+impl TensorSystem {
     fn load_tensor_entity(
         &mut self,
         ctx: &mut ViewerContext<'_>,

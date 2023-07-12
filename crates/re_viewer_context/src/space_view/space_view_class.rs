@@ -3,12 +3,10 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, DynSpaceViewClass, Scene, SpaceViewClassName, SpaceViewId, SpaceViewState,
-    SpaceViewSystemRegistry, ViewContextCollection, ViewPartSystemCollection, ViewQuery,
-    ViewerContext,
+    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistry, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
-
-use super::scene::TypedScene;
 
 /// Defines a class of space view.
 ///
@@ -18,9 +16,6 @@ use super::scene::TypedScene;
 pub trait SpaceViewClass: std::marker::Sized {
     /// State of a space view.
     type State: SpaceViewState + Default + 'static;
-
-    /// Collection of [`crate::ViewPartSystem`]s that this scene populates.
-    type SystemCollection: ViewPartSystemCollection + Default + 'static;
 
     /// Name of this space view class.
     ///
@@ -54,19 +49,6 @@ pub trait SpaceViewClass: std::marker::Sized {
         None
     }
 
-    /// Executed before the scene is populated, can be use for heuristic & state updates before populating the scene.
-    ///
-    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`].
-    /// Passed entity properties are individual properties without propagated values.
-    fn prepare_populate(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        _state: &Self::State,
-        _entity_paths: &IntSet<EntityPath>,
-        _entity_properties: &mut re_data_store::EntityPropertyMap,
-    ) {
-    }
-
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
@@ -79,20 +61,40 @@ pub trait SpaceViewClass: std::marker::Sized {
         space_view_id: SpaceViewId,
     );
 
+    /// Executed before the ui method is called, can be use for heuristic & state updates before populating the scene.
+    ///
+    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
+    /// Passed entity properties are individual properties without propagated values.
+    fn prepare_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        _state: &Self::State,
+        _entity_paths: &IntSet<EntityPath>,
+        _entity_properties: &mut re_data_store::EntityPropertyMap,
+    ) {
+    }
+
     /// Draws the ui for this space view class and handles ui events.
     ///
-    /// The passed scene is already populated for this frame
+    /// The passed systems (context and parts) are only valid for the duration of this frame and
+    /// were already executed upon entering this method.
+    ///
     /// The passed state is kept frame-to-frame.
+    ///
+    /// draw_data is all draw data gathered by executing the view part systems.
+    /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
+    ///              In the future, we likely want to move view builder handling to `re_viewport` with
+    ///              minimal configuration options exposed via [`crate::SpaceViewClass`].
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         view_ctx: &ViewContextCollection,
-        scene: &mut TypedScene<Self>,
+        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        space_view_id: SpaceViewId,
-    );
+        draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError>;
 }
 
 impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
@@ -109,11 +111,6 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText {
         typed_state_wrapper(state, |state| self.help_text(re_ui, state))
-    }
-
-    #[inline]
-    fn new_scene(&self) -> Box<dyn Scene> {
-        Box::<TypedScene<Self>>::default()
     }
 
     #[inline]
@@ -138,7 +135,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         self.blueprint_archetype()
     }
 
-    fn prepare_populate(
+    fn prepare_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
@@ -146,7 +143,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         entity_properties: &mut EntityPropertyMap,
     ) {
         typed_state_wrapper_mut(state, |state| {
-            self.prepare_populate(ctx, state, entity_paths, entity_properties);
+            self.prepare_ui(ctx, state, entity_paths, entity_properties);
         });
     }
 
@@ -171,24 +168,27 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         state: &mut dyn SpaceViewState,
         systems: &SpaceViewSystemRegistry,
         query: &ViewQuery<'_>,
-        space_view_id: SpaceViewId,
     ) {
+        // TODO(andreas): We should be able to parallelize both of these loops
         let mut view_ctx = systems.new_context_collection();
-
-        // TODO(andreas): We should be able to parallelize this loop!
         for system in view_ctx.systems.values_mut() {
             system.execute(ctx, query);
         }
 
-        let mut scene = self.new_scene();
-        scene.populate(ctx, query, &view_ctx);
-        let typed_scene = scene
-            .as_any_mut()
-            .downcast_mut::<TypedScene<Self>>()
-            .unwrap(); // TODO:
+        let mut parts = systems.new_part_collection();
+        let mut draw_data = Vec::new();
+        for part in parts.systems.values_mut() {
+            match part.execute(ctx, query, &view_ctx) {
+                Ok(part_draw_data) => draw_data.extend(part_draw_data),
+                Err(err) => {
+                    re_log::error_once!("Error executing view part system: {}", err);
+                }
+            }
+        }
 
         typed_state_wrapper_mut(state, |state| {
-            self.ui(ctx, ui, state, &view_ctx, typed_scene, query, space_view_id);
+            // TODO: Error handling
+            self.ui(ctx, ui, state, &view_ctx, &parts, query, draw_data);
         });
     }
 }

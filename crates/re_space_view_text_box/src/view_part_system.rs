@@ -15,11 +15,11 @@ pub struct TextBoxEntry {
 
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
-pub struct SceneTextBox {
+pub struct TextBoxSystem {
     pub text_entries: Vec<TextBoxEntry>,
 }
 
-impl ViewPartSystem for SceneTextBox {
+impl ViewPartSystem for TextBoxSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextBox::name()]
     }
