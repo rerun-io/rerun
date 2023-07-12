@@ -1,9 +1,6 @@
 //! Implements the Rust codegen pass.
 
-use std::{
-    collections::{BTreeSet, HashMap},
-    io::Write,
-};
+use std::collections::{BTreeSet, HashMap};
 
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
@@ -119,11 +116,6 @@ fn create_files(
             .or_default()
             .extend(names);
 
-        filepaths.insert(filepath.clone());
-        let mut file = std::fs::File::create(&filepath)
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
-
         let mut code = String::new();
         #[rustfmt::skip]
         {
@@ -185,6 +177,7 @@ fn create_files(
         code = replace_doc_attrb_with_doc_comment(&code);
 
         write_file(&filepath, code);
+        filepaths.insert(filepath.clone());
     }
 
     // src/{datatypes|components|archetypes}/mod.rs

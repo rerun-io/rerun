@@ -4551,6 +4551,7 @@ dependencies = [
  "itertools 0.11.0",
  "proc-macro2",
  "quote",
+ "rayon",
  "re_build_tools",
  "rust-format",
  "syn 2.0.16",

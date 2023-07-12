@@ -4,6 +4,7 @@ use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
+use rayon::prelude::*;
 
 use crate::{codegen::AUTOGEN_WARNING, ArrowRegistry, ObjectKind, Objects};
 
@@ -21,7 +22,7 @@ impl CppCodeGenerator {
     }
 
     fn generate_folder(
-        &mut self,
+        &self,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
         object_kind: ObjectKind,
@@ -90,19 +91,14 @@ impl crate::CodeGenerator for CppCodeGenerator {
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
-        let mut filepaths = BTreeSet::new();
-
-        for object_kind in ObjectKind::ALL {
-            let folder_name = object_kind.plural_snake_case();
-            filepaths.extend(self.generate_folder(
-                objects,
-                arrow_registry,
-                object_kind,
-                folder_name,
-            ));
-        }
-
-        filepaths
+        ObjectKind::ALL
+            .par_iter()
+            .map(|object_kind| {
+                let folder_name = object_kind.plural_snake_case();
+                self.generate_folder(objects, arrow_registry, *object_kind, folder_name)
+            })
+            .flatten()
+            .collect()
     }
 }
 
