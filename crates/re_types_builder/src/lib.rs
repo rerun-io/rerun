@@ -260,7 +260,7 @@ pub fn generate_lang_agnostic(
 ///
 /// E.g.:
 /// ```no_run
-/// let (object, arrow_registry) = re_types_builder::generate_lang_agnostic(
+/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
@@ -287,7 +287,7 @@ pub fn generate_rust_code(
 ///
 /// E.g.:
 /// ```no_run
-/// let (object, arrow_registry) = re_types_builder::generate_lang_agnostic(
+/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
