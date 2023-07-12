@@ -6,7 +6,7 @@ This is not yet ready to be used.
 Run `scripts/setup.sh`.
 
 ## Test it
-`examples/cpp/minimal/build_and_run.sh``
+`examples/cpp/minimal/build_and_run.sh`
 
 # To do:
 * CI

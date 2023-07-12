@@ -2,6 +2,6 @@
 
 #pragma once
 
-#include "archetypes/fuzzy.hpp"
+#include "archetypes/affix_fuzzer1.hpp"
 #include "archetypes/points2d.hpp"
 #include "archetypes/transform3d.hpp"

@@ -43,7 +43,12 @@ impl CppCodeGenerator {
                 let string = string_from_token_stream(&tokens, obj.relative_filepath());
                 let filepath = folder_path.join(format!("{filename}.{extension}"));
                 write_file(&filepath, string);
-                filepaths.insert(filepath);
+                let inserted = filepaths.insert(filepath);
+                assert!(
+                    inserted,
+                    "Multiple objects with the same name: {:?}",
+                    obj.name
+                );
             }
         }
 

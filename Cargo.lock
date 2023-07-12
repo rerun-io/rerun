@@ -723,6 +723,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "case"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd6c0e7b807d60291f42f33f58480c0bfafe28ed08286446f45e463728cf9c1c"
+
+[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4544,9 +4550,11 @@ dependencies = [
  "anyhow",
  "arrow2",
  "camino",
+ "case",
  "clang-format",
  "convert_case",
  "flatbuffers",
+ "heck 0.4.1",
  "indent",
  "itertools 0.11.0",
  "proc-macro2",

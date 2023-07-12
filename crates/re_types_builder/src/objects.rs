@@ -614,13 +614,37 @@ impl Object {
             .and_then(|manifest_dir| self.filepath.strip_prefix(manifest_dir).ok())
     }
 
-    /// The snake-case filename of the object, e.g. `point2d`.
+    /// The snake_case name of the object, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
-        Utf8PathBuf::from(&self.virtpath)
-            .file_stem()
-            .unwrap()
-            .to_owned()
+        to_snake_case(&self.name)
     }
+}
+
+fn to_snake_case(s: &str) -> String {
+    // Other crates (convert_case, case, heck, …) all get this wrong. See unit test.
+    let mut last_char: Option<char> = None;
+
+    let mut out = String::new();
+    for c in s.chars() {
+        if let Some(last_char) = last_char {
+            if last_char.is_lowercase() && c.is_uppercase() {
+                out.push('_');
+            }
+        }
+        out.push(c.to_ascii_lowercase());
+        last_char = Some(c);
+    }
+
+    out
+}
+
+#[test]
+fn test_snake_case() {
+    assert_eq!(to_snake_case("Point2D"), "point2d");
+    assert_eq!(
+        to_snake_case("TranslationAndMat3x3"),
+        "translation_and_mat3x3"
+    );
 }
 
 /// Properties specific to either structs or unions, but not both.
