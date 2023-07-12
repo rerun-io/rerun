@@ -1,6 +1,9 @@
 //! Implements the Rust codegen pass.
 
-use std::{collections::HashMap, io::Write};
+use std::{
+    collections::{BTreeSet, HashMap},
+    io::Write,
+};
 
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
@@ -36,8 +39,12 @@ impl RustCodeGenerator {
 }
 
 impl CodeGenerator for RustCodeGenerator {
-    fn generate(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<Utf8PathBuf> {
-        let mut filepaths = Vec::new();
+    fn generate(
+        &mut self,
+        objects: &Objects,
+        arrow_registry: &ArrowRegistry,
+    ) -> BTreeSet<Utf8PathBuf> {
+        let mut filepaths = BTreeSet::new();
 
         let datatypes_path = self.crate_path.join("src/datatypes");
         std::fs::create_dir_all(&datatypes_path)
@@ -83,10 +90,10 @@ fn create_files(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     objs: &[&Object],
-) -> Vec<Utf8PathBuf> {
+) -> BTreeSet<Utf8PathBuf> {
     let out_path = out_path.as_ref();
 
-    let mut filepaths = Vec::new();
+    let mut filepaths = BTreeSet::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
@@ -112,7 +119,7 @@ fn create_files(
             .or_default()
             .extend(names);
 
-        filepaths.push(filepath.clone());
+        filepaths.insert(filepath.clone());
         let mut file = std::fs::File::create(&filepath)
             .with_context(|| format!("{filepath:?}"))
             .unwrap();
@@ -150,7 +157,7 @@ fn create_files(
                             .to_string()
                             .replace('}', "}\n\n")
                             .replace("] ;", "];\n\n")
-                            .replace("# [doc", "\n\n#[doc")
+                            .replace("# [doc", "\n\n# [doc")
                             .replace("impl ", "\n\nimpl ");
                         code.push_text(tokens_str, 1, 0);
                         acc = TokenStream::new();
@@ -169,11 +176,14 @@ fn create_files(
                 .to_string()
                 .replace('}', "}\n\n")
                 .replace("] ;", "];\n\n")
-                .replace("# [doc", "\n\n#[doc")
+                .replace("# [doc", "\n\n# [doc")
                 .replace("impl ", "\n\nimpl ");
 
             code.push_text(tokens_str, 1, 0);
         }
+
+        code = replace_doc_attrb_with_doc_comment(&code);
+
         file.write_all(code.as_bytes())
             .with_context(|| format!("{filepath:?}"))
             .unwrap();
@@ -206,13 +216,78 @@ fn create_files(
             code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
         }
 
-        filepaths.push(path.clone());
+        filepaths.insert(path.clone());
         std::fs::write(&path, code)
             .with_context(|| format!("{path:?}"))
             .unwrap();
     }
 
     filepaths
+}
+
+/// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
+/// while also removing trailing whitespace.
+fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
+    // This is difficult to do with regex, because the patterns with newlines overlap.
+
+    let start_pattern = "# [doc = \"";
+    let end_pattern = "\"]"; // assues there is no escaped quote followed by a bracket
+
+    let problematic = r#"\"]"#;
+    assert!(
+        !code.contains(problematic),
+        "The codegen cannot handle the string {problematic} yet"
+    );
+
+    let mut new_code = String::new();
+
+    let mut i = 0;
+    while i < code.len() {
+        if let Some(off) = code[i..].find(start_pattern) {
+            let doc_start = i + off;
+            let content_start = doc_start + start_pattern.len();
+            if let Some(off) = code[content_start..].find(end_pattern) {
+                let content_end = content_start + off;
+                new_code.push_str(&code[i..doc_start]);
+                new_code.push_str("/// ");
+                unescape_string_into(&code[content_start..content_end], &mut new_code);
+                new_code.push('\n');
+
+                i = content_end + end_pattern.len();
+                // Skip trailing whitespace (extra newlines)
+                while matches!(code.as_bytes().get(i), Some(b'\n' | b' ')) {
+                    i += 1;
+                }
+                continue;
+            }
+        }
+
+        // No more doc attributes found
+        new_code.push_str(&code[i..]);
+        break;
+    }
+    new_code
+}
+
+fn unescape_string_into(input: &str, output: &mut String) {
+    let mut chars = input.chars();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            let c = chars.next().expect("Trailing backslash");
+            match c {
+                'n' => output.push('\n'),
+                'r' => output.push('\r'),
+                't' => output.push('\t'),
+                '\\' => output.push('\\'),
+                '"' => output.push('"'),
+                '\'' => output.push('\''),
+                _ => panic!("Unknown escape sequence: \\{c}"),
+            }
+        } else {
+            output.push(c);
+        }
+    }
 }
 
 // --- Codegen core loop ---
@@ -425,7 +500,7 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
 
     impl quote::ToTokens for DocCommentTokenizer<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            tokens.extend(self.0.iter().map(|line| quote!(#[doc = #line])));
+            tokens.extend(self.0.iter().map(|line| quote!(# [doc = #line])));
         }
     }
 
@@ -589,9 +664,11 @@ fn quote_trait_impls_from_obj(
             quote! {
                 #into_cow
 
-                impl crate::#kind for #name {
+                impl crate::Loggable for #name {
+                    type Name = crate::#kind_name;
+
                     #[inline]
-                    fn name() -> crate::#kind_name {
+                    fn name() -> Self::Name {
                         crate::#kind_name::Borrowed(#legacy_fqname)
                     }
 
@@ -612,7 +689,7 @@ fn quote_trait_impls_from_obj(
                         Self: Clone + 'a
                     {
                         use ::arrow2::{datatypes::*, array::*};
-                        use crate::{Component as _, Datatype as _};
+                        use crate::Loggable as _;
                         Ok(#quoted_serializer)
                     }
 
@@ -622,10 +699,12 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*};
-                        use crate::{Component as _, Datatype as _};
+                        use crate::Loggable as _;
                         Ok(#quoted_deserializer)
                     }
                 }
+
+                impl crate::#kind for #name {}
             }
         }
         ObjectKind::Archetype => {
@@ -813,7 +892,7 @@ fn quote_trait_impls_from_obj(
                     fn try_to_arrow(
                         &self,
                     ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
-                        use crate::Component as _;
+                        use crate::Loggable as _;
                         Ok([ #({ #all_serializers },)* ].into_iter().flatten().collect())
                     }
 
@@ -821,7 +900,7 @@ fn quote_trait_impls_from_obj(
                     fn try_from_arrow(
                         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
-                        use crate::Component as _;
+                        use crate::Loggable as _;
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = data
                             .into_iter()
@@ -1660,26 +1739,34 @@ fn quote_arrow_deserializer(
                             got: #data_src.data_type().clone(),
                         })?;
 
-                    let (#data_src_fields, #data_src_arrays, #data_src_bitmap) =
-                        (#data_src.fields(), #data_src.values(), #data_src.validity());
+                    if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
+                        Vec::new()
+                    } else {
+                        let (#data_src_fields, #data_src_arrays, #data_src_bitmap) =
+                            (#data_src.fields(), #data_src.values(), #data_src.validity());
 
-                    let is_valid = |i| #data_src_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                        let is_valid = |i| #data_src_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
 
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = #data_src_fields
-                        .iter()
-                        .map(|field| field.name.as_str())
-                        .zip(#data_src_arrays)
-                        .collect();
+                        let arrays_by_name: ::std::collections::HashMap<_, _> = #data_src_fields
+                            .iter()
+                            .map(|field| field.name.as_str())
+                            .zip(#data_src_arrays)
+                            .collect();
 
-                    #(#quoted_field_deserializers;)*
+                        #(#quoted_field_deserializers;)*
 
-                    ::itertools::izip!(#(#quoted_field_names),*)
-                        .enumerate()
-                        .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
-                            #(#quoted_unwrappings,)*
-                        })).transpose())
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        ::itertools::izip!(#(#quoted_field_names),*)
+                            .enumerate()
+                            .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
+                                #(#quoted_unwrappings,)*
+                            })).transpose())
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    }
                 }}
             }
 
@@ -1745,25 +1832,33 @@ fn quote_arrow_deserializer(
                             got: #data_src.data_type().clone(),
                         })?;
 
-                    let (#data_src_types, #data_src_arrays, #data_src_offsets) =
-                        // NOTE: unwrapping of offsets is safe because this is a dense union
-                        (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
+                    if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
+                        Vec::new()
+                    } else {
+                        let (#data_src_types, #data_src_arrays, #data_src_offsets) =
+                            // NOTE: unwrapping of offsets is safe because this is a dense union
+                            (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
 
-                    #(#quoted_field_deserializers;)*
+                        #(#quoted_field_deserializers;)*
 
-                    #data_src_types
-                        .iter()
-                        .enumerate()
-                        .map(|(i, typ)| {
-                            let offset = #data_src_offsets[i];
+                        #data_src_types
+                            .iter()
+                            .enumerate()
+                            .map(|(i, typ)| {
+                                let offset = #data_src_offsets[i];
 
-                            Ok(Some(match typ {
-                                #(#quoted_branches,)*
-                                _ => unreachable!(),
-                            }))
-                        })
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                                Ok(Some(match typ {
+                                    #(#quoted_branches,)*
+                                    _ => unreachable!(),
+                                }))
+                            })
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    }
                 }}
             }
 
@@ -1866,40 +1961,48 @@ fn quote_arrow_field_deserializer(
                     .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                     .unwrap(); // safe
 
-                let bitmap = #data_src.validity().cloned();
-                let offsets = (0..).step_by(#length).zip((#length..).step_by(#length));
+                if #data_src.is_empty() {
+                    // NOTE: The outer container is empty and so we already know that the end result
+                    // is also going to be an empty vec.
+                    // Early out right now rather than waste time computing possibly many empty
+                    // datastructures for all of our children.
+                    Vec::new()
+                } else {
+                    let bitmap = #data_src.validity().cloned();
+                    let offsets = (0..).step_by(#length).zip((#length..).step_by(#length).take(#data_src.len()));
 
-                let #data_src = &**#data_src.values();
+                    let #data_src = &**#data_src.values();
 
-                let data = #quoted_inner
-                    .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: #quoted_inner_datatype,
-                    }))
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    let data = #quoted_inner
+                        .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: #quoted_inner_datatype,
+                        }))
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
 
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                        data.get(start as usize .. end as usize)
-                            .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data.len(),
-                                datatype: datatype.clone(),
-                            })?
-                            .to_vec()
-                            .try_into()
-                            .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                expected: #length,
-                                got: (end - start) as usize,
-                                datatype: datatype.clone(),
-                            })
-                        }).transpose()
-                    )
-                    #quoted_transparent_unmapping
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                    .into_iter()
+                    offsets
+                        .enumerate()
+                        .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
+                            data.get(start as usize .. end as usize)
+                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                    bounds: (start as usize, end as usize),
+                                    len: data.len(),
+                                    datatype: datatype.clone(),
+                                })?
+                                .to_vec()
+                                .try_into()
+                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
+                                    expected: #length,
+                                    got: (end - start) as usize,
+                                    datatype: datatype.clone(),
+                                })
+                            }).transpose()
+                        )
+                        #quoted_transparent_unmapping
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                }
+                .into_iter()
             }}
         }
 
@@ -1921,37 +2024,45 @@ fn quote_arrow_field_deserializer(
                     .downcast_ref::<::arrow2::array::ListArray<i32>>()
                     .unwrap(); // safe
 
-                let bitmap = #data_src.validity().cloned();
-                let offsets = {
-                    let offsets = #data_src.offsets();
-                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                };
+                if #data_src.is_empty() {
+                    // NOTE: The outer container is empty and so we already know that the end result
+                    // is also going to be an empty vec.
+                    // Early out right now rather than waste time computing possibly many empty
+                    // datastructures for all of our children.
+                    Vec::new()
+                } else {
+                    let bitmap = #data_src.validity().cloned();
+                    let offsets = {
+                        let offsets = #data_src.offsets();
+                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                    };
 
-                let #data_src = &**#data_src.values();
+                    let #data_src = &**#data_src.values();
 
-                let data = #quoted_inner
-                    .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: #quoted_inner_datatype,
-                    }))
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    let data = #quoted_inner
+                        .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: #quoted_inner_datatype,
+                        }))
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
 
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                            Ok(data.get(start as usize .. end as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data.len(),
-                                    datatype: datatype.clone(),
-                                })?
-                                .to_vec()
-                            )
-                        }).transpose()
-                    )
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                    .into_iter()
+                    offsets
+                        .enumerate()
+                        .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
+                                Ok(data.get(start as usize .. end as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        datatype: datatype.clone(),
+                                    })?
+                                    .to_vec()
+                                )
+                            }).transpose()
+                        )
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                }
+                .into_iter()
             }}
         }
 

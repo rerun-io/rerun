@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A vector in 3D space."]
+/// A vector in 3D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Vec3D(pub [f32; 3usize]);
 
@@ -30,9 +30,10 @@ impl<'a> From<&'a Vec3D> for ::std::borrow::Cow<'a, Vec3D> {
     }
 }
 
-impl crate::Datatype for Vec3D {
+impl crate::Loggable for Vec3D {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.Vec3D")
     }
 
@@ -59,7 +60,7 @@ impl crate::Datatype for Vec3D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -138,7 +139,7 @@ impl crate::Datatype for Vec3D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let datatype = data.data_type();
@@ -146,46 +147,54 @@ impl crate::Datatype for Vec3D {
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .unwrap();
-            let bitmap = data.validity().cloned();
-            let offsets = (0..).step_by(3usize).zip((3usize..).step_by(3usize));
-            let data = &**data.values();
-            let data = data
-                .as_any()
-                .downcast_ref::<Float32Array>()
-                .unwrap()
-                .into_iter()
-                .map(|v| v.copied())
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: DataType::Float32,
-                    })
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-            offsets
-                .enumerate()
-                .map(move |(i, (start, end))| {
-                    bitmap
-                        .as_ref()
-                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                        .then(|| {
-                            data.get(start as usize..end as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data.len(),
-                                    datatype: datatype.clone(),
-                                })?
-                                .to_vec()
-                                .try_into()
-                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                    expected: 3usize,
-                                    got: (end - start) as usize,
-                                    datatype: datatype.clone(),
-                                })
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let bitmap = data.validity().cloned();
+                let offsets = (0..)
+                    .step_by(3usize)
+                    .zip((3usize..).step_by(3usize).take(data.len()));
+                let data = &**data.values();
+                let data = data
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: DataType::Float32,
                         })
-                        .transpose()
-                })
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                .into_iter()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                data.get(start as usize..end as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        datatype: datatype.clone(),
+                                    })?
+                                    .to_vec()
+                                    .try_into()
+                                    .map_err(|_err| {
+                                        crate::DeserializationError::ArrayLengthMismatch {
+                                            expected: 3usize,
+                                            got: (end - start) as usize,
+                                            datatype: datatype.clone(),
+                                        }
+                                    })
+                            })
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+            }
+            .into_iter()
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {
@@ -196,3 +205,5 @@ impl crate::Datatype for Vec3D {
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Datatype for Vec3D {}

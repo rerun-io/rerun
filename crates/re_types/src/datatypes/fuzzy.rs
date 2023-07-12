@@ -31,9 +31,10 @@ impl<'a> From<&'a FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
     }
 }
 
-impl crate::Datatype for FlattenedScalar {
+impl crate::Loggable for FlattenedScalar {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.FlattenedScalar")
     }
 
@@ -57,7 +58,7 @@ impl crate::Datatype for FlattenedScalar {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -121,7 +122,7 @@ impl crate::Datatype for FlattenedScalar {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -131,42 +132,48 @@ impl crate::Datatype for FlattenedScalar {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_fields, data_arrays, data_bitmap) =
-                (data.fields(), data.values(), data.validity());
-            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
-            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
-                .iter()
-                .map(|field| field.name.as_str())
-                .zip(data_arrays)
-                .collect();
-            let value = {
-                let data = &**arrays_by_name["value"];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_fields, data_arrays, data_bitmap) =
+                    (data.fields(), data.values(), data.validity());
+                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(data_arrays)
+                    .collect();
+                let value = {
+                    let data = &**arrays_by_name["value"];
 
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-            };
-            ::itertools::izip!(value)
-                .enumerate()
-                .map(|(i, (value))| {
-                    is_valid(i)
-                        .then(|| {
-                            Ok(Self {
-                                value: value.ok_or_else(|| {
-                                    crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    }
-                                })?,
+                    data.as_any()
+                        .downcast_ref::<Float32Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|v| v.copied())
+                };
+                ::itertools::izip!(value)
+                    .enumerate()
+                    .map(|(i, (value))| {
+                        is_valid(i)
+                            .then(|| {
+                                Ok(Self {
+                                    value: value.ok_or_else(|| {
+                                        crate::DeserializationError::MissingData {
+                                            datatype: data.data_type().clone(),
+                                        }
+                                    })?,
+                                })
                             })
-                        })
-                        .transpose()
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }
+
+impl crate::Datatype for FlattenedScalar {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer1 {
@@ -195,9 +202,10 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer1 {
+impl crate::Loggable for AffixFuzzer1 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer1")
     }
 
@@ -291,7 +299,7 @@ impl crate::Datatype for AffixFuzzer1 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -794,7 +802,7 @@ impl crate::Datatype for AffixFuzzer1 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -804,280 +812,298 @@ impl crate::Datatype for AffixFuzzer1 {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_fields, data_arrays, data_bitmap) =
-                (data.fields(), data.values(), data.validity());
-            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
-            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
-                .iter()
-                .map(|field| field.name.as_str())
-                .zip(data_arrays)
-                .collect();
-            let single_float_optional = {
-                let data = &**arrays_by_name["single_float_optional"];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_fields, data_arrays, data_bitmap) =
+                    (data.fields(), data.values(), data.validity());
+                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(data_arrays)
+                    .collect();
+                let single_float_optional = {
+                    let data = &**arrays_by_name["single_float_optional"];
 
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-            };
-            let single_string_required = {
-                let data = &**arrays_by_name["single_string_required"];
-
-                data.as_any()
-                    .downcast_ref::<Utf8Array<i32>>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.map(ToOwned::to_owned))
-            };
-            let single_string_optional = {
-                let data = &**arrays_by_name["single_string_optional"];
-
-                data.as_any()
-                    .downcast_ref::<Utf8Array<i32>>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.map(ToOwned::to_owned))
-            };
-            let many_floats_optional = {
-                let data = &**arrays_by_name["many_floats_optional"];
-
-                {
-                    let datatype = data.data_type();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                        .unwrap();
-                    let bitmap = data.validity().cloned();
-                    let offsets = {
-                        let offsets = data.offsets();
-                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                    };
-                    let data = &**data.values();
-                    let data = data
-                        .as_any()
+                    data.as_any()
                         .downcast_ref::<Float32Array>()
                         .unwrap()
                         .into_iter()
                         .map(|v| v.copied())
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                datatype: DataType::Float32,
-                            })
-                        })
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| {
-                            bitmap
-                                .as_ref()
-                                .map_or(true, |bitmap| bitmap.get_bit(i))
-                                .then(|| {
-                                    Ok(data
-                                        .get(start as usize..end as usize)
-                                        .ok_or_else(|| {
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                datatype: datatype.clone(),
-                                            }
-                                        })?
-                                        .to_vec())
-                                })
-                                .transpose()
-                        })
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        .into_iter()
-                }
-            };
-            let many_strings_required = {
-                let data = &**arrays_by_name["many_strings_required"];
+                };
+                let single_string_required = {
+                    let data = &**arrays_by_name["single_string_required"];
 
-                {
-                    let datatype = data.data_type();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                        .unwrap();
-                    let bitmap = data.validity().cloned();
-                    let offsets = {
-                        let offsets = data.offsets();
-                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                    };
-                    let data = &**data.values();
-                    let data = data
-                        .as_any()
+                    data.as_any()
                         .downcast_ref::<Utf8Array<i32>>()
                         .unwrap()
                         .into_iter()
                         .map(|v| v.map(ToOwned::to_owned))
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                datatype: DataType::Utf8,
-                            })
-                        })
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| {
-                            bitmap
-                                .as_ref()
-                                .map_or(true, |bitmap| bitmap.get_bit(i))
-                                .then(|| {
-                                    Ok(data
-                                        .get(start as usize..end as usize)
-                                        .ok_or_else(|| {
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                datatype: datatype.clone(),
-                                            }
-                                        })?
-                                        .to_vec())
-                                })
-                                .transpose()
-                        })
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        .into_iter()
-                }
-            };
-            let many_strings_optional = {
-                let data = &**arrays_by_name["many_strings_optional"];
+                };
+                let single_string_optional = {
+                    let data = &**arrays_by_name["single_string_optional"];
 
-                {
-                    let datatype = data.data_type();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                        .unwrap();
-                    let bitmap = data.validity().cloned();
-                    let offsets = {
-                        let offsets = data.offsets();
-                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                    };
-                    let data = &**data.values();
-                    let data = data
-                        .as_any()
+                    data.as_any()
                         .downcast_ref::<Utf8Array<i32>>()
                         .unwrap()
                         .into_iter()
                         .map(|v| v.map(ToOwned::to_owned))
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                datatype: DataType::Utf8,
-                            })
-                        })
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| {
-                            bitmap
-                                .as_ref()
-                                .map_or(true, |bitmap| bitmap.get_bit(i))
-                                .then(|| {
-                                    Ok(data
-                                        .get(start as usize..end as usize)
-                                        .ok_or_else(|| {
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                datatype: datatype.clone(),
-                                            }
-                                        })?
-                                        .to_vec())
+                };
+                let many_floats_optional = {
+                    let data = &**arrays_by_name["many_floats_optional"];
+
+                    {
+                        let datatype = data.data_type();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .unwrap();
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = data
+                                .as_any()
+                                .downcast_ref::<Float32Array>()
+                                .unwrap()
+                                .into_iter()
+                                .map(|v| v.copied())
+                                .map(|v| {
+                                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        datatype: DataType::Float32,
+                                    })
                                 })
-                                .transpose()
-                        })
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            Ok(data
+                                                .get(start as usize..end as usize)
+                                                .ok_or_else(|| {
+                                                    crate::DeserializationError::OffsetsMismatch {
+                                                        bounds: (start as usize, end as usize),
+                                                        len: data.len(),
+                                                        datatype: datatype.clone(),
+                                                    }
+                                                })?
+                                                .to_vec())
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
                         .into_iter()
-                }
-            };
-            let flattened_scalar = {
-                let data = &**arrays_by_name["flattened_scalar"];
+                    }
+                };
+                let many_strings_required = {
+                    let data = &**arrays_by_name["many_strings_required"];
 
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-            };
-            let almost_flattened_scalar = {
-                let data = &**arrays_by_name["almost_flattened_scalar"];
+                    {
+                        let datatype = data.data_type();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .unwrap();
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = data
+                                .as_any()
+                                .downcast_ref::<Utf8Array<i32>>()
+                                .unwrap()
+                                .into_iter()
+                                .map(|v| v.map(ToOwned::to_owned))
+                                .map(|v| {
+                                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        datatype: DataType::Utf8,
+                                    })
+                                })
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            Ok(data
+                                                .get(start as usize..end as usize)
+                                                .ok_or_else(|| {
+                                                    crate::DeserializationError::OffsetsMismatch {
+                                                        bounds: (start as usize, end as usize),
+                                                        len: data.len(),
+                                                        datatype: datatype.clone(),
+                                                    }
+                                                })?
+                                                .to_vec())
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
+                    }
+                };
+                let many_strings_optional = {
+                    let data = &**arrays_by_name["many_strings_optional"];
 
-                crate::datatypes::FlattenedScalar::try_from_arrow_opt(data)?.into_iter()
-            };
-            let from_parent = {
-                let data = &**arrays_by_name["from_parent"];
+                    {
+                        let datatype = data.data_type();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .unwrap();
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = data
+                                .as_any()
+                                .downcast_ref::<Utf8Array<i32>>()
+                                .unwrap()
+                                .into_iter()
+                                .map(|v| v.map(ToOwned::to_owned))
+                                .map(|v| {
+                                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        datatype: DataType::Utf8,
+                                    })
+                                })
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            Ok(data
+                                                .get(start as usize..end as usize)
+                                                .ok_or_else(|| {
+                                                    crate::DeserializationError::OffsetsMismatch {
+                                                        bounds: (start as usize, end as usize),
+                                                        len: data.len(),
+                                                        datatype: datatype.clone(),
+                                                    }
+                                                })?
+                                                .to_vec())
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
+                    }
+                };
+                let flattened_scalar = {
+                    let data = &**arrays_by_name["flattened_scalar"];
 
-                data.as_any()
-                    .downcast_ref::<BooleanArray>()
-                    .unwrap()
-                    .into_iter()
-            };
-            ::itertools::izip!(
-                single_float_optional,
-                single_string_required,
-                single_string_optional,
-                many_floats_optional,
-                many_strings_required,
-                many_strings_optional,
-                flattened_scalar,
-                almost_flattened_scalar,
-                from_parent
-            )
-            .enumerate()
-            .map(
-                |(
-                    i,
-                    (
-                        single_float_optional,
-                        single_string_required,
-                        single_string_optional,
-                        many_floats_optional,
-                        many_strings_required,
-                        many_strings_optional,
-                        flattened_scalar,
-                        almost_flattened_scalar,
-                        from_parent,
-                    ),
-                )| {
-                    is_valid(i)
-                        .then(|| {
-                            Ok(Self {
-                                single_float_optional,
-                                single_string_required: single_string_required.ok_or_else(
-                                    || crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    },
-                                )?,
-                                single_string_optional,
-                                many_floats_optional,
-                                many_strings_required: many_strings_required.ok_or_else(|| {
-                                    crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    }
-                                })?,
-                                many_strings_optional,
-                                flattened_scalar: flattened_scalar.ok_or_else(|| {
-                                    crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    }
-                                })?,
-                                almost_flattened_scalar: almost_flattened_scalar.ok_or_else(
-                                    || crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    },
-                                )?,
-                                from_parent,
+                    data.as_any()
+                        .downcast_ref::<Float32Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|v| v.copied())
+                };
+                let almost_flattened_scalar = {
+                    let data = &**arrays_by_name["almost_flattened_scalar"];
+
+                    crate::datatypes::FlattenedScalar::try_from_arrow_opt(data)?.into_iter()
+                };
+                let from_parent = {
+                    let data = &**arrays_by_name["from_parent"];
+
+                    data.as_any()
+                        .downcast_ref::<BooleanArray>()
+                        .unwrap()
+                        .into_iter()
+                };
+                ::itertools::izip!(
+                    single_float_optional,
+                    single_string_required,
+                    single_string_optional,
+                    many_floats_optional,
+                    many_strings_required,
+                    many_strings_optional,
+                    flattened_scalar,
+                    almost_flattened_scalar,
+                    from_parent
+                )
+                .enumerate()
+                .map(
+                    |(
+                        i,
+                        (
+                            single_float_optional,
+                            single_string_required,
+                            single_string_optional,
+                            many_floats_optional,
+                            many_strings_required,
+                            many_strings_optional,
+                            flattened_scalar,
+                            almost_flattened_scalar,
+                            from_parent,
+                        ),
+                    )| {
+                        is_valid(i)
+                            .then(|| {
+                                Ok(Self {
+                                    single_float_optional,
+                                    single_string_required: single_string_required.ok_or_else(
+                                        || crate::DeserializationError::MissingData {
+                                            datatype: data.data_type().clone(),
+                                        },
+                                    )?,
+                                    single_string_optional,
+                                    many_floats_optional,
+                                    many_strings_required: many_strings_required.ok_or_else(
+                                        || crate::DeserializationError::MissingData {
+                                            datatype: data.data_type().clone(),
+                                        },
+                                    )?,
+                                    many_strings_optional,
+                                    flattened_scalar: flattened_scalar.ok_or_else(|| {
+                                        crate::DeserializationError::MissingData {
+                                            datatype: data.data_type().clone(),
+                                        }
+                                    })?,
+                                    almost_flattened_scalar: almost_flattened_scalar.ok_or_else(
+                                        || crate::DeserializationError::MissingData {
+                                            datatype: data.data_type().clone(),
+                                        },
+                                    )?,
+                                    from_parent,
+                                })
                             })
-                        })
-                        .transpose()
-                },
-            )
-            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                            .transpose()
+                    },
+                )
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }
+
+impl crate::Datatype for AffixFuzzer1 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer2(pub Option<f32>);
@@ -1096,9 +1122,10 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer2 {
+impl crate::Loggable for AffixFuzzer2 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer2")
     }
 
@@ -1117,7 +1144,7 @@ impl crate::Datatype for AffixFuzzer2 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -1162,7 +1189,7 @@ impl crate::Datatype for AffixFuzzer2 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
@@ -1176,11 +1203,14 @@ impl crate::Datatype for AffixFuzzer2 {
     }
 }
 
+impl crate::Datatype for AffixFuzzer2 {}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer3 {
     Degrees(f32),
     Radians(Option<f32>),
     Craziness(Vec<crate::datatypes::AffixFuzzer1>),
+    FixedSizeShenanigans([f32; 3usize]),
 }
 
 impl<'a> From<AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
@@ -1197,9 +1227,10 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer3 {
+impl crate::Loggable for AffixFuzzer3 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer3")
     }
 
@@ -1307,6 +1338,20 @@ impl crate::Datatype for AffixFuzzer3 {
                     is_nullable: false,
                     metadata: [].into(),
                 },
+                Field {
+                    name: "fixed_size_shenanigans".to_owned(),
+                    data_type: DataType::FixedSizeList(
+                        Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::Float32,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        }),
+                        3usize,
+                    ),
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
             ],
             None,
             UnionMode::Dense,
@@ -1321,7 +1366,7 @@ impl crate::Datatype for AffixFuzzer3 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -1350,6 +1395,7 @@ impl crate::Datatype for AffixFuzzer3 {
                             AffixFuzzer3::Degrees(_) => 0i8,
                             AffixFuzzer3::Radians(_) => 1i8,
                             AffixFuzzer3::Craziness(_) => 2i8,
+                            AffixFuzzer3::FixedSizeShenanigans(_) => 3i8,
                         })
                         .collect()
                 },
@@ -1544,11 +1590,75 @@ impl crate::Datatype for AffixFuzzer3 {
                             .boxed()
                         }
                     },
+                    {
+                        let (somes, fixed_size_shenanigans): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .flatten()
+                            .filter(|datum| {
+                                matches!(***datum, AffixFuzzer3::FixedSizeShenanigans(_))
+                            })
+                            .map(|datum| {
+                                let datum = match &**datum {
+                                    AffixFuzzer3::FixedSizeShenanigans(v) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let fixed_size_shenanigans_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let fixed_size_shenanigans_inner_data: Vec<_> = fixed_size_shenanigans
+                                .iter()
+                                .flatten()
+                                .flatten()
+                                .map(ToOwned::to_owned)
+                                .map(Some)
+                                .collect();
+                            let fixed_size_shenanigans_inner_bitmap: Option<
+                                ::arrow2::bitmap::Bitmap,
+                            > = None;
+                            FixedSizeListArray::new(
+                                {
+                                    _ = extension_wrapper;
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    )
+                                    .to_logical_type()
+                                    .clone()
+                                },
+                                PrimitiveArray::new(
+                                    {
+                                        _ = extension_wrapper;
+                                        DataType::Float32.to_logical_type().clone()
+                                    },
+                                    fixed_size_shenanigans_inner_data
+                                        .into_iter()
+                                        .map(|v| v.unwrap_or_default())
+                                        .collect(),
+                                    fixed_size_shenanigans_inner_bitmap,
+                                )
+                                .boxed(),
+                                fixed_size_shenanigans_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
                 ],
                 Some({
                     let mut degrees_offset = 0;
                     let mut radians_offset = 0;
                     let mut craziness_offset = 0;
+                    let mut fixed_size_shenanigans_offset = 0;
                     data.iter()
                         .flatten()
                         .map(|v| match **v {
@@ -1569,6 +1679,12 @@ impl crate::Datatype for AffixFuzzer3 {
                                 craziness_offset += 1;
                                 offset
                             }
+
+                            AffixFuzzer3::FixedSizeShenanigans(_) => {
+                                let offset = fixed_size_shenanigans_offset;
+                                fixed_size_shenanigans_offset += 1;
+                                offset
+                            }
                         })
                         .collect()
                 }),
@@ -1584,7 +1700,7 @@ impl crate::Datatype for AffixFuzzer3 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -1594,197 +1710,237 @@ impl crate::Datatype for AffixFuzzer3 {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_types, data_arrays, data_offsets) =
-                (data.types(), data.fields(), data.offsets().unwrap());
-            let degrees = {
-                let data = &*data_arrays[0usize];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_types, data_arrays, data_offsets) =
+                    (data.types(), data.fields(), data.offsets().unwrap());
+                let degrees = {
+                    let data = &*data_arrays[0usize];
 
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-                    .collect::<Vec<_>>()
-            };
-            let radians = {
-                let data = &*data_arrays[1usize];
-
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-                    .collect::<Vec<_>>()
-            };
-            let craziness = {
-                let data = &*data_arrays[2usize];
-
-                {
-                    let datatype = data.data_type();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                        .unwrap();
-                    let bitmap = data.validity().cloned();
-                    let offsets = {
-                        let offsets = data.offsets();
-                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                    };
-                    let data = &**data.values();
-                    let data = crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)?
+                    data.as_any()
+                        .downcast_ref::<Float32Array>()
+                        .unwrap()
                         .into_iter()
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                datatype: DataType::Struct(vec![
-                                    Field {
-                                        name: "single_float_optional".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "single_string_required".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "single_string_optional".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "many_floats_optional".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "many_strings_required".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Utf8,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "many_strings_optional".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Utf8,
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "flattened_scalar".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "almost_flattened_scalar".to_owned(),
-                                        data_type: DataType::Struct(vec![Field {
-                                            name: "value".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }]),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "from_parent".to_owned(),
-                                        data_type: DataType::Boolean,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                ]),
-                            })
-                        })
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| {
-                            bitmap
-                                .as_ref()
-                                .map_or(true, |bitmap| bitmap.get_bit(i))
-                                .then(|| {
-                                    Ok(data
-                                        .get(start as usize..end as usize)
-                                        .ok_or_else(|| {
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                datatype: datatype.clone(),
-                                            }
-                                        })?
-                                        .to_vec())
+                        .map(|v| v.copied())
+                        .collect::<Vec<_>>()
+                };
+                let radians = {
+                    let data = &*data_arrays[1usize];
+
+                    data.as_any()
+                        .downcast_ref::<Float32Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|v| v.copied())
+                        .collect::<Vec<_>>()
+                };
+                let craziness = {
+                    let data = &*data_arrays[2usize];
+
+                    {
+                        let datatype = data.data_type();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .unwrap();
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)?
+                                .into_iter()
+                                .map(|v| {
+                                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        datatype: DataType::Struct(vec![
+                                            Field {
+                                                name: "single_float_optional".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "single_string_required".to_owned(),
+                                                data_type: DataType::Utf8,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "single_string_optional".to_owned(),
+                                                data_type: DataType::Utf8,
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "many_floats_optional".to_owned(),
+                                                data_type: DataType::List(Box::new(Field {
+                                                    name: "item".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                })),
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "many_strings_required".to_owned(),
+                                                data_type: DataType::List(Box::new(Field {
+                                                    name: "item".to_owned(),
+                                                    data_type: DataType::Utf8,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                })),
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "many_strings_optional".to_owned(),
+                                                data_type: DataType::List(Box::new(Field {
+                                                    name: "item".to_owned(),
+                                                    data_type: DataType::Utf8,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                })),
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "flattened_scalar".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "almost_flattened_scalar".to_owned(),
+                                                data_type: DataType::Struct(vec![Field {
+                                                    name: "value".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                }]),
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "from_parent".to_owned(),
+                                                data_type: DataType::Boolean,
+                                                is_nullable: true,
+                                                metadata: [].into(),
+                                            },
+                                        ]),
+                                    })
                                 })
-                                .transpose()
-                        })
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            Ok(data
+                                                .get(start as usize..end as usize)
+                                                .ok_or_else(|| {
+                                                    crate::DeserializationError::OffsetsMismatch {
+                                                        bounds: (start as usize, end as usize),
+                                                        len: data.len(),
+                                                        datatype: datatype.clone(),
+                                                    }
+                                                })?
+                                                .to_vec())
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
                         .into_iter()
-                }
-                .collect::<Vec<_>>()
-            };
-            data_types
-                .iter()
-                .enumerate()
-                .map(|(i, typ)| {
-                    let offset = data_offsets[i];
+                    }
+                    .collect::<Vec<_>>()
+                };
+                let fixed_size_shenanigans = {
+                    let data = &*data_arrays[3usize];
 
-                    Ok(Some(match typ {
-                        0i8 => AffixFuzzer3::Degrees(
-                            degrees
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: degrees.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone()
-                                .unwrap(),
-                        ),
-                        1i8 => AffixFuzzer3::Radians(
-                            radians
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: radians.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone(),
-                        ),
-                        2i8 => AffixFuzzer3::Craziness(
-                            craziness
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: craziness.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone()
-                                .unwrap(),
-                        ),
-                        _ => unreachable!(),
-                    }))
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    { let datatype = data . data_type () ; let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { datatype : DataType :: Float32 , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or_else (|| crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , datatype : datatype . clone () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , datatype : datatype . clone () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> ()
+                };
+                data_types
+                    .iter()
+                    .enumerate()
+                    .map(|(i, typ)| {
+                        let offset = data_offsets[i];
+
+                        Ok(Some(match typ {
+                            0i8 => AffixFuzzer3::Degrees(
+                                degrees
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: degrees.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone()
+                                    .unwrap(),
+                            ),
+                            1i8 => AffixFuzzer3::Radians(
+                                radians
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: radians.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone(),
+                            ),
+                            2i8 => AffixFuzzer3::Craziness(
+                                craziness
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: craziness.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone()
+                                    .unwrap(),
+                            ),
+                            3i8 => AffixFuzzer3::FixedSizeShenanigans(
+                                fixed_size_shenanigans
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: fixed_size_shenanigans.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone()
+                                    .unwrap(),
+                            ),
+                            _ => unreachable!(),
+                        }))
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }
+
+impl crate::Datatype for AffixFuzzer3 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer4 {
@@ -1807,9 +1963,10 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer4 {
+impl crate::Loggable for AffixFuzzer4 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer4")
     }
 
@@ -1921,6 +2078,20 @@ impl crate::Datatype for AffixFuzzer4 {
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
+                            Field {
+                                name: "fixed_size_shenanigans".to_owned(),
+                                data_type: DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    3usize,
+                                ),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
                         ],
                         None,
                         UnionMode::Dense,
@@ -2029,6 +2200,20 @@ impl crate::Datatype for AffixFuzzer4 {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "fixed_size_shenanigans".to_owned(),
+                                    data_type: DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    ),
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
@@ -2146,6 +2331,20 @@ impl crate::Datatype for AffixFuzzer4 {
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
+                                Field {
+                                    name: "fixed_size_shenanigans".to_owned(),
+                                    data_type: DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    ),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
                             ],
                             None,
                             UnionMode::Dense,
@@ -2170,7 +2369,7 @@ impl crate::Datatype for AffixFuzzer4 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -2385,6 +2584,20 @@ impl crate::Datatype for AffixFuzzer4 {
                                                     is_nullable: false,
                                                     metadata: [].into(),
                                                 },
+                                                Field {
+                                                    name: "fixed_size_shenanigans".to_owned(),
+                                                    data_type: DataType::FixedSizeList(
+                                                        Box::new(Field {
+                                                            name: "item".to_owned(),
+                                                            data_type: DataType::Float32,
+                                                            is_nullable: false,
+                                                            metadata: [].into(),
+                                                        }),
+                                                        3usize,
+                                                    ),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
                                             ],
                                             None,
                                             UnionMode::Dense,
@@ -2566,6 +2779,20 @@ impl crate::Datatype for AffixFuzzer4 {
                                                     is_nullable: false,
                                                     metadata: [].into(),
                                                 },
+                                                Field {
+                                                    name: "fixed_size_shenanigans".to_owned(),
+                                                    data_type: DataType::FixedSizeList(
+                                                        Box::new(Field {
+                                                            name: "item".to_owned(),
+                                                            data_type: DataType::Float32,
+                                                            is_nullable: false,
+                                                            metadata: [].into(),
+                                                        }),
+                                                        3usize,
+                                                    ),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
                                             ],
                                             None,
                                             UnionMode::Dense,
@@ -2630,7 +2857,7 @@ impl crate::Datatype for AffixFuzzer4 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -2640,375 +2867,439 @@ impl crate::Datatype for AffixFuzzer4 {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_types, data_arrays, data_offsets) =
-                (data.types(), data.fields(), data.offsets().unwrap());
-            let single_required = {
-                let data = &*data_arrays[0usize];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_types, data_arrays, data_offsets) =
+                    (data.types(), data.fields(), data.offsets().unwrap());
+                let single_required = {
+                    let data = &*data_arrays[0usize];
 
-                crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)?
-                    .into_iter()
+                    crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)?
+                        .into_iter()
+                        .collect::<Vec<_>>()
+                };
+                let many_required = {
+                    let data = &*data_arrays[1usize];
+
+                    {
+                        let datatype = data.data_type();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .unwrap();
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)?
+                                .into_iter()
+                                .map(|v| {
+                                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        datatype: DataType::Union(
+                                            vec![
+                                                Field {
+                                                    name: "degrees".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "radians".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "craziness".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Struct(vec![
+                                                            Field {
+                                                                name: "single_float_optional"
+                                                                    .to_owned(),
+                                                                data_type: DataType::Float32,
+                                                                is_nullable: true,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "single_string_required"
+                                                                    .to_owned(),
+                                                                data_type: DataType::Utf8,
+                                                                is_nullable: false,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "single_string_optional"
+                                                                    .to_owned(),
+                                                                data_type: DataType::Utf8,
+                                                                is_nullable: true,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "many_floats_optional"
+                                                                    .to_owned(),
+                                                                data_type: DataType::List(
+                                                                    Box::new(Field {
+                                                                        name: "item".to_owned(),
+                                                                        data_type:
+                                                                            DataType::Float32,
+                                                                        is_nullable: true,
+                                                                        metadata: [].into(),
+                                                                    }),
+                                                                ),
+                                                                is_nullable: true,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "many_strings_required"
+                                                                    .to_owned(),
+                                                                data_type: DataType::List(
+                                                                    Box::new(Field {
+                                                                        name: "item".to_owned(),
+                                                                        data_type: DataType::Utf8,
+                                                                        is_nullable: false,
+                                                                        metadata: [].into(),
+                                                                    }),
+                                                                ),
+                                                                is_nullable: false,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "many_strings_optional"
+                                                                    .to_owned(),
+                                                                data_type: DataType::List(
+                                                                    Box::new(Field {
+                                                                        name: "item".to_owned(),
+                                                                        data_type: DataType::Utf8,
+                                                                        is_nullable: true,
+                                                                        metadata: [].into(),
+                                                                    }),
+                                                                ),
+                                                                is_nullable: true,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "flattened_scalar".to_owned(),
+                                                                data_type: DataType::Float32,
+                                                                is_nullable: false,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "almost_flattened_scalar"
+                                                                    .to_owned(),
+                                                                data_type: DataType::Struct(vec![
+                                                                    Field {
+                                                                        name: "value".to_owned(),
+                                                                        data_type:
+                                                                            DataType::Float32,
+                                                                        is_nullable: false,
+                                                                        metadata: [].into(),
+                                                                    },
+                                                                ]),
+                                                                is_nullable: false,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "from_parent".to_owned(),
+                                                                data_type: DataType::Boolean,
+                                                                is_nullable: true,
+                                                                metadata: [].into(),
+                                                            },
+                                                        ]),
+                                                        is_nullable: false,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "fixed_size_shenanigans".to_owned(),
+                                                    data_type: DataType::FixedSizeList(
+                                                        Box::new(Field {
+                                                            name: "item".to_owned(),
+                                                            data_type: DataType::Float32,
+                                                            is_nullable: false,
+                                                            metadata: [].into(),
+                                                        }),
+                                                        3usize,
+                                                    ),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                            ],
+                                            None,
+                                            UnionMode::Dense,
+                                        ),
+                                    })
+                                })
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            Ok(data
+                                                .get(start as usize..end as usize)
+                                                .ok_or_else(|| {
+                                                    crate::DeserializationError::OffsetsMismatch {
+                                                        bounds: (start as usize, end as usize),
+                                                        len: data.len(),
+                                                        datatype: datatype.clone(),
+                                                    }
+                                                })?
+                                                .to_vec())
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
+                    }
                     .collect::<Vec<_>>()
-            };
-            let many_required = {
-                let data = &*data_arrays[1usize];
+                };
+                let many_optional = {
+                    let data = &*data_arrays[2usize];
 
-                {
-                    let datatype = data.data_type();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                        .unwrap();
-                    let bitmap = data.validity().cloned();
-                    let offsets = {
-                        let offsets = data.offsets();
-                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                    };
-                    let data = &**data.values();
-                    let data = crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)?
-                        .into_iter()
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                datatype: DataType::Union(
-                                    vec![
-                                        Field {
-                                            name: "degrees".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        },
-                                        Field {
-                                            name: "radians".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        },
-                                        Field {
-                                            name: "craziness".to_owned(),
-                                            data_type: DataType::List(Box::new(Field {
-                                                name: "item".to_owned(),
-                                                data_type: DataType::Struct(vec![
-                                                    Field {
-                                                        name: "single_float_optional".to_owned(),
-                                                        data_type: DataType::Float32,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "single_string_required".to_owned(),
-                                                        data_type: DataType::Utf8,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "single_string_optional".to_owned(),
-                                                        data_type: DataType::Utf8,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "many_floats_optional".to_owned(),
-                                                        data_type: DataType::List(Box::new(
+                    {
+                        let datatype = data.data_type();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .unwrap();
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)?
+                                .into_iter()
+                                .map(|v| {
+                                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        datatype: DataType::Union(
+                                            vec![
+                                                Field {
+                                                    name: "degrees".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "radians".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "craziness".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Struct(vec![
                                                             Field {
-                                                                name: "item".to_owned(),
+                                                                name: "single_float_optional"
+                                                                    .to_owned(),
                                                                 data_type: DataType::Float32,
                                                                 is_nullable: true,
                                                                 metadata: [].into(),
                                                             },
-                                                        )),
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "many_strings_required".to_owned(),
-                                                        data_type: DataType::List(Box::new(
                                                             Field {
-                                                                name: "item".to_owned(),
+                                                                name: "single_string_required"
+                                                                    .to_owned(),
                                                                 data_type: DataType::Utf8,
                                                                 is_nullable: false,
                                                                 metadata: [].into(),
                                                             },
-                                                        )),
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "many_strings_optional".to_owned(),
-                                                        data_type: DataType::List(Box::new(
                                                             Field {
-                                                                name: "item".to_owned(),
+                                                                name: "single_string_optional"
+                                                                    .to_owned(),
                                                                 data_type: DataType::Utf8,
                                                                 is_nullable: true,
                                                                 metadata: [].into(),
                                                             },
-                                                        )),
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "flattened_scalar".to_owned(),
-                                                        data_type: DataType::Float32,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "almost_flattened_scalar".to_owned(),
-                                                        data_type: DataType::Struct(vec![Field {
-                                                            name: "value".to_owned(),
-                                                            data_type: DataType::Float32,
-                                                            is_nullable: false,
-                                                            metadata: [].into(),
-                                                        }]),
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "from_parent".to_owned(),
-                                                        data_type: DataType::Boolean,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                ]),
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            })),
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        },
-                                    ],
-                                    None,
-                                    UnionMode::Dense,
-                                ),
-                            })
-                        })
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| {
-                            bitmap
-                                .as_ref()
-                                .map_or(true, |bitmap| bitmap.get_bit(i))
-                                .then(|| {
-                                    Ok(data
-                                        .get(start as usize..end as usize)
-                                        .ok_or_else(|| {
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                datatype: datatype.clone(),
-                                            }
-                                        })?
-                                        .to_vec())
-                                })
-                                .transpose()
-                        })
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        .into_iter()
-                }
-                .collect::<Vec<_>>()
-            };
-            let many_optional = {
-                let data = &*data_arrays[2usize];
-
-                {
-                    let datatype = data.data_type();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                        .unwrap();
-                    let bitmap = data.validity().cloned();
-                    let offsets = {
-                        let offsets = data.offsets();
-                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                    };
-                    let data = &**data.values();
-                    let data = crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)?
-                        .into_iter()
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                datatype: DataType::Union(
-                                    vec![
-                                        Field {
-                                            name: "degrees".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        },
-                                        Field {
-                                            name: "radians".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        },
-                                        Field {
-                                            name: "craziness".to_owned(),
-                                            data_type: DataType::List(Box::new(Field {
-                                                name: "item".to_owned(),
-                                                data_type: DataType::Struct(vec![
-                                                    Field {
-                                                        name: "single_float_optional".to_owned(),
-                                                        data_type: DataType::Float32,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "single_string_required".to_owned(),
-                                                        data_type: DataType::Utf8,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "single_string_optional".to_owned(),
-                                                        data_type: DataType::Utf8,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "many_floats_optional".to_owned(),
-                                                        data_type: DataType::List(Box::new(
                                                             Field {
-                                                                name: "item".to_owned(),
+                                                                name: "many_floats_optional"
+                                                                    .to_owned(),
+                                                                data_type: DataType::List(
+                                                                    Box::new(Field {
+                                                                        name: "item".to_owned(),
+                                                                        data_type:
+                                                                            DataType::Float32,
+                                                                        is_nullable: true,
+                                                                        metadata: [].into(),
+                                                                    }),
+                                                                ),
+                                                                is_nullable: true,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "many_strings_required"
+                                                                    .to_owned(),
+                                                                data_type: DataType::List(
+                                                                    Box::new(Field {
+                                                                        name: "item".to_owned(),
+                                                                        data_type: DataType::Utf8,
+                                                                        is_nullable: false,
+                                                                        metadata: [].into(),
+                                                                    }),
+                                                                ),
+                                                                is_nullable: false,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "many_strings_optional"
+                                                                    .to_owned(),
+                                                                data_type: DataType::List(
+                                                                    Box::new(Field {
+                                                                        name: "item".to_owned(),
+                                                                        data_type: DataType::Utf8,
+                                                                        is_nullable: true,
+                                                                        metadata: [].into(),
+                                                                    }),
+                                                                ),
+                                                                is_nullable: true,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "flattened_scalar".to_owned(),
                                                                 data_type: DataType::Float32,
-                                                                is_nullable: true,
-                                                                metadata: [].into(),
-                                                            },
-                                                        )),
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "many_strings_required".to_owned(),
-                                                        data_type: DataType::List(Box::new(
-                                                            Field {
-                                                                name: "item".to_owned(),
-                                                                data_type: DataType::Utf8,
                                                                 is_nullable: false,
                                                                 metadata: [].into(),
                                                             },
-                                                        )),
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "many_strings_optional".to_owned(),
-                                                        data_type: DataType::List(Box::new(
                                                             Field {
-                                                                name: "item".to_owned(),
-                                                                data_type: DataType::Utf8,
+                                                                name: "almost_flattened_scalar"
+                                                                    .to_owned(),
+                                                                data_type: DataType::Struct(vec![
+                                                                    Field {
+                                                                        name: "value".to_owned(),
+                                                                        data_type:
+                                                                            DataType::Float32,
+                                                                        is_nullable: false,
+                                                                        metadata: [].into(),
+                                                                    },
+                                                                ]),
+                                                                is_nullable: false,
+                                                                metadata: [].into(),
+                                                            },
+                                                            Field {
+                                                                name: "from_parent".to_owned(),
+                                                                data_type: DataType::Boolean,
                                                                 is_nullable: true,
                                                                 metadata: [].into(),
                                                             },
-                                                        )),
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "flattened_scalar".to_owned(),
-                                                        data_type: DataType::Float32,
+                                                        ]),
                                                         is_nullable: false,
                                                         metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "almost_flattened_scalar".to_owned(),
-                                                        data_type: DataType::Struct(vec![Field {
-                                                            name: "value".to_owned(),
+                                                    })),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "fixed_size_shenanigans".to_owned(),
+                                                    data_type: DataType::FixedSizeList(
+                                                        Box::new(Field {
+                                                            name: "item".to_owned(),
                                                             data_type: DataType::Float32,
                                                             is_nullable: false,
                                                             metadata: [].into(),
-                                                        }]),
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    },
-                                                    Field {
-                                                        name: "from_parent".to_owned(),
-                                                        data_type: DataType::Boolean,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    },
-                                                ]),
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            })),
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        },
-                                    ],
-                                    None,
-                                    UnionMode::Dense,
-                                ),
-                            })
-                        })
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| {
-                            bitmap
-                                .as_ref()
-                                .map_or(true, |bitmap| bitmap.get_bit(i))
-                                .then(|| {
-                                    Ok(data
-                                        .get(start as usize..end as usize)
-                                        .ok_or_else(|| {
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                datatype: datatype.clone(),
-                                            }
-                                        })?
-                                        .to_vec())
+                                                        }),
+                                                        3usize,
+                                                    ),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                            ],
+                                            None,
+                                            UnionMode::Dense,
+                                        ),
+                                    })
                                 })
-                                .transpose()
-                        })
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            Ok(data
+                                                .get(start as usize..end as usize)
+                                                .ok_or_else(|| {
+                                                    crate::DeserializationError::OffsetsMismatch {
+                                                        bounds: (start as usize, end as usize),
+                                                        len: data.len(),
+                                                        datatype: datatype.clone(),
+                                                    }
+                                                })?
+                                                .to_vec())
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
                         .into_iter()
-                }
-                .collect::<Vec<_>>()
-            };
-            data_types
-                .iter()
-                .enumerate()
-                .map(|(i, typ)| {
-                    let offset = data_offsets[i];
+                    }
+                    .collect::<Vec<_>>()
+                };
+                data_types
+                    .iter()
+                    .enumerate()
+                    .map(|(i, typ)| {
+                        let offset = data_offsets[i];
 
-                    Ok(Some(match typ {
-                        0i8 => AffixFuzzer4::SingleRequired(
-                            single_required
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: single_required.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone()
-                                .unwrap(),
-                        ),
-                        1i8 => AffixFuzzer4::ManyRequired(
-                            many_required
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: many_required.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone()
-                                .unwrap(),
-                        ),
-                        2i8 => AffixFuzzer4::ManyOptional(
-                            many_optional
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: many_optional.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone(),
-                        ),
-                        _ => unreachable!(),
-                    }))
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        Ok(Some(match typ {
+                            0i8 => AffixFuzzer4::SingleRequired(
+                                single_required
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: single_required.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone()
+                                    .unwrap(),
+                            ),
+                            1i8 => AffixFuzzer4::ManyRequired(
+                                many_required
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: many_required.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone()
+                                    .unwrap(),
+                            ),
+                            2i8 => AffixFuzzer4::ManyOptional(
+                                many_optional
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: many_optional.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone(),
+                            ),
+                            _ => unreachable!(),
+                        }))
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }
+
+impl crate::Datatype for AffixFuzzer4 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer5 {
@@ -3029,9 +3320,10 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer5 {
+impl crate::Loggable for AffixFuzzer5 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer5")
     }
 
@@ -3145,6 +3437,20 @@ impl crate::Datatype for AffixFuzzer5 {
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
+                                Field {
+                                    name: "fixed_size_shenanigans".to_owned(),
+                                    data_type: DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    ),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
                             ],
                             None,
                             UnionMode::Dense,
@@ -3253,6 +3559,20 @@ impl crate::Datatype for AffixFuzzer5 {
                                             is_nullable: false,
                                             metadata: [].into(),
                                         })),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "fixed_size_shenanigans".to_owned(),
+                                        data_type: DataType::FixedSizeList(
+                                            Box::new(Field {
+                                                name: "item".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            }),
+                                            3usize,
+                                        ),
                                         is_nullable: false,
                                         metadata: [].into(),
                                     },
@@ -3370,6 +3690,20 @@ impl crate::Datatype for AffixFuzzer5 {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     },
+                                    Field {
+                                        name: "fixed_size_shenanigans".to_owned(),
+                                        data_type: DataType::FixedSizeList(
+                                            Box::new(Field {
+                                                name: "item".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            }),
+                                            3usize,
+                                        ),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
                                 ],
                                 None,
                                 UnionMode::Dense,
@@ -3397,7 +3731,7 @@ impl crate::Datatype for AffixFuzzer5 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -3466,7 +3800,7 @@ impl crate::Datatype for AffixFuzzer5 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -3476,31 +3810,37 @@ impl crate::Datatype for AffixFuzzer5 {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_fields, data_arrays, data_bitmap) =
-                (data.fields(), data.values(), data.validity());
-            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
-            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
-                .iter()
-                .map(|field| field.name.as_str())
-                .zip(data_arrays)
-                .collect();
-            let single_optional_union = {
-                let data = &**arrays_by_name["single_optional_union"];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_fields, data_arrays, data_bitmap) =
+                    (data.fields(), data.values(), data.validity());
+                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(data_arrays)
+                    .collect();
+                let single_optional_union = {
+                    let data = &**arrays_by_name["single_optional_union"];
 
-                crate::datatypes::AffixFuzzer4::try_from_arrow_opt(data)?.into_iter()
-            };
-            ::itertools::izip!(single_optional_union)
-                .enumerate()
-                .map(|(i, (single_optional_union))| {
-                    is_valid(i)
-                        .then(|| {
-                            Ok(Self {
-                                single_optional_union,
+                    crate::datatypes::AffixFuzzer4::try_from_arrow_opt(data)?.into_iter()
+                };
+                ::itertools::izip!(single_optional_union)
+                    .enumerate()
+                    .map(|(i, (single_optional_union))| {
+                        is_valid(i)
+                            .then(|| {
+                                Ok(Self {
+                                    single_optional_union,
+                                })
                             })
-                        })
-                        .transpose()
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }
+
+impl crate::Datatype for AffixFuzzer5 {}

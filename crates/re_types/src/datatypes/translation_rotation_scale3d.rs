@@ -12,20 +12,20 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "Representation of an affine transform via separate translation, rotation & scale."]
+/// Representation of an affine transform via separate translation, rotation & scale.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct TranslationRotationScale3D {
-    #[doc = "3D translation vector, applied last."]
+    /// 3D translation vector, applied last.
     pub translation: Option<crate::datatypes::Vec3D>,
 
-    #[doc = "3D rotation, applied second."]
+    /// 3D rotation, applied second.
     pub rotation: Option<crate::datatypes::Rotation3D>,
 
-    #[doc = "3D scale, applied first."]
+    /// 3D scale, applied first.
     pub scale: Option<crate::datatypes::Scale3D>,
 
-    #[doc = "If true, the transform maps from the parent space to the space where the transform was logged."]
-    #[doc = "Otherwise, the transform maps from the space to its parent."]
+    /// If true, the transform maps from the parent space to the space where the transform was logged.
+    /// Otherwise, the transform maps from the space to its parent.
     pub from_parent: Option<bool>,
 }
 
@@ -45,9 +45,10 @@ impl<'a> From<&'a TranslationRotationScale3D>
     }
 }
 
-impl crate::Datatype for TranslationRotationScale3D {
+impl crate::Loggable for TranslationRotationScale3D {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.TranslationRotationScale3D")
     }
 
@@ -187,7 +188,7 @@ impl crate::Datatype for TranslationRotationScale3D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -373,7 +374,7 @@ impl crate::Datatype for TranslationRotationScale3D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -383,103 +384,77 @@ impl crate::Datatype for TranslationRotationScale3D {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_fields, data_arrays, data_bitmap) =
-                (data.fields(), data.values(), data.validity());
-            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
-            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
-                .iter()
-                .map(|field| field.name.as_str())
-                .zip(data_arrays)
-                .collect();
-            let translation = {
-                let data = &**arrays_by_name["translation"];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_fields, data_arrays, data_bitmap) =
+                    (data.fields(), data.values(), data.validity());
+                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(data_arrays)
+                    .collect();
+                let translation = {
+                    let data = &**arrays_by_name["translation"];
 
-                {
-                    let datatype = data.data_type();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                        .unwrap();
-                    let bitmap = data.validity().cloned();
-                    let offsets = (0..).step_by(3usize).zip((3usize..).step_by(3usize));
-                    let data = &**data.values();
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
+                    {
+                        let datatype = data.data_type();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .unwrap();
+                        if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { datatype : DataType :: Float32 , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or_else (|| crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , datatype : datatype . clone () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , datatype : datatype . clone () , }
+
+) }
+
+) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter ()
+                    }
+                };
+                let rotation = {
+                    let data = &**arrays_by_name["rotation"];
+
+                    crate::datatypes::Rotation3D::try_from_arrow_opt(data)?.into_iter()
+                };
+                let scale = {
+                    let data = &**arrays_by_name["scale"];
+
+                    crate::datatypes::Scale3D::try_from_arrow_opt(data)?.into_iter()
+                };
+                let from_parent = {
+                    let data = &**arrays_by_name["from_parent"];
+
+                    data.as_any()
+                        .downcast_ref::<BooleanArray>()
                         .unwrap()
                         .into_iter()
-                        .map(|v| v.copied())
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                datatype: DataType::Float32,
-                            })
-                        })
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| {
-                            bitmap
-                                .as_ref()
-                                .map_or(true, |bitmap| bitmap.get_bit(i))
-                                .then(|| {
-                                    data.get(start as usize..end as usize)
-                                        .ok_or_else(|| {
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                datatype: datatype.clone(),
-                                            }
-                                        })?
-                                        .to_vec()
-                                        .try_into()
-                                        .map_err(|_err| {
-                                            crate::DeserializationError::ArrayLengthMismatch {
-                                                expected: 3usize,
-                                                got: (end - start) as usize,
-                                                datatype: datatype.clone(),
-                                            }
-                                        })
+                };
+                ::itertools::izip!(translation, rotation, scale, from_parent)
+                    .enumerate()
+                    .map(|(i, (translation, rotation, scale, from_parent))| {
+                        is_valid(i)
+                            .then(|| {
+                                Ok(Self {
+                                    translation,
+                                    rotation,
+                                    scale,
+                                    from_parent,
                                 })
-                                .transpose()
-                        })
-                        .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        .into_iter()
-                }
-            };
-            let rotation = {
-                let data = &**arrays_by_name["rotation"];
-
-                crate::datatypes::Rotation3D::try_from_arrow_opt(data)?.into_iter()
-            };
-            let scale = {
-                let data = &**arrays_by_name["scale"];
-
-                crate::datatypes::Scale3D::try_from_arrow_opt(data)?.into_iter()
-            };
-            let from_parent = {
-                let data = &**arrays_by_name["from_parent"];
-
-                data.as_any()
-                    .downcast_ref::<BooleanArray>()
-                    .unwrap()
-                    .into_iter()
-            };
-            ::itertools::izip!(translation, rotation, scale, from_parent)
-                .enumerate()
-                .map(|(i, (translation, rotation, scale, from_parent))| {
-                    is_valid(i)
-                        .then(|| {
-                            Ok(Self {
-                                translation,
-                                rotation,
-                                scale,
-                                from_parent,
                             })
-                        })
-                        .transpose()
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }
+
+impl crate::Datatype for TranslationRotationScale3D {}

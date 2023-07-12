@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A point in 2D space."]
+/// A point in 2D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Point2D {
     pub xy: crate::datatypes::Point2D,
@@ -32,9 +32,10 @@ impl<'a> From<&'a Point2D> for ::std::borrow::Cow<'a, Point2D> {
     }
 }
 
-impl crate::Component for Point2D {
+impl crate::Loggable for Point2D {
+    type Name = crate::ComponentName;
     #[inline]
-    fn name() -> crate::ComponentName {
+    fn name() -> Self::Name {
         crate::ComponentName::Borrowed("rerun.point2d")
     }
 
@@ -66,7 +67,7 @@ impl crate::Component for Point2D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, xy): (Vec<_>, Vec<_>) = data
@@ -99,7 +100,7 @@ impl crate::Component for Point2D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(crate::datatypes::Point2D::try_from_arrow_opt(data)?
             .into_iter()
@@ -112,3 +113,5 @@ impl crate::Component for Point2D {
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Component for Point2D {}

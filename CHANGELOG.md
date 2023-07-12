@@ -8,7 +8,7 @@
 [Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
 
 * Python: `pip install rerun-sdk`
-* Rust: `cargo add rerun` and `cargo install rerun-cli` 
+* Rust: `cargo add rerun` and `cargo install rerun-cli`
 * Online demo: <https://app.rerun.io/version/0.7.0/index.html>
 
 ### Overview & Highlights

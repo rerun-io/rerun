@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "Angle in either radians or degrees."]
+/// Angle in either radians or degrees.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Angle {
     Radians(f32),
@@ -33,9 +33,10 @@ impl<'a> From<&'a Angle> for ::std::borrow::Cow<'a, Angle> {
     }
 }
 
-impl crate::Datatype for Angle {
+impl crate::Loggable for Angle {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.Angle")
     }
 
@@ -71,7 +72,7 @@ impl crate::Datatype for Angle {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -190,7 +191,7 @@ impl crate::Datatype for Angle {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -200,61 +201,67 @@ impl crate::Datatype for Angle {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
-            let (data_types, data_arrays, data_offsets) =
-                (data.types(), data.fields(), data.offsets().unwrap());
-            let radians = {
-                let data = &*data_arrays[0usize];
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_types, data_arrays, data_offsets) =
+                    (data.types(), data.fields(), data.offsets().unwrap());
+                let radians = {
+                    let data = &*data_arrays[0usize];
 
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-                    .collect::<Vec<_>>()
-            };
-            let degrees = {
-                let data = &*data_arrays[1usize];
+                    data.as_any()
+                        .downcast_ref::<Float32Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|v| v.copied())
+                        .collect::<Vec<_>>()
+                };
+                let degrees = {
+                    let data = &*data_arrays[1usize];
 
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-                    .collect::<Vec<_>>()
-            };
-            data_types
-                .iter()
-                .enumerate()
-                .map(|(i, typ)| {
-                    let offset = data_offsets[i];
+                    data.as_any()
+                        .downcast_ref::<Float32Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|v| v.copied())
+                        .collect::<Vec<_>>()
+                };
+                data_types
+                    .iter()
+                    .enumerate()
+                    .map(|(i, typ)| {
+                        let offset = data_offsets[i];
 
-                    Ok(Some(match typ {
-                        0i8 => Angle::Radians(
-                            radians
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: radians.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone()
-                                .unwrap(),
-                        ),
-                        1i8 => Angle::Degrees(
-                            degrees
-                                .get(offset as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: degrees.len(),
-                                    datatype: data.data_type().clone(),
-                                })?
-                                .clone()
-                                .unwrap(),
-                        ),
-                        _ => unreachable!(),
-                    }))
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        Ok(Some(match typ {
+                            0i8 => Angle::Radians(
+                                radians
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: radians.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone()
+                                    .unwrap(),
+                            ),
+                            1i8 => Angle::Degrees(
+                                degrees
+                                    .get(offset as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (offset as usize, offset as usize),
+                                        len: degrees.len(),
+                                        datatype: data.data_type().clone(),
+                                    })?
+                                    .clone()
+                                    .unwrap(),
+                            ),
+                            _ => unreachable!(),
+                        }))
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+            }
         })
     }
 }
+
+impl crate::Datatype for Angle {}

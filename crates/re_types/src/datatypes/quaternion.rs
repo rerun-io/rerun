@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A Quaternion represented by 4 real numbers."]
+/// A Quaternion represented by 4 real numbers.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Quaternion(pub [f32; 4usize]);
 
@@ -30,9 +30,10 @@ impl<'a> From<&'a Quaternion> for ::std::borrow::Cow<'a, Quaternion> {
     }
 }
 
-impl crate::Datatype for Quaternion {
+impl crate::Loggable for Quaternion {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.Quaternion")
     }
 
@@ -59,7 +60,7 @@ impl crate::Datatype for Quaternion {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -138,7 +139,7 @@ impl crate::Datatype for Quaternion {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let datatype = data.data_type();
@@ -146,46 +147,54 @@ impl crate::Datatype for Quaternion {
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .unwrap();
-            let bitmap = data.validity().cloned();
-            let offsets = (0..).step_by(4usize).zip((4usize..).step_by(4usize));
-            let data = &**data.values();
-            let data = data
-                .as_any()
-                .downcast_ref::<Float32Array>()
-                .unwrap()
-                .into_iter()
-                .map(|v| v.copied())
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: DataType::Float32,
-                    })
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-            offsets
-                .enumerate()
-                .map(move |(i, (start, end))| {
-                    bitmap
-                        .as_ref()
-                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                        .then(|| {
-                            data.get(start as usize..end as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data.len(),
-                                    datatype: datatype.clone(),
-                                })?
-                                .to_vec()
-                                .try_into()
-                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                    expected: 4usize,
-                                    got: (end - start) as usize,
-                                    datatype: datatype.clone(),
-                                })
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let bitmap = data.validity().cloned();
+                let offsets = (0..)
+                    .step_by(4usize)
+                    .zip((4usize..).step_by(4usize).take(data.len()));
+                let data = &**data.values();
+                let data = data
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: DataType::Float32,
                         })
-                        .transpose()
-                })
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                .into_iter()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                data.get(start as usize..end as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        datatype: datatype.clone(),
+                                    })?
+                                    .to_vec()
+                                    .try_into()
+                                    .map_err(|_err| {
+                                        crate::DeserializationError::ArrayLengthMismatch {
+                                            expected: 4usize,
+                                            got: (end - start) as usize,
+                                            datatype: datatype.clone(),
+                                        }
+                                    })
+                            })
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+            }
+            .into_iter()
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {
@@ -196,3 +205,5 @@ impl crate::Datatype for Quaternion {
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Datatype for Quaternion {}

@@ -12,71 +12,71 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A 2D point cloud with positions and optional colors, radii, labels, etc."]
-#[doc = ""]
-#[doc = "## Example"]
-#[doc = ""]
-#[doc = "```ignore"]
-#[doc = "//! Log some very simple points."]
-#[doc = ""]
-#[doc = "use rerun::{"]
-#[doc = "   components::{Rect2D, Vec4D},"]
-#[doc = "   experimental::archetypes::Points2D,"]
-#[doc = "   MsgSender, RecordingStreamBuilder,"]
-#[doc = "};"]
-#[doc = ""]
-#[doc = "fn main() -> Result<(), Box<dyn std::error::Error>> {"]
-#[doc = "   let (rec_stream, storage) = RecordingStreamBuilder::new(\"points\").memory()?;"]
-#[doc = ""]
-#[doc = "   MsgSender::from_archetype(\"points\", &Points2D::new([(0.0, 0.0), (1.0, 1.0)]))?"]
-#[doc = "       .send(&rec_stream)?;"]
-#[doc = ""]
-#[doc = "   // Log an extra rect to set the view bounds"]
-#[doc = "   MsgSender::new(\"bounds\")"]
-#[doc = "       .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 4.0, 3.0]))])?"]
-#[doc = "       .send(&rec_stream)?;"]
-#[doc = ""]
-#[doc = "   rerun::native_viewer::show(storage.take())?;"]
-#[doc = ""]
-#[doc = "   Ok(())"]
-#[doc = "}"]
-#[doc = "```"]
+/// A 2D point cloud with positions and optional colors, radii, labels, etc.
+///
+/// ## Example
+///
+/// ```ignore
+/// //! Log some very simple points.
+///
+/// use rerun::{
+///    components::{Rect2D, Vec4D},
+///    experimental::archetypes::Points2D,
+///    MsgSender, RecordingStreamBuilder,
+/// };
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///    let (rec_stream, storage) = RecordingStreamBuilder::new("points").memory()?;
+///
+///    MsgSender::from_archetype("points", &Points2D::new([(0.0, 0.0), (1.0, 1.0)]))?
+///        .send(&rec_stream)?;
+///
+///    // Log an extra rect to set the view bounds
+///    MsgSender::new("bounds")
+///        .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 4.0, 3.0]))])?
+///        .send(&rec_stream)?;
+///
+///    rerun::native_viewer::show(storage.take())?;
+///
+///    Ok(())
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct Points2D {
-    #[doc = "All the actual 2D points that make up the point cloud."]
+    /// All the actual 2D points that make up the point cloud.
     pub points: Vec<crate::components::Point2D>,
 
-    #[doc = "Optional radii for the points, effectively turning them into circles."]
+    /// Optional radii for the points, effectively turning them into circles.
     pub radii: Option<Vec<crate::components::Radius>>,
 
-    #[doc = "Optional colors for the points."]
+    /// Optional colors for the points.
     pub colors: Option<Vec<crate::components::Color>>,
 
-    #[doc = "Optional text labels for the points."]
+    /// Optional text labels for the points.
     pub labels: Option<Vec<crate::components::Label>>,
 
-    #[doc = "An optional floating point value that specifies the 2D drawing order."]
-    #[doc = "Objects with higher values are drawn on top of those with lower values."]
-    #[doc = ""]
-    #[doc = "The default for 2D points is 30.0."]
+    /// An optional floating point value that specifies the 2D drawing order.
+    /// Objects with higher values are drawn on top of those with lower values.
+    ///
+    /// The default for 2D points is 30.0.
     pub draw_order: Option<crate::components::DrawOrder>,
 
-    #[doc = "Optional class Ids for the points."]
-    #[doc = ""]
-    #[doc = "The class ID provides colors and labels if not specified explicitly."]
+    /// Optional class Ids for the points.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 
-    #[doc = "Optional keypoint IDs for the points, identifying them within a class."]
-    #[doc = ""]
-    #[doc = "If keypoint IDs are passed in but no class IDs were specified, the class ID will"]
-    #[doc = "default to 0."]
-    #[doc = "This is useful to identify points within a single classification (which is identified"]
-    #[doc = "with `class_id`)."]
-    #[doc = "E.g. the classification might be 'Person' and the keypoints refer to joints on a"]
-    #[doc = "detected skeleton."]
+    /// Optional keypoint IDs for the points, identifying them within a class.
+    ///
+    /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
+    /// default to 0.
+    /// This is useful to identify points within a single classification (which is identified
+    /// with `class_id`).
+    /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
+    /// detected skeleton.
     pub keypoint_ids: Option<Vec<crate::components::KeypointId>>,
 
-    #[doc = "Unique identifiers for each individual point in the batch."]
+    /// Unique identifiers for each individual point in the batch.
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
@@ -136,7 +136,7 @@ impl crate::Archetype for Points2D {
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
-        use crate::Component as _;
+        use crate::Loggable as _;
         Ok([
             {
                 Some({
@@ -301,7 +301,7 @@ impl crate::Archetype for Points2D {
     fn try_from_arrow(
         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     ) -> crate::DeserializationResult<Self> {
-        use crate::Component as _;
+        use crate::Loggable as _;
         let arrays_by_name: ::std::collections::HashMap<_, _> = data
             .into_iter()
             .map(|(field, array)| (field.name, array))

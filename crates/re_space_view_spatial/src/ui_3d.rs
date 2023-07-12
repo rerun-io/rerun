@@ -17,7 +17,7 @@ use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerConte
 
 use crate::{
     axis_lines::add_axis_lines,
-    scene::{image_view_coordinates, SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
+    parts::{image_view_coordinates, SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
     space_camera_3d::SpaceCamera3D,
     ui::{
         create_labels, outline_config, picking, screenshot_context_menu, SpatialNavigationMode,

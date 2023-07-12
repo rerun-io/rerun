@@ -16,6 +16,7 @@ use re_build_tools::{
 
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
+const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
 const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
@@ -101,52 +102,25 @@ fn main() {
 
     let sh = Shell::new().unwrap();
 
-    re_types_builder::generate_rust_code(
-        DEFINITIONS_DIR_PATH,
-        RUST_OUTPUT_DIR_PATH,
-        "./definitions/rerun/archetypes.fbs",
-    );
+    // passes 1 through 3: bfbs, semantic, arrow registry
+    let (objects, arrow_registry) =
+        re_types_builder::generate_lang_agnostic(DEFINITIONS_DIR_PATH, ENTRYPOINT_PATH);
 
-    // NOTE: We're purposefully ignoring the error here.
-    //
-    // In the very unlikely chance that the user doesn't have the `fmt` component installed,
-    // there's still no good reason to fail the build.
-    //
-    // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
-    cmd!(sh, "cargo fmt -p re_types").run().ok();
-    // RUN IT TWICE!!! `rustfmt` is __not__ idempotent until its second run!
-    //
-    // You can try it out yourself with e.g. this snippet:
-    // ```
-    // # [derive (Clone , Debug)]
-    //
-    // # [derive (Default , Copy , PartialEq , PartialOrd)]
-    // pub struct Vec2D (pub [f32 ; 2usize] ,) ;
-    // ```
-    //
-    // First run will take care of most things, but since `rustfmt` isn't recursive, it will also
-    // miss the opportunity to merge the two #derive clauses after it took care of removing the
-    // superfluous linefeeds:
-    // ```
-    // #[derive(Clone, Debug)]
-    // #[derive(Default, Copy, PartialEq, PartialOrd)]
-    // pub struct Vec2D(pub [f32; 2usize]);
-    // ```
-    //
-    // Now if you run it a second time on the other hand...:
-    // ```
-    // #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
-    // pub struct Vec2D(pub [f32; 2usize]);
-    // ```
-    //
-    // And finally things are idempotent, for real this time.
-    cmd!(sh, "cargo fmt -p re_types").run().ok();
+    re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry);
 
-    re_types_builder::generate_python_code(
-        DEFINITIONS_DIR_PATH,
-        PYTHON_OUTPUT_DIR_PATH,
-        "./definitions/rerun/archetypes.fbs",
-    );
+    // We need to run `cago fmt` several times because it is not idempotent!
+    // See https://github.com/rust-lang/rustfmt/issues/5824
+    for _ in 0..2 {
+        // NOTE: We're purposefully ignoring the error here.
+        //
+        // In the very unlikely chance that the user doesn't have the `fmt` component installed,
+        // there's still no good reason to fail the build.
+        //
+        // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
+        cmd!(sh, "cargo fmt -p re_types").run().ok();
+    }
+
+    re_types_builder::generate_python_code(PYTHON_OUTPUT_DIR_PATH, &objects, &arrow_registry);
 
     let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
         .parent()
@@ -158,6 +132,19 @@ fn main() {
         .join("pyproject.toml")
         .to_string_lossy()
         .to_string();
+
+    // NOTE: We're purposefully ignoring the error here.
+    //
+    // If the user doesn't have `ruff` in their $PATH, there's still no good reason to fail
+    // the build.
+    //
+    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
+    cmd!(
+        sh,
+        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
+    )
+    .run()
+    .ok();
 
     // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
     // not end users.
@@ -174,19 +161,6 @@ fn main() {
     cmd!(
         sh,
         "black --config {pyproject_path} {PYTHON_OUTPUT_DIR_PATH}"
-    )
-    .run()
-    .ok();
-
-    // NOTE: We're purposefully ignoring the error here.
-    //
-    // If the user doesn't have `ruff` in their $PATH, there's still no good reason to fail
-    // the build.
-    //
-    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(
-        sh,
-        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
     )
     .run()
     .ok();

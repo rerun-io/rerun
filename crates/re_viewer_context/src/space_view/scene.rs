@@ -1,6 +1,6 @@
 use crate::{
-    SceneContext, ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewHighlights,
-    SpaceViewState, ViewerContext,
+    SpaceViewClass, SpaceViewHighlights, SpaceViewState, ViewContext, ViewPartSystemCollection,
+    ViewQuery, ViewerContext,
 };
 
 /// Every [`crate::SpaceViewClass`] creates and populates a scene to draw a frame and inform the ui about relevant data.
@@ -15,7 +15,7 @@ pub trait Scene {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
+        query: &ViewQuery<'_>,
         space_view_state: &dyn SpaceViewState,
         highlights: SpaceViewHighlights,
     );
@@ -27,7 +27,7 @@ pub trait Scene {
 /// Implementation of [`Scene`] for a specific [`SpaceViewClass`].
 pub struct TypedScene<C: SpaceViewClass> {
     pub context: C::Context,
-    pub parts: C::SceneParts,
+    pub parts: C::SystemCollection,
     pub highlights: SpaceViewHighlights,
 
     /// All draw data gathered during the last call to [`Self::populate`].
@@ -53,7 +53,7 @@ impl<C: SpaceViewClass + 'static> Scene for TypedScene<C> {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
+        query: &ViewQuery<'_>,
         space_view_state: &dyn SpaceViewState,
         highlights: SpaceViewHighlights,
     ) {
