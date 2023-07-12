@@ -205,7 +205,12 @@ pub fn compile_binary_schemas(
 /// 1. Generate binary reflection dumps for our definitions.
 /// 2. Run the semantic pass
 /// 3. Compute the Arrow registry
-fn generate_lang_agnostic(
+///
+/// Panics on error.
+///
+/// - `include_dir_path`: path to the root directory of the fbs definition tree.
+/// - `entrypoint_path`: path to the root file of the fbs definition tree.
+pub fn generate_lang_agnostic(
     include_dir_path: impl AsRef<Utf8Path>,
     entrypoint_path: impl AsRef<Utf8Path>,
 ) -> (Objects, ArrowRegistry) {
@@ -247,59 +252,56 @@ fn generate_lang_agnostic(
     (objects, arrow_registry)
 }
 
-/// Generates Rust code from a set of flatbuffers definitions.
+/// Generates Rust code.
 ///
 /// Panics on error.
 ///
-/// - `include_dir_path`: path to the root directory of the fbs definition tree.
 /// - `output_crate_path`: path to the root of the output crate.
-/// - `entrypoint_path`: path to the root file of the fbs definition tree.
 ///
 /// E.g.:
 /// ```no_run
-/// re_types_builder::generate_rust_code(
+/// let (object, arrow_registry) = re_types_builder::generate_lang_agnostic(
 ///     "./definitions",
-///     ".",
 ///     "./definitions/rerun/archetypes.fbs",
+/// );
+/// re_types_builder::generate_rust_code(
+///     ".",
+///     &objects,
+///     &arrow_registry,
 /// );
 /// ```
 pub fn generate_rust_code(
-    include_dir_path: impl AsRef<Utf8Path>,
     output_crate_path: impl AsRef<Utf8Path>,
-    entrypoint_path: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
 ) {
-    // passes 1 through 3: bfbs, semantic, arrow registry
-    let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
-
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let _filepaths = gen.generate(&objects, &arrow_registry);
+    let _filepaths = gen.generate(objects, arrow_registry);
 }
 
-/// Generates Python code from a set of flatbuffers definitions.
+/// Generates Python code.
 ///
 /// Panics on error.
 ///
-/// - `include_dir_path`: path to the root directory of the fbs definition tree.
 /// - `output_pkg_path`: path to the root of the output package.
-/// - `entrypoint_path`: path to the root file of the fbs definition tree.
 ///
 /// E.g.:
 /// ```no_run
-/// re_types_builder::generate_python_code(
+/// let (object, arrow_registry) = re_types_builder::generate_lang_agnostic(
 ///     "./definitions",
-///     "./rerun_py",
 ///     "./definitions/rerun/archetypes.fbs",
+/// );
+/// re_types_builder::generate_python_code(
+///     "./rerun_py",
+///     &objects,
+///     &arrow_registry,
 /// );
 /// ```
 pub fn generate_python_code(
-    include_dir_path: impl AsRef<Utf8Path>,
     output_pkg_path: impl AsRef<Utf8Path>,
-    entrypoint_path: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
 ) {
-    // passes 1 through 3: bfbs, semantic, arrow registry
-    let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
-
-    // generate python code
     let mut gen = PythonCodeGenerator::new(output_pkg_path.as_ref());
-    let _filepaths = gen.generate(&objects, &arrow_registry);
+    let _filepaths = gen.generate(objects, arrow_registry);
 }

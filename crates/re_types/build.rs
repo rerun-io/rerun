@@ -16,6 +16,7 @@ use re_build_tools::{
 
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
+const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
 const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
@@ -101,11 +102,11 @@ fn main() {
 
     let sh = Shell::new().unwrap();
 
-    re_types_builder::generate_rust_code(
-        DEFINITIONS_DIR_PATH,
-        RUST_OUTPUT_DIR_PATH,
-        "./definitions/rerun/archetypes.fbs",
-    );
+    // passes 1 through 3: bfbs, semantic, arrow registry
+    let (objects, arrow_registry) =
+        re_types_builder::generate_lang_agnostic(DEFINITIONS_DIR_PATH, ENTRYPOINT_PATH);
+
+    re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry);
 
     // We need to run `cago fmt` several times because it is not idempotent!
     // See https://github.com/rust-lang/rustfmt/issues/5824
@@ -119,11 +120,7 @@ fn main() {
         cmd!(sh, "cargo fmt -p re_types").run().ok();
     }
 
-    re_types_builder::generate_python_code(
-        DEFINITIONS_DIR_PATH,
-        PYTHON_OUTPUT_DIR_PATH,
-        "./definitions/rerun/archetypes.fbs",
-    );
+    re_types_builder::generate_python_code(PYTHON_OUTPUT_DIR_PATH, &objects, &arrow_registry);
 
     let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
         .parent()
