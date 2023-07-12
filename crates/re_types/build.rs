@@ -154,12 +154,6 @@ fn main() {
 }
 
 fn call_black(sh: &Shell, pyproject_path: &String) {
-    // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
-    // not end users.
-    // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
-    // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
-    // the CI!
-
     // NOTE: We're purposefully ignoring the error here.
     //
     // If the user doesn't have `black` in their $PATH, there's still no good reason to fail
