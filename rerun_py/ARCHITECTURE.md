@@ -80,7 +80,7 @@ Contrary to archetypes and components, datatypes occasionally represent complex 
 
 Though a fully automatic generation of an SDK conforming to our stated goals of ease-of-use and Pythonic API is asymptotically feasible, the effort required is disproportionate. The code generator thus offers a number of hooks allowing parts of the SDK to be hand-coded to handle edge cases and fine-tune the user-facing API.
 
-This section covers the available hooks. 
+This section covers the available hooks.
 
 #### Native object init method (`objectname_init()`)
 
