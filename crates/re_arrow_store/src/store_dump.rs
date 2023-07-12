@@ -15,7 +15,7 @@ use crate::{
 impl DataStore {
     /// Serializes the entire datastore into one big sorted [`DataTable`].
     ///
-    /// Individual [`DataRow`]s that were split apart due to bucketing are merged back together.
+    /// Individual [`re_log_types::DataRow`]s that were split apart due to bucketing are merged back together.
     ///
     /// Beware: this is extremely costly, don't use this in hot paths.
     pub fn to_data_table(&self) -> DataTable {
