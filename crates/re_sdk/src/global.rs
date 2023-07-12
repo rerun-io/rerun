@@ -38,32 +38,35 @@ thread_local! {
     static LOCAL_BLUEPRINT_RECORDING: RefCell<Option<RecordingStream>> = RefCell::new(None);
 }
 
-/// Check whether a fork has happened since creating the recording streams.
-/// If so, then we forget our globals.
-pub fn cleanup_if_forked() {
+/// Check whether we are the child of a fork.
+///
+/// If so, then our globals need to be cleaned up because they don't have associated batching
+/// or sink threads. The parent of the fork will continue to process any data in the original
+/// globals so nothing is being lost by doing this.
+pub fn cleanup_if_forked_child() {
     if let Some(global_recording) = RecordingStream::global(StoreKind::Recording) {
-        if global_recording.has_forked() {
+        if global_recording.is_forked_child() {
             re_log::debug!("Fork detected. Forgetting global Recording");
             RecordingStream::forget_global(StoreKind::Recording);
         }
     }
 
     if let Some(global_blueprint) = RecordingStream::global(StoreKind::Blueprint) {
-        if global_blueprint.has_forked() {
+        if global_blueprint.is_forked_child() {
             re_log::debug!("Fork detected. Forgetting global Blueprint");
             RecordingStream::forget_global(StoreKind::Recording);
         }
     }
 
     if let Some(thread_recording) = RecordingStream::thread_local(StoreKind::Recording) {
-        if thread_recording.has_forked() {
+        if thread_recording.is_forked_child() {
             re_log::debug!("Fork detected. Forgetting thread-local Recording");
             RecordingStream::forget_thread_local(StoreKind::Recording);
         }
     }
 
     if let Some(thread_blueprint) = RecordingStream::thread_local(StoreKind::Blueprint) {
-        if thread_blueprint.has_forked() {
+        if thread_blueprint.is_forked_child() {
             re_log::debug!("Fork detected. Forgetting thread-local Blueprint");
             RecordingStream::forget_thread_local(StoreKind::Blueprint);
         }

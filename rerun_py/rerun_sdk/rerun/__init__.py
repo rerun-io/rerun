@@ -158,9 +158,9 @@ def init(
     global _strict_mode
     _strict_mode = strict
 
-    # Always check for fork when calling init.  This should have happened via `_register_on_fork`
-    # but it's worth being conservative.
-    cleanup_if_forked()
+    # Always check whether we are a forked child when calling init.  This should have happened
+    # via `_register_on_fork` but it's worth being conservative.
+    cleanup_if_forked_child()
 
     if init_logging:
         new_recording(
@@ -318,8 +318,8 @@ def unregister_shutdown() -> None:
     atexit.unregister(rerun_shutdown)
 
 
-def cleanup_if_forked() -> None:
-    bindings.cleanup_if_forked()
+def cleanup_if_forked_child() -> None:
+    bindings.cleanup_if_forked_child()
 
 
 def _register_on_fork() -> None:
@@ -327,7 +327,7 @@ def _register_on_fork() -> None:
     try:
         import os
 
-        os.register_at_fork(after_in_child=cleanup_if_forked)
+        os.register_at_fork(after_in_child=cleanup_if_forked_child)
     except NotImplementedError:
         pass
 

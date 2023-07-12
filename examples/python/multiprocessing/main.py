@@ -15,10 +15,12 @@ import rerun as rr  # pip install rerun-sdk
 # decorator to ensure data is flushed when the task completes.
 @rr.shutdown_at_exit
 def task(child_index: int) -> None:
-    # All processes spawned with `multiprocessing` will automatically
-    # be assigned the same default recording_id.
-    # We just need to connect each process to the the rerun viewer:
+    # In the new process, we always need to call init with the same application id.
+    # The internal recording-id is carried over from the parent process, so all
+    # of these processes will have their log data merged in the viewer.
     rr.init("multiprocessing")
+
+    # We then have to connect to the viewer instance.
     rr.connect()
 
     title = f"task {child_index}"

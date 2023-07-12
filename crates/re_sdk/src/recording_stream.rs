@@ -355,7 +355,7 @@ struct RecordingStreamInner {
 
 impl Drop for RecordingStreamInner {
     fn drop(&mut self) {
-        if self.has_forked() {
+        if self.is_forked_child() {
             re_log::error_once!("Fork detected while dropping RecordingStreamInner. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
             return;
         }
@@ -422,7 +422,7 @@ impl RecordingStreamInner {
     }
 
     #[inline]
-    pub fn has_forked(&self) -> bool {
+    pub fn is_forked_child(&self) -> bool {
         self.pid_at_creation != std::process::id()
     }
 }
@@ -611,10 +611,10 @@ impl RecordingStream {
     /// It is essential that [`crate::cleanup_if_forked`] be called after forking the process. SDK-implementations
     /// should do this during their initialization phase.
     #[inline]
-    pub fn has_forked(&self) -> bool {
+    pub fn is_forked_child(&self) -> bool {
         (*self.inner)
             .as_ref()
-            .map_or(false, |inner| inner.has_forked())
+            .map_or(false, |inner| inner.is_forked_child())
     }
 }
 
@@ -762,7 +762,7 @@ impl RecordingStream {
     ///
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_blocking(&self) {
-        if self.has_forked() {
+        if self.is_forked_child() {
             re_log::error_once!("Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
             return;
         }
