@@ -128,12 +128,6 @@ fn main() {
     // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
     // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
     // the CI!
-
-    // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
-    // not end users.
-    // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
-    // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
-    // the CI!
     //
     // The order below is important and sadly we need to call black twice. Ruff does not yet
     // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
