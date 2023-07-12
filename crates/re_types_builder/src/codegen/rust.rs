@@ -243,7 +243,7 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
                 let content_end = content_start + off;
                 new_code.push_str(&code[i..doc_start]);
                 new_code.push_str("/// ");
-                new_code.push_str(&code[content_start..content_end]);
+                unescape_string_into(&code[content_start..content_end], &mut new_code);
                 new_code.push('\n');
 
                 i = content_end + end_pattern.len();
@@ -260,6 +260,27 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
         break;
     }
     new_code
+}
+
+fn unescape_string_into(input: &str, output: &mut String) {
+    let mut chars = input.chars();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            let c = chars.next().expect("Trailing backslash");
+            match c {
+                'n' => output.push('\n'),
+                'r' => output.push('\r'),
+                't' => output.push('\t'),
+                '\\' => output.push('\\'),
+                '"' => output.push('"'),
+                '\'' => output.push('\''),
+                _ => panic!("Unknown escape sequence: \\{c}"),
+            }
+        } else {
+            output.push(c);
+        }
+    }
 }
 
 // --- Codegen core loop ---
