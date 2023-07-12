@@ -1661,6 +1661,10 @@ fn quote_arrow_deserializer(
                         })?;
 
                     if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
                         Vec::new()
                     } else {
                         let (#data_src_fields, #data_src_arrays, #data_src_bitmap) =
@@ -1750,6 +1754,10 @@ fn quote_arrow_deserializer(
                         })?;
 
                     if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
                         Vec::new()
                     } else {
                         let (#data_src_types, #data_src_arrays, #data_src_offsets) =
@@ -1875,6 +1883,10 @@ fn quote_arrow_field_deserializer(
                     .unwrap(); // safe
 
                 if #data_src.is_empty() {
+                    // NOTE: The outer container is empty and so we already know that the end result
+                    // is also going to be an empty vec.
+                    // Early out right now rather than waste time computing possibly many empty
+                    // datastructures for all of our children.
                     Vec::new()
                 } else {
                     let bitmap = #data_src.validity().cloned();
@@ -1934,6 +1946,10 @@ fn quote_arrow_field_deserializer(
                     .unwrap(); // safe
 
                 if #data_src.is_empty() {
+                    // NOTE: The outer container is empty and so we already know that the end result
+                    // is also going to be an empty vec.
+                    // Early out right now rather than waste time computing possibly many empty
+                    // datastructures for all of our children.
                     Vec::new()
                 } else {
                     let bitmap = #data_src.validity().cloned();
