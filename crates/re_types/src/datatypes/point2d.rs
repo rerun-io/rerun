@@ -33,9 +33,10 @@ impl<'a> From<&'a Point2D> for ::std::borrow::Cow<'a, Point2D> {
     }
 }
 
-impl crate::Datatype for Point2D {
+impl crate::Loggable for Point2D {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.Point2D")
     }
 
@@ -67,7 +68,7 @@ impl crate::Datatype for Point2D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -158,7 +159,7 @@ impl crate::Datatype for Point2D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -218,3 +219,5 @@ impl crate::Datatype for Point2D {
         })
     }
 }
+
+impl crate::Datatype for Point2D {}

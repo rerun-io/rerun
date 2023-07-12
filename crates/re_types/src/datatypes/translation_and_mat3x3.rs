@@ -42,9 +42,10 @@ impl<'a> From<&'a TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAn
     }
 }
 
-impl crate::Datatype for TranslationAndMat3x3 {
+impl crate::Loggable for TranslationAndMat3x3 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.TranslationAndMat3x3")
     }
 
@@ -98,7 +99,7 @@ impl crate::Datatype for TranslationAndMat3x3 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -298,7 +299,7 @@ impl crate::Datatype for TranslationAndMat3x3 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -393,3 +394,5 @@ impl crate::Datatype for TranslationAndMat3x3 {
         })
     }
 }
+
+impl crate::Datatype for TranslationAndMat3x3 {}

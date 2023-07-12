@@ -45,9 +45,10 @@ impl<'a> From<&'a TranslationRotationScale3D>
     }
 }
 
-impl crate::Datatype for TranslationRotationScale3D {
+impl crate::Loggable for TranslationRotationScale3D {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.TranslationRotationScale3D")
     }
 
@@ -187,7 +188,7 @@ impl crate::Datatype for TranslationRotationScale3D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -373,7 +374,7 @@ impl crate::Datatype for TranslationRotationScale3D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -455,3 +456,5 @@ impl crate::Datatype for TranslationRotationScale3D {
         })
     }
 }
+
+impl crate::Datatype for TranslationRotationScale3D {}

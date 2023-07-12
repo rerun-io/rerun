@@ -36,9 +36,10 @@ impl<'a> From<&'a Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
     }
 }
 
-impl crate::Datatype for Rotation3D {
+impl crate::Loggable for Rotation3D {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.Rotation3D")
     }
 
@@ -120,7 +121,7 @@ impl crate::Datatype for Rotation3D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -274,7 +275,7 @@ impl crate::Datatype for Rotation3D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -352,3 +353,5 @@ impl crate::Datatype for Rotation3D {
         })
     }
 }
+
+impl crate::Datatype for Rotation3D {}

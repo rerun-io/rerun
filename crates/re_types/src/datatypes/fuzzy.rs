@@ -31,9 +31,10 @@ impl<'a> From<&'a FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
     }
 }
 
-impl crate::Datatype for FlattenedScalar {
+impl crate::Loggable for FlattenedScalar {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.FlattenedScalar")
     }
 
@@ -57,7 +58,7 @@ impl crate::Datatype for FlattenedScalar {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -121,7 +122,7 @@ impl crate::Datatype for FlattenedScalar {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -172,6 +173,8 @@ impl crate::Datatype for FlattenedScalar {
     }
 }
 
+impl crate::Datatype for FlattenedScalar {}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
@@ -199,9 +202,10 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer1 {
+impl crate::Loggable for AffixFuzzer1 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer1")
     }
 
@@ -295,7 +299,7 @@ impl crate::Datatype for AffixFuzzer1 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -798,7 +802,7 @@ impl crate::Datatype for AffixFuzzer1 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -1099,6 +1103,8 @@ impl crate::Datatype for AffixFuzzer1 {
     }
 }
 
+impl crate::Datatype for AffixFuzzer1 {}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer2(pub Option<f32>);
 
@@ -1116,9 +1122,10 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer2 {
+impl crate::Loggable for AffixFuzzer2 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer2")
     }
 
@@ -1137,7 +1144,7 @@ impl crate::Datatype for AffixFuzzer2 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -1182,7 +1189,7 @@ impl crate::Datatype for AffixFuzzer2 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
@@ -1195,6 +1202,8 @@ impl crate::Datatype for AffixFuzzer2 {
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Datatype for AffixFuzzer2 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer3 {
@@ -1218,9 +1227,10 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer3 {
+impl crate::Loggable for AffixFuzzer3 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer3")
     }
 
@@ -1356,7 +1366,7 @@ impl crate::Datatype for AffixFuzzer3 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -1690,7 +1700,7 @@ impl crate::Datatype for AffixFuzzer3 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -1930,6 +1940,8 @@ impl crate::Datatype for AffixFuzzer3 {
     }
 }
 
+impl crate::Datatype for AffixFuzzer3 {}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer4 {
     SingleRequired(crate::datatypes::AffixFuzzer3),
@@ -1951,9 +1963,10 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer4 {
+impl crate::Loggable for AffixFuzzer4 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer4")
     }
 
@@ -2356,7 +2369,7 @@ impl crate::Datatype for AffixFuzzer4 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -2844,7 +2857,7 @@ impl crate::Datatype for AffixFuzzer4 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -3286,6 +3299,8 @@ impl crate::Datatype for AffixFuzzer4 {
     }
 }
 
+impl crate::Datatype for AffixFuzzer4 {}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::datatypes::AffixFuzzer4>,
@@ -3305,9 +3320,10 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
     }
 }
 
-impl crate::Datatype for AffixFuzzer5 {
+impl crate::Loggable for AffixFuzzer5 {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer5")
     }
 
@@ -3715,7 +3731,7 @@ impl crate::Datatype for AffixFuzzer5 {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -3784,7 +3800,7 @@ impl crate::Datatype for AffixFuzzer5 {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
@@ -3826,3 +3842,5 @@ impl crate::Datatype for AffixFuzzer5 {
         })
     }
 }
+
+impl crate::Datatype for AffixFuzzer5 {}
