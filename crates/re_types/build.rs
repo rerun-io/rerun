@@ -124,6 +124,13 @@ fn main() {
         .to_string_lossy()
         .to_string();
 
+    // TODO(emilk): format the python code _before_ writing them to file instead,
+    // just like we do with C++ and Rust.
+    // This should be doable py piping the code of each file to black/ruff via stdin.
+    // Why? Right now the python code is written once, then changed, which means
+    // it is in flux while building, which creates weird phantom git diffs for a few seconds,
+    // and also update the modified file stamps.
+
     // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
     // not end users.
     // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
