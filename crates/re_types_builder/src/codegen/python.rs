@@ -453,10 +453,6 @@ impl QuotedObject {
                 (String::new(), String::new())
             };
 
-            if !init_func.is_empty() {
-                code.push_text(format!("__init__ = {init_func}"), 2, 4);
-            }
-
             let superclass = match *kind {
                 ObjectKind::Archetype => "(Archetype)",
                 ObjectKind::Component | ObjectKind::Datatype => "",

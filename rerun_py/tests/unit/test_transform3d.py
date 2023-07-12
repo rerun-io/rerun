@@ -36,9 +36,9 @@ ROTATION_3D_INPUT = [
     [1, 2, 3, 4],
     [1.0, 2.0, 3.0, 4.0],
     np.array([1, 2, 3, 4]),
-    rr_dt.Quaternion([1, 2, 3, 4]),
-    rr_dt.Quaternion([1.0, 2.0, 3.0, 4.0]),
-    rr_dt.Quaternion(np.array([1, 2, 3, 4])),
+    rr_dt.Quaternion(xyzw=[1, 2, 3, 4]),
+    rr_dt.Quaternion(xyzw=[1.0, 2.0, 3.0, 4.0]),
+    rr_dt.Quaternion(xyzw=np.array([1, 2, 3, 4])),
     # RotationAxisAngle
     rr_dt.RotationAxisAngle([1, 2, 3], 4),
     rr_dt.RotationAxisAngle([1.0, 2.0, 3.0], rr_dt.Angle(4)),
@@ -201,7 +201,9 @@ def test_transform3d_translation_rotation_scale3d_rotation(rot: rr_dt.Rotation3D
     tm = rr_arch.Transform3D(rr_dt.TranslationRotationScale3D(rotation=rot))
 
     assert tm.transform == rr_cmp.Transform3DArray.from_similar(
-        rr_dt.Transform3D(rr_dt.TranslationRotationScale3D(rotation=rr_dt.Rotation3D(rr_dt.Quaternion([1, 2, 3, 4]))))
+        rr_dt.Transform3D(
+            rr_dt.TranslationRotationScale3D(rotation=rr_dt.Rotation3D(rr_dt.Quaternion(xyzw=[1, 2, 3, 4])))
+        )
     ) or tm.transform == rr_cmp.Transform3DArray.from_similar(
         rr_dt.Transform3D(
             rr_dt.TranslationRotationScale3D(

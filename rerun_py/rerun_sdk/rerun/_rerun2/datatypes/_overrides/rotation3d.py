@@ -18,4 +18,4 @@ def rotation3d_inner_converter(
     elif isinstance(data, (Quaternion, RotationAxisAngle)):
         return data
     else:
-        return Quaternion(np.array(data))
+        return Quaternion(xyzw=np.array(data))
