@@ -12,10 +12,10 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A 3D transform"]
+/// A 3D transform
 #[derive(Clone, Debug)]
 pub struct Transform3D {
-    #[doc = "The transform"]
+    /// The transform
     pub transform: crate::components::Transform3D,
 }
 

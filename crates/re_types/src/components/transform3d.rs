@@ -12,10 +12,10 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "An affine transform between two 3D spaces, represented in a given direction."]
+/// An affine transform between two 3D spaces, represented in a given direction.
 #[derive(Clone, Debug)]
 pub struct Transform3D {
-    #[doc = "Representation of the transform."]
+    /// Representation of the transform.
     pub repr: crate::datatypes::Transform3D,
 }
 

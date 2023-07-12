@@ -12,11 +12,11 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A 16-bit ID representing a type of semantic keypoint within a class."]
-#[doc = ""]
-#[doc = "`KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`."]
-#[doc = ""]
-#[doc = "Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`."]
+/// A 16-bit ID representing a type of semantic keypoint within a class.
+///
+/// `KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`.
+///
+/// Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`.
 #[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeypointId(pub u16);
 

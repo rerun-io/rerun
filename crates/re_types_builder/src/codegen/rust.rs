@@ -1,6 +1,9 @@
 //! Implements the Rust codegen pass.
 
-use std::{collections::HashMap, io::Write};
+use std::{
+    collections::{BTreeSet, HashMap},
+    io::Write,
+};
 
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
@@ -36,8 +39,12 @@ impl RustCodeGenerator {
 }
 
 impl CodeGenerator for RustCodeGenerator {
-    fn generate(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<Utf8PathBuf> {
-        let mut filepaths = Vec::new();
+    fn generate(
+        &mut self,
+        objects: &Objects,
+        arrow_registry: &ArrowRegistry,
+    ) -> BTreeSet<Utf8PathBuf> {
+        let mut filepaths = BTreeSet::new();
 
         let datatypes_path = self.crate_path.join("src/datatypes");
         std::fs::create_dir_all(&datatypes_path)
@@ -83,10 +90,10 @@ fn create_files(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     objs: &[&Object],
-) -> Vec<Utf8PathBuf> {
+) -> BTreeSet<Utf8PathBuf> {
     let out_path = out_path.as_ref();
 
-    let mut filepaths = Vec::new();
+    let mut filepaths = BTreeSet::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
@@ -112,7 +119,7 @@ fn create_files(
             .or_default()
             .extend(names);
 
-        filepaths.push(filepath.clone());
+        filepaths.insert(filepath.clone());
         let mut file = std::fs::File::create(&filepath)
             .with_context(|| format!("{filepath:?}"))
             .unwrap();
@@ -150,7 +157,7 @@ fn create_files(
                             .to_string()
                             .replace('}', "}\n\n")
                             .replace("] ;", "];\n\n")
-                            .replace("# [doc", "\n\n#[doc")
+                            .replace("# [doc", "\n\n# [doc")
                             .replace("impl ", "\n\nimpl ");
                         code.push_text(tokens_str, 1, 0);
                         acc = TokenStream::new();
@@ -169,11 +176,14 @@ fn create_files(
                 .to_string()
                 .replace('}', "}\n\n")
                 .replace("] ;", "];\n\n")
-                .replace("# [doc", "\n\n#[doc")
+                .replace("# [doc", "\n\n# [doc")
                 .replace("impl ", "\n\nimpl ");
 
             code.push_text(tokens_str, 1, 0);
         }
+
+        code = replace_doc_attrb_with_doc_comment(&code);
+
         file.write_all(code.as_bytes())
             .with_context(|| format!("{filepath:?}"))
             .unwrap();
@@ -206,13 +216,78 @@ fn create_files(
             code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
         }
 
-        filepaths.push(path.clone());
+        filepaths.insert(path.clone());
         std::fs::write(&path, code)
             .with_context(|| format!("{path:?}"))
             .unwrap();
     }
 
     filepaths
+}
+
+/// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
+/// while also removing trailing whitespace.
+fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
+    // This is difficult to do with regex, because the patterns with newlines overlap.
+
+    let start_pattern = "# [doc = \"";
+    let end_pattern = "\"]"; // assues there is no escaped quote followed by a bracket
+
+    let problematic = r#"\"]"#;
+    assert!(
+        !code.contains(problematic),
+        "The codegen cannot handle the string {problematic} yet"
+    );
+
+    let mut new_code = String::new();
+
+    let mut i = 0;
+    while i < code.len() {
+        if let Some(off) = code[i..].find(start_pattern) {
+            let doc_start = i + off;
+            let content_start = doc_start + start_pattern.len();
+            if let Some(off) = code[content_start..].find(end_pattern) {
+                let content_end = content_start + off;
+                new_code.push_str(&code[i..doc_start]);
+                new_code.push_str("/// ");
+                unescape_string_into(&code[content_start..content_end], &mut new_code);
+                new_code.push('\n');
+
+                i = content_end + end_pattern.len();
+                // Skip trailing whitespace (extra newlines)
+                while matches!(code.as_bytes().get(i), Some(b'\n' | b' ')) {
+                    i += 1;
+                }
+                continue;
+            }
+        }
+
+        // No more doc attributes found
+        new_code.push_str(&code[i..]);
+        break;
+    }
+    new_code
+}
+
+fn unescape_string_into(input: &str, output: &mut String) {
+    let mut chars = input.chars();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            let c = chars.next().expect("Trailing backslash");
+            match c {
+                'n' => output.push('\n'),
+                'r' => output.push('\r'),
+                't' => output.push('\t'),
+                '\\' => output.push('\\'),
+                '"' => output.push('"'),
+                '\'' => output.push('\''),
+                _ => panic!("Unknown escape sequence: \\{c}"),
+            }
+        } else {
+            output.push(c);
+        }
+    }
 }
 
 // --- Codegen core loop ---
@@ -425,7 +500,7 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
 
     impl quote::ToTokens for DocCommentTokenizer<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            tokens.extend(self.0.iter().map(|line| quote!(#[doc = #line])));
+            tokens.extend(self.0.iter().map(|line| quote!(# [doc = #line])));
         }
     }
 

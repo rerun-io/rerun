@@ -12,19 +12,19 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "Representation of an affine transform via a 3x3 affine matrix paired with a translation."]
-#[doc = ""]
-#[doc = "First applies the matrix, then the translation."]
+/// Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+///
+/// First applies the matrix, then the translation.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct TranslationAndMat3x3 {
-    #[doc = "3D translation, applied after the matrix."]
+    /// 3D translation, applied after the matrix.
     pub translation: Option<crate::datatypes::Vec3D>,
 
-    #[doc = "3x3 matrix for scale, rotation & shear."]
+    /// 3x3 matrix for scale, rotation & shear.
     pub matrix: Option<crate::datatypes::Mat3x3>,
 
-    #[doc = "If true, the transform maps from the parent space to the space where the transform was logged."]
-    #[doc = "Otherwise, the transform maps from the space to its parent."]
+    /// If true, the transform maps from the parent space to the space where the transform was logged.
+    /// Otherwise, the transform maps from the space to its parent.
     pub from_parent: bool,
 }
 
