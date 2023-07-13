@@ -14,8 +14,8 @@ use re_space_view::controls::{
     ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
 use re_viewer_context::{
-    gpu_bridge, HoveredSpace, Item, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    gpu_bridge, HoveredSpace, Item, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use crate::{

@@ -2,8 +2,8 @@ use re_log_types::{Component, EntityPath};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext,
+    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext,
 };
 
 use crate::contexts::{SpatialSceneEntityContext, SpatialViewContext};
