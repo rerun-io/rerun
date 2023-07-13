@@ -86,27 +86,27 @@ impl View3DState {
         space_cameras: &[SpaceCamera3D],
         view_coordinates: Option<ViewCoordinates>,
     ) -> &mut OrbitEye {
-        let tracking_camera = self
+        let orbit_camera = self
+            .orbit_eye
+            .get_or_insert_with(|| default_eye(scene_bbox_accum, &view_coordinates));
+
+        // Follow tracked camera if any.
+        if let Some(tracking_camera) = self
             .tracked_camera
             .as_ref()
-            .and_then(|c| find_camera(space_cameras, c));
-
-        if let Some(tracking_camera) = tracking_camera {
+            .and_then(|c| find_camera(space_cameras, c))
+        {
+            // While we're still interpolating towards it, we need to continuously update the interpolation target.
             if let Some(cam_interpolation) = &mut self.eye_interpolation {
-                // Update interpolation target:
                 cam_interpolation.target_orbit = None;
                 if cam_interpolation.target_eye != Some(tracking_camera) {
                     cam_interpolation.target_eye = Some(tracking_camera);
                     response.ctx.request_repaint();
                 }
             } else {
-                self.interpolate_to_eye(tracking_camera);
+                orbit_camera.copy_from_eye(&tracking_camera);
             }
         }
-
-        let orbit_camera = self
-            .orbit_eye
-            .get_or_insert_with(|| default_eye(scene_bbox_accum, &view_coordinates));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(

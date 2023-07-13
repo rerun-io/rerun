@@ -92,7 +92,7 @@ impl CodeGenerator for PythonCodeGenerator {
     ) -> BTreeSet<Utf8PathBuf> {
         let mut filepaths = BTreeSet::new();
 
-        let datatypes_path = self.pkg_path.join("datatypes");
+        let datatypes_path = self.pkg_path.join(ObjectKind::Datatype.plural_snake_case());
         let datatype_overrides = load_overrides(&datatypes_path);
         std::fs::create_dir_all(&datatypes_path)
             .with_context(|| format!("{datatypes_path:?}"))
@@ -109,7 +109,9 @@ impl CodeGenerator for PythonCodeGenerator {
             .0,
         );
 
-        let components_path = self.pkg_path.join("components");
+        let components_path = self
+            .pkg_path
+            .join(ObjectKind::Component.plural_snake_case());
         let component_overrides = load_overrides(&components_path);
         std::fs::create_dir_all(&components_path)
             .with_context(|| format!("{components_path:?}"))
@@ -126,7 +128,9 @@ impl CodeGenerator for PythonCodeGenerator {
             .0,
         );
 
-        let archetypes_path = self.pkg_path.join("archetypes");
+        let archetypes_path = self
+            .pkg_path
+            .join(ObjectKind::Archetype.plural_snake_case());
         let archetype_overrides = load_overrides(&archetypes_path);
         std::fs::create_dir_all(&archetypes_path)
             .with_context(|| format!("{archetypes_path:?}"))

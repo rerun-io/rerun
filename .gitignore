@@ -1,8 +1,14 @@
 .DS_Store
 
 # C++ and CMake stuff:
-**/CMakeFiles/
+*.bin
+*.o
 **/build/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/Makefile
+**/cmake_install.cmake
+_deps
 
 # Rust compile target directory:
 **/target

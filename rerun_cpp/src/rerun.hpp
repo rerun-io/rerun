@@ -1,6 +1,12 @@
 // The Rerun C++ SDK.
 #pragma once
 
+// Auto-generated:
+#include "archetypes.hpp"
+#include "components.hpp"
+#include "datatypes.hpp"
+
+// Manually written:
 #include "recording_stream.hpp"
 
 namespace rr {

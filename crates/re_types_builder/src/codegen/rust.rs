@@ -1,9 +1,6 @@
 //! Implements the Rust codegen pass.
 
-use std::{
-    collections::{BTreeSet, HashMap},
-    io::Write,
-};
+use std::collections::{BTreeSet, HashMap};
 
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
@@ -119,11 +116,6 @@ fn create_files(
             .or_default()
             .extend(names);
 
-        filepaths.insert(filepath.clone());
-        let mut file = std::fs::File::create(&filepath)
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
-
         let mut code = String::new();
         #[rustfmt::skip]
         {
@@ -184,9 +176,8 @@ fn create_files(
 
         code = replace_doc_attrb_with_doc_comment(&code);
 
-        file.write_all(code.as_bytes())
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
+        write_file(&filepath, code);
+        filepaths.insert(filepath.clone());
     }
 
     // src/{datatypes|components|archetypes}/mod.rs
@@ -217,12 +208,39 @@ fn create_files(
         }
 
         filepaths.insert(path.clone());
-        std::fs::write(&path, code)
-            .with_context(|| format!("{path:?}"))
-            .unwrap();
+        write_file(&path, code);
     }
 
     filepaths
+}
+
+fn write_file(filepath: &Utf8PathBuf, mut code: String) {
+    // We need to run `cago fmt` several times because it is not idempotent!
+    // See https://github.com/rust-lang/rustfmt/issues/5824
+    for _ in 0..2 {
+        // NOTE: We're purposefully ignoring the error here.
+        //
+        // In the very unlikely chance that the user doesn't have the `fmt` component installed,
+        // there's still no good reason to fail the build.
+        //
+        // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
+
+        use rust_format::Formatter as _;
+        if let Ok(formatted) = rust_format::RustFmt::default().format_str(&code) {
+            code = formatted;
+        }
+    }
+
+    if let Ok(existing) = std::fs::read_to_string(filepath) {
+        if existing == code {
+            // Don't touch the timestamp unnecessarily
+            return;
+        }
+    }
+
+    std::fs::write(filepath, code)
+        .with_context(|| format!("{filepath}"))
+        .unwrap();
 }
 
 /// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
