@@ -191,20 +191,18 @@ def _build_struct_array_from_translation_rotation_scale(
 
 
 def transform3d_native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
-    from .. import Transform3D, Transform3DType, TranslationAndMat3x3, TranslationRotationScale3D
+    from .. import Transform3D, TranslationAndMat3x3, TranslationRotationScale3D
 
     if isinstance(data, Transform3D):
         data = data.inner
 
-    union_type = Transform3DType().storage_type
-
     if isinstance(data, TranslationAndMat3x3):
         discriminant = "TranslationAndMat3x3"
-        repr_type = _union_discriminant_type(union_type, discriminant)
+        repr_type = _union_discriminant_type(data_type, discriminant)
         transform_repr = _build_struct_array_from_translation_mat3x3(data, cast(pa.StructType, repr_type))
     elif isinstance(data, TranslationRotationScale3D):
         discriminant = "TranslationRotationScale"
-        repr_type = _union_discriminant_type(union_type, discriminant)
+        repr_type = _union_discriminant_type(data_type, discriminant)
         transform_repr = _build_struct_array_from_translation_rotation_scale(data, cast(pa.StructType, repr_type))
     else:
         raise ValueError(
@@ -212,7 +210,7 @@ def transform3d_native_to_pa_array(data: Transform3DArrayLike, data_type: pa.Dat
             "`TranslationRotationScale`"
         )
 
-    storage = _build_dense_union(union_type, discriminant, transform_repr)
+    storage = _build_dense_union(data_type, discriminant, transform_repr)
 
     # TODO(clement) enable extension type wrapper
     # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
