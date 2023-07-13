@@ -106,7 +106,7 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
     let mut code = String::new();
     code.push_str(&format!("// {AUTOGEN_WARNING}\n"));
     if let Some(source_path) = source_path {
-        code.push_str(&format!("// Based on {source_path:?}"));
+        code.push_str(&format!("// Based on {source_path:?}\n"));
     }
 
     code.push('\n');
