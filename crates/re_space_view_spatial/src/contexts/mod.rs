@@ -14,55 +14,8 @@ pub use transform_context::{pinhole_camera_view_coordinates, TransformContext};
 
 // -----------------------------------------------------------------------------
 
-use re_log_types::EntityPath;
 use re_renderer::DepthOffset;
-use re_viewer_context::{
-    Annotations, SpaceViewClassRegistryError, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewContextSystem,
-};
-
-///
-pub struct SpatialViewContext<'a> {
-    pub transforms: &'a TransformContext,
-    pub depth_offsets: &'a EntityDepthOffsets,
-    pub annotations: &'a AnnotationSceneContext,
-    pub shared_render_builders: &'a SharedRenderBuilders,
-    pub non_interactive_entities: &'a NonInteractiveEntities,
-    pub counter: &'a PrimitiveCounter,
-}
-
-impl<'a> SpatialViewContext<'a> {
-    pub fn new(context: &'a ViewContextCollection) -> Result<Self, SpaceViewSystemExecutionError> {
-        Ok(Self {
-            transforms: context.get::<TransformContext>()?,
-            depth_offsets: context.get::<EntityDepthOffsets>()?,
-            annotations: context.get::<AnnotationSceneContext>()?,
-            shared_render_builders: context.get::<SharedRenderBuilders>()?,
-            non_interactive_entities: context.get::<NonInteractiveEntities>()?,
-            counter: context.get::<PrimitiveCounter>()?,
-        })
-    }
-
-    pub fn lookup_entity_context(
-        &'a self,
-        ent_path: &EntityPath,
-        highlights: &'a re_viewer_context::SpaceViewHighlights,
-        default_depth_offset: DepthOffset,
-    ) -> Option<SpatialSceneEntityContext<'a>> {
-        Some(SpatialSceneEntityContext {
-            world_from_obj: self.transforms.reference_from_entity(ent_path)?,
-            depth_offset: *self
-                .depth_offsets
-                .per_entity
-                .get(&ent_path.hash())
-                .unwrap_or(&default_depth_offset),
-            annotations: self.annotations.0.find(ent_path),
-            shared_render_builders: self.shared_render_builders,
-            highlight: highlights.entity_outline_mask(ent_path.hash()),
-            ctx: self,
-        })
-    }
-}
+use re_viewer_context::{Annotations, SpaceViewClassRegistryError, ViewContextSystem};
 
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {
@@ -70,11 +23,12 @@ pub struct SpatialSceneEntityContext<'a> {
     pub depth_offset: DepthOffset,
     pub annotations: std::sync::Arc<Annotations>,
     pub shared_render_builders: &'a SharedRenderBuilders,
-    pub highlight: &'a re_viewer_context::SpaceViewOutlineMasks, // Not part of the context, but convenient to have here.
+    pub counter: &'a PrimitiveCounter,
 
-    pub ctx: &'a SpatialViewContext<'a>,
+    pub highlight: &'a re_viewer_context::SpaceViewOutlineMasks, // Not part of the context, but convenient to have here.
 }
 
+// TODO(andreas): num_3d_primitives is likely not needed in this form once 2D/3D separation is gone. num_primitives should be handled in a more general way?
 #[derive(Default)]
 pub struct PrimitiveCounter {
     pub num_primitives: AtomicUsize,

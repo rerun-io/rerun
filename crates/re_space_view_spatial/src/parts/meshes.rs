@@ -86,7 +86,6 @@ impl ViewPartSystem for MeshPart {
             self.archetype(),
             |ctx, ent_path, entity_view, ent_context| {
                 ent_context
-                    .ctx
                     .counter
                     .num_3d_primitives
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
