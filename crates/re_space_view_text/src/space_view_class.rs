@@ -122,13 +122,25 @@ impl SpaceViewClass for TextSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let text = parts.get::<TextSystem>()?;
 
+        // TODO(andreas): Should filter text entries in the part-system instead.
+        // this likely requires a way to pass state into a context.
+        let text_entries = text
+            .text_entries
+            .iter()
+            .filter(|te| {
+                te.level
+                    .as_ref()
+                    .map_or(true, |lvl| state.filters.is_log_level_visible(lvl))
+            })
+            .collect::<Vec<_>>();
+
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
             ..egui::Frame::default()
         }
         .show(ui, |ui| {
             // Update filters if necessary.
-            state.filters.update(ctx, &text.text_entries);
+            state.filters.update(ctx, &text_entries);
 
             let time = ctx
                 .rec_cfg
@@ -142,8 +154,7 @@ impl SpaceViewClass for TextSpaceView {
             let time_cursor_moved = state.latest_time != time;
             let scroll_to_row = time_cursor_moved.then(|| {
                 re_tracing::profile_scope!("TextEntryState - search scroll time");
-                text.text_entries
-                    .partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
+                text_entries.partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
             });
 
             state.latest_time = time;
@@ -151,7 +162,7 @@ impl SpaceViewClass for TextSpaceView {
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 egui::ScrollArea::horizontal().show(ui, |ui| {
                     re_tracing::profile_scope!("render table");
-                    table_ui(ctx, ui, state, &text.text_entries, scroll_to_row);
+                    table_ui(ctx, ui, state, &text_entries, scroll_to_row);
                 })
             });
         });
@@ -194,7 +205,7 @@ impl ViewTextFilters {
 
     // Checks whether new values are available for any of the filters, and updates everything
     // accordingly.
-    fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {
+    fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[&TextEntry]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -237,7 +248,7 @@ fn table_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut TextSpaceViewState,
-    text_entries: &[TextEntry],
+    text_entries: &[&TextEntry],
     scroll_to_row: Option<usize>,
 ) {
     let timelines = state
@@ -310,7 +321,7 @@ fn table_ui(
 
             body_clip_rect = Some(body.max_rect());
 
-            let row_heights = text_entries.iter().map(calc_row_height);
+            let row_heights = text_entries.iter().map(|te| calc_row_height(te));
             body.heterogeneous_rows(row_heights, |index, mut row| {
                 let text_entry = &text_entries[index];
 

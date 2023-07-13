@@ -65,14 +65,6 @@ impl ViewPartSystem for TextSystem {
                      color: Option<re_components::ColorRGBA>| {
                         let re_components::TextEntry { body, level } = text_entry;
 
-                        // TODO: Disabled early filter for now since this would require getting the state
-                        // from the space view (via a context?).
-                        //
-                        // Early filtering once more, see above.
-                        // let is_visible = level
-                        //     .as_ref()
-                        //     .map_or(true, |lvl| state.filters.is_log_level_visible(lvl));
-                        // if is_visible {
                         self.text_entries.push(TextEntry {
                             row_id: ent_view.row_id(),
                             entity_path: ent_path.clone(),
