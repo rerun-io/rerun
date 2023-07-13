@@ -85,14 +85,14 @@ Therefore, all 3D content can be displayed in a 2D Space View.
 Vice versa, if an entity in a 3D space defines camera intrinsics, any 2D contents under it can be previewed
 in 3D space. Again, there is no point in putting a limit on what is displayed there.
 
-However, they are more different from a users point of view. 
+However, they are more different from a users point of view.
 
 First of all 3D data is only viewable in 2D if combined with a suitable projection (could be through perspective projection or by dropping the data of one dimension). The fact that 2D views are rendered in a 3D pipeline using some kind of pseudo depth (draw order) and an implicitly defined orthographic camera, is not top of mind to me as a user. This is something you need considerable exposure to graphics or 3D computer vision to experience as immediately obvious.
 
 Second, the expectations around how to navigate a 2D visualization are quite different from how I expect to navigate a 3D visualization.
 
 ### Registering
-Registration happens on startup in the viewer owned `SpaceViewClassRegistry`. 
+Registration happens on startup in the viewer owned `SpaceViewClassRegistry`.
 The viewer registers all builtin Space View Classes and users may add new types at any point in time.
 
 
@@ -142,7 +142,7 @@ As with space view classes themselves, new systems may be added at runtime.
 * default create all registered `ViewPartSystem` into a `ViewPartCollection`
 * execute all `ViewPartSystem`, giving read access to the `ViewContextSystem`
   * this produces a list or `re_renderer` draw data
-* pass all previously assembled objects as read-only into `SpaceViewClass::ui` 
+* pass all previously assembled objects as read-only into `SpaceViewClass::ui`
   * here the actual rendering via egui happens
     * this typically requires iterating over all `ViewPartSystem` and extract some data either in a generic fashion via `ViewPartSystem::data` or with knowledge of the concrete `ViewPartSystem` types
   * currently, we also pass in all `re_renderer` data since the build up of the `re_renderer` view via `ViewBuilder` is not (yet?) unified
