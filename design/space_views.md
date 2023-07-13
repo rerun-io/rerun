@@ -11,20 +11,29 @@ Most Space Views are interactive, allowing their data to be explored freely.
 ## Properties of a Space View
 All properties are saved as part of the blueprint.
 
-Immutable:
+Changing discards Space View State:
 * Space View Class
 * root entity path
 
-Mutable:
+Freely mutable:
 * name
 * positioning within layout
 * class specific properties
 * Data Blueprint
 
-## Role of the root entity path
+## Root entity path
 * root of the transform hierarchy (if any is used)
 * may govern heuristics
-* available at various stages of scene build-up (see below)
+* available at various stages of ui drawing & system execution build-up (see below)
+
+
+## Space View State
+In addition to blueprint stored data, a space view has a class specific `SpaceViewState`
+which stored ephemeral state that is not persisted as part of the blueprint.
+This is typically used for animation/transition state.
+
+⚠️ As of writing, we're using this also for state that *should* be be persisted and needs to be moved to
+blueprint components.
 
 ## Space View Class
 Each Space View refers to an immutable Space View Class, implemented by `SpaceViewClass`.
@@ -82,52 +91,61 @@ First of all 3D data is only viewable in 2D if combined with a suitable projecti
 
 Second, the expectations around how to navigate a 2D visualization are quite different from how I expect to navigate a 3D visualization.
 
-### Space View State
-In addition to blueprint stored data, a space view has a class specific `SpaceViewState`
-which stored ephemeral state that is not persisted as part of the blueprint.
-This is typically used for animation/transition state.
+### Registering
+Registration happens on startup in the viewer owned `SpaceViewClassRegistry`. 
+The viewer registers all builtin Space View Classes and users may add new types at any point in time.
 
-⚠️ As of writing, we're using this also for state that *should* be be persisted and needs to be moved to
-blueprint components.
 
-### `ViewPartSystem`
-A `ViewPartSystem` defines how a given archetype is processed during the scene buildup.
-Every frame, an instance for every registered `ViewPartSystem` is instantiated.
-During instantiation it can access the query results for its archetype and emit `re_renderer` drawables
-as well as custom state that can be processed during the `SpaceViewClass`'s drawing method.
+### Systems
 
-TODO: talk about registration
-TODO: talk about shared state more
-TODO(andreas): Expand drawables concept
+Space View systems are the primary means how a Space View processes entities.
+All Space View systems are instantiated and executed every frame.
+Each System operates on a statically defined set of archetypes.
+Execution is allowed to store arbitrary state for the duration of the frame.
+
+For the moment we have a simple two step framework:
+
+#### `ViewContextSystem`
+Instantiation happens before `ViewPartSystem` and can not emit drawables, only set internal state.
+The results are available during `ViewPartSystem` execution as well as `SpaceViewClass` drawing.
+
+This is used e.g. to prepare the transform tree.
+Each `ViewPartSystem` that knows about this `TransformContext` can then use it to look up transforms.
+
+#### `ViewPartSystem`
+Gathers data from the store and emits `re_renderer` draw data for later use in the `SpaceViewClass`'s ui/drawing method.
+
+For convenience, it provides a `data() -> &Any` method to make it easy to expose results other than `re_renderer` draw data
+in a generic fashion.
+
+Example:
+The `Points2DPart` queries the `Points2D` archetype upon execution and produces as a result `re_renderer::PointCloudDrawData`.
+Since points can have ui labels, it also stores `UiLabel` in its own state which the space view class of `ui`
+can read out via `Points2DPart::data()` to draw ui labels.
 
 Note on naming:
 `ViewPartSystem` was called `ScenePart` in earlier versions since it formed a _part_ of a per-frame built-up _Scene_.
 We discarded _Scene_ since in most applications scenes are permanent and not per-frame.
-However, we determined that they still make up the essential parts of a `SpaceView`.
+However, we determined that they still make up the essential parts of a `SpaceViewClass`.
 Their behavior is a match to what in ECS implementations is referred to as a System -
 i.e. an object or function that queries a set of components (an Archetype) and executes some logic as a result.
 
-### `ViewContextSystem`
-Similarly to `ViewPartSystem`, all registered `ViewContextSystem` are instantiated every frame.
-Instantiation happens before `ViewPartSystem` and can not emit drawables, only set custom data.
-The results are available during `ViewPartSystem` execution.
-This is used e.g. to prepare the transform tree.
-
-TODO: talk about registration
+### Registration
+Registration is done via `SpaceViewSystemRegistry` which `SpaceViewClassRegistry` stores for each class.
+Space view classes can register their built-in systems upon their own registration via their `on_register` method.
+As with space view classes themselves, new systems may be added at runtime.
 
 ### Frame Lifecycle
-TODO: update this
-Each frame, each `SpaceView` instance builds up a scene. The framework defines a fixed lifecycle for all views.
-Given a `SpaceViewClass` `MyClass`:
-* default instantiate a new `TypedScene<MyClass>`
-  * this contains an instance of ``MyClass::SceneParts` and `MyClass::SceneParts::Context`,
-    each of which are collection of default initialized scene parts and contexts respectively
-* `MyClass::prepare_populate()`
-* `TypedScene<MyClass>::populate()`
-  * for each `SceneContextPart` call `populate` (can be parallelized in the future!)
-  * for each `ScenePart` call `populate`, passing in all contexts (can be parallelized in the future!)
-* `SpaceViewClass::ui()`, passing in the now populated `TypedScene<MyClass>` as well as a stored instance of `MyClass::State`
-
+* `SpaceViewClass::prepare_ui`
+* default create all registered `ViewContextSystem` into a `ViewContextCollection`
+* execute all `ViewContextSystem`
+* default create all registered `ViewPartSystem` into a `ViewPartCollection`
+* execute all `ViewPartSystem`, giving read access to the `ViewContextSystem`
+  * this produces a list or `re_renderer` draw data
+* pass all previously assembled objects as read-only into `SpaceViewClass::ui` 
+  * here the actual rendering via egui happens
+    * this typically requires iterating over all `ViewPartSystem` and extract some data either in a generic fashion via `ViewPartSystem::data` or with knowledge of the concrete `ViewPartSystem` types
+  * currently, we also pass in all `re_renderer` data since the build up of the `re_renderer` view via `ViewBuilder` is not (yet?) unified
 
 ### Space View Class Registry
 Despite being few in numbers, Space Views Classes are registered on startup.
@@ -144,6 +162,6 @@ extensibility hooks.
 These user defined Space Views have no limitations over built-in Space Views and are able
 to completely reimplement existing Space Views if desired.
 
-TODO: update and details
-A more common extension point in the future will be extension of the Spatial Space View Classes
-by adding new `ScenePart` to them.
+In the future A more common extension point will be to add custom systems to an existing Space View
+emitting re_renderer drawables.
+(TODO(andreas): We're lacking API hooks and an example for this!)
