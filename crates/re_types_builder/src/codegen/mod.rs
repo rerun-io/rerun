@@ -20,8 +20,10 @@ pub const AUTOGEN_WARNING: &str =
 mod common;
 use self::common::{get_documentation, StringExt};
 
+mod cpp;
 mod python;
 mod rust;
 
+pub use self::cpp::CppCodeGenerator;
 pub use self::python::PythonCodeGenerator;
 pub use self::rust::RustCodeGenerator;

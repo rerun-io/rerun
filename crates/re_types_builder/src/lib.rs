@@ -131,7 +131,7 @@ mod codegen;
 mod objects;
 
 pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
-pub use self::codegen::{CodeGenerator, PythonCodeGenerator, RustCodeGenerator};
+pub use self::codegen::{CodeGenerator, CppCodeGenerator, PythonCodeGenerator, RustCodeGenerator};
 pub use self::objects::{
     Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, Objects, Type,
 };
@@ -250,6 +250,33 @@ pub fn generate_lang_agnostic(
     }
 
     (objects, arrow_registry)
+}
+
+/// Generates C++ code.
+///
+/// Panics on error.
+///
+/// - `output_path`: path to the root of the output.
+///
+/// E.g.:
+/// ```no_run
+/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
+///     "./definitions",
+///     "./definitions/rerun/archetypes.fbs",
+/// );
+/// re_types_builder::generate_cpp_code(
+///     ".",
+///     &objects,
+///     &arrow_registry,
+/// );
+/// ```
+pub fn generate_cpp_code(
+    output_path: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
+) {
+    let mut gen = CppCodeGenerator::new(output_path.as_ref());
+    let _filepaths = gen.generate(objects, arrow_registry);
 }
 
 /// Generates Rust code.

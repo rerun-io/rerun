@@ -207,6 +207,8 @@ pub enum ObjectKind {
 }
 
 impl ObjectKind {
+    pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
+
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
         let pkg_name = pkg_name.as_ref().replace(".testing", "");
@@ -218,6 +220,14 @@ impl ObjectKind {
             ObjectKind::Archetype
         } else {
             panic!("unknown package {pkg_name:?}");
+        }
+    }
+
+    pub fn plural_snake_case(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "datatypes",
+            ObjectKind::Component => "components",
+            ObjectKind::Archetype => "archetypes",
         }
     }
 }
@@ -596,6 +606,45 @@ impl Object {
             .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
             .is_some()
     }
+
+    /// Try to find the relative file path of the `.fbs` source file.
+    pub fn relative_filepath(&self) -> Option<&Utf8Path> {
+        std::env::var("CARGO_MANIFEST_DIR")
+            .ok()
+            .and_then(|manifest_dir| self.filepath.strip_prefix(manifest_dir).ok())
+    }
+
+    /// The `snake_case` name of the object, e.g. `translation_and_mat3x3`.
+    pub fn snake_case_name(&self) -> String {
+        to_snake_case(&self.name)
+    }
+}
+
+fn to_snake_case(s: &str) -> String {
+    // Other crates (convert_case, case, heck, …) all get this wrong. See unit test.
+    let mut last_char: Option<char> = None;
+
+    let mut out = String::new();
+    for c in s.chars() {
+        if let Some(last_char) = last_char {
+            if last_char.is_lowercase() && c.is_uppercase() {
+                out.push('_');
+            }
+        }
+        out.push(c.to_ascii_lowercase());
+        last_char = Some(c);
+    }
+
+    out
+}
+
+#[test]
+fn test_snake_case() {
+    assert_eq!(to_snake_case("Point2D"), "point2d");
+    assert_eq!(
+        to_snake_case("TranslationAndMat3x3"),
+        "translation_and_mat3x3"
+    );
 }
 
 /// Properties specific to either structs or unions, but not both.

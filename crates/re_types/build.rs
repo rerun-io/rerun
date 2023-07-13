@@ -18,6 +18,7 @@ const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
 const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
 const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
+const CPP_OUTPUT_DIR_PATH: &str = "../../rerun_cpp/src";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
 
@@ -100,27 +101,24 @@ fn main() {
         panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 
-    let sh = Shell::new().unwrap();
-
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(DEFINITIONS_DIR_PATH, ENTRYPOINT_PATH);
 
-    re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry);
+    join3(
+        || re_types_builder::generate_cpp_code(CPP_OUTPUT_DIR_PATH, &objects, &arrow_registry),
+        || re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry),
+        || generate_and_format_python_code(&objects, &arrow_registry),
+    );
 
-    // We need to run `cago fmt` several times because it is not idempotent!
-    // See https://github.com/rust-lang/rustfmt/issues/5824
-    for _ in 0..2 {
-        // NOTE: We're purposefully ignoring the error here.
-        //
-        // In the very unlikely chance that the user doesn't have the `fmt` component installed,
-        // there's still no good reason to fail the build.
-        //
-        // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
-        cmd!(sh, "cargo fmt -p re_types").run().ok();
-    }
+    write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+}
 
-    re_types_builder::generate_python_code(PYTHON_OUTPUT_DIR_PATH, &objects, &arrow_registry);
+fn generate_and_format_python_code(
+    objects: &re_types_builder::Objects,
+    arrow_registry: &re_types_builder::ArrowRegistry,
+) {
+    re_types_builder::generate_python_code(PYTHON_OUTPUT_DIR_PATH, objects, arrow_registry);
 
     let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
         .parent()
@@ -132,6 +130,13 @@ fn main() {
         .join("pyproject.toml")
         .to_string_lossy()
         .to_string();
+
+    // TODO(emilk): format the python code _before_ writing them to file instead,
+    // just like we do with C++ and Rust.
+    // This should be doable py piping the code of each file to black/ruff via stdin.
+    // Why? Right now the python code is written once, then changed, which means
+    // it is in flux while building, which creates weird phantom git diffs for a few seconds,
+    // and also update the modified file stamps.
 
     // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
     // not end users.
@@ -146,11 +151,15 @@ fn main() {
     // 2) Call ruff, which requires line-lengths to be correct
     // 3) Call black again to cleanup some whitespace issues ruff might introduce
 
+    let sh = Shell::new().unwrap();
     call_black(&sh, &pyproject_path);
     call_ruff(&sh, &pyproject_path);
     call_black(&sh, &pyproject_path);
+}
 
-    write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+// Do 3 things in parallel
+fn join3(a: impl FnOnce() + Send, b: impl FnOnce() + Send, c: impl FnOnce() + Send) {
+    rayon::join(a, || rayon::join(b, c));
 }
 
 fn call_black(sh: &Shell, pyproject_path: &String) {
