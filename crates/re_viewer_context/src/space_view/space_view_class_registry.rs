@@ -128,10 +128,10 @@ pub struct SpaceViewClassRegistry {
 }
 
 impl SpaceViewClassRegistry {
-    /// Adds a new space view type.
+    /// Adds a new space view class.
     ///
-    /// Fails if a space view type with the same name was already registered.
-    pub fn add<T: DynSpaceViewClass + Default + 'static>(
+    /// Fails if a space view class with the same name was already registered.
+    pub fn add_class<T: DynSpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         let mut entry = SpaceViewClassRegistryEntry {
