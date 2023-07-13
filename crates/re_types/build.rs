@@ -21,6 +21,7 @@ const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
 const CPP_OUTPUT_DIR_PATH: &str = "../../rerun_cpp/src";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
+const PYTHON_PYPROJECT_PATH: &str = "../../rerun_py/pyproject.toml";
 
 // located in PYTHON_OUTPUT_DIR_PATH
 const ARCHETYPE_OVERRIDES_SUB_DIR_PATH: &str = "archetypes/_overrides";
@@ -120,17 +121,6 @@ fn generate_and_format_python_code(
 ) {
     re_types_builder::generate_python_code(PYTHON_OUTPUT_DIR_PATH, objects, arrow_registry);
 
-    let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("pyproject.toml")
-        .to_string_lossy()
-        .to_string();
-
     // TODO(emilk): format the python code _before_ writing them to file instead,
     // just like we do with C++ and Rust.
     // This should be doable py piping the code of each file to black/ruff via stdin.
@@ -152,9 +142,9 @@ fn generate_and_format_python_code(
     // 3) Call black again to cleanup some whitespace issues ruff might introduce
 
     let sh = Shell::new().unwrap();
-    call_black(&sh, &pyproject_path);
-    call_ruff(&sh, &pyproject_path);
-    call_black(&sh, &pyproject_path);
+    call_black(&sh);
+    call_ruff(&sh);
+    call_black(&sh);
 }
 
 // Do 3 things in parallel
@@ -162,7 +152,7 @@ fn join3(a: impl FnOnce() + Send, b: impl FnOnce() + Send, c: impl FnOnce() + Se
     rayon::join(a, || rayon::join(b, c));
 }
 
-fn call_black(sh: &Shell, pyproject_path: &String) {
+fn call_black(sh: &Shell) {
     // NOTE: We're purposefully ignoring the error here.
     //
     // If the user doesn't have `black` in their $PATH, there's still no good reason to fail
@@ -171,13 +161,13 @@ fn call_black(sh: &Shell, pyproject_path: &String) {
     // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
     cmd!(
         sh,
-        "black --config {pyproject_path} {PYTHON_OUTPUT_DIR_PATH}"
+        "black --config {PYTHON_PYPROJECT_PATH} {PYTHON_OUTPUT_DIR_PATH}"
     )
     .run()
     .ok();
 }
 
-fn call_ruff(sh: &Shell, pyproject_path: &String) {
+fn call_ruff(sh: &Shell) {
     // NOTE: We're purposefully ignoring the error here.
     //
     // If the user doesn't have `ruff` in their $PATH, there's still no good reason to fail
@@ -186,7 +176,7 @@ fn call_ruff(sh: &Shell, pyproject_path: &String) {
     // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
     cmd!(
         sh,
-        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
+        "ruff --config {PYTHON_PYPROJECT_PATH} --fix {PYTHON_OUTPUT_DIR_PATH}"
     )
     .run()
     .ok();

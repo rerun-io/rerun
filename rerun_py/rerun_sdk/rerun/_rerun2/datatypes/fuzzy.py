@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -15,6 +15,9 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from .._converters import (
+    bool_or_none,
+    float_or_none,
+    str_or_none,
     to_np_float32,
 )
 
@@ -54,25 +57,20 @@ __all__ = [
 
 @define
 class FlattenedScalar:
-    value: float = field()
+    value: float = field(converter=float)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:
         return float(self.value)
 
 
-if TYPE_CHECKING:
-    FlattenedScalarLike = FlattenedScalar
-
-    FlattenedScalarArrayLike = Union[
-        FlattenedScalar,
-        Sequence[FlattenedScalarLike],
-    ]
-else:
-    FlattenedScalarLike = Any
-    FlattenedScalarArrayLike = Any
+FlattenedScalarLike = FlattenedScalar
+FlattenedScalarArrayLike = Union[
+    FlattenedScalar,
+    Sequence[FlattenedScalarLike],
+]
 
 
 # --- Arrow support ---
@@ -100,29 +98,33 @@ FlattenedScalarType._ARRAY_TYPE = FlattenedScalarArray
 # pa.register_extension_type(FlattenedScalarType())
 
 
+def _affixfuzzer1_almost_flattened_scalar_converter(x: datatypes.FlattenedScalarLike) -> datatypes.FlattenedScalar:
+    if isinstance(x, datatypes.FlattenedScalar):
+        return x
+    else:
+        return datatypes.FlattenedScalar(x)
+
+
 @define
 class AffixFuzzer1:
-    single_string_required: str = field()
+    single_string_required: str = field(converter=str)
     many_strings_required: list[str] = field()
-    flattened_scalar: float = field()
-    almost_flattened_scalar: datatypes.FlattenedScalar = field()
-    single_float_optional: float | None = field(default=None)
-    single_string_optional: str | None = field(default=None)
+    flattened_scalar: float = field(converter=float)
+    almost_flattened_scalar: datatypes.FlattenedScalar = field(
+        converter=_affixfuzzer1_almost_flattened_scalar_converter
+    )
+    single_float_optional: float | None = field(default=None, converter=float_or_none)
+    single_string_optional: str | None = field(default=None, converter=str_or_none)
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
     many_strings_optional: list[str] | None = field(default=None)
-    from_parent: bool | None = field(default=None)
+    from_parent: bool | None = field(default=None, converter=bool_or_none)
 
 
-if TYPE_CHECKING:
-    AffixFuzzer1Like = AffixFuzzer1
-
-    AffixFuzzer1ArrayLike = Union[
-        AffixFuzzer1,
-        Sequence[AffixFuzzer1Like],
-    ]
-else:
-    AffixFuzzer1Like = Any
-    AffixFuzzer1ArrayLike = Any
+AffixFuzzer1Like = AffixFuzzer1
+AffixFuzzer1ArrayLike = Union[
+    AffixFuzzer1,
+    Sequence[AffixFuzzer1Like],
+]
 
 
 # --- Arrow support ---
@@ -168,22 +170,17 @@ AffixFuzzer1Type._ARRAY_TYPE = AffixFuzzer1Array
 
 @define
 class AffixFuzzer2:
-    single_float_optional: float | None = field(default=None)
+    single_float_optional: float | None = field(default=None, converter=float_or_none)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.single_float_optional, dtype=dtype)
 
 
-if TYPE_CHECKING:
-    AffixFuzzer2Like = AffixFuzzer2
-
-    AffixFuzzer2ArrayLike = Union[
-        AffixFuzzer2,
-        Sequence[AffixFuzzer2Like],
-    ]
-else:
-    AffixFuzzer2Like = Any
-    AffixFuzzer2ArrayLike = Any
+AffixFuzzer2Like = AffixFuzzer2
+AffixFuzzer2ArrayLike = Union[
+    AffixFuzzer2,
+    Sequence[AffixFuzzer2Like],
+]
 
 
 # --- Arrow support ---
@@ -211,23 +208,37 @@ AffixFuzzer2Type._ARRAY_TYPE = AffixFuzzer2Array
 
 @define
 class AffixFuzzer3:
-    degrees: float | None = None
-    radians: float | None = None
-    craziness: list[datatypes.AffixFuzzer1] | None = None
-    fixed_size_shenanigans: npt.NDArray[np.float32] | None = None
+    inner: Union[float, list[datatypes.AffixFuzzer1], npt.NDArray[np.float32]] = field()
+    """
+    degrees (float):
+
+    radians (float):
+
+    craziness (list[datatypes.AffixFuzzer1]):
+
+    fixed_size_shenanigans (npt.NDArray[np.float32]):
+    """
+
+    kind: Literal["degrees", "radians", "craziness", "fixed_size_shenanigans"] = field(default="degrees")
 
 
 if TYPE_CHECKING:
-    AffixFuzzer3Like = AffixFuzzer3
-
+    AffixFuzzer3Like = Union[
+        AffixFuzzer3,
+        float,
+        list[datatypes.AffixFuzzer1],
+        npt.NDArray[np.float32],
+    ]
     AffixFuzzer3ArrayLike = Union[
         AffixFuzzer3,
+        float,
+        list[datatypes.AffixFuzzer1],
+        npt.NDArray[np.float32],
         Sequence[AffixFuzzer3Like],
     ]
 else:
     AffixFuzzer3Like = Any
     AffixFuzzer3ArrayLike = Any
-
 
 # --- Arrow support ---
 
@@ -311,22 +322,33 @@ AffixFuzzer3Type._ARRAY_TYPE = AffixFuzzer3Array
 
 @define
 class AffixFuzzer4:
-    single_required: datatypes.AffixFuzzer3 | None = None
-    many_required: list[datatypes.AffixFuzzer3] | None = None
-    many_optional: list[datatypes.AffixFuzzer3] | None = None
+    inner: Union[datatypes.AffixFuzzer3, list[datatypes.AffixFuzzer3]] = field()
+    """
+    single_required (datatypes.AffixFuzzer3):
+
+    many_required (list[datatypes.AffixFuzzer3]):
+
+    many_optional (list[datatypes.AffixFuzzer3]):
+    """
+
+    kind: Literal["single_required", "many_required", "many_optional"] = field(default="single_required")
 
 
 if TYPE_CHECKING:
-    AffixFuzzer4Like = AffixFuzzer4
-
+    AffixFuzzer4Like = Union[
+        AffixFuzzer4,
+        datatypes.AffixFuzzer3,
+        list[datatypes.AffixFuzzer3],
+    ]
     AffixFuzzer4ArrayLike = Union[
         AffixFuzzer4,
+        datatypes.AffixFuzzer3,
+        list[datatypes.AffixFuzzer3],
         Sequence[AffixFuzzer4Like],
     ]
 else:
     AffixFuzzer4Like = Any
     AffixFuzzer4ArrayLike = Any
-
 
 # --- Arrow support ---
 
@@ -558,21 +580,29 @@ AffixFuzzer4Type._ARRAY_TYPE = AffixFuzzer4Array
 # pa.register_extension_type(AffixFuzzer4Type())
 
 
+def _affixfuzzer5_single_optional_union_converter(
+    x: datatypes.AffixFuzzer4Like | None,
+) -> datatypes.AffixFuzzer4 | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.AffixFuzzer4):
+        return x
+    else:
+        return datatypes.AffixFuzzer4(x)
+
+
 @define
 class AffixFuzzer5:
-    single_optional_union: datatypes.AffixFuzzer4 | None = field(default=None)
+    single_optional_union: datatypes.AffixFuzzer4 | None = field(
+        default=None, converter=_affixfuzzer5_single_optional_union_converter
+    )
 
 
-if TYPE_CHECKING:
-    AffixFuzzer5Like = AffixFuzzer5
-
-    AffixFuzzer5ArrayLike = Union[
-        AffixFuzzer5,
-        Sequence[AffixFuzzer5Like],
-    ]
-else:
-    AffixFuzzer5Like = Any
-    AffixFuzzer5ArrayLike = Any
+AffixFuzzer5Like = AffixFuzzer5
+AffixFuzzer5ArrayLike = Union[
+    AffixFuzzer5,
+    Sequence[AffixFuzzer5Like],
+]
 
 
 # --- Arrow support ---

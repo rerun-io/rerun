@@ -5,13 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
-from attrs import define
+from attrs import define, field
 
 from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from ._overrides import transform3d_native_to_pa_array  # noqa: F401
 
 __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform3DLike", "Transform3DType"]
 
@@ -20,21 +21,29 @@ __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform
 class Transform3D:
     """Representation of a 3D affine transform."""
 
-    TranslationAndMat3x3: datatypes.TranslationAndMat3x3 | None = None
-    TranslationRotationScale: datatypes.TranslationRotationScale3D | None = None
+    inner: Union[datatypes.TranslationAndMat3x3, datatypes.TranslationRotationScale3D] = field()
+    """
+    TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):
+
+    TranslationRotationScale (datatypes.TranslationRotationScale3D):
+    """
 
 
 if TYPE_CHECKING:
-    Transform3DLike = Transform3D
-
+    Transform3DLike = Union[
+        Transform3D,
+        datatypes.TranslationAndMat3x3,
+        datatypes.TranslationRotationScale3D,
+    ]
     Transform3DArrayLike = Union[
         Transform3D,
+        datatypes.TranslationAndMat3x3,
+        datatypes.TranslationRotationScale3D,
         Sequence[Transform3DLike],
     ]
 else:
     Transform3DLike = Any
     Transform3DArrayLike = Any
-
 
 # --- Arrow support ---
 
@@ -53,7 +62,7 @@ class Transform3DType(BaseExtensionType):
                                     "translation", pa.list_(pa.field("item", pa.float32(), False, {}), 3), True, {}
                                 ),
                                 pa.field("matrix", pa.list_(pa.field("item", pa.float32(), False, {}), 9), True, {}),
-                                pa.field("from_parent", pa.bool_(), True, {}),
+                                pa.field("from_parent", pa.bool_(), False, {}),
                             ]
                         ),
                         False,
@@ -123,7 +132,7 @@ class Transform3DType(BaseExtensionType):
                                     True,
                                     {},
                                 ),
-                                pa.field("from_parent", pa.bool_(), True, {}),
+                                pa.field("from_parent", pa.bool_(), False, {}),
                             ]
                         ),
                         False,
@@ -141,7 +150,7 @@ class Transform3DArray(BaseExtensionArray[Transform3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError
+        return transform3d_native_to_pa_array(data, data_type)
 
 
 Transform3DType._ARRAY_TYPE = Transform3DArray

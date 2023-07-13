@@ -133,7 +133,7 @@ mod objects;
 pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
 pub use self::codegen::{CodeGenerator, CppCodeGenerator, PythonCodeGenerator, RustCodeGenerator};
 pub use self::objects::{
-    Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, Objects, Type,
+    Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
 };
 
 // --- Attributes ---

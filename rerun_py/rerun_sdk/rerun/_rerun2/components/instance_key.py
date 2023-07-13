@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -22,22 +22,18 @@ __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceK
 class InstanceKey:
     """A unique numeric identifier for each individual instance within a batch."""
 
-    value: int = field()
+    value: int = field(converter=int)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.value, dtype=dtype)
 
     def __int__(self) -> int:
         return int(self.value)
 
 
-if TYPE_CHECKING:
-    InstanceKeyLike = Union[InstanceKey, int]
+InstanceKeyLike = Union[InstanceKey, int]
 
-    InstanceKeyArrayLike = Union[InstanceKey, Sequence[InstanceKeyLike], int, npt.NDArray[np.uint64]]
-else:
-    InstanceKeyLike = Any
-    InstanceKeyArrayLike = Any
+InstanceKeyArrayLike = Union[InstanceKey, Sequence[InstanceKeyLike], int, npt.NDArray[np.uint64]]
 
 
 # --- Arrow support ---

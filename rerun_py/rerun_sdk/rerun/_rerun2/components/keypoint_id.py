@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -29,29 +29,20 @@ class KeypointId:
     [`rerun.components.AnnotationContext`].
     """
 
-    id: int = field()
+    id: int = field(converter=int)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:
         return int(self.id)
 
 
-if TYPE_CHECKING:
-    KeypointIdLike = Union[KeypointId, float]
+KeypointIdLike = Union[KeypointId, float]
 
-    KeypointIdArrayLike = Union[
-        KeypointId,
-        Sequence[KeypointIdLike],
-        float,
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.uint16],
-        npt.NDArray[np.uint32],
-    ]
-else:
-    KeypointIdLike = Any
-    KeypointIdArrayLike = Any
+KeypointIdArrayLike = Union[
+    KeypointId, Sequence[KeypointIdLike], float, npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
+]
 
 
 # --- Arrow support ---

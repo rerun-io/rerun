@@ -22,10 +22,16 @@ and more compact alternatives:
 
 from __future__ import annotations
 
+from typing import SupportsFloat, SupportsInt, overload
+
 import numpy as np
 import numpy.typing as npt
 
 __all__ = [
+    "int_or_none",
+    "float_or_none",
+    "bool_or_none",
+    "str_or_none",
     "to_np_uint8",
     "to_np_uint16",
     "to_np_uint32",
@@ -39,6 +45,70 @@ __all__ = [
     "to_np_float32",
     "to_np_float64",
 ]
+
+
+@overload
+def int_or_none(data: None) -> None:
+    ...
+
+
+@overload
+def int_or_none(data: SupportsInt) -> int:
+    ...
+
+
+def int_or_none(data: SupportsInt | None) -> int | None:
+    if data is None:
+        return None
+    return int(data)
+
+
+@overload
+def float_or_none(data: None) -> None:
+    ...
+
+
+@overload
+def float_or_none(data: SupportsFloat) -> float:
+    ...
+
+
+def float_or_none(data: SupportsFloat | None) -> float | None:
+    if data is None:
+        return None
+    return float(data)
+
+
+@overload
+def bool_or_none(data: None) -> None:
+    ...
+
+
+@overload
+def bool_or_none(data: bool) -> bool:
+    ...
+
+
+def bool_or_none(data: bool | None) -> bool | None:
+    if data is None:
+        return None
+    return bool(data)
+
+
+@overload
+def str_or_none(data: None) -> None:
+    ...
+
+
+@overload
+def str_or_none(data: str) -> str:
+    ...
+
+
+def str_or_none(data: str | None) -> str | None:
+    if data is None:
+        return None
+    return str(data)
 
 
 def to_np_uint8(data: npt.ArrayLike) -> npt.NDArray[np.uint8]:

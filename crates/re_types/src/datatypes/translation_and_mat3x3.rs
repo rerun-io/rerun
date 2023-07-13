@@ -25,7 +25,7 @@ pub struct TranslationAndMat3x3 {
 
     /// If true, the transform maps from the parent space to the space where the transform was logged.
     /// Otherwise, the transform maps from the space to its parent.
-    pub from_parent: Option<bool>,
+    pub from_parent: bool,
 }
 
 impl<'a> From<TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAndMat3x3> {
@@ -85,7 +85,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
             Field {
                 name: "from_parent".to_owned(),
                 data_type: DataType::Boolean,
-                is_nullable: true,
+                is_nullable: false,
                 metadata: [].into(),
             },
         ])
@@ -258,13 +258,10 @@ impl crate::Loggable for TranslationAndMat3x3 {
                         let (somes, from_parent): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { from_parent, .. } = &**datum;
-                                        from_parent.clone()
-                                    })
-                                    .flatten();
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { from_parent, .. } = &**datum;
+                                    from_parent.clone()
+                                });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -384,7 +381,11 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                 Ok(Self {
                                     translation,
                                     matrix,
-                                    from_parent,
+                                    from_parent: from_parent.ok_or_else(|| {
+                                        crate::DeserializationError::MissingData {
+                                            datatype: data.data_type().clone(),
+                                        }
+                                    })?,
                                 })
                             })
                             .transpose()

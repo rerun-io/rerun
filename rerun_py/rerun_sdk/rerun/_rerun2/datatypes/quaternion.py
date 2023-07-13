@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -16,30 +16,29 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
+from ._overrides import quaternion_init  # noqa: F401
 
 __all__ = ["Quaternion", "QuaternionArray", "QuaternionArrayLike", "QuaternionLike", "QuaternionType"]
 
 
-@define
+@define(init=False)
 class Quaternion:
     """A Quaternion represented by 4 real numbers."""
 
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        quaternion_init(self, *args, **kwargs)
+
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.xyzw, dtype=dtype)
 
 
-if TYPE_CHECKING:
-    QuaternionLike = Quaternion
-
-    QuaternionArrayLike = Union[
-        Quaternion,
-        Sequence[QuaternionLike],
-    ]
-else:
-    QuaternionLike = Any
-    QuaternionArrayLike = Any
+QuaternionLike = Quaternion
+QuaternionArrayLike = Union[
+    Quaternion,
+    Sequence[QuaternionLike],
+]
 
 
 # --- Arrow support ---
