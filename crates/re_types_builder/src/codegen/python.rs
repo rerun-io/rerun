@@ -1,7 +1,7 @@
 //! Implements the Python codegen pass.
 
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     io::Write,
 };
 
@@ -85,10 +85,14 @@ fn load_overrides(path: &Utf8Path) -> HashSet<String> {
 }
 
 impl CodeGenerator for PythonCodeGenerator {
-    fn generate(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<Utf8PathBuf> {
-        let mut filepaths = Vec::new();
+    fn generate(
+        &mut self,
+        objs: &Objects,
+        arrow_registry: &ArrowRegistry,
+    ) -> BTreeSet<Utf8PathBuf> {
+        let mut filepaths = BTreeSet::new();
 
-        let datatypes_path = self.pkg_path.join("datatypes");
+        let datatypes_path = self.pkg_path.join(ObjectKind::Datatype.plural_snake_case());
         let datatype_overrides = load_overrides(&datatypes_path);
         std::fs::create_dir_all(&datatypes_path)
             .with_context(|| format!("{datatypes_path:?}"))
@@ -105,7 +109,9 @@ impl CodeGenerator for PythonCodeGenerator {
             .0,
         );
 
-        let components_path = self.pkg_path.join("components");
+        let components_path = self
+            .pkg_path
+            .join(ObjectKind::Component.plural_snake_case());
         let component_overrides = load_overrides(&components_path);
         std::fs::create_dir_all(&components_path)
             .with_context(|| format!("{components_path:?}"))
@@ -122,7 +128,9 @@ impl CodeGenerator for PythonCodeGenerator {
             .0,
         );
 
-        let archetypes_path = self.pkg_path.join("archetypes");
+        let archetypes_path = self
+            .pkg_path
+            .join(ObjectKind::Archetype.plural_snake_case());
         let archetype_overrides = load_overrides(&archetypes_path);
         std::fs::create_dir_all(&archetypes_path)
             .with_context(|| format!("{archetypes_path:?}"))
@@ -137,7 +145,7 @@ impl CodeGenerator for PythonCodeGenerator {
         );
         filepaths.extend(paths);
 
-        filepaths.push(quote_lib(&self.pkg_path, &archetype_names));
+        filepaths.insert(quote_lib(&self.pkg_path, &archetype_names));
 
         filepaths
     }
@@ -185,10 +193,10 @@ fn quote_objects(
     all_objects: &Objects,
     _kind: ObjectKind,
     objs: &[&Object],
-) -> (Vec<Utf8PathBuf>, Vec<String>) {
+) -> (BTreeSet<Utf8PathBuf>, Vec<String>) {
     let out_path = out_path.as_ref();
 
-    let mut filepaths = Vec::new();
+    let mut filepaths = BTreeSet::new();
     let mut all_names = Vec::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
@@ -238,7 +246,7 @@ fn quote_objects(
             .or_default()
             .extend(names.iter().cloned());
 
-        filepaths.push(filepath.clone());
+        filepaths.insert(filepath.clone());
         let mut file = std::fs::File::create(&filepath)
             .with_context(|| format!("{filepath:?}"))
             .unwrap();
@@ -257,7 +265,7 @@ fn quote_objects(
             import pyarrow as pa
 
             from attrs import define, field
-            from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
+            from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union, TYPE_CHECKING
 
             from .._baseclasses import (
                 Archetype,
@@ -361,7 +369,7 @@ fn quote_objects(
 
         code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
 
-        filepaths.push(path.clone());
+        filepaths.insert(path.clone());
         std::fs::write(&path, code)
             .with_context(|| format!("{path:?}"))
             .unwrap();
@@ -794,31 +802,46 @@ fn quote_aliases_from_object(obj: &Object) -> String {
 
     let mut code = String::new();
 
-    code.push_unindented_text(
+    code.push_unindented_text("if TYPE_CHECKING:", 1);
+
+    code.push_text(
         &if let Some(aliases) = aliases {
             format!(
                 r#"
-                {name}Like = Union[
-                    {name},
-                    {aliases}
-                ]
-                "#,
+{name}Like = Union[
+    {name},
+    {aliases}
+]
+"#,
             )
         } else {
             format!("{name}Like = {name}")
         },
         1,
+        4,
+    );
+
+    code.push_text(
+        format!(
+            r#"
+{name}ArrayLike = Union[
+    {name},
+    Sequence[{name}Like],
+    {array_aliases}
+]
+"#,
+        ),
+        0,
+        4,
     );
 
     code.push_unindented_text(
         format!(
             r#"
-            {name}ArrayLike = Union[
-                {name},
-                Sequence[{name}Like],
-                {array_aliases}
-            ]
-            "#,
+        else:
+            {name}Like = Any
+            {name}ArrayLike = Any
+        "#
         ),
         0,
     );

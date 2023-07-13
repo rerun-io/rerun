@@ -14,7 +14,7 @@ use re_query::query_entity_with_primary;
 
 use crate::DefaultColor;
 
-use super::{auto_color, SceneQuery, ViewerContext};
+use super::{auto_color, ViewQuery, ViewerContext};
 
 #[derive(Clone, Debug)]
 pub struct Annotations {
@@ -122,20 +122,20 @@ impl ResolvedAnnotationInfo {
 pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);
 
 impl AnnotationMap {
-    /// For each `EntityPath` in the `SceneQuery`, walk up the tree and find the nearest ancestor
+    /// For each `EntityPath` in the `ViewQuery`, walk up the tree and find the nearest ancestor
     ///
     /// An entity is considered its own (nearest) ancestor.
-    pub fn load(&mut self, ctx: &mut ViewerContext<'_>, scene_query: &SceneQuery<'_>) {
+    pub fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
         let mut visited = IntSet::<EntityPath>::default();
 
         let data_store = &ctx.store_db.entity_db.data_store;
-        let latest_at_query = LatestAtQuery::new(scene_query.timeline, scene_query.latest_at);
+        let time_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function
-        for (ent_path, _) in scene_query.iter_entities() {
+        for (ent_path, _) in query.iter_entities() {
             let mut next_parent = Some(ent_path.clone());
             while let Some(parent) = next_parent {
                 // If we've visited this parent before it's safe to break early.
@@ -153,7 +153,7 @@ impl AnnotationMap {
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         if query_entity_with_primary::<AnnotationContext>(
                             data_store,
-                            &latest_at_query,
+                            &time_query,
                             &parent,
                             &[],
                         )

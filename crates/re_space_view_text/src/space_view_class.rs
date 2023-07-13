@@ -7,7 +7,7 @@ use re_viewer_context::{
     TypedScene, ViewerContext,
 };
 
-use super::scene_part::{SceneText, TextEntry};
+use super::view_part_system::{SceneText, TextEntry};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default)]
@@ -39,8 +39,8 @@ pub struct TextSpaceView;
 impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
     type Context = ();
-    type SceneParts = SceneText;
-    type ScenePartData = ();
+    type SystemCollection = SceneText;
+    type ViewPartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Text".into()

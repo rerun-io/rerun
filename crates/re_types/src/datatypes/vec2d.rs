@@ -3,14 +3,17 @@
 #![allow(trivial_numeric_casts)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A vector in 2D space."]
-#[derive(Debug, Clone, Default, Copy, PartialEq, PartialOrd)]
+/// A vector in 2D space.
+#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Vec2D(pub [f32; 2usize]);
 
 impl<'a> From<Vec2D> for ::std::borrow::Cow<'a, Vec2D> {
@@ -27,9 +30,10 @@ impl<'a> From<&'a Vec2D> for ::std::borrow::Cow<'a, Vec2D> {
     }
 }
 
-impl crate::Datatype for Vec2D {
+impl crate::Loggable for Vec2D {
+    type Name = crate::DatatypeName;
     #[inline]
-    fn name() -> crate::DatatypeName {
+    fn name() -> Self::Name {
         crate::DatatypeName::Borrowed("rerun.datatypes.Vec2D")
     }
 
@@ -56,7 +60,7 @@ impl crate::Datatype for Vec2D {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -83,10 +87,7 @@ impl crate::Datatype for Vec2D {
                     .map(ToOwned::to_owned)
                     .map(Some)
                     .collect();
-                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = data0_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| data0_inner_data.iter().map(|v| v.is_some()).collect())
-                };
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 FixedSizeListArray::new(
                     {
                         _ = extension_wrapper;
@@ -138,54 +139,62 @@ impl crate::Datatype for Vec2D {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let datatype = data.data_type();
             let data = data
                 .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .unwrap();
-            let bitmap = data.validity().cloned();
-            let offsets = (0..).step_by(2usize).zip((2usize..).step_by(2usize));
-            let data = &**data.values();
-            let data = data
-                .as_any()
-                .downcast_ref::<Float32Array>()
-                .unwrap()
-                .into_iter()
-                .map(|v| v.copied())
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: DataType::Float32,
-                    })
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-            offsets
-                .enumerate()
-                .map(move |(i, (start, end))| {
-                    bitmap
-                        .as_ref()
-                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                        .then(|| {
-                            data.get(start as usize..end as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data.len(),
-                                    datatype: datatype.clone(),
-                                })?
-                                .to_vec()
-                                .try_into()
-                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                    expected: 2usize,
-                                    got: (end - start) as usize,
-                                    datatype: datatype.clone(),
-                                })
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let bitmap = data.validity().cloned();
+                let offsets = (0..)
+                    .step_by(2usize)
+                    .zip((2usize..).step_by(2usize).take(data.len()));
+                let data = &**data.values();
+                let data = data
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: DataType::Float32,
                         })
-                        .transpose()
-                })
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                .into_iter()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                data.get(start as usize..end as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        datatype: datatype.clone(),
+                                    })?
+                                    .to_vec()
+                                    .try_into()
+                                    .map_err(|_err| {
+                                        crate::DeserializationError::ArrayLengthMismatch {
+                                            expected: 2usize,
+                                            got: (end - start) as usize,
+                                            datatype: datatype.clone(),
+                                        }
+                                    })
+                            })
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+            }
+            .into_iter()
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {
@@ -196,3 +205,5 @@ impl crate::Datatype for Vec2D {
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Datatype for Vec2D {}

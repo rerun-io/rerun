@@ -124,15 +124,16 @@ impl Objects {
             .filter(|(_, obj)| !obj.is_transparent())
             .collect();
 
-        // Check for nullable unions -- these cannot be represented in Arrow!
+        // Check for top-level nullable unions -- these cannot be represented in Arrow!
         for obj in this.objects.values() {
             for field in &obj.fields {
-                if !field.is_nullable {
+                if !obj.is_arrow_transparent() || !field.is_nullable {
                     continue;
                 }
 
                 if let Type::Object(fqname) = &field.typ {
                     let target = &this.objects[fqname];
+
                     assert!(
                         !(target.is_enum() || target.is_union()),
                         "nullable unions cannot be represented in Arrow, found one at {:?}",
@@ -206,6 +207,8 @@ pub enum ObjectKind {
 }
 
 impl ObjectKind {
+    pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
+
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
         let pkg_name = pkg_name.as_ref().replace(".testing", "");
@@ -217,6 +220,14 @@ impl ObjectKind {
             ObjectKind::Archetype
         } else {
             panic!("unknown package {pkg_name:?}");
+        }
+    }
+
+    pub fn plural_snake_case(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "datatypes",
+            ObjectKind::Component => "components",
+            ObjectKind::Archetype => "archetypes",
         }
     }
 }
@@ -264,7 +275,7 @@ impl Docs {
                 .with_context(|| format!("couldn't parse included path: {raw_path:?}"))
                 .unwrap();
 
-            let path = filepath.join(path);
+            let path = filepath.parent().unwrap().join(path);
 
             included_files
                 .entry(path.clone())
@@ -415,7 +426,13 @@ impl Object {
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        assert!(virtpath.ends_with(".fbs"), "Bad virtpath: {virtpath:?}");
+
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
+        assert!(
+            filepath.to_string().ends_with(".fbs"),
+            "Bad filepath: {filepath:?}"
+        );
 
         let docs = Docs::from_raw_docs(&filepath, obj.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
@@ -589,6 +606,45 @@ impl Object {
             .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
             .is_some()
     }
+
+    /// Try to find the relative file path of the `.fbs` source file.
+    pub fn relative_filepath(&self) -> Option<&Utf8Path> {
+        std::env::var("CARGO_MANIFEST_DIR")
+            .ok()
+            .and_then(|manifest_dir| self.filepath.strip_prefix(manifest_dir).ok())
+    }
+
+    /// The `snake_case` name of the object, e.g. `translation_and_mat3x3`.
+    pub fn snake_case_name(&self) -> String {
+        to_snake_case(&self.name)
+    }
+}
+
+fn to_snake_case(s: &str) -> String {
+    // Other crates (convert_case, case, heck, …) all get this wrong. See unit test.
+    let mut last_char: Option<char> = None;
+
+    let mut out = String::new();
+    for c in s.chars() {
+        if let Some(last_char) = last_char {
+            if last_char.is_lowercase() && c.is_uppercase() {
+                out.push('_');
+            }
+        }
+        out.push(c.to_ascii_lowercase());
+        last_char = Some(c);
+    }
+
+    out
+}
+
+#[test]
+fn test_snake_case() {
+    assert_eq!(to_snake_case("Point2D"), "point2d");
+    assert_eq!(
+        to_snake_case("TranslationAndMat3x3"),
+        "translation_and_mat3x3"
+    );
 }
 
 /// Properties specific to either structs or unions, but not both.
@@ -1074,8 +1130,6 @@ fn filepath_from_declaration_file(
 ) -> Utf8PathBuf {
     include_dir_path.as_ref().join("rerun").join(
         Utf8PathBuf::from(declaration_file.as_ref())
-            .parent()
-            .unwrap() // NOTE: safe, this _must_ be a file
             .to_string()
             .replace("//", ""),
     )

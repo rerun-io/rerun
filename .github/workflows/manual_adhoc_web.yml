@@ -47,7 +47,7 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd-fast
       UPLOAD_COMMIT: false
     secrets: inherit
-  
+
   build-web-demo-adhoc:
     name: 'Build Web Demo'
     needs: [min-test-wheel, build-web-adhoc]
@@ -56,7 +56,7 @@ jobs:
       CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
       WHEEL_ARTIFACT_NAME: linux-wheel
     secrets: inherit
-    
+
   upload-web-demo:
     name: 'Upload Web Demo'
     needs: [build-web-demo-adhoc]

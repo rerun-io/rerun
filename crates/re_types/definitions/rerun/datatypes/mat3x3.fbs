@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A 3x3 column-major Matrix.
+struct Mat3x3 (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "Sequence[float], Sequence[Sequence[float]]",
+  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  "attr.rust.tuple_struct",
+  order: 500
+) {
+  /// \py: matrix coefficients in column-major order
+  coeffs: [float32: 9] (order: 100);
+}

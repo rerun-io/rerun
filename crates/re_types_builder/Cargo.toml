@@ -23,12 +23,15 @@ all-features = true
 anyhow.workspace = true
 arrow2.workspace = true
 camino.workspace = true
+clang-format = "0.1"
 convert_case = "0.6"
 flatbuffers = "23.0"
 indent = "0.1"
 itertools.workspace = true
 proc-macro2 = { version = "1.0", default-features = false }
 quote = "1.0"
+rayon.workspace = true
+rust-format = "0.3"
 syn = "2.0"
 unindent.workspace = true
 xshell = "0.2"

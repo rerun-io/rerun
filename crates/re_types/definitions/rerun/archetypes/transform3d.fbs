@@ -1,0 +1,15 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+
+/// A 3D transform
+table Transform3D (
+  order: 100
+) {
+  /// The transform
+  transform: rerun.components.Transform3D ("attr.rerun.component_required", required, order: 1000);
+}

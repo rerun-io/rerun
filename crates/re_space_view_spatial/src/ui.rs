@@ -16,16 +16,10 @@ use re_viewer_context::{
     UiVerbosity, ViewerContext,
 };
 
-use super::{
-    eye::Eye,
-    scene::{PickingHitType, PickingResult},
-    ui_2d::View2DState,
-    ui_3d::View3DState,
-};
-
-use crate::scene::preferred_navigation_mode;
+use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::{
-    scene::{PickableUiRect, SceneSpatial, UiLabel, UiLabelTarget},
+    parts::{preferred_navigation_mode, SceneSpatial, UiLabel, UiLabelTarget},
+    picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     ui_2d::view_2d,
     ui_3d::view_3d,
 };
@@ -730,7 +724,7 @@ pub fn picking(
         return response;
     };
 
-    let picking_context = super::scene::PickingContext::new(
+    let picking_context = PickingContext::new(
         pointer_pos_ui,
         space_from_ui,
         ui_clip_rect,
@@ -739,7 +733,7 @@ pub fn picking(
     );
 
     let picking_rect_size =
-        super::scene::PickingContext::UI_INTERACTION_RADIUS * parent_ui.ctx().pixels_per_point();
+        PickingContext::UI_INTERACTION_RADIUS * parent_ui.ctx().pixels_per_point();
     // Make the picking rect bigger than necessary so we can use it to counter-act delays.
     // (by the time the picking rectangle is read back, the cursor may have moved on).
     let picking_rect_size = (picking_rect_size * 2.0)

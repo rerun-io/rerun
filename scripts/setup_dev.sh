@@ -15,7 +15,7 @@ cargo install taplo-cli --locked # https://github.com/tamasfe/taplo - toml forma
 cargo install typos-cli # https://github.com/crate-ci/typos - typo detector
 
 
-packagesNeeded='pngcrush pipx'
+packagesNeeded='pngcrush pipx clang-format'
 if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
 elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
 elif [ -x "$(command -v apt-get)" ]; then sudo apt-get -y install $packagesNeeded

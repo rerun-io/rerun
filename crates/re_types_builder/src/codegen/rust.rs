@@ -1,9 +1,10 @@
 //! Implements the Rust codegen pass.
 
-use std::{collections::HashMap, io::Write};
+use std::collections::{BTreeSet, HashMap};
 
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
+use convert_case::{Case, Casing as _};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -35,8 +36,12 @@ impl RustCodeGenerator {
 }
 
 impl CodeGenerator for RustCodeGenerator {
-    fn generate(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<Utf8PathBuf> {
-        let mut filepaths = Vec::new();
+    fn generate(
+        &mut self,
+        objects: &Objects,
+        arrow_registry: &ArrowRegistry,
+    ) -> BTreeSet<Utf8PathBuf> {
+        let mut filepaths = BTreeSet::new();
 
         let datatypes_path = self.crate_path.join("src/datatypes");
         std::fs::create_dir_all(&datatypes_path)
@@ -82,10 +87,10 @@ fn create_files(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     objs: &[&Object],
-) -> Vec<Utf8PathBuf> {
+) -> BTreeSet<Utf8PathBuf> {
     let out_path = out_path.as_ref();
 
-    let mut filepaths = Vec::new();
+    let mut filepaths = BTreeSet::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
@@ -111,21 +116,22 @@ fn create_files(
             .or_default()
             .extend(names);
 
-        filepaths.push(filepath.clone());
-        let mut file = std::fs::File::create(&filepath)
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
-
         let mut code = String::new();
-        code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
-        code.push_text("#![allow(trivial_numeric_casts)]", 2, 0);
-        code.push_text("#![allow(unused_parens)]", 2, 0);
-        code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
-        code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
-        code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
-        code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
-        code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
-        code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
+        #[rustfmt::skip]
+        {
+            code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
+            code.push_text("#![allow(trivial_numeric_casts)]", 2, 0);
+            code.push_text("#![allow(unused_parens)]", 2, 0);
+            code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
+            code.push_text("#![allow(clippy::iter_on_single_items)]", 2, 0);
+            code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
+            code.push_text("#![allow(clippy::match_wildcard_for_single_variants)]", 2, 0);
+            code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
+            code.push_text("#![allow(clippy::redundant_closure)]", 2, 0);
+            code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
+            code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
+            code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
+        };
 
         for obj in objs {
             let mut acc = TokenStream::new();
@@ -143,7 +149,7 @@ fn create_files(
                             .to_string()
                             .replace('}', "}\n\n")
                             .replace("] ;", "];\n\n")
-                            .replace("# [doc", "\n\n#[doc")
+                            .replace("# [doc", "\n\n# [doc")
                             .replace("impl ", "\n\nimpl ");
                         code.push_text(tokens_str, 1, 0);
                         acc = TokenStream::new();
@@ -162,14 +168,16 @@ fn create_files(
                 .to_string()
                 .replace('}', "}\n\n")
                 .replace("] ;", "];\n\n")
-                .replace("# [doc", "\n\n#[doc")
+                .replace("# [doc", "\n\n# [doc")
                 .replace("impl ", "\n\nimpl ");
 
             code.push_text(tokens_str, 1, 0);
         }
-        file.write_all(code.as_bytes())
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
+
+        code = replace_doc_attrb_with_doc_comment(&code);
+
+        write_file(&filepath, code);
+        filepaths.insert(filepath.clone());
     }
 
     // src/{datatypes|components|archetypes}/mod.rs
@@ -199,13 +207,105 @@ fn create_files(
             code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
         }
 
-        filepaths.push(path.clone());
-        std::fs::write(&path, code)
-            .with_context(|| format!("{path:?}"))
-            .unwrap();
+        filepaths.insert(path.clone());
+        write_file(&path, code);
     }
 
     filepaths
+}
+
+fn write_file(filepath: &Utf8PathBuf, mut code: String) {
+    // We need to run `cago fmt` several times because it is not idempotent!
+    // See https://github.com/rust-lang/rustfmt/issues/5824
+    for _ in 0..2 {
+        // NOTE: We're purposefully ignoring the error here.
+        //
+        // In the very unlikely chance that the user doesn't have the `fmt` component installed,
+        // there's still no good reason to fail the build.
+        //
+        // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
+
+        use rust_format::Formatter as _;
+        if let Ok(formatted) = rust_format::RustFmt::default().format_str(&code) {
+            code = formatted;
+        }
+    }
+
+    if let Ok(existing) = std::fs::read_to_string(filepath) {
+        if existing == code {
+            // Don't touch the timestamp unnecessarily
+            return;
+        }
+    }
+
+    std::fs::write(filepath, code)
+        .with_context(|| format!("{filepath}"))
+        .unwrap();
+}
+
+/// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
+/// while also removing trailing whitespace.
+fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
+    // This is difficult to do with regex, because the patterns with newlines overlap.
+
+    let start_pattern = "# [doc = \"";
+    let end_pattern = "\"]"; // assues there is no escaped quote followed by a bracket
+
+    let problematic = r#"\"]"#;
+    assert!(
+        !code.contains(problematic),
+        "The codegen cannot handle the string {problematic} yet"
+    );
+
+    let mut new_code = String::new();
+
+    let mut i = 0;
+    while i < code.len() {
+        if let Some(off) = code[i..].find(start_pattern) {
+            let doc_start = i + off;
+            let content_start = doc_start + start_pattern.len();
+            if let Some(off) = code[content_start..].find(end_pattern) {
+                let content_end = content_start + off;
+                new_code.push_str(&code[i..doc_start]);
+                new_code.push_str("/// ");
+                unescape_string_into(&code[content_start..content_end], &mut new_code);
+                new_code.push('\n');
+
+                i = content_end + end_pattern.len();
+                // Skip trailing whitespace (extra newlines)
+                while matches!(code.as_bytes().get(i), Some(b'\n' | b' ')) {
+                    i += 1;
+                }
+                continue;
+            }
+        }
+
+        // No more doc attributes found
+        new_code.push_str(&code[i..]);
+        break;
+    }
+    new_code
+}
+
+fn unescape_string_into(input: &str, output: &mut String) {
+    let mut chars = input.chars();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            let c = chars.next().expect("Trailing backslash");
+            match c {
+                'n' => output.push('\n'),
+                'r' => output.push('\r'),
+                't' => output.push('\t'),
+                '\\' => output.push('\\'),
+                '"' => output.push('"'),
+                '\'' => output.push('\''),
+                _ => panic!("Unknown escape sequence: \\{c}"),
+            }
+        } else {
+            output.push(c);
+        }
+    }
 }
 
 // --- Codegen core loop ---
@@ -239,6 +339,7 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
+        let quoted_derive_clone_debug = quote_derive_clone_debug();
         let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
 
@@ -259,6 +360,7 @@ impl QuotedObject {
 
         let tokens = quote! {
             #quoted_doc
+            #quoted_derive_clone_debug
             #quoted_derive_clause
             #quoted_repr_clause
             #quoted_struct
@@ -300,6 +402,7 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
+        let quoted_derive_clone_debug = quote_derive_clone_debug();
         let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
 
@@ -319,7 +422,6 @@ impl QuotedObject {
                 datatype: _,
             } = obj_field;
 
-            use convert_case::{Case, Casing};
             let name = format_ident!("{}", name.to_case(Case::UpperCamel));
 
             let quoted_doc = quote_doc_from_docs(docs);
@@ -340,6 +442,7 @@ impl QuotedObject {
 
         let tokens = quote! {
             #quoted_doc
+            #quoted_derive_clone_debug
             #quoted_derive_clause
             #quoted_repr_clause
             pub enum #name {
@@ -415,7 +518,7 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
 
     impl quote::ToTokens for DocCommentTokenizer<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            tokens.extend(self.0.iter().map(|line| quote!(#[doc = #line])));
+            tokens.extend(self.0.iter().map(|line| quote!(# [doc = #line])));
         }
     }
 
@@ -497,15 +600,14 @@ impl quote::ToTokens for &ElementType {
     }
 }
 
+fn quote_derive_clone_debug() -> TokenStream {
+    quote!(#[derive(Clone, Debug)])
+}
+
 fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenStream {
     let quoted = obj
         .try_get_attr::<String>(attr)
         .map(|what| {
-            let what = if clause == "derive" {
-                format!("Debug, Clone, {what}")
-            } else {
-                what
-            };
             syn::parse_str::<syn::MetaList>(&format!("{clause}({what})"))
                 .with_context(|| format!("illegal meta clause: {what:?}"))
                 .unwrap()
@@ -553,7 +655,7 @@ fn quote_trait_impls_from_obj(
                 .unwrap_or_else(|| fqname.clone());
 
             let quoted_serializer =
-                quote_arrow_serializer(arrow_registry, obj, &format_ident!("data"));
+                quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
             let quoted_deserializer =
                 quote_arrow_deserializer(arrow_registry, objects, obj, &format_ident!("data"));
 
@@ -580,9 +682,11 @@ fn quote_trait_impls_from_obj(
             quote! {
                 #into_cow
 
-                impl crate::#kind for #name {
+                impl crate::Loggable for #name {
+                    type Name = crate::#kind_name;
+
                     #[inline]
-                    fn name() -> crate::#kind_name {
+                    fn name() -> Self::Name {
                         crate::#kind_name::Borrowed(#legacy_fqname)
                     }
 
@@ -603,7 +707,7 @@ fn quote_trait_impls_from_obj(
                         Self: Clone + 'a
                     {
                         use ::arrow2::{datatypes::*, array::*};
-                        use crate::{Component as _, Datatype as _};
+                        use crate::Loggable as _;
                         Ok(#quoted_serializer)
                     }
 
@@ -613,10 +717,12 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*};
-                        use crate::{Component as _, Datatype as _};
+                        use crate::Loggable as _;
                         Ok(#quoted_deserializer)
                     }
                 }
+
+                impl crate::#kind for #name {}
             }
         }
         ObjectKind::Archetype => {
@@ -804,7 +910,7 @@ fn quote_trait_impls_from_obj(
                     fn try_to_arrow(
                         &self,
                     ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
-                        use crate::Component as _;
+                        use crate::Loggable as _;
                         Ok([ #({ #all_serializers },)* ].into_iter().flatten().collect())
                     }
 
@@ -812,7 +918,7 @@ fn quote_trait_impls_from_obj(
                     fn try_from_arrow(
                         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
-                        use crate::Component as _;
+                        use crate::Loggable as _;
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = data
                             .into_iter()
@@ -1063,6 +1169,7 @@ fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
 
 fn quote_arrow_serializer(
     arrow_registry: &ArrowRegistry,
+    objects: &Objects,
     obj: &Object,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
@@ -1126,6 +1233,7 @@ fn quote_arrow_serializer(
         };
 
         let quoted_serializer = quote_arrow_field_serializer(
+            objects,
             Some(obj.fqname.as_str()),
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
@@ -1170,6 +1278,7 @@ fn quote_arrow_serializer(
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
                     let quoted_serializer = quote_arrow_field_serializer(
+                        objects,
                         None,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
@@ -1226,10 +1335,11 @@ fn quote_arrow_serializer(
             }
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
-                    let data_dst = format_ident!("{}", obj_field.name);
+                    let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
                     let quoted_serializer = quote_arrow_field_serializer(
+                        objects,
                         None,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
@@ -1241,10 +1351,7 @@ fn quote_arrow_serializer(
                     let quoted_bitmap = quoted_bitmap(bitmap_dst);
 
                     let quoted_obj_name = format_ident!("{}", obj.name);
-                    let quoted_obj_field_name = {
-                        use convert_case::{Case, Casing};
-                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                    };
+                    let quoted_obj_field_name = format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
                     quote! {{
                         let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
@@ -1272,10 +1379,8 @@ fn quote_arrow_serializer(
                     let quoted_obj_name = format_ident!("{}", obj.name);
                     let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
                         let i = i as i8;
-                        let quoted_obj_field_name = {
-                            use convert_case::{Case, Casing};
-                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                        };
+                        let quoted_obj_field_name =
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
                         quote!(#quoted_obj_name::#quoted_obj_field_name(_) => #i)
                     });
 
@@ -1294,16 +1399,16 @@ fn quote_arrow_serializer(
                     let quoted_obj_name = format_ident!("{}", obj.name);
 
                     let quoted_counters = obj.fields.iter().map(|obj_field| {
-                        let quoted_obj_field_name = format_ident!("{}_offset", obj_field.name);
+                        let quoted_obj_field_name =
+                            format_ident!("{}_offset", obj_field.name.to_case(Case::Snake));
                         quote!(let mut #quoted_obj_field_name = 0)
                     });
 
                     let quoted_branches = obj.fields.iter().map(|obj_field| {
-                        let quoted_counter_name = format_ident!("{}_offset", obj_field.name);
-                        let quoted_obj_field_name = {
-                            use convert_case::{Case, Casing};
-                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                        };
+                        let quoted_counter_name =
+                            format_ident!("{}_offset", obj_field.name.to_case(Case::Snake));
+                        let quoted_obj_field_name =
+                            format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
                         quote! {
                             #quoted_obj_name::#quoted_obj_field_name(_) => {
                                 let offset = #quoted_counter_name;
@@ -1348,6 +1453,7 @@ fn quote_arrow_serializer(
 }
 
 fn quote_arrow_field_serializer(
+    objects: &Objects,
     extension_wrapper: Option<&str>,
     datatype: &DataType,
     is_nullable: bool,
@@ -1391,6 +1497,18 @@ fn quote_arrow_field_serializer(
             }
         }
 
+        DataType::Boolean => {
+            quote! {
+                BooleanArray::new(
+                    #quoted_datatype,
+                    // NOTE: We need values for all slots, regardless of what the bitmap says,
+                    // hence `unwrap_or_default`.
+                    #data_src.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                    #bitmap_src,
+                ).boxed()
+            }
+        }
+
         DataType::Utf8 => {
             quote! {{
                 // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
@@ -1415,12 +1533,47 @@ fn quote_arrow_field_serializer(
             let quoted_inner_bitmap = format_ident!("{data_src}_inner_bitmap");
 
             let quoted_inner = quote_arrow_field_serializer(
+                objects,
                 extension_wrapper,
                 inner_datatype,
                 inner.is_nullable,
                 &quoted_inner_bitmap,
                 &quoted_inner_data,
             );
+
+            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+                Some(objects.get(fqname))
+            } else {
+                None
+            };
+            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+
+            let quoted_transparent_mapping = if inner_is_arrow_transparent {
+                let inner_obj = inner_obj.as_ref().unwrap();
+                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
+                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+                let quoted_data_dst = format_ident!(
+                    "{}",
+                    if is_tuple_struct {
+                        "data0"
+                    } else {
+                        inner_obj.fields[0].name.as_str()
+                    }
+                );
+                let quoted_binding = if is_tuple_struct {
+                    quote!(#quoted_inner_obj_type(#quoted_data_dst))
+                } else {
+                    quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                };
+                quote! {
+                    .map(|datum| {
+                        let #quoted_binding = datum;
+                        #quoted_data_dst
+                    })
+                }
+            } else {
+                quote!()
+            };
 
             let quoted_create = if let DataType::List(_) = datatype {
                 quote! {
@@ -1456,6 +1609,7 @@ fn quote_arrow_field_serializer(
                     // NOTE: Flattening to remove the guaranteed layer of nullability, we don't care
                     // about it while building the backing buffer.
                     .flatten()
+                    #quoted_transparent_mapping
                     // NOTE: Flattening yet again since we have to deconstruct the inner list.
                     .flatten()
                     .map(ToOwned::to_owned)
@@ -1464,10 +1618,8 @@ fn quote_arrow_field_serializer(
                     .map(Some)
                     .collect();
 
-                let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                    let any_nones = #quoted_inner_data.iter().any(|v| v.is_none());
-                    any_nones.then(|| #quoted_inner_data.iter().map(|v| v.is_some()).collect())
-                };
+                // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
+                let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
 
                 #quoted_create
             }}
@@ -1492,7 +1644,7 @@ fn quote_arrow_field_serializer(
 
 fn quote_arrow_deserializer(
     arrow_registry: &ArrowRegistry,
-    _objects: &Objects,
+    objects: &Objects,
     obj: &Object,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
@@ -1517,6 +1669,7 @@ fn quote_arrow_deserializer(
         );
 
         let quoted_deserializer = quote_arrow_field_deserializer(
+            objects,
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
             &data_src,
@@ -1560,6 +1713,7 @@ fn quote_arrow_deserializer(
                     let data_dst = format_ident!("{}", obj_field.name);
 
                     let quoted_deserializer = quote_arrow_field_deserializer(
+                        objects,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
                         &data_src,
@@ -1603,26 +1757,34 @@ fn quote_arrow_deserializer(
                             got: #data_src.data_type().clone(),
                         })?;
 
-                    let (#data_src_fields, #data_src_arrays, #data_src_bitmap) =
-                        (#data_src.fields(), #data_src.values(), #data_src.validity());
+                    if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
+                        Vec::new()
+                    } else {
+                        let (#data_src_fields, #data_src_arrays, #data_src_bitmap) =
+                            (#data_src.fields(), #data_src.values(), #data_src.validity());
 
-                    let is_valid = |i| #data_src_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                        let is_valid = |i| #data_src_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
 
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = #data_src_fields
-                        .iter()
-                        .map(|field| field.name.as_str())
-                        .zip(#data_src_arrays)
-                        .collect();
+                        let arrays_by_name: ::std::collections::HashMap<_, _> = #data_src_fields
+                            .iter()
+                            .map(|field| field.name.as_str())
+                            .zip(#data_src_arrays)
+                            .collect();
 
-                    #(#quoted_field_deserializers;)*
+                        #(#quoted_field_deserializers;)*
 
-                    ::itertools::izip!(#(#quoted_field_names),*)
-                        .enumerate()
-                        .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
-                            #(#quoted_unwrappings,)*
-                        })).transpose())
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        ::itertools::izip!(#(#quoted_field_names),*)
+                            .enumerate()
+                            .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
+                                #(#quoted_unwrappings,)*
+                            })).transpose())
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    }
                 }}
             }
 
@@ -1633,9 +1795,10 @@ fn quote_arrow_deserializer(
 
                 let quoted_field_deserializers =
                     obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                        let data_dst = format_ident!("{}", obj_field.name);
+                        let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
 
                         let quoted_deserializer = quote_arrow_field_deserializer(
+                            objects,
                             &arrow_registry.get(&obj_field.fqname),
                             obj_field.is_nullable,
                             &data_src,
@@ -1652,11 +1815,10 @@ fn quote_arrow_deserializer(
                 let quoted_obj_name = format_ident!("{}", obj.name);
                 let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
                     let i = i as i8;
-                    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
-                    let quoted_obj_field_type = {
-                        use convert_case::{Case, Casing};
-                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel))
-                    };
+                    let quoted_obj_field_name =
+                        format_ident!("{}", obj_field.name.to_case(Case::Snake));
+                    let quoted_obj_field_type =
+                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
                     let quoted_unwrap = if obj_field.is_nullable {
                         quote!()
@@ -1688,25 +1850,33 @@ fn quote_arrow_deserializer(
                             got: #data_src.data_type().clone(),
                         })?;
 
-                    let (#data_src_types, #data_src_arrays, #data_src_offsets) =
-                        // NOTE: unwrapping of offsets is safe because this is a dense union
-                        (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
+                    if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
+                        Vec::new()
+                    } else {
+                        let (#data_src_types, #data_src_arrays, #data_src_offsets) =
+                            // NOTE: unwrapping of offsets is safe because this is a dense union
+                            (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
 
-                    #(#quoted_field_deserializers;)*
+                        #(#quoted_field_deserializers;)*
 
-                    #data_src_types
-                        .iter()
-                        .enumerate()
-                        .map(|(i, typ)| {
-                            let offset = #data_src_offsets[i];
+                        #data_src_types
+                            .iter()
+                            .enumerate()
+                            .map(|(i, typ)| {
+                                let offset = #data_src_offsets[i];
 
-                            Ok(Some(match typ {
-                                #(#quoted_branches,)*
-                                _ => unreachable!(),
-                            }))
-                        })
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                                Ok(Some(match typ {
+                                    #(#quoted_branches,)*
+                                    _ => unreachable!(),
+                                }))
+                            })
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    }
                 }}
             }
 
@@ -1716,6 +1886,7 @@ fn quote_arrow_deserializer(
 }
 
 fn quote_arrow_field_deserializer(
+    objects: &Objects,
     datatype: &DataType,
     is_nullable: bool,
     data_src: &proc_macro2::Ident,
@@ -1732,16 +1903,22 @@ fn quote_arrow_field_deserializer(
         | DataType::UInt64
         | DataType::Float16
         | DataType::Float32
-        | DataType::Float64 => {
+        | DataType::Float64
+        | DataType::Boolean => {
             let arrow_type = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
             let arrow_type = format_ident!("{arrow_type}Array");
+            let quoted_map_copy = if *datatype.to_logical_type() == DataType::Boolean {
+                quote!()
+            } else {
+                quote!(.map(|v| v.copied()))
+            };
             quote! {
                 #data_src
                     .as_any()
                     .downcast_ref::<#arrow_type>()
                     .unwrap() // safe
                     .into_iter()
-                    .map(|v| v.copied())
+                    #quoted_map_copy
             }
         }
 
@@ -1760,49 +1937,90 @@ fn quote_arrow_field_deserializer(
             let inner_datatype = inner.data_type();
             let quoted_inner_datatype = ArrowDataTypeTokenizer(inner_datatype);
 
-            let quoted_inner =
-                quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
+            let quoted_inner = quote_arrow_field_deserializer(
+                objects,
+                inner_datatype,
+                inner.is_nullable,
+                data_src,
+            );
+
+            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+                Some(objects.get(fqname))
+            } else {
+                None
+            };
+            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+
+            let quoted_transparent_unmapping = if inner_is_arrow_transparent {
+                let inner_obj = inner_obj.as_ref().unwrap();
+                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
+                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+                let quoted_data_dst = format_ident!(
+                    "{}",
+                    if is_tuple_struct {
+                        "data0"
+                    } else {
+                        inner_obj.fields[0].name.as_str()
+                    }
+                );
+                if is_tuple_struct {
+                    quote!(.map(|res| res.map(|opt| opt.map(|v| #quoted_inner_obj_type(v)))))
+                } else {
+                    quote!(.map(|res| res.map(|opt| opt.map(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst }))))
+                }
+            } else {
+                quote!()
+            };
 
             quote! {{
                 let datatype = #data_src.data_type();
                 let #data_src = #data_src
                     .as_any()
-                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                     .unwrap(); // safe
 
-                let bitmap = #data_src.validity().cloned();
-                let offsets = (0..).step_by(#length).zip((#length..).step_by(#length));
+                if #data_src.is_empty() {
+                    // NOTE: The outer container is empty and so we already know that the end result
+                    // is also going to be an empty vec.
+                    // Early out right now rather than waste time computing possibly many empty
+                    // datastructures for all of our children.
+                    Vec::new()
+                } else {
+                    let bitmap = #data_src.validity().cloned();
+                    let offsets = (0..).step_by(#length).zip((#length..).step_by(#length).take(#data_src.len()));
 
-                let #data_src = &**#data_src.values();
+                    let #data_src = &**#data_src.values();
 
-                let data = #quoted_inner
-                    .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: #quoted_inner_datatype,
-                    }))
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    let data = #quoted_inner
+                        .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: #quoted_inner_datatype,
+                        }))
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
 
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                        data.get(start as usize .. end as usize)
-                            .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data.len(),
-                                datatype: datatype.clone(),
-                            })?
-                            .to_vec()
-                            .try_into()
-                            .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                expected: #length,
-                                got: (end - start) as usize,
-                                datatype: datatype.clone(),
-                            })
-                        }).transpose()
-                    )
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                    .into_iter()
+                    offsets
+                        .enumerate()
+                        .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
+                            data.get(start as usize .. end as usize)
+                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                    bounds: (start as usize, end as usize),
+                                    len: data.len(),
+                                    datatype: datatype.clone(),
+                                })?
+                                .to_vec()
+                                .try_into()
+                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
+                                    expected: #length,
+                                    got: (end - start) as usize,
+                                    datatype: datatype.clone(),
+                                })
+                            }).transpose()
+                        )
+                        #quoted_transparent_unmapping
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                }
+                .into_iter()
             }}
         }
 
@@ -1810,8 +2028,12 @@ fn quote_arrow_field_deserializer(
             let inner_datatype = inner.data_type();
             let quoted_inner_datatype = ArrowDataTypeTokenizer(inner_datatype);
 
-            let quoted_inner =
-                quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
+            let quoted_inner = quote_arrow_field_deserializer(
+                objects,
+                inner_datatype,
+                inner.is_nullable,
+                data_src,
+            );
 
             quote! {{
                 let datatype = #data_src.data_type();
@@ -1820,37 +2042,45 @@ fn quote_arrow_field_deserializer(
                     .downcast_ref::<::arrow2::array::ListArray<i32>>()
                     .unwrap(); // safe
 
-                let bitmap = #data_src.validity().cloned();
-                let offsets = {
-                    let offsets = #data_src.offsets();
-                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                };
+                if #data_src.is_empty() {
+                    // NOTE: The outer container is empty and so we already know that the end result
+                    // is also going to be an empty vec.
+                    // Early out right now rather than waste time computing possibly many empty
+                    // datastructures for all of our children.
+                    Vec::new()
+                } else {
+                    let bitmap = #data_src.validity().cloned();
+                    let offsets = {
+                        let offsets = #data_src.offsets();
+                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                    };
 
-                let #data_src = &**#data_src.values();
+                    let #data_src = &**#data_src.values();
 
-                let data = #quoted_inner
-                    .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        datatype: #quoted_inner_datatype,
-                    }))
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    let data = #quoted_inner
+                        .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: #quoted_inner_datatype,
+                        }))
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
 
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                            Ok(data.get(start as usize .. end as usize)
-                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data.len(),
-                                    datatype: datatype.clone(),
-                                })?
-                                .to_vec()
-                            )
-                        }).transpose()
-                    )
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                    .into_iter()
+                    offsets
+                        .enumerate()
+                        .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
+                                Ok(data.get(start as usize .. end as usize)
+                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        datatype: datatype.clone(),
+                                    })?
+                                    .to_vec()
+                                )
+                            }).transpose()
+                        )
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                }
+                .into_iter()
             }}
         }
 

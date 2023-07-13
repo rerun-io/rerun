@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+include "python/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A 3D rotation.
+union Rotation3D (
+  "attr.rust.derive": "Copy, PartialEq",
+  order: 400
+) {
+  /// Rotation defined by a quaternion.
+  Quaternion: Quaternion (order: 100),
+
+  /// Rotation defined with an axis and an angle.
+  AxisAngle: RotationAxisAngle (order: 200),
+}

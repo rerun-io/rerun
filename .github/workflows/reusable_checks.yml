@@ -282,6 +282,10 @@ jobs:
         with:
           python-version: "3.8"
 
+      - name: Install dependencies
+        run: |
+          pip install gitignore_parser
+
       - name: Rerun lints
         run: |
           ./scripts/lint.py
@@ -325,4 +329,3 @@ jobs:
         shell: bash
         id: expected_version
         run: ./scripts/ci/cargo_deny.sh
-

@@ -62,4 +62,5 @@ re_build_tools.workspace = true
 re_types_builder.workspace = true
 
 # External
+rayon.workspace = true
 xshell = "0.2"

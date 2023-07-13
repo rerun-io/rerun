@@ -3,18 +3,21 @@
 #![allow(trivial_numeric_casts)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A 16-bit ID representing a type of semantic keypoint within a class."]
-#[doc = ""]
-#[doc = "`KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`."]
-#[doc = ""]
-#[doc = "Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`."]
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// A 16-bit ID representing a type of semantic keypoint within a class.
+///
+/// `KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`.
+///
+/// Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`.
+#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeypointId(pub u16);
 
 impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
@@ -31,9 +34,10 @@ impl<'a> From<&'a KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
     }
 }
 
-impl crate::Component for KeypointId {
+impl crate::Loggable for KeypointId {
+    type Name = crate::ComponentName;
     #[inline]
-    fn name() -> crate::ComponentName {
+    fn name() -> Self::Name {
         crate::ComponentName::Borrowed("rerun.keypoint_id")
     }
 
@@ -52,7 +56,7 @@ impl crate::Component for KeypointId {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -95,7 +99,7 @@ impl crate::Component for KeypointId {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
@@ -112,3 +116,5 @@ impl crate::Component for KeypointId {
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Component for KeypointId {}

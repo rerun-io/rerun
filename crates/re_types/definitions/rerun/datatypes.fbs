@@ -1,4 +1,17 @@
+include "./datatypes/angle.fbs";
+include "./datatypes/mat3x3.fbs";
+include "./datatypes/mat4x4.fbs";
 include "./datatypes/point2d.fbs";
+include "./datatypes/quaternion.fbs";
+include "./datatypes/rotation3d.fbs";
+include "./datatypes/rotation_axis_angle.fbs";
+include "./datatypes/scalars.fbs";
+include "./datatypes/scale3d.fbs";
+include "./datatypes/transform3d.fbs";
+include "./datatypes/translation_and_mat3x3.fbs";
+include "./datatypes/translation_rotation_scale3d.fbs";
 include "./datatypes/vec2d.fbs";
+include "./datatypes/vec3d.fbs";
+include "./datatypes/vec4d.fbs";
 
 namespace rerun.datatypes;

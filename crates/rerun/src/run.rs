@@ -347,18 +347,7 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
 
         let store = stores.pop().unwrap(); // safe, ensured above
 
-        let table = re_log_types::DataTable::from_rows(re_log_types::TableId::random(), {
-            let mut rows = store
-                .store()
-                .to_data_tables(None)
-                .flat_map(|t| t.to_rows().collect_vec())
-                .collect_vec();
-            // NOTE: So the full dump makes sense, if enabled.
-            rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
-            rows
-        });
-
-        Ok::<_, anyhow::Error>(table)
+        Ok::<_, anyhow::Error>(store.store().to_data_table())
     }
 
     let table1 = compute_uber_table(path_to_rrd1)?;

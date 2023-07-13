@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -31,9 +31,13 @@ class InstanceKey:
         return int(self.value)
 
 
-InstanceKeyLike = Union[InstanceKey, int]
+if TYPE_CHECKING:
+    InstanceKeyLike = Union[InstanceKey, int]
 
-InstanceKeyArrayLike = Union[InstanceKey, Sequence[InstanceKeyLike], npt.NDArray[np.uint64]]
+    InstanceKeyArrayLike = Union[InstanceKey, Sequence[InstanceKeyLike], int, npt.NDArray[np.uint64]]
+else:
+    InstanceKeyLike = Any
+    InstanceKeyArrayLike = Any
 
 
 # --- Arrow support ---

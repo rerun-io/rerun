@@ -1,12 +1,14 @@
-//! Rerun Spatial Scene Views
+//! Rerun Spatial Space Views
 //!
 //! Space Views that show entities in a 2D or 3D spatial relationship.
 
+mod contexts;
 mod eye;
 mod instance_hash_conversions;
 mod mesh_cache;
 mod mesh_loader;
-mod scene;
+mod parts;
+mod picking;
 mod space_camera_3d;
 mod space_view_class;
 mod ui;

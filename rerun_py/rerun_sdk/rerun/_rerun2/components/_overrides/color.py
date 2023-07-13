@@ -70,6 +70,6 @@ def color_native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa
             array = _numpy_array_to_u32(cast(npt.NDArray[Union[np.uint8, np.float32, np.float64]], data))
     else:
         # Sequence of Color (which are int-like) or sequence of sequence
-        array = np.array([Color(datum) for datum in data], np.uint32)
+        array = np.array([Color(datum) for datum in data], np.uint32)  # type: ignore[union-attr]
 
     return pa.array(array, type=data_type)
