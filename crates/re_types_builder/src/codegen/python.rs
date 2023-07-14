@@ -8,6 +8,7 @@ use std::{
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
+use rayon::prelude::*;
 
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
@@ -90,16 +91,13 @@ impl CodeGenerator for PythonCodeGenerator {
         objs: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
-        let mut filepaths = BTreeSet::new();
+        let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         let datatypes_path = self.pkg_path.join(ObjectKind::Datatype.plural_snake_case());
         let datatype_overrides = load_overrides(&datatypes_path);
-        std::fs::create_dir_all(&datatypes_path)
-            .with_context(|| format!("{datatypes_path:?}"))
-            .unwrap();
-        filepaths.extend(
+        files_to_write.extend(
             quote_objects(
-                datatypes_path,
+                &datatypes_path,
                 arrow_registry,
                 &datatype_overrides,
                 objs,
@@ -113,12 +111,9 @@ impl CodeGenerator for PythonCodeGenerator {
             .pkg_path
             .join(ObjectKind::Component.plural_snake_case());
         let component_overrides = load_overrides(&components_path);
-        std::fs::create_dir_all(&components_path)
-            .with_context(|| format!("{components_path:?}"))
-            .unwrap();
-        filepaths.extend(
+        files_to_write.extend(
             quote_objects(
-                components_path,
+                &components_path,
                 arrow_registry,
                 &component_overrides,
                 objs,
@@ -132,58 +127,37 @@ impl CodeGenerator for PythonCodeGenerator {
             .pkg_path
             .join(ObjectKind::Archetype.plural_snake_case());
         let archetype_overrides = load_overrides(&archetypes_path);
-        std::fs::create_dir_all(&archetypes_path)
-            .with_context(|| format!("{archetypes_path:?}"))
-            .unwrap();
         let (paths, archetype_names) = quote_objects(
-            archetypes_path,
+            &archetypes_path,
             arrow_registry,
             &archetype_overrides,
             objs,
             ObjectKind::Archetype,
             &objs.ordered_objects(ObjectKind::Archetype.into()),
         );
-        filepaths.extend(paths);
+        files_to_write.extend(paths);
 
-        filepaths.insert(quote_lib(&self.pkg_path, &archetype_names));
+        files_to_write.insert(
+            self.pkg_path.join("__init__.py"),
+            lib_source_code(&archetype_names),
+        );
 
-        filepaths
+        create_files(&files_to_write);
+
+        files_to_write.keys().cloned().collect()
     }
 }
 
-// --- File management ---
-
-fn quote_lib(out_path: impl AsRef<Utf8Path>, archetype_names: &[String]) -> Utf8PathBuf {
-    let out_path = out_path.as_ref();
-
-    std::fs::create_dir_all(out_path)
-        .with_context(|| format!("{out_path:?}"))
-        .unwrap();
-
-    let path = out_path.join("__init__.py");
-    let manifest = quote_manifest(archetype_names);
-    let archetype_names = archetype_names.join(", ");
-
-    let mut code = String::new();
-
-    code += &unindent::unindent(&format!(
-        r#"
-        # {AUTOGEN_WARNING}
-
-        from __future__ import annotations
-
-        __all__ = [{manifest}]
-
-        from .archetypes import {archetype_names}
-        "#
-    ));
-
-    write_file(&path, code);
-
-    path
+fn create_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
+    re_tracing::profile_function!();
+    files_to_write.par_iter().for_each(|(path, source)| {
+        write_file(path, source.clone());
+    });
 }
 
 fn write_file(filepath: &Utf8PathBuf, mut source: String) {
+    re_tracing::profile_function!();
+
     match format_python(&source) {
         Ok(formatted) => source = formatted,
         Err(err) => {
@@ -205,23 +179,45 @@ fn write_file(filepath: &Utf8PathBuf, mut source: String) {
         }
     }
 
+    let parent_dir = filepath.parent().unwrap();
+    std::fs::create_dir_all(parent_dir)
+        .unwrap_or_else(|err| panic!("Failed to create dir {parent_dir:?}: {err}"));
+
     std::fs::write(filepath, source)
-        .with_context(|| format!("{filepath}"))
-        .unwrap();
+        .unwrap_or_else(|err| panic!("Failed to write file {filepath:?}: {err}"));
+}
+
+fn lib_source_code(archetype_names: &[String]) -> String {
+    let manifest = quote_manifest(archetype_names);
+    let archetype_names = archetype_names.join(", ");
+
+    let mut code = String::new();
+
+    code += &unindent::unindent(&format!(
+        r#"
+        # {AUTOGEN_WARNING}
+
+        from __future__ import annotations
+
+        __all__ = [{manifest}]
+
+        from .archetypes import {archetype_names}
+        "#
+    ));
+
+    code
 }
 
 /// Returns all filepaths + all object names.
 fn quote_objects(
-    out_path: impl AsRef<Utf8Path>,
+    out_path: &Utf8Path,
     arrow_registry: &ArrowRegistry,
     overrides: &HashSet<String>,
     all_objects: &Objects,
     _kind: ObjectKind,
     objs: &[&Object],
-) -> (BTreeSet<Utf8PathBuf>, Vec<String>) {
-    let out_path = out_path.as_ref();
-
-    let mut filepaths = BTreeSet::new();
+) -> (BTreeMap<Utf8PathBuf, String>, Vec<String>) {
+    let mut files_to_write = BTreeMap::new();
     let mut all_names = Vec::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
@@ -365,8 +361,8 @@ fn quote_objects(
         for obj in objs {
             code.push_text(&obj.code, 1, 0);
         }
-        write_file(&filepath, code);
-        filepaths.insert(filepath.clone());
+
+        files_to_write.insert(filepath.clone(), code);
     }
 
     // rerun/{datatypes|components|archetypes}/__init__.py
@@ -393,11 +389,10 @@ fn quote_objects(
 
         code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
 
-        write_file(&path, code);
-        filepaths.insert(path);
+        files_to_write.insert(path, code);
     }
 
-    (filepaths, all_names)
+    (files_to_write, all_names)
 }
 
 // --- Codegen core loop ---
