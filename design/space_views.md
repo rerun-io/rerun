@@ -154,7 +154,7 @@ This is desirable since:
 * allows for user defined space views
 
 <!-- https://www.figma.com/file/uFpsPdnEjKbdEv9fQif5mU/Space-View-Structure?type=whiteboard&node-id=603-139&t=B8lmYdoC9j99ZmxJ-4 -->
-![Overview diagram of how the basic traits related to each other](https://github.com/rerun-io/rerun/assets/1220815/8194052f-82f8-463e-a490-050011639b40)
+![Overview diagram of how the basic traits related to each other](https://github.com/rerun-io/rerun/assets/1220815/ffdb1cdf-7efe-47a0-ac38-30262d770e69)
 
 
 #### User defined Space View Classes
