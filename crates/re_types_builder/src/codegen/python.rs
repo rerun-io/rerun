@@ -1431,19 +1431,18 @@ fn format_python(source: &str) -> anyhow::Result<String> {
     Ok(source)
 }
 
-fn python_project_path() -> Utf8PathBuf {
-    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+fn rerun_worskapce_path() -> Utf8PathBuf {
+    let workspace_root = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let manifest_dir = Utf8PathBuf::from(manifest_dir);
-        let workspace_root = manifest_dir.parent().unwrap().parent().unwrap();
-        let path = workspace_root.join("rerun_py").join("pyproject.toml");
-        assert!(
-            path.exists(),
-            "Failed to find {path:?}. CARGO_MANIFEST_DIR: {manifest_dir:?}"
-        );
-        path
+        manifest_dir
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf()
     } else {
         let file_path = Utf8PathBuf::from(file!());
-        let workspace_root = file_path
+        file_path
             .parent()
             .unwrap()
             .parent()
@@ -1453,11 +1452,30 @@ fn python_project_path() -> Utf8PathBuf {
             .parent()
             .unwrap()
             .parent()
-            .unwrap();
-        let path = workspace_root.join("rerun_py").join("pyproject.toml");
-        assert!(path.exists(), "Failed to find {path:?}");
-        path
-    }
+            .unwrap()
+            .to_path_buf()
+    };
+
+    assert!(
+        workspace_root.exists(),
+        "Failed to find workspace root, expected it at {workspace_root:?}"
+    );
+
+    // Check for something that only exists in root:
+    assert!(
+        workspace_root.join("CODE_OF_CONDUCT.md").exists(),
+        "Failed to find workspace root, expected it at {workspace_root:?}"
+    );
+
+    workspace_root
+}
+
+fn python_project_path() -> Utf8PathBuf {
+    let path = rerun_worskapce_path()
+        .join("rerun_py")
+        .join("pyproject.toml");
+    assert!(path.exists(), "Failed to find {path:?}");
+    path
 }
 
 fn run_black(source: &str) -> anyhow::Result<String> {
