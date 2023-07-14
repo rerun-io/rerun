@@ -18,6 +18,7 @@ all-features = true
 
 
 [dependencies]
+re_log.workspace = true
 
 # External
 anyhow.workspace = true

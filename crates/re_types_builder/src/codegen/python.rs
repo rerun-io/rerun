@@ -15,6 +15,8 @@ use crate::{
     Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_RERUN_LEGACY_FQNAME,
 };
 
+const PYTHON_PYPROJECT_PATH: &str = "../../rerun_py/pyproject.toml";
+
 // ---
 
 /// Python-specific helpers for [`Object`].
@@ -178,11 +180,36 @@ fn quote_lib(out_path: impl AsRef<Utf8Path>, archetype_names: &[String]) -> Utf8
         "#
     ));
 
-    std::fs::write(&path, code)
-        .with_context(|| format!("{path:?}"))
-        .unwrap();
+    write_file(&path, code);
 
     path
+}
+
+fn write_file(filepath: &Utf8PathBuf, mut source: String) {
+    match format_python(&source) {
+        Ok(formatted) => source = formatted,
+        Err(err) => {
+            // NOTE: Formatting code requires both `black` and `ruff` to be in $PATH, but only for contributors,
+            // not end users.
+            // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
+            // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
+            // the CI!
+            re_log::warn_once!(
+                "Failed to format Python code: {err}. Make sure `black` and `ruff` are installed."
+            );
+        }
+    }
+
+    if let Ok(existing) = std::fs::read_to_string(filepath) {
+        if existing == source {
+            // Don't touch the timestamp unnecessarily
+            return;
+        }
+    }
+
+    std::fs::write(filepath, source)
+        .with_context(|| format!("{filepath}"))
+        .unwrap();
 }
 
 /// Returns all filepaths + all object names.
@@ -245,11 +272,6 @@ fn quote_objects(
         mods.entry(filepath.file_stem().unwrap().to_owned())
             .or_default()
             .extend(names.iter().cloned());
-
-        filepaths.insert(filepath.clone());
-        let mut file = std::fs::File::create(&filepath)
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
 
         let mut code = String::new();
         code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
@@ -345,9 +367,8 @@ fn quote_objects(
         for obj in objs {
             code.push_text(&obj.code, 1, 0);
         }
-        file.write_all(code.as_bytes())
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
+        write_file(&filepath, code);
+        filepaths.insert(filepath.clone());
     }
 
     // rerun/{datatypes|components|archetypes}/__init__.py
@@ -374,10 +395,8 @@ fn quote_objects(
 
         code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
 
-        filepaths.insert(path.clone());
-        std::fs::write(&path, code)
-            .with_context(|| format!("{path:?}"))
-            .unwrap();
+        write_file(&path, code);
+        filepaths.insert(path);
     }
 
     (filepaths, all_names)
@@ -1398,4 +1417,83 @@ fn quote_metadata_map(metadata: &BTreeMap<String, String>) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     format!("{{{kvs}}}")
+}
+
+fn format_python(source: &str) -> anyhow::Result<String> {
+    // The order below is important and sadly we need to call black twice. Ruff does not yet
+    // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
+    //
+    // 1) Call black, which among others things fixes line-length
+    // 2) Call ruff, which requires line-lengths to be correct
+    // 3) Call black again to cleanup some whitespace issues ruff might introduce
+
+    let mut source = run_black(source).context("black")?;
+    source = run_ruff(&source).context("ruff")?;
+    source = run_black(&source).context("black")?;
+    Ok(source)
+}
+
+fn run_black(source: &str) -> anyhow::Result<String> {
+    use std::process::{Command, Stdio};
+
+    assert!(
+        Utf8PathBuf::from(PYTHON_PYPROJECT_PATH).exists(),
+        "Failed to find {PYTHON_PYPROJECT_PATH:?}"
+    );
+
+    let mut proc = Command::new("black")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .arg(format!("--config={PYTHON_PYPROJECT_PATH}"))
+        .arg("-") // Read from stdin
+        .spawn()?;
+
+    {
+        let mut stdin = proc.stdin.take().unwrap();
+        stdin.write_all(source.as_bytes())?;
+    }
+
+    let output = proc.wait_with_output()?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8(output.stdout)?;
+        Ok(stdout)
+    } else {
+        let stderr = String::from_utf8(output.stderr)?;
+        anyhow::bail!("{stderr}")
+    }
+}
+
+fn run_ruff(source: &str) -> anyhow::Result<String> {
+    use std::process::{Command, Stdio};
+
+    assert!(
+        Utf8PathBuf::from(PYTHON_PYPROJECT_PATH).exists(),
+        "Failed to find {PYTHON_PYPROJECT_PATH:?}"
+    );
+
+    let mut proc = Command::new("ruff")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .arg(format!("--config={PYTHON_PYPROJECT_PATH}"))
+        .arg("--fix")
+        .arg("-") // Read from stdin
+        .spawn()?;
+
+    {
+        let mut stdin = proc.stdin.take().unwrap();
+        stdin.write_all(source.as_bytes())?;
+    }
+
+    let output = proc.wait_with_output()?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8(output.stdout)?;
+        Ok(stdout)
+    } else {
+        let stderr = String::from_utf8(output.stderr)?;
+        anyhow::bail!("{stderr}")
+    }
 }

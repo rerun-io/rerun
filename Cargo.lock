@@ -4535,7 +4535,6 @@ dependencies = [
  "re_types_builder",
  "similar-asserts",
  "thiserror",
- "xshell",
 ]
 
 [[package]]
@@ -4554,6 +4553,7 @@ dependencies = [
  "quote",
  "rayon",
  "re_build_tools",
+ "re_log",
  "rust-format",
  "syn 2.0.16",
  "unindent",
