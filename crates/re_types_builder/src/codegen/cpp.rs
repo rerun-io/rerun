@@ -73,13 +73,7 @@ impl CppCodeGenerator {
             filepaths.insert(filepath);
         }
 
-        // Clean up old files:
-        for entry in std::fs::read_dir(folder_path).unwrap().flatten() {
-            let filepath = Utf8PathBuf::try_from(entry.path()).unwrap();
-            if !filepaths.contains(&filepath) {
-                std::fs::remove_file(filepath).ok();
-            }
-        }
+        super::common::remove_old_files_from_folder(folder_path, &filepaths);
 
         filepaths
     }

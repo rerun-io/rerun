@@ -144,7 +144,14 @@ impl CodeGenerator for PythonCodeGenerator {
 
         write_files(&files_to_write);
 
-        files_to_write.keys().cloned().collect()
+        let filepaths = files_to_write.keys().cloned().collect();
+
+        for kind in ObjectKind::ALL {
+            let folder_path = self.pkg_path.join(kind.plural_snake_case());
+            super::common::remove_old_files_from_folder(folder_path, &filepaths);
+        }
+
+        filepaths
     }
 }
 
