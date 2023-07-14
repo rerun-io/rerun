@@ -1,5 +1,9 @@
 //! Helpers common to all codegen passes.
 
+use std::collections::BTreeSet;
+
+use camino::Utf8PathBuf;
+
 use crate::Docs;
 
 /// Retrieves the global and tagged documentation from a [`Docs`] object.
@@ -57,5 +61,20 @@ impl StringExt for String {
         self.push_str(&unindent::unindent(text.as_ref()));
         self.push_str(&vec!["\n"; linefeeds].join(""));
         self
+    }
+}
+
+/// Remove all files in the given folder that are not in the given set.
+pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeSet<Utf8PathBuf>) {
+    re_tracing::profile_function!();
+    for entry in std::fs::read_dir(folder_path).unwrap().flatten() {
+        let filepath = Utf8PathBuf::try_from(entry.path()).unwrap();
+        if filepath.as_str().ends_with("_ext.rs") {
+            continue;
+        }
+        if !filepaths.contains(&filepath) {
+            re_log::info!("Removing {filepath:?}");
+            std::fs::remove_file(filepath).ok();
+        }
     }
 }

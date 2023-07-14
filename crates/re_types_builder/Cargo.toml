@@ -18,6 +18,8 @@ all-features = true
 
 
 [dependencies]
+re_log.workspace = true
+re_tracing = { workspace = true, features = ["server"] }
 
 # External
 anyhow.workspace = true

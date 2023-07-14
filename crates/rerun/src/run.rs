@@ -377,8 +377,8 @@ fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliEr
 }
 
 #[cfg(feature = "native_viewer")]
-fn profiler(args: &Args) -> re_viewer::Profiler {
-    let mut profiler = re_viewer::Profiler::default();
+fn profiler(args: &Args) -> re_tracing::Profiler {
+    let mut profiler = re_tracing::Profiler::default();
     if args.profile {
         profiler.start();
     }
@@ -832,7 +832,7 @@ fn native_viewer_connect_to_ws_url(
     build_info: re_build_info::BuildInfo,
     app_env: re_viewer::AppEnvironment,
     startup_options: re_viewer::StartupOptions,
-    profiler: re_viewer::Profiler,
+    profiler: re_tracing::Profiler,
     rerun_server_ws_url: String,
 ) -> anyhow::Result<()> {
     // By using RemoteViewerApp we let the user change the server they are connected to.

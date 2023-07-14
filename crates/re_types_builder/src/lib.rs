@@ -214,6 +214,7 @@ pub fn generate_lang_agnostic(
     include_dir_path: impl AsRef<Utf8Path>,
     entrypoint_path: impl AsRef<Utf8Path>,
 ) -> (Objects, ArrowRegistry) {
+    re_tracing::profile_function!();
     use xshell::Shell;
 
     let sh = Shell::new().unwrap();
@@ -275,6 +276,7 @@ pub fn generate_cpp_code(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
+    re_tracing::profile_function!();
     let mut gen = CppCodeGenerator::new(output_path.as_ref());
     let _filepaths = gen.generate(objects, arrow_registry);
 }
@@ -302,6 +304,7 @@ pub fn generate_rust_code(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
+    re_tracing::profile_function!();
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
     let _filepaths = gen.generate(objects, arrow_registry);
 }
@@ -329,6 +332,42 @@ pub fn generate_python_code(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
+    re_tracing::profile_function!();
     let mut gen = PythonCodeGenerator::new(output_pkg_path.as_ref());
     let _filepaths = gen.generate(objects, arrow_registry);
+}
+
+pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
+    let workspace_root = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        let manifest_dir = camino::Utf8PathBuf::from(manifest_dir);
+        manifest_dir
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf()
+    } else {
+        let file_path = camino::Utf8PathBuf::from(file!());
+        file_path
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf()
+    };
+
+    assert!(
+        workspace_root.exists(),
+        "Failed to find workspace root, expected it at {workspace_root:?}"
+    );
+
+    // Check for something that only exists in root:
+    assert!(
+        workspace_root.join("CODE_OF_CONDUCT.md").exists(),
+        "Failed to find workspace root, expected it at {workspace_root:?}"
+    );
+
+    workspace_root
 }

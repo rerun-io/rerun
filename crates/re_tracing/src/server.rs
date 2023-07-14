@@ -6,6 +6,13 @@ pub struct Profiler {
     server: Option<puffin_http::Server>,
 }
 
+impl Drop for Profiler {
+    fn drop(&mut self) {
+        // Commit the last stuff:
+        puffin::GlobalProfiler::lock().new_frame();
+    }
+}
+
 impl Profiler {
     pub fn start(&mut self) {
         puffin::set_scopes_on(true);
@@ -26,10 +33,7 @@ impl Profiler {
                 Some(puffin_server)
             }
             Err(err) => {
-                re_log::warn!(
-                    "Failed to start puffin profiling server: {}",
-                    re_error::format(&err)
-                );
+                re_log::warn!("Failed to start puffin profiling server: {err}");
                 None
             }
         };

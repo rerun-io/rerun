@@ -609,9 +609,9 @@ impl Object {
 
     /// Try to find the relative file path of the `.fbs` source file.
     pub fn relative_filepath(&self) -> Option<&Utf8Path> {
-        std::env::var("CARGO_MANIFEST_DIR")
+        self.filepath
+            .strip_prefix(crate::rerun_workspace_path())
             .ok()
-            .and_then(|manifest_dir| self.filepath.strip_prefix(manifest_dir).ok())
     }
 
     /// The `snake_case` name of the object, e.g. `translation_and_mat3x3`.

@@ -90,7 +90,7 @@ impl RemoteViewerApp {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn set_profiler(&mut self, profiler: crate::Profiler) {
+    pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         if let Some((_, app)) = &mut self.app {
             app.set_profiler(profiler);
         }

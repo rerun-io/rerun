@@ -80,7 +80,7 @@ pub struct App {
     screenshotter: crate::screenshotter::Screenshotter,
 
     #[cfg(not(target_arch = "wasm32"))]
-    profiler: crate::Profiler,
+    profiler: re_tracing::Profiler,
 
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
@@ -204,7 +204,7 @@ impl App {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn set_profiler(&mut self, profiler: crate::Profiler) {
+    pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
     }
 

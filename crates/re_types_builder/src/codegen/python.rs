@@ -8,6 +8,7 @@ use std::{
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
+use rayon::prelude::*;
 
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
@@ -90,16 +91,13 @@ impl CodeGenerator for PythonCodeGenerator {
         objs: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
-        let mut filepaths = BTreeSet::new();
+        let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         let datatypes_path = self.pkg_path.join(ObjectKind::Datatype.plural_snake_case());
         let datatype_overrides = load_overrides(&datatypes_path);
-        std::fs::create_dir_all(&datatypes_path)
-            .with_context(|| format!("{datatypes_path:?}"))
-            .unwrap();
-        filepaths.extend(
+        files_to_write.extend(
             quote_objects(
-                datatypes_path,
+                &datatypes_path,
                 arrow_registry,
                 &datatype_overrides,
                 objs,
@@ -113,12 +111,9 @@ impl CodeGenerator for PythonCodeGenerator {
             .pkg_path
             .join(ObjectKind::Component.plural_snake_case());
         let component_overrides = load_overrides(&components_path);
-        std::fs::create_dir_all(&components_path)
-            .with_context(|| format!("{components_path:?}"))
-            .unwrap();
-        filepaths.extend(
+        files_to_write.extend(
             quote_objects(
-                components_path,
+                &components_path,
                 arrow_registry,
                 &component_overrides,
                 objs,
@@ -132,35 +127,77 @@ impl CodeGenerator for PythonCodeGenerator {
             .pkg_path
             .join(ObjectKind::Archetype.plural_snake_case());
         let archetype_overrides = load_overrides(&archetypes_path);
-        std::fs::create_dir_all(&archetypes_path)
-            .with_context(|| format!("{archetypes_path:?}"))
-            .unwrap();
         let (paths, archetype_names) = quote_objects(
-            archetypes_path,
+            &archetypes_path,
             arrow_registry,
             &archetype_overrides,
             objs,
             ObjectKind::Archetype,
             &objs.ordered_objects(ObjectKind::Archetype.into()),
         );
-        filepaths.extend(paths);
+        files_to_write.extend(paths);
 
-        filepaths.insert(quote_lib(&self.pkg_path, &archetype_names));
+        files_to_write.insert(
+            self.pkg_path.join("__init__.py"),
+            lib_source_code(&archetype_names),
+        );
+
+        write_files(&files_to_write);
+
+        let filepaths = files_to_write.keys().cloned().collect();
+
+        for kind in ObjectKind::ALL {
+            let folder_path = self.pkg_path.join(kind.plural_snake_case());
+            super::common::remove_old_files_from_folder(folder_path, &filepaths);
+        }
 
         filepaths
     }
 }
 
-// --- File management ---
+fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
+    re_tracing::profile_function!();
+    // TODO(emilk): running `black` and `ruff` once for each file is very slow.
+    // It would probably be faster to write all filtes to a temporary folder, run `black` and `ruff` on
+    // that folder, and then copy the results to the final destination (if the files has changed).
+    files_to_write.par_iter().for_each(|(path, source)| {
+        write_file(path, source.clone());
+    });
+}
 
-fn quote_lib(out_path: impl AsRef<Utf8Path>, archetype_names: &[String]) -> Utf8PathBuf {
-    let out_path = out_path.as_ref();
+fn write_file(filepath: &Utf8PathBuf, mut source: String) {
+    re_tracing::profile_function!();
 
-    std::fs::create_dir_all(out_path)
-        .with_context(|| format!("{out_path:?}"))
-        .unwrap();
+    match format_python(&source) {
+        Ok(formatted) => source = formatted,
+        Err(err) => {
+            // NOTE: Formatting code requires both `black` and `ruff` to be in $PATH, but only for contributors,
+            // not end users.
+            // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
+            // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
+            // the CI!
+            re_log::warn_once!(
+                "Failed to format Python code: {err}. Make sure `black` and `ruff` are installed."
+            );
+        }
+    }
 
-    let path = out_path.join("__init__.py");
+    if let Ok(existing) = std::fs::read_to_string(filepath) {
+        if existing == source {
+            // Don't touch the timestamp unnecessarily
+            return;
+        }
+    }
+
+    let parent_dir = filepath.parent().unwrap();
+    std::fs::create_dir_all(parent_dir)
+        .unwrap_or_else(|err| panic!("Failed to create dir {parent_dir:?}: {err}"));
+
+    std::fs::write(filepath, source)
+        .unwrap_or_else(|err| panic!("Failed to write file {filepath:?}: {err}"));
+}
+
+fn lib_source_code(archetype_names: &[String]) -> String {
     let manifest = quote_manifest(archetype_names);
     let archetype_names = archetype_names.join(", ");
 
@@ -178,25 +215,19 @@ fn quote_lib(out_path: impl AsRef<Utf8Path>, archetype_names: &[String]) -> Utf8
         "#
     ));
 
-    std::fs::write(&path, code)
-        .with_context(|| format!("{path:?}"))
-        .unwrap();
-
-    path
+    code
 }
 
 /// Returns all filepaths + all object names.
 fn quote_objects(
-    out_path: impl AsRef<Utf8Path>,
+    out_path: &Utf8Path,
     arrow_registry: &ArrowRegistry,
     overrides: &HashSet<String>,
     all_objects: &Objects,
     _kind: ObjectKind,
     objs: &[&Object],
-) -> (BTreeSet<Utf8PathBuf>, Vec<String>) {
-    let out_path = out_path.as_ref();
-
-    let mut filepaths = BTreeSet::new();
+) -> (BTreeMap<Utf8PathBuf, String>, Vec<String>) {
+    let mut files_to_write = BTreeMap::new();
     let mut all_names = Vec::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
@@ -245,11 +276,6 @@ fn quote_objects(
         mods.entry(filepath.file_stem().unwrap().to_owned())
             .or_default()
             .extend(names.iter().cloned());
-
-        filepaths.insert(filepath.clone());
-        let mut file = std::fs::File::create(&filepath)
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
 
         let mut code = String::new();
         code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
@@ -345,9 +371,8 @@ fn quote_objects(
         for obj in objs {
             code.push_text(&obj.code, 1, 0);
         }
-        file.write_all(code.as_bytes())
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
+
+        files_to_write.insert(filepath.clone(), code);
     }
 
     // rerun/{datatypes|components|archetypes}/__init__.py
@@ -374,13 +399,10 @@ fn quote_objects(
 
         code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
 
-        filepaths.insert(path.clone());
-        std::fs::write(&path, code)
-            .with_context(|| format!("{path:?}"))
-            .unwrap();
+        files_to_write.insert(path, code);
     }
 
-    (filepaths, all_names)
+    (files_to_write, all_names)
 }
 
 // --- Codegen core loop ---
@@ -1398,4 +1420,85 @@ fn quote_metadata_map(metadata: &BTreeMap<String, String>) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     format!("{{{kvs}}}")
+}
+
+fn format_python(source: &str) -> anyhow::Result<String> {
+    re_tracing::profile_function!();
+
+    // The order below is important and sadly we need to call black twice. Ruff does not yet
+    // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
+    //
+    // 1) Call black, which among others things fixes line-length
+    // 2) Call ruff, which requires line-lengths to be correct
+    // 3) Call black again to cleanup some whitespace issues ruff might introduce
+
+    let mut source = run_black(source).context("black")?;
+    source = run_ruff(&source).context("ruff")?;
+    source = run_black(&source).context("black")?;
+    Ok(source)
+}
+
+fn python_project_path() -> Utf8PathBuf {
+    let path = crate::rerun_workspace_path()
+        .join("rerun_py")
+        .join("pyproject.toml");
+    assert!(path.exists(), "Failed to find {path:?}");
+    path
+}
+
+fn run_black(source: &str) -> anyhow::Result<String> {
+    re_tracing::profile_function!();
+    use std::process::{Command, Stdio};
+
+    let mut proc = Command::new("black")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .arg(format!("--config={}", python_project_path()))
+        .arg("-") // Read from stdin
+        .spawn()?;
+
+    {
+        let mut stdin = proc.stdin.take().unwrap();
+        stdin.write_all(source.as_bytes())?;
+    }
+
+    let output = proc.wait_with_output()?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8(output.stdout)?;
+        Ok(stdout)
+    } else {
+        let stderr = String::from_utf8(output.stderr)?;
+        anyhow::bail!("{stderr}")
+    }
+}
+
+fn run_ruff(source: &str) -> anyhow::Result<String> {
+    re_tracing::profile_function!();
+    use std::process::{Command, Stdio};
+
+    let mut proc = Command::new("ruff")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .arg(format!("--config={}", python_project_path()))
+        .arg("--fix")
+        .arg("-") // Read from stdin
+        .spawn()?;
+
+    {
+        let mut stdin = proc.stdin.take().unwrap();
+        stdin.write_all(source.as_bytes())?;
+    }
+
+    let output = proc.wait_with_output()?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8(output.stdout)?;
+        Ok(stdout)
+    } else {
+        let stderr = String::from_utf8(output.stderr)?;
+        anyhow::bail!("{stderr}")
+    }
 }

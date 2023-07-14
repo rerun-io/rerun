@@ -17,7 +17,7 @@ fn encode_hex(bytes: &[u8]) -> String {
     s
 }
 
-/// Walks the directory at `path` in filename order.
+/// Recursively walks the directory at `path` in filename order.
 ///
 /// If `extensions` is specified, only files with the right extensions will be iterated.
 /// Specified extensions should _not_ include the leading dot, e.g. `fbs` rather than `.fbs`.
