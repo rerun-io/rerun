@@ -28,6 +28,8 @@ pub struct ViewQuery<'s> {
     pub entity_props_map: &'s EntityPropertyMap,
 
     /// Hover/select highlighting information for this space view.
+    ///
+    /// TODO(andreas): This should be a [`crate::ViewContextSystem`] instead.
     pub highlights: &'s SpaceViewHighlights,
 }
 
