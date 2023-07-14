@@ -94,7 +94,7 @@ This is a living document. Strive to improve it on each new release.
 Before pushing the release tag:
   * [ ] `just py-run-all`
   * [ ] Test the web viewer:
-      * [ ] `just py-run-all --fast --separate --web`
+      * [ ] `just py-run-all --fast --parallel --web`
       * [ ] Test on:
           * [ ] Chromium
           * [ ] Firefox

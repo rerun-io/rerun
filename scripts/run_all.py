@@ -59,7 +59,7 @@ def start_process(args: list[str], *, wait: bool) -> Any:
     return process
 
 
-def run_py_example(path: str, viewer_port: int | None = None, wait: bool = True, save: str | None = None) -> Any:
+def run_py_example(path: str, viewer_port: int | None = None, *, wait: bool = True, save: str | None = None) -> Any:
     args = [os.path.join(path, "main.py")]
 
     if path in EXTRA_ARGS:
@@ -224,8 +224,8 @@ def run_install_requirements(examples: list[str]) -> None:
     assert returncode == 0, f"process exited with error code {returncode}"
 
 
-def run_web(examples: list[str], separate: bool) -> None:
-    if separate:
+def run_web(examples: list[str], parallel: bool) -> None:
+    if parallel:
         entries: list[tuple[str, Any, Any]] = []
         # start all examples in parallel
         for path in examples:
@@ -262,7 +262,7 @@ def run_save(examples: list[str]) -> None:
             print(f"{output_from_process(process)}\n")
 
 
-def run_saved_example(path: str, wait: bool) -> Any:
+def run_saved_example(path: str, *, wait: bool) -> Any:
     return start_process(
         [
             "cargo",
@@ -273,10 +273,10 @@ def run_saved_example(path: str, wait: bool) -> Any:
     )
 
 
-def run_load(examples: list[str], separate: bool, close: bool) -> None:
+def run_load(examples: list[str], parallel: bool, close: bool) -> None:
     examples = [path for path in examples if path not in HAS_NO_SAVE_ARG]
 
-    if separate:
+    if parallel:
         entries: list[tuple[str, Any]] = []
         for path in examples:
             example = run_saved_example(path, wait=False)
@@ -295,14 +295,14 @@ def run_load(examples: list[str], separate: bool, close: bool) -> None:
             print(f"{output_from_process(process)}\n")
 
 
-def run_native(examples: list[str], separate: bool, close: bool) -> None:
-    if separate:
+def run_native(examples: list[str], parallel: bool, close: bool) -> None:
+    if parallel:
         # start all examples in parallel:
         cleanup: list[tuple[Any, Any]] = []
         for path in examples:
             # each example gets its own viewer
             viewer = Viewer().start()
-            example = run_py_example(path, viewer.sdk_port, False)
+            example = run_py_example(path, viewer.sdk_port, wait=False)
             cleanup.append((viewer, example))
 
         # wait for all processes to finish, and close the viewers if requested
@@ -335,7 +335,7 @@ def main() -> None:
         "--load", action="store_true", help="Run examples using rrd files previously saved via `--save`."
     )
     parser.add_argument("--fast", action="store_true", help="Run only examples which complete quickly.")
-    parser.add_argument("--separate", action="store_true", help="Run each example in a separate viewer.")
+    parser.add_argument("--parallel", action="store_true", help="Run all examples in parallel.")
     parser.add_argument("--close", action="store_true", help="Close the viewer after running all examples.")
 
     args = parser.parse_args()
@@ -352,7 +352,7 @@ def main() -> None:
         run_install_requirements(examples)
 
     if args.web:
-        run_web(examples, separate=args.separate)
+        run_web(examples, parallel=args.parallel)
         return
 
     if args.save:
@@ -361,10 +361,10 @@ def main() -> None:
             return
 
     if args.load:
-        run_load(examples, separate=args.separate, close=args.close)
+        run_load(examples, parallel=args.parallel, close=args.close)
         return
 
-    run_native(examples, separate=args.separate, close=args.close)
+    run_native(examples, parallel=args.parallel, close=args.close)
 
 
 if __name__ == "__main__":
