@@ -20,3 +20,9 @@ impl From<InstanceKey> for u64 {
         value.0
     }
 }
+
+impl InstanceKey {
+    pub fn is_splat(&self) -> bool {
+        self == &InstanceKey::SPLAT
+    }
+}

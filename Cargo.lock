@@ -4201,6 +4201,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_tracing",
+ "re_types",
  "thiserror",
 ]
 

@@ -6,6 +6,7 @@
 
 // TODO(jleibs) better crate documentation.
 
+mod archetype_view;
 mod entity_view;
 mod query;
 mod range;
@@ -40,6 +41,15 @@ pub enum QueryError {
         actual: re_log_types::ComponentName,
         requested: re_log_types::ComponentName,
     },
+
+    #[error("Tried to access component of type '{actual:?}' using component '{requested:?}'")]
+    NewTypeMismatch {
+        actual: re_types::ComponentName,
+        requested: re_types::ComponentName,
+    },
+
+    #[error("Error deserializing: {0}")]
+    DeserializationError(#[from] re_types::DeserializationError),
 
     #[error("Error with one or more the underlying data cells: {0}")]
     DataCell(#[from] re_log_types::DataCellError),

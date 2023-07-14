@@ -227,7 +227,7 @@ pub trait Datatype: Loggable {}
 /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Point2D`.
 pub type ComponentName = ::std::borrow::Cow<'static, str>;
 
-pub trait Component: Loggable {}
+pub trait Component: Loggable<Name = ComponentName> {}
 
 // ---
 
