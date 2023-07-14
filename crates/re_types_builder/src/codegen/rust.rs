@@ -1,14 +1,14 @@
 //! Implements the Rust codegen pass.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::Context as _;
 use arrow2::datatypes::DataType;
+use camino::{Utf8Path, Utf8PathBuf};
 use convert_case::{Case, Casing as _};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-
-use camino::{Utf8Path, Utf8PathBuf};
+use rayon::prelude::*;
 
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
@@ -41,13 +41,10 @@ impl CodeGenerator for RustCodeGenerator {
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
-        let mut filepaths = BTreeSet::new();
+        let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         let datatypes_path = self.crate_path.join("src/datatypes");
-        std::fs::create_dir_all(&datatypes_path)
-            .with_context(|| format!("{datatypes_path:?}"))
-            .unwrap();
-        filepaths.extend(create_files(
+        files_to_write.extend(create_files(
             datatypes_path,
             arrow_registry,
             objects,
@@ -55,10 +52,7 @@ impl CodeGenerator for RustCodeGenerator {
         ));
 
         let components_path = self.crate_path.join("src/components");
-        std::fs::create_dir_all(&components_path)
-            .with_context(|| format!("{components_path:?}"))
-            .unwrap();
-        filepaths.extend(create_files(
+        files_to_write.extend(create_files(
             components_path,
             arrow_registry,
             objects,
@@ -66,17 +60,16 @@ impl CodeGenerator for RustCodeGenerator {
         ));
 
         let archetypes_path = self.crate_path.join("src/archetypes");
-        std::fs::create_dir_all(&archetypes_path)
-            .with_context(|| format!("{archetypes_path:?}"))
-            .unwrap();
-        filepaths.extend(create_files(
+        files_to_write.extend(create_files(
             archetypes_path,
             arrow_registry,
             objects,
             &objects.ordered_objects(ObjectKind::Archetype.into()),
         ));
 
-        filepaths
+        write_files(&files_to_write);
+
+        files_to_write.keys().cloned().collect()
     }
 }
 
@@ -87,10 +80,10 @@ fn create_files(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     objs: &[&Object],
-) -> BTreeSet<Utf8PathBuf> {
+) -> BTreeMap<Utf8PathBuf, String> {
     let out_path = out_path.as_ref();
 
-    let mut filepaths = BTreeSet::new();
+    let mut files_to_write = BTreeMap::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
@@ -176,8 +169,7 @@ fn create_files(
 
         code = replace_doc_attrb_with_doc_comment(&code);
 
-        write_file(&filepath, code);
-        filepaths.insert(filepath.clone());
+        files_to_write.insert(filepath, code);
     }
 
     // src/{datatypes|components|archetypes}/mod.rs
@@ -207,14 +199,22 @@ fn create_files(
             code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
         }
 
-        filepaths.insert(path.clone());
-        write_file(&path, code);
+        files_to_write.insert(path, code);
     }
 
-    filepaths
+    files_to_write
+}
+
+fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
+    re_tracing::profile_function!();
+    files_to_write.par_iter().for_each(|(path, source)| {
+        write_file(path, source.clone());
+    });
 }
 
 fn write_file(filepath: &Utf8PathBuf, mut code: String) {
+    re_tracing::profile_function!();
+
     // We need to run `cago fmt` several times because it is not idempotent!
     // See https://github.com/rust-lang/rustfmt/issues/5824
     for _ in 0..2 {
@@ -225,6 +225,7 @@ fn write_file(filepath: &Utf8PathBuf, mut code: String) {
         //
         // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
 
+        re_tracing::profile_scope!("rust-fmt");
         use rust_format::Formatter as _;
         if let Ok(formatted) = rust_format::RustFmt::default().format_str(&code) {
             code = formatted;
@@ -238,9 +239,12 @@ fn write_file(filepath: &Utf8PathBuf, mut code: String) {
         }
     }
 
+    let parent_dir = filepath.parent().unwrap();
+    std::fs::create_dir_all(parent_dir)
+        .unwrap_or_else(|err| panic!("Failed to create dir {parent_dir:?}: {err}"));
+
     std::fs::write(filepath, code)
-        .with_context(|| format!("{filepath}"))
-        .unwrap();
+        .unwrap_or_else(|err| panic!("Failed to write file {filepath:?}: {err}"));
 }
 
 /// Replace `#[doc = "…"]` attributes with `/// …` doc comments,

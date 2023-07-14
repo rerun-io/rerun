@@ -142,13 +142,13 @@ impl CodeGenerator for PythonCodeGenerator {
             lib_source_code(&archetype_names),
         );
 
-        create_files(&files_to_write);
+        write_files(&files_to_write);
 
         files_to_write.keys().cloned().collect()
     }
 }
 
-fn create_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
+fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
     re_tracing::profile_function!();
     files_to_write.par_iter().for_each(|(path, source)| {
         write_file(path, source.clone());
