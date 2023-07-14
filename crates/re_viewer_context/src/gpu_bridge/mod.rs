@@ -145,7 +145,8 @@ pub fn renderer_paint_callback(
                 .prepare(
                     move |_device, _queue, _encoder, _paint_callback_resources| {
                         let mut command_buffer = command_buffer.lock();
-                        vec![std::mem::replace(&mut *command_buffer, None)
+                        vec![command_buffer
+                            .take()
                             .expect("egui_wgpu prepare callback called more than once")]
                     },
                 )
