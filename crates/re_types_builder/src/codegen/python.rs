@@ -1418,6 +1418,8 @@ fn quote_metadata_map(metadata: &BTreeMap<String, String>) -> String {
 }
 
 fn format_python(source: &str) -> anyhow::Result<String> {
+    re_tracing::profile_function!();
+
     // The order below is important and sadly we need to call black twice. Ruff does not yet
     // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
     //
@@ -1479,6 +1481,7 @@ fn python_project_path() -> Utf8PathBuf {
 }
 
 fn run_black(source: &str) -> anyhow::Result<String> {
+    re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
     let mut proc = Command::new("black")
@@ -1506,6 +1509,7 @@ fn run_black(source: &str) -> anyhow::Result<String> {
 }
 
 fn run_ruff(source: &str) -> anyhow::Result<String> {
+    re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
     let mut proc = Command::new("ruff")
