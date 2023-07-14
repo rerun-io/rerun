@@ -324,6 +324,9 @@ pub type SerializationResult<T> = ::std::result::Result<T, SerializationError>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum DeserializationError {
+    #[error("Not implemented")]
+    NotImplemented,
+
     #[error("Missing data for {datatype:#?}")]
     MissingData {
         datatype: ::arrow2::datatypes::DataType,

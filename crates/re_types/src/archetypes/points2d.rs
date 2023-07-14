@@ -82,30 +82,30 @@ pub struct Points2D {
 
 impl Points2D {
     pub const REQUIRED_COMPONENTS: [crate::ComponentName; 1usize] =
-        [crate::ComponentName::Borrowed("rerun.components.Point2D")];
+        [crate::ComponentName::Borrowed("rerun.point2d")];
 
     pub const RECOMMENDED_COMPONENTS: [crate::ComponentName; 2usize] = [
-        crate::ComponentName::Borrowed("rerun.components.Radius"),
-        crate::ComponentName::Borrowed("rerun.components.Color"),
+        crate::ComponentName::Borrowed("rerun.radius"),
+        crate::ComponentName::Borrowed("rerun.colorrgba"),
     ];
 
     pub const OPTIONAL_COMPONENTS: [crate::ComponentName; 5usize] = [
-        crate::ComponentName::Borrowed("rerun.components.Label"),
-        crate::ComponentName::Borrowed("rerun.components.DrawOrder"),
-        crate::ComponentName::Borrowed("rerun.components.ClassId"),
-        crate::ComponentName::Borrowed("rerun.components.KeypointId"),
-        crate::ComponentName::Borrowed("rerun.components.InstanceKey"),
+        crate::ComponentName::Borrowed("rerun.label"),
+        crate::ComponentName::Borrowed("rerun.draw_order"),
+        crate::ComponentName::Borrowed("rerun.class_id"),
+        crate::ComponentName::Borrowed("rerun.keypoint_id"),
+        crate::ComponentName::Borrowed("rerun.instance_key"),
     ];
 
     pub const ALL_COMPONENTS: [crate::ComponentName; 8usize] = [
-        crate::ComponentName::Borrowed("rerun.components.Point2D"),
-        crate::ComponentName::Borrowed("rerun.components.Radius"),
-        crate::ComponentName::Borrowed("rerun.components.Color"),
-        crate::ComponentName::Borrowed("rerun.components.Label"),
-        crate::ComponentName::Borrowed("rerun.components.DrawOrder"),
-        crate::ComponentName::Borrowed("rerun.components.ClassId"),
-        crate::ComponentName::Borrowed("rerun.components.KeypointId"),
-        crate::ComponentName::Borrowed("rerun.components.InstanceKey"),
+        crate::ComponentName::Borrowed("rerun.point2d"),
+        crate::ComponentName::Borrowed("rerun.radius"),
+        crate::ComponentName::Borrowed("rerun.colorrgba"),
+        crate::ComponentName::Borrowed("rerun.label"),
+        crate::ComponentName::Borrowed("rerun.draw_order"),
+        crate::ComponentName::Borrowed("rerun.class_id"),
+        crate::ComponentName::Borrowed("rerun.keypoint_id"),
+        crate::ComponentName::Borrowed("rerun.instance_key"),
     ];
 }
 

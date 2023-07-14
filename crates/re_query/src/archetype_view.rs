@@ -1,27 +1,25 @@
-use std::{borrow::Borrow, collections::BTreeMap, marker::PhantomData};
+use std::{collections::BTreeMap, marker::PhantomData};
 
 use arrow2::array::{Array, PrimitiveArray};
-use itertools::{Either, Itertools};
 use re_format::arrow;
 use re_log_types::RowId;
-use re_types::{components::InstanceKey, Archetype, Component, ComponentName, Loggable};
+use re_types::{
+    components::InstanceKey, Archetype, Component, ComponentName, DeserializationResult, Loggable,
+};
 
 use crate::QueryError;
 
 /// A type-erased array of [`Component`] values and the corresponding [`InstanceKey`] keys.
 ///
-/// `instance_keys` must always be sorted if present. If not present we assume implicit
-/// instance keys that are equal to the row-number.
-///
 /// See: [`crate::get_component_with_instances`]
 #[derive(Clone, Debug)]
-pub struct ComponentWithInstances {
+pub struct ArchComponentWithInstances {
     pub(crate) name: ComponentName,
     pub(crate) instance_keys: Box<dyn ::arrow2::array::Array>,
     pub(crate) values: Box<dyn ::arrow2::array::Array>,
 }
 
-impl ComponentWithInstances {
+impl ArchComponentWithInstances {
     #[inline]
     pub fn name(&self) -> &ComponentName {
         &self.name
@@ -39,15 +37,12 @@ impl ComponentWithInstances {
     }
 
     /// Iterate over the instance keys
-    ///
-    /// If the instance keys don't exist, generate them based on array-index position of the values
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
         InstanceKey::from_arrow(self.instance_keys.as_ref()).into_iter()
     }
 
     /// Iterate over the values and convert them to a native `Component`
-    // TODO(jleibs): These bounds seem weird
     #[inline]
     pub fn iter_values<'a, C: Component + 'a>(
         &self,
@@ -106,14 +101,14 @@ impl ComponentWithInstances {
             })
     }
 
-    /// Produce a `ComponentWithInstances` from native component types
+    /// Produce a [`ArchComponentWithInstances`] from native component types
     pub fn from_native<'a, C: Component + Clone + 'a>(
         instance_keys: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, InstanceKey>>>,
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
-    ) -> ComponentWithInstances {
+    ) -> ArchComponentWithInstances {
         let instance_keys = InstanceKey::to_arrow(instance_keys, None);
         let values = C::to_arrow(values, None);
-        ComponentWithInstances {
+        ArchComponentWithInstances {
             name: C::name(),
             instance_keys,
             values,
@@ -218,40 +213,38 @@ where
     }
 }
 
-/// A view of an entity at a particular point in time returned by [`crate::get_component_with_instances`]
+/// A view of an archetype at a particular point in time returned by [`crate::get_component_with_instances`]
 ///
-/// `EntityView` has a special `primary` [`Component`] which determines the length of an entity
+/// The required [`Components`]s of an [`ArchetypeView`] determines the length of an entity
 /// batch. When iterating over individual components, they will be implicitly joined onto
-/// the primary component using instance keys.
+/// the required [`Component`]s using [`InstanceKey`] values.
 #[derive(Clone, Debug)]
 pub struct ArchetypeView<A: Archetype> {
     pub(crate) row_id: RowId,
-    pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
+    pub(crate) components: BTreeMap<ComponentName, ArchComponentWithInstances>,
     pub(crate) phantom: PhantomData<A>,
 }
 
 impl<A: Archetype> std::fmt::Display for ArchetypeView<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        /*
+        let first_required = self.required_comp();
+
         let primary_table = arrow::format_table(
             [
-                self.primary.instance_keys.as_arrow_ref(),
-                self.primary.values.as_arrow_ref(),
+                first_required.instance_keys.as_ref(),
+                first_required.values.as_ref(),
             ],
-            ["InstanceId", self.primary.name().as_str()],
+            ["InstanceId", first_required.name()],
         );
-        */
 
-        //f.write_fmt(format_args!("ArchetypeView:\n{primary_table}"))
-        let name = A::name();
-        f.write_fmt(format_args!("ArchetypeView:\n{name}"))
+        f.write_fmt(format_args!("ArchetypeView:\n{primary_table}"))
     }
 }
 
 impl<A: Archetype> ArchetypeView<A> {
     #[inline]
     pub fn num_instances(&self) -> usize {
-        self.primary_comp().len()
+        self.required_comp().len()
     }
 
     #[inline]
@@ -261,16 +254,16 @@ impl<A: Archetype> ArchetypeView<A> {
 }
 
 impl<A: Archetype> ArchetypeView<A> {
-    fn primary_comp(&self) -> &ComponentWithInstances {
+    fn required_comp(&self) -> &ArchComponentWithInstances {
         // TODO(jleibs): Do all archetypes always have at least 1 required components?
-        let primary_name = A::required_components().get(0).unwrap().clone();
-        self.components.get(&primary_name).unwrap()
+        let first_required = A::required_components()[0].clone();
+        &self.components[&first_required]
     }
 
-    /// Iterate over the instance keys
+    /// Iterate over the [`InstanceKey`]s.
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
-        self.primary_comp().iter_instance_keys()
+        self.required_comp().iter_instance_keys()
     }
 
     /// Check if the entity has a component and its not empty
@@ -280,12 +273,33 @@ impl<A: Archetype> ArchetypeView<A> {
         self.components.get(&name).map_or(false, |c| !c.is_empty())
     }
 
-    /// Iterate over the values of a `Component`.
-    ///
-    /// Always produces an iterator of length `self.primary.len()`
-    pub fn iter_component<'a, C: Component + Clone + 'a>(
+    /// Iterate over the values of a required [`Component`].
+    pub fn iter_required_component<'a, C: Component + Clone + 'a>(
         &'a self,
-    ) -> crate::Result<impl Iterator<Item = Option<C>> + '_> {
+    ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
+        debug_assert!(A::required_components()
+            .iter()
+            .any(|c| c.as_ref() == C::name()));
+        let component = self.components.get(&C::name());
+
+        if let Some(component) = component {
+            let component_value_iter = C::try_from_arrow(component.values.as_ref())?.into_iter();
+
+            Ok(component_value_iter)
+        } else {
+            Err(re_types::DeserializationError::MissingData {
+                datatype: C::to_arrow_datatype(),
+            })
+        }
+    }
+
+    /// Iterate over the values of an optional `Component`.
+    ///
+    /// Always produces an iterator that matches the length of a primary
+    /// component by joining on the `InstanceKey` values.
+    pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
+        &'a self,
+    ) -> DeserializationResult<impl Iterator<Item = Option<C>> + '_> {
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
@@ -306,7 +320,7 @@ impl<A: Archetype> ArchetypeView<A> {
                 splatted_component_value: None,
             }))
         } else {
-            let primary = self.primary_comp();
+            let primary = self.required_comp();
             let nulls = (0..primary.len()).map(|_| None);
             Ok(itertools::Either::Right(nulls))
         }
@@ -314,10 +328,13 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
     #[inline]
-    pub fn from_native(arch: A) -> Self {
+    pub fn from_native(components: impl IntoIterator<Item = ArchComponentWithInstances>) -> Self {
         Self {
             row_id: RowId::ZERO,
-            components: Default::default(),
+            components: components
+                .into_iter()
+                .map(|comp| (comp.name().clone(), comp))
+                .collect(),
             phantom: PhantomData,
         }
     }
@@ -327,7 +344,7 @@ impl<A: Archetype> ArchetypeView<A> {
 fn lookup_value() {
     use re_types::components::{InstanceKey, Point2D};
 
-    let instance_keys = (0..5).map(InstanceKey).collect_vec();
+    let instance_keys = InstanceKey::from_iter(0..5);
 
     let points = [
         Point2D::new(1.0, 2.0), //
@@ -337,14 +354,14 @@ fn lookup_value() {
         Point2D::new(9.0, 10.0),
     ];
 
-    let component = ComponentWithInstances::from_native(instance_keys, points);
+    let component = ArchComponentWithInstances::from_native(instance_keys, points);
 
     let missing_value = component.lookup_arrow(&InstanceKey(5));
     assert_eq!(missing_value, None);
 
     let value = component.lookup_arrow(&InstanceKey(2)).unwrap();
 
-    let expected_point = [points[2].clone()];
+    let expected_point = [points[2]];
     let expected_arrow = Point2D::to_arrow(expected_point, None);
 
     assert_eq!(expected_arrow, value);
@@ -357,14 +374,14 @@ fn lookup_value() {
         InstanceKey(472),
     ];
 
-    let component = ComponentWithInstances::from_native(instance_keys, points);
+    let component = ArchComponentWithInstances::from_native(instance_keys, points);
 
     let missing_value = component.lookup_arrow(&InstanceKey(46));
     assert_eq!(missing_value, None);
 
     let value = component.lookup_arrow(&InstanceKey(99)).unwrap();
 
-    let expected_point = [points[3].clone()];
+    let expected_point = [points[3]];
     let expected_arrow = Point2D::to_arrow(expected_point, None);
 
     assert_eq!(expected_arrow, value);
@@ -400,7 +417,7 @@ fn lookup_splat() {
         Point2D::new(1.0, 2.0), //
     ];
 
-    let component = ComponentWithInstances::from_native(instances, points);
+    let component = ArchComponentWithInstances::from_native(instances, points);
 
     // Any instance we look up will return the slatted value
     let value = component.lookup::<Point2D>(&InstanceKey(1)).unwrap();

@@ -25,4 +25,10 @@ impl InstanceKey {
     pub fn is_splat(&self) -> bool {
         self == &InstanceKey::SPLAT
     }
+
+    #[allow(clippy::should_implement_trait)]
+    #[inline]
+    pub fn from_iter(it: impl IntoIterator<Item = impl Into<Self>>) -> Vec<Self> {
+        it.into_iter().map(Into::into).collect::<Vec<_>>()
+    }
 }

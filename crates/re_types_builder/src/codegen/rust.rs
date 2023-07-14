@@ -740,17 +740,30 @@ fn quote_trait_impls_from_obj(
             }
         }
         ObjectKind::Archetype => {
-            fn compute_components(obj: &Object, attr: &'static str) -> (usize, TokenStream) {
-                let components = iter_archetype_components(obj, attr).collect::<Vec<_>>();
+            fn compute_components(
+                obj: &Object,
+                attr: &'static str,
+                objects: &Objects,
+            ) -> (usize, TokenStream) {
+                let components = iter_archetype_components(obj, attr)
+                    .map(|fqname| {
+                        objects
+                            .get(fqname.as_str())
+                            .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
+                            .unwrap_or(fqname)
+                    })
+                    .collect::<Vec<_>>();
                 let num_components = components.len();
                 let quoted_components = quote!(#(crate::ComponentName::Borrowed(#components),)*);
                 (num_components, quoted_components)
             }
 
-            let (num_required, required) = compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED);
+            let (num_required, required) =
+                compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, objects);
             let (num_recommended, recommended) =
-                compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED);
-            let (num_optional, optional) = compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL);
+                compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED, objects);
+            let (num_optional, optional) =
+                compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, objects);
 
             let num_all = num_required + num_recommended + num_optional;
 
