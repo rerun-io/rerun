@@ -15,8 +15,6 @@ use crate::{
     Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_RERUN_LEGACY_FQNAME,
 };
 
-const PYTHON_PYPROJECT_PATH: &str = "../../rerun_py/pyproject.toml";
-
 // ---
 
 /// Python-specific helpers for [`Object`].
@@ -1433,19 +1431,43 @@ fn format_python(source: &str) -> anyhow::Result<String> {
     Ok(source)
 }
 
+fn python_project_path() -> Utf8PathBuf {
+    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        let manifest_dir = Utf8PathBuf::from(manifest_dir);
+        let workspace_root = manifest_dir.parent().unwrap().parent().unwrap();
+        let path = workspace_root.join("rerun_py").join("pyproject.toml");
+        assert!(
+            path.exists(),
+            "Failed to find {path:?}. CARGO_MANIFEST_DIR: {manifest_dir:?}"
+        );
+        path
+    } else {
+        let file_path = Utf8PathBuf::from(file!());
+        let workspace_root = file_path
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        let path = workspace_root.join("rerun_py").join("pyproject.toml");
+        assert!(path.exists(), "Failed to find {path:?}");
+        path
+    }
+}
+
 fn run_black(source: &str) -> anyhow::Result<String> {
     use std::process::{Command, Stdio};
-
-    assert!(
-        Utf8PathBuf::from(PYTHON_PYPROJECT_PATH).exists(),
-        "Failed to find {PYTHON_PYPROJECT_PATH:?}"
-    );
 
     let mut proc = Command::new("black")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .arg(format!("--config={PYTHON_PYPROJECT_PATH}"))
+        .arg(format!("--config={}", python_project_path()))
         .arg("-") // Read from stdin
         .spawn()?;
 
@@ -1468,16 +1490,11 @@ fn run_black(source: &str) -> anyhow::Result<String> {
 fn run_ruff(source: &str) -> anyhow::Result<String> {
     use std::process::{Command, Stdio};
 
-    assert!(
-        Utf8PathBuf::from(PYTHON_PYPROJECT_PATH).exists(),
-        "Failed to find {PYTHON_PYPROJECT_PATH:?}"
-    );
-
     let mut proc = Command::new("ruff")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .arg(format!("--config={PYTHON_PYPROJECT_PATH}"))
+        .arg(format!("--config={}", python_project_path()))
         .arg("--fix")
         .arg("-") // Read from stdin
         .spawn()?;
