@@ -1,18 +1,13 @@
-use crate::{ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, ViewQuery, ViewerContext};
+use ahash::HashMap;
 
-/// Scene part collection, consisting of several [`ViewPartSystem`] which may be populated in parallel.
-pub trait ViewPartSystemCollection<C: SpaceViewClass> {
-    /// Retrieves a list of all underlying scene context part for parallel population.
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<C>>;
+use crate::{ArchetypeDefinition, SpaceViewSystemExecutionError, ViewQuery, ViewerContext};
 
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
-}
+use super::view_context_system::ViewContextCollection;
 
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-pub trait ViewPartSystem<C: SpaceViewClass> {
+pub trait ViewPartSystem {
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
 
@@ -23,32 +18,42 @@ pub trait ViewPartSystem<C: SpaceViewClass> {
     /// TODO(andreas): don't pass in `ViewerContext` if we want to restrict the queries here.
     /// If we want to make this restriction, then the trait-contract should be that something external
     /// to the `ViewPartSystemImpl` does the query and then passes an `ArchetypeQueryResult` into populate.
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        space_view_state: &C::State,
-        context: &C::Context,
-        highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData>;
+        view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>;
 
     /// Optionally retrieves a data store reference from the scene element.
     ///
-    /// This is useful for retrieving data that is common to all scene parts of a [`crate::SpaceViewClass`].
+    /// This is useful for retrieving data that is common to several parts of a [`crate::SpaceViewClass`].
     /// For example, if most scene parts produce ui elements, a concrete [`crate::SpaceViewClass`]
     /// can pick those up in its [`crate::SpaceViewClass::ui`] method by iterating over all scene parts.
-    fn data(&self) -> Option<&C::ViewPartData> {
+    fn data(&self) -> Option<&dyn std::any::Any> {
         None
     }
+
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
-/// Trivial implementation of a scene collection that consists only of a single scene part.
-impl<C: SpaceViewClass, T: ViewPartSystem<C> + 'static> ViewPartSystemCollection<C> for T {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewPartSystem<C>> {
-        vec![self]
+pub struct ViewPartCollection {
+    pub(crate) systems: HashMap<std::any::TypeId, Box<dyn ViewPartSystem>>,
+}
+
+impl ViewPartCollection {
+    pub fn get<T: ViewPartSystem + Default + 'static>(
+        &self,
+    ) -> Result<&T, SpaceViewSystemExecutionError> {
+        self.systems
+            .get(&std::any::TypeId::of::<T>())
+            .and_then(|s| s.as_any().downcast_ref())
+            .ok_or_else(|| {
+                SpaceViewSystemExecutionError::PartSystemNotFound(std::any::type_name::<T>())
+            })
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+    pub fn iter(&self) -> impl Iterator<Item = &dyn ViewPartSystem> {
+        self.systems.values().map(|s| s.as_ref())
     }
 }

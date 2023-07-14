@@ -3,18 +3,19 @@ use re_components::{Component, InstanceKey, Pinhole, Transform3D, ViewCoordinate
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewHighlights, SpaceViewOutlineMasks, ViewPartSystem, ViewQuery,
-    ViewerContext,
+    ArchetypeDefinition, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
-    contexts::{pinhole_camera_view_coordinates, SpatialViewContext},
+    contexts::{
+        pinhole_camera_view_coordinates, PrimitiveCounter, SharedRenderBuilders, TransformContext,
+    },
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     space_camera_3d::SpaceCamera3D,
-    SpatialSpaceView,
 };
 
-use super::{SpatialSpaceViewState, SpatialViewPartData};
+use super::SpatialViewPartData;
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
@@ -28,7 +29,9 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        context: &SpatialViewContext,
+        transforms: &TransformContext,
+        shared_render_builders: &SharedRenderBuilders,
+        primitive_counter: &PrimitiveCounter,
         ent_path: &EntityPath,
         props: &EntityProperties,
         pinhole: Pinhole,
@@ -44,14 +47,14 @@ impl CamerasPart {
         let parent_path = ent_path
             .parent()
             .expect("root path can't be part of scene query");
-        let Some(mut world_from_camera) = context.transforms.reference_from_entity(&parent_path) else {
+        let Some(mut world_from_camera) = transforms.reference_from_entity(&parent_path) else {
                 return;
             };
 
         let frustum_length = *props.pinhole_image_plane_distance.get();
 
         // If the camera is our reference, there is nothing for us to display.
-        if context.transforms.reference_path() == ent_path {
+        if transforms.reference_path() == ent_path {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates,
@@ -130,7 +133,7 @@ impl CamerasPart {
             re_data_store::InstancePathHash::instance(ent_path, instance_key);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
-        let mut line_builder = context.shared_render_builders.lines();
+        let mut line_builder = shared_render_builders.lines();
         let mut batch = line_builder
             .batch("camera frustum")
             // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
@@ -151,55 +154,63 @@ impl CamerasPart {
             lines.outline_mask_ids(*outline_mask_ids);
         }
 
-        context
+        primitive_counter
             .num_3d_primitives
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
-impl ViewPartSystem<SpatialSpaceView> for CamerasPart {
+impl ViewPartSystem for CamerasPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Pinhole::name(),]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
-        context: &SpatialViewContext,
-        highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_scope!("CamerasPart");
 
-        let store = &ctx.store_db.entity_db.data_store;
-        for (ent_path, props) in query.iter_entities() {
-            let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
+        let transforms = view_ctx.get::<TransformContext>()?;
+        let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
+        let primitive_counter = view_ctx.get::<PrimitiveCounter>()?;
 
-            if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &query) {
+        let store = ctx.store_db.store();
+        for (ent_path, props) in query.iter_entities() {
+            let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
+
+            if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &time_query) {
                 let pinhole_view_coordinates = pinhole_camera_view_coordinates(
                     &ctx.store_db.entity_db.data_store,
                     &ctx.rec_cfg.time_ctrl.current_query(),
                     ent_path,
                 );
-                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+                let entity_highlight = query.highlights.entity_outline_mask(ent_path.hash());
 
                 self.visit_instance(
-                    context,
+                    transforms,
+                    shared_render_builders,
+                    primitive_counter,
                     ent_path,
                     &props,
                     pinhole,
-                    store.query_latest_component::<Transform3D>(ent_path, &query),
+                    store.query_latest_component::<Transform3D>(ent_path, &time_query),
                     pinhole_view_coordinates,
                     entity_highlight,
                 );
             }
         }
 
-        Vec::new()
+        Ok(Vec::new())
     }
 
-    fn data(&self) -> Option<&SpatialViewPartData> {
-        Some(&self.data)
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(self.data.as_any())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

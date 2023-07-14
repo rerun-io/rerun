@@ -35,11 +35,11 @@ pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use space_view::{
-    ArchetypeDefinition, DynSpaceViewClass, Scene, SpaceViewClass, SpaceViewClassLayoutPriority,
+    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClass, SpaceViewClassLayoutPriority,
     SpaceViewClassName, SpaceViewClassRegistry, SpaceViewClassRegistryError,
     SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState,
-    TypedScene, ViewContext, ViewContextSystem, ViewPartSystem, ViewPartSystemCollection,
-    ViewQuery,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistry, ViewContextCollection,
+    ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

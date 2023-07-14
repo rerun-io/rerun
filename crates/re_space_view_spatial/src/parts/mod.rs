@@ -11,10 +11,13 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
-mod spatial_scene_part_data;
+mod spatial_view_part;
 
+pub use cameras::CamerasPart;
 pub use images::Image;
-pub use spatial_scene_part_data::SpatialViewPartData;
+pub use images::ImagesPart;
+use re_viewer_context::SpaceViewClassRegistryError;
+pub use spatial_view_part::SpatialViewPartData;
 
 use ahash::HashMap;
 use std::sync::Arc;
@@ -22,16 +25,12 @@ use std::sync::Arc;
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_viewer_context::{
-    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, TypedScene,
-    ViewPartSystemCollection, ViewQuery,
-};
-
-use crate::{
-    ui::{SpatialNavigationMode, SpatialSpaceViewState},
-    SpatialSpaceView,
+    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewSystemRegistry,
+    ViewContextCollection, ViewPartCollection, ViewQuery,
 };
 
 use super::contexts::SpatialSceneEntityContext;
+use crate::{contexts::PrimitiveCounter, ui::SpatialNavigationMode};
 
 /// Collection of keypoints for annotation context.
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
@@ -39,84 +38,46 @@ pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 pub const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
-#[derive(Default)]
-pub struct SpatialViewPartSystemCollection {
-    pub points2d: points2d::Points2DPart,
-    pub points3d: points3d::Points3DPart,
-    pub arrows3d: arrows3d::Arrows3DPart,
-    pub boxes2d: boxes2d::Boxes2DPart,
-    pub boxes3d: boxes3d::Boxes3DPart,
-    pub cameras: cameras::CamerasPart,
-    pub lines2d: lines2d::Lines2DPart,
-    pub lines3d: lines3d::Lines3DPart,
-    pub meshes: meshes::MeshPart,
-    pub images: images::ImagesPart,
+pub fn register_parts(
+    system_registry: &mut SpaceViewSystemRegistry,
+) -> Result<(), SpaceViewClassRegistryError> {
+    system_registry.register_part_system::<points2d::Points2DPart>()?;
+    system_registry.register_part_system::<points3d::Points3DPart>()?;
+    system_registry.register_part_system::<arrows3d::Arrows3DPart>()?;
+    system_registry.register_part_system::<boxes2d::Boxes2DPart>()?;
+    system_registry.register_part_system::<boxes3d::Boxes3DPart>()?;
+    system_registry.register_part_system::<cameras::CamerasPart>()?;
+    system_registry.register_part_system::<lines2d::Lines2DPart>()?;
+    system_registry.register_part_system::<lines3d::Lines3DPart>()?;
+    system_registry.register_part_system::<meshes::MeshPart>()?;
+    system_registry.register_part_system::<images::ImagesPart>()?;
+    Ok(())
 }
 
-impl ViewPartSystemCollection<SpatialSpaceView> for SpatialViewPartSystemCollection {
-    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ViewPartSystem<SpatialSpaceView>> {
-        let Self {
-            points2d,
-            points3d,
-            arrows3d,
-            boxes2d,
-            boxes3d,
-            cameras,
-            lines2d,
-            lines3d,
-            meshes,
-            images,
-        } = self;
-        vec![
-            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
-            images,
-        ]
+pub fn calculate_bounding_box(parts: &ViewPartCollection) -> macaw::BoundingBox {
+    let mut bounding_box = macaw::BoundingBox::nothing();
+    for part in parts.iter() {
+        if let Some(data) = part
+            .data()
+            .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+        {
+            bounding_box = bounding_box.union(data.bounding_box);
+        }
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+    bounding_box
 }
 
-impl SpatialViewPartSystemCollection {
-    fn vec(&self) -> Vec<&dyn re_viewer_context::ViewPartSystem<SpatialSpaceView>> {
-        let Self {
-            points2d,
-            points3d,
-            arrows3d,
-            boxes2d,
-            boxes3d,
-            cameras,
-            lines2d,
-            lines3d,
-            meshes,
-            images,
-        } = self;
-        vec![
-            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
-            images,
-        ]
-    }
-
-    pub fn calculate_bounding_box(&self) -> macaw::BoundingBox {
-        let mut bounding_box = macaw::BoundingBox::nothing();
-        for scene_part in self.vec() {
-            if let Some(data) = scene_part.data() {
-                bounding_box = bounding_box.union(data.bounding_box);
-            }
+pub fn collect_ui_labels(parts: &ViewPartCollection) -> Vec<UiLabel> {
+    let mut ui_labels = Vec::new();
+    for part in parts.iter() {
+        if let Some(data) = part
+            .data()
+            .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+        {
+            ui_labels.extend(data.ui_labels.iter().cloned());
         }
-        bounding_box
     }
-
-    pub fn collect_ui_labels(&self) -> Vec<UiLabel> {
-        let mut ui_labels = Vec::new();
-        for scene_part in self.vec() {
-            if let Some(data) = scene_part.data() {
-                ui_labels.extend(data.ui_labels.iter().cloned());
-            }
-        }
-        ui_labels
-    }
+    ui_labels
 }
 
 pub fn picking_id_from_instance_key(
@@ -249,33 +210,41 @@ pub struct UiLabel {
     pub labeled_instance: InstancePathHash,
 }
 
-/// Type alias for spatial scenes.
-pub type SceneSpatial = TypedScene<SpatialSpaceView>;
-
 /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
 pub fn preferred_navigation_mode(
-    scene: &SceneSpatial,
+    context: &ViewContextCollection,
+    parts: &ViewPartCollection,
     space_info_path: &EntityPath,
 ) -> SpatialNavigationMode {
     // If there's any space cameras that are not the root, we need to go 3D, otherwise we can't display them.
-    if scene
-        .parts
-        .cameras
-        .space_cameras
-        .iter()
-        .any(|camera| &camera.ent_path != space_info_path)
+    if parts
+        .get::<CamerasPart>()
+        .map(|cameras| {
+            cameras
+                .space_cameras
+                .iter()
+                .any(|camera| &camera.ent_path != space_info_path)
+        })
+        .unwrap_or(false)
     {
         return SpatialNavigationMode::ThreeD;
     }
 
-    if !scene.parts.images.images.is_empty() {
+    if parts
+        .get::<ImagesPart>()
+        .map(|images| !images.images.is_empty())
+        .unwrap_or(false)
+    {
         return SpatialNavigationMode::TwoD;
     }
 
-    if scene
-        .context
-        .num_3d_primitives
-        .load(std::sync::atomic::Ordering::Relaxed)
+    if context
+        .get::<PrimitiveCounter>()
+        .map(|c| {
+            c.num_3d_primitives
+                .load(std::sync::atomic::Ordering::Relaxed)
+        })
+        .unwrap_or(0)
         == 0
     {
         return SpatialNavigationMode::TwoD;

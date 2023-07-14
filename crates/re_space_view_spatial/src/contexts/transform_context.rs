@@ -68,11 +68,10 @@ impl ViewContextSystem for TransformContext {
     ///
     /// This means that the entities in `reference_space` get the identity transform and all other
     /// entities are transformed relative to it.
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
-        _space_view_state: &dyn re_viewer_context::SpaceViewState,
     ) {
         re_tracing::profile_function!();
 
@@ -149,6 +148,10 @@ impl ViewContextSystem for TransformContext {
 
             current_tree = parent_tree;
         }
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

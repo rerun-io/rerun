@@ -1,32 +1,6 @@
-use crate::{ArchetypeDefinition, SpaceViewState, ViewQuery, ViewerContext};
+use ahash::HashMap;
 
-/// Scene context, consisting of several [`ViewContextSystem`] which may be populated in parallel.
-pub trait ViewContext {
-    /// Retrieves a list of all underlying scene context part for parallel population.
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewContextSystem>;
-
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
-
-    /// Converts itself to a mutable reference of [`std::any::Any`], which enables downcasting to concrete types.
-    /// TODO(wumpf): Only needed for workarounds in `re_space_view_spatial`.
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
-}
-
-/// Implementation of an empty scene context.
-impl ViewContext for () {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ViewContextSystem> {
-        Vec::new()
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
+use crate::{ArchetypeDefinition, SpaceViewSystemExecutionError, ViewQuery, ViewerContext};
 
 /// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.
 ///
@@ -39,10 +13,25 @@ pub trait ViewContextSystem {
     fn archetypes(&self) -> Vec<ArchetypeDefinition>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
-    fn populate(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &ViewQuery<'_>,
-        space_view_state: &dyn SpaceViewState,
-    );
+    fn execute(&mut self, ctx: &mut ViewerContext<'_>, query: &ViewQuery<'_>);
+
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
+    fn as_any(&self) -> &dyn std::any::Any;
+}
+
+pub struct ViewContextCollection {
+    pub(crate) systems: HashMap<std::any::TypeId, Box<dyn ViewContextSystem>>,
+}
+
+impl ViewContextCollection {
+    pub fn get<T: ViewContextSystem + Default + 'static>(
+        &self,
+    ) -> Result<&T, SpaceViewSystemExecutionError> {
+        self.systems
+            .get(&std::any::TypeId::of::<T>())
+            .and_then(|s| s.as_any().downcast_ref())
+            .ok_or_else(|| {
+                SpaceViewSystemExecutionError::ContextSystemNotFound(std::any::type_name::<T>())
+            })
+    }
 }
