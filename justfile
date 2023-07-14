@@ -82,7 +82,7 @@ py-format:
     # 2) Call ruff, which requires line-lengths to be correct
     # 3) Call black again to cleanup some whitespace issues ruff might introduce
     black --config rerun_py/pyproject.toml {{py_folders}}
-    ruff --fix --config rerun_py/pyproject.toml  {{py_folders}}
+    ruff --fix --config rerun_py/pyproject.toml {{py_folders}}
     black --config rerun_py/pyproject.toml {{py_folders}}
     blackdoc {{py_folders}}
 
@@ -96,7 +96,7 @@ py-requirements:
 py-lint:
     #!/usr/bin/env bash
     set -euxo pipefail
-    ruff check --config rerun_py/pyproject.toml  {{py_folders}}
+    ruff check --config rerun_py/pyproject.toml {{py_folders}}
     black --check --config rerun_py/pyproject.toml --diff {{py_folders}}
     blackdoc --check {{py_folders}}
     mypy --no-warn-unused-ignore
