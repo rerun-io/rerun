@@ -1433,47 +1433,8 @@ fn format_python(source: &str) -> anyhow::Result<String> {
     Ok(source)
 }
 
-fn rerun_worskapce_path() -> Utf8PathBuf {
-    let workspace_root = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let manifest_dir = Utf8PathBuf::from(manifest_dir);
-        manifest_dir
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .to_path_buf()
-    } else {
-        let file_path = Utf8PathBuf::from(file!());
-        file_path
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .to_path_buf()
-    };
-
-    assert!(
-        workspace_root.exists(),
-        "Failed to find workspace root, expected it at {workspace_root:?}"
-    );
-
-    // Check for something that only exists in root:
-    assert!(
-        workspace_root.join("CODE_OF_CONDUCT.md").exists(),
-        "Failed to find workspace root, expected it at {workspace_root:?}"
-    );
-
-    workspace_root
-}
-
 fn python_project_path() -> Utf8PathBuf {
-    let path = rerun_worskapce_path()
+    let path = crate::rerun_workspace_path()
         .join("rerun_py")
         .join("pyproject.toml");
     assert!(path.exists(), "Failed to find {path:?}");
