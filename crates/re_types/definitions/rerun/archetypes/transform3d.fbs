@@ -14,6 +14,12 @@ namespace rerun.archetypes;
 /// \py ```python
 /// \py \include:../../../../../docs/code-examples/transform3d_simple_v2.py
 /// \py ```
+///
+/// \rs ## Example
+/// \rs
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/transform3d_simple_v2.rs
+/// \rs ```
 table Transform3D (
   "attr.rust.derive": "PartialEq",
   order: 100
