@@ -28,6 +28,8 @@ glam = ["dep:glam", "dep:macaw"]
 
 
 [dependencies]
+# Rerun
+re_error.workspace = true
 
 # External
 arrow2 = { workspace = true, features = [
@@ -36,6 +38,7 @@ arrow2 = { workspace = true, features = [
   "compute_concatenate",
 ] }
 anyhow.workspace = true
+backtrace = "0.3"
 bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
 document-features = "0.2"
 itertools.workspace = true
