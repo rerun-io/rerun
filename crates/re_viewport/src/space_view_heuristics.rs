@@ -1,19 +1,32 @@
-use std::collections::BTreeMap;
-
 use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
-use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
-use re_components::{DisconnectedSpace, Pinhole, Tensor};
-use re_data_store::{ComponentName, EntityPath};
-use re_log_types::Component as _;
-use re_viewer_context::{SpaceViewClassName, ViewerContext};
 
-use crate::{
-    space_info::SpaceInfoCollection,
-    space_view::SpaceViewBlueprint,
-    view_category::{categorize_entity_path, ViewCategory, ViewCategorySet},
-};
+use re_arrow_store::{LatestAtQuery, Timeline};
+use re_components::{DisconnectedSpace, Pinhole, Tensor};
+use re_data_store::EntityPath;
+use re_log_types::{Component as _, TimeInt};
+use re_viewer_context::{SpaceViewClassName, ViewPartCollection, ViewerContext};
+
+use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
+
+// ---------------------------------------------------------------------------
+// TODO(andreas): Figure out how we can move heuristics based on concrete space view classes into the classes themselves.
+
+/// Returns true if a class is one of our spatial classes.
+fn is_spatial_class(class: &SpaceViewClassName) -> bool {
+    class.as_str() == "3D" || class.as_str() == "2D"
+}
+
+fn is_tensor_class(class: &SpaceViewClassName) -> bool {
+    class.as_str() == "Tensor"
+}
+
+fn is_bar_chart(class: &SpaceViewClassName) -> bool {
+    class.as_str() == "Bar Chart"
+}
+
+// ---------------------------------------------------------------------------
 
 /// List out all space views we allow the user to create.
 pub fn all_possible_space_views(
@@ -31,47 +44,31 @@ pub fn all_possible_space_views(
         .chain(root_children.values().map(|sub_tree| &sub_tree.path))
         .unique();
 
-    // TODO(andreas): Only needed for workaround for custom space views.
-    //                  This should go away together with ViewCategory.
-    let root_space = spaces_info.get_first_parent_with_info(&EntityPath::root());
-    let root_entities = root_space
-        .descendants_without_transform
-        .iter()
-        .cloned()
-        .collect::<Vec<_>>();
-
-    // For each candidate, create space views for all possible categories.
+    // For each candidate, create space views for all possible classes.
+    // TODO(andreas): Could save quite a view allocations here by re-using component- and parts arrays.
     candidate_space_paths
         .flat_map(|candidate_space_path| {
-            default_queried_entities_by_category(ctx, candidate_space_path, spaces_info)
-                .iter()
-                .map(|(category, entity_paths)| {
-                    SpaceViewBlueprint::new(
-                        class_name_from_category(*category),
-                        *category,
-                        candidate_space_path,
-                        entity_paths,
-                    )
-                })
-                .collect::<Vec<_>>()
-        })
-        // TODO(wumpf): Workaround to add custom space views.
-        .chain(
             ctx.space_view_class_registry
                 .iter_classes()
                 .filter_map(|class| {
-                    if category_from_class_name(class.name()).is_none() {
-                        Some(SpaceViewBlueprint::new(
-                            class.name(),
-                            ViewCategory::Text,
-                            &EntityPath::root(),
-                            &root_entities,
-                        ))
-                    } else {
+                    let class_name = class.name();
+                    let entities = default_queried_entities(
+                        ctx,
+                        &class_name,
+                        candidate_space_path,
+                        spaces_info,
+                    );
+                    if entities.is_empty() {
                         None
+                    } else {
+                        Some(SpaceViewBlueprint::new(
+                            class_name,
+                            &candidate_space_path.clone(),
+                            &entities,
+                        ))
                     }
-                }),
-        )
+                })
+        })
         .collect()
 }
 
@@ -112,12 +109,12 @@ fn is_interesting_space_view_at_root(
 fn is_interesting_space_view_not_at_root(
     store: &re_arrow_store::DataStore,
     candidate: &SpaceViewBlueprint,
-    categories_with_interesting_roots: &ViewCategorySet,
+    classes_with_interesting_roots: &[SpaceViewClassName],
     query: &LatestAtQuery,
 ) -> bool {
     // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
     if candidate.space_origin.len() == 1
-        && !categories_with_interesting_roots.contains(candidate.category)
+        && !classes_with_interesting_roots.contains(candidate.class_name())
     {
         return true;
     }
@@ -126,7 +123,7 @@ fn is_interesting_space_view_not_at_root(
     // -> If there is ..
     //    .. a disconnect transform, the children can't be shown otherwise
     //    .. an pinhole transform, we'd like to see the world from this camera's pov as well!
-    if candidate.category == ViewCategory::Spatial
+    if is_spatial_class(candidate.class_name())
         && (store
             .query_latest_component::<Pinhole>(&candidate.space_origin, query)
             .is_some()
@@ -160,14 +157,14 @@ fn default_created_space_views_from_candidates(
     let query = LatestAtQuery::latest(Timeline::log_time());
 
     // First pass to look for interesting roots, as their existence influences the heuristic for non-roots!
-    let categories_with_interesting_roots = candidates
+    let classes_with_interesting_roots = candidates
         .iter()
         .filter_map(|space_view_candidate| {
             (space_view_candidate.space_origin.is_root()
                 && is_interesting_space_view_at_root(store, space_view_candidate, &query))
-            .then_some(space_view_candidate.category)
+            .then_some(*space_view_candidate.class_name())
         })
-        .collect::<ViewCategorySet>();
+        .collect::<Vec<_>>();
 
     let mut space_views = Vec::new();
 
@@ -175,24 +172,23 @@ fn default_created_space_views_from_candidates(
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
     for candidate in candidates {
         if candidate.space_origin.is_root() {
-            if !categories_with_interesting_roots.contains(candidate.category) {
+            if !classes_with_interesting_roots.contains(candidate.class_name()) {
                 continue;
             }
         } else if !is_interesting_space_view_not_at_root(
             store,
             &candidate,
-            &categories_with_interesting_roots,
+            &classes_with_interesting_roots,
             &query,
         ) {
             continue;
         }
 
         // For tensors create one space view for each tensor (even though we're able to stack them in one view)
-        if candidate.category == ViewCategory::Tensor {
+        if is_tensor_class(candidate.class_name()) {
             for entity_path in candidate.data_blueprint.entity_paths() {
                 let mut space_view = SpaceViewBlueprint::new(
-                    class_name_from_category(ViewCategory::Tensor),
-                    ViewCategory::Tensor,
+                    *candidate.class_name(),
                     entity_path,
                     &[entity_path.clone()],
                 );
@@ -203,7 +199,7 @@ fn default_created_space_views_from_candidates(
         }
 
         // Spatial views with images get extra treatment as well.
-        if candidate.category == ViewCategory::Spatial {
+        if is_spatial_class(candidate.class_name()) {
             #[derive(Hash, PartialEq, Eq)]
             enum ImageBucketing {
                 BySize((u64, u64)),
@@ -258,7 +254,6 @@ fn default_created_space_views_from_candidates(
 
                     let mut space_view = SpaceViewBlueprint::new(
                         *candidate.class_name(),
-                        candidate.category,
                         &candidate.space_origin,
                         &entities,
                     );
@@ -276,68 +271,40 @@ fn default_created_space_views_from_candidates(
     space_views
 }
 
-fn has_any_component_except(
-    entity_path: &EntityPath,
-    data_store: &DataStore,
-    timeline: Timeline,
-    excluded_components: &[ComponentName],
-) -> bool {
-    data_store
-        .all_components(&timeline, entity_path)
-        .map_or(false, |all_components| {
-            all_components
-                .iter()
-                .any(|comp| !excluded_components.contains(comp))
-        })
-}
-
-/// Whether an entity should be added to a space view at a given path (independent of its category!)
-fn is_default_added_to_space_view(
-    entity_path: &EntityPath,
-    space_path: &EntityPath,
-    data_store: &DataStore,
-    timeline: Timeline,
-) -> bool {
-    let ignored_components = [
-        re_components::Transform3D::name(),
-        re_components::ViewCoordinates::name(),
-        re_components::InstanceKey::name(),
-        re_components::KeypointId::name(),
-        DataStore::insert_id_key(),
-    ];
-
-    entity_path.is_descendant_of(space_path)
-        || (entity_path == space_path
-            && has_any_component_except(entity_path, data_store, timeline, &ignored_components))
-}
-
 /// List of entities a space view queries by default for a given category.
 ///
-/// These are all entities in the given space which have the requested category and are reachable by a transform.
+/// These are all entities which are reachable and
+/// match at least one archetypes that is processed by at least one [`re_viewer_context::ViewPartSystem`]
+/// of the given [`re_viewer_context::SpaceViewClass`]
 pub fn default_queried_entities(
     ctx: &ViewerContext<'_>,
+    class: &SpaceViewClassName,
     space_path: &EntityPath,
     spaces_info: &SpaceInfoCollection,
-    category: ViewCategory,
 ) -> Vec<EntityPath> {
     re_tracing::profile_function!();
 
-    let timeline = Timeline::log_time();
-    let store_db = &ctx.store_db;
-    let data_store = &store_db.entity_db.data_store;
-
     let mut entities = Vec::new();
     let space_info = spaces_info.get_first_parent_with_info(space_path);
+
+    let parts = ctx
+        .space_view_class_registry
+        .get_system_registry_or_log_error(class)
+        .new_part_collection();
 
     space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
         entities.extend(
             space_info
                 .descendants_without_transform
                 .iter()
-                .filter(|entity_path| {
-                    is_default_added_to_space_view(entity_path, space_path, data_store, timeline)
-                        && categorize_entity_path(timeline, store_db, entity_path)
-                            .contains(category)
+                .filter(|ent_path| {
+                    (ent_path.is_descendant_of(space_path) || ent_path == &space_path)
+                        && is_entity_processed_by_part_collection(
+                            ctx.store_db.store(),
+                            class,
+                            &parts,
+                            ent_path,
+                        )
                 })
                 .cloned(),
         );
@@ -346,63 +313,62 @@ pub fn default_queried_entities(
     entities
 }
 
-/// List of entities a space view queries by default for all possible category.
-fn default_queried_entities_by_category(
+/// Returns true if an entity is processed by any of the given [`re_viewer_context::ViewPartSystem`]s.
+pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
-    space_path: &EntityPath,
-    space_info_collection: &SpaceInfoCollection,
-) -> BTreeMap<ViewCategory, Vec<EntityPath>> {
-    re_tracing::profile_function!();
+    class: &SpaceViewClassName,
+    ent_path: &EntityPath,
+) -> bool {
+    let parts = ctx
+        .space_view_class_registry
+        .get_system_registry_or_log_error(class)
+        .new_part_collection();
+    is_entity_processed_by_part_collection(ctx.store_db.store(), class, &parts, ent_path)
+}
 
+/// Returns true if an entity is processed by any of the given [`re_viewer_context::ViewPartSystem`]s.
+fn is_entity_processed_by_part_collection(
+    store: &re_arrow_store::DataStore,
+    class: &SpaceViewClassName,
+    parts: &ViewPartCollection,
+    ent_path: &EntityPath,
+) -> bool {
     let timeline = Timeline::log_time();
-    let store_db = &ctx.store_db;
-    let data_store = &store_db.entity_db.data_store;
-
-    let mut groups: BTreeMap<ViewCategory, Vec<EntityPath>> = BTreeMap::default();
-    let space_info = space_info_collection.get_first_parent_with_info(space_path);
-
-    space_info.visit_descendants_with_reachable_transform(
-        space_info_collection,
-        &mut |space_info| {
-            for entity_path in &space_info.descendants_without_transform {
-                if is_default_added_to_space_view(entity_path, space_path, data_store, timeline) {
-                    for category in categorize_entity_path(timeline, store_db, entity_path) {
-                        groups
-                            .entry(category)
-                            .or_default()
-                            .push(entity_path.clone());
+    let components = store
+        .all_components(&timeline, ent_path)
+        .unwrap_or_default();
+    for part in parts.iter() {
+        // TODO(andreas): Use new archetype definitions which also allows for several primaries.
+        let archetype = part.archetype();
+        let primary = archetype.first();
+        if components.contains(primary) {
+            // TODO(andreas): We should avoid this kind of hardcoded knowledge of Space View Classes!
+            let is_processed = if primary == &Tensor::name() {
+                if let Some(tensor) = store.query_latest_component::<Tensor>(
+                    ent_path,
+                    &LatestAtQuery::new(timeline, TimeInt::MAX),
+                ) {
+                    if tensor.is_vector() {
+                        is_bar_chart(class)
+                    } else if tensor.is_shaped_like_an_image() {
+                        is_spatial_class(class)
+                    } else {
+                        is_tensor_class(class)
                     }
+                } else {
+                    false
                 }
+            } else {
+                true
+            };
+
+            if is_processed {
+                return true;
             }
-        },
-    );
-
-    groups
-}
-
-// TODO(andreas): This is for transitioning to types only.
-fn class_name_from_category(category: ViewCategory) -> SpaceViewClassName {
-    match category {
-        ViewCategory::Text => "Text",
-        ViewCategory::TextBox => "Text Box",
-        ViewCategory::TimeSeries => "Time Series",
-        ViewCategory::BarChart => "Bar Chart",
-        ViewCategory::Spatial => "3D",
-        ViewCategory::Tensor => "Tensor",
+        }
     }
-    .into()
-}
 
-fn category_from_class_name(name: SpaceViewClassName) -> Option<ViewCategory> {
-    match name.as_str() {
-        "Text" => Some(ViewCategory::Text),
-        "Text Box" => Some(ViewCategory::TextBox),
-        "Time Series" => Some(ViewCategory::TimeSeries),
-        "Bar Chart" => Some(ViewCategory::BarChart),
-        "3D" => Some(ViewCategory::Spatial),
-        "Tensor" => Some(ViewCategory::Tensor),
-        _ => None,
-    }
+    false
 }
 
 // TODO:

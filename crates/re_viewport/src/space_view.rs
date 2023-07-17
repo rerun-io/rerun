@@ -1,4 +1,3 @@
-use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataBlueprintTree, ScreenshotMode};
@@ -9,8 +8,7 @@ use re_viewer_context::{
 
 use crate::{
     space_info::SpaceInfoCollection,
-    space_view_heuristics::default_queried_entities,
-    view_category::{categorize_entity_path, ViewCategory},
+    space_view_heuristics::{default_queried_entities, is_entity_processed_by_class},
 };
 
 // ----------------------------------------------------------------------------
@@ -32,10 +30,6 @@ pub struct SpaceViewBlueprint {
     /// It determines which entities are part of the spaceview.
     pub data_blueprint: DataBlueprintTree,
 
-    /// We only show data that match this category.
-    /// TODO(andreas): This is obsolete and should be fully replaced by the space view type framework.
-    pub category: ViewCategory,
-
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
 }
@@ -49,7 +43,6 @@ impl SpaceViewBlueprint {
             class_name,
             space_origin,
             data_blueprint,
-            category,
             entities_determined_by_user,
         } = self;
 
@@ -58,7 +51,6 @@ impl SpaceViewBlueprint {
             || class_name != &other.class_name
             || space_origin != &other.space_origin
             || data_blueprint.has_edits(&other.data_blueprint)
-            || category != &other.category
             || entities_determined_by_user != &other.entities_determined_by_user
     }
 }
@@ -66,7 +58,6 @@ impl SpaceViewBlueprint {
 impl SpaceViewBlueprint {
     pub fn new(
         space_view_class: SpaceViewClassName,
-        category: ViewCategory,
         space_path: &EntityPath,
         queries_entities: &[EntityPath],
     ) -> Self {
@@ -91,7 +82,6 @@ impl SpaceViewBlueprint {
             id: SpaceViewId::random(),
             space_origin: space_path.clone(),
             data_blueprint: data_blueprint_tree,
-            category,
             entities_determined_by_user: false,
         }
     }
@@ -124,7 +114,7 @@ impl SpaceViewBlueprint {
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
             let queries_entities =
-                default_queried_entities(ctx, &self.space_origin, spaces_info, self.category);
+                default_queried_entities(ctx, &self.class_name, &self.space_origin, spaces_info);
             self.data_blueprint.insert_entities_according_to_hierarchy(
                 queries_entities.iter(),
                 &self.space_origin,
@@ -238,18 +228,15 @@ impl SpaceViewBlueprint {
     /// Ignores all entities that can't be added or are already added.
     pub fn add_entity_subtree(
         &mut self,
+        ctx: &ViewerContext<'_>,
         tree: &EntityTree,
         spaces_info: &SpaceInfoCollection,
-        store_db: &re_data_store::StoreDb,
     ) {
         re_tracing::profile_function!();
 
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
-            let entity_categories =
-                categorize_entity_path(Timeline::log_time(), store_db, entity_path);
-
-            if entity_categories.contains(self.category)
+            if is_entity_processed_by_class(ctx, &self.class_name, entity_path)
                 && !self.data_blueprint.contains_entity(entity_path)
                 && spaces_info
                     .is_reachable_by_transform(entity_path, &self.space_origin)
