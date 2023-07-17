@@ -26,7 +26,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_HISTOGRAM // TODO: wrong icon
+        &re_ui::icons::SPACE_VIEW_CHART
     }
 
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {

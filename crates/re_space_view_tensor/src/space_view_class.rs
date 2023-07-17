@@ -126,7 +126,7 @@ impl SpaceViewClass for TensorSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_HISTOGRAM
+        &re_ui::icons::SPACE_VIEW_TENSOR
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
