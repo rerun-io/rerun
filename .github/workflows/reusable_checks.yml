@@ -139,8 +139,8 @@ jobs:
 
       # Sccache will cache everything else
       # See: https://github.com/marketplace/actions/sccache-action
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+      # - name: Run sccache-cache
+      #   uses: mozilla-actions/sccache-action@v0.0.3
 
       # First do our check with --locked to make sure `Cargo.lock` is up to date
       - name: Check all features
@@ -224,8 +224,8 @@ jobs:
           save-if: ${{ inputs.SAVE_CACHE }}
 
       # See: https://github.com/marketplace/actions/sccache-action
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+      # - name: Run sccache-cache
+      #   uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: clippy check re_viewer wasm32
         run: ./scripts/clippy_wasm.sh
@@ -322,10 +322,11 @@ jobs:
       - uses: actions/checkout@v3
 
       # See: https://github.com/marketplace/actions/sccache-action
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+      # - name: Run sccache-cache
+      #   uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Cargo Deny
         shell: bash
         id: expected_version
         run: ./scripts/ci/cargo_deny.sh
+

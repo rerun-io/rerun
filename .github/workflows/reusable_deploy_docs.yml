@@ -124,8 +124,8 @@ jobs:
 
       # Sccache will cache everything else
       # See: https://github.com/marketplace/actions/sccache-action
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+      # - name: Run sccache-cache
+      #   uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Delete existing /target/doc
         run: rm -rf ./target/doc

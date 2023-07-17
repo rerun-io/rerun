@@ -9,18 +9,18 @@ on:
       MATURIN_FEATURE_FLAGS:
         required: false
         type: string
-        default: '--no-default-features --features pypi'
+        default: "--no-default-features --features pypi"
       PLATFORM:
         required: true
         type: string
       RELEASE_VERSION:
         required: false
         type: string
-        default: 'prerelease'
+        default: "prerelease"
       RRD_ARTIFACT_NAME:
         required: false
         type: string
-        default: ''
+        default: ""
       SAVE_CACHE:
         required: false
         type: boolean
@@ -28,7 +28,7 @@ on:
       WHEEL_ARTIFACT_NAME:
         required: false
         type: string
-        default: ''
+        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-wheels
@@ -52,8 +52,7 @@ env:
   RUSTC_WRAPPER: "sccache"
 
 jobs:
-
-# ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
   set-config:
     name: Set Config
@@ -99,7 +98,7 @@ jobs:
           echo "run_tests=$run_tests" >> "$GITHUB_OUTPUT"
           echo "container=$container" >> "$GITHUB_OUTPUT"
 
-# ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
   build-wheels:
     name: Build Wheels
@@ -138,8 +137,8 @@ jobs:
 
       # Sccache will cache everything else
       # See: https://github.com/marketplace/actions/sccache-action
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+      # - name: Run sccache-cache
+      #   uses: mozilla-actions/sccache-action@v0.0.3
 
       # The pip-cache setup logic doesn't work in the ubuntu docker container
       # That's probably fine since we bake these deps into the container already
@@ -217,7 +216,7 @@ jobs:
           manylinux: manylinux_2_31
           container: off
           command: build
-          sccache: 'true'
+          sccache: "true"
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
