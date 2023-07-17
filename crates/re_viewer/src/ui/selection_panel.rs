@@ -581,10 +581,9 @@ fn transform3d_visualization_ui(
         if response.changed() {
             *show_arrows = EditableAutoValue::UserEdited(checked);
         }
-        // Double click to reset doesn't really work with a checkbox.
-        // if response.double_clicked() {
-        //     *show_arrows = EditableAutoValue::Auto(checked);
-        // }
+        if response.double_clicked() {
+            *show_arrows = EditableAutoValue::Auto(checked);
+        }
     }
 
     if *show_arrows.get() {
