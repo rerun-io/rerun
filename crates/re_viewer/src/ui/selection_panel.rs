@@ -588,7 +588,7 @@ fn transform3d_visualization_ui(
 
     if *show_arrows.get() {
         ui.end_row();
-        ui.label("Transform arrow length");
+        ui.label("Transform-arrow length");
         let mut value = *arrow_length.get();
         let speed = (value * 0.05).at_least(0.001);
         let response = ui
