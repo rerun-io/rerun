@@ -174,7 +174,10 @@ pub mod gpu_data {
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub picking_object_id: PickingLayerObjectId,
 
-        pub depth_offset: wgpu_buffer_types::F32RowPadded,
+        pub depth_offset: f32,
+        pub triangle_cap_length_factor: f32,
+        pub triangle_cap_width_factor: f32,
+        pub _padding: f32,
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
@@ -277,6 +280,34 @@ pub struct LineBatchInfo {
 
     /// Depth offset applied after projection.
     pub depth_offset: DepthOffset,
+
+    /// Length factor as multiple of a line's radius applied to all triangle caps in this batch.
+    ///
+    /// This controls how far the "pointy end" of the triangle/arrow-head extends.
+    /// (defaults to 4.0)
+    pub triangle_cap_length_factor: f32,
+
+    /// Width factor as multiple of a line's radius applied to all triangle caps in this batch.
+    ///
+    /// This controls how wide the triangle/arrow-head is orthogonal to the line's direction.
+    /// (defaults to 2.0)
+    pub triangle_cap_width_factor: f32,
+}
+
+impl Default for LineBatchInfo {
+    fn default() -> Self {
+        Self {
+            label: "unknown_line_batch".into(),
+            world_from_obj: glam::Affine3A::IDENTITY,
+            line_vertex_count: 0,
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
+            picking_object_id: PickingLayerObjectId::default(),
+            depth_offset: 0,
+            triangle_cap_length_factor: 4.0,
+            triangle_cap_width_factor: 2.0,
+        }
+    }
 }
 
 /// Style information for a line strip.
@@ -367,13 +398,9 @@ impl LineDrawData {
 
         let batches = if batches.is_empty() {
             vec![LineBatchInfo {
-                world_from_obj: glam::Affine3A::IDENTITY,
                 label: "LineDrawData::fallback_batch".into(),
                 line_vertex_count: vertices.len() as _,
-                overall_outline_mask_ids: OutlineMaskPreference::NONE,
-                picking_object_id: PickingLayerObjectId::default(),
-                additional_outline_mask_ids_vertex_ranges: Vec::new(),
-                depth_offset: 0,
+                ..Default::default()
             }]
         } else {
             batches
@@ -613,22 +640,31 @@ impl LineDrawData {
         // Process batches
         let mut batches_internal = Vec::with_capacity(batches.len());
         {
+            fn uniforms_from_batch_info(
+                batch_info: &LineBatchInfo,
+                outline_mask_ids: [u8; 2],
+            ) -> gpu_data::BatchUniformBuffer {
+                gpu_data::BatchUniformBuffer {
+                    world_from_obj: batch_info.world_from_obj.into(),
+                    outline_mask_ids: outline_mask_ids.into(),
+                    picking_object_id: batch_info.picking_object_id,
+                    depth_offset: batch_info.depth_offset as f32,
+                    triangle_cap_length_factor: batch_info.triangle_cap_length_factor,
+                    triangle_cap_width_factor: batch_info.triangle_cap_width_factor,
+                    _padding: 0.0,
+                    end_padding: Default::default(),
+                }
+            }
+
             let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
                 ctx,
                 "lines batch uniform buffers".into(),
-                batches
-                    .iter()
-                    .map(|batch_info| gpu_data::BatchUniformBuffer {
-                        world_from_obj: batch_info.world_from_obj.into(),
-                        outline_mask_ids: batch_info
-                            .overall_outline_mask_ids
-                            .0
-                            .unwrap_or_default()
-                            .into(),
-                        picking_object_id: batch_info.picking_object_id,
-                        depth_offset: (batch_info.depth_offset as f32).into(),
-                        end_padding: Default::default(),
-                    }),
+                batches.iter().map(|batch_info| {
+                    uniforms_from_batch_info(
+                        batch_info,
+                        batch_info.overall_outline_mask_ids.0.unwrap_or_default(),
+                    )
+                }),
             );
 
             // Generate additional "micro batches" for each line vertex range that has a unique outline setting.
@@ -643,12 +679,8 @@ impl LineDrawData {
                             batch_info
                                 .additional_outline_mask_ids_vertex_ranges
                                 .iter()
-                                .map(|(_, mask)| gpu_data::BatchUniformBuffer {
-                                    world_from_obj: batch_info.world_from_obj.into(),
-                                    outline_mask_ids: mask.0.unwrap_or_default().into(),
-                                    picking_object_id: batch_info.picking_object_id,
-                                    depth_offset: (batch_info.depth_offset as f32).into(),
-                                    end_padding: Default::default(),
+                                .map(|(_, mask)| {
+                                    uniforms_from_batch_info(batch_info, mask.0.unwrap_or_default())
                                 })
                         })
                         .collect::<Vec<_>>()

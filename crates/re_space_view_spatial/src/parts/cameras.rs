@@ -7,6 +7,7 @@ use re_viewer_context::{
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
+use super::SpatialViewPartData;
 use crate::{
     contexts::{
         pinhole_camera_view_coordinates, PrimitiveCounter, SharedRenderBuilders, TransformContext,
@@ -14,8 +15,6 @@ use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     space_camera_3d::SpaceCamera3D,
 };
-
-use super::SpatialViewPartData;
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 

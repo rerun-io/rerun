@@ -145,26 +145,6 @@ impl Eye {
             fov_y,
         }
     }
-
-    /// The approximate size of pixels in world coordinates at a given position.
-    ///
-    /// Avoid this method, use [`re_renderer::Size`] wherever possible.
-    pub fn approx_pixel_world_size_at(
-        &self,
-        position: glam::Vec3,
-        viewport_size: egui::Vec2,
-    ) -> f32 {
-        if !self.world_from_rub_view.is_finite() {
-            return 1.0 / viewport_size.y;
-        }
-
-        if let Some(fov_y) = self.fov_y {
-            let distance = position.distance(self.world_from_rub_view.translation());
-            (fov_y * 0.5).tan() * 2.0 / viewport_size.y * distance
-        } else {
-            1.0 / viewport_size.y
-        }
-    }
 }
 
 // ----------------------------------------------------------------------------

@@ -19,7 +19,6 @@ use re_viewer_context::{
 };
 
 use crate::{
-    axis_lines::add_axis_lines,
     contexts::SharedRenderBuilders,
     parts::{
         collect_ui_labels, image_view_coordinates, CamerasPart,
@@ -323,16 +322,17 @@ pub fn view_3d(
     let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx)
         .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-    // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
-    for camera in space_cameras {
-        let transform = camera.world_from_cam();
-        let axis_length =
-            eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
-        add_axis_lines(
+    // Origin gizmo if requested.
+    // TODO(andreas): Move this to the transform3d_arrow scene part.
+    //              As of #2522 state is now longer accessible there, move the property to a context?
+    if state.state_3d.show_axes {
+        let axis_length = 1.0; // The axes are also a measuring stick
+        crate::parts::add_axis_arrows(
             &mut line_builder,
-            transform,
-            Some(&camera.ent_path),
+            macaw::Affine3A::IDENTITY,
+            None,
             axis_length,
+            re_renderer::OutlineMaskPreference::NONE,
         );
     }
 
@@ -458,16 +458,6 @@ pub fn view_3d(
         &state.state_3d.tracked_camera,
         &state.scene_bbox_accum,
     );
-
-    if state.state_3d.show_axes {
-        let axis_length = 1.0; // The axes are also a measuring stick
-        add_axis_lines(
-            &mut line_builder,
-            macaw::IsoTransform::IDENTITY,
-            None,
-            axis_length,
-        );
-    }
 
     if state.state_3d.show_bbox {
         let bbox = state.scene_bbox_accum;

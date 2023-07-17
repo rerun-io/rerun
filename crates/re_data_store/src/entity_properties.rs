@@ -82,6 +82,12 @@ pub struct EntityProperties {
 
     /// Used to scale the radii of the points in the resulting point cloud.
     pub backproject_radius_scale: EditableAutoValue<f32>,
+
+    /// Whether to show the 3D transform visualization at all.
+    pub transform_3d_visible: EditableAutoValue<bool>,
+
+    /// The length of the arrows in the entity's own coordinate system (space).
+    pub transform_3d_size: EditableAutoValue<f32>,
 }
 
 #[cfg(feature = "serde")]
@@ -96,6 +102,8 @@ impl Default for EntityProperties {
             backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::default(),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
+            transform_3d_visible: EditableAutoValue::Auto(false),
+            transform_3d_size: EditableAutoValue::Auto(1.0),
         }
     }
 }
@@ -125,6 +133,12 @@ impl EntityProperties {
                 .backproject_radius_scale
                 .or(&child.backproject_radius_scale)
                 .clone(),
+
+            transform_3d_visible: self
+                .transform_3d_visible
+                .or(&child.transform_3d_visible)
+                .clone(),
+            transform_3d_size: self.transform_3d_size.or(&child.transform_3d_size).clone(),
         }
     }
 
@@ -139,6 +153,8 @@ impl EntityProperties {
             backproject_depth,
             depth_from_world_scale,
             backproject_radius_scale,
+            transform_3d_visible,
+            transform_3d_size,
         } = self;
 
         visible != &other.visible
@@ -149,6 +165,8 @@ impl EntityProperties {
             || backproject_depth.has_edits(&other.backproject_depth)
             || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
+            || transform_3d_visible.has_edits(&other.transform_3d_visible)
+            || transform_3d_size.has_edits(&other.transform_3d_size)
     }
 }
 

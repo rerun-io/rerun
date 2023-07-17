@@ -218,6 +218,38 @@ impl TransformContext {
             .map(|i| i.reference_from_entity)
     }
 
+    /// Like [`Self::reference_from_entity`], but if `ent_path` has a pinhole camera, it won't affect the transform.
+    ///
+    /// Normally, the transform we compute for an entity with a pinhole transform places all objects
+    /// in front (defined by view coordinates) of the camera with a given image plane distance.
+    /// In some cases like drawing the lines for a frustum or arrows for the 3D transform, this is not the desired transformation.
+    /// Returns None if the path is not reachable.
+    ///
+    /// TODO(#2663, #1025): Going forward we should have separate transform hierarchies for 2D (i.e. projected) and 3D,
+    /// which would remove the need for this.
+    pub fn reference_from_entity_ignoring_pinhole(
+        &self,
+        ent_path: &EntityPath,
+        store: &re_arrow_store::DataStore,
+        query: &LatestAtQuery,
+    ) -> Option<glam::Affine3A> {
+        let transform_info = self.transform_per_entity.get(ent_path)?;
+        if let (true, Some(parent)) = (
+            transform_info.parent_pinhole.as_ref() == Some(ent_path),
+            ent_path.parent(),
+        ) {
+            self.reference_from_entity(&parent).map(|t| {
+                t * store
+                    .query_latest_component::<Transform3D>(ent_path, query)
+                    .map_or(glam::Affine3A::IDENTITY, |transform| {
+                        transform.to_parent_from_child_transform()
+                    })
+            })
+        } else {
+            Some(transform_info.reference_from_entity)
+        }
+    }
+
     /// Retrieves the ancestor (or self) pinhole under which this entity sits.
     ///
     /// None indicates either that the entity does not exist in this hierarchy or that this entity is under the eye camera with no Pinhole camera in-between.
