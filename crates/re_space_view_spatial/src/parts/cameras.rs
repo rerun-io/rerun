@@ -9,9 +9,7 @@ use re_viewer_context::{
 
 use super::SpatialViewPartData;
 use crate::{
-    contexts::{
-        pinhole_camera_view_coordinates, PrimitiveCounter, SharedRenderBuilders, TransformContext,
-    },
+    contexts::{pinhole_camera_view_coordinates, SharedRenderBuilders, TransformContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     space_camera_3d::SpaceCamera3D,
 };
@@ -30,7 +28,6 @@ impl CamerasPart {
         &mut self,
         transforms: &TransformContext,
         shared_render_builders: &SharedRenderBuilders,
-        primitive_counter: &PrimitiveCounter,
         ent_path: &EntityPath,
         props: &EntityProperties,
         pinhole: Pinhole,
@@ -152,10 +149,6 @@ impl CamerasPart {
         if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
             lines.outline_mask_ids(*outline_mask_ids);
         }
-
-        primitive_counter
-            .num_3d_primitives
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
@@ -174,7 +167,6 @@ impl ViewPartSystem for CamerasPart {
 
         let transforms = view_ctx.get::<TransformContext>()?;
         let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
-        let primitive_counter = view_ctx.get::<PrimitiveCounter>()?;
 
         let store = ctx.store_db.store();
         for (ent_path, props) in query.iter_entities() {
@@ -191,7 +183,6 @@ impl ViewPartSystem for CamerasPart {
                 self.visit_instance(
                     transforms,
                     shared_render_builders,
-                    primitive_counter,
                     ent_path,
                     &props,
                     pinhole,

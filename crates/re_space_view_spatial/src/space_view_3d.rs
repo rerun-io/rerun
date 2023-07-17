@@ -98,7 +98,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         state.scene_num_primitives = view_ctx
             .get::<PrimitiveCounter>()?
-            .num_3d_primitives
+            .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
         crate::ui_3d::view_3d(ctx, ui, state, view_ctx, parts, query, draw_data)

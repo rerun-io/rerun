@@ -7,7 +7,7 @@ use re_viewer_context::{
     ViewQuery, ViewerContext,
 };
 
-use crate::contexts::{PrimitiveCounter, SharedRenderBuilders, TransformContext};
+use crate::contexts::{SharedRenderBuilders, TransformContext};
 
 use super::SpatialViewPartData;
 
@@ -29,7 +29,6 @@ impl ViewPartSystem for Transform3DArrowsPart {
 
         let mut line_builder = view_ctx.get::<SharedRenderBuilders>()?.lines();
         let transforms = view_ctx.get::<TransformContext>()?;
-        let counter = view_ctx.get::<PrimitiveCounter>()?;
 
         let store = &ctx.store_db.entity_db.data_store;
         let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
@@ -40,10 +39,6 @@ impl ViewPartSystem for Transform3DArrowsPart {
             {
                 continue;
             }
-
-            counter
-                .num_3d_primitives
-                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
             if !props.transform_3d_visible.get() {
                 continue;

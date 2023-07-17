@@ -100,7 +100,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         state.scene_num_primitives = view_ctx
             .get::<PrimitiveCounter>()?
-            .num_3d_primitives
+            .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
         let scene_rect_accum = egui::Rect::from_min_max(
