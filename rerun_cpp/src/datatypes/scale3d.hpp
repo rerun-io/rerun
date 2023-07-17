@@ -9,25 +9,25 @@
 #include "../datatypes/vec3d.hpp"
 
 namespace rr {
-    namespace detail {
-        enum Scale3DTag {
-            Tag_ThreeD,
-            Tag_Uniform,
-        };
-
-        union Scale3DData {
-            /// Individual scaling factors for each axis, distorting the original object.
-            rr::datatypes::Vec3D three_d;
-
-            /// Uniform scaling factor along all axis.
-            float uniform;
-
-            ~Scale3DData() {}
-        };
-
-    } // namespace detail
-
     namespace datatypes {
+        namespace detail {
+            enum Scale3DTag {
+                Tag_ThreeD,
+                Tag_Uniform,
+            };
+
+            union Scale3DData {
+                /// Individual scaling factors for each axis, distorting the original object.
+                rr::datatypes::Vec3D three_d;
+
+                /// Uniform scaling factor along all axis.
+                float uniform;
+
+                ~Scale3DData() {}
+            };
+
+        } // namespace detail
+
         /// 3D scaling factor, part of a transform representation.
         struct Scale3D {
           private:

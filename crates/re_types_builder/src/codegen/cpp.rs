@@ -288,6 +288,32 @@ impl QuotedObject {
             })
             .collect_vec();
 
+        // TODO(emilk): if the variant types are disjoint, generate implicit constructors!
+
+        // TODO(emilk): finish up the static constructors
+        let _static_constructors = obj
+            .fields
+            .iter()
+            .map(|obj_field| {
+                let tag_ident = format_ident!("Tag_{}", obj_field.name);
+                let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                let docstring = quote_docstrings(&obj_field.docs);
+                let param_declaration =
+                    quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident, false).0;
+                quote! {
+                    #docstring
+                    static #pascal_case_ident #snake_case_ident(#param_declaration)
+                    {
+                        #pascal_case_ident ths;
+                        ths._tag = detail::#tag_ident;
+                        ths._data.#snake_case_ident = #snake_case_ident;
+                        return ths;
+                    }
+                    #NEWLINE_TOKEN #NEWLINE_TOKEN
+                }
+            })
+            .collect_vec();
+
         let destructor_match_arms = obj
             .fields
             .iter()
@@ -320,26 +346,26 @@ impl QuotedObject {
         let hpp = quote! {
             #hpp_includes
             namespace rr {
-                namespace detail {
-                    enum #tag_typename {
-                        #(#tag_fields,)*
-                    };
-                    #NEWLINE_TOKEN #NEWLINE_TOKEN
+                namespace #namespace_ident {
+                    namespace detail {
+                        enum #tag_typename {
+                            #(#tag_fields,)*
+                        };
+                        #NEWLINE_TOKEN #NEWLINE_TOKEN
 
-                    union #data_typename {
-                        #(#enum_data_declarations;)*
+                        union #data_typename {
+                            #(#enum_data_declarations;)*
+
+                            #NEWLINE_TOKEN #NEWLINE_TOKEN
+
+                            ~#data_typename() {}
+                        };
 
                         #NEWLINE_TOKEN #NEWLINE_TOKEN
 
-                        ~#data_typename() {}
-                    };
-
+                    }
                     #NEWLINE_TOKEN #NEWLINE_TOKEN
 
-                }
-                #NEWLINE_TOKEN #NEWLINE_TOKEN
-
-                namespace #namespace_ident {
                     #quoted_docs
                     struct #pascal_case_ident {
                     private:
@@ -349,6 +375,8 @@ impl QuotedObject {
                         #NEWLINE_TOKEN #NEWLINE_TOKEN
 
                     public:
+                        // #(#static_constructors)* // TODO(emilk)
+
                         ~#pascal_case_ident() {
                             switch (this->_tag) {
                                 #(#destructor_match_arms)*

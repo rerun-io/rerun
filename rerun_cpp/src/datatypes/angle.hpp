@@ -7,23 +7,23 @@
 #include <utility>
 
 namespace rr {
-    namespace detail {
-        enum AngleTag {
-            Tag_Radians,
-            Tag_Degrees,
-        };
-
-        union AngleData {
-            float radians;
-
-            float degrees;
-
-            ~AngleData() {}
-        };
-
-    } // namespace detail
-
     namespace datatypes {
+        namespace detail {
+            enum AngleTag {
+                Tag_Radians,
+                Tag_Degrees,
+            };
+
+            union AngleData {
+                float radians;
+
+                float degrees;
+
+                ~AngleData() {}
+            };
+
+        } // namespace detail
+
         /// Angle in either radians or degrees.
         struct Angle {
           private:

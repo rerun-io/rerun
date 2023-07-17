@@ -11,29 +11,29 @@
 #include "../datatypes/affix_fuzzer1.hpp"
 
 namespace rr {
-    namespace detail {
-        enum AffixFuzzer3Tag {
-            Tag_degrees,
-            Tag_radians,
-            Tag_craziness,
-            Tag_fixed_size_shenanigans,
-        };
-
-        union AffixFuzzer3Data {
-            float degrees;
-
-            std::optional<float> radians;
-
-            std::vector<rr::datatypes::AffixFuzzer1> craziness;
-
-            float fixed_size_shenanigans[3];
-
-            ~AffixFuzzer3Data() {}
-        };
-
-    } // namespace detail
-
     namespace datatypes {
+        namespace detail {
+            enum AffixFuzzer3Tag {
+                Tag_degrees,
+                Tag_radians,
+                Tag_craziness,
+                Tag_fixed_size_shenanigans,
+            };
+
+            union AffixFuzzer3Data {
+                float degrees;
+
+                std::optional<float> radians;
+
+                std::vector<rr::datatypes::AffixFuzzer1> craziness;
+
+                float fixed_size_shenanigans[3];
+
+                ~AffixFuzzer3Data() {}
+            };
+
+        } // namespace detail
+
         struct AffixFuzzer3 {
           private:
             detail::AffixFuzzer3Tag _tag;

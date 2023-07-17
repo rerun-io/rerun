@@ -10,25 +10,25 @@
 #include "../datatypes/rotation_axis_angle.hpp"
 
 namespace rr {
-    namespace detail {
-        enum Rotation3DTag {
-            Tag_Quaternion,
-            Tag_AxisAngle,
-        };
-
-        union Rotation3DData {
-            /// Rotation defined by a quaternion.
-            rr::datatypes::Quaternion quaternion;
-
-            /// Rotation defined with an axis and an angle.
-            rr::datatypes::RotationAxisAngle axis_angle;
-
-            ~Rotation3DData() {}
-        };
-
-    } // namespace detail
-
     namespace datatypes {
+        namespace detail {
+            enum Rotation3DTag {
+                Tag_Quaternion,
+                Tag_AxisAngle,
+            };
+
+            union Rotation3DData {
+                /// Rotation defined by a quaternion.
+                rr::datatypes::Quaternion quaternion;
+
+                /// Rotation defined with an axis and an angle.
+                rr::datatypes::RotationAxisAngle axis_angle;
+
+                ~Rotation3DData() {}
+            };
+
+        } // namespace detail
+
         /// A 3D rotation.
         struct Rotation3D {
           private:

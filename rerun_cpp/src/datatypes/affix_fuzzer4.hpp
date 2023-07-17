@@ -11,26 +11,26 @@
 #include "../datatypes/affix_fuzzer3.hpp"
 
 namespace rr {
-    namespace detail {
-        enum AffixFuzzer4Tag {
-            Tag_single_required,
-            Tag_many_required,
-            Tag_many_optional,
-        };
-
-        union AffixFuzzer4Data {
-            rr::datatypes::AffixFuzzer3 single_required;
-
-            std::vector<rr::datatypes::AffixFuzzer3> many_required;
-
-            std::optional<std::vector<rr::datatypes::AffixFuzzer3>> many_optional;
-
-            ~AffixFuzzer4Data() {}
-        };
-
-    } // namespace detail
-
     namespace datatypes {
+        namespace detail {
+            enum AffixFuzzer4Tag {
+                Tag_single_required,
+                Tag_many_required,
+                Tag_many_optional,
+            };
+
+            union AffixFuzzer4Data {
+                rr::datatypes::AffixFuzzer3 single_required;
+
+                std::vector<rr::datatypes::AffixFuzzer3> many_required;
+
+                std::optional<std::vector<rr::datatypes::AffixFuzzer3>> many_optional;
+
+                ~AffixFuzzer4Data() {}
+            };
+
+        } // namespace detail
+
         struct AffixFuzzer4 {
           private:
             detail::AffixFuzzer4Tag _tag;

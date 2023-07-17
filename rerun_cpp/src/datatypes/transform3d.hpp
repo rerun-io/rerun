@@ -10,23 +10,23 @@
 #include "../datatypes/translation_rotation_scale3d.hpp"
 
 namespace rr {
-    namespace detail {
-        enum Transform3DTag {
-            Tag_TranslationAndMat3x3,
-            Tag_TranslationRotationScale,
-        };
-
-        union Transform3DData {
-            rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3;
-
-            rr::datatypes::TranslationRotationScale3D translation_rotation_scale;
-
-            ~Transform3DData() {}
-        };
-
-    } // namespace detail
-
     namespace datatypes {
+        namespace detail {
+            enum Transform3DTag {
+                Tag_TranslationAndMat3x3,
+                Tag_TranslationRotationScale,
+            };
+
+            union Transform3DData {
+                rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3;
+
+                rr::datatypes::TranslationRotationScale3D translation_rotation_scale;
+
+                ~Transform3DData() {}
+            };
+
+        } // namespace detail
+
         /// Representation of a 3D affine transform.
         struct Transform3D {
           private:
