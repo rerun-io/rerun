@@ -52,7 +52,7 @@ pub trait DynSpaceViewClass {
     fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText;
+    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
     /// Called once upon registration of the class
     ///

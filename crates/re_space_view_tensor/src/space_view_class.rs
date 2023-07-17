@@ -129,7 +129,7 @@ impl SpaceViewClass for TensorSpaceView {
         &re_ui::icons::SPACE_VIEW_HISTOGRAM
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
+    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
         "Select the Space View to configure which dimensions are shown.".into()
     }
 

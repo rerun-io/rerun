@@ -27,7 +27,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::State) -> egui::WidgetText;
+    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
     /// Called once upon registration of the class
     ///
@@ -113,8 +113,8 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     }
 
     #[inline]
-    fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText {
-        typed_state_wrapper(state, |state| self.help_text(re_ui, state))
+    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
+        self.help_text(re_ui)
     }
 
     #[inline]

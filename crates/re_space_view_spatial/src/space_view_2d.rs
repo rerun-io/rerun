@@ -12,21 +12,21 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct SpatialSpaceView;
+pub struct SpatialSpaceView2D;
 
-impl SpaceViewClass for SpatialSpaceView {
+impl SpaceViewClass for SpatialSpaceView2D {
     type State = SpatialSpaceViewState;
 
     fn name(&self) -> re_viewer_context::SpaceViewClassName {
-        "Spatial".into()
+        "2D".into()
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_3D
+        &re_ui::icons::SPACE_VIEW_2D
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::State) -> egui::WidgetText {
-        state.help_text(re_ui)
+    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
+        super::ui_2d::help_text(re_ui)
     }
 
     fn on_register(

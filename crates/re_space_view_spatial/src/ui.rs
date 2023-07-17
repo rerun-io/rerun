@@ -496,13 +496,6 @@ impl SpatialSpaceViewState {
             }
         }
     }
-
-    pub fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        match *self.nav_mode.get() {
-            SpatialNavigationMode::TwoD => super::ui_2d::help_text(re_ui),
-            SpatialNavigationMode::ThreeD => super::ui_3d::help_text(re_ui),
-        }
-    }
 }
 
 fn size_ui(

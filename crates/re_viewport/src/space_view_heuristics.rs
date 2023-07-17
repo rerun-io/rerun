@@ -387,7 +387,7 @@ fn class_name_from_category(category: ViewCategory) -> SpaceViewClassName {
         ViewCategory::TextBox => "Text Box",
         ViewCategory::TimeSeries => "Time Series",
         ViewCategory::BarChart => "Bar Chart",
-        ViewCategory::Spatial => "Spatial",
+        ViewCategory::Spatial => "3D",
         ViewCategory::Tensor => "Tensor",
     }
     .into()
@@ -399,7 +399,7 @@ fn category_from_class_name(name: SpaceViewClassName) -> Option<ViewCategory> {
         "Text Box" => Some(ViewCategory::TextBox),
         "Time Series" => Some(ViewCategory::TimeSeries),
         "Bar Chart" => Some(ViewCategory::BarChart),
-        "Spatial" => Some(ViewCategory::Spatial),
+        "3D" => Some(ViewCategory::Spatial),
         "Tensor" => Some(ViewCategory::Tensor),
         _ => None,
     }

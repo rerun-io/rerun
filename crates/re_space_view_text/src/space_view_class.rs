@@ -48,7 +48,7 @@ impl SpaceViewClass for TextSpaceView {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
+    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
         "Shows text entries over time.\nSelect the Space View for filtering options.".into()
     }
 

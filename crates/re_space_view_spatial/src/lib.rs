@@ -10,9 +10,11 @@ mod mesh_loader;
 mod parts;
 mod picking;
 mod space_camera_3d;
-mod space_view_class;
+mod space_view_2d;
+mod space_view_3d;
 mod ui;
 mod ui_2d;
 mod ui_3d;
 
-pub use space_view_class::SpatialSpaceView;
+pub use space_view_2d::SpatialSpaceView2D;
+pub use space_view_3d::SpatialSpaceView3D;
