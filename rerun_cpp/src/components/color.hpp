@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct Color {};
+        struct Color {
+            uint32_t rgba;
+        };
     } // namespace components
 } // namespace rr

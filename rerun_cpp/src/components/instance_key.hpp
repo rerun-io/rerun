@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct InstanceKey {};
+        struct InstanceKey {
+            uint64_t value;
+        };
     } // namespace components
 } // namespace rr

@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct ClassId {};
+        struct ClassId {
+            uint16_t id;
+        };
     } // namespace components
 } // namespace rr

@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace datatypes {
-        struct FlattenedScalar {};
+        struct FlattenedScalar {
+            float value;
+        };
     } // namespace datatypes
 } // namespace rr

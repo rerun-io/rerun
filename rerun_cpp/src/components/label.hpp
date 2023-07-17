@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct Label {};
+        struct Label {
+            std::string value;
+        };
     } // namespace components
 } // namespace rr

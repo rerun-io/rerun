@@ -2,3 +2,5 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/point2d.fbs"
 
 #include "point2d.hpp"
+
+// TODO(#2647): code-gen for C++

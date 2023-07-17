@@ -3,8 +3,21 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace archetypes {
-        struct Points2D {};
+        struct Points2D {
+            std::vector<rr::components::Point2D> points;
+            std::optional<std::vector<rr::components::Radius>> radii;
+            std::optional<std::vector<rr::components::Color>> colors;
+            std::optional<std::vector<rr::components::Label>> labels;
+            std::optional<rr::components::DrawOrder> draw_order;
+            std::optional<std::vector<rr::components::ClassId>> class_ids;
+            std::optional<std::vector<rr::components::KeypointId>> keypoint_ids;
+            std::optional<std::vector<rr::components::InstanceKey>> instance_keys;
+        };
     } // namespace archetypes
 } // namespace rr

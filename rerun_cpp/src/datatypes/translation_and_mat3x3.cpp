@@ -2,3 +2,5 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/translation_and_mat3x3.fbs"
 
 #include "translation_and_mat3x3.hpp"
+
+// TODO(#2647): code-gen for C++

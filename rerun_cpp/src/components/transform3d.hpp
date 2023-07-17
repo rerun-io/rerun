@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct Transform3D {};
+        struct Transform3D {
+            rr::datatypes::Transform3D repr;
+        };
     } // namespace components
 } // namespace rr

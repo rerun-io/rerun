@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct AffixFuzzer19 {};
+        struct AffixFuzzer19 {
+            rr::datatypes::AffixFuzzer5 just_a_table_nothing_shady;
+        };
     } // namespace components
 } // namespace rr

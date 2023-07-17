@@ -2,3 +2,5 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/mat4x4.fbs"
 
 #include "mat4x4.hpp"
+
+// TODO(#2647): code-gen for C++

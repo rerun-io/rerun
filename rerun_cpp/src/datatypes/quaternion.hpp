@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace datatypes {
-        struct Quaternion {};
+        struct Quaternion {
+            float xyzw[4];
+        };
     } // namespace datatypes
 } // namespace rr

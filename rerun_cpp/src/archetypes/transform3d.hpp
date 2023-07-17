@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace archetypes {
-        struct Transform3D {};
+        struct Transform3D {
+            rr::components::Transform3D transform;
+        };
     } // namespace archetypes
 } // namespace rr

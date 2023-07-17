@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace datatypes {
-        struct Mat3x3 {};
+        struct Mat3x3 {
+            float coeffs[9];
+        };
     } // namespace datatypes
 } // namespace rr

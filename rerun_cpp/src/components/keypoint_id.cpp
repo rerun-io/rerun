@@ -2,3 +2,5 @@
 // Based on "crates/re_types/definitions/rerun/components/keypoint_id.fbs"
 
 #include "keypoint_id.hpp"
+
+// TODO(#2647): code-gen for C++

@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct Point2D {};
+        struct Point2D {
+            rr::datatypes::Point2D xy;
+        };
     } // namespace components
 } // namespace rr

@@ -2,3 +2,5 @@
 // Based on "crates/re_types/definitions/rerun/components/class_id.fbs"
 
 #include "class_id.hpp"
+
+// TODO(#2647): code-gen for C++

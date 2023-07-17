@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct DrawOrder {};
+        struct DrawOrder {
+            float value;
+        };
     } // namespace components
 } // namespace rr

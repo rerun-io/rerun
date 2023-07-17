@@ -547,17 +547,22 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
 /// becomes just `String`.
 /// The returned boolean indicates whether there was anything to unwrap at all.
 fn quote_field_type_from_field(obj_field: &ObjectField, unwrap: bool) -> (TokenStream, bool) {
-    let obj_field_type = TypeTokenizer(&obj_field.typ, unwrap);
+    let obj_field_type = TypeTokenizer {
+        typ: &obj_field.typ,
+        unwrap,
+    };
     let unwrapped = unwrap && matches!(obj_field.typ, Type::Array { .. } | Type::Vector { .. });
     (quote!(#obj_field_type), unwrapped)
 }
 
-/// `(type, unwrap)`
-struct TypeTokenizer<'a>(&'a Type, bool);
+struct TypeTokenizer<'a> {
+    typ: &'a Type,
+    unwrap: bool,
+}
 
 impl quote::ToTokens for TypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self(typ, unwrap) = self;
+        let Self { typ, unwrap } = self;
         match typ {
             Type::UInt8 => quote!(u8),
             Type::UInt16 => quote!(u16),

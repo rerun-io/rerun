@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace datatypes {
-        struct AffixFuzzer2 {};
+        struct AffixFuzzer2 {
+            std::optional<float> single_float_optional;
+        };
     } // namespace datatypes
 } // namespace rr

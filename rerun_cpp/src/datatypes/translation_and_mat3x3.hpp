@@ -3,8 +3,16 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace datatypes {
-        struct TranslationAndMat3x3 {};
+        struct TranslationAndMat3x3 {
+            std::optional<rr::datatypes::Vec3D> translation;
+            std::optional<rr::datatypes::Mat3x3> matrix;
+            bool from_parent;
+        };
     } // namespace datatypes
 } // namespace rr

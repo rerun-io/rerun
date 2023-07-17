@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace datatypes {
-        struct Vec4D {};
+        struct Vec4D {
+            float xyzw[4];
+        };
     } // namespace datatypes
 } // namespace rr

@@ -650,7 +650,7 @@ fn test_snake_case() {
 /// Properties specific to either structs or unions, but not both.
 #[derive(Debug, Clone)]
 pub enum ObjectSpecifics {
-    Struct {},
+    Struct,
     Union {
         /// The underlying type of the union.
         ///

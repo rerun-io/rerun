@@ -2,3 +2,5 @@
 // Based on "crates/re_types/definitions/rerun/components/instance_key.fbs"
 
 #include "instance_key.hpp"
+
+// TODO(#2647): code-gen for C++

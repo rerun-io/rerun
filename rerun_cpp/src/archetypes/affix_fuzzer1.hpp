@@ -3,8 +3,82 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace archetypes {
-        struct AffixFuzzer1 {};
+        struct AffixFuzzer1 {
+            rr::components::AffixFuzzer1 fuzz1001;
+            rr::components::AffixFuzzer2 fuzz1002;
+            rr::components::AffixFuzzer3 fuzz1003;
+            rr::components::AffixFuzzer4 fuzz1004;
+            rr::components::AffixFuzzer5 fuzz1005;
+            rr::components::AffixFuzzer6 fuzz1006;
+            rr::components::AffixFuzzer7 fuzz1007;
+            rr::components::AffixFuzzer8 fuzz1008;
+            rr::components::AffixFuzzer9 fuzz1009;
+            rr::components::AffixFuzzer10 fuzz1010;
+            rr::components::AffixFuzzer11 fuzz1011;
+            rr::components::AffixFuzzer12 fuzz1012;
+            rr::components::AffixFuzzer13 fuzz1013;
+            rr::components::AffixFuzzer14 fuzz1014;
+            rr::components::AffixFuzzer16 fuzz1016;
+            rr::components::AffixFuzzer17 fuzz1017;
+            rr::components::AffixFuzzer18 fuzz1018;
+            rr::components::AffixFuzzer19 fuzz1019;
+            std::vector<rr::components::AffixFuzzer1> fuzz1101;
+            std::vector<rr::components::AffixFuzzer2> fuzz1102;
+            std::vector<rr::components::AffixFuzzer3> fuzz1103;
+            std::vector<rr::components::AffixFuzzer4> fuzz1104;
+            std::vector<rr::components::AffixFuzzer5> fuzz1105;
+            std::vector<rr::components::AffixFuzzer6> fuzz1106;
+            std::vector<rr::components::AffixFuzzer7> fuzz1107;
+            std::vector<rr::components::AffixFuzzer8> fuzz1108;
+            std::vector<rr::components::AffixFuzzer9> fuzz1109;
+            std::vector<rr::components::AffixFuzzer10> fuzz1110;
+            std::vector<rr::components::AffixFuzzer11> fuzz1111;
+            std::vector<rr::components::AffixFuzzer12> fuzz1112;
+            std::vector<rr::components::AffixFuzzer13> fuzz1113;
+            std::vector<rr::components::AffixFuzzer14> fuzz1114;
+            std::vector<rr::components::AffixFuzzer16> fuzz1116;
+            std::vector<rr::components::AffixFuzzer17> fuzz1117;
+            std::vector<rr::components::AffixFuzzer18> fuzz1118;
+            std::optional<rr::components::AffixFuzzer1> fuzz2001;
+            std::optional<rr::components::AffixFuzzer2> fuzz2002;
+            std::optional<rr::components::AffixFuzzer3> fuzz2003;
+            std::optional<rr::components::AffixFuzzer4> fuzz2004;
+            std::optional<rr::components::AffixFuzzer5> fuzz2005;
+            std::optional<rr::components::AffixFuzzer6> fuzz2006;
+            std::optional<rr::components::AffixFuzzer7> fuzz2007;
+            std::optional<rr::components::AffixFuzzer8> fuzz2008;
+            std::optional<rr::components::AffixFuzzer9> fuzz2009;
+            std::optional<rr::components::AffixFuzzer10> fuzz2010;
+            std::optional<rr::components::AffixFuzzer11> fuzz2011;
+            std::optional<rr::components::AffixFuzzer12> fuzz2012;
+            std::optional<rr::components::AffixFuzzer13> fuzz2013;
+            std::optional<rr::components::AffixFuzzer14> fuzz2014;
+            std::optional<rr::components::AffixFuzzer16> fuzz2016;
+            std::optional<rr::components::AffixFuzzer17> fuzz2017;
+            std::optional<rr::components::AffixFuzzer18> fuzz2018;
+            std::optional<std::vector<rr::components::AffixFuzzer1>> fuzz2101;
+            std::optional<std::vector<rr::components::AffixFuzzer2>> fuzz2102;
+            std::optional<std::vector<rr::components::AffixFuzzer3>> fuzz2103;
+            std::optional<std::vector<rr::components::AffixFuzzer4>> fuzz2104;
+            std::optional<std::vector<rr::components::AffixFuzzer5>> fuzz2105;
+            std::optional<std::vector<rr::components::AffixFuzzer6>> fuzz2106;
+            std::optional<std::vector<rr::components::AffixFuzzer7>> fuzz2107;
+            std::optional<std::vector<rr::components::AffixFuzzer8>> fuzz2108;
+            std::optional<std::vector<rr::components::AffixFuzzer9>> fuzz2109;
+            std::optional<std::vector<rr::components::AffixFuzzer10>> fuzz2110;
+            std::optional<std::vector<rr::components::AffixFuzzer11>> fuzz2111;
+            std::optional<std::vector<rr::components::AffixFuzzer12>> fuzz2112;
+            std::optional<std::vector<rr::components::AffixFuzzer13>> fuzz2113;
+            std::optional<std::vector<rr::components::AffixFuzzer14>> fuzz2114;
+            std::optional<std::vector<rr::components::AffixFuzzer16>> fuzz2116;
+            std::optional<std::vector<rr::components::AffixFuzzer17>> fuzz2117;
+            std::optional<std::vector<rr::components::AffixFuzzer18>> fuzz2118;
+        };
     } // namespace archetypes
 } // namespace rr

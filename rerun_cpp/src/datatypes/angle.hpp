@@ -5,6 +5,6 @@
 
 namespace rr {
     namespace datatypes {
-        struct Angle {};
-    } // namespace datatypes
+        // TODO(#2647): code-gen for C++
+    }
 } // namespace rr

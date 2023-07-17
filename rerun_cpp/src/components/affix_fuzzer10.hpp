@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct AffixFuzzer10 {};
+        struct AffixFuzzer10 {
+            std::optional<std::string> single_string_optional;
+        };
     } // namespace components
 } // namespace rr

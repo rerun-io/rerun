@@ -2,3 +2,5 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/scale3d.fbs"
 
 #include "scale3d.hpp"
+
+// TODO(#2647): code-gen for C++

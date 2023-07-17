@@ -3,8 +3,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace rr {
     namespace components {
-        struct AffixFuzzer16 {};
+        struct AffixFuzzer16 {
+            std::vector<rr::datatypes::AffixFuzzer3> many_required_unions;
+        };
     } // namespace components
 } // namespace rr

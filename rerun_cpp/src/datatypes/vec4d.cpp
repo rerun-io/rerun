@@ -2,3 +2,5 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/vec4d.fbs"
 
 #include "vec4d.hpp"
+
+// TODO(#2647): code-gen for C++

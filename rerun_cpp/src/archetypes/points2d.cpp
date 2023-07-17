@@ -2,3 +2,5 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/points2d.fbs"
 
 #include "points2d.hpp"
+
+// TODO(#2647): code-gen for C++
