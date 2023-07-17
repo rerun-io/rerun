@@ -17,7 +17,7 @@ from gitignore_parser import parse_gitignore
 
 # -----------------------------------------------------------------------------
 
-todo_pattern = re.compile(r"TODO([^(]|$)")
+todo_pattern = re.compile(r'TODO([^_"(]|$)')
 debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
 error_match_name = re.compile(r"Err\((\w+)\)")
 error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
@@ -55,9 +55,6 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
 
     if "todo!()" in line:
         return 'todo!() should be written as todo!("$details")'
-
-    if "unimplemented!" in line:
-        return "unimplemented!(): either implement this, or rewrite it as a todo!()"
 
     if todo_pattern.search(line):
         return "TODO:s should be written as `TODO(yourname): what to do`"
@@ -102,6 +99,7 @@ def test_lint_line() -> None:
         "todo lowercase is fine",
         'todo!("macro is ok with text")',
         "TODO(emilk):",
+        "TODO_TOKEN",
         'eprintln!("{:?}, {err}", foo)',
         'eprintln!("{:#?}, {err}", foo)',
         'eprintln!("{err}")',
@@ -125,8 +123,7 @@ def test_lint_line() -> None:
         "HACK",
         "TODO",
         "TODO:",
-        "todo!()" "unimplemented!()",
-        'unimplemented!("even with text!")',
+        "todo!()",
         'eprintln!("{err:?}")',
         'eprintln!("{err:#?}")',
         'eprintln!("{:?}", err)',

@@ -900,8 +900,8 @@ impl Type {
                 ),
             },
             FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
-                unimplemented!("{typ:#?}") // NOLINT
-            } // NOLINT
+                unimplemented!("{typ:#?}")
+            }
             // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants...
             _ => unreachable!("{typ:#?}"),
         }

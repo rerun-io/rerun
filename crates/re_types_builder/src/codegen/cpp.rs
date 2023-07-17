@@ -308,17 +308,19 @@ fn quote_declaration(
             Type::Int32 => quote! { std::optional<int32_t> #name },
             Type::Int64 => quote! { std::optional<int64_t> #name },
             Type::Bool => quote! { std::optional<bool> #name },
-            Type::Float16 => unimplemented!("float16 not yet implemented for C++"), // NOLINT
+            Type::Float16 => unimplemented!("float16 not yet implemented for C++"),
             Type::Float32 => quote! { std::optional<float> #name },
             Type::Float64 => quote! { std::optional<double> #name },
             Type::String => {
                 includes.system.insert("string".to_owned());
                 quote! { std::optional<std::string> #name }
             }
-            Type::Array { .. } => unimplemented!(
-                "Optional fixed-size array not yet implemented in C++. {:#?}",
-                obj_field.typ
-            ), // NOLINT
+            Type::Array { .. } => {
+                unimplemented!(
+                    "Optional fixed-size array not yet implemented in C++. {:#?}",
+                    obj_field.typ
+                )
+            }
             Type::Vector { elem_type } => {
                 let elem_type = quote_element_type(includes, elem_type);
                 if unwrap {
@@ -344,7 +346,7 @@ fn quote_declaration(
             Type::Int32 => quote! { int32_t #name },
             Type::Int64 => quote! { int64_t #name },
             Type::Bool => quote! { bool #name },
-            Type::Float16 => unimplemented!("float16 not yet implemented for C++"), // NOLINT
+            Type::Float16 => unimplemented!("float16 not yet implemented for C++"),
             Type::Float32 => quote! { float #name },
             Type::Float64 => quote! { double #name },
             Type::String => {
@@ -391,7 +393,7 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
         ElementType::Int32 => quote! { int32_t },
         ElementType::Int64 => quote! { int64_t },
         ElementType::Bool => quote! { bool },
-        ElementType::Float16 => unimplemented!("float16 not yet implemented for C++"), // NOLINT
+        ElementType::Float16 => unimplemented!("float16 not yet implemented for C++"),
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
         ElementType::String => {

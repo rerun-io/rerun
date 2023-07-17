@@ -573,7 +573,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Int32 => quote!(i32),
             Type::Int64 => quote!(i64),
             Type::Bool => quote!(bool),
-            Type::Float16 => unimplemented!("{typ:#?}"), // NOLINT
+            Type::Float16 => unimplemented!("{typ:#?}"),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
             Type::String => quote!(String),
@@ -609,7 +609,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Int32 => quote!(i32),
             ElementType::Int64 => quote!(i64),
             ElementType::Bool => quote!(bool),
-            ElementType::Float16 => unimplemented!("{self:#?}"), // NOLINT
+            ElementType::Float16 => unimplemented!("{self:#?}"),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
             ElementType::String => quote!(String),
@@ -1118,7 +1118,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                 quote!(DataType::Extension(#name.to_owned(), Box::new(#datatype), #metadata))
             }
 
-            _ => unimplemented!("{:#?}", self.0), // NOLINT
+            _ => unimplemented!("{:#?}", self.0),
         }
         .to_tokens(tokens);
     }
@@ -1466,7 +1466,7 @@ fn quote_arrow_serializer(
                     ).boxed()
                 }}
             }
-            _ => unimplemented!("{datatype:#?}"), // NOLINT
+            _ => unimplemented!("{datatype:#?}"),
         }
     }
 }
@@ -1657,7 +1657,7 @@ fn quote_arrow_field_serializer(
             }}
         }
 
-        _ => unimplemented!("{datatype:#?}"), // NOLINT
+        _ => unimplemented!("{datatype:#?}"),
     }
 }
 
@@ -1899,7 +1899,7 @@ fn quote_arrow_deserializer(
                 }}
             }
 
-            _ => unimplemented!("{datatype:#?}"), // NOLINT
+            _ => unimplemented!("{datatype:#?}"),
         }
     }
 }
@@ -2109,7 +2109,7 @@ fn quote_arrow_field_deserializer(
             quote!(#fqname_use::try_from_arrow_opt(#data_src)?.into_iter())
         }
 
-        _ => unimplemented!("{datatype:#?}"), // NOLINT
+        _ => unimplemented!("{datatype:#?}"),
     }
 }
 

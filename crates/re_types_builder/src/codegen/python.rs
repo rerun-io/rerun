@@ -1394,7 +1394,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
 
         DataType::Extension(_, datatype, _) => quote_arrow_datatype(datatype),
 
-        _ => unimplemented!("{datatype:#?}"), // NOLINT
+        _ => unimplemented!("{datatype:#?}"),
     }
 }
 
