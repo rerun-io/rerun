@@ -73,6 +73,16 @@ namespace rr {
                 return std::move(self);
             }
 
+            /// Individual scaling factors for each axis, distorting the original object.
+            Scale3D(rr::datatypes::Vec3D three_d) {
+                *this = Scale3D::three_d(std::move(three_d));
+            }
+
+            /// Uniform scaling factor along all axis.
+            Scale3D(float uniform) {
+                *this = Scale3D::uniform(std::move(uniform));
+            }
+
             void swap(Scale3D& other) noexcept {
                 auto tag_temp = this->_tag;
                 this->_tag = other._tag;

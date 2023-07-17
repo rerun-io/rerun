@@ -74,6 +74,16 @@ namespace rr {
                 return std::move(self);
             }
 
+            /// Rotation defined by a quaternion.
+            Rotation3D(rr::datatypes::Quaternion quaternion) {
+                *this = Rotation3D::quaternion(std::move(quaternion));
+            }
+
+            /// Rotation defined with an axis and an angle.
+            Rotation3D(rr::datatypes::RotationAxisAngle axis_angle) {
+                *this = Rotation3D::axis_angle(std::move(axis_angle));
+            }
+
             void swap(Rotation3D& other) noexcept {
                 auto tag_temp = this->_tag;
                 this->_tag = other._tag;

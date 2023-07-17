@@ -72,6 +72,15 @@ namespace rr {
                 return std::move(self);
             }
 
+            Transform3D(rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3) {
+                *this = Transform3D::translation_and_mat3x3(std::move(translation_and_mat3x3));
+            }
+
+            Transform3D(rr::datatypes::TranslationRotationScale3D translation_rotation_scale) {
+                *this =
+                    Transform3D::translation_rotation_scale(std::move(translation_rotation_scale));
+            }
+
             void swap(Transform3D& other) noexcept {
                 auto tag_temp = this->_tag;
                 this->_tag = other._tag;

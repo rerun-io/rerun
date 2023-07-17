@@ -812,7 +812,7 @@ impl ObjectField {
 }
 
 /// The underlying type of an [`ObjectField`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Type {
     UInt8,
     UInt16,
@@ -979,7 +979,7 @@ impl Type {
 ///
 /// Flatbuffers doesn't support directly nesting multiple layers of arrays, they
 /// always have to be wrapped into intermediate layers of structs or tables!
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ElementType {
     UInt8,
     UInt16,

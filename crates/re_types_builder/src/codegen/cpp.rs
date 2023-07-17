@@ -316,7 +316,30 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        // TODO(emilk): if the variant types are disjoint, generate implicit constructors
+        let implicit_constructors = if are_types_disjoint(&obj.fields) {
+            // Implicit construct from the different variant types:
+            obj.fields
+                .iter()
+                .map(|obj_field| {
+                    let snake_case_ident =
+                        format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                    let docstring = quote_docstrings(&obj_field.docs);
+                    let param_declaration =
+                        quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident, false).0;
+                    quote! {
+                        #docstring
+                        #pascal_case_ident(#param_declaration)
+                        {
+                            *this = #pascal_case_ident::#snake_case_ident(std::move(#snake_case_ident));
+                        }
+                    }
+                })
+                .collect_vec()
+        } else {
+            // Cannot make implicit constructors, e.g. for
+            // `enum Angle { Radians(f32), Degrees(f32) };`
+            vec![]
+        };
 
         let static_constructors = obj
             .fields
@@ -509,6 +532,8 @@ impl QuotedObject {
 
                         #(#static_constructors)*
 
+                        #(#implicit_constructors)*
+
                         // This is useful for easily implementing the move constructor and move assignment operator:
                         void swap(#pascal_case_ident& other) noexcept {
                             // Swap tags:
@@ -528,6 +553,11 @@ impl QuotedObject {
 
         Self { hpp, cpp }
     }
+}
+
+fn are_types_disjoint(fields: &[ObjectField]) -> bool {
+    let type_set: std::collections::HashSet<&Type> = fields.iter().map(|f| &f.typ).collect();
+    type_set.len() == fields.len()
 }
 
 /// Keep track of necessary includes for a file.
