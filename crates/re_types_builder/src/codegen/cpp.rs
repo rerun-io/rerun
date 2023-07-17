@@ -304,10 +304,10 @@ impl QuotedObject {
                     #docstring
                     static #pascal_case_ident #snake_case_ident(#param_declaration)
                     {
-                        #pascal_case_ident ths;
-                        ths._tag = detail::#tag_ident;
-                        ths._data.#snake_case_ident = #snake_case_ident;
-                        return ths;
+                        #pascal_case_ident self;
+                        self._tag = detail::#tag_ident;
+                        self._data.#snake_case_ident = #snake_case_ident;
+                        return self;
                     }
                     #NEWLINE_TOKEN #NEWLINE_TOKEN
                 }
