@@ -4,7 +4,6 @@
 #pragma once
 
 #include <cstdint>
-#include <utility>
 
 #include "../datatypes/quaternion.hpp"
 #include "../datatypes/rotation_axis_angle.hpp"
@@ -36,20 +35,6 @@ namespace rr {
             detail::Rotation3DData _data;
 
           public:
-            ~Rotation3D() {
-                switch (this->_tag) {
-                    case detail::Tag_Quaternion: {
-                        typedef rr::datatypes::Quaternion TypeAlias;
-                        _data.quaternion.~TypeAlias();
-                        break;
-                    }
-                    case detail::Tag_AxisAngle: {
-                        typedef rr::datatypes::RotationAxisAngle TypeAlias;
-                        _data.axis_angle.~TypeAlias();
-                        break;
-                    }
-                }
-            }
         };
     } // namespace datatypes
 } // namespace rr

@@ -4,7 +4,6 @@
 #pragma once
 
 #include <cstdint>
-#include <utility>
 
 #include "../datatypes/translation_and_mat3x3.hpp"
 #include "../datatypes/translation_rotation_scale3d.hpp"
@@ -34,20 +33,6 @@ namespace rr {
             detail::Transform3DData _data;
 
           public:
-            ~Transform3D() {
-                switch (this->_tag) {
-                    case detail::Tag_TranslationAndMat3x3: {
-                        typedef rr::datatypes::TranslationAndMat3x3 TypeAlias;
-                        _data.translation_and_mat3x3.~TypeAlias();
-                        break;
-                    }
-                    case detail::Tag_TranslationRotationScale: {
-                        typedef rr::datatypes::TranslationRotationScale3D TypeAlias;
-                        _data.translation_rotation_scale.~TypeAlias();
-                        break;
-                    }
-                }
-            }
         };
     } // namespace datatypes
 } // namespace rr

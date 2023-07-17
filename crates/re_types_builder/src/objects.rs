@@ -607,6 +607,11 @@ impl Object {
             .is_some()
     }
 
+    /// Is plain-old-data (i.e. no destructor)?
+    pub fn is_pod(&self, objects: &Objects) -> bool {
+        self.fields.iter().all(|field| field.typ.is_pod(objects))
+    }
+
     /// Try to find the relative file path of the `.fbs` source file.
     pub fn relative_filepath(&self) -> Option<&Utf8Path> {
         self.filepath
@@ -910,38 +915,62 @@ impl Type {
     /// True if this is some kind of array/vector.
     pub fn is_plural(&self) -> bool {
         match self {
-            Type::Array {
+            Self::Array {
                 elem_type: _,
                 length: _,
             }
-            | Type::Vector { elem_type: _ } => true,
-            Type::UInt8
-            | Type::UInt16
-            | Type::UInt32
-            | Type::UInt64
-            | Type::Int8
-            | Type::Int16
-            | Type::Int32
-            | Type::Int64
-            | Type::Bool
-            | Type::Float16
-            | Type::Float32
-            | Type::Float64
-            | Type::String
-            | Type::Object(_) => false,
+            | Self::Vector { elem_type: _ } => true,
+            Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Bool
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64
+            | Self::String
+            | Self::Object(_) => false,
         }
     }
 
     /// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            Type::Object(fqname) => Some(fqname.as_str()),
-            Type::Array {
+            Self::Object(fqname) => Some(fqname.as_str()),
+            Self::Array {
                 elem_type,
                 length: _,
             }
-            | Type::Vector { elem_type } => elem_type.fqname(),
+            | Self::Vector { elem_type } => elem_type.fqname(),
             _ => None,
+        }
+    }
+
+    /// Is plain-old-data (i.e. no destructor)?
+    pub fn is_pod(&self, objects: &Objects) -> bool {
+        match self {
+            Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Bool
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64 => true,
+
+            Self::String | Self::Vector { .. } => false,
+
+            Self::Array { elem_type, .. } => elem_type.is_pod(objects),
+
+            Self::Object(fqname) => objects.get(fqname).is_pod(objects),
         }
     }
 }
@@ -1010,8 +1039,30 @@ impl ElementType {
     /// `Some(fqname)` if this is an `Object`.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            ElementType::Object(fqname) => Some(fqname.as_str()),
+            Self::Object(fqname) => Some(fqname.as_str()),
             _ => None,
+        }
+    }
+
+    /// Is plain-old-data (i.e. no destructor)?
+    pub fn is_pod(&self, objects: &Objects) -> bool {
+        match self {
+            Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Bool
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64 => true,
+
+            Self::String => false,
+
+            Self::Object(fqname) => objects.get(fqname).is_pod(objects),
         }
     }
 }

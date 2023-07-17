@@ -4,7 +4,6 @@
 #pragma once
 
 #include <cstdint>
-#include <utility>
 
 #include "../datatypes/vec3d.hpp"
 
@@ -35,20 +34,6 @@ namespace rr {
             detail::Scale3DData _data;
 
           public:
-            ~Scale3D() {
-                switch (this->_tag) {
-                    case detail::Tag_ThreeD: {
-                        typedef rr::datatypes::Vec3D TypeAlias;
-                        _data.three_d.~TypeAlias();
-                        break;
-                    }
-                    case detail::Tag_Uniform: {
-                        typedef float TypeAlias;
-                        _data.uniform.~TypeAlias();
-                        break;
-                    }
-                }
-            }
         };
     } // namespace datatypes
 } // namespace rr

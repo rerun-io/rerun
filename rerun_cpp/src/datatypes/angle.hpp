@@ -4,7 +4,6 @@
 #pragma once
 
 #include <cstdint>
-#include <utility>
 
 namespace rr {
     namespace datatypes {
@@ -31,20 +30,6 @@ namespace rr {
             detail::AngleData _data;
 
           public:
-            ~Angle() {
-                switch (this->_tag) {
-                    case detail::Tag_Radians: {
-                        typedef float TypeAlias;
-                        _data.radians.~TypeAlias();
-                        break;
-                    }
-                    case detail::Tag_Degrees: {
-                        typedef float TypeAlias;
-                        _data.degrees.~TypeAlias();
-                        break;
-                    }
-                }
-            }
         };
     } // namespace datatypes
 } // namespace rr

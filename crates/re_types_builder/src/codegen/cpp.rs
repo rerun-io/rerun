@@ -13,10 +13,55 @@ use crate::{
 };
 
 // Special strings we insert and then search-and-replace later
+const COMMENT_PREFIX: &str = "COMMENT_PREFIX";
+const COMMENT_SUFFIX: &str = "COMMENT_SUFFIX";
 const DOC_COMMENT_PREFIX: &str = "DOC_COMMENT_PREFIX";
 const DOC_COMMENT_SUFFIX: &str = "DOC_COMMENT_SUFFIX";
 const NEWLINE_TOKEN: &str = "RE_TOKEN_NEWLINE";
 const TODO_TOKEN: &str = "RE_TOKEN_TODO";
+
+fn comment(text: &str) -> TokenStream {
+    quote! { #COMMENT_PREFIX #text #COMMENT_SUFFIX }
+}
+
+fn doc_comment(text: &str) -> TokenStream {
+    quote! { #DOC_COMMENT_PREFIX #text #DOC_COMMENT_SUFFIX }
+}
+
+fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
+    let mut code = String::new();
+    code.push_str(&format!("// {AUTOGEN_WARNING}\n"));
+    if let Some(source_path) = source_path {
+        code.push_str(&format!("// Based on {source_path:?}\n"));
+    }
+
+    code.push('\n');
+    code.push_str(
+        &token_stream
+            .to_string()
+            .replace(&format!("{COMMENT_PREFIX:?} \""), "//")
+            .replace(&format!("\" {COMMENT_SUFFIX:?}"), "\n")
+            .replace(&format!("{NEWLINE_TOKEN:?}"), "\n")
+            .replace(&format!("{DOC_COMMENT_PREFIX:?} \""), "///")
+            .replace(&format!("\" {DOC_COMMENT_SUFFIX:?}"), "\n")
+            .replace(
+                &format!("{TODO_TOKEN:?}"),
+                "\n// TODO(#2647): code-gen for C++\n",
+            )
+            .replace("< ", "<")
+            .replace(" >", ">")
+            .replace(" ::", "::"),
+    );
+    code.push('\n');
+
+    // clang_format has a bit of an ugly API: https://github.com/KDAB/clang-format-rs/issues/3
+    clang_format::CLANG_FORMAT_STYLE
+        .set(clang_format::ClangFormatStyle::File)
+        .ok();
+    code = clang_format::clang_format(&code).expect("Failed to run clang-format");
+
+    code
+}
 
 pub struct CppCodeGenerator {
     output_path: Utf8PathBuf,
@@ -104,39 +149,6 @@ impl crate::CodeGenerator for CppCodeGenerator {
     }
 }
 
-fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
-    let mut code = String::new();
-    code.push_str(&format!("// {AUTOGEN_WARNING}\n"));
-    if let Some(source_path) = source_path {
-        code.push_str(&format!("// Based on {source_path:?}\n"));
-    }
-
-    code.push('\n');
-    code.push_str(
-        &token_stream
-            .to_string()
-            .replace(&format!("{NEWLINE_TOKEN:?}"), "\n")
-            .replace(&format!("{DOC_COMMENT_PREFIX:?} \""), "///")
-            .replace(&format!("\" {DOC_COMMENT_SUFFIX:?}"), "\n")
-            .replace(
-                &format!("{TODO_TOKEN:?}"),
-                "\n// TODO(#2647): code-gen for C++\n",
-            )
-            .replace("< ", "<")
-            .replace(" >", ">")
-            .replace(" ::", "::"),
-    );
-    code.push('\n');
-
-    // clang_format has a bit of an ugly API: https://github.com/KDAB/clang-format-rs/issues/3
-    clang_format::CLANG_FORMAT_STYLE
-        .set(clang_format::ClangFormatStyle::File)
-        .ok();
-    code = clang_format::clang_format(&code).expect("Failed to run clang-format");
-
-    code
-}
-
 fn write_file(filepath: &Utf8PathBuf, code: String) {
     if let Ok(existing) = std::fs::read_to_string(filepath) {
         if existing == code {
@@ -151,11 +163,11 @@ fn write_file(filepath: &Utf8PathBuf, code: String) {
 }
 
 fn generate_hpp_cpp(
-    _objects: &Objects,
+    objects: &Objects,
     _arrow_registry: &ArrowRegistry,
     obj: &crate::Object,
 ) -> (TokenStream, TokenStream) {
-    let QuotedObject { hpp, cpp } = QuotedObject::new(obj);
+    let QuotedObject { hpp, cpp } = QuotedObject::new(objects, obj);
     let snake_case_name = obj.snake_case_name();
     let hash = quote! { # };
     let pragma_once = pragma_once();
@@ -186,10 +198,10 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
-    pub fn new(obj: &crate::Object) -> Self {
+    pub fn new(objects: &Objects, obj: &crate::Object) -> Self {
         match obj.specifics {
             crate::ObjectSpecifics::Struct => Self::from_struct(obj),
-            crate::ObjectSpecifics::Union { .. } => Self::from_union(obj),
+            crate::ObjectSpecifics::Union { .. } => Self::from_union(objects, obj),
         }
     }
 
@@ -237,7 +249,7 @@ impl QuotedObject {
         Self { hpp, cpp }
     }
 
-    fn from_union(obj: &crate::Object) -> QuotedObject {
+    fn from_union(objects: &Objects, obj: &crate::Object) -> QuotedObject {
         // We implement sum-types as tagged unions:
         //
         // enum Rotation3DTag {
@@ -314,45 +326,58 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        let destructor_match_arms = obj
-            .fields
-            .iter()
-            .map(|obj_field| {
-                let tag_ident = format_ident!("Tag_{}", obj_field.name);
-                let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+        let destructor = if obj.is_pod(objects) {
+            // No destructor needed
+            quote! {}
+        } else {
+            let destructor_match_arms = obj
+                .fields
+                .iter()
+                .map(|obj_field| {
+                    let tag_ident = format_ident!("Tag_{}", obj_field.name);
+                    let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
 
-                if let Type::Array { elem_type, length } = &obj_field.typ {
-                    // We need special casing for destroying arrays in C++:
-                    let elem_type = quote_element_type(&mut hpp_includes, elem_type);
-                    let length = proc_macro2::Literal::usize_unsuffixed(*length);
-                    quote! {
-                        case detail::#tag_ident: {
-                            typedef #elem_type TypeAlias;
-                            for (size_t i = #length; i > 0; i -= 1) {
-                                _data.#field_ident[i-1].~TypeAlias();
+                    if let Type::Array { elem_type, length } = &obj_field.typ {
+                        // We need special casing for destroying arrays in C++:
+                        let elem_type = quote_element_type(&mut hpp_includes, elem_type);
+                        let length = proc_macro2::Literal::usize_unsuffixed(*length);
+                        quote! {
+                            case detail::#tag_ident: {
+                                typedef #elem_type TypeAlias;
+                                for (size_t i = #length; i > 0; i -= 1) {
+                                    _data.#field_ident[i-1].~TypeAlias();
+                                }
+                                break;
                             }
-                            break;
+                        }
+                    } else {
+                        let typedef_declaration = quote_declaration(
+                            &mut hpp_includes,
+                            obj_field,
+                            &format_ident!("TypeAlias"),
+                            false,
+                        )
+                        .0;
+                        hpp_includes.system.insert("utility".to_owned()); // std::move
+                        quote! {
+                            case detail::#tag_ident: {
+                                typedef #typedef_declaration;
+                                _data.#field_ident.~TypeAlias();
+                                break;
+                            }
                         }
                     }
-                } else {
-                    let typedef_declaration = quote_declaration(
-                        &mut hpp_includes,
-                        obj_field,
-                        &format_ident!("TypeAlias"),
-                        false,
-                    )
-                    .0;
-                    hpp_includes.system.insert("utility".to_owned()); // std::move
-                    quote! {
-                        case detail::#tag_ident: {
-                            typedef #typedef_declaration;
-                            _data.#field_ident.~TypeAlias();
-                            break;
-                        }
+                })
+                .collect_vec();
+
+            quote! {
+                ~#pascal_case_ident() {
+                    switch (this->_tag) {
+                        #(#destructor_match_arms)*
                     }
                 }
-            })
-            .collect_vec();
+            }
+        };
 
         let hpp = quote! {
             #hpp_includes
@@ -388,11 +413,7 @@ impl QuotedObject {
                     public:
                         // #(#static_constructors)* // TODO(emilk)
 
-                        ~#pascal_case_ident() {
-                            switch (this->_tag) {
-                                #(#destructor_match_arms)*
-                            }
-                        }
+                        #destructor
                     };
                 }
             }
@@ -611,9 +632,7 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
 
 fn quote_docstrings(docs: &Docs) -> TokenStream {
     let lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
-    let quoted_lines = lines
-        .iter()
-        .map(|docstring| quote! { #DOC_COMMENT_PREFIX #docstring #DOC_COMMENT_SUFFIX });
+    let quoted_lines = lines.iter().map(|docstring| doc_comment(docstring));
     quote! {
         #NEWLINE_TOKEN
         #(#quoted_lines)*
