@@ -47,6 +47,12 @@ impl crate::Loggable for Angle {
         DataType::Union(
             vec![
                 Field {
+                    name: "_null_markers".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: true,
+                    metadata: [].into(),
+                },
+                Field {
                     name: "Radians".to_owned(),
                     data_type: DataType::Float32,
                     is_nullable: false,
@@ -94,24 +100,23 @@ impl crate::Loggable for Angle {
                 })
                 .to_logical_type()
                 .clone(),
-                {
-                    data.iter()
-                        .flatten()
-                        .map(|v| match **v {
-                            Angle::Radians(_) => 0i8,
-                            Angle::Degrees(_) => 1i8,
-                        })
-                        .collect()
-                },
+                data.iter()
+                    .map(|a| match a.as_deref() {
+                        None => 0,
+                        Some(Angle::Radians(_)) => 1i8,
+                        Some(Angle::Degrees(_)) => 2i8,
+                    })
+                    .collect(),
                 vec![
+                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
+                        .boxed(),
                     {
                         let (somes, radians): (Vec<_>, Vec<_>) = data
                             .iter()
-                            .flatten()
-                            .filter(|datum| matches!(***datum, Angle::Radians(_)))
+                            .filter(|datum| matches!(datum.as_deref(), Some(Angle::Radians(_))))
                             .map(|datum| {
-                                let datum = match &**datum {
-                                    Angle::Radians(v) => Some(v.clone()),
+                                let datum = match datum.as_deref() {
+                                    Some(Angle::Radians(v)) => Some(v.clone()),
                                     _ => None,
                                 };
                                 (datum.is_some(), datum)
@@ -134,11 +139,10 @@ impl crate::Loggable for Angle {
                     {
                         let (somes, degrees): (Vec<_>, Vec<_>) = data
                             .iter()
-                            .flatten()
-                            .filter(|datum| matches!(***datum, Angle::Degrees(_)))
+                            .filter(|datum| matches!(datum.as_deref(), Some(Angle::Degrees(_))))
                             .map(|datum| {
-                                let datum = match &**datum {
-                                    Angle::Degrees(v) => Some(v.clone()),
+                                let datum = match datum.as_deref() {
+                                    Some(Angle::Degrees(v)) => Some(v.clone()),
                                     _ => None,
                                 };
                                 (datum.is_some(), datum)
@@ -162,16 +166,22 @@ impl crate::Loggable for Angle {
                 Some({
                     let mut radians_offset = 0;
                     let mut degrees_offset = 0;
+                    let mut nulls_offset = 0;
                     data.iter()
-                        .flatten()
-                        .map(|v| match **v {
-                            Angle::Radians(_) => {
+                        .map(|v| match v.as_deref() {
+                            None => {
+                                let offset = nulls_offset;
+                                nulls_offset += 1;
+                                offset
+                            }
+
+                            Some(Angle::Radians(_)) => {
                                 let offset = radians_offset;
                                 radians_offset += 1;
                                 offset
                             }
 
-                            Angle::Degrees(_) => {
+                            Some(Angle::Degrees(_)) => {
                                 let offset = degrees_offset;
                                 degrees_offset += 1;
                                 offset
@@ -197,9 +207,14 @@ impl crate::Loggable for Angle {
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
-                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.datatypes.Angle".into(),
+                    source: Box::new(err),
                 })?;
             if data.is_empty() {
                 Vec::new()
@@ -207,7 +222,7 @@ impl crate::Loggable for Angle {
                 let (data_types, data_arrays, data_offsets) =
                     (data.types(), data.fields(), data.offsets().unwrap());
                 let radians = {
-                    let data = &*data_arrays[0usize];
+                    let data = &*data_arrays[1usize];
 
                     data.as_any()
                         .downcast_ref::<Float32Array>()
@@ -217,7 +232,7 @@ impl crate::Loggable for Angle {
                         .collect::<Vec<_>>()
                 };
                 let degrees = {
-                    let data = &*data_arrays[1usize];
+                    let data = &*data_arrays[2usize];
 
                     data.as_any()
                         .downcast_ref::<Float32Array>()
@@ -232,33 +247,49 @@ impl crate::Loggable for Angle {
                     .map(|(i, typ)| {
                         let offset = data_offsets[i];
 
-                        Ok(Some(match typ {
-                            0i8 => Angle::Radians(
-                                radians
-                                    .get(offset as usize)
-                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (offset as usize, offset as usize),
-                                        len: radians.len(),
-                                        datatype: data.data_type().clone(),
-                                    })?
-                                    .clone()
-                                    .unwrap(),
-                            ),
-                            1i8 => Angle::Degrees(
-                                degrees
-                                    .get(offset as usize)
-                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (offset as usize, offset as usize),
-                                        len: degrees.len(),
-                                        datatype: data.data_type().clone(),
-                                    })?
-                                    .clone()
-                                    .unwrap(),
-                            ),
-                            _ => unreachable!(),
-                        }))
+                        if *typ == 0 {
+                            Ok(None)
+                        } else {
+                            Ok(Some(match typ {
+                                1i8 => Angle::Radians(
+                                    radians
+                                        .get(offset as usize)
+                                        .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                            bounds: (offset as usize, offset as usize),
+                                            len: radians.len(),
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.Angle#Radians".into(),
+                                            source: Box::new(err),
+                                        })?
+                                        .clone()
+                                        .unwrap(),
+                                ),
+                                2i8 => Angle::Degrees(
+                                    degrees
+                                        .get(offset as usize)
+                                        .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                            bounds: (offset as usize, offset as usize),
+                                            len: degrees.len(),
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.Angle#Degrees".into(),
+                                            source: Box::new(err),
+                                        })?
+                                        .clone()
+                                        .unwrap(),
+                                ),
+                                _ => unreachable!(),
+                            }))
+                        }
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.Angle".into(),
+                        source: Box::new(err),
+                    })?
             }
         })
     }

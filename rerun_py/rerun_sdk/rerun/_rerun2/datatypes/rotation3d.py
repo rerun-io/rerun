@@ -52,6 +52,7 @@ class Rotation3DType(BaseExtensionType):
             self,
             pa.dense_union(
                 [
+                    pa.field("_null_markers", pa.null(), True, {}),
                     pa.field("Quaternion", pa.list_(pa.field("item", pa.float32(), False, {}), 4), False, {}),
                     pa.field(
                         "AxisAngle",
@@ -62,6 +63,7 @@ class Rotation3DType(BaseExtensionType):
                                     "angle",
                                     pa.dense_union(
                                         [
+                                            pa.field("_null_markers", pa.null(), True, {}),
                                             pa.field("Radians", pa.float32(), False, {}),
                                             pa.field("Degrees", pa.float32(), False, {}),
                                         ]

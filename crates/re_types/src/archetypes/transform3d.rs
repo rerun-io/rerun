@@ -77,7 +77,11 @@ impl crate::Archetype for Transform3D {
                     )
                 })
             })
-            .transpose()?
+            .transpose()
+            .map_err(|err| crate::SerializationError::Context {
+                location: "rerun.archetypes.Transform3D#transform".into(),
+                source: Box::new(err),
+            })?
         }]
         .into_iter()
         .flatten()
@@ -94,17 +98,29 @@ impl crate::Archetype for Transform3D {
             .map(|(field, array)| (field.name, array))
             .collect();
         let transform = {
-            let array = arrays_by_name.get("transform").ok_or_else(|| {
-                crate::DeserializationError::MissingData {
-                    datatype: ::arrow2::datatypes::DataType::Null,
-                }
-            })?;
-            <crate::components::Transform3D>::try_from_arrow_opt(&**array)?
+            let array = arrays_by_name
+                .get("transform")
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.archetypes.Transform3D#transform".into(),
+                    source: Box::new(err),
+                })?;
+            <crate::components::Transform3D>::try_from_arrow_opt(&**array)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.archetypes.Transform3D#transform".into(),
+                    source: Box::new(err),
+                })?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: ::arrow2::datatypes::DataType::Null,
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.archetypes.Transform3D#transform".into(),
+                    source: Box::new(err),
                 })?
         };
         Ok(Self { transform })

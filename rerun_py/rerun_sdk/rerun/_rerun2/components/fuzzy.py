@@ -45,6 +45,8 @@ __all__ = [
     "AffixFuzzer13Type",
     "AffixFuzzer14Array",
     "AffixFuzzer14Type",
+    "AffixFuzzer15Array",
+    "AffixFuzzer15Type",
     "AffixFuzzer16",
     "AffixFuzzer16Array",
     "AffixFuzzer16ArrayLike",
@@ -505,6 +507,23 @@ AffixFuzzer14Type._ARRAY_TYPE = AffixFuzzer14Array
 # pa.register_extension_type(AffixFuzzer14Type())
 
 
+class AffixFuzzer15Type(BaseDelegatingExtensionType):
+    _TYPE_NAME = "rerun.testing.components.AffixFuzzer15"
+    _DELEGATED_EXTENSION_TYPE = datatypes.AffixFuzzer3Type
+
+
+class AffixFuzzer15Array(BaseDelegatingExtensionArray[datatypes.AffixFuzzer3ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer15"
+    _EXTENSION_TYPE = AffixFuzzer15Type
+    _DELEGATED_ARRAY_TYPE = datatypes.AffixFuzzer3Array
+
+
+AffixFuzzer15Type._ARRAY_TYPE = AffixFuzzer15Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer15Type())
+
+
 @define
 class AffixFuzzer16:
     many_required_unions: list[datatypes.AffixFuzzer3] = field()
@@ -529,6 +548,7 @@ class AffixFuzzer16Type(BaseExtensionType):
                     "item",
                     pa.dense_union(
                         [
+                            pa.field("_null_markers", pa.null(), True, {}),
                             pa.field("degrees", pa.float32(), False, {}),
                             pa.field("radians", pa.float32(), False, {}),
                             pa.field(
@@ -631,6 +651,7 @@ class AffixFuzzer17Type(BaseExtensionType):
                     "item",
                     pa.dense_union(
                         [
+                            pa.field("_null_markers", pa.null(), True, {}),
                             pa.field("degrees", pa.float32(), False, {}),
                             pa.field("radians", pa.float32(), False, {}),
                             pa.field(
@@ -733,10 +754,12 @@ class AffixFuzzer18Type(BaseExtensionType):
                     "item",
                     pa.dense_union(
                         [
+                            pa.field("_null_markers", pa.null(), True, {}),
                             pa.field(
                                 "single_required",
                                 pa.dense_union(
                                     [
+                                        pa.field("_null_markers", pa.null(), True, {}),
                                         pa.field("degrees", pa.float32(), False, {}),
                                         pa.field("radians", pa.float32(), False, {}),
                                         pa.field(
@@ -802,6 +825,7 @@ class AffixFuzzer18Type(BaseExtensionType):
                                         "item",
                                         pa.dense_union(
                                             [
+                                                pa.field("_null_markers", pa.null(), True, {}),
                                                 pa.field("degrees", pa.float32(), False, {}),
                                                 pa.field("radians", pa.float32(), False, {}),
                                                 pa.field(
@@ -885,6 +909,7 @@ class AffixFuzzer18Type(BaseExtensionType):
                                         "item",
                                         pa.dense_union(
                                             [
+                                                pa.field("_null_markers", pa.null(), True, {}),
                                                 pa.field("degrees", pa.float32(), False, {}),
                                                 pa.field("radians", pa.float32(), False, {}),
                                                 pa.field(

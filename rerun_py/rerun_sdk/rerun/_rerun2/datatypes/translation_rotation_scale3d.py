@@ -104,6 +104,7 @@ class TranslationRotationScale3DType(BaseExtensionType):
                         "rotation",
                         pa.dense_union(
                             [
+                                pa.field("_null_markers", pa.null(), True, {}),
                                 pa.field(
                                     "Quaternion", pa.list_(pa.field("item", pa.float32(), False, {}), 4), False, {}
                                 ),
@@ -121,6 +122,7 @@ class TranslationRotationScale3DType(BaseExtensionType):
                                                 "angle",
                                                 pa.dense_union(
                                                     [
+                                                        pa.field("_null_markers", pa.null(), True, {}),
                                                         pa.field("Radians", pa.float32(), False, {}),
                                                         pa.field("Degrees", pa.float32(), False, {}),
                                                     ]
@@ -142,6 +144,7 @@ class TranslationRotationScale3DType(BaseExtensionType):
                         "scale",
                         pa.dense_union(
                             [
+                                pa.field("_null_markers", pa.null(), True, {}),
                                 pa.field("ThreeD", pa.list_(pa.field("item", pa.float32(), False, {}), 3), False, {}),
                                 pa.field("Uniform", pa.float32(), False, {}),
                             ]
