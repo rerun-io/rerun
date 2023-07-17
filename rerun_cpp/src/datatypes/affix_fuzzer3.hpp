@@ -13,11 +13,12 @@
 namespace rr {
     namespace datatypes {
         namespace detail {
-            enum AffixFuzzer3Tag {
-                Tag_degrees,
-                Tag_radians,
-                Tag_craziness,
-                Tag_fixed_size_shenanigans,
+            enum class AffixFuzzer3Tag {
+                NONE = 0, // Makes it possible to implement move semantics
+                degrees,
+                radians,
+                craziness,
+                fixed_size_shenanigans,
             };
 
             union AffixFuzzer3Data {
@@ -29,9 +30,10 @@ namespace rr {
 
                 float fixed_size_shenanigans[3];
 
+                AffixFuzzer3Data() {}
+
                 ~AffixFuzzer3Data() {}
             };
-
         } // namespace detail
 
         struct AffixFuzzer3 {
@@ -39,21 +41,26 @@ namespace rr {
             detail::AffixFuzzer3Tag _tag;
             detail::AffixFuzzer3Data _data;
 
+            AffixFuzzer3() : _tag(detail::AffixFuzzer3Tag::NONE) {}
+
           public:
             ~AffixFuzzer3() {
                 switch (this->_tag) {
-                    case detail::Tag_degrees: {
+                    case detail::AffixFuzzer3Tag::NONE: {
+                        break; // Nothing to destroy
+                    }
+                    case detail::AffixFuzzer3Tag::degrees: {
                         break; // Plain Old Data (POD): requires no destructor
                     }
-                    case detail::Tag_radians: {
+                    case detail::AffixFuzzer3Tag::radians: {
                         break; // Plain Old Data (POD): requires no destructor
                     }
-                    case detail::Tag_craziness: {
+                    case detail::AffixFuzzer3Tag::craziness: {
                         typedef std::vector<rr::datatypes::AffixFuzzer1> TypeAlias;
                         _data.craziness.~TypeAlias();
                         break;
                     }
-                    case detail::Tag_fixed_size_shenanigans: {
+                    case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
                         break; // Plain Old Data (POD): requires no destructor
                     }
                 }

@@ -13,10 +13,11 @@
 namespace rr {
     namespace datatypes {
         namespace detail {
-            enum AffixFuzzer4Tag {
-                Tag_single_required,
-                Tag_many_required,
-                Tag_many_optional,
+            enum class AffixFuzzer4Tag {
+                NONE = 0, // Makes it possible to implement move semantics
+                single_required,
+                many_required,
+                many_optional,
             };
 
             union AffixFuzzer4Data {
@@ -26,9 +27,10 @@ namespace rr {
 
                 std::optional<std::vector<rr::datatypes::AffixFuzzer3>> many_optional;
 
+                AffixFuzzer4Data() {}
+
                 ~AffixFuzzer4Data() {}
             };
-
         } // namespace detail
 
         struct AffixFuzzer4 {
@@ -36,20 +38,25 @@ namespace rr {
             detail::AffixFuzzer4Tag _tag;
             detail::AffixFuzzer4Data _data;
 
+            AffixFuzzer4() : _tag(detail::AffixFuzzer4Tag::NONE) {}
+
           public:
             ~AffixFuzzer4() {
                 switch (this->_tag) {
-                    case detail::Tag_single_required: {
+                    case detail::AffixFuzzer4Tag::NONE: {
+                        break; // Nothing to destroy
+                    }
+                    case detail::AffixFuzzer4Tag::single_required: {
                         typedef rr::datatypes::AffixFuzzer3 TypeAlias;
                         _data.single_required.~TypeAlias();
                         break;
                     }
-                    case detail::Tag_many_required: {
+                    case detail::AffixFuzzer4Tag::many_required: {
                         typedef std::vector<rr::datatypes::AffixFuzzer3> TypeAlias;
                         _data.many_required.~TypeAlias();
                         break;
                     }
-                    case detail::Tag_many_optional: {
+                    case detail::AffixFuzzer4Tag::many_optional: {
                         typedef std::optional<std::vector<rr::datatypes::AffixFuzzer3>> TypeAlias;
                         _data.many_optional.~TypeAlias();
                         break;

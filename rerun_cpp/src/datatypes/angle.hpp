@@ -8,9 +8,10 @@
 namespace rr {
     namespace datatypes {
         namespace detail {
-            enum AngleTag {
-                Tag_Radians,
-                Tag_Degrees,
+            enum class AngleTag {
+                NONE = 0, // Makes it possible to implement move semantics
+                Radians,
+                Degrees,
             };
 
             union AngleData {
@@ -18,9 +19,10 @@ namespace rr {
 
                 float degrees;
 
+                AngleData() {}
+
                 ~AngleData() {}
             };
-
         } // namespace detail
 
         /// Angle in either radians or degrees.
@@ -28,6 +30,8 @@ namespace rr {
           private:
             detail::AngleTag _tag;
             detail::AngleData _data;
+
+            Angle() : _tag(detail::AngleTag::NONE) {}
 
           public:
         };

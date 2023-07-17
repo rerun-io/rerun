@@ -11,9 +11,10 @@
 namespace rr {
     namespace datatypes {
         namespace detail {
-            enum Rotation3DTag {
-                Tag_Quaternion,
-                Tag_AxisAngle,
+            enum class Rotation3DTag {
+                NONE = 0, // Makes it possible to implement move semantics
+                Quaternion,
+                AxisAngle,
             };
 
             union Rotation3DData {
@@ -23,9 +24,10 @@ namespace rr {
                 /// Rotation defined with an axis and an angle.
                 rr::datatypes::RotationAxisAngle axis_angle;
 
+                Rotation3DData() {}
+
                 ~Rotation3DData() {}
             };
-
         } // namespace detail
 
         /// A 3D rotation.
@@ -33,6 +35,8 @@ namespace rr {
           private:
             detail::Rotation3DTag _tag;
             detail::Rotation3DData _data;
+
+            Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
 
           public:
         };

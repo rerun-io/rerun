@@ -250,11 +250,13 @@ impl QuotedObject {
     }
 
     fn from_union(objects: &Objects, obj: &crate::Object) -> QuotedObject {
-        // We implement sum-types as tagged unions:
+        // We implement sum-types as tagged unions;
+        // This approach requires C++11.
         //
-        // enum Rotation3DTag {
-        //     Tag_Quaternion,
-        //     Tag_AxisAngle,
+        // enum class Rotation3DTag {
+        //     NONE = 0, // Makes it possible to implement move semantics
+        //     Quaternion,
+        //     AxisAngle,
         // };
         //
         // union Rotation3DData {
@@ -275,10 +277,20 @@ impl QuotedObject {
         let tag_typename = format_ident!("{pascal_case_name}Tag");
         let data_typename = format_ident!("{pascal_case_name}Data");
 
-        let tag_fields = obj
-            .fields
-            .iter()
-            .map(|obj_field| format_ident!("Tag_{}", obj_field.name));
+        let tag_fields = std::iter::once({
+            let comment = comment("Makes it possible to implement move semantics");
+            let tag_name = format_ident!("NONE");
+            quote! {
+                #tag_name = 0, #comment
+            }
+        })
+        .chain(obj.fields.iter().map(|obj_field| {
+            let ident = format_ident!("{}", obj_field.name);
+            quote! {
+                #ident,
+            }
+        }))
+        .collect_vec();
 
         let mut hpp_includes = Includes::default();
 
@@ -302,26 +314,40 @@ impl QuotedObject {
 
         // TODO(emilk): if the variant types are disjoint, generate implicit constructors!
 
-        // TODO(emilk): finish up the static constructors
+        // TODO(emilk): implement static constructors
         let _static_constructors = obj
             .fields
             .iter()
             .map(|obj_field| {
-                let tag_ident = format_ident!("Tag_{}", obj_field.name);
+                let tag_ident = format_ident!("{}", obj_field.name);
                 let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
                 let docstring = quote_docstrings(&obj_field.docs);
+
                 let param_declaration =
                     quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident, false).0;
-                quote! {
-                    #docstring
-                    static #pascal_case_ident #snake_case_ident(#param_declaration)
-                    {
-                        #pascal_case_ident self;
-                        self._tag = detail::#tag_ident;
-                        self._data.#snake_case_ident = #snake_case_ident;
-                        return self;
+
+                if let Type::Array { .. } = &obj_field.typ {
+                    quote!{ #TODO_TOKEN }
+                } else {
+                    let typedef_declaration = quote_declaration(
+                        &mut hpp_includes,
+                        obj_field,
+                        &format_ident!("TypeAlias"),
+                        false,
+                    )
+                    .0;
+                    quote! {
+                        #docstring
+                        static #pascal_case_ident #snake_case_ident(#param_declaration)
+                        {
+                            typedef #typedef_declaration;
+                            #pascal_case_ident self;
+                            self._tag = detail::#tag_typename::#tag_ident;
+                            new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));
+                            return std::move(self);
+                        }
+                        #NEWLINE_TOKEN #NEWLINE_TOKEN
                     }
-                    #NEWLINE_TOKEN #NEWLINE_TOKEN
                 }
             })
             .collect_vec();
@@ -330,52 +356,57 @@ impl QuotedObject {
             // No destructor needed
             quote! {}
         } else {
-            let destructor_match_arms = obj
-                .fields
-                .iter()
-                .map(|obj_field| {
-                    let tag_ident = format_ident!("Tag_{}", obj_field.name);
-                    let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+            let destructor_match_arms = std::iter::once({
+                let comment = comment("Nothing to destroy");
+                quote! {
+                    case detail::#tag_typename::NONE: {
+                        break; #comment
+                    }
+                }
+            })
+            .chain(obj.fields.iter().map(|obj_field| {
+                let tag_ident = format_ident!("{}", obj_field.name);
+                let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
 
-                    if obj_field.typ.is_pod(objects) {
-                        let comment = comment("Plain Old Data (POD): requires no destructor");
-                        quote! {
-                            case detail::#tag_ident: {
-                                break; #comment
-                            }
-                        }
-                    } else if let Type::Array { elem_type, length } = &obj_field.typ {
-                        // We need special casing for destroying arrays in C++:
-                        let elem_type = quote_element_type(&mut hpp_includes, elem_type);
-                        let length = proc_macro2::Literal::usize_unsuffixed(*length);
-                        quote! {
-                            case detail::#tag_ident: {
-                                typedef #elem_type TypeAlias;
-                                for (size_t i = #length; i > 0; i -= 1) {
-                                    _data.#field_ident[i-1].~TypeAlias();
-                                }
-                                break;
-                            }
-                        }
-                    } else {
-                        let typedef_declaration = quote_declaration(
-                            &mut hpp_includes,
-                            obj_field,
-                            &format_ident!("TypeAlias"),
-                            false,
-                        )
-                        .0;
-                        hpp_includes.system.insert("utility".to_owned()); // std::move
-                        quote! {
-                            case detail::#tag_ident: {
-                                typedef #typedef_declaration;
-                                _data.#field_ident.~TypeAlias();
-                                break;
-                            }
+                if obj_field.typ.is_pod(objects) {
+                    let comment = comment("Plain Old Data (POD): requires no destructor");
+                    quote! {
+                        case detail::#tag_typename::#tag_ident: {
+                            break; #comment
                         }
                     }
-                })
-                .collect_vec();
+                } else if let Type::Array { elem_type, length } = &obj_field.typ {
+                    // We need special casing for destroying arrays in C++:
+                    let elem_type = quote_element_type(&mut hpp_includes, elem_type);
+                    let length = proc_macro2::Literal::usize_unsuffixed(*length);
+                    quote! {
+                        case detail::#tag_typename::#tag_ident: {
+                            typedef #elem_type TypeAlias;
+                            for (size_t i = #length; i > 0; i -= 1) {
+                                _data.#field_ident[i-1].~TypeAlias();
+                            }
+                            break;
+                        }
+                    }
+                } else {
+                    let typedef_declaration = quote_declaration(
+                        &mut hpp_includes,
+                        obj_field,
+                        &format_ident!("TypeAlias"),
+                        false,
+                    )
+                    .0;
+                    hpp_includes.system.insert("utility".to_owned()); // std::move
+                    quote! {
+                        case detail::#tag_typename::#tag_ident: {
+                            typedef #typedef_declaration;
+                            _data.#field_ident.~TypeAlias();
+                            break;
+                        }
+                    }
+                }
+            }))
+            .collect_vec();
 
             quote! {
                 ~#pascal_case_ident() {
@@ -386,28 +417,25 @@ impl QuotedObject {
             }
         };
 
+        // hpp_includes.system.insert("utility".to_owned()); // std::swap
+
         let hpp = quote! {
             #hpp_includes
             namespace rr {
                 namespace #namespace_ident {
                     namespace detail {
-                        enum #tag_typename {
-                            #(#tag_fields,)*
+                        enum class #tag_typename {
+                            #(#tag_fields)*
                         };
-                        #NEWLINE_TOKEN #NEWLINE_TOKEN
 
                         union #data_typename {
                             #(#enum_data_declarations;)*
 
-                            #NEWLINE_TOKEN #NEWLINE_TOKEN
-
+                            #data_typename() { } // Required by static constructors
                             ~#data_typename() {}
                         };
 
-                        #NEWLINE_TOKEN #NEWLINE_TOKEN
-
                     }
-                    #NEWLINE_TOKEN #NEWLINE_TOKEN
 
                     #quoted_docs
                     struct #pascal_case_ident {
@@ -415,12 +443,19 @@ impl QuotedObject {
                         detail::#tag_typename  _tag;
                         detail::#data_typename _data;
 
-                        #NEWLINE_TOKEN #NEWLINE_TOKEN
+                        // Required by static constructors:
+                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
 
                     public:
-                        // #(#static_constructors)* // TODO(emilk)
+                        // #(#static_constructors)* // TODO(emilk): implement static constructors
 
                         #destructor
+
+                        // TODO(emilk): This is useful for easily implementing move assignment and move constructor:
+                        // inline void swap(#pascal_case_ident& other) {
+                        //     std::swap(this->_tag, other._tag);
+                        //     std::swap(this->_data, other._data);
+                        // }
                     };
                 }
             }

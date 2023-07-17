@@ -10,9 +10,10 @@
 namespace rr {
     namespace datatypes {
         namespace detail {
-            enum Scale3DTag {
-                Tag_ThreeD,
-                Tag_Uniform,
+            enum class Scale3DTag {
+                NONE = 0, // Makes it possible to implement move semantics
+                ThreeD,
+                Uniform,
             };
 
             union Scale3DData {
@@ -22,9 +23,10 @@ namespace rr {
                 /// Uniform scaling factor along all axis.
                 float uniform;
 
+                Scale3DData() {}
+
                 ~Scale3DData() {}
             };
-
         } // namespace detail
 
         /// 3D scaling factor, part of a transform representation.
@@ -32,6 +34,8 @@ namespace rr {
           private:
             detail::Scale3DTag _tag;
             detail::Scale3DData _data;
+
+            Scale3D() : _tag(detail::Scale3DTag::NONE) {}
 
           public:
         };

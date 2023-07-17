@@ -11,9 +11,10 @@
 namespace rr {
     namespace datatypes {
         namespace detail {
-            enum Transform3DTag {
-                Tag_TranslationAndMat3x3,
-                Tag_TranslationRotationScale,
+            enum class Transform3DTag {
+                NONE = 0, // Makes it possible to implement move semantics
+                TranslationAndMat3x3,
+                TranslationRotationScale,
             };
 
             union Transform3DData {
@@ -21,9 +22,10 @@ namespace rr {
 
                 rr::datatypes::TranslationRotationScale3D translation_rotation_scale;
 
+                Transform3DData() {}
+
                 ~Transform3DData() {}
             };
-
         } // namespace detail
 
         /// Representation of a 3D affine transform.
@@ -31,6 +33,8 @@ namespace rr {
           private:
             detail::Transform3DTag _tag;
             detail::Transform3DData _data;
+
+            Transform3D() : _tag(detail::Transform3DTag::NONE) {}
 
           public:
         };
