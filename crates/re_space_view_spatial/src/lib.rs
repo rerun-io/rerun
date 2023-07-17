@@ -18,3 +18,11 @@ mod ui_3d;
 
 pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
+
+// ---
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SpatialSpaceViewKind {
+    TwoD,
+    ThreeD,
+}

@@ -17,7 +17,8 @@ use super::{
 use crate::{
     contexts::SharedRenderBuilders,
     parts::collect_ui_labels,
-    ui::{outline_config, SpatialNavigationMode, SpatialSpaceViewState},
+    ui::{outline_config, SpatialSpaceViewState},
+    SpatialSpaceViewKind,
 };
 
 // ---
@@ -312,7 +313,7 @@ pub fn view_2d(
             &eye,
             ui,
             query.highlights,
-            SpatialNavigationMode::TwoD,
+            SpatialSpaceViewKind::TwoD,
         );
 
         if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
@@ -329,6 +330,7 @@ pub fn view_2d(
                 parts,
                 &ui_rects,
                 query,
+                SpatialSpaceViewKind::TwoD,
             )?;
         }
 

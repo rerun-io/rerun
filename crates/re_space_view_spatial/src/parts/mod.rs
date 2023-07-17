@@ -28,11 +28,10 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
     auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewSystemRegistry,
-    ViewContextCollection, ViewPartCollection, ViewQuery,
+    ViewPartCollection, ViewQuery,
 };
 
 use super::contexts::SpatialSceneEntityContext;
-use crate::{contexts::PrimitiveCounter, ui::SpatialNavigationMode};
 
 /// Collection of keypoints for annotation context.
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
@@ -211,49 +210,6 @@ pub struct UiLabel {
 
     /// What is hovered if this label is hovered.
     pub labeled_instance: InstancePathHash,
-}
-
-/// Heuristic whether the default way of looking at this scene should be 2d or 3d.
-pub fn preferred_navigation_mode(
-    context: &ViewContextCollection,
-    parts: &ViewPartCollection,
-    space_info_path: &EntityPath,
-) -> SpatialNavigationMode {
-    // If there's any space cameras that are not the root, we need to go 3D, otherwise we can't display them.
-    if parts
-        .get::<CamerasPart>()
-        .map(|cameras| {
-            cameras
-                .space_cameras
-                .iter()
-                .any(|camera| &camera.ent_path != space_info_path)
-        })
-        .unwrap_or(false)
-    {
-        return SpatialNavigationMode::ThreeD;
-    }
-
-    if parts
-        .get::<ImagesPart>()
-        .map(|images| !images.images.is_empty())
-        .unwrap_or(false)
-    {
-        return SpatialNavigationMode::TwoD;
-    }
-
-    if context
-        .get::<PrimitiveCounter>()
-        .map(|c| {
-            c.num_3d_primitives
-                .load(std::sync::atomic::Ordering::Relaxed)
-        })
-        .unwrap_or(0)
-        == 0
-    {
-        return SpatialNavigationMode::TwoD;
-    }
-
-    SpatialNavigationMode::ThreeD
 }
 
 pub fn load_keypoint_connections(

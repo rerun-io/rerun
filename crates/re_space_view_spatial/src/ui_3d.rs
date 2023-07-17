@@ -25,10 +25,8 @@ use crate::{
         SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
     },
     space_camera_3d::SpaceCamera3D,
-    ui::{
-        create_labels, outline_config, picking, screenshot_context_menu, SpatialNavigationMode,
-        SpatialSpaceViewState,
-    },
+    ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
+    SpatialSpaceViewKind,
 };
 
 use super::eye::{Eye, OrbitEye};
@@ -374,7 +372,7 @@ pub fn view_3d(
         &eye,
         ui,
         highlights,
-        SpatialNavigationMode::ThreeD,
+        SpatialSpaceViewKind::ThreeD,
     );
 
     if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
@@ -391,6 +389,7 @@ pub fn view_3d(
             parts,
             &ui_rects,
             query,
+            SpatialSpaceViewKind::ThreeD,
         )?;
     }
 

@@ -6,9 +6,10 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::register_contexts,
-    parts::register_parts,
-    ui::{SpatialNavigationMode, SpatialSpaceViewState},
+    contexts::{register_contexts, PrimitiveCounter},
+    parts::{calculate_bounding_box, register_parts},
+    ui::SpatialSpaceViewState,
+    SpatialSpaceViewKind,
 };
 
 #[derive(Default)]
@@ -39,13 +40,8 @@ impl SpaceViewClass for SpatialSpaceView2D {
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &Self::State) -> Option<f32> {
-        match state.nav_mode.get() {
-            SpatialNavigationMode::TwoD => {
-                let size = state.scene_bbox_accum.size();
-                Some(size.x / size.y)
-            }
-            SpatialNavigationMode::ThreeD => None,
-        }
+        let size = state.scene_bbox_accum.size();
+        Some(size.x / size.y)
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
@@ -59,7 +55,12 @@ impl SpaceViewClass for SpatialSpaceView2D {
         entity_paths: &IntSet<EntityPath>,
         entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
-        state.update_object_property_heuristics(ctx, entity_paths, entity_properties);
+        state.update_object_property_heuristics(
+            ctx,
+            entity_paths,
+            entity_properties,
+            SpatialSpaceViewKind::TwoD,
+        );
     }
 
     fn selection_ui(
@@ -70,7 +71,13 @@ impl SpaceViewClass for SpatialSpaceView2D {
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) {
-        state.selection_ui(ctx, ui, space_origin, space_view_id);
+        state.selection_ui(
+            ctx,
+            ui,
+            space_origin,
+            space_view_id,
+            SpatialSpaceViewKind::TwoD,
+        );
     }
 
     fn ui(
@@ -83,6 +90,32 @@ impl SpaceViewClass for SpatialSpaceView2D {
         query: &ViewQuery<'_>,
         draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        state.view_spatial(ctx, ui, view_ctx, parts, query, draw_data)
+        // TODO: Duplicated with 3d
+        state.scene_bbox = calculate_bounding_box(parts);
+        if state.scene_bbox_accum.is_nothing() || !state.scene_bbox_accum.size().is_finite() {
+            state.scene_bbox_accum = state.scene_bbox;
+        } else {
+            state.scene_bbox_accum = state.scene_bbox_accum.union(state.scene_bbox);
+        }
+
+        state.scene_num_primitives = view_ctx
+            .get::<PrimitiveCounter>()?
+            .num_3d_primitives
+            .load(std::sync::atomic::Ordering::Relaxed);
+
+        let scene_rect_accum = egui::Rect::from_min_max(
+            state.scene_bbox_accum.min.truncate().to_array().into(),
+            state.scene_bbox_accum.max.truncate().to_array().into(),
+        );
+        crate::ui_2d::view_2d(
+            ctx,
+            ui,
+            state,
+            view_ctx,
+            parts,
+            query,
+            scene_rect_accum,
+            draw_data,
+        )
     }
 }
