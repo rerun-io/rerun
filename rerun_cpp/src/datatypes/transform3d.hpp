@@ -5,6 +5,7 @@
 
 namespace rr {
     namespace datatypes {
+        /// Representation of a 3D affine transform.
         struct Transform3D {
             // TODO(#2647): code-gen for C++
         };

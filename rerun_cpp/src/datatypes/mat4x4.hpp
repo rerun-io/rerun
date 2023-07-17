@@ -7,6 +7,7 @@
 
 namespace rr {
     namespace datatypes {
+        /// A 4x4 column-major Matrix.
         struct Mat4x4 {
             float coeffs[16];
         };

@@ -14,13 +14,21 @@ namespace rr {
     namespace datatypes {
         struct AffixFuzzer1 {
             std::optional<float> single_float_optional;
+
             std::string single_string_required;
+
             std::optional<std::string> single_string_optional;
+
             std::optional<std::vector<float>> many_floats_optional;
+
             std::vector<std::string> many_strings_required;
+
             std::optional<std::vector<std::string>> many_strings_optional;
+
             float flattened_scalar;
+
             rr::datatypes::FlattenedScalar almost_flattened_scalar;
+
             std::optional<bool> from_parent;
         };
     } // namespace datatypes

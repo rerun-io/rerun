@@ -7,6 +7,7 @@
 
 namespace rr {
     namespace datatypes {
+        /// A vector in 4D space.
         struct Vec4D {
             float xyzw[4];
         };

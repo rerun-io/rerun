@@ -9,7 +9,9 @@
 
 namespace rr {
     namespace components {
+        /// An affine transform between two 3D spaces, represented in a given direction.
         struct Transform3D {
+            /// Representation of the transform.
             rr::datatypes::Transform3D repr;
         };
     } // namespace components

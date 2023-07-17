@@ -18,14 +18,41 @@
 
 namespace rr {
     namespace archetypes {
+        /// A 2D point cloud with positions and optional colors, radii, labels, etc.
         struct Points2D {
+            /// All the actual 2D points that make up the point cloud.
             std::vector<rr::components::Point2D> points;
+
+            /// Optional radii for the points, effectively turning them into circles.
             std::optional<std::vector<rr::components::Radius>> radii;
+
+            /// Optional colors for the points.
             std::optional<std::vector<rr::components::Color>> colors;
+
+            /// Optional text labels for the points.
             std::optional<std::vector<rr::components::Label>> labels;
+
+            /// An optional floating point value that specifies the 2D drawing order.
+            /// Objects with higher values are drawn on top of those with lower values.
+            ///
+            /// The default for 2D points is 30.0.
             std::optional<rr::components::DrawOrder> draw_order;
+
+            /// Optional class Ids for the points.
+            ///
+            /// The class ID provides colors and labels if not specified explicitly.
             std::optional<std::vector<rr::components::ClassId>> class_ids;
+
+            /// Optional keypoint IDs for the points, identifying them within a class.
+            ///
+            /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
+            /// default to 0.
+            /// This is useful to identify points within a single classification (which is
+            /// identified with `class_id`). E.g. the classification might be 'Person' and the
+            /// keypoints refer to joints on a detected skeleton.
             std::optional<std::vector<rr::components::KeypointId>> keypoint_ids;
+
+            /// Unique identifiers for each individual point in the batch.
             std::optional<std::vector<rr::components::InstanceKey>> instance_keys;
         };
     } // namespace archetypes

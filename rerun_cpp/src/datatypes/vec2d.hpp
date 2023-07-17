@@ -7,6 +7,7 @@
 
 namespace rr {
     namespace datatypes {
+        /// A vector in 2D space.
         struct Vec2D {
             float xy[2];
         };

@@ -5,6 +5,7 @@
 
 namespace rr {
     namespace datatypes {
+        /// Angle in either radians or degrees.
         struct Angle {
             // TODO(#2647): code-gen for C++
         };

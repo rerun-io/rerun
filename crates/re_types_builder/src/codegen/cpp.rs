@@ -8,9 +8,13 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::{
-    codegen::AUTOGEN_WARNING, ArrowRegistry, ElementType, ObjectField, ObjectKind, Objects, Type,
+    codegen::AUTOGEN_WARNING, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
+    Type,
 };
 
+// Special strings we insert and then search-and-replace later
+const DOC_COMMENT_PREFIX: &str = "DOC_COMMENT_PREFIX";
+const DOC_COMMENT_SUFFIX: &str = "DOC_COMMENT_SUFFIX";
 const NEWLINE_TOKEN: &str = "RE_TOKEN_NEWLINE";
 const TODO_TOKEN: &str = "RE_TOKEN_TODO";
 
@@ -112,6 +116,8 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
         &token_stream
             .to_string()
             .replace(&format!("{NEWLINE_TOKEN:?}"), "\n")
+            .replace(&format!("{DOC_COMMENT_PREFIX:?} \""), "///")
+            .replace(&format!("\" {DOC_COMMENT_SUFFIX:?}"), "\n")
             .replace(
                 &format!("{TODO_TOKEN:?}"),
                 "\n// TODO(#2647): code-gen for C++\n",
@@ -191,13 +197,20 @@ impl QuotedObject {
         let obj_kind_ident = format_ident!("{}", obj.kind.plural_snake_case());
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}");
+        let quoted_docs = quote_docstrings(&obj.docs);
 
         let mut hpp_includes = Includes::default();
 
         let field_declarations = obj
             .fields
             .iter()
-            .map(|obj_field| quote_declaration(&mut hpp_includes, obj_field, false).0)
+            .map(|obj_field| {
+                let declaration = quote_declaration(&mut hpp_includes, obj_field, false).0;
+                quote! {
+                    #NEWLINE_TOKEN
+                    #declaration
+                }
+            })
             .collect_vec();
 
         let hpp = quote! {
@@ -205,6 +218,7 @@ impl QuotedObject {
 
             namespace rr {
                 namespace #obj_kind_ident {
+                    #quoted_docs
                     struct #pascal_case_ident {
                         #(#field_declarations;)*
                     };
@@ -223,10 +237,12 @@ impl QuotedObject {
         let obj_kind_ident = format_ident!("{}", obj.kind.plural_snake_case());
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}");
+        let quoted_docs = quote_docstrings(&obj.docs);
 
         let hpp = quote! {
             namespace rr {
                 namespace #obj_kind_ident {
+                    #quoted_docs
                     struct #pascal_case_ident {
                         #TODO_TOKEN
                     };
@@ -378,6 +394,13 @@ fn quote_declaration(
         }
     };
 
+    let docstring = quote_docstrings(&obj_field.docs);
+
+    let quoted = quote! {
+        #docstring
+        #quoted
+    };
+
     let unwrapped = unwrap && matches!(obj_field.typ, Type::Array { .. } | Type::Vector { .. });
     (quoted, unwrapped)
 }
@@ -422,4 +445,15 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
 
     let expr: syn::TypePath = syn::parse_str(&fqname).unwrap();
     quote!(#expr)
+}
+
+fn quote_docstrings(docs: &Docs) -> TokenStream {
+    let lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
+    let quoted_lines = lines
+        .iter()
+        .map(|docstring| quote! { #DOC_COMMENT_PREFIX #docstring #DOC_COMMENT_SUFFIX });
+    quote! {
+        #NEWLINE_TOKEN
+        #(#quoted_lines)*
+    }
 }

@@ -5,6 +5,7 @@
 
 namespace rr {
     namespace datatypes {
+        /// A 3D rotation.
         struct Rotation3D {
             // TODO(#2647): code-gen for C++
         };

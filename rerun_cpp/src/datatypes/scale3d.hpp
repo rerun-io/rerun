@@ -5,6 +5,7 @@
 
 namespace rr {
     namespace datatypes {
+        /// 3D scaling factor, part of a transform representation.
         struct Scale3D {
             // TODO(#2647): code-gen for C++
         };

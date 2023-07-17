@@ -7,6 +7,7 @@
 
 namespace rr {
     namespace components {
+        /// A Radius component.
         struct Radius {
             float value;
         };

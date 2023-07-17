@@ -7,8 +7,10 @@
 
 namespace rr {
     namespace datatypes {
+        /// A point in 2D space.
         struct Point2D {
             float x;
+
             float y;
         };
     } // namespace datatypes

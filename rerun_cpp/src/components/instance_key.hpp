@@ -7,6 +7,7 @@
 
 namespace rr {
     namespace components {
+        /// A unique numeric identifier for each individual instance within a batch.
         struct InstanceKey {
             uint64_t value;
         };

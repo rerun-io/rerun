@@ -11,9 +11,18 @@
 
 namespace rr {
     namespace datatypes {
+        /// Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+        ///
+        /// First applies the matrix, then the translation.
         struct TranslationAndMat3x3 {
+            /// 3D translation, applied after the matrix.
             std::optional<rr::datatypes::Vec3D> translation;
+
+            /// 3x3 matrix for scale, rotation & shear.
             std::optional<rr::datatypes::Mat3x3> matrix;
+
+            /// If true, the transform maps from the parent space to the space where the transform
+            /// was logged. Otherwise, the transform maps from the space to its parent.
             bool from_parent;
         };
     } // namespace datatypes

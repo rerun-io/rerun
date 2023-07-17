@@ -7,6 +7,8 @@
 
 namespace rr {
     namespace components {
+        /// An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear
+        /// alpha.
         struct Color {
             uint32_t rgba;
         };

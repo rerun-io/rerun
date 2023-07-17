@@ -8,6 +8,7 @@
 
 namespace rr {
     namespace components {
+        /// A String label component.
         struct Label {
             std::string value;
         };

@@ -7,6 +7,7 @@
 
 namespace rr {
     namespace components {
+        /// A 16-bit ID representing a type of semantic class.
         struct ClassId {
             uint16_t id;
         };

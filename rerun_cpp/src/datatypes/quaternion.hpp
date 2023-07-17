@@ -7,6 +7,7 @@
 
 namespace rr {
     namespace datatypes {
+        /// A Quaternion represented by 4 real numbers.
         struct Quaternion {
             float xyzw[4];
         };

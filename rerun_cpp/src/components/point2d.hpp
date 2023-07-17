@@ -9,6 +9,7 @@
 
 namespace rr {
     namespace components {
+        /// A point in 2D space.
         struct Point2D {
             rr::datatypes::Point2D xy;
         };
