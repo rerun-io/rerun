@@ -5,11 +5,9 @@ use re_components::Tensor;
 use re_data_store::EntityPath;
 use re_log_types::Component as _;
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, ViewPartSystem, ViewQuery,
-    ViewerContext,
+    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
-
-use crate::BarChartSpaceView;
 
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
@@ -17,19 +15,17 @@ pub struct BarChartViewPartSystem {
     pub charts: BTreeMap<EntityPath, Tensor>,
 }
 
-impl ViewPartSystem<BarChartSpaceView> for BarChartViewPartSystem {
+impl ViewPartSystem for BarChartViewPartSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Tensor::name()]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _state: &<BarChartSpaceView as SpaceViewClass>::State,
-        _context: &<BarChartSpaceView as SpaceViewClass>::Context,
-        _highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        _view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let store = &ctx.store_db.entity_db.data_store;
@@ -49,6 +45,10 @@ impl ViewPartSystem<BarChartSpaceView> for BarChartViewPartSystem {
             }
         }
 
-        Vec::new()
+        Ok(Vec::new())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

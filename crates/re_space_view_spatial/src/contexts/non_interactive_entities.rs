@@ -13,11 +13,10 @@ impl ViewContextSystem for NonInteractiveEntities {
         Vec::new()
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         _ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
-        _space_view_state: &dyn re_viewer_context::SpaceViewState,
     ) {
         re_tracing::profile_function!();
 
@@ -32,5 +31,9 @@ impl ViewContextSystem for NonInteractiveEntities {
                 }
             })
             .collect();
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

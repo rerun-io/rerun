@@ -609,9 +609,9 @@ impl Object {
 
     /// Try to find the relative file path of the `.fbs` source file.
     pub fn relative_filepath(&self) -> Option<&Utf8Path> {
-        std::env::var("CARGO_MANIFEST_DIR")
+        self.filepath
+            .strip_prefix(crate::rerun_workspace_path())
             .ok()
-            .and_then(|manifest_dir| self.filepath.strip_prefix(manifest_dir).ok())
     }
 
     /// The `snake_case` name of the object, e.g. `translation_and_mat3x3`.
@@ -675,7 +675,7 @@ pub struct ObjectField {
     /// Fully-qualified package name of the field, e.g. `rerun.components`.
     pub pkg_name: String,
 
-    /// Name of the object, e.g. `Point2D`.
+    /// Name of the field, e.g. `x`.
     pub name: String,
 
     /// The field's multiple layers of documentation.

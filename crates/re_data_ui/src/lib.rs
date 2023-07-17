@@ -156,15 +156,6 @@ pub fn annotations(
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
-    let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
-    let entity_props_map = re_data_store::EntityPropertyMap::default();
-    let query = re_viewer_context::ViewQuery::new(
-        entity_path,
-        &entity_paths,
-        query.timeline,
-        query.at,
-        &entity_props_map,
-    );
-    annotation_map.load(ctx, &query);
+    annotation_map.load(ctx, query, std::iter::once(entity_path));
     annotation_map.find(entity_path)
 }

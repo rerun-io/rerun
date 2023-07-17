@@ -4502,6 +4502,9 @@ name = "re_tracing"
 version = "0.8.0-alpha.2"
 dependencies = [
  "puffin",
+ "puffin_http",
+ "re_log",
+ "rfd",
 ]
 
 [[package]]
@@ -4535,7 +4538,6 @@ dependencies = [
  "re_types_builder",
  "similar-asserts",
  "thiserror",
- "xshell",
 ]
 
 [[package]]
@@ -4554,6 +4556,8 @@ dependencies = [
  "quote",
  "rayon",
  "re_build_tools",
+ "re_log",
+ "re_tracing",
  "rust-format",
  "syn 2.0.16",
  "unindent",
@@ -4597,8 +4601,6 @@ dependencies = [
  "itertools 0.11.0",
  "objc",
  "poll-promise",
- "puffin",
- "puffin_http",
  "re_analytics",
  "re_arrow_store",
  "re_build_info",

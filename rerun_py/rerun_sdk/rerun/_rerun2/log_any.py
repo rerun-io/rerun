@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable, Union, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -9,8 +9,10 @@ from attrs import fields
 
 from .. import RecordingStream, bindings
 from ..log import error_utils
+from . import archetypes as arch
+from . import components as cmp
+from . import datatypes as dt
 from ._baseclasses import Archetype, NamedExtensionArray
-from .components import InstanceKeyArray, InstanceKeyType
 
 __all__ = ["log_any"]
 
@@ -74,16 +76,40 @@ def _extract_components(entity: Archetype) -> Iterable[tuple[NamedExtensionArray
                 yield getattr(entity, fld.name), fld.metadata["component"] == "primary"
 
 
-def _splat() -> InstanceKeyArray:
+def _splat() -> cmp.InstanceKeyArray:
     """Helper to generate a splat InstanceKeyArray."""
 
     _MAX_U64 = 2**64 - 1
-    return pa.array([_MAX_U64], type=InstanceKeyType().storage_type)  # type: ignore[no-any-return]
+    return pa.array([_MAX_U64], type=cmp.InstanceKeyType().storage_type)  # type: ignore[no-any-return]
+
+
+Loggable = Union[Archetype, dt.Transform3DLike]
+"""All the things that `rr.log_any()` can accept and log."""
+
+
+_UPCASTING_RULES: dict[type[Loggable], Callable[[Any], Archetype]] = {
+    dt.TranslationRotationScale3D: arch.Transform3D,
+    dt.TranslationAndMat3x3: arch.Transform3D,
+    dt.Transform3D: arch.Transform3D,
+}
+
+
+def _upcast_entity(entity: Loggable) -> Archetype:
+    from .. import strict_mode
+
+    if type(entity) in _UPCASTING_RULES:
+        entity = _UPCASTING_RULES[type(entity)](entity)
+
+    if strict_mode():
+        if not isinstance(entity, Archetype):
+            raise TypeError(f"Expected Archetype, got {type(entity)}")
+
+    return cast(Archetype, entity)
 
 
 def log_any(
     entity_path: str,
-    entity: Archetype,
+    entity: Loggable,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -108,19 +134,15 @@ def log_any(
 
     """
 
-    from .. import strict_mode
-
-    if strict_mode():
-        if not isinstance(entity, Archetype):
-            raise TypeError(f"Expected Archetype, got {type(entity)}")
+    archetype = _upcast_entity(entity)
 
     instanced: dict[str, NamedExtensionArray] = {}
     splats: dict[str, NamedExtensionArray] = {}
 
     # find canonical length of this entity by based on the longest length of any primary component
-    archetype_length = max(len(comp) for comp, primary in _extract_components(entity) if primary)
+    archetype_length = max(len(comp) for comp, primary in _extract_components(archetype) if primary)
 
-    for comp, primary in _extract_components(entity):
+    for comp, primary in _extract_components(archetype):
         if primary:
             instanced[comp.extension_name] = comp.storage
         elif len(comp) == 1 and archetype_length > 1:
@@ -133,7 +155,17 @@ def log_any(
 
     if splats:
         splats["rerun.instance_key"] = _splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
+        bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
+            entity_path,
+            components=splats,
+            timeless=timeless,
+            recording=recording,
+        )
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
-    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+    bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
+        entity_path,
+        components=instanced,
+        timeless=timeless,
+        recording=recording,
+    )

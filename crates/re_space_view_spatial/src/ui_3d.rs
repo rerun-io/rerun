@@ -13,10 +13,17 @@ use re_space_view::controls::{
     DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
     ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
-use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge, HoveredSpace, Item, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
+};
 
 use crate::{
-    parts::{image_view_coordinates, SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
+    contexts::SharedRenderBuilders,
+    parts::{
+        collect_ui_labels, image_view_coordinates, CamerasPart,
+        SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    },
     space_camera_3d::SpaceCamera3D,
     ui::{
         create_labels, outline_config, picking, screenshot_context_menu, SpatialNavigationMode,
@@ -265,24 +272,25 @@ pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
-    space: &EntityPath,
-    space_view_id: SpaceViewId,
-    scene: &mut SceneSpatial,
-) {
+    view_ctx: &ViewContextCollection,
+    parts: &ViewPartCollection,
+    query: &ViewQuery<'_>,
+    mut draw_data: Vec<re_renderer::QueueableDrawData>,
+) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
-    let highlights = &scene.highlights;
-    let space_cameras = &scene.parts.cameras.space_cameras;
+    let highlights = query.highlights;
+    let space_cameras = &parts.get::<CamerasPart>()?.space_cameras;
     let view_coordinates = ctx
         .store_db
         .store()
-        .query_latest_component(space, &ctx.current_query());
+        .query_latest_component(query.space_origin, &ctx.current_query());
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     if !rect.is_positive() {
-        return; // protect against problems with zero-sized views
+        return Ok(()); // protect against problems with zero-sized views
     }
 
     // If we're tracking a camera right now, we want to make it slightly sticky,
@@ -318,11 +326,11 @@ pub fn view_3d(
     let resolution_in_pixel =
         gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return;
+        return Ok(());
     }
 
     let target_config = TargetConfiguration {
-        name: space.to_string().into(),
+        name: query.space_origin.to_string().into(),
 
         resolution_in_pixel,
 
@@ -337,7 +345,7 @@ pub fn view_3d(
         pixels_from_point: ui.ctx().pixels_per_point(),
         auto_size_config: state.auto_size_config(),
 
-        outline_config: scene
+        outline_config: query
             .highlights
             .any_outlines()
             .then(|| outline_config(ui.ctx())),
@@ -347,7 +355,7 @@ pub fn view_3d(
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let (label_shapes, ui_rects) = create_labels(
-        &scene.parts.collect_ui_labels(),
+        &collect_ui_labels(parts),
         RectTransform::from_to(rect, rect),
         &eye,
         ui,
@@ -364,12 +372,12 @@ pub fn view_3d(
             ui,
             eye,
             &mut view_builder,
-            space_view_id,
             state,
-            scene,
+            view_ctx,
+            parts,
             &ui_rects,
-            space,
-        );
+            query,
+        )?;
     }
 
     // Double click changes camera to focus on an entity.
@@ -425,7 +433,7 @@ pub fn view_3d(
     let (_, screenshot_mode) = screenshot_context_menu(ctx, response);
     if let Some(mode) = screenshot_mode {
         view_builder
-            .schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode)
+            .schedule_screenshot(ctx.render_ctx, query.space_view_id.gpu_readback_id(), mode)
             .ok();
     }
 
@@ -487,15 +495,13 @@ pub fn view_3d(
         }
     }
 
-    for draw_data in scene.draw_data.drain(..) {
+    for draw_data in draw_data.drain(..) {
         view_builder.queue_draw(draw_data);
     }
-    for draw_data in scene
-        .context
-        .shared_render_builders
-        .queuable_draw_data(ctx.render_ctx)
-    {
-        view_builder.queue_draw(draw_data);
+    if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
+        for draw_data in shared_render_builders.queuable_draw_data(ctx.render_ctx) {
+            view_builder.queue_draw(draw_data);
+        }
     }
 
     // Commit ui induced lines.
@@ -516,7 +522,7 @@ pub fn view_3d(
         Ok(command_buffer) => command_buffer,
         Err(err) => {
             re_log::error_once!("Failed to fill view builder: {err}");
-            return;
+            return Ok(()); // TODO(andreas): Passing the error through would be better - we could show an error on the view instead then.
         }
     };
     ui.painter().add(gpu_bridge::renderer_paint_callback(
@@ -530,6 +536,8 @@ pub fn view_3d(
     // Add egui driven labels on top of re_renderer content.
     let painter = ui.painter().with_clip_rect(ui.max_rect());
     painter.extend(label_shapes);
+
+    Ok(())
 }
 
 fn show_projections_from_2d_space(

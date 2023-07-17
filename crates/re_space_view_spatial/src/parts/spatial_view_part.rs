@@ -27,6 +27,10 @@ impl SpatialViewPartData {
         re_tracing::profile_function!();
         self.extend_bounding_box(macaw::BoundingBox::from_points(points), world_from_obj);
     }
+
+    pub fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl Default for SpatialViewPartData {

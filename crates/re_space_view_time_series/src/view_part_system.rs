@@ -1,9 +1,10 @@
 use re_arrow_store::TimeRange;
 use re_log_types::{Component, ComponentName, InstanceKey};
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::{AnnotationMap, DefaultColor, ViewPartSystem, ViewQuery, ViewerContext};
-
-use crate::TimeSeriesSpaceView;
+use re_viewer_context::{
+    AnnotationMap, DefaultColor, SpaceViewSystemExecutionError, ViewPartSystem, ViewQuery,
+    ViewerContext,
+};
 
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
@@ -54,35 +55,41 @@ pub struct PlotSeries {
 
 /// A scene for a time series plot, with everything needed to render it.
 #[derive(Default, Debug)]
-pub struct SceneTimeSeries {
+pub struct TimeSeriesSystem {
     pub annotation_map: AnnotationMap,
     pub lines: Vec<PlotSeries>,
 }
 
-impl ViewPartSystem<TimeSeriesSpaceView> for SceneTimeSeries {
+impl ViewPartSystem for TimeSeriesSystem {
     fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
         vec1::Vec1::try_from(Self::archetype_array()).unwrap() // TODO(wumpf): `archetype` should return a fixed sized array.
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _space_view_state: &<TimeSeriesSpaceView as re_viewer_context::SpaceViewClass>::State,
-        _context: &<TimeSeriesSpaceView as re_viewer_context::SpaceViewClass>::Context,
-        _highlights: &re_viewer_context::SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        _context: &re_viewer_context::ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.annotation_map.load(ctx, query);
+        self.annotation_map.load(
+            ctx,
+            &query.latest_at_query(),
+            query.iter_entities().map(|(p, _)| p),
+        );
 
         self.load_scalars(ctx, query);
 
-        Vec::new()
+        Ok(Vec::new())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
-impl SceneTimeSeries {
+impl TimeSeriesSystem {
     fn archetype_array() -> [ComponentName; 6] {
         [
             InstanceKey::name(),

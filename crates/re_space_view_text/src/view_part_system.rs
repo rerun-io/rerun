@@ -3,11 +3,9 @@ use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, ViewPartSystem, ViewQuery,
-    ViewerContext,
+    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
-
-use crate::TextSpaceView;
 
 #[derive(Debug, Clone)]
 pub struct TextEntry {
@@ -28,23 +26,21 @@ pub struct TextEntry {
 
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
-pub struct SceneText {
+pub struct TextSystem {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl ViewPartSystem<TextSpaceView> for SceneText {
+impl ViewPartSystem for TextSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextEntry::name()]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        state: &<TextSpaceView as SpaceViewClass>::State,
-        _context: &<TextSpaceView as SpaceViewClass>::Context,
-        _highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        _view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let store = &ctx.store_db.entity_db.data_store;
 
         for (ent_path, _) in query.iter_entities() {
@@ -69,21 +65,14 @@ impl ViewPartSystem<TextSpaceView> for SceneText {
                      color: Option<re_components::ColorRGBA>| {
                         let re_components::TextEntry { body, level } = text_entry;
 
-                        // Early filtering once more, see above.
-                        let is_visible = level
-                            .as_ref()
-                            .map_or(true, |lvl| state.filters.is_log_level_visible(lvl));
-
-                        if is_visible {
-                            self.text_entries.push(TextEntry {
-                                row_id: ent_view.row_id(),
-                                entity_path: ent_path.clone(),
-                                time: time.map(|time| time.as_i64()),
-                                color: color.map(|c| c.to_array()),
-                                level,
-                                body,
-                            });
-                        }
+                        self.text_entries.push(TextEntry {
+                            row_id: ent_view.row_id(),
+                            entity_path: ent_path.clone(),
+                            time: time.map(|time| time.as_i64()),
+                            color: color.map(|c| c.to_array()),
+                            level,
+                            body,
+                        });
                     },
                 ) {
                     Ok(_) | Err(QueryError::PrimaryNotFound) => {}
@@ -99,6 +88,10 @@ impl ViewPartSystem<TextSpaceView> for SceneText {
             self.text_entries.sort_by_key(|entry| entry.time);
         }
 
-        Vec::new()
+        Ok(Vec::new())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

@@ -83,7 +83,7 @@ impl crate::Loggable for Transform3D {
                         Field {
                             name: "from_parent".to_owned(),
                             data_type: DataType::Boolean,
-                            is_nullable: true,
+                            is_nullable: false,
                             metadata: [].into(),
                         },
                     ]),
@@ -210,7 +210,7 @@ impl crate::Loggable for Transform3D {
                         Field {
                             name: "from_parent".to_owned(),
                             data_type: DataType::Boolean,
-                            is_nullable: true,
+                            is_nullable: false,
                             metadata: [].into(),
                         },
                     ]),

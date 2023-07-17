@@ -1,9 +1,15 @@
 use re_log_types::{Component, EntityPath};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
-use re_viewer_context::{ArchetypeDefinition, SpaceViewHighlights, ViewQuery, ViewerContext};
+use re_viewer_context::{
+    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext,
+};
 
-use crate::contexts::{SpatialSceneEntityContext, SpatialViewContext};
+use crate::contexts::{
+    AnnotationSceneContext, EntityDepthOffsets, PrimitiveCounter, SharedRenderBuilders,
+    SpatialSceneEntityContext, TransformContext,
+};
 
 /// Iterates through all entity views for a given archetype.
 ///
@@ -12,12 +18,12 @@ use crate::contexts::{SpatialSceneEntityContext, SpatialViewContext};
 pub fn process_entity_views<'a, Primary, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &ViewQuery<'_>,
-    context: &SpatialViewContext,
-    highlights: &SpaceViewHighlights,
+    view_ctx: &ViewContextCollection,
     default_depth_offset: DepthOffset,
     archetype: ArchetypeDefinition,
     mut fun: F,
-) where
+) -> Result<(), SpaceViewSystemExecutionError>
+where
     Primary: Component + 'a,
     F: FnMut(
         &mut ViewerContext<'_>,
@@ -33,13 +39,30 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
                 "Archetype {:?} has wrong number of elements, expected {N}",
                 archetype
             );
-            return;
+            return Ok(());
         }
     };
 
+    let transforms = view_ctx.get::<TransformContext>()?;
+    let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
+    let annotations = view_ctx.get::<AnnotationSceneContext>()?;
+    let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
+    let counter = view_ctx.get::<PrimitiveCounter>()?;
+
     for (ent_path, props) in query.iter_entities() {
-        let Some(entity_context) = context.lookup_entity_context(ent_path, highlights, default_depth_offset) else {
+        let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
             continue;
+        };
+        let entity_context = SpatialSceneEntityContext {
+            world_from_obj,
+            depth_offset: *depth_offsets
+                .per_entity
+                .get(&ent_path.hash())
+                .unwrap_or(&default_depth_offset),
+            annotations: annotations.0.find(ent_path),
+            shared_render_builders,
+            highlight: query.highlights.entity_outline_mask(ent_path.hash()),
+            counter,
         };
 
         match query_primary_with_history::<Primary, N>(
@@ -52,7 +75,7 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
         )
         .and_then(|entity_views| {
             for ent_view in entity_views {
-                context.num_primitives.fetch_add(
+                counter.num_primitives.fetch_add(
                     ent_view.num_instances(),
                     std::sync::atomic::Ordering::Relaxed,
                 );
@@ -67,4 +90,6 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
             }
         }
     }
+
+    Ok(())
 }

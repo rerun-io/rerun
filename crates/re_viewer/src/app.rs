@@ -80,7 +80,7 @@ pub struct App {
     screenshotter: crate::screenshotter::Screenshotter,
 
     #[cfg(not(target_arch = "wasm32"))]
-    profiler: crate::Profiler,
+    profiler: re_tracing::Profiler,
 
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
@@ -204,7 +204,7 @@ impl App {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn set_profiler(&mut self, profiler: crate::Profiler) {
+    pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
     }
 
@@ -236,7 +236,7 @@ impl App {
     pub fn add_space_view_class<T: DynSpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        self.space_view_class_registry.add::<T>()
+        self.space_view_class_registry.add_class::<T>()
     }
 
     fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
@@ -927,12 +927,12 @@ impl eframe::App for App {
 fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut SpaceViewClassRegistry,
 ) -> Result<(), SpaceViewClassRegistryError> {
-    space_view_class_registry.add::<re_space_view_bar_chart::BarChartSpaceView>()?;
-    space_view_class_registry.add::<re_space_view_spatial::SpatialSpaceView>()?;
-    space_view_class_registry.add::<re_space_view_tensor::TensorSpaceView>()?;
-    space_view_class_registry.add::<re_space_view_text_box::TextBoxSpaceView>()?;
-    space_view_class_registry.add::<re_space_view_text::TextSpaceView>()?;
-    space_view_class_registry.add::<re_space_view_time_series::TimeSeriesSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_tensor::TensorSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_text_box::TextBoxSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_text::TextSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_time_series::TimeSeriesSpaceView>()?;
     Ok(())
 }
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -13,9 +13,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from .._converters import (
-    to_np_float32,
-)
+from ._overrides import mat3x3_coeffs_converter  # noqa: F401
 
 __all__ = ["Mat3x3", "Mat3x3Array", "Mat3x3ArrayLike", "Mat3x3Like", "Mat3x3Type"]
 
@@ -24,22 +22,18 @@ __all__ = ["Mat3x3", "Mat3x3Array", "Mat3x3ArrayLike", "Mat3x3Like", "Mat3x3Type
 class Mat3x3:
     """A 3x3 column-major Matrix."""
 
-    coeffs: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    coeffs: npt.NDArray[np.float32] = field(converter=mat3x3_coeffs_converter)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.coeffs, dtype=dtype)
 
 
-if TYPE_CHECKING:
-    Mat3x3Like = Union[Mat3x3, Sequence[float], Sequence[Sequence[float]]]
+Mat3x3Like = Union[Mat3x3, Sequence[float], Sequence[Sequence[float]]]
 
-    Mat3x3ArrayLike = Union[
-        Mat3x3,
-        Sequence[Mat3x3Like],
-    ]
-else:
-    Mat3x3Like = Any
-    Mat3x3ArrayLike = Any
+Mat3x3ArrayLike = Union[
+    Mat3x3,
+    Sequence[Mat3x3Like],
+]
 
 
 # --- Arrow support ---

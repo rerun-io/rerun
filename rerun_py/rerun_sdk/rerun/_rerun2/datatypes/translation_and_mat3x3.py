@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -12,6 +12,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from ._overrides import translationandmat3x3_init  # noqa: F401
 
 __all__ = [
     "TranslationAndMat3x3",
@@ -22,7 +23,25 @@ __all__ = [
 ]
 
 
-@define
+def _translationandmat3x3_translation_converter(x: datatypes.Vec3DLike | None) -> datatypes.Vec3D | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.Vec3D):
+        return x
+    else:
+        return datatypes.Vec3D(x)
+
+
+def _translationandmat3x3_matrix_converter(x: datatypes.Mat3x3Like | None) -> datatypes.Mat3x3 | None:
+    if x is None:
+        return None
+    elif isinstance(x, datatypes.Mat3x3):
+        return x
+    else:
+        return datatypes.Mat3x3(x)
+
+
+@define(init=False)
 class TranslationAndMat3x3:
     """
     Representation of an affine transform via a 3x3 affine matrix paired with a translation.
@@ -30,33 +49,31 @@ class TranslationAndMat3x3:
     First applies the matrix, then the translation.
     """
 
-    translation: datatypes.Vec3D | None = field(default=None)
-    """
-    3D translation, applied after the matrix.
-    """
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        translationandmat3x3_init(self, *args, **kwargs)
 
-    matrix: datatypes.Mat3x3 | None = field(default=None)
-    """
-    3x3 matrix for scale, rotation & shear.
-    """
-
-    from_parent: bool | None = field(default=None)
+    from_parent: bool = field(converter=bool)
     """
     If true, the transform maps from the parent space to the space where the transform was logged.
     Otherwise, the transform maps from the space to its parent.
     """
 
+    translation: datatypes.Vec3D | None = field(default=None, converter=_translationandmat3x3_translation_converter)
+    """
+    3D translation, applied after the matrix.
+    """
 
-if TYPE_CHECKING:
-    TranslationAndMat3x3Like = TranslationAndMat3x3
+    matrix: datatypes.Mat3x3 | None = field(default=None, converter=_translationandmat3x3_matrix_converter)
+    """
+    3x3 matrix for scale, rotation & shear.
+    """
 
-    TranslationAndMat3x3ArrayLike = Union[
-        TranslationAndMat3x3,
-        Sequence[TranslationAndMat3x3Like],
-    ]
-else:
-    TranslationAndMat3x3Like = Any
-    TranslationAndMat3x3ArrayLike = Any
+
+TranslationAndMat3x3Like = TranslationAndMat3x3
+TranslationAndMat3x3ArrayLike = Union[
+    TranslationAndMat3x3,
+    Sequence[TranslationAndMat3x3Like],
+]
 
 
 # --- Arrow support ---
@@ -70,7 +87,7 @@ class TranslationAndMat3x3Type(BaseExtensionType):
                 [
                     pa.field("translation", pa.list_(pa.field("item", pa.float32(), False, {}), 3), True, {}),
                     pa.field("matrix", pa.list_(pa.field("item", pa.float32(), False, {}), 9), True, {}),
-                    pa.field("from_parent", pa.bool_(), True, {}),
+                    pa.field("from_parent", pa.bool_(), False, {}),
                 ]
             ),
             "rerun.datatypes.TranslationAndMat3x3",

@@ -6,7 +6,6 @@
 // TODO(andreas): Can we move some of these to the `re_space_view` crate?
 mod dyn_space_view_class;
 mod highlights;
-mod scene;
 mod space_view_class;
 mod space_view_class_placeholder;
 mod space_view_class_registry;
@@ -19,9 +18,21 @@ pub use dyn_space_view_class::{
     SpaceViewState,
 };
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
-pub use scene::{Scene, TypedScene};
 pub use space_view_class::SpaceViewClass;
-pub use space_view_class_registry::{SpaceViewClassRegistry, SpaceViewClassRegistryError};
-pub use view_context_system::{ViewContext, ViewContextSystem};
-pub use view_part_system::{ViewPartSystem, ViewPartSystemCollection};
+pub use space_view_class_registry::{
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistry,
+};
+pub use view_context_system::{ViewContextCollection, ViewContextSystem};
+pub use view_part_system::{ViewPartCollection, ViewPartSystem};
 pub use view_query::ViewQuery;
+
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, thiserror::Error)]
+pub enum SpaceViewSystemExecutionError {
+    #[error("View context system {0} not found")]
+    ContextSystemNotFound(&'static str),
+
+    #[error("View part system {0} not found")]
+    PartSystemNotFound(&'static str),
+}

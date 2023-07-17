@@ -2,11 +2,9 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewClass, SpaceViewHighlights, ViewPartSystem, ViewQuery,
-    ViewerContext,
+    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
-
-use crate::TextBoxSpaceView;
 
 // ---
 
@@ -17,23 +15,21 @@ pub struct TextBoxEntry {
 
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
-pub struct SceneTextBox {
+pub struct TextBoxSystem {
     pub text_entries: Vec<TextBoxEntry>,
 }
 
-impl ViewPartSystem<TextBoxSpaceView> for SceneTextBox {
+impl ViewPartSystem for TextBoxSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextBox::name()]
     }
 
-    fn populate(
+    fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _space_view_state: &<TextBoxSpaceView as SpaceViewClass>::State,
-        _context: &<TextBoxSpaceView as SpaceViewClass>::Context,
-        _highlights: &SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+        _view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let store = &ctx.store_db.entity_db.data_store;
 
         for (ent_path, props) in query.iter_entities() {
@@ -56,6 +52,10 @@ impl ViewPartSystem<TextBoxSpaceView> for SceneTextBox {
                 }
             }
         }
-        Vec::new()
+        Ok(Vec::new())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

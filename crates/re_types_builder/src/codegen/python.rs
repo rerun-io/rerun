@@ -8,6 +8,7 @@ use std::{
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
+use rayon::prelude::*;
 
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
@@ -90,16 +91,13 @@ impl CodeGenerator for PythonCodeGenerator {
         objs: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
-        let mut filepaths = BTreeSet::new();
+        let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         let datatypes_path = self.pkg_path.join(ObjectKind::Datatype.plural_snake_case());
         let datatype_overrides = load_overrides(&datatypes_path);
-        std::fs::create_dir_all(&datatypes_path)
-            .with_context(|| format!("{datatypes_path:?}"))
-            .unwrap();
-        filepaths.extend(
+        files_to_write.extend(
             quote_objects(
-                datatypes_path,
+                &datatypes_path,
                 arrow_registry,
                 &datatype_overrides,
                 objs,
@@ -113,12 +111,9 @@ impl CodeGenerator for PythonCodeGenerator {
             .pkg_path
             .join(ObjectKind::Component.plural_snake_case());
         let component_overrides = load_overrides(&components_path);
-        std::fs::create_dir_all(&components_path)
-            .with_context(|| format!("{components_path:?}"))
-            .unwrap();
-        filepaths.extend(
+        files_to_write.extend(
             quote_objects(
-                components_path,
+                &components_path,
                 arrow_registry,
                 &component_overrides,
                 objs,
@@ -132,35 +127,77 @@ impl CodeGenerator for PythonCodeGenerator {
             .pkg_path
             .join(ObjectKind::Archetype.plural_snake_case());
         let archetype_overrides = load_overrides(&archetypes_path);
-        std::fs::create_dir_all(&archetypes_path)
-            .with_context(|| format!("{archetypes_path:?}"))
-            .unwrap();
         let (paths, archetype_names) = quote_objects(
-            archetypes_path,
+            &archetypes_path,
             arrow_registry,
             &archetype_overrides,
             objs,
             ObjectKind::Archetype,
             &objs.ordered_objects(ObjectKind::Archetype.into()),
         );
-        filepaths.extend(paths);
+        files_to_write.extend(paths);
 
-        filepaths.insert(quote_lib(&self.pkg_path, &archetype_names));
+        files_to_write.insert(
+            self.pkg_path.join("__init__.py"),
+            lib_source_code(&archetype_names),
+        );
+
+        write_files(&files_to_write);
+
+        let filepaths = files_to_write.keys().cloned().collect();
+
+        for kind in ObjectKind::ALL {
+            let folder_path = self.pkg_path.join(kind.plural_snake_case());
+            super::common::remove_old_files_from_folder(folder_path, &filepaths);
+        }
 
         filepaths
     }
 }
 
-// --- File management ---
+fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
+    re_tracing::profile_function!();
+    // TODO(emilk): running `black` and `ruff` once for each file is very slow.
+    // It would probably be faster to write all filtes to a temporary folder, run `black` and `ruff` on
+    // that folder, and then copy the results to the final destination (if the files has changed).
+    files_to_write.par_iter().for_each(|(path, source)| {
+        write_file(path, source.clone());
+    });
+}
 
-fn quote_lib(out_path: impl AsRef<Utf8Path>, archetype_names: &[String]) -> Utf8PathBuf {
-    let out_path = out_path.as_ref();
+fn write_file(filepath: &Utf8PathBuf, mut source: String) {
+    re_tracing::profile_function!();
 
-    std::fs::create_dir_all(out_path)
-        .with_context(|| format!("{out_path:?}"))
-        .unwrap();
+    match format_python(&source) {
+        Ok(formatted) => source = formatted,
+        Err(err) => {
+            // NOTE: Formatting code requires both `black` and `ruff` to be in $PATH, but only for contributors,
+            // not end users.
+            // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
+            // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
+            // the CI!
+            re_log::warn_once!(
+                "Failed to format Python code: {err}. Make sure `black` and `ruff` are installed."
+            );
+        }
+    }
 
-    let path = out_path.join("__init__.py");
+    if let Ok(existing) = std::fs::read_to_string(filepath) {
+        if existing == source {
+            // Don't touch the timestamp unnecessarily
+            return;
+        }
+    }
+
+    let parent_dir = filepath.parent().unwrap();
+    std::fs::create_dir_all(parent_dir)
+        .unwrap_or_else(|err| panic!("Failed to create dir {parent_dir:?}: {err}"));
+
+    std::fs::write(filepath, source)
+        .unwrap_or_else(|err| panic!("Failed to write file {filepath:?}: {err}"));
+}
+
+fn lib_source_code(archetype_names: &[String]) -> String {
     let manifest = quote_manifest(archetype_names);
     let archetype_names = archetype_names.join(", ");
 
@@ -178,25 +215,19 @@ fn quote_lib(out_path: impl AsRef<Utf8Path>, archetype_names: &[String]) -> Utf8
         "#
     ));
 
-    std::fs::write(&path, code)
-        .with_context(|| format!("{path:?}"))
-        .unwrap();
-
-    path
+    code
 }
 
 /// Returns all filepaths + all object names.
 fn quote_objects(
-    out_path: impl AsRef<Utf8Path>,
+    out_path: &Utf8Path,
     arrow_registry: &ArrowRegistry,
     overrides: &HashSet<String>,
     all_objects: &Objects,
     _kind: ObjectKind,
     objs: &[&Object],
-) -> (BTreeSet<Utf8PathBuf>, Vec<String>) {
-    let out_path = out_path.as_ref();
-
-    let mut filepaths = BTreeSet::new();
+) -> (BTreeMap<Utf8PathBuf, String>, Vec<String>) {
+    let mut files_to_write = BTreeMap::new();
     let mut all_names = Vec::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
@@ -246,11 +277,6 @@ fn quote_objects(
             .or_default()
             .extend(names.iter().cloned());
 
-        filepaths.insert(filepath.clone());
-        let mut file = std::fs::File::create(&filepath)
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
-
         let mut code = String::new();
         code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
 
@@ -260,12 +286,13 @@ fn quote_objects(
             "
             from __future__ import annotations
 
+            from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
+                TYPE_CHECKING, SupportsFloat, Literal)
+
+            from attrs import define, field
             import numpy as np
             import numpy.typing as npt
             import pyarrow as pa
-
-            from attrs import define, field
-            from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union, TYPE_CHECKING
 
             from .._baseclasses import (
                 Archetype,
@@ -275,6 +302,10 @@ fn quote_objects(
                 BaseDelegatingExtensionArray
             )
             from .._converters import (
+                int_or_none,
+                float_or_none,
+                bool_or_none,
+                str_or_none,
                 to_np_uint8,
                 to_np_uint16,
                 to_np_uint32,
@@ -340,9 +371,8 @@ fn quote_objects(
         for obj in objs {
             code.push_text(&obj.code, 1, 0);
         }
-        file.write_all(code.as_bytes())
-            .with_context(|| format!("{filepath:?}"))
-            .unwrap();
+
+        files_to_write.insert(filepath.clone(), code);
     }
 
     // rerun/{datatypes|components|archetypes}/__init__.py
@@ -369,13 +399,10 @@ fn quote_objects(
 
         code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
 
-        filepaths.insert(path.clone());
-        std::fs::write(&path, code)
-            .with_context(|| format!("{path:?}"))
-            .unwrap();
+        files_to_write.insert(path, code);
     }
 
-    (filepaths, all_names)
+    (files_to_write, all_names)
 }
 
 // --- Codegen core loop ---
@@ -414,21 +441,67 @@ impl QuotedObject {
         let mut code = String::new();
 
         if *kind != ObjectKind::Component || obj.is_non_delegating_component() {
+            // field converters preprocessing pass — must be performed here because we must autogen
+            // converter function *before* the class
+            let mut field_converters: HashMap<String, String> = HashMap::new();
+            for field in fields.iter() {
+                let (default_converter, converter_function) =
+                    quote_field_converter_from_field(obj, objects, field);
+
+                let converter = if *kind == ObjectKind::Archetype {
+                    let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
+                    // archetype always delegate field init to the component array object
+                    format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
+                } else {
+                    // components and datatypes have converters only if manually provided
+                    let override_name = format!(
+                        "{}_{}_converter",
+                        name.to_lowercase(),
+                        field.name.to_lowercase()
+                    );
+                    if overrides.contains(&override_name) {
+                        format!("converter={override_name}")
+                    } else if !default_converter.is_empty() {
+                        code.push_text(&converter_function, 1, 0);
+                        format!("converter={default_converter}")
+                    } else {
+                        String::new()
+                    }
+                };
+                field_converters.insert(field.fqname.clone(), converter);
+            }
+
+            // init override handling
+            let override_name = format!("{}_init", name.to_lowercase());
+            let (init_define_arg, init_func) = if overrides.contains(&override_name) {
+                ("init=False".to_owned(), override_name)
+            } else {
+                (String::new(), String::new())
+            };
+
             let superclass = match *kind {
                 ObjectKind::Archetype => "(Archetype)",
                 ObjectKind::Component | ObjectKind::Datatype => "",
             };
 
             let define_args = if *kind == ObjectKind::Archetype {
-                "(str=False, repr=False)"
+                format!(
+                    "str=False, repr=False{}{init_define_arg}",
+                    if init_define_arg.is_empty() { "" } else { ", " }
+                )
             } else {
-                ""
+                init_define_arg
+            };
+
+            let define_args = if !define_args.is_empty() {
+                format!("({define_args})")
+            } else {
+                define_args
             };
 
             code.push_unindented_text(
                 format!(
                     r#"
-
                 @define{define_args}
                 class {name}{superclass}:
                 "#
@@ -438,8 +511,22 @@ impl QuotedObject {
 
             code.push_text(quote_doc_from_docs(docs), 0, 4);
 
+            if !init_func.is_empty() {
+                code.push_text(
+                    "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
+                    1,
+                    4,
+                );
+                code.push_text(format!("{init_func}(self, *args, **kwargs)"), 2, 8);
+            }
+
             // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
             // complains.
+            // TODO(ab, #2641): this is required because fields without default should appear before fields
+            //  with default. Now, `TranslationXXX.from_parent` *should* have a default value,
+            //  and appear at the end of the list, but it currently doesn't. This is unfortunate as
+            //  the apparent field order is inconsistent with what the `xxxx_init()` override
+            //  accepts.
             let fields_in_order = fields
                 .iter()
                 .filter(|field| !field.is_nullable)
@@ -460,32 +547,12 @@ impl QuotedObject {
                     datatype: _,
                 } = field;
 
-                let (typ, _, default_converter) =
-                    quote_field_type_from_field(objects, field, false);
-                let (typ_unwrapped, _, _) = quote_field_type_from_field(objects, field, true);
+                let (typ, _) = quote_field_type_from_field(objects, field, false);
+                let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
                 let typ = if *kind == ObjectKind::Archetype {
                     format!("{typ_unwrapped}Array")
                 } else {
                     typ
-                };
-
-                let converter = if *kind == ObjectKind::Archetype {
-                    // archetype always delegate field init to the component array object
-                    format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
-                } else {
-                    // components and datatypes have converters only if manually provided
-                    let override_name = format!(
-                        "{}_{}_converter",
-                        obj.name.to_lowercase(),
-                        name.to_lowercase()
-                    );
-                    if overrides.contains(&override_name) {
-                        format!("converter={override_name}")
-                    } else if !default_converter.is_empty() {
-                        format!("converter={default_converter}")
-                    } else {
-                        String::new()
-                    }
                 };
 
                 let metadata = if *kind == ObjectKind::Archetype {
@@ -497,6 +564,7 @@ impl QuotedObject {
                     String::new()
                 };
 
+                let converter = &field_converters[&field.fqname];
                 let typ = if !*is_nullable {
                     format!("{typ} = field({metadata}{converter})")
                 } else {
@@ -562,7 +630,6 @@ impl QuotedObject {
         }
     }
 
-    // TODO(ab): this function is likely broken, to be handled in next PR
     fn from_union(
         arrow_registry: &ArrowRegistry,
         overrides: &HashSet<String>,
@@ -589,11 +656,19 @@ impl QuotedObject {
 
         let mut code = String::new();
 
+        // init override handling
+        let override_name = format!("{}_init", name.to_lowercase());
+        let (define_args, init_func) = if overrides.contains(&override_name) {
+            ("(init=False)".to_owned(), override_name)
+        } else {
+            (String::new(), String::new())
+        };
+
         code.push_unindented_text(
             format!(
                 r#"
 
-                @define
+                @define{define_args}
                 class {name}:
                 "#
             ),
@@ -602,34 +677,64 @@ impl QuotedObject {
 
         code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-        for field in fields {
-            let ObjectField {
-                virtpath: _,
-                filepath: _,
-                fqname: _,
-                pkg_name: _,
-                name,
-                docs,
-                typ: _,
-                attrs: _,
-                order: _,
-                is_nullable: _,
-                is_deprecated: _,
-                datatype: _,
-            } = field;
-
-            let (typ, _, _) = quote_field_type_from_field(objects, field, false);
-            // NOTE: It's always optional since only one of the fields can be set at a time.
-            code.push_text(format!("{name}: {typ} | None = None"), 1, 4);
-
-            code.push_text(quote_doc_from_docs(docs), 0, 4);
+        if !init_func.is_empty() {
+            code.push_text(
+                "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
+                1,
+                4,
+            );
+            code.push_text(format!("{init_func}(self, *args, **kwargs)"), 2, 8);
         }
 
-        code.push_text(quote_str_repr_from_obj(obj), 1, 4);
-        code.push_text(quote_array_method_from_obj(overrides, objects, obj), 1, 4);
-        code.push_text(quote_native_types_method_from_obj(objects, obj), 1, 4);
+        let field_types = fields
+            .iter()
+            .map(|f| quote_field_type_from_field(objects, f, false).0)
+            .collect::<BTreeSet<_>>();
+        let has_duplicate_types = field_types.len() != fields.len();
 
-        code.push_text(quote_aliases_from_object(obj), 1, 0);
+        // provide a default converter if *all* arms are of the same type
+        let default_converter = if field_types.len() == 1 {
+            quote_field_converter_from_field(obj, objects, &fields[0]).0
+        } else {
+            String::new()
+        };
+
+        let inner_type = if field_types.len() > 1 {
+            format!("Union[{}]", field_types.iter().join(", "))
+        } else {
+            field_types.iter().next().unwrap().to_string()
+        };
+
+        // components and datatypes have converters only if manually provided
+        let override_name = format!("{}_inner_converter", name.to_lowercase(),);
+        let converter = if overrides.contains(&override_name) {
+            format!("converter={override_name}")
+        } else if !default_converter.is_empty() {
+            format!("converter={default_converter}")
+        } else {
+            String::new()
+        };
+
+        code.push_text(format!("inner: {inner_type} = field({converter})"), 1, 4);
+        code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
+
+        // if there are duplicate types, we need to add a `kind` field to disambiguate the union
+        if has_duplicate_types {
+            let kind_type = fields
+                .iter()
+                .map(|f| format!("{:?}", f.name.to_lowercase()))
+                .join(", ");
+            let first_kind = &fields[0].name.to_lowercase();
+
+            code.push_text(
+                format!("kind: Literal[{kind_type}] = field(default={first_kind:?})"),
+                1,
+                4,
+            );
+        }
+
+        code.push_unindented_text(quote_union_aliases_from_object(obj, field_types.iter()), 1);
+
         match kind {
             ObjectKind::Archetype => (),
             ObjectKind::Component => {
@@ -684,37 +789,35 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")
 }
 
-/// Generates generic `__str__` and `__repr__` methods for archetypes.
-//
-// TODO(cmc): this could alternatively import a statically defined mixin from "somewhere".
-fn quote_str_repr_from_obj(obj: &Object) -> String {
-    if obj.kind != ObjectKind::Archetype {
-        return String::new();
+fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String {
+    let mut lines = vec![];
+
+    for field in fields {
+        let field_lines = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        lines.push(format!(
+            "{} ({}):",
+            field.name,
+            quote_field_type_from_field(objects, field, false).0
+        ));
+        lines.extend(field_lines.into_iter().map(|line| format!("    {line}")));
+        lines.push(String::new());
     }
 
-    unindent::unindent(
-        r#"
-        def __str__(self) -> str:
-            s = f"rr.{type(self).__name__}(\n"
+    if lines.is_empty() {
+        return String::new();
+    } else {
+        // remove last empty line
+        lines.pop();
+    }
 
-            from dataclasses import fields
-            for fld in fields(self):
-                if "component" in fld.metadata:
-                    comp: components.Component = getattr(self, fld.name)
-                    if datatype := getattr(comp, "type"):
-                        name = comp.extension_name
-                        typ = datatype.storage_type
-                        s += f"  {name}<{typ}>(\n    {comp.to_pylist()}\n  )\n"
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
+    let doc = lines
+        .into_iter()
+        .filter(|line| !line.starts_with(r#"""""#))
+        .collect_vec()
+        .join("\n");
 
-            s += ")"
-
-            return s
-
-        def __repr__(self) -> str:
-            return str(self)
-
-        "#,
-    )
+    format!("\"\"\"\n{doc}\n\"\"\"\n\n")
 }
 
 /// Automatically implement `__array__` if the object is a single
@@ -734,7 +837,7 @@ fn quote_array_method_from_obj(
     if overrides.contains(&override_name) {
         return unindent::unindent(&format!(
             "
-            def __array__(self, dtype: npt.DTypeLike=None) -> npt.ArrayLike:
+            def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
                 return {override_name}(self, dtype=dtype)
             "
         ));
@@ -753,7 +856,7 @@ fn quote_array_method_from_obj(
     let field_name = &obj.fields[0].name;
     unindent::unindent(&format!(
         "
-        def __array__(self, dtype: npt.DTypeLike=None) -> npt.ArrayLike:
+        def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
             return np.asarray(self.{field_name}, dtype=dtype)
         ",
     ))
@@ -802,51 +905,75 @@ fn quote_aliases_from_object(obj: &Object) -> String {
 
     let mut code = String::new();
 
-    code.push_unindented_text("if TYPE_CHECKING:", 1);
-
-    code.push_text(
+    code.push_unindented_text(
         &if let Some(aliases) = aliases {
             format!(
                 r#"
-{name}Like = Union[
-    {name},
-    {aliases}
-]
-"#,
+                {name}Like = Union[
+                    {name},
+                    {aliases}
+                ]
+                "#,
             )
         } else {
             format!("{name}Like = {name}")
         },
         1,
-        4,
-    );
-
-    code.push_text(
-        format!(
-            r#"
-{name}ArrayLike = Union[
-    {name},
-    Sequence[{name}Like],
-    {array_aliases}
-]
-"#,
-        ),
-        0,
-        4,
     );
 
     code.push_unindented_text(
         format!(
             r#"
-        else:
-            {name}Like = Any
-            {name}ArrayLike = Any
-        "#
+            {name}ArrayLike = Union[
+                {name},
+                Sequence[{name}Like],
+                {array_aliases}
+            ]
+            "#,
         ),
         0,
     );
 
     code
+}
+
+/// Quote typing aliases for union datatypes. The types for the union arms are automatically
+/// included.
+fn quote_union_aliases_from_object<'a>(
+    obj: &Object,
+    mut field_types: impl Iterator<Item = &'a String>,
+) -> String {
+    assert_ne!(obj.kind, ObjectKind::Archetype);
+
+    let aliases = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES);
+    let array_aliases = obj
+        .try_get_attr::<String>(ATTR_PYTHON_ARRAY_ALIASES)
+        .unwrap_or_default();
+
+    let name = &obj.name;
+
+    let union_fields = field_types.join(",");
+    let aliases = if let Some(aliases) = aliases {
+        aliases
+    } else {
+        String::new()
+    };
+
+    unindent::unindent(&format!(
+        r#"
+            if TYPE_CHECKING:
+                {name}Like = Union[
+                    {name},{union_fields},{aliases}
+                ]
+                {name}ArrayLike = Union[
+                    {name},{union_fields},
+                    Sequence[{name}Like],{array_aliases}
+                ]
+            else:
+                {name}Like = Any
+                {name}ArrayLike = Any
+            "#,
+    ))
 }
 
 fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
@@ -890,14 +1017,12 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
 /// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
 /// becomes just `String`.
 /// The returned boolean indicates whether there was anything to unwrap at all.
-/// The third returned value is a default converter function if any.
 fn quote_field_type_from_field(
     _objects: &Objects,
     field: &ObjectField,
     unwrap: bool,
-) -> (String, bool, String) {
+) -> (String, bool) {
     let mut unwrapped = false;
-    let mut converter = String::new();
     let typ = match &field.typ {
         Type::UInt8
         | Type::UInt16
@@ -914,52 +1039,150 @@ fn quote_field_type_from_field(
             elem_type,
             length: _,
         }
-        | Type::Vector { elem_type } => {
-            match elem_type {
-                ElementType::UInt8 => converter = "to_np_uint8".to_owned(),
-                ElementType::UInt16 => converter = "to_np_uint16".to_owned(),
-                ElementType::UInt32 => converter = "to_np_uint32".to_owned(),
-                ElementType::UInt64 => converter = "to_np_uint64".to_owned(),
-                ElementType::Int8 => converter = "to_np_int8".to_owned(),
-                ElementType::Int16 => converter = "to_np_int16".to_owned(),
-                ElementType::Int32 => converter = "to_np_int32".to_owned(),
-                ElementType::Int64 => converter = "to_np_int64".to_owned(),
-                ElementType::Bool => converter = "to_np_bool".to_owned(),
-                ElementType::Float16 => converter = "to_np_float16".to_owned(),
-                ElementType::Float32 => converter = "to_np_float32".to_owned(),
-                ElementType::Float64 => converter = "to_np_float64".to_owned(),
-                _ => {}
-            };
-
-            match elem_type {
-                ElementType::UInt8 => "npt.NDArray[np.uint8]".to_owned(),
-                ElementType::UInt16 => "npt.NDArray[np.uint16]".to_owned(),
-                ElementType::UInt32 => "npt.NDArray[np.uint32]".to_owned(),
-                ElementType::UInt64 => "npt.NDArray[np.uint64]".to_owned(),
-                ElementType::Int8 => "npt.NDArray[np.int8]".to_owned(),
-                ElementType::Int16 => "npt.NDArray[np.int16]".to_owned(),
-                ElementType::Int32 => "npt.NDArray[np.int32]".to_owned(),
-                ElementType::Int64 => "npt.NDArray[np.int64]".to_owned(),
-                ElementType::Bool => "npt.NDArray[np.bool_]".to_owned(),
-                ElementType::Float16 => "npt.NDArray[np.float16]".to_owned(),
-                ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
-                ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
-                ElementType::String => "list[str]".to_owned(),
-                ElementType::Object(_) => {
-                    let typ = quote_type_from_element_type(elem_type);
-                    if unwrap {
-                        unwrapped = true;
-                        typ
-                    } else {
-                        format!("list[{typ}]")
-                    }
+        | Type::Vector { elem_type } => match elem_type {
+            ElementType::UInt8 => "npt.NDArray[np.uint8]".to_owned(),
+            ElementType::UInt16 => "npt.NDArray[np.uint16]".to_owned(),
+            ElementType::UInt32 => "npt.NDArray[np.uint32]".to_owned(),
+            ElementType::UInt64 => "npt.NDArray[np.uint64]".to_owned(),
+            ElementType::Int8 => "npt.NDArray[np.int8]".to_owned(),
+            ElementType::Int16 => "npt.NDArray[np.int16]".to_owned(),
+            ElementType::Int32 => "npt.NDArray[np.int32]".to_owned(),
+            ElementType::Int64 => "npt.NDArray[np.int64]".to_owned(),
+            ElementType::Bool => "npt.NDArray[np.bool_]".to_owned(),
+            ElementType::Float16 => "npt.NDArray[np.float16]".to_owned(),
+            ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
+            ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
+            ElementType::String => "list[str]".to_owned(),
+            ElementType::Object(_) => {
+                let typ = quote_type_from_element_type(elem_type);
+                if unwrap {
+                    unwrapped = true;
+                    typ
+                } else {
+                    format!("list[{typ}]")
                 }
             }
-        }
+        },
         Type::Object(fqname) => quote_type_from_element_type(&ElementType::Object(fqname.clone())),
     };
 
-    (typ, unwrapped, converter)
+    (typ, unwrapped)
+}
+
+/// Returns a default converter function for the given field.
+///
+/// Returns the converter name and, if needed, the converter function itself.
+fn quote_field_converter_from_field(
+    obj: &Object,
+    objects: &Objects,
+    field: &ObjectField,
+) -> (String, String) {
+    let mut function = String::new();
+
+    let converter = match &field.typ {
+        Type::UInt8
+        | Type::UInt16
+        | Type::UInt32
+        | Type::UInt64
+        | Type::Int8
+        | Type::Int16
+        | Type::Int32
+        | Type::Int64 => {
+            if field.is_nullable {
+                "int_or_none".to_owned()
+            } else {
+                "int".to_owned()
+            }
+        }
+        Type::Bool => {
+            if field.is_nullable {
+                "bool_or_none".to_owned()
+            } else {
+                "bool".to_owned()
+            }
+        }
+        Type::Float16 | Type::Float32 | Type::Float64 => {
+            if field.is_nullable {
+                "float_or_none".to_owned()
+            } else {
+                "float".to_owned()
+            }
+        }
+        Type::String => {
+            if field.is_nullable {
+                "str_or_none".to_owned()
+            } else {
+                "str".to_owned()
+            }
+        }
+        Type::Array {
+            elem_type,
+            length: _,
+        }
+        | Type::Vector { elem_type } => match elem_type {
+            ElementType::UInt8 => "to_np_uint8".to_owned(),
+            ElementType::UInt16 => "to_np_uint16".to_owned(),
+            ElementType::UInt32 => "to_np_uint32".to_owned(),
+            ElementType::UInt64 => "to_np_uint64".to_owned(),
+            ElementType::Int8 => "to_np_int8".to_owned(),
+            ElementType::Int16 => "to_np_int16".to_owned(),
+            ElementType::Int32 => "to_np_int32".to_owned(),
+            ElementType::Int64 => "to_np_int64".to_owned(),
+            ElementType::Bool => "to_np_bool".to_owned(),
+            ElementType::Float16 => "to_np_float16".to_owned(),
+            ElementType::Float32 => "to_np_float32".to_owned(),
+            ElementType::Float64 => "to_np_float64".to_owned(),
+            _ => String::new(),
+        },
+        Type::Object(fqname) => {
+            let typ = quote_type_from_element_type(&ElementType::Object(fqname.clone()));
+            let field_obj = objects.get(fqname);
+
+            // we generate a default converter only if the field's type can be constructed with a
+            // single argument
+            if field_obj.fields.len() == 1 || field_obj.is_union() {
+                let converter_name =
+                    format!("_{}_{}_converter", obj.name.to_lowercase(), field.name);
+
+                // generate the converter function
+                if field.is_nullable {
+                    function.push_unindented_text(
+                        format!(
+                            r#"
+                            def {converter_name}(x: {typ}Like | None) -> {typ} | None:
+                                if x is None:
+                                    return None
+                                elif isinstance(x, {typ}):
+                                    return x
+                                else:
+                                    return {typ}(x)
+                            "#,
+                        ),
+                        1,
+                    );
+                } else {
+                    function.push_unindented_text(
+                        format!(
+                            r#"
+                            def {converter_name}(x: {typ}Like) -> {typ}:
+                                if isinstance(x, {typ}):
+                                    return x
+                                else:
+                                    return {typ}(x)
+                            "#,
+                        ),
+                        1,
+                    );
+                }
+
+                converter_name
+            } else {
+                String::new()
+            }
+        }
+    };
+
+    (converter, function)
 }
 
 fn quote_type_from_element_type(typ: &ElementType) -> String {
@@ -1197,4 +1420,85 @@ fn quote_metadata_map(metadata: &BTreeMap<String, String>) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     format!("{{{kvs}}}")
+}
+
+fn format_python(source: &str) -> anyhow::Result<String> {
+    re_tracing::profile_function!();
+
+    // The order below is important and sadly we need to call black twice. Ruff does not yet
+    // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
+    //
+    // 1) Call black, which among others things fixes line-length
+    // 2) Call ruff, which requires line-lengths to be correct
+    // 3) Call black again to cleanup some whitespace issues ruff might introduce
+
+    let mut source = run_black(source).context("black")?;
+    source = run_ruff(&source).context("ruff")?;
+    source = run_black(&source).context("black")?;
+    Ok(source)
+}
+
+fn python_project_path() -> Utf8PathBuf {
+    let path = crate::rerun_workspace_path()
+        .join("rerun_py")
+        .join("pyproject.toml");
+    assert!(path.exists(), "Failed to find {path:?}");
+    path
+}
+
+fn run_black(source: &str) -> anyhow::Result<String> {
+    re_tracing::profile_function!();
+    use std::process::{Command, Stdio};
+
+    let mut proc = Command::new("black")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .arg(format!("--config={}", python_project_path()))
+        .arg("-") // Read from stdin
+        .spawn()?;
+
+    {
+        let mut stdin = proc.stdin.take().unwrap();
+        stdin.write_all(source.as_bytes())?;
+    }
+
+    let output = proc.wait_with_output()?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8(output.stdout)?;
+        Ok(stdout)
+    } else {
+        let stderr = String::from_utf8(output.stderr)?;
+        anyhow::bail!("{stderr}")
+    }
+}
+
+fn run_ruff(source: &str) -> anyhow::Result<String> {
+    re_tracing::profile_function!();
+    use std::process::{Command, Stdio};
+
+    let mut proc = Command::new("ruff")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .arg(format!("--config={}", python_project_path()))
+        .arg("--fix")
+        .arg("-") // Read from stdin
+        .spawn()?;
+
+    {
+        let mut stdin = proc.stdin.take().unwrap();
+        stdin.write_all(source.as_bytes())?;
+    }
+
+    let output = proc.wait_with_output()?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8(output.stdout)?;
+        Ok(stdout)
+    } else {
+        let stderr = String::from_utf8(output.stderr)?;
+        anyhow::bail!("{stderr}")
+    }
 }
