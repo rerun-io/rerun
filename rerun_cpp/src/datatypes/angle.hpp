@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <new>
+#include <utility>
 
 namespace rr {
     namespace datatypes {
@@ -49,6 +51,20 @@ namespace rr {
             Angle& operator=(Angle&& other) noexcept {
                 this->swap(other);
                 return *this;
+            }
+
+            static Angle radians(float radians) {
+                Angle self;
+                self._tag = detail::AngleTag::Radians;
+                self._data.radians = std::move(radians);
+                return std::move(self);
+            }
+
+            static Angle degrees(float degrees) {
+                Angle self;
+                self._tag = detail::AngleTag::Degrees;
+                self._data.degrees = std::move(degrees);
+                return std::move(self);
             }
 
             void swap(Angle& other) noexcept {

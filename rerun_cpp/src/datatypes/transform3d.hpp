@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <new>
+#include <utility>
 
 #include "../datatypes/translation_and_mat3x3.hpp"
 #include "../datatypes/translation_rotation_scale3d.hpp"
@@ -52,6 +54,22 @@ namespace rr {
             Transform3D& operator=(Transform3D&& other) noexcept {
                 this->swap(other);
                 return *this;
+            }
+
+            static Transform3D translation_and_mat3x3(
+                rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3) {
+                Transform3D self;
+                self._tag = detail::Transform3DTag::TranslationAndMat3x3;
+                self._data.translation_and_mat3x3 = std::move(translation_and_mat3x3);
+                return std::move(self);
+            }
+
+            static Transform3D translation_rotation_scale(
+                rr::datatypes::TranslationRotationScale3D translation_rotation_scale) {
+                Transform3D self;
+                self._tag = detail::Transform3DTag::TranslationRotationScale;
+                self._data.translation_rotation_scale = std::move(translation_rotation_scale);
+                return std::move(self);
             }
 
             void swap(Transform3D& other) noexcept {

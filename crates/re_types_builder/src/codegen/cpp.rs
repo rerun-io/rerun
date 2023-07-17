@@ -294,6 +294,10 @@ impl QuotedObject {
 
         let mut hpp_includes = Includes::default();
 
+        hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
+        hpp_includes.system.insert("new".to_owned()); // placement-new
+        hpp_includes.system.insert("utility".to_owned()); // std::move
+
         let enum_data_declarations = obj
             .fields
             .iter()
@@ -312,10 +316,9 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        // TODO(emilk): if the variant types are disjoint, generate implicit constructors!
+        // TODO(emilk): if the variant types are disjoint, generate implicit constructors
 
-        // TODO(emilk): implement static constructors
-        let _static_constructors = obj
+        let static_constructors = obj
             .fields
             .iter()
             .map(|obj_field| {
@@ -326,8 +329,47 @@ impl QuotedObject {
                 let param_declaration =
                     quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident, false).0;
 
-                if let Type::Array { .. } = &obj_field.typ {
-                    quote!{ #TODO_TOKEN }
+                if let Type::Array { elem_type, length } = &obj_field.typ {
+                    // We need special casing for constructing arrays:
+                    let length = proc_macro2::Literal::usize_unsuffixed(*length);
+
+                    let element_assignment = if elem_type.is_pod(objects) {
+                        quote!{
+                            self._data.#snake_case_ident[i] = std::move(#snake_case_ident[i]);
+                        }
+                    } else {
+                        quote!{
+                            new (&self._data.#snake_case_ident[i]) TypeAlias(std::move(#snake_case_ident[i]));
+                        }
+                    };
+
+                    let elem_type = quote_element_type(&mut hpp_includes, elem_type);
+
+                    quote! {
+                        #docstring
+                        static #pascal_case_ident #snake_case_ident(#param_declaration)
+                        {
+                            typedef #elem_type TypeAlias;
+                            #pascal_case_ident self;
+                            self._tag = detail::#tag_typename::#tag_ident;
+                            for (size_t i = 0; i < #length; i += 1) {
+                                // new (&self._data.#snake_case_ident[i]) TypeAlias(std::move(#snake_case_ident[i]));
+                                #element_assignment
+                            }
+                            return std::move(self);
+                        }
+                    }
+                } else if obj_field.typ.is_pod(objects) {
+                    quote! {
+                        #docstring
+                        static #pascal_case_ident #snake_case_ident(#param_declaration)
+                        {
+                            #pascal_case_ident self;
+                            self._tag = detail::#tag_typename::#tag_ident;
+                            self._data.#snake_case_ident = std::move(#snake_case_ident);
+                            return std::move(self);
+                        }
+                    }
                 } else {
                     let typedef_declaration = quote_declaration(
                         &mut hpp_includes,
@@ -346,7 +388,6 @@ impl QuotedObject {
                             new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));
                             return std::move(self);
                         }
-                        #NEWLINE_TOKEN #NEWLINE_TOKEN
                     }
                 }
             })
@@ -417,10 +458,9 @@ impl QuotedObject {
             }
         };
 
-        hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
-
         let hpp = quote! {
             #hpp_includes
+
             namespace rr {
                 namespace #namespace_ident {
                     namespace detail {
@@ -467,7 +507,7 @@ impl QuotedObject {
 
                         #destructor
 
-                        // #(#static_constructors)* // TODO(emilk): implement static constructors
+                        #(#static_constructors)*
 
                         // This is useful for easily implementing the move constructor and move assignment operator:
                         void swap(#pascal_case_ident& other) noexcept {
@@ -483,6 +523,7 @@ impl QuotedObject {
                 }
             }
         };
+
         let cpp = quote! {};
 
         Self { hpp, cpp }

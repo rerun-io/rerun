@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <new>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -81,6 +82,38 @@ namespace rr {
                         break; // Plain Old Data (POD): requires no destructor
                     }
                 }
+            }
+
+            static AffixFuzzer3 degrees(float degrees) {
+                AffixFuzzer3 self;
+                self._tag = detail::AffixFuzzer3Tag::degrees;
+                self._data.degrees = std::move(degrees);
+                return std::move(self);
+            }
+
+            static AffixFuzzer3 radians(std::optional<float> radians) {
+                AffixFuzzer3 self;
+                self._tag = detail::AffixFuzzer3Tag::radians;
+                self._data.radians = std::move(radians);
+                return std::move(self);
+            }
+
+            static AffixFuzzer3 craziness(std::vector<rr::datatypes::AffixFuzzer1> craziness) {
+                typedef std::vector<rr::datatypes::AffixFuzzer1> TypeAlias;
+                AffixFuzzer3 self;
+                self._tag = detail::AffixFuzzer3Tag::craziness;
+                new (&self._data.craziness) TypeAlias(std::move(craziness));
+                return std::move(self);
+            }
+
+            static AffixFuzzer3 fixed_size_shenanigans(float fixed_size_shenanigans[3]) {
+                typedef float TypeAlias;
+                AffixFuzzer3 self;
+                self._tag = detail::AffixFuzzer3Tag::fixed_size_shenanigans;
+                for (size_t i = 0; i < 3; i += 1) {
+                    self._data.fixed_size_shenanigans[i] = std::move(fixed_size_shenanigans[i]);
+                }
+                return std::move(self);
             }
 
             void swap(AffixFuzzer3& other) noexcept {

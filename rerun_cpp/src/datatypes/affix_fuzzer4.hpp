@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <new>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -79,6 +80,32 @@ namespace rr {
                         break;
                     }
                 }
+            }
+
+            static AffixFuzzer4 single_required(rr::datatypes::AffixFuzzer3 single_required) {
+                typedef rr::datatypes::AffixFuzzer3 TypeAlias;
+                AffixFuzzer4 self;
+                self._tag = detail::AffixFuzzer4Tag::single_required;
+                new (&self._data.single_required) TypeAlias(std::move(single_required));
+                return std::move(self);
+            }
+
+            static AffixFuzzer4 many_required(
+                std::vector<rr::datatypes::AffixFuzzer3> many_required) {
+                typedef std::vector<rr::datatypes::AffixFuzzer3> TypeAlias;
+                AffixFuzzer4 self;
+                self._tag = detail::AffixFuzzer4Tag::many_required;
+                new (&self._data.many_required) TypeAlias(std::move(many_required));
+                return std::move(self);
+            }
+
+            static AffixFuzzer4 many_optional(
+                std::optional<std::vector<rr::datatypes::AffixFuzzer3>> many_optional) {
+                typedef std::optional<std::vector<rr::datatypes::AffixFuzzer3>> TypeAlias;
+                AffixFuzzer4 self;
+                self._tag = detail::AffixFuzzer4Tag::many_optional;
+                new (&self._data.many_optional) TypeAlias(std::move(many_optional));
+                return std::move(self);
             }
 
             void swap(AffixFuzzer4& other) noexcept {

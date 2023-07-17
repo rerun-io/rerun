@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <new>
+#include <utility>
 
 #include "../datatypes/vec3d.hpp"
 
@@ -53,6 +55,22 @@ namespace rr {
             Scale3D& operator=(Scale3D&& other) noexcept {
                 this->swap(other);
                 return *this;
+            }
+
+            /// Individual scaling factors for each axis, distorting the original object.
+            static Scale3D three_d(rr::datatypes::Vec3D three_d) {
+                Scale3D self;
+                self._tag = detail::Scale3DTag::ThreeD;
+                self._data.three_d = std::move(three_d);
+                return std::move(self);
+            }
+
+            /// Uniform scaling factor along all axis.
+            static Scale3D uniform(float uniform) {
+                Scale3D self;
+                self._tag = detail::Scale3DTag::Uniform;
+                self._data.uniform = std::move(uniform);
+                return std::move(self);
             }
 
             void swap(Scale3D& other) noexcept {

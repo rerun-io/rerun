@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <new>
+#include <utility>
 
 #include "../datatypes/quaternion.hpp"
 #include "../datatypes/rotation_axis_angle.hpp"
@@ -54,6 +56,22 @@ namespace rr {
             Rotation3D& operator=(Rotation3D&& other) noexcept {
                 this->swap(other);
                 return *this;
+            }
+
+            /// Rotation defined by a quaternion.
+            static Rotation3D quaternion(rr::datatypes::Quaternion quaternion) {
+                Rotation3D self;
+                self._tag = detail::Rotation3DTag::Quaternion;
+                self._data.quaternion = std::move(quaternion);
+                return std::move(self);
+            }
+
+            /// Rotation defined with an axis and an angle.
+            static Rotation3D axis_angle(rr::datatypes::RotationAxisAngle axis_angle) {
+                Rotation3D self;
+                self._tag = detail::Rotation3DTag::AxisAngle;
+                self._data.axis_angle = std::move(axis_angle);
+                return std::move(self);
             }
 
             void swap(Rotation3D& other) noexcept {
