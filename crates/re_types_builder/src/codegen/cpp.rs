@@ -337,7 +337,14 @@ impl QuotedObject {
                     let tag_ident = format_ident!("Tag_{}", obj_field.name);
                     let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
 
-                    if let Type::Array { elem_type, length } = &obj_field.typ {
+                    if obj_field.typ.is_pod(objects) {
+                        let comment = comment("Plain Old Data (POD): requires no destructor");
+                        quote! {
+                            case detail::#tag_ident: {
+                                break; #comment
+                            }
+                        }
+                    } else if let Type::Array { elem_type, length } = &obj_field.typ {
                         // We need special casing for destroying arrays in C++:
                         let elem_type = quote_element_type(&mut hpp_includes, elem_type);
                         let length = proc_macro2::Literal::usize_unsuffixed(*length);

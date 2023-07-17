@@ -43,14 +43,10 @@ namespace rr {
             ~AffixFuzzer3() {
                 switch (this->_tag) {
                     case detail::Tag_degrees: {
-                        typedef float TypeAlias;
-                        _data.degrees.~TypeAlias();
-                        break;
+                        break; // Plain Old Data (POD): requires no destructor
                     }
                     case detail::Tag_radians: {
-                        typedef std::optional<float> TypeAlias;
-                        _data.radians.~TypeAlias();
-                        break;
+                        break; // Plain Old Data (POD): requires no destructor
                     }
                     case detail::Tag_craziness: {
                         typedef std::vector<rr::datatypes::AffixFuzzer1> TypeAlias;
@@ -58,11 +54,7 @@ namespace rr {
                         break;
                     }
                     case detail::Tag_fixed_size_shenanigans: {
-                        typedef float TypeAlias;
-                        for (size_t i = 3; i > 0; i -= 1) {
-                            _data.fixed_size_shenanigans[i - 1].~TypeAlias();
-                        }
-                        break;
+                        break; // Plain Old Data (POD): requires no destructor
                     }
                 }
             }
