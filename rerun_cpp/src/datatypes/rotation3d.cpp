@@ -2,5 +2,3 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/rotation3d.fbs"
 
 #include "rotation3d.hpp"
-
-// TODO(#2647): code-gen for C++

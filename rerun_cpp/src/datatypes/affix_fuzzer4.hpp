@@ -3,10 +3,56 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <utility>
+#include <vector>
+
+#include "../datatypes/affix_fuzzer3.hpp"
+
 namespace rr {
+    namespace detail {
+        enum AffixFuzzer4Tag {
+            Tag_single_required,
+            Tag_many_required,
+            Tag_many_optional,
+        };
+
+        union AffixFuzzer4Data {
+            rr::datatypes::AffixFuzzer3 single_required;
+
+            std::vector<rr::datatypes::AffixFuzzer3> many_required;
+
+            std::optional<std::vector<rr::datatypes::AffixFuzzer3>> many_optional;
+
+            ~AffixFuzzer4Data() {}
+        };
+
+    } // namespace detail
+
     namespace datatypes {
         struct AffixFuzzer4 {
-            // TODO(#2647): code-gen for C++
+          private:
+            detail::AffixFuzzer4Tag _tag;
+            detail::AffixFuzzer4Data _data;
+
+          public:
+            ~AffixFuzzer4() {
+                switch (this->_tag) {
+                    case detail::Tag_single_required: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                    case detail::Tag_many_required: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                    case detail::Tag_many_optional: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                }
+            }
         };
     } // namespace datatypes
 } // namespace rr

@@ -2,5 +2,3 @@
 // Based on "crates/re_types/definitions/rerun/components/draw_order.fbs"
 
 #include "draw_order.hpp"
-
-// TODO(#2647): code-gen for C++

@@ -3,11 +3,50 @@
 
 #pragma once
 
+#include <cstdint>
+#include <utility>
+
+#include "../datatypes/vec3d.hpp"
+
 namespace rr {
+    namespace detail {
+        enum Scale3DTag {
+            Tag_ThreeD,
+            Tag_Uniform,
+        };
+
+        union Scale3DData {
+            /// Individual scaling factors for each axis, distorting the original object.
+            rr::datatypes::Vec3D three_d;
+
+            /// Uniform scaling factor along all axis.
+            float uniform;
+
+            ~Scale3DData() {}
+        };
+
+    } // namespace detail
+
     namespace datatypes {
         /// 3D scaling factor, part of a transform representation.
         struct Scale3D {
-            // TODO(#2647): code-gen for C++
+          private:
+            detail::Scale3DTag _tag;
+            detail::Scale3DData _data;
+
+          public:
+            ~Scale3D() {
+                switch (this->_tag) {
+                    case detail::Tag_ThreeD: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                    case detail::Tag_Uniform: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                }
+            }
         };
     } // namespace datatypes
 } // namespace rr

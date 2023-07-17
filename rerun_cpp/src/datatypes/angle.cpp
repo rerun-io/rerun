@@ -2,5 +2,3 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/angle.fbs"
 
 #include "angle.hpp"
-
-// TODO(#2647): code-gen for C++

@@ -3,11 +3,49 @@
 
 #pragma once
 
+#include <cstdint>
+#include <utility>
+
+#include "../datatypes/translation_and_mat3x3.hpp"
+#include "../datatypes/translation_rotation_scale3d.hpp"
+
 namespace rr {
+    namespace detail {
+        enum Transform3DTag {
+            Tag_TranslationAndMat3x3,
+            Tag_TranslationRotationScale,
+        };
+
+        union Transform3DData {
+            rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3;
+
+            rr::datatypes::TranslationRotationScale3D translation_rotation_scale;
+
+            ~Transform3DData() {}
+        };
+
+    } // namespace detail
+
     namespace datatypes {
         /// Representation of a 3D affine transform.
         struct Transform3D {
-            // TODO(#2647): code-gen for C++
+          private:
+            detail::Transform3DTag _tag;
+            detail::Transform3DData _data;
+
+          public:
+            ~Transform3D() {
+                switch (this->_tag) {
+                    case detail::Tag_TranslationAndMat3x3: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                    case detail::Tag_TranslationRotationScale: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                }
+            }
         };
     } // namespace datatypes
 } // namespace rr

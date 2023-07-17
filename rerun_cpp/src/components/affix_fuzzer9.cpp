@@ -2,5 +2,3 @@
 // Based on "crates/re_types/definitions/rerun/testing/components/fuzzy.fbs"
 
 #include "affix_fuzzer9.hpp"
-
-// TODO(#2647): code-gen for C++

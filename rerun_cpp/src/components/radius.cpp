@@ -2,5 +2,3 @@
 // Based on "crates/re_types/definitions/rerun/components/radius.fbs"
 
 #include "radius.hpp"
-
-// TODO(#2647): code-gen for C++

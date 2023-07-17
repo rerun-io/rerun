@@ -3,11 +3,51 @@
 
 #pragma once
 
+#include <cstdint>
+#include <utility>
+
+#include "../datatypes/quaternion.hpp"
+#include "../datatypes/rotation_axis_angle.hpp"
+
 namespace rr {
+    namespace detail {
+        enum Rotation3DTag {
+            Tag_Quaternion,
+            Tag_AxisAngle,
+        };
+
+        union Rotation3DData {
+            /// Rotation defined by a quaternion.
+            rr::datatypes::Quaternion quaternion;
+
+            /// Rotation defined with an axis and an angle.
+            rr::datatypes::RotationAxisAngle axis_angle;
+
+            ~Rotation3DData() {}
+        };
+
+    } // namespace detail
+
     namespace datatypes {
         /// A 3D rotation.
         struct Rotation3D {
-            // TODO(#2647): code-gen for C++
+          private:
+            detail::Rotation3DTag _tag;
+            detail::Rotation3DData _data;
+
+          public:
+            ~Rotation3D() {
+                switch (this->_tag) {
+                    case detail::Tag_Quaternion: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                    case detail::Tag_AxisAngle: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                }
+            }
         };
     } // namespace datatypes
 } // namespace rr

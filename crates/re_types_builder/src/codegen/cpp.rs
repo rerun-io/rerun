@@ -194,7 +194,7 @@ impl QuotedObject {
     }
 
     fn from_struct(obj: &crate::Object) -> QuotedObject {
-        let obj_kind_ident = format_ident!("{}", obj.kind.plural_snake_case());
+        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case());
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}");
         let quoted_docs = quote_docstrings(&obj.docs);
@@ -205,7 +205,13 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let declaration = quote_declaration(&mut hpp_includes, obj_field, false).0;
+                let declaration = quote_declaration_with_docstring(
+                    &mut hpp_includes,
+                    obj_field,
+                    &format_ident!("{}", obj_field.name),
+                    false,
+                )
+                .0;
                 quote! {
                     #NEWLINE_TOKEN
                     #declaration
@@ -217,7 +223,7 @@ impl QuotedObject {
             #hpp_includes
 
             namespace rr {
-                namespace #obj_kind_ident {
+                namespace #namespace_ident {
                     #quoted_docs
                     struct #pascal_case_ident {
                         #(#field_declarations;)*
@@ -226,32 +232,133 @@ impl QuotedObject {
             }
         };
 
-        let cpp = quote! {
-            #TODO_TOKEN
-        };
+        let cpp = quote! {};
 
         Self { hpp, cpp }
     }
 
     fn from_union(obj: &crate::Object) -> QuotedObject {
-        let obj_kind_ident = format_ident!("{}", obj.kind.plural_snake_case());
+        // We implement sum-types as tagged unions:
+        //
+        // enum Rotation3DTag {
+        //     Tag_Quaternion,
+        //     Tag_AxisAngle,
+        // };
+        //
+        // union Rotation3DData {
+        //     Quaternion quaternion;
+        //     AxisAngle axis_angle;
+        // };
+        //
+        // struct Rotation3D {
+        //     Rotation3DTag _tag;
+        //     Rotation3DData _data;
+        // };
+
+        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case());
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}");
         let quoted_docs = quote_docstrings(&obj.docs);
 
+        let tag_typename = format_ident!("{pascal_case_name}Tag");
+        let data_typename = format_ident!("{pascal_case_name}Data");
+
+        let tag_fields = obj
+            .fields
+            .iter()
+            .map(|obj_field| format_ident!("Tag_{}", obj_field.name));
+
+        let mut hpp_includes = Includes::default();
+
+        let enum_data_declarations = obj
+            .fields
+            .iter()
+            .map(|obj_field| {
+                let declaration = quote_declaration_with_docstring(
+                    &mut hpp_includes,
+                    obj_field,
+                    &format_ident!("{}", crate::to_snake_case(&obj_field.name)),
+                    false,
+                )
+                .0;
+                quote! {
+                    #NEWLINE_TOKEN
+                    #declaration
+                }
+            })
+            .collect_vec();
+
+        let destructor_match_arms = obj
+            .fields
+            .iter()
+            .map(|obj_field| {
+                let tag_ident = format_ident!("Tag_{}", obj_field.name);
+                // let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                // TODO(emilk): union destruction
+                // Destroying array types is irritating, because we need to iterate through all fields.
+                // `foo.~int[3]` is not valid C++, but
+                // `typedef TypeAlias int[3]; foo.~TypeAlias();` is.
+                // let typedef_declaration = quote_declaration(
+                //     &mut hpp_includes,
+                //     obj_field,
+                //     &format_ident!("TypeAlias"),
+                //     false,
+                // )
+                // .0;
+                hpp_includes.system.insert("utility".to_owned()); // std::move
+                quote! {
+                    case detail::#tag_ident: {
+                        // typedef #typedef_declaration;
+                        // _data.#field_ident.~TypeAlias();
+                        #TODO_TOKEN
+                        break;
+                    }
+                }
+            })
+            .collect_vec();
+
         let hpp = quote! {
+            #hpp_includes
             namespace rr {
-                namespace #obj_kind_ident {
+                namespace detail {
+                    enum #tag_typename {
+                        #(#tag_fields,)*
+                    };
+                    #NEWLINE_TOKEN #NEWLINE_TOKEN
+
+                    union #data_typename {
+                        #(#enum_data_declarations;)*
+
+                        #NEWLINE_TOKEN #NEWLINE_TOKEN
+
+                        ~#data_typename() {}
+                    };
+
+                    #NEWLINE_TOKEN #NEWLINE_TOKEN
+
+                }
+                #NEWLINE_TOKEN #NEWLINE_TOKEN
+
+                namespace #namespace_ident {
                     #quoted_docs
                     struct #pascal_case_ident {
-                        #TODO_TOKEN
+                    private:
+                        detail::#tag_typename  _tag;
+                        detail::#data_typename _data;
+
+                        #NEWLINE_TOKEN #NEWLINE_TOKEN
+
+                    public:
+                        ~#pascal_case_ident() {
+                            switch (this->_tag) {
+                                #(#destructor_match_arms)*
+                            }
+                        }
                     };
                 }
             }
         };
-        let cpp = quote! {
-            #TODO_TOKEN
-        };
+        let cpp = quote! {};
 
         Self { hpp, cpp }
     }
@@ -306,12 +413,35 @@ impl quote::ToTokens for Includes {
 /// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
 /// becomes just `String`.
 /// The returned boolean indicates whether there was anything to unwrap at all.
+fn quote_declaration_with_docstring(
+    includes: &mut Includes,
+    obj_field: &ObjectField,
+    name: &syn::Ident,
+    unwrap: bool,
+) -> (TokenStream, bool) {
+    let (quoted, unwrapped) = quote_declaration(includes, obj_field, name, unwrap);
+
+    let docstring = quote_docstrings(&obj_field.docs);
+
+    let quoted = quote! {
+        #docstring
+        #quoted
+    };
+
+    (quoted, unwrapped)
+}
+
+/// Returns type name as string and whether it was force unwrapped.
+///
+/// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
+/// becomes just `String`.
+/// The returned boolean indicates whether there was anything to unwrap at all.
 fn quote_declaration(
     includes: &mut Includes,
     obj_field: &ObjectField,
+    name: &syn::Ident,
     unwrap: bool,
 ) -> (TokenStream, bool) {
-    let name = format_ident!("{}", obj_field.name);
     let quoted = if obj_field.is_nullable {
         includes.system.insert("optional".to_owned());
         match &obj_field.typ {
@@ -392,13 +522,6 @@ fn quote_declaration(
                 quote! { #type_name #name }
             }
         }
-    };
-
-    let docstring = quote_docstrings(&obj_field.docs);
-
-    let quoted = quote! {
-        #docstring
-        #quoted
     };
 
     let unwrapped = unwrap && matches!(obj_field.typ, Type::Array { .. } | Type::Vector { .. });

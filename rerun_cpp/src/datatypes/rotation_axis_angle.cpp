@@ -2,5 +2,3 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/rotation_axis_angle.fbs"
 
 #include "rotation_axis_angle.hpp"
-
-// TODO(#2647): code-gen for C++

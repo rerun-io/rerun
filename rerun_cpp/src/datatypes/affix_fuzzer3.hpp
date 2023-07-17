@@ -3,10 +3,63 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <utility>
+#include <vector>
+
+#include "../datatypes/affix_fuzzer1.hpp"
+
 namespace rr {
+    namespace detail {
+        enum AffixFuzzer3Tag {
+            Tag_degrees,
+            Tag_radians,
+            Tag_craziness,
+            Tag_fixed_size_shenanigans,
+        };
+
+        union AffixFuzzer3Data {
+            float degrees;
+
+            std::optional<float> radians;
+
+            std::vector<rr::datatypes::AffixFuzzer1> craziness;
+
+            float fixed_size_shenanigans[3];
+
+            ~AffixFuzzer3Data() {}
+        };
+
+    } // namespace detail
+
     namespace datatypes {
         struct AffixFuzzer3 {
-            // TODO(#2647): code-gen for C++
+          private:
+            detail::AffixFuzzer3Tag _tag;
+            detail::AffixFuzzer3Data _data;
+
+          public:
+            ~AffixFuzzer3() {
+                switch (this->_tag) {
+                    case detail::Tag_degrees: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                    case detail::Tag_radians: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                    case detail::Tag_craziness: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                    case detail::Tag_fixed_size_shenanigans: {
+                        // TODO(#2647): code-gen for C++
+                        break;
+                    }
+                }
+            }
         };
     } // namespace datatypes
 } // namespace rr

@@ -2,5 +2,3 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/translation_rotation_scale3d.fbs"
 
 #include "translation_rotation_scale3d.hpp"
-
-// TODO(#2647): code-gen for C++

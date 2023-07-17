@@ -2,5 +2,3 @@
 // Based on "crates/re_types/definitions/rerun/testing/datatypes/fuzzy.fbs"
 
 #include "flattened_scalar.hpp"
-
-// TODO(#2647): code-gen for C++

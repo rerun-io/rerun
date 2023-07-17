@@ -2,5 +2,3 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/quaternion.fbs"
 
 #include "quaternion.hpp"
-
-// TODO(#2647): code-gen for C++
