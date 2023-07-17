@@ -5,6 +5,8 @@
 
 namespace rr {
     namespace datatypes {
-        // TODO(#2647): code-gen for C++
-    }
+        struct AffixFuzzer4 {
+            // TODO(#2647): code-gen for C++
+        };
+    } // namespace datatypes
 } // namespace rr

@@ -5,7 +5,10 @@
 
 #include <cstdint>
 #include <optional>
-#include <vector>
+
+#include "../datatypes/rotation3d.hpp"
+#include "../datatypes/scale3d.hpp"
+#include "../datatypes/vec3d.hpp"
 
 namespace rr {
     namespace datatypes {

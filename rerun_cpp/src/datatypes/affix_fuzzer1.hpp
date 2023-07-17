@@ -5,7 +5,10 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
+
+#include "../datatypes/flattened_scalar.hpp"
 
 namespace rr {
     namespace datatypes {

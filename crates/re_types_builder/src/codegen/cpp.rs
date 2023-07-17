@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use rayon::prelude::*;
@@ -117,8 +118,7 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
             )
             .replace("< ", "<")
             .replace(" >", ">")
-            .replace(" ::", "::")
-            .replace("crate::", "rr::"),
+            .replace(" ::", "::"),
     );
     code.push('\n');
 
@@ -191,23 +191,44 @@ impl QuotedObject {
         let obj_kind_ident = format_ident!("{}", obj.kind.plural_snake_case());
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}");
-        let hash = quote! { # };
+
+        let mut hpp_includes = Includes::default();
 
         let field_declarations = obj
             .fields
             .iter()
-            .map(|obj_field| quote_declaration(obj_field, false).0);
+            .map(|obj_field| quote_declaration(&mut hpp_includes, obj_field, false).0)
+            .collect_vec();
 
         let hpp = quote! {
-            #hash include <cstdint> #NEWLINE_TOKEN
-            #hash include <optional> #NEWLINE_TOKEN
-            #hash include <vector> #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
+            #hpp_includes
 
             namespace rr {
                 namespace #obj_kind_ident {
                     struct #pascal_case_ident {
                         #(#field_declarations;)*
+                    };
+                }
+            }
+        };
+
+        let cpp = quote! {
+            #TODO_TOKEN
+        };
+
+        Self { hpp, cpp }
+    }
+
+    fn from_union(obj: &crate::Object) -> QuotedObject {
+        let obj_kind_ident = format_ident!("{}", obj.kind.plural_snake_case());
+        let pascal_case_name = &obj.name;
+        let pascal_case_ident = format_ident!("{pascal_case_name}");
+
+        let hpp = quote! {
+            namespace rr {
+                namespace #obj_kind_ident {
+                    struct #pascal_case_ident {
+                        #TODO_TOKEN
                     };
                 }
             }
@@ -218,22 +239,49 @@ impl QuotedObject {
 
         Self { hpp, cpp }
     }
+}
 
-    fn from_union(obj: &crate::Object) -> QuotedObject {
-        let obj_kind_ident = format_ident!("{}", obj.kind.plural_snake_case());
+/// Keep track of necessary includes for a file.
+struct Includes {
+    /// `#include <vector>` etc
+    system: BTreeSet<String>,
 
-        let hpp = quote! {
-            namespace rr {
-                namespace #obj_kind_ident {
-                    #TODO_TOKEN
-                }
-            }
+    /// `#include datatypes.hpp"` etc
+    local: BTreeSet<String>,
+}
+
+impl Default for Includes {
+    fn default() -> Self {
+        let mut slf = Self {
+            system: BTreeSet::new(),
+            local: BTreeSet::new(),
         };
-        let cpp = quote! {
-            #TODO_TOKEN
-        };
+        slf.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
+        slf
+    }
+}
 
-        Self { hpp, cpp }
+impl quote::ToTokens for Includes {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Self { system, local } = self;
+
+        let hash = quote! { # };
+        let system = system.iter().map(|name| {
+            let name = format_ident!("{}", name);
+            quote! { #hash include <#name> #NEWLINE_TOKEN }
+        });
+        let local = local.iter().map(|name| {
+            quote! { #hash include #name #NEWLINE_TOKEN }
+        });
+
+        quote! {
+            #(#system)*
+            #NEWLINE_TOKEN
+            #(#local)*
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+        }
+        .to_tokens(tokens);
     }
 }
 
@@ -242,94 +290,97 @@ impl QuotedObject {
 /// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
 /// becomes just `String`.
 /// The returned boolean indicates whether there was anything to unwrap at all.
-fn quote_declaration(obj_field: &ObjectField, unwrap: bool) -> (TokenStream, bool) {
-    let obj_field_type = TypeTokenizer { obj_field, unwrap };
-    let unwrapped = unwrap && matches!(obj_field.typ, Type::Array { .. } | Type::Vector { .. });
-    (quote!(#obj_field_type), unwrapped)
-}
-
-struct TypeTokenizer<'a> {
-    obj_field: &'a ObjectField,
+fn quote_declaration(
+    includes: &mut Includes,
+    obj_field: &ObjectField,
     unwrap: bool,
-}
-
-impl quote::ToTokens for TypeTokenizer<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self { obj_field, unwrap } = self;
-
-        let name = format_ident!("{}", obj_field.name);
-        if obj_field.is_nullable {
-            match &obj_field.typ {
-                Type::UInt8 => quote! { std::optional<uint8_t> #name },
-                Type::UInt16 => quote! { std::optional<uint16_t> #name },
-                Type::UInt32 => quote! { std::optional<uint32_t> #name },
-                Type::UInt64 => quote! { std::optional<uint64_t> #name },
-                Type::Int8 => quote! { std::optional<int8_t> #name },
-                Type::Int16 => quote! { std::optional<int16_t> #name },
-                Type::Int32 => quote! { std::optional<int32_t> #name },
-                Type::Int64 => quote! { std::optional<int64_t> #name },
-                Type::Bool => quote! { std::optional<bool> #name },
-                Type::Float16 => unimplemented!("{:#?}", obj_field.typ), // NOLINT
-                Type::Float32 => quote! { std::optional<float> #name },
-                Type::Float64 => quote! { std::optional<double> #name },
-                Type::String => quote! { std::optional<std::string> #name },
-                Type::Array { .. } => unimplemented!("{:#?}", obj_field.typ), // NOLINT
-                Type::Vector { elem_type } => {
-                    let elem_type = quote_element_type(elem_type);
-                    if *unwrap {
-                        quote! { std::optional<#elem_type> #name }
-                    } else {
-                        quote! { std::optional<std::vector<#elem_type>> #name }
-                    }
-                }
-                Type::Object(fqname) => {
-                    let type_name = quote_fqname_as_type_path(fqname);
-                    quote! { std::optional<#type_name> #name }
+) -> (TokenStream, bool) {
+    let name = format_ident!("{}", obj_field.name);
+    let quoted = if obj_field.is_nullable {
+        includes.system.insert("optional".to_owned());
+        match &obj_field.typ {
+            Type::UInt8 => quote! { std::optional<uint8_t> #name },
+            Type::UInt16 => quote! { std::optional<uint16_t> #name },
+            Type::UInt32 => quote! { std::optional<uint32_t> #name },
+            Type::UInt64 => quote! { std::optional<uint64_t> #name },
+            Type::Int8 => quote! { std::optional<int8_t> #name },
+            Type::Int16 => quote! { std::optional<int16_t> #name },
+            Type::Int32 => quote! { std::optional<int32_t> #name },
+            Type::Int64 => quote! { std::optional<int64_t> #name },
+            Type::Bool => quote! { std::optional<bool> #name },
+            Type::Float16 => unimplemented!("float16 not yet implemented for C++"), // NOLINT
+            Type::Float32 => quote! { std::optional<float> #name },
+            Type::Float64 => quote! { std::optional<double> #name },
+            Type::String => {
+                includes.system.insert("string".to_owned());
+                quote! { std::optional<std::string> #name }
+            }
+            Type::Array { .. } => unimplemented!(
+                "Optional fixed-size array not yet implemented in C++. {:#?}",
+                obj_field.typ
+            ), // NOLINT
+            Type::Vector { elem_type } => {
+                let elem_type = quote_element_type(includes, elem_type);
+                if unwrap {
+                    quote! { std::optional<#elem_type> #name }
+                } else {
+                    includes.system.insert("vector".to_owned());
+                    quote! { std::optional<std::vector<#elem_type>> #name }
                 }
             }
-        } else {
-            match &obj_field.typ {
-                Type::UInt8 => quote! { uint8_t #name },
-                Type::UInt16 => quote! { uint16_t #name },
-                Type::UInt32 => quote! { uint32_t #name },
-                Type::UInt64 => quote! { uint64_t #name },
-                Type::Int8 => quote! { int8_t #name },
-                Type::Int16 => quote! { int16_t #name },
-                Type::Int32 => quote! { int32_t #name },
-                Type::Int64 => quote! { int64_t #name },
-                Type::Bool => quote! { bool #name },
-                Type::Float16 => unimplemented!("{:#?}", obj_field.typ), // NOLINT
-                Type::Float32 => quote! { float #name },
-                Type::Float64 => quote! { double #name },
-                Type::String => quote! { std::string #name },
-                Type::Array { elem_type, length } => {
-                    let elem_type = quote_element_type(elem_type);
-                    let length = proc_macro2::Literal::usize_unsuffixed(*length);
-                    if *unwrap {
-                        quote! { #elem_type #name }
-                    } else {
-                        quote! { #elem_type #name[#length] }
-                    }
-                }
-                Type::Vector { elem_type } => {
-                    let elem_type = quote_element_type(elem_type);
-                    if *unwrap {
-                        quote! { #elem_type #name }
-                    } else {
-                        quote! { std::vector<#elem_type> #name }
-                    }
-                }
-                Type::Object(fqname) => {
-                    let type_name = quote_fqname_as_type_path(fqname);
-                    quote! { #type_name #name }
-                }
+            Type::Object(fqname) => {
+                let type_name = quote_fqname_as_type_path(includes, fqname);
+                quote! { std::optional<#type_name> #name }
             }
         }
-        .to_tokens(tokens);
-    }
+    } else {
+        match &obj_field.typ {
+            Type::UInt8 => quote! { uint8_t #name },
+            Type::UInt16 => quote! { uint16_t #name },
+            Type::UInt32 => quote! { uint32_t #name },
+            Type::UInt64 => quote! { uint64_t #name },
+            Type::Int8 => quote! { int8_t #name },
+            Type::Int16 => quote! { int16_t #name },
+            Type::Int32 => quote! { int32_t #name },
+            Type::Int64 => quote! { int64_t #name },
+            Type::Bool => quote! { bool #name },
+            Type::Float16 => unimplemented!("float16 not yet implemented for C++"), // NOLINT
+            Type::Float32 => quote! { float #name },
+            Type::Float64 => quote! { double #name },
+            Type::String => {
+                includes.system.insert("string".to_owned());
+                quote! { std::string #name }
+            }
+            Type::Array { elem_type, length } => {
+                let elem_type = quote_element_type(includes, elem_type);
+                let length = proc_macro2::Literal::usize_unsuffixed(*length);
+                if unwrap {
+                    quote! { #elem_type #name }
+                } else {
+                    quote! { #elem_type #name[#length] }
+                }
+            }
+            Type::Vector { elem_type } => {
+                let elem_type = quote_element_type(includes, elem_type);
+                if unwrap {
+                    quote! { #elem_type #name }
+                } else {
+                    includes.system.insert("vector".to_owned());
+                    quote! { std::vector<#elem_type> #name }
+                }
+            }
+            Type::Object(fqname) => {
+                let type_name = quote_fqname_as_type_path(includes, fqname);
+                quote! { #type_name #name }
+            }
+        }
+    };
+
+    let unwrapped = unwrap && matches!(obj_field.typ, Type::Array { .. } | Type::Vector { .. });
+    (quoted, unwrapped)
 }
 
-fn quote_element_type(typ: &ElementType) -> TokenStream {
+fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
     match typ {
         ElementType::UInt8 => quote! { uint8_t },
         ElementType::UInt16 => quote! { uint16_t },
@@ -340,20 +391,33 @@ fn quote_element_type(typ: &ElementType) -> TokenStream {
         ElementType::Int32 => quote! { int32_t },
         ElementType::Int64 => quote! { int64_t },
         ElementType::Bool => quote! { bool },
-        ElementType::Float16 => unimplemented!("{typ:#?}"), // NOLINT
+        ElementType::Float16 => unimplemented!("float16 not yet implemented for C++"), // NOLINT
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
-        ElementType::String => quote! { std::string },
-        ElementType::Object(fqname) => quote_fqname_as_type_path(fqname),
+        ElementType::String => {
+            includes.system.insert("string".to_owned());
+            quote! { std::string }
+        }
+        ElementType::Object(fqname) => quote_fqname_as_type_path(includes, fqname),
     }
 }
 
-fn quote_fqname_as_type_path(fqname: &str) -> TokenStream {
+fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStream {
     let fqname = fqname
         .replace(".testing", "")
         .replace('.', "::")
         .replace("crate", "rr")
         .replace("rerun", "rr");
+
+    // fqname example: "rr::datatypes::Transform3D"
+    let components = fqname.split("::").collect::<Vec<_>>();
+    if let ["rr", obj_kind, typname] = &components[..] {
+        includes.local.insert(format!(
+            "../{obj_kind}/{}.hpp",
+            crate::to_snake_case(typname)
+        ));
+    }
+
     let expr: syn::TypePath = syn::parse_str(&fqname).unwrap();
     quote!(#expr)
 }

@@ -5,7 +5,9 @@
 
 #include <cstdint>
 #include <optional>
-#include <vector>
+
+#include "../datatypes/mat3x3.hpp"
+#include "../datatypes/vec3d.hpp"
 
 namespace rr {
     namespace datatypes {

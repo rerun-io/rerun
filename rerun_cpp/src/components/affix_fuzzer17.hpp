@@ -7,6 +7,8 @@
 #include <optional>
 #include <vector>
 
+#include "../datatypes/affix_fuzzer3.hpp"
+
 namespace rr {
     namespace components {
         struct AffixFuzzer17 {

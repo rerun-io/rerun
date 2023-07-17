@@ -4,8 +4,7 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
-#include <vector>
+#include <string>
 
 namespace rr {
     namespace components {

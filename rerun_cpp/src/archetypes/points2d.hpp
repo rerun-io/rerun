@@ -7,6 +7,15 @@
 #include <optional>
 #include <vector>
 
+#include "../components/class_id.hpp"
+#include "../components/color.hpp"
+#include "../components/draw_order.hpp"
+#include "../components/instance_key.hpp"
+#include "../components/keypoint_id.hpp"
+#include "../components/label.hpp"
+#include "../components/point2d.hpp"
+#include "../components/radius.hpp"
+
 namespace rr {
     namespace archetypes {
         struct Points2D {

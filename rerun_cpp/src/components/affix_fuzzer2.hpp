@@ -4,8 +4,8 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
-#include <vector>
+
+#include "../datatypes/affix_fuzzer1.hpp"
 
 namespace rr {
     namespace components {

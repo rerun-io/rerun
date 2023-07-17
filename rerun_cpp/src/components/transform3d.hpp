@@ -4,8 +4,8 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
-#include <vector>
+
+#include "../datatypes/transform3d.hpp"
 
 namespace rr {
     namespace components {

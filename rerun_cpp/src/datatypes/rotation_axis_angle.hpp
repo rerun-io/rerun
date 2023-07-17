@@ -4,8 +4,9 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
-#include <vector>
+
+#include "../datatypes/angle.hpp"
+#include "../datatypes/vec3d.hpp"
 
 namespace rr {
     namespace datatypes {

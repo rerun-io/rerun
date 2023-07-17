@@ -4,8 +4,8 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
-#include <vector>
+
+#include "../datatypes/point2d.hpp"
 
 namespace rr {
     namespace components {

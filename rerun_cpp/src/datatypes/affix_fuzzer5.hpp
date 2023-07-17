@@ -5,7 +5,8 @@
 
 #include <cstdint>
 #include <optional>
-#include <vector>
+
+#include "../datatypes/affix_fuzzer4.hpp"
 
 namespace rr {
     namespace datatypes {
