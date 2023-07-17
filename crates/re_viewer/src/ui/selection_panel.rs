@@ -598,7 +598,7 @@ fn transform3d_visualization_ui(
                     .speed(speed),
             )
             .on_hover_text(
-                "How long the arrows should be in scene units. Double-click to reset to auto.",
+                "How long the arrows should be in the entity's own coordinate system. Double-click to reset to auto.",
             );
         if response.double_clicked() {
             // reset to auto - the exact value will be restored somewhere else
