@@ -31,21 +31,6 @@ impl ViewPartSystem for Transform3DArrowsPart {
         let transforms = view_ctx.get::<TransformContext>()?;
         let counter = view_ctx.get::<PrimitiveCounter>()?;
 
-        // Origin gizmo if requested.
-        // TODO(#2522): This is incompatible with the refactor in #2522 which no longer allows access to the space_view_state.
-        //              Does this need to move to a context?
-        // TODO:
-        // if space_view_state.state_3d.show_axes {
-        //     let axis_length = 1.0; // The axes are also a measuring stick
-        //     add_axis_lines(
-        //         &mut line_builder,
-        //         macaw::Affine3A::IDENTITY,
-        //         None,
-        //         axis_length,
-        //         re_renderer::OutlineMaskPreference::NONE,
-        //     );
-        // }
-
         let store = &ctx.store_db.entity_db.data_store;
         let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
         for (ent_path, props) in query.iter_entities() {

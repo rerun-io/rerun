@@ -17,14 +17,15 @@ mod transform3d_arrows;
 pub use cameras::CamerasPart;
 pub use images::Image;
 pub use images::ImagesPart;
-use re_viewer_context::SpaceViewClassRegistryError;
 pub use spatial_view_part::SpatialViewPartData;
+pub use transform3d_arrows::add_axis_lines;
 
 use ahash::HashMap;
 use std::sync::Arc;
 
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
+use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
     auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewSystemRegistry,
     ViewContextCollection, ViewPartCollection, ViewQuery,

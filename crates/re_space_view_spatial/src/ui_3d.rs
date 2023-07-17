@@ -322,6 +322,20 @@ pub fn view_3d(
     let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx)
         .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
+    // Origin gizmo if requested.
+    // TODO(andreas): Move this to the transform3d_arrow scene part.
+    //              As of #2522 state is now longer accessible there, move the property to a context?
+    if state.state_3d.show_axes {
+        let axis_length = 1.0; // The axes are also a measuring stick
+        crate::parts::add_axis_lines(
+            &mut line_builder,
+            macaw::Affine3A::IDENTITY,
+            None,
+            axis_length,
+            re_renderer::OutlineMaskPreference::NONE,
+        );
+    }
+
     // Determine view port resolution and position.
     let resolution_in_pixel =
         gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
