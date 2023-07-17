@@ -304,7 +304,7 @@ fn create_entity_add_info(
 
     tree.visit_children_recursively(&mut |entity_path| {
         let can_add: CanAddToSpaceView =
-            if is_entity_processed_by_class(ctx, &space_view.class_name(), entity_path) {
+            if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path) {
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
                         already_added: space_view.data_blueprint.contains_entity(entity_path),

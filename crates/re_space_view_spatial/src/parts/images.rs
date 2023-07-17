@@ -4,12 +4,13 @@ use egui::NumExt;
 
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
+use re_arrow_store::LatestAtQuery;
 use re_components::{
     ColorRGBA, Component as _, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor,
     TensorDataMeaning,
 };
 use re_data_store::{EntityPath, EntityProperties};
-use re_log_types::EntityPathHash;
+use re_log_types::{ComponentName, EntityPathHash, TimeInt, Timeline};
 use re_query::{EntityView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
@@ -376,6 +377,22 @@ impl ViewPartSystem for ImagesPart {
             ColorRGBA::name(),
             DrawOrder::name(),
         ]
+    }
+
+    fn queries_any_components_of(
+        &self,
+        store: &re_arrow_store::DataStore,
+        ent_path: &EntityPath,
+        _components: &[ComponentName],
+    ) -> bool {
+        if let Some(tensor) = store.query_latest_component::<Tensor>(
+            ent_path,
+            &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        ) {
+            tensor.is_shaped_like_an_image() && !tensor.is_vector()
+        } else {
+            false
+        }
     }
 
     fn execute(

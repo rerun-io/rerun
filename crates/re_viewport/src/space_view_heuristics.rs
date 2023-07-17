@@ -5,7 +5,6 @@ use nohash_hasher::IntSet;
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_components::{DisconnectedSpace, Pinhole, Tensor};
 use re_data_store::EntityPath;
-use re_log_types::{Component as _, TimeInt};
 use re_viewer_context::{SpaceViewClassName, ViewPartCollection, ViewerContext};
 
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
@@ -20,10 +19,6 @@ fn is_spatial_class(class: &SpaceViewClassName) -> bool {
 
 fn is_tensor_class(class: &SpaceViewClassName) -> bool {
     class.as_str() == "Tensor"
-}
-
-fn is_bar_chart(class: &SpaceViewClassName) -> bool {
-    class.as_str() == "Bar Chart"
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +230,7 @@ fn default_created_space_views_from_candidates(
             if images_by_bucket.len() > 1 {
                 // If all images end up in the same bucket, proceed as normal. Otherwise stack images as instructed.
                 for bucket in images_by_bucket.keys() {
-                    // Ignore every image from antoher bucket. Keep all other entities.
+                    // Ignore every image from another bucket. Keep all other entities.
                     let images_of_different_size = images_by_bucket
                         .iter()
                         .filter_map(|(other_bucket, images)| {
@@ -301,7 +296,6 @@ pub fn default_queried_entities(
                     (ent_path.is_descendant_of(space_path) || ent_path == &space_path)
                         && is_entity_processed_by_part_collection(
                             ctx.store_db.store(),
-                            class,
                             &parts,
                             ent_path,
                         )
@@ -323,13 +317,17 @@ pub fn is_entity_processed_by_class(
         .space_view_class_registry
         .get_system_registry_or_log_error(class)
         .new_part_collection();
-    is_entity_processed_by_part_collection(ctx.store_db.store(), class, &parts, ent_path)
+    let result = is_entity_processed_by_part_collection(ctx.store_db.store(), &parts, ent_path);
+
+    if result && class.as_str() == "Bar Chart" {
+        println!("is_entity_processed_by_class: {ent_path} -> {result}");
+    }
+    result
 }
 
 /// Returns true if an entity is processed by any of the given [`re_viewer_context::ViewPartSystem`]s.
 fn is_entity_processed_by_part_collection(
     store: &re_arrow_store::DataStore,
-    class: &SpaceViewClassName,
     parts: &ViewPartCollection,
     ent_path: &EntityPath,
 ) -> bool {
@@ -338,33 +336,8 @@ fn is_entity_processed_by_part_collection(
         .all_components(&timeline, ent_path)
         .unwrap_or_default();
     for part in parts.iter() {
-        // TODO(andreas): Use new archetype definitions which also allows for several primaries.
-        let archetype = part.archetype();
-        let primary = archetype.first();
-        if components.contains(primary) {
-            // TODO(andreas): We should avoid this kind of hardcoded knowledge of Space View Classes!
-            let is_processed = if primary == &Tensor::name() {
-                if let Some(tensor) = store.query_latest_component::<Tensor>(
-                    ent_path,
-                    &LatestAtQuery::new(timeline, TimeInt::MAX),
-                ) {
-                    if tensor.is_vector() {
-                        is_bar_chart(class)
-                    } else if tensor.is_shaped_like_an_image() {
-                        is_spatial_class(class)
-                    } else {
-                        is_tensor_class(class)
-                    }
-                } else {
-                    false
-                }
-            } else {
-                true
-            };
-
-            if is_processed {
-                return true;
-            }
+        if part.queries_any_components_of(store, ent_path, &components) {
+            return true;
         }
     }
 

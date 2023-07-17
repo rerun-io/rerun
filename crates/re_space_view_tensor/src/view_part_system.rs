@@ -1,13 +1,12 @@
 use re_arrow_store::LatestAtQuery;
 use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
-use re_log_types::{Component as _, InstanceKey};
+use re_log_types::{Component as _, ComponentName, InstanceKey, TimeInt, Timeline};
 use re_viewer_context::{
     ArchetypeDefinition, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
     ViewPartSystem, ViewQuery, ViewerContext,
 };
 
-/// A bar chart scene, with everything needed to render it.
 #[derive(Default)]
 pub struct TensorSystem {
     pub tensors: std::collections::BTreeMap<InstancePath, DecodedTensor>,
@@ -16,6 +15,23 @@ pub struct TensorSystem {
 impl ViewPartSystem for TensorSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Tensor::name()]
+    }
+
+    /// Tensor view doesn't handle 2D images, see [`TensorSystem::load_tensor_entity`]
+    fn queries_any_components_of(
+        &self,
+        store: &re_arrow_store::DataStore,
+        ent_path: &EntityPath,
+        _components: &[ComponentName],
+    ) -> bool {
+        if let Some(tensor) = store.query_latest_component::<Tensor>(
+            ent_path,
+            &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        ) {
+            !tensor.is_shaped_like_an_image()
+        } else {
+            false
+        }
     }
 
     fn execute(
