@@ -1391,6 +1391,7 @@ fn quote_arrow_serializer(
                     ).boxed()
                 }}
             }
+
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
                     let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
@@ -1414,11 +1415,10 @@ fn quote_arrow_serializer(
                     quote! {{
                         let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
                             .iter()
-                            .flatten() // NOTE: unions cannot ever be nullable at top-level
-                            .filter(|datum| matches!(***datum, #quoted_obj_name::#quoted_obj_field_name(_)))
+                            .filter(|datum| matches!(datum.as_deref(), Some(#quoted_obj_name::#quoted_obj_field_name(_))))
                             .map(|datum| {
-                                let datum = match &**datum {
-                                    #quoted_obj_name::#quoted_obj_field_name(v) => Some(v.clone()),
+                                let datum = match datum.as_deref() {
+                                    Some(#quoted_obj_name::#quoted_obj_field_name(v)) => Some(v.clone()),
                                     _ => None,
                                 } #quoted_flatten ;
 
@@ -1436,21 +1436,22 @@ fn quote_arrow_serializer(
                 let quoted_types = {
                     let quoted_obj_name = format_ident!("{}", obj.name);
                     let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                        let i = i as i8;
+                        let i = i as i8 + 1; // NOTE: +1 to account for `nulls` virtual arm
                         let quoted_obj_field_name =
                             format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
-                        quote!(#quoted_obj_name::#quoted_obj_field_name(_) => #i)
+
+                        quote!(Some(#quoted_obj_name::#quoted_obj_field_name(_)) => #i)
                     });
 
-                    quote! {{
+                    quote! {
                         #data_src
                             .iter()
-                            .flatten()
-                            .map(|v| match **v {
+                            .map(|a| match a.as_deref() {
+                                None => 0,
                                 #(#quoted_branches,)*
                             })
                             .collect()
-                    }}
+                    }
                 };
 
                 let quoted_offsets = {
@@ -1468,7 +1469,7 @@ fn quote_arrow_serializer(
                         let quoted_obj_field_name =
                             format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
                         quote! {
-                            #quoted_obj_name::#quoted_obj_field_name(_) => {
+                            Some(#quoted_obj_name::#quoted_obj_field_name(_)) => {
                                 let offset = #quoted_counter_name;
                                 #quoted_counter_name += 1;
                                 offset
@@ -1478,10 +1479,16 @@ fn quote_arrow_serializer(
 
                     quote! {{
                         #(#quoted_counters;)*
+                        let mut nulls_offset = 0;
+
                         #data_src
                             .iter()
-                            .flatten()
-                            .map(|v| match **v {
+                            .map(|v| match v.as_deref() {
+                                None => {
+                                    let offset = nulls_offset;
+                                    nulls_offset += 1;
+                                    offset
+                                }
                                 #(#quoted_branches,)*
                             })
                             .collect()
@@ -1500,7 +1507,13 @@ fn quote_arrow_serializer(
                     UnionArray::new(
                         #quoted_datatype,
                         #quoted_types,
-                        vec![#(#quoted_field_serializers,)*],
+                        vec![
+                            NullArray::new(
+                                DataType::Null,
+                                #data_src.iter().filter(|v| v.is_none()).count(),
+                            ).boxed(),
+                            #(#quoted_field_serializers,)*
+                        ],
                         Some(#quoted_offsets),
                     ).boxed()
                 }}
@@ -1623,14 +1636,26 @@ fn quote_arrow_field_serializer(
                 } else {
                     quote!(#quoted_inner_obj_type { #quoted_data_dst })
                 };
+
                 quote! {
                     .map(|datum| {
-                        let #quoted_binding = datum;
-                        #quoted_data_dst
+                        datum
+                            .map(|datum| {
+                                let #quoted_binding = datum;
+                                #quoted_data_dst
+                            })
+                            .unwrap_or_default()
                     })
+                    // NOTE: Flattening yet again since we have to deconstruct the inner list.
+                    .flatten()
                 }
             } else {
-                quote!()
+                quote! {
+                    .flatten()
+                    // NOTE: Flattening yet again since we have to deconstruct the inner list.
+                    .flatten()
+                    .cloned()
+                }
             };
 
             let quoted_create = if let DataType::List(_) = datatype {
@@ -1664,13 +1689,7 @@ fn quote_arrow_field_serializer(
 
                 let #quoted_inner_data: Vec<_> = #data_src
                     .iter()
-                    // NOTE: Flattening to remove the guaranteed layer of nullability, we don't care
-                    // about it while building the backing buffer.
-                    .flatten()
                     #quoted_transparent_mapping
-                    // NOTE: Flattening yet again since we have to deconstruct the inner list.
-                    .flatten()
-                    .map(ToOwned::to_owned)
                     // NOTE: Wrapping back into an option as the recursive call will expect the
                     // guaranteed nullability layer to be present!
                     .map(Some)
@@ -1883,6 +1902,8 @@ fn quote_arrow_deserializer(
                             &data_src,
                         );
 
+                        let i = i + 1; // NOTE: +1 to account for `nulls` virtual arm
+
                         quote! {
                             let #data_dst = {
                                 let #data_src = &*#data_src_arrays[#i];
@@ -1891,9 +1912,12 @@ fn quote_arrow_deserializer(
                         }
                     });
 
+                let obj_fqname = obj.fqname.as_str();
                 let quoted_obj_name = format_ident!("{}", obj.name);
                 let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                    let i = i as i8;
+                    let i = i as i8 + 1; // NOTE: +1 to account for `nulls` virtual arm
+
+                    let obj_field_fqname = obj_field.fqname.as_str();
                     let quoted_obj_field_name =
                         format_ident!("{}", obj_field.name.to_case(Case::Snake));
                     let quoted_obj_field_type =
@@ -1957,10 +1981,14 @@ fn quote_arrow_deserializer(
                             .map(|(i, typ)| {
                                 let offset = #data_src_offsets[i];
 
-                                Ok(Some(match typ {
-                                    #(#quoted_branches,)*
-                                    _ => unreachable!(),
-                                }))
+                                if *typ == 0 {
+                                    Ok(None)
+                                } else {
+                                    Ok(Some(match typ {
+                                        #(#quoted_branches,)*
+                                        _ => unreachable!(),
+                                    }))
+                                }
                             })
                             // NOTE: implicit Vec<Result> to Result<Vec>
                             .collect::<crate::DeserializationResult<Vec<_>>>()
