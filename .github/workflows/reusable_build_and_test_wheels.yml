@@ -48,8 +48,8 @@ env:
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
   # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: "sccache"
+  # SCCACHE_GHA_ENABLED: "true"
+  # RUSTC_WRAPPER: "sccache"
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -216,7 +216,7 @@ jobs:
           manylinux: manylinux_2_31
           container: off
           command: build
-          sccache: "true"
+          # sccache: "true"
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
