@@ -233,23 +233,20 @@ impl TransformContext {
         store: &re_arrow_store::DataStore,
         query: &LatestAtQuery,
     ) -> Option<glam::Affine3A> {
-        if let Some(transform_info) = self.transform_per_entity.get(ent_path) {
-            if let (true, Some(parent)) = (
-                transform_info.parent_pinhole.as_ref() == Some(ent_path),
-                ent_path.parent(),
-            ) {
-                self.reference_from_entity(&parent).map(|t| {
-                    t * store
-                        .query_latest_component::<Transform3D>(ent_path, query)
-                        .map_or(glam::Affine3A::IDENTITY, |transform| {
-                            transform.to_parent_from_child_transform()
-                        })
-                })
-            } else {
-                Some(transform_info.reference_from_entity)
-            }
+        let transform_info = self.transform_per_entity.get(ent_path)?;
+        if let (true, Some(parent)) = (
+            transform_info.parent_pinhole.as_ref() == Some(ent_path),
+            ent_path.parent(),
+        ) {
+            self.reference_from_entity(&parent).map(|t| {
+                t * store
+                    .query_latest_component::<Transform3D>(ent_path, query)
+                    .map_or(glam::Affine3A::IDENTITY, |transform| {
+                        transform.to_parent_from_child_transform()
+                    })
+            })
         } else {
-            None
+            Some(transform_info.reference_from_entity)
         }
     }
 
