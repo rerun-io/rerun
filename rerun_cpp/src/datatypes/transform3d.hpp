@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 
 #include "../datatypes/translation_and_mat3x3.hpp"
 #include "../datatypes/translation_rotation_scale3d.hpp"
@@ -25,6 +26,13 @@ namespace rr {
                 Transform3DData() {}
 
                 ~Transform3DData() {}
+
+                void swap(Transform3DData& other) noexcept {
+                    char temp[sizeof(Transform3DData)];
+                    std::memcpy(temp, this, sizeof(Transform3DData));
+                    std::memcpy(this, &other, sizeof(Transform3DData));
+                    std::memcpy(&other, temp, sizeof(Transform3DData));
+                }
             };
         } // namespace detail
 
@@ -37,6 +45,12 @@ namespace rr {
             Transform3D() : _tag(detail::Transform3DTag::NONE) {}
 
           public:
+            void swap(Transform3D& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
+            }
         };
     } // namespace datatypes
 } // namespace rr

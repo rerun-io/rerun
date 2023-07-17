@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -33,6 +34,13 @@ namespace rr {
                 AffixFuzzer3Data() {}
 
                 ~AffixFuzzer3Data() {}
+
+                void swap(AffixFuzzer3Data& other) noexcept {
+                    char temp[sizeof(AffixFuzzer3Data)];
+                    std::memcpy(temp, this, sizeof(AffixFuzzer3Data));
+                    std::memcpy(this, &other, sizeof(AffixFuzzer3Data));
+                    std::memcpy(&other, temp, sizeof(AffixFuzzer3Data));
+                }
             };
         } // namespace detail
 
@@ -64,6 +72,13 @@ namespace rr {
                         break; // Plain Old Data (POD): requires no destructor
                     }
                 }
+            }
+
+            void swap(AffixFuzzer3& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
             }
         };
     } // namespace datatypes

@@ -251,7 +251,7 @@ impl QuotedObject {
 
     fn from_union(objects: &Objects, obj: &crate::Object) -> QuotedObject {
         // We implement sum-types as tagged unions;
-        // This approach requires C++11.
+        // Putting non-POD types in a union requires C++11.
         //
         // enum class Rotation3DTag {
         //     NONE = 0, // Makes it possible to implement move semantics
@@ -417,7 +417,7 @@ impl QuotedObject {
             }
         };
 
-        // hpp_includes.system.insert("utility".to_owned()); // std::swap
+        hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
 
         let hpp = quote! {
             #hpp_includes
@@ -433,6 +433,13 @@ impl QuotedObject {
 
                             #data_typename() { } // Required by static constructors
                             ~#data_typename() {}
+
+                            void swap(#data_typename& other) noexcept {
+                                char temp[sizeof(#data_typename)];
+                                std::memcpy(temp, this, sizeof(#data_typename));
+                                std::memcpy(this, &other, sizeof(#data_typename));
+                                std::memcpy(&other, temp, sizeof(#data_typename));
+                            }
                         };
 
                     }
@@ -451,11 +458,16 @@ impl QuotedObject {
 
                         #destructor
 
-                        // TODO(emilk): This is useful for easily implementing move assignment and move constructor:
-                        // inline void swap(#pascal_case_ident& other) {
-                        //     std::swap(this->_tag, other._tag);
-                        //     std::swap(this->_data, other._data);
-                        // }
+                        // This is useful for easily implementing the move constructor and move assignment operator:
+                        void swap(#pascal_case_ident& other) noexcept {
+                            // Swap tags:
+                            auto tag_temp = this->_tag;
+                            this->_tag = other._tag;
+                            other._tag = tag_temp;
+
+                            // Swap data:
+                            this->_data.swap(other._data);
+                        }
                     };
                 }
             }

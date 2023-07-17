@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 
 #include "../datatypes/vec3d.hpp"
 
@@ -26,6 +27,13 @@ namespace rr {
                 Scale3DData() {}
 
                 ~Scale3DData() {}
+
+                void swap(Scale3DData& other) noexcept {
+                    char temp[sizeof(Scale3DData)];
+                    std::memcpy(temp, this, sizeof(Scale3DData));
+                    std::memcpy(this, &other, sizeof(Scale3DData));
+                    std::memcpy(&other, temp, sizeof(Scale3DData));
+                }
             };
         } // namespace detail
 
@@ -38,6 +46,12 @@ namespace rr {
             Scale3D() : _tag(detail::Scale3DTag::NONE) {}
 
           public:
+            void swap(Scale3D& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
+            }
         };
     } // namespace datatypes
 } // namespace rr

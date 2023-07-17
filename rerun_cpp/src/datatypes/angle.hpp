@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 
 namespace rr {
     namespace datatypes {
@@ -22,6 +23,13 @@ namespace rr {
                 AngleData() {}
 
                 ~AngleData() {}
+
+                void swap(AngleData& other) noexcept {
+                    char temp[sizeof(AngleData)];
+                    std::memcpy(temp, this, sizeof(AngleData));
+                    std::memcpy(this, &other, sizeof(AngleData));
+                    std::memcpy(&other, temp, sizeof(AngleData));
+                }
             };
         } // namespace detail
 
@@ -34,6 +42,12 @@ namespace rr {
             Angle() : _tag(detail::AngleTag::NONE) {}
 
           public:
+            void swap(Angle& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
+            }
         };
     } // namespace datatypes
 } // namespace rr

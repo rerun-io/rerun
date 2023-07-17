@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 
 #include "../datatypes/quaternion.hpp"
 #include "../datatypes/rotation_axis_angle.hpp"
@@ -27,6 +28,13 @@ namespace rr {
                 Rotation3DData() {}
 
                 ~Rotation3DData() {}
+
+                void swap(Rotation3DData& other) noexcept {
+                    char temp[sizeof(Rotation3DData)];
+                    std::memcpy(temp, this, sizeof(Rotation3DData));
+                    std::memcpy(this, &other, sizeof(Rotation3DData));
+                    std::memcpy(&other, temp, sizeof(Rotation3DData));
+                }
             };
         } // namespace detail
 
@@ -39,6 +47,12 @@ namespace rr {
             Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
 
           public:
+            void swap(Rotation3D& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
+            }
         };
     } // namespace datatypes
 } // namespace rr
