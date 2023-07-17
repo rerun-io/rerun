@@ -86,7 +86,7 @@ pub struct EntityProperties {
     /// Whether to show the 3D transform visualization at all.
     pub transform_3d_visible: EditableAutoValue<bool>,
 
-    /// The length of the arrows visualizing a transform in scene units local to this entity.
+    /// The length of the arrows in the entity's own coordinate system (space).
     pub transform_3d_size: EditableAutoValue<f32>,
 }
 

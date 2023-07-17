@@ -49,9 +49,9 @@ impl ViewPartSystem for Transform3DArrowsPart {
                 continue;
             }
 
-            // Apply the transform _and_ the parent transform, but if we're at a pinhole camera ignore that part.
+            // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let Some(world_from_obj) = transforms.
-                reference_from_entity_ignore_image_plane_transform(ent_path, store, &latest_at_query) else {
+                reference_from_entity_ignoring_pinhole(ent_path, store, &latest_at_query) else {
                 continue;
             };
 
@@ -62,7 +62,7 @@ impl ViewPartSystem for Transform3DArrowsPart {
 
             // Given how simple transform gizmos are it would be nice to put them all into a single line batch.
             // However, we can set object picking ids only per batch.
-            add_axis_lines(
+            add_axis_arrows(
                 &mut line_builder,
                 world_from_obj,
                 Some(ent_path),
@@ -90,7 +90,7 @@ const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
 const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
 const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
-pub fn add_axis_lines(
+pub fn add_axis_arrows(
     line_builder: &mut LineStripSeriesBuilder,
     world_from_obj: macaw::Affine3A,
     ent_path: Option<&EntityPath>,
@@ -99,12 +99,12 @@ pub fn add_axis_lines(
 ) {
     use re_renderer::renderer::LineStripFlags;
 
-    // TODO(andreas): It would be nice if could display the semantics (left/right/up) as a tooltip on hover.
+    // TODO(andreas): It would be nice if could display the ViewCoordinates axis names (left/right/up) as a tooltip on hover.
 
     let line_radius = re_renderer::Size::new_points(1.0);
 
     let mut line_batch = line_builder
-        .batch("transform gizmo")
+        .batch("axis_arrows")
         .world_from_obj(world_from_obj)
         .triangle_cap_length_factor(10.0)
         .triangle_cap_width_factor(3.0)

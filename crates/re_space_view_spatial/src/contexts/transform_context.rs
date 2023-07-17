@@ -227,7 +227,7 @@ impl TransformContext {
     ///
     /// TODO(#2663, #1025): Going forward we should have separate transform hierarchies for 2D (i.e. projected) and 3D,
     /// which would remove the need for this.
-    pub fn reference_from_entity_ignore_image_plane_transform(
+    pub fn reference_from_entity_ignoring_pinhole(
         &self,
         ent_path: &EntityPath,
         store: &re_arrow_store::DataStore,

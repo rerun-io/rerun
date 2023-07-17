@@ -327,7 +327,7 @@ pub fn view_3d(
     //              As of #2522 state is now longer accessible there, move the property to a context?
     if state.state_3d.show_axes {
         let axis_length = 1.0; // The axes are also a measuring stick
-        crate::parts::add_axis_lines(
+        crate::parts::add_axis_arrows(
             &mut line_builder,
             macaw::Affine3A::IDENTITY,
             None,

@@ -121,7 +121,7 @@ impl ResolvedAnnotationInfo {
 pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);
 
 impl AnnotationMap {
-    /// For each `EntityPath` in the `ViewQuery`, walk up the tree and find the nearest ancestor
+    /// For each passed [`EntityPath`], walk up the tree and find the nearest ancestor
     ///
     /// An entity is considered its own (nearest) ancestor.
     pub fn load<'a>(
