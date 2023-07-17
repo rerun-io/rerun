@@ -33,7 +33,6 @@ jobs:
             }, 500);
 
             let promises = [];
-
             for (let page = 1; page <= pages; page++) {
               const cache_page = await github.rest.actions.getActionsCacheList({
                 per_page,
@@ -52,6 +51,11 @@ jobs:
               }
               await Promise.all(promises);
               promises = [];
+
+              // wait 60 seconds every 4 pages (secondary rate limit)
+              if (page % 4 === 0) {
+                await new Promise(f => setTimeout(f, 60_000));
+              }
             }
 
             clearInterval(_id);
