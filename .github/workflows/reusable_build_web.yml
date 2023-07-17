@@ -9,11 +9,11 @@ on:
       RELEASE_VERSION:
         required: false
         type: string
-        default: 'prerelease'
+        default: "prerelease"
       EXTRA_FLAGS:
         required: false
         type: string
-        default: ''
+        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-web
@@ -29,7 +29,6 @@ env:
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 jobs:
-
   rs-build-web-viewer:
     name: Build Web (wasm32 + wasm-bindgen)
     permissions:
@@ -49,7 +48,7 @@ jobs:
         with:
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
           # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: false
+          # save-if: false
 
       - name: Patch Cargo.toml for pre-release
         if: ${{ inputs.RELEASE_VERSION == 'prerelease' }}
@@ -85,3 +84,4 @@ jobs:
         with:
           name: web_viewer
           path: web_viewer
+

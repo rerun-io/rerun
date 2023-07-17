@@ -21,10 +21,10 @@ on:
         required: false
         type: string
         default: ""
-      SAVE_CACHE:
-        required: false
-        type: boolean
-        default: false
+      # SAVE_CACHE:
+      #   required: false
+      #   type: boolean
+      #   default: false
       WHEEL_ARTIFACT_NAME:
         required: false
         type: string
@@ -133,7 +133,7 @@ jobs:
           # Don't update the cache -- it will be updated by the lint job
           # TODO(jleibs): this job will likely run before rust.yml updates
           # the cache. Better cross-job sequencing would be nice here
-          save-if: ${{ inputs.SAVE_CACHE }}
+          # save-if: ${{ inputs.SAVE_CACHE }}
 
       # Sccache will cache everything else
       # See: https://github.com/marketplace/actions/sccache-action

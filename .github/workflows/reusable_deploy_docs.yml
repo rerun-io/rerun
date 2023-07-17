@@ -120,7 +120,7 @@ jobs:
         with:
           shared-key: "build-linux"
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          save-if: false
+          # save-if: false
 
       # Sccache will cache everything else
       # See: https://github.com/marketplace/actions/sccache-action

@@ -6,10 +6,10 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      SAVE_CACHE:
-        required: false
-        type: boolean
-        default: false
+      # SAVE_CACHE:
+      #   required: false
+      #   type: boolean
+      #   default: false
       SAVE_PY_DOCS:
         required: false
         type: boolean
@@ -135,7 +135,7 @@ jobs:
           # Don't update the cache -- it will be updated by the lint job
           # TODO(jleibs): this job will likely run before rust.yml updates
           # the cache. Better cross-job sequencing would be nice here
-          save-if: ${{ inputs.SAVE_CACHE }}
+          # save-if: ${{ inputs.SAVE_CACHE }}
 
       # Sccache will cache everything else
       # See: https://github.com/marketplace/actions/sccache-action
@@ -221,7 +221,7 @@ jobs:
           shared-key: "build-wasm"
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
           # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ inputs.SAVE_CACHE }}
+          # save-if: ${{ inputs.SAVE_CACHE }}
 
       # See: https://github.com/marketplace/actions/sccache-action
       # - name: Run sccache-cache
@@ -258,7 +258,7 @@ jobs:
           # Don't update the cache -- it will be updated by the lint job
           # TODO(jleibs): this job will likely run before rust.yml updates
           # the cache. Better cross-job sequencing would be nice here
-          save-if: false
+          # save-if: false
 
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
