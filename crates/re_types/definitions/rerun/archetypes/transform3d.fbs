@@ -8,6 +8,7 @@ namespace rerun.archetypes;
 
 /// A 3D transform
 table Transform3D (
+  "attr.rust.derive": "PartialEq",
   order: 100
 ) {
   /// The transform
