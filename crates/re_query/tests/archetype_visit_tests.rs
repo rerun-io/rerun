@@ -1,5 +1,3 @@
-use core::arch;
-
 use itertools::Itertools;
 use re_query::{ArchComponentWithInstances, ArchetypeView};
 use re_types::archetypes::Points2D;

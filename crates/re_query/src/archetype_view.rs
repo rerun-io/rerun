@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, marker::PhantomData};
 
 use arrow2::array::{Array, PrimitiveArray};
 use re_format::arrow;
-use re_log_types::RowId;
+use re_log_types::{DataCell, RowId};
 use re_types::{
     components::InstanceKey, Archetype, Component, ComponentName, DeserializationResult, Loggable,
 };
@@ -14,21 +14,20 @@ use crate::QueryError;
 /// See: [`crate::get_component_with_instances`]
 #[derive(Clone, Debug)]
 pub struct ArchComponentWithInstances {
-    pub(crate) name: ComponentName,
-    pub(crate) instance_keys: Box<dyn ::arrow2::array::Array>,
-    pub(crate) values: Box<dyn ::arrow2::array::Array>,
+    pub(crate) instance_keys: DataCell,
+    pub(crate) values: DataCell,
 }
 
 impl ArchComponentWithInstances {
     #[inline]
-    pub fn name(&self) -> &ComponentName {
-        &self.name
+    pub fn name(&self) -> ComponentName {
+        self.values.component_name().as_str().into()
     }
 
     /// Number of values. 1 for splats.
     #[inline]
     pub fn len(&self) -> usize {
-        self.values.len()
+        self.values.num_instances() as _
     }
 
     #[inline]
@@ -39,7 +38,7 @@ impl ArchComponentWithInstances {
     /// Iterate over the instance keys
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
-        InstanceKey::from_arrow(self.instance_keys.as_ref()).into_iter()
+        InstanceKey::from_arrow(self.instance_keys.as_arrow_ref()).into_iter()
     }
 
     /// Iterate over the values and convert them to a native `Component`
@@ -47,19 +46,19 @@ impl ArchComponentWithInstances {
     pub fn iter_values<'a, C: Component + 'a>(
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + 'a> {
-        if &C::name() != self.name() {
+        if C::name() != self.name() {
             return Err(QueryError::NewTypeMismatch {
                 actual: self.name().clone(),
                 requested: C::name(),
             });
         }
 
-        Ok(C::try_from_arrow_opt(self.values.as_ref())?.into_iter())
+        Ok(C::try_from_arrow_opt(self.values.as_arrow_ref())?.into_iter())
     }
 
     /// Look up the value that corresponds to a given `InstanceKey` and convert to `Component`
     pub fn lookup<C: Component>(&self, instance_key: &InstanceKey) -> crate::Result<C> {
-        if &C::name() != self.name() {
+        if C::name() != self.name() {
             return Err(QueryError::NewTypeMismatch {
                 actual: self.name().clone(),
                 requested: C::name(),
@@ -81,6 +80,7 @@ impl ArchComponentWithInstances {
     pub fn lookup_arrow(&self, instance_key: &InstanceKey) -> Option<Box<dyn Array>> {
         let keys = self
             .instance_keys
+            .as_arrow_ref()
             .as_any()
             .downcast_ref::<PrimitiveArray<u64>>()?
             .values();
@@ -93,8 +93,8 @@ impl ArchComponentWithInstances {
             keys.binary_search(&instance_key.0).ok()?
         };
 
-        (self.values.len() > offset)
-            .then(|| self.values.sliced(offset, 1))
+        (self.len() > offset)
+            .then(|| self.values.as_arrow_ref().sliced(offset, 1))
             .or_else(|| {
                 re_log::error_once!("found corrupt cell -- mismatched number of instances");
                 None
@@ -109,9 +109,8 @@ impl ArchComponentWithInstances {
         let instance_keys = InstanceKey::to_arrow(instance_keys, None);
         let values = C::to_arrow(values, None);
         ArchComponentWithInstances {
-            name: C::name(),
-            instance_keys,
-            values,
+            instance_keys: DataCell::from_arrow(InstanceKey::name().as_ref().into(), instance_keys),
+            values: DataCell::from_arrow(C::name().as_ref().into(), values),
         }
     }
 }
@@ -231,10 +230,10 @@ impl<A: Archetype> std::fmt::Display for ArchetypeView<A> {
 
         let primary_table = arrow::format_table(
             [
-                first_required.instance_keys.as_ref(),
-                first_required.values.as_ref(),
+                first_required.instance_keys.as_arrow_ref(),
+                first_required.values.as_arrow_ref(),
             ],
-            ["InstanceId", first_required.name()],
+            ["InstanceId", first_required.name().as_ref()],
         );
 
         f.write_fmt(format_args!("ArchetypeView:\n{primary_table}"))
@@ -283,7 +282,8 @@ impl<A: Archetype> ArchetypeView<A> {
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            let component_value_iter = C::try_from_arrow(component.values.as_ref())?.into_iter();
+            let component_value_iter =
+                C::try_from_arrow(component.values.as_arrow_ref())?.into_iter();
 
             Ok(component_value_iter)
         } else {
@@ -308,7 +308,7 @@ impl<A: Archetype> ArchetypeView<A> {
             let mut component_instance_key_iter = component.iter_instance_keys();
 
             let component_value_iter =
-                C::try_from_arrow_opt(component.values.as_ref())?.into_iter();
+                C::try_from_arrow_opt(component.values.as_arrow_ref())?.into_iter();
 
             let next_component_instance_key = component_instance_key_iter.next();
 
