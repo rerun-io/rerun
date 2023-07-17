@@ -34,11 +34,13 @@ namespace rr {
             ~Angle() {
                 switch (this->_tag) {
                     case detail::Tag_Radians: {
-                        // TODO(#2647): code-gen for C++
+                        typedef float TypeAlias;
+                        _data.radians.~TypeAlias();
                         break;
                     }
                     case detail::Tag_Degrees: {
-                        // TODO(#2647): code-gen for C++
+                        typedef float TypeAlias;
+                        _data.degrees.~TypeAlias();
                         break;
                     }
                 }

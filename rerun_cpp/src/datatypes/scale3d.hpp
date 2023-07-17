@@ -38,11 +38,13 @@ namespace rr {
             ~Scale3D() {
                 switch (this->_tag) {
                     case detail::Tag_ThreeD: {
-                        // TODO(#2647): code-gen for C++
+                        typedef rr::datatypes::Vec3D TypeAlias;
+                        _data.three_d.~TypeAlias();
                         break;
                     }
                     case detail::Tag_Uniform: {
-                        // TODO(#2647): code-gen for C++
+                        typedef float TypeAlias;
+                        _data.uniform.~TypeAlias();
                         break;
                     }
                 }

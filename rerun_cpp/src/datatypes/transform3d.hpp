@@ -37,11 +37,13 @@ namespace rr {
             ~Transform3D() {
                 switch (this->_tag) {
                     case detail::Tag_TranslationAndMat3x3: {
-                        // TODO(#2647): code-gen for C++
+                        typedef rr::datatypes::TranslationAndMat3x3 TypeAlias;
+                        _data.translation_and_mat3x3.~TypeAlias();
                         break;
                     }
                     case detail::Tag_TranslationRotationScale: {
-                        // TODO(#2647): code-gen for C++
+                        typedef rr::datatypes::TranslationRotationScale3D TypeAlias;
+                        _data.translation_rotation_scale.~TypeAlias();
                         break;
                     }
                 }

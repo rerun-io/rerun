@@ -43,19 +43,25 @@ namespace rr {
             ~AffixFuzzer3() {
                 switch (this->_tag) {
                     case detail::Tag_degrees: {
-                        // TODO(#2647): code-gen for C++
+                        typedef float TypeAlias;
+                        _data.degrees.~TypeAlias();
                         break;
                     }
                     case detail::Tag_radians: {
-                        // TODO(#2647): code-gen for C++
+                        typedef std::optional<float> TypeAlias;
+                        _data.radians.~TypeAlias();
                         break;
                     }
                     case detail::Tag_craziness: {
-                        // TODO(#2647): code-gen for C++
+                        typedef std::vector<rr::datatypes::AffixFuzzer1> TypeAlias;
+                        _data.craziness.~TypeAlias();
                         break;
                     }
                     case detail::Tag_fixed_size_shenanigans: {
-                        // TODO(#2647): code-gen for C++
+                        typedef float TypeAlias;
+                        for (size_t i = 3; i > 0; i -= 1) {
+                            _data.fixed_size_shenanigans[i - 1].~TypeAlias();
+                        }
                         break;
                     }
                 }

@@ -40,15 +40,18 @@ namespace rr {
             ~AffixFuzzer4() {
                 switch (this->_tag) {
                     case detail::Tag_single_required: {
-                        // TODO(#2647): code-gen for C++
+                        typedef rr::datatypes::AffixFuzzer3 TypeAlias;
+                        _data.single_required.~TypeAlias();
                         break;
                     }
                     case detail::Tag_many_required: {
-                        // TODO(#2647): code-gen for C++
+                        typedef std::vector<rr::datatypes::AffixFuzzer3> TypeAlias;
+                        _data.many_required.~TypeAlias();
                         break;
                     }
                     case detail::Tag_many_optional: {
-                        // TODO(#2647): code-gen for C++
+                        typedef std::optional<std::vector<rr::datatypes::AffixFuzzer3>> TypeAlias;
+                        _data.many_optional.~TypeAlias();
                         break;
                     }
                 }

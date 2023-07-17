@@ -39,11 +39,13 @@ namespace rr {
             ~Rotation3D() {
                 switch (this->_tag) {
                     case detail::Tag_Quaternion: {
-                        // TODO(#2647): code-gen for C++
+                        typedef rr::datatypes::Quaternion TypeAlias;
+                        _data.quaternion.~TypeAlias();
                         break;
                     }
                     case detail::Tag_AxisAngle: {
-                        // TODO(#2647): code-gen for C++
+                        typedef rr::datatypes::RotationAxisAngle TypeAlias;
+                        _data.axis_angle.~TypeAlias();
                         break;
                     }
                 }

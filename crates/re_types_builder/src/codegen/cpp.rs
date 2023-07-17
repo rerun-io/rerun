@@ -319,25 +319,36 @@ impl QuotedObject {
             .iter()
             .map(|obj_field| {
                 let tag_ident = format_ident!("Tag_{}", obj_field.name);
-                // let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
-                // TODO(emilk): union destruction
-                // Destroying array types is irritating, because we need to iterate through all fields.
-                // `foo.~int[3]` is not valid C++, but
-                // `typedef TypeAlias int[3]; foo.~TypeAlias();` is.
-                // let typedef_declaration = quote_declaration(
-                //     &mut hpp_includes,
-                //     obj_field,
-                //     &format_ident!("TypeAlias"),
-                //     false,
-                // )
-                // .0;
-                hpp_includes.system.insert("utility".to_owned()); // std::move
-                quote! {
-                    case detail::#tag_ident: {
-                        // typedef #typedef_declaration;
-                        // _data.#field_ident.~TypeAlias();
-                        #TODO_TOKEN
-                        break;
+                let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+
+                if let Type::Array { elem_type, length } = &obj_field.typ {
+                    // We need special casing for destroying arrays in C++:
+                    let elem_type = quote_element_type(&mut hpp_includes, elem_type);
+                    let length = proc_macro2::Literal::usize_unsuffixed(*length);
+                    quote! {
+                        case detail::#tag_ident: {
+                            typedef #elem_type TypeAlias;
+                            for (size_t i = #length; i > 0; i -= 1) {
+                                _data.#field_ident[i-1].~TypeAlias();
+                            }
+                            break;
+                        }
+                    }
+                } else {
+                    let typedef_declaration = quote_declaration(
+                        &mut hpp_includes,
+                        obj_field,
+                        &format_ident!("TypeAlias"),
+                        false,
+                    )
+                    .0;
+                    hpp_includes.system.insert("utility".to_owned()); // std::move
+                    quote! {
+                        case detail::#tag_ident: {
+                            typedef #typedef_declaration;
+                            _data.#field_ident.~TypeAlias();
+                            break;
+                        }
                     }
                 }
             })
