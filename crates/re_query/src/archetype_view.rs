@@ -152,7 +152,7 @@ impl ArchComponentWithInstances {
 /// | val2  |
 ///
 /// ```
-struct ComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
+struct ArchComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
     primary_instance_key_iter: IIter1,
     component_instance_key_iter: IIter2,
     component_value_iter: VIter,
@@ -160,7 +160,7 @@ struct ComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
     splatted_component_value: Option<Val>,
 }
 
-impl<IIter1, IIter2, VIter, C> Iterator for ComponentJoinedIterator<IIter1, IIter2, VIter, C>
+impl<IIter1, IIter2, VIter, C> Iterator for ArchComponentJoinedIterator<IIter1, IIter2, VIter, C>
 where
     IIter1: Iterator<Item = InstanceKey>,
     IIter2: Iterator<Item = InstanceKey>,
@@ -312,7 +312,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
             let next_component_instance_key = component_instance_key_iter.next();
 
-            Ok(itertools::Either::Left(ComponentJoinedIterator {
+            Ok(itertools::Either::Left(ArchComponentJoinedIterator {
                 primary_instance_key_iter,
                 component_instance_key_iter,
                 component_value_iter,
@@ -326,9 +326,11 @@ impl<A: Archetype> ArchetypeView<A> {
         }
     }
 
-    /// Helper function to produce an `EntityView` from rust-native `field_types`
+    /// Helper function to produce an [`ArchetypeView`] from a collection of [`ArchComponentWithInstances`]
     #[inline]
-    pub fn from_native(components: impl IntoIterator<Item = ArchComponentWithInstances>) -> Self {
+    pub fn from_components(
+        components: impl IntoIterator<Item = ArchComponentWithInstances>,
+    ) -> Self {
         Self {
             row_id: RowId::ZERO,
             components: components

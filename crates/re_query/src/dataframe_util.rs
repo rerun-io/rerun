@@ -9,10 +9,11 @@ use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, Component,
     DeserializableComponent, InstanceKey, SerializableComponent,
 };
+use re_types::{Archetype, Loggable};
 
 use crate::{
     entity_view::{ComponentWithInstances, EntityView},
-    QueryError,
+    ArchetypeView, QueryError,
 };
 
 /// Make it so that our arrays can be deserialized again by arrow2-convert
@@ -175,6 +176,46 @@ where
         let c1_values = self.iter_component::<C1>()?.collect_vec();
 
         df_builder3::<InstanceKey, Primary, C1>(&instance_keys, &primary_values, &c1_values)
+    }
+}
+
+impl<A: Archetype> ArchetypeView<A> {
+    pub fn as_df1<'a, C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a>(
+        &self,
+    ) -> crate::Result<DataFrame> {
+        let array0 =
+            re_types::components::InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
+        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
+
+        let series0 = Series::try_from((
+            re_types::components::InstanceKey::name().as_ref(),
+            array0.as_ref().clean_for_polars(),
+        ))?;
+        let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+
+        Ok(DataFrame::new(vec![series0, series1])?)
+    }
+
+    pub fn as_df2<
+        'a,
+        C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+        C2: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
+    >(
+        &self,
+    ) -> crate::Result<DataFrame> {
+        let array0 =
+            re_types::components::InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
+        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
+        let array2 = C2::try_to_arrow_opt(self.iter_optional_component::<C2>()?, None)?;
+
+        let series0 = Series::try_from((
+            re_types::components::InstanceKey::name().as_ref(),
+            array0.as_ref().clean_for_polars(),
+        ))?;
+        let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+        let series2 = Series::try_from((C2::name().as_ref(), array2.as_ref().clean_for_polars()))?;
+
+        Ok(DataFrame::new(vec![series0, series1, series2])?)
     }
 }
 

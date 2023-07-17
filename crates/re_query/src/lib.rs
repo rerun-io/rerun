@@ -18,7 +18,7 @@ pub mod dataframe_util;
 
 pub use self::archetype_view::{ArchComponentWithInstances, ArchetypeView};
 pub use self::entity_view::{ComponentWithInstances, EntityView};
-pub use self::query::{get_component_with_instances, query_entity_with_primary};
+pub use self::query::{get_component_with_instances, query_archetype, query_entity_with_primary};
 pub use self::range::range_entity_with_primary;
 pub use self::util::query_primary_with_history;
 
@@ -51,6 +51,9 @@ pub enum QueryError {
 
     #[error("Error deserializing: {0}")]
     DeserializationError(#[from] re_types::DeserializationError),
+
+    #[error("Error serializing: {0}")]
+    SerializationError(#[from] re_types::SerializationError),
 
     #[error("Error with one or more the underlying data cells: {0}")]
     DataCell(#[from] re_log_types::DataCellError),

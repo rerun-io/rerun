@@ -43,7 +43,7 @@ fn directly_joined_iter() {
     let points_comp = ArchComponentWithInstances::from_native(instance_keys.clone(), points);
     let colors_comp = ArchComponentWithInstances::from_native(instance_keys, colors);
 
-    let arch_view = ArchetypeView::<Points2D>::from_native([points_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components([points_comp, colors_comp]);
 
     let expected_colors = [
         Some(Color::from_rgb(0, 0, 0)),
@@ -84,7 +84,7 @@ fn joined_iter_dense_primary() {
     let points_comp = ArchComponentWithInstances::from_native(point_ids, points);
     let colors_comp = ArchComponentWithInstances::from_native(color_ids, colors);
 
-    let arch_view = ArchetypeView::<Points2D>::from_native([points_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components([points_comp, colors_comp]);
 
     let expected_colors = vec![
         None, //
@@ -129,7 +129,7 @@ fn joined_iter_dense_secondary() {
     let points_comp = ArchComponentWithInstances::from_native(point_ids, points);
     let colors_comp = ArchComponentWithInstances::from_native(color_ids, colors);
 
-    let arch_view = ArchetypeView::<Points2D>::from_native([points_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components([points_comp, colors_comp]);
 
     let expected_colors = vec![
         Some(Color::from_rgb(0, 0, 0)), //
@@ -182,7 +182,7 @@ fn complex_joined_iter() {
     let points_comp = ArchComponentWithInstances::from_native(point_ids, points);
     let colors_comp = ArchComponentWithInstances::from_native(color_ids, colors);
 
-    let arch_view = ArchetypeView::<Points2D>::from_native([points_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components([points_comp, colors_comp]);
 
     let expected_colors = vec![
         None,
@@ -213,7 +213,7 @@ fn single_visit() {
 
     let points_comp = ArchComponentWithInstances::from_native(instance_keys.clone(), points);
 
-    let arch_view = ArchetypeView::<Points2D>::from_native([points_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components([points_comp]);
 
     let mut instance_key_out = Vec::<InstanceKey>::new();
     let mut points_out = Vec::<Point2D>::new();
@@ -256,7 +256,7 @@ fn joint_visit() {
     let points_comp = ArchComponentWithInstances::from_native(point_ids, points.clone());
     let colors_comp = ArchComponentWithInstances::from_native(color_ids, colors);
 
-    let arch_view = ArchetypeView::<Points2D>::from_native([points_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components([points_comp, colors_comp]);
 
     let mut points_out = Vec::<Point2D>::new();
     let mut colors_out = Vec::<Option<Color>>::new();
