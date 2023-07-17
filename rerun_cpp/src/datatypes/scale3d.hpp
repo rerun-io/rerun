@@ -46,6 +46,15 @@ namespace rr {
             Scale3D() : _tag(detail::Scale3DTag::NONE) {}
 
           public:
+            Scale3D(Scale3D&& other) noexcept : _tag(detail::Scale3DTag::NONE) {
+                this->swap(other);
+            }
+
+            Scale3D& operator=(Scale3D&& other) noexcept {
+                this->swap(other);
+                return *this;
+            }
+
             void swap(Scale3D& other) noexcept {
                 auto tag_temp = this->_tag;
                 this->_tag = other._tag;

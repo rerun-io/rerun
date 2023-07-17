@@ -454,9 +454,20 @@ impl QuotedObject {
                         #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
 
                     public:
-                        // #(#static_constructors)* // TODO(emilk): implement static constructors
+                        // Move-constructor:
+                        #pascal_case_ident(#pascal_case_ident&& other) noexcept : _tag(detail::#tag_typename::NONE) {
+                            this->swap(other);
+                        }
+
+                        // Move-assignment:
+                        #pascal_case_ident& operator=(#pascal_case_ident&& other) noexcept {
+                            this->swap(other);
+                            return *this;
+                        }
 
                         #destructor
+
+                        // #(#static_constructors)* // TODO(emilk): implement static constructors
 
                         // This is useful for easily implementing the move constructor and move assignment operator:
                         void swap(#pascal_case_ident& other) noexcept {

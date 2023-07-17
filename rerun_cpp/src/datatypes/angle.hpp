@@ -42,6 +42,15 @@ namespace rr {
             Angle() : _tag(detail::AngleTag::NONE) {}
 
           public:
+            Angle(Angle&& other) noexcept : _tag(detail::AngleTag::NONE) {
+                this->swap(other);
+            }
+
+            Angle& operator=(Angle&& other) noexcept {
+                this->swap(other);
+                return *this;
+            }
+
             void swap(Angle& other) noexcept {
                 auto tag_temp = this->_tag;
                 this->_tag = other._tag;

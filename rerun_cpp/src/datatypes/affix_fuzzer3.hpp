@@ -52,6 +52,15 @@ namespace rr {
             AffixFuzzer3() : _tag(detail::AffixFuzzer3Tag::NONE) {}
 
           public:
+            AffixFuzzer3(AffixFuzzer3&& other) noexcept : _tag(detail::AffixFuzzer3Tag::NONE) {
+                this->swap(other);
+            }
+
+            AffixFuzzer3& operator=(AffixFuzzer3&& other) noexcept {
+                this->swap(other);
+                return *this;
+            }
+
             ~AffixFuzzer3() {
                 switch (this->_tag) {
                     case detail::AffixFuzzer3Tag::NONE: {

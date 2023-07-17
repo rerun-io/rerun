@@ -47,6 +47,15 @@ namespace rr {
             Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
 
           public:
+            Rotation3D(Rotation3D&& other) noexcept : _tag(detail::Rotation3DTag::NONE) {
+                this->swap(other);
+            }
+
+            Rotation3D& operator=(Rotation3D&& other) noexcept {
+                this->swap(other);
+                return *this;
+            }
+
             void swap(Rotation3D& other) noexcept {
                 auto tag_temp = this->_tag;
                 this->_tag = other._tag;

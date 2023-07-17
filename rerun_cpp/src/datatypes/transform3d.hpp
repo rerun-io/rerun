@@ -45,6 +45,15 @@ namespace rr {
             Transform3D() : _tag(detail::Transform3DTag::NONE) {}
 
           public:
+            Transform3D(Transform3D&& other) noexcept : _tag(detail::Transform3DTag::NONE) {
+                this->swap(other);
+            }
+
+            Transform3D& operator=(Transform3D&& other) noexcept {
+                this->swap(other);
+                return *this;
+            }
+
             void swap(Transform3D& other) noexcept {
                 auto tag_temp = this->_tag;
                 this->_tag = other._tag;
