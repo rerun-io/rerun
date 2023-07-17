@@ -294,9 +294,9 @@ impl SpatialSpaceViewState {
         }
 
         if properties.transform_3d_size.is_auto() {
-            properties.transform_3d_size =
-                // Reuse `auto_size_world_heuristic` with a scale factor so we don't reinvent the wheel on scene based size heuristic.
-                EditableAutoValue::Auto(self.auto_size_world_heuristic() * 5.0);
+            // Size should be proportional to the scene extent, here covered by its diagonal
+            let diagonal_length = (self.scene_bbox_accum.max - self.scene_bbox_accum.min).length();
+            properties.transform_3d_size = EditableAutoValue::Auto(diagonal_length * 0.01);
         }
 
         entity_properties.set(ent_path.clone(), properties);
