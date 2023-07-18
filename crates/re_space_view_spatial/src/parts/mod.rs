@@ -115,7 +115,7 @@ where
 
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_colors_arch<'a, A: Archetype>(
-    entity_view: &'a re_query::ArchetypeView<A>,
+    arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &'a EntityPath,
     annotation_infos: &'a [ResolvedAnnotationInfo],
 ) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError> {
@@ -124,7 +124,7 @@ pub fn process_colors_arch<'a, A: Archetype>(
 
     Ok(itertools::izip!(
         annotation_infos.iter(),
-        entity_view.iter_optional_component::<Color>()?,
+        arch_view.iter_optional_component::<Color>()?,
     )
     .map(move |(annotation_info, color)| {
         annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
@@ -162,12 +162,12 @@ where
 
 /// Process [`Radius`] components to [`re_renderer::Size`] using auto size where no radius is specified.
 pub fn process_radii_arch<'a, A: Archetype>(
+    arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &EntityPath,
-    entity_view: &'a re_query::ArchetypeView<A>,
 ) -> Result<impl Iterator<Item = re_renderer::Size> + 'a, re_query::QueryError> {
     re_tracing::profile_function!();
     let ent_path = ent_path.clone();
-    Ok(entity_view
+    Ok(arch_view
         .iter_optional_component::<re_types::components::Radius>()?
         .map(move |radius| {
             radius.map_or(re_renderer::Size::AUTO, |r| {

@@ -67,7 +67,7 @@ impl Points2DPart {
         Ok(labels)
     }
 
-    fn process_entity_view(
+    fn process_arch_view(
         &mut self,
         query: &ViewQuery<'_>,
         arch_view: &ArchetypeView<Points2D>,
@@ -82,7 +82,7 @@ impl Points2DPart {
         >(query, arch_view, &ent_context.annotations)?;
 
         let colors = process_colors_arch(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii_arch(ent_path, arch_view)?;
+        let radii = process_radii_arch(arch_view, ent_path)?;
 
         if arch_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
@@ -194,8 +194,8 @@ impl ViewPartSystem for Points2DPart {
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |_ctx, ent_path, entity_view, ent_context| {
-                self.process_entity_view(query, &entity_view, ent_path, ent_context)
+            |_ctx, ent_path, arch_view, ent_context| {
+                self.process_arch_view(query, &arch_view, ent_path, ent_context)
             },
         )?;
 
