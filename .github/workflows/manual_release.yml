@@ -119,13 +119,16 @@ jobs:
     name: "Publish Crates"
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Install dependencies
         run: |
           python3 -m pip install -r scripts/ci/requirements.txt
 
       - name: Publish
         run: |
-          python3 ./scripts/ci/crates.py release --token ${{ secrets.CRATES_IO_TOKEN }}
+          python3 scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}
 
   github-release:
     name: "GitHub Release"
