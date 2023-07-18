@@ -54,17 +54,9 @@ jobs:
 
   publish-crates:
     name: "Publish Crates"
-    runs-on: ubuntu-latest-16-cores
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[weekly-release]')
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: |
-          python3 -m pip install -r scripts/ci/requirements.txt
-
-      - name: Publish
-        run: |
-          python3 scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}
+    uses: ./.github/workflows/reusable_release_crates.yml
+    with:
+      CONCURRENCY: weekly-release-${{ github.run_id }}
+    secrets: inherit
 

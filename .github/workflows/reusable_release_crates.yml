@@ -1,0 +1,34 @@
+name: Release crates
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-release-crates
+  cancel-in-progress: true
+
+jobs:
+  publish-crates:
+    name: "Publish Crates"
+    runs-on: ubuntu-latest-16-cores
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -r scripts/ci/requirements.txt
+
+      - name: Build web viewer
+        run: |
+          cargo r -p re_build_web_viewer -- --release
+          cargo r -p re_build_web_viewer -- --debug
+
+      - name: Publish
+        run: |
+          python3 scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}
+
