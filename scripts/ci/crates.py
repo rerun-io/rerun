@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import argparse
 import os.path
+import shutil
 import subprocess
+import sys
 from enum import Enum
 from glob import glob
 from pathlib import Path
@@ -33,9 +35,11 @@ from colorama import Fore
 from colorama import init as colorama_init
 from semver import VersionInfo
 
+CARGO_PATH = shutil.which("cargo") or "cargo"
+
 
 def cargo(args: str, cwd: str | Path | None = None, env: dict[str, Any] = {}) -> Any:
-    subprocess.check_output(["cargo"] + args.split(), cwd=cwd, env=env)
+    subprocess.check_output([CARGO_PATH] + args.split(), cwd=cwd, env=env)
 
 
 class Crate:
@@ -330,6 +334,14 @@ def publish(dry_run: bool, token: str) -> None:
                 sleep((1 - elapsed_s))
 
 
+def get_version() -> None:
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
+    current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
+
+    sys.stdout.write(str(current_version))
+    sys.stdout.flush()
+
+
 def main() -> None:
     colorama_init()
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
@@ -341,8 +353,11 @@ def main() -> None:
     publish_parser.add_argument("--token", type=str, help="crates.io token")
     publish_parser.add_argument("--dry-run", action="store_true", help="Display the execution plan")
     publish_parser.add_argument("--allow-dirty", action="store_true", help="Allow uncommitted changes")
+    cmds_parser.add_parser("get-version", help="Get the current crate version")
     args = parser.parse_args()
 
+    if args.cmd == "get-version":
+        get_version()
     if args.cmd == "version":
         version(args.dry_run, args.bump)
     if args.cmd == "publish":
