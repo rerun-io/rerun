@@ -28,10 +28,13 @@ jobs:
         run: |
           python3 scripts/ci/crates.py version prerelease
 
+      - name: Get bumped version
+        run: |
+          CRATE_VERSION=$(python3 scripts/ci/crates.py get-version)
+          echo "CRATE_VERSION=$CRATE_VERSION" >> "$GITHUB_ENV"
+
       - name: Create pull request
         uses: peter-evans/create-pull-request@v5.0.2
-        env:
-          CRATE_VERSION: $(python3 scripts/ci/crates.py get-version)
         with:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
           branch: "weekly-release-${{ env.CRATE_VERSION }}"
