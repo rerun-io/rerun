@@ -12,20 +12,23 @@ use crate::{
     Type,
 };
 
-// Special strings we insert and then search-and-replace later
-const COMMENT_PREFIX: &str = "COMMENT_PREFIX";
-const COMMENT_SUFFIX: &str = "COMMENT_SUFFIX";
-const DOC_COMMENT_PREFIX: &str = "DOC_COMMENT_PREFIX";
-const DOC_COMMENT_SUFFIX: &str = "DOC_COMMENT_SUFFIX";
-const NEWLINE_TOKEN: &str = "RE_TOKEN_NEWLINE";
-const TODO_TOKEN: &str = "RE_TOKEN_TODO";
+// Special strings we insert as tokens, then search-and-replace later.
+// This is so that we can insert comments and whitespace into the generated code.
+// `TokenStream` ignores whitespace (including comments), but we can insert "quoted strings",
+// so that is what we do.
+const NEWLINE_TOKEN: &str = "NEWLINE_TOKEN";
+const NORMAL_COMMENT_PREFIX_TOKEN: &str = "NORMAL_COMMENT_PREFIX_TOKEN";
+const NORMAL_COMMENT_SUFFIX_TOKEN: &str = "NORMAL_COMMENT_SUFFIX_TOKEN";
+const DOC_COMMENT_PREFIX_TOKEN: &str = "DOC_COMMENT_PREFIX_TOKEN";
+const DOC_COMMENT_SUFFIX_TOKEN: &str = "DOC_COMMENT_SUFFIX_TOKEN";
+const TODO_TOKEN: &str = "TODO_TOKEN";
 
 fn comment(text: &str) -> TokenStream {
-    quote! { #COMMENT_PREFIX #text #COMMENT_SUFFIX }
+    quote! { #NORMAL_COMMENT_PREFIX_TOKEN #text #NORMAL_COMMENT_SUFFIX_TOKEN }
 }
 
 fn doc_comment(text: &str) -> TokenStream {
-    quote! { #DOC_COMMENT_PREFIX #text #DOC_COMMENT_SUFFIX }
+    quote! { #DOC_COMMENT_PREFIX_TOKEN #text #DOC_COMMENT_SUFFIX_TOKEN }
 }
 
 fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
@@ -39,11 +42,11 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
     code.push_str(
         &token_stream
             .to_string()
-            .replace(&format!("{COMMENT_PREFIX:?} \""), "//")
-            .replace(&format!("\" {COMMENT_SUFFIX:?}"), "\n")
             .replace(&format!("{NEWLINE_TOKEN:?}"), "\n")
-            .replace(&format!("{DOC_COMMENT_PREFIX:?} \""), "///")
-            .replace(&format!("\" {DOC_COMMENT_SUFFIX:?}"), "\n")
+            .replace(&format!("{NORMAL_COMMENT_PREFIX_TOKEN:?} \""), "//")
+            .replace(&format!("\" {NORMAL_COMMENT_SUFFIX_TOKEN:?}"), "\n")
+            .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "///")
+            .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
             .replace(
                 &format!("{TODO_TOKEN:?}"),
                 "\n// TODO(#2647): code-gen for C++\n",
@@ -115,7 +118,7 @@ impl CppCodeGenerator {
                 .map(|obj| format!("{folder_name}/{}.hpp", obj.snake_case_name()));
             let tokens = quote! {
                 #pragma_once
-                #(#hash include #header_file_names "RE_TOKEN_NEWLINE")*
+                #(#hash include #header_file_names "NEWLINE_TOKEN")*
             };
             let filepath = folder_path
                 .parent()
