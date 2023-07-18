@@ -1,4 +1,4 @@
-name: Release a branch or target with the given version
+name: Weekly release
 
 on:
   workflow_dispatch:
