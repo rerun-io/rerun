@@ -24,7 +24,7 @@ jobs:
       short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
       full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
     steps:
-      - name: Add SHORT_SHA env property with commit short sha
+      - name: "Set short-sha"
         id: get-short-sha
         run: |
           if [ -z "${{ inputs.OVERRIDE_COMMIT }}" ]; then
@@ -34,7 +34,7 @@ jobs:
           fi
           echo "short-sha=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      - name: Expand short hash to FULL_SHA hash
+      - name: "Set full-sha"
         id: get-full-sha
         run: |
           FULL_SHA=$(git rev-parse ${{ steps.get-short-sha.outputs.short_sha }})
