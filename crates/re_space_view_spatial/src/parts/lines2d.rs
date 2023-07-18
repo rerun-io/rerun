@@ -9,7 +9,8 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
-    parts::entity_iterator::process_entity_views, view_kind::SpatialSpaceViewKind,
+    parts::entity_iterator::process_entity_views,
+    view_kind::SpatialSpaceViewKind,
 };
 
 use super::{picking_id_from_instance_key, SpatialViewPartData};
