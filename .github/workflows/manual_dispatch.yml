@@ -7,66 +7,65 @@ on:
     inputs:
       # Sorted based on job workflow logic rather than alphabetical
       CHECKS:
-        description: 'Run reuseable_checks'
+        description: "Run reuseable_checks"
         type: boolean
         required: false
         default: true
 
       DEPLOY_DOCS:
-        description: 'Run reusable_deploy_docs'
+        description: "Run reusable_deploy_docs"
         type: boolean
         required: false
         default: false
 
       BENCHES:
-        description: 'Run reusable_bench.yml'
+        description: "Run reusable_bench.yml"
         type: boolean
         required: false
         default: false
 
       MIN_TEST_WHEEL:
-        description: 'Run reuseable_build_and_test_wheels (Minimal Wheel Linux Only)'
+        description: "Run reuseable_build_and_test_wheels (Minimal Wheel Linux Only)"
         type: boolean
         required: false
 
       WHEEL_PLATFORMS:
-        description: 'Run reusable_build_and_test_wheels (Full build: linux,windows,macos-arm,macos-intel)'
+        description: "Run reusable_build_and_test_wheels (Full build: linux,windows,macos-arm,macos-intel)"
         type: string
         required: false
-        default: 'linux'
+        default: "linux"
 
       BUILD_WEB:
-        description: 'Run reusable_build_web/reusable_build_web_demo (Full build: app,demo)'
+        description: "Run reusable_build_web/reusable_build_web_demo (Full build: app,demo)"
         type: string
         required: false
-        default: 'app,demo'
+        default: "app,demo"
 
       RELEASE_VERSION:
-        description: 'Release Version Number (Must match Cargo.toml)'
+        description: "Release Version Number (Must match Cargo.toml)"
         type: string
         required: false
-        default: 'prerelease'
+        default: "prerelease"
 
       UPLOAD_GCLOUD:
-        description: 'Upload wheels and wasm to gcloud'
+        description: "Upload wheels and wasm to gcloud"
         type: boolean
         required: false
         default: false
 
       UPDATE_PR_SUMMARY:
-        description: 'Update the PR Summary'
+        description: "Update the PR Summary"
         type: boolean
         required: false
         default: false
 
       SAVE_CACHE:
-        description: 'Save the rust-cache where relevant'
+        description: "Save the rust-cache where relevant"
         type: boolean
         required: false
         default: false
 
 jobs:
-
   checks:
     name: Run All Checks
     if: ${{ github.event.inputs.CHECKS == 'true' }}
@@ -97,7 +96,7 @@ jobs:
     secrets: inherit
 
   min-test-wheel:
-    name: 'Minimum Test Wheel'
+    name: "Minimum Test Wheel"
     # The upload-web job uses the min-test-wheel to get the RRD
     if: ${{ (github.event.inputs.MIN_TEST_WHEEL == 'true') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( github.event.inputs.BUILD_WEB == 'true') ) }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
@@ -105,13 +104,13 @@ jobs:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
-      MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
-      WHEEL_ARTIFACT_NAME: ''
+      MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
+      WHEEL_ARTIFACT_NAME: ""
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 
   build-linux:
-    name: 'Linux: Build/Test Wheels'
+    name: "Linux: Build/Test Wheels"
     # The upload-wheels jobs all use the linux build to get the RRD
     # TODO(jleibs): Debug why multi-line if statements don't work here
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'linux') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( github.event.inputs.WHEEL_PLATFORMS != '') ) }}
@@ -127,7 +126,7 @@ jobs:
     secrets: inherit
 
   build-windows:
-    name: 'Windows: Build/Test Wheels'
+    name: "Windows: Build/Test Wheels"
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
@@ -135,12 +134,12 @@ jobs:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
-      RRD_ARTIFACT_NAME: ''
+      RRD_ARTIFACT_NAME: ""
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   build-macos-arm:
-    name: 'Macos-Arm: Build/Test Wheels'
+    name: "Macos-Arm: Build/Test Wheels"
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
@@ -148,26 +147,26 @@ jobs:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      RRD_ARTIFACT_NAME: ''
+      RRD_ARTIFACT_NAME: ""
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   build-macos-intel:
-    name: 'Macos-Intel: Build/Test Wheels'
+    name: "Macos-Intel: Build/Test Wheels"
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: manual-dispatch-macos-intel-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-intel
-      WHEEL_ARTIFACT_NAME: 'macos-intel-wheel'
-      RRD_ARTIFACT_NAME: ''
+      WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
+      RRD_ARTIFACT_NAME: ""
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
 
     secrets: inherit
 
   upload-wheels-linux:
-    name: 'Linux: Upload Wheels'
+    name: "Linux: Upload Wheels"
     needs: [build-linux]
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'linux') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
@@ -178,7 +177,7 @@ jobs:
     secrets: inherit
 
   upload-wheels-windows:
-    name: 'Windows: Upload Wheels'
+    name: "Windows: Upload Wheels"
     needs: [build-linux, build-windows]
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
@@ -189,7 +188,7 @@ jobs:
     secrets: inherit
 
   upload-wheels-macos-arm:
-    name: 'Macos-Arm: Upload Wheels'
+    name: "Macos-Arm: Upload Wheels"
     needs: [build-linux, build-macos-arm]
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
@@ -200,7 +199,7 @@ jobs:
     secrets: inherit
 
   upload-wheels-macos-intel:
-    name: 'Macos-Intel: Upload Wheels'
+    name: "Macos-Intel: Upload Wheels"
     needs: [build-linux, build-macos-intel]
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
@@ -211,7 +210,7 @@ jobs:
     secrets: inherit
 
   build-web:
-    name: 'Build Web'
+    name: "Build Web"
     if: ${{ contains(github.event.inputs.BUILD_WEB, 'app') }}
     uses: ./.github/workflows/reusable_build_web.yml
     with:
@@ -220,7 +219,7 @@ jobs:
     secrets: inherit
 
   upload-web:
-    name: 'Upload Web'
+    name: "Upload Web"
     needs: [min-test-wheel, build-web]
     if: ${{ contains(github.event.inputs.BUILD_WEB, 'app') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web.yml
@@ -232,7 +231,7 @@ jobs:
     secrets: inherit
 
   build-web-demo:
-    name: 'Build Web Demo'
+    name: "Build Web Demo"
     needs: [min-test-wheel, build-web]
     if: ${{ contains(github.event.inputs.BUILD_WEB, 'demo') }}
     uses: ./.github/workflows/reusable_build_web_demo.yml
@@ -242,7 +241,7 @@ jobs:
     secrets: inherit
 
   upload-web-demo:
-    name: 'Upload Web Demo'
+    name: "Upload Web Demo"
     needs: [build-web-demo]
     if: ${{ contains(github.event.inputs.BUILD_WEB, 'demo') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web_demo.yml
@@ -276,7 +275,7 @@ jobs:
           fi
 
   update-pr-summary:
-    name: 'Update PR Summary'
+    name: "Update PR Summary"
     # TODO(jleibs): There's no good way to have an optional needs.
     # If we leave this here the job fails if we don't build all the wheels + web.
     # Since this just just for testing, leave this out. We can manually run it to update
@@ -289,3 +288,4 @@ jobs:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
       PR_NUMBER: ${{ needs.check-for-pr.outputs.PR_NUMBER }}
     secrets: inherit
+

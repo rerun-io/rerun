@@ -9,18 +9,17 @@ on:
       RRD_ARTIFACT_NAME:
         required: false
         type: string
-        default: ''
+        default: ""
       WHEEL_ARTIFACT_NAME:
         required: false
         type: string
-        default: ''
+        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-upload-wheels
   cancel-in-progress: true
 
 jobs:
-
   upload-wheel:
     name: Upload Wheel to google cloud
 
@@ -101,3 +100,4 @@ jobs:
           path: "dist"
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/wheels"
           parent: false
+

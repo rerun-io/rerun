@@ -40,10 +40,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v1'
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
         with:
-          version: '>= 363.0.0'
+          version: ">= 363.0.0"
 
       - name: Install deps
         run: pip install google-cloud-storage Jinja2 PyGithub
@@ -58,3 +58,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ inputs.PR_NUMBER }}
+

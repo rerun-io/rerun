@@ -13,11 +13,11 @@ on:
       BENCH_NAME:
         required: false
         type: string
-        default: ''
+        default: ""
       COMPARE_TO:
         required: false
         type: string
-        default: ''
+        default: ""
       FAIL_ON_ALERT:
         required: false
         type: boolean
@@ -42,8 +42,7 @@ env:
   RUSTC_WRAPPER: "sccache"
 
 jobs:
-
-# ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
   rs-benchmarks:
     name: Rust Criterion benchmarks
@@ -100,10 +99,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v1'
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
         with:
-          version: '>= 363.0.0'
+          version: ">= 363.0.0"
 
       # TODO(jleibs) make this whole thing a python script
       - name: "Upload bench to GCS based on SHA"
@@ -162,3 +161,4 @@ jobs:
         with:
           path: /tmp/${{ inputs.BENCH_NAME }}
           destination: "rerun-builds/benches/"
+

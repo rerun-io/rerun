@@ -54,7 +54,7 @@ jobs:
 
   publish-crates:
     name: "Publish Crates"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[weekly-release]')
     steps:
       - name: Checkout

@@ -4,18 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       BENCH_NAME:
-        description: 'Name of the benchmark to save'
+        description: "Name of the benchmark to save"
         type: string
         required: false
-        default: ''
+        default: ""
       COMPARE_TO:
-        description: 'Saved Benchmark to compare to'
+        description: "Saved Benchmark to compare to"
         type: string
         required: false
-        default: 'main'
+        default: "main"
 
 jobs:
-
   check-for-pr:
     runs-on: ubuntu-latest
     outputs:
@@ -48,12 +47,12 @@ jobs:
       COMPARE_TO: ${{ github.event.inputs.COMPARE_TO }}
     secrets: inherit
 
-
   update-pr-summary:
-    name: 'Update PR Summary'
+    name: "Update PR Summary"
     needs: [check-for-pr, run-benches]
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
       CONCURRENCY: manual-bench-${{ needs.check-for-pr.outputs.PR_NUMBER }}
       PR_NUMBER: ${{ needs.check-for-pr.outputs.PR_NUMBER}}
     secrets: inherit
+
