@@ -48,7 +48,7 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-// TODO: turn this inside-out
+/// TODO(andreas): Should turn this "inside out" - [`SpatialSpaceViewState`] should be used by [`View2DState`]/[`View3DState`], not the other way round.
 #[derive(Clone)]
 pub struct SpatialSpaceViewState {
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
@@ -293,7 +293,7 @@ impl SpatialSpaceViewState {
         ui: &mut egui::Ui,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-        spatial_kind: SpatialSpaceViewKind, // TODO: separate methods?
+        spatial_kind: SpatialSpaceViewKind,
     ) {
         let view_coordinates = ctx
             .store_db

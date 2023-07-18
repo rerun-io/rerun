@@ -101,32 +101,12 @@ impl SpaceViewClass for SpatialSpaceView2D {
         query: &ViewQuery<'_>,
         draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        // TODO: Duplicated with 3d
-        state.scene_bbox = calculate_bounding_box(parts);
-        if state.scene_bbox_accum.is_nothing() || !state.scene_bbox_accum.size().is_finite() {
-            state.scene_bbox_accum = state.scene_bbox;
-        } else {
-            state.scene_bbox_accum = state.scene_bbox_accum.union(state.scene_bbox);
-        }
-
+        state.scene_bbox = calculate_bounding_box(parts, &mut state.scene_bbox_accum);
         state.scene_num_primitives = view_ctx
             .get::<PrimitiveCounter>()?
             .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        let scene_rect_accum = egui::Rect::from_min_max(
-            state.scene_bbox_accum.min.truncate().to_array().into(),
-            state.scene_bbox_accum.max.truncate().to_array().into(),
-        );
-        crate::ui_2d::view_2d(
-            ctx,
-            ui,
-            state,
-            view_ctx,
-            parts,
-            query,
-            scene_rect_accum,
-            draw_data,
-        )
+        crate::ui_2d::view_2d(ctx, ui, state, view_ctx, parts, query, draw_data)
     }
 }

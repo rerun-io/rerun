@@ -128,13 +128,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         query: &ViewQuery<'_>,
         draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        state.scene_bbox = calculate_bounding_box(parts);
-        if state.scene_bbox_accum.is_nothing() || !state.scene_bbox_accum.size().is_finite() {
-            state.scene_bbox_accum = state.scene_bbox;
-        } else {
-            state.scene_bbox_accum = state.scene_bbox_accum.union(state.scene_bbox);
-        }
-
+        state.scene_bbox = calculate_bounding_box(parts, &mut state.scene_bbox_accum);
         state.scene_num_primitives = view_ctx
             .get::<PrimitiveCounter>()?
             .num_primitives

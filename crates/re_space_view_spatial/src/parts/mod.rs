@@ -56,7 +56,10 @@ pub fn register_parts(
     Ok(())
 }
 
-pub fn calculate_bounding_box(parts: &ViewPartCollection) -> macaw::BoundingBox {
+pub fn calculate_bounding_box(
+    parts: &ViewPartCollection,
+    bounding_box_accum: &mut macaw::BoundingBox,
+) -> macaw::BoundingBox {
     let mut bounding_box = macaw::BoundingBox::nothing();
     for part in parts.iter() {
         if let Some(data) = part
@@ -66,6 +69,13 @@ pub fn calculate_bounding_box(parts: &ViewPartCollection) -> macaw::BoundingBox 
             bounding_box = bounding_box.union(data.bounding_box);
         }
     }
+
+    if bounding_box_accum.is_nothing() || !bounding_box_accum.size().is_finite() {
+        *bounding_box_accum = bounding_box;
+    } else {
+        *bounding_box_accum = bounding_box_accum.union(bounding_box);
+    }
+
     bounding_box
 }
 
