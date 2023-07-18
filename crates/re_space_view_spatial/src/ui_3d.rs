@@ -481,12 +481,20 @@ pub fn view_3d(
         let orbit_center_alpha = egui::remap_clamp(
             ui.input(|i| i.time) - state.state_3d.last_eye_interact_time,
             0.0..=0.4,
-            0.7..=0.0,
+            1.0..=0.0,
         ) as f32;
 
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
             let half_line_length = orbit_eye.orbit_radius * 0.03;
+
+            // We can't fade via alpha yet, but we can do so by making it smaller.
+            // Do so very quickly at the end of time we display "show period".
+            pub fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+                let t = f32::clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+                t * t * (3.0 - t * 2.0)
+            }
+            let half_line_length = half_line_length * smoothstep(0.0, 0.2, orbit_center_alpha);
 
             line_builder
                 .batch("center orbit orientation help")

@@ -290,7 +290,9 @@ impl OrbitEye {
         drag_threshold: f32,
         scene_bbox: &BoundingBox,
     ) -> bool {
-        let mut did_interact = false;
+        // Dragging even below the [`drag_threshold`] should be considered interaction.
+        // Otherwise we flicker in and out of "has interacted" too quickly.
+        let mut did_interact = response.drag_delta().length() > 0.0;
 
         if response.drag_delta().length() > drag_threshold {
             if response.dragged_by(ROLL_MOUSE)
@@ -301,14 +303,11 @@ impl OrbitEye {
             {
                 if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
                     self.roll(&response.rect, pointer_pos, response.drag_delta());
-                    did_interact = true;
                 }
             } else if response.dragged_by(ROTATE3D_BUTTON) {
                 self.rotate(response.drag_delta());
-                did_interact = true;
             } else if response.dragged_by(DRAG_PAN3D_BUTTON) {
                 self.translate(response.drag_delta());
-                did_interact = true;
             }
         }
 
@@ -338,6 +337,8 @@ impl OrbitEye {
         if self.unprocessed_scroll_delta.abs() > 0.1 {
             // We have a lot of unprocessed scroll delta, so we need to keep calling this function.
             response.ctx.request_repaint();
+            // Also, we pretend this smoothing a user interaction for all other purposes.
+            did_interact = true;
         }
 
         let zoom_factor = zoom_delta * (scroll_delta / 200.0).exp();
