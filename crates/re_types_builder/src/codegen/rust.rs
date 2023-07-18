@@ -779,8 +779,7 @@ fn quote_trait_impls_from_obj(
                     let component = quote!(crate::components::#component);
 
                     let fqname = obj_field.typ.fqname().unwrap();
-                    let legacy_fqname = objects
-                        .get(fqname)
+                    let legacy_fqname = objects[fqname]
                         .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
                         .unwrap_or_else(|| fqname.to_owned());
 
@@ -1561,7 +1560,7 @@ fn quote_arrow_field_serializer(
             );
 
             let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(objects.get(fqname))
+                Some(&objects[fqname])
             } else {
                 None
             };
@@ -1964,7 +1963,7 @@ fn quote_arrow_field_deserializer(
             );
 
             let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(objects.get(fqname))
+                Some(&objects[fqname])
             } else {
                 None
             };

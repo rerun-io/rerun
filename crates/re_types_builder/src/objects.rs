@@ -148,25 +148,6 @@ impl Objects {
 }
 
 impl Objects {
-    /// Returns a resolved object using its fully-qualified name.
-    ///
-    /// Panics if missing.
-    ///
-    /// E.g.:
-    /// ```ignore
-    /// resolved.get("rerun.datatypes.Vec3D");
-    /// resolved.get("rerun.datatypes.Angle");
-    /// resolved.get("rerun.components.Label");
-    /// resolved.get("rerun.archetypes.Point2D");
-    /// ```
-    pub fn get(&self, fqname: impl AsRef<str>) -> &Object {
-        let fqname = fqname.as_ref();
-        self.objects
-            .get(fqname)
-            .with_context(|| format!("unknown object: {fqname:?}"))
-            .unwrap()
-    }
-
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
     pub fn ordered_objects_mut(&mut self, kind: Option<ObjectKind>) -> Vec<&mut Object> {
@@ -193,6 +174,28 @@ impl Objects {
         objs.sort_by_key(|anyobj| anyobj.order);
 
         objs
+    }
+}
+
+/// Returns a resolved object using its fully-qualified name.
+///
+/// Panics if missing.
+///
+/// E.g.:
+/// ```ignore
+/// # let objects = Objects::default();
+/// let obj = &objects["rerun.datatypes.Vec3D"];
+/// let obj = &objects["rerun.datatypes.Angle"];
+/// let obj = &objects["rerun.components.Label"];
+/// let obj = &objects["rerun.archetypes.Point2D"];
+/// ```
+impl std::ops::Index<&str> for Objects {
+    type Output = Object;
+
+    fn index(&self, fqname: &str) -> &Self::Output {
+        self.objects
+            .get(fqname)
+            .unwrap_or_else(|| panic!("unknown object: {fqname:?}"))
     }
 }
 
@@ -970,7 +973,7 @@ impl Type {
 
             Self::Array { elem_type, .. } => elem_type.is_pod(objects),
 
-            Self::Object(fqname) => objects.get(fqname).is_pod(objects),
+            Self::Object(fqname) => objects[fqname].is_pod(objects),
         }
     }
 }
@@ -1062,7 +1065,7 @@ impl ElementType {
 
             Self::String => false,
 
-            Self::Object(fqname) => objects.get(fqname).is_pod(objects),
+            Self::Object(fqname) => objects[fqname].is_pod(objects),
         }
     }
 }

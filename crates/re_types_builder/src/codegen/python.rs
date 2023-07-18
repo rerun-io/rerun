@@ -46,7 +46,7 @@ impl PythonObjectExt for Object {
         self.is_delegating_component()
             .then(|| {
                 if let Type::Object(name) = &self.fields[0].typ {
-                    Some(objects.get(name))
+                    Some(&objects[name])
                 } else {
                     None
                 }
@@ -597,7 +597,7 @@ impl QuotedObject {
             ObjectKind::Component => {
                 // a component might be either delegating to a datatype or using a native type
                 if let Type::Object(ref dtype_fqname) = obj.fields[0].typ {
-                    let dtype_obj = objects.get(dtype_fqname);
+                    let dtype_obj = &objects[dtype_fqname];
                     code.push_text(
                         quote_arrow_support_from_delegating_component(obj, dtype_obj),
                         1,
@@ -1136,7 +1136,7 @@ fn quote_field_converter_from_field(
         },
         Type::Object(fqname) => {
             let typ = quote_type_from_element_type(&ElementType::Object(fqname.clone()));
-            let field_obj = objects.get(fqname);
+            let field_obj = &objects[fqname];
 
             // we generate a default converter only if the field's type can be constructed with a
             // single argument
