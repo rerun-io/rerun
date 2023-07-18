@@ -26,7 +26,7 @@ pub fn auto_spawn_heuristic(
         .filter(|part| {
             part.data()
                 .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
-                .map_or(false, |data| data.preferred_view_kind == view_kind)
+                .map_or(false, |data| data.preferred_view_kind == Some(view_kind))
         })
         .collect::<Vec<_>>();
 

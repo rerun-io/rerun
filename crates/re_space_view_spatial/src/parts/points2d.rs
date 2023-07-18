@@ -31,7 +31,7 @@ impl Default for Points2DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: SpatialViewPartData::new(SpatialSpaceViewKind::TwoD),
+            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
         }
     }
 }

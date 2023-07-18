@@ -31,7 +31,7 @@ impl Default for Points3DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: SpatialViewPartData::new(SpatialSpaceViewKind::ThreeD),
+            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)),
         }
     }
 }

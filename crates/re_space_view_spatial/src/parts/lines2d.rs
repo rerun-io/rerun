@@ -19,7 +19,7 @@ pub struct Lines2DPart(SpatialViewPartData);
 
 impl Default for Lines2DPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(SpatialSpaceViewKind::TwoD))
+        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)))
     }
 }
 

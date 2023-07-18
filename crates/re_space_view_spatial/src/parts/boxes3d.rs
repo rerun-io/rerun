@@ -21,7 +21,7 @@ pub struct Boxes3DPart(SpatialViewPartData);
 
 impl Default for Boxes3DPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(SpatialSpaceViewKind::ThreeD))
+        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
     }
 }
 

@@ -128,7 +128,7 @@ pub struct ImagesPart {
 impl Default for ImagesPart {
     fn default() -> Self {
         Self {
-            data: SpatialViewPartData::new(SpatialSpaceViewKind::TwoD),
+            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
             images: Vec::new(),
             depth_cloud_entities: IntSet::default(),
         }

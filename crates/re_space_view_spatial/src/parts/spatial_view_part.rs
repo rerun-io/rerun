@@ -6,11 +6,11 @@ use crate::{parts::UiLabel, view_kind::SpatialSpaceViewKind};
 pub struct SpatialViewPartData {
     pub ui_labels: Vec<UiLabel>,
     pub bounding_box: macaw::BoundingBox,
-    pub preferred_view_kind: SpatialSpaceViewKind,
+    pub preferred_view_kind: Option<SpatialSpaceViewKind>,
 }
 
 impl SpatialViewPartData {
-    pub fn new(preferred_view_kind: SpatialSpaceViewKind) -> Self {
+    pub fn new(preferred_view_kind: Option<SpatialSpaceViewKind>) -> Self {
         Self {
             ui_labels: Vec::new(),
             bounding_box: macaw::BoundingBox::nothing(),

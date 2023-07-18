@@ -18,7 +18,7 @@ pub struct Transform3DArrowsPart(SpatialViewPartData);
 
 impl Default for Transform3DArrowsPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(SpatialSpaceViewKind::ThreeD))
+        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
     }
 }
 

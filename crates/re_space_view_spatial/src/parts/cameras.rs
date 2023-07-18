@@ -12,7 +12,6 @@ use crate::{
     contexts::{pinhole_camera_view_coordinates, SharedRenderBuilders, TransformContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     space_camera_3d::SpaceCamera3D,
-    view_kind::SpatialSpaceViewKind,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -25,7 +24,9 @@ pub struct CamerasPart {
 impl Default for CamerasPart {
     fn default() -> Self {
         Self {
-            data: (SpatialViewPartData::new(SpatialSpaceViewKind::TwoD)),
+            // Cameras themselves aren't inherently 2D or 3D since they represent intrinsics.
+            // (extrinsics, represented by [`transform3d_arrow::Transform3DArrowsPart`] are 3D though)
+            data: (SpatialViewPartData::new(None)),
             space_cameras: Vec::new(),
         }
     }

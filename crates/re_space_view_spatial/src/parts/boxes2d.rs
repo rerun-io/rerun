@@ -19,7 +19,7 @@ pub struct Boxes2DPart(SpatialViewPartData);
 
 impl Default for Boxes2DPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(SpatialSpaceViewKind::TwoD))
+        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)))
     }
 }
 

@@ -18,7 +18,7 @@ pub struct MeshPart(SpatialViewPartData);
 
 impl Default for MeshPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(SpatialSpaceViewKind::ThreeD))
+        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
     }
 }
 

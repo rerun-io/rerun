@@ -18,7 +18,7 @@ pub struct Arrows3DPart(SpatialViewPartData);
 
 impl Default for Arrows3DPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(SpatialSpaceViewKind::ThreeD))
+        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
     }
 }
 
