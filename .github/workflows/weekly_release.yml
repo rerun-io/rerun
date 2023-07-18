@@ -57,6 +57,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[weekly-release]')
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - name: Install dependencies
         run: |
           python3 -m pip install -r scripts/ci/requirements.txt
