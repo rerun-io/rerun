@@ -225,7 +225,7 @@ where
 
 /// A view of an [`Archetype`] at a particular point in time returned by [`crate::get_component_with_instances`]
 ///
-/// The required [`Components`]s of an [`ArchetypeView`] determines the length of an entity
+/// The required [`Component`]s of an [`ArchetypeView`] determines the length of an entity
 /// batch. When iterating over individual components, they will be implicitly joined onto
 /// the required [`Component`]s using [`InstanceKey`] values.
 #[derive(Clone, Debug)]

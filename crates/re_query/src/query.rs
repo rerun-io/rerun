@@ -4,7 +4,7 @@ use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{Component, ComponentName, DataRow, EntityPath, InstanceKey, RowId};
 use re_types::Archetype;
 
-use crate::{ComponentWithInstances, EntityView, QueryError};
+use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 
 /// Retrieves a [`ComponentWithInstances`] from the [`DataStore`].
 ///
@@ -198,7 +198,7 @@ pub fn query_archetype<A: Archetype>(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,
-) -> crate::Result<crate::ArchetypeView<A>> {
+) -> crate::Result<ArchetypeView<A>> {
     re_tracing::profile_function!();
 
     let required_components: Vec<_> = A::required_components()
@@ -225,7 +225,7 @@ pub fn query_archetype<A: Archetype>(
                 .map(|(_, component_result)| component_result.into())
         });
 
-    Ok(crate::ArchetypeView::from_components(
+    Ok(ArchetypeView::from_components(
         required_components.chain(other_components),
     ))
 }
