@@ -33,6 +33,12 @@ jobs:
           command: run
           args: --locked -p re_build_web_viewer -- --release
 
+      - name: Build web-viewer (release)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked -p re_build_web_viewer -- --debug
+
       - name: Publish
         run: |
           python3 scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}
