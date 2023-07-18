@@ -209,9 +209,9 @@ impl QuotedObject {
     }
 
     fn from_struct(_objects: &Objects, obj: &crate::Object) -> QuotedObject {
-        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case());
+        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
         let pascal_case_name = &obj.name;
-        let pascal_case_ident = format_ident!("{pascal_case_name}");
+        let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
 
         let mut hpp_includes = Includes::default();
@@ -270,7 +270,7 @@ impl QuotedObject {
             }
         };
 
-        let cpp = quote! {};
+        let cpp = quote! {}; // TODO(emilk): add Arrow serialization code here!
 
         Self { hpp, cpp }
     }
@@ -295,9 +295,9 @@ impl QuotedObject {
         //     Rotation3DData _data;
         // };
 
-        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case());
+        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
         let pascal_case_name = &obj.name;
-        let pascal_case_ident = format_ident!("{pascal_case_name}");
+        let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
 
         let tag_typename = format_ident!("{pascal_case_name}Tag");
@@ -324,7 +324,6 @@ impl QuotedObject {
 
         let mut hpp_includes = Includes::default();
 
-        hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
         hpp_includes.system.insert("utility".to_owned()); // std::move
 
         let enum_data_declarations = obj
@@ -449,6 +448,8 @@ impl QuotedObject {
             }
         };
 
+        hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
+
         let swap_comment = comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
 
         let hpp = quote! {
@@ -465,7 +466,7 @@ impl QuotedObject {
                             #(#enum_data_declarations;)*
 
                             #data_typename() { } // Required by static constructors
-                            ~#data_typename() {}
+                            ~#data_typename() { }
 
                             void swap(#data_typename& other) noexcept {
                                 #NEWLINE_TOKEN
@@ -481,14 +482,14 @@ impl QuotedObject {
 
                     #quoted_docs
                     struct #pascal_case_ident {
-                    private:
-                        detail::#tag_typename  _tag;
+                      private:
+                        detail::#tag_typename _tag;
                         detail::#data_typename _data;
 
-                        // Required by static constructors:
+                        // Empty state required by static constructors:
                         #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
 
-                    public:
+                      public:
                         // Move-constructor:
                         #pascal_case_ident(#pascal_case_ident&& other) noexcept : _tag(detail::#tag_typename::NONE) {
                             this->swap(other);
@@ -521,7 +522,7 @@ impl QuotedObject {
             }
         };
 
-        let cpp = quote! {};
+        let cpp = quote! {}; // TODO(emilk): add Arrow serialization code here!
 
         Self { hpp, cpp }
     }
