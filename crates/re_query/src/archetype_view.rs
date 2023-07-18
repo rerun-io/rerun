@@ -28,6 +28,7 @@ impl From<ComponentWithInstances> for ArchComponentWithInstances {
 }
 
 impl ArchComponentWithInstances {
+    /// Name of the [`Component`]
     #[inline]
     pub fn name(&self) -> ComponentName {
         self.values.component_name().as_str().into()
@@ -40,17 +41,18 @@ impl ArchComponentWithInstances {
     }
 
     #[inline]
+    /// Whether this [`ArchComponentWithInstances`] contains any data
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
 
-    /// Iterate over the instance keys
+    /// Iterate over the [`InstanceKey`]s.
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
         InstanceKey::from_arrow(self.instance_keys.as_arrow_ref()).into_iter()
     }
 
-    /// Iterate over the values and convert them to a native `Component`
+    /// Iterate over the values and convert them to a native [`Component`]
     #[inline]
     pub fn iter_values<'a, C: Component + 'a>(
         &self,
@@ -65,7 +67,7 @@ impl ArchComponentWithInstances {
         Ok(C::try_from_arrow_opt(self.values.as_arrow_ref())?.into_iter())
     }
 
-    /// Look up the value that corresponds to a given `InstanceKey` and convert to `Component`
+    /// Look up the value that corresponds to a given [`InstanceKey`] and convert to [`Component`]
     pub fn lookup<C: Component>(&self, instance_key: &InstanceKey) -> crate::Result<C> {
         if C::name() != self.name() {
             return Err(QueryError::NewTypeMismatch {
@@ -85,7 +87,7 @@ impl ArchComponentWithInstances {
         Ok(val)
     }
 
-    /// Look up the value that corresponds to a given `InstanceKey` and return as an arrow `Array`
+    /// Look up the value that corresponds to a given [`InstanceKey`] and return as an arrow [`Array`]
     pub fn lookup_arrow(&self, instance_key: &InstanceKey) -> Option<Box<dyn Array>> {
         let keys = self
             .instance_keys
@@ -110,7 +112,7 @@ impl ArchComponentWithInstances {
             })
     }
 
-    /// Produce a [`ArchComponentWithInstances`] from native component types
+    /// Produce a [`ArchComponentWithInstances`] from native [`Component`] types
     pub fn from_native<'a, C: Component + Clone + 'a>(
         instance_keys: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, InstanceKey>>>,
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
@@ -124,13 +126,13 @@ impl ArchComponentWithInstances {
     }
 }
 
-/// Iterator over a single component joined onto a primary component
+/// Iterator over a single [`Component`] joined onto a primary [`Component`]
 ///
 /// This is equivalent to a left join between one table made up of the
-/// instance-keys from the primary component and another table with the
-/// instance-keys and values of the iterated component.
+/// [`InstanceKey`]s from the primary component and another table with the
+/// [`InstanceKey`]s and values of the iterated [`Component`].
 ///
-/// Instances have a special "splat" key that will cause the value to be
+/// Instances have a [`InstanceKey::SPLAT`] key that will cause the value to be
 /// repeated for the entirety of the join.
 ///
 /// For example
@@ -221,7 +223,7 @@ where
     }
 }
 
-/// A view of an archetype at a particular point in time returned by [`crate::get_component_with_instances`]
+/// A view of an [`Archetype`] at a particular point in time returned by [`crate::get_component_with_instances`]
 ///
 /// The required [`Components`]s of an [`ArchetypeView`] determines the length of an entity
 /// batch. When iterating over individual components, they will be implicitly joined onto
