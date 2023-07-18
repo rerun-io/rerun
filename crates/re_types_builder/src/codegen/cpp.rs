@@ -224,9 +224,7 @@ impl QuotedObject {
                     &mut hpp_includes,
                     obj_field,
                     &format_ident!("{}", obj_field.name),
-                    false,
-                )
-                .0;
+                );
                 quote! {
                     #NEWLINE_TOKEN
                     #declaration
@@ -246,7 +244,7 @@ impl QuotedObject {
 
                 let field_ident = format_ident!("{}", obj_field.name);
                 let parameter_declaration =
-                    quote_declaration(&mut hpp_includes, obj_field, &field_ident, false).0;
+                    quote_declaration(&mut hpp_includes, obj_field, &field_ident);
                 quote! {
                     #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident)) {}
                 }
@@ -334,9 +332,7 @@ impl QuotedObject {
                     &mut hpp_includes,
                     obj_field,
                     &format_ident!("{}", crate::to_snake_case(&obj_field.name)),
-                    false,
-                )
-                .0;
+                );
                 quote! {
                     #NEWLINE_TOKEN
                     #declaration
@@ -353,7 +349,7 @@ impl QuotedObject {
                         format_ident!("{}", crate::to_snake_case(&obj_field.name));
                     let docstring = quote_docstrings(&obj_field.docs);
                     let param_declaration =
-                        quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident, false).0;
+                        quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident);
                     quote! {
                         #docstring
                         #pascal_case_ident(#param_declaration)
@@ -424,9 +420,7 @@ impl QuotedObject {
                         &mut hpp_includes,
                         obj_field,
                         &format_ident!("TypeAlias"),
-                        false,
-                    )
-                    .0;
+                    );
                     hpp_includes.system.insert("utility".to_owned()); // std::move
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
@@ -540,7 +534,7 @@ fn quote_static_constructor_for_enum_type(
     let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
     let docstring = quote_docstrings(&obj_field.docs);
 
-    let param_declaration = quote_declaration(hpp_includes, obj_field, &snake_case_ident, false).0;
+    let param_declaration = quote_declaration(hpp_includes, obj_field, &snake_case_ident);
 
     if let Type::Array { elem_type, length } = &obj_field.typ {
         // We need special casing for constructing arrays:
@@ -590,7 +584,7 @@ fn quote_static_constructor_for_enum_type(
         // We need to use placement-new since the union is in an uninitialized state here:
         hpp_includes.system.insert("new".to_owned()); // placement-new
         let typedef_declaration =
-            quote_declaration(hpp_includes, obj_field, &format_ident!("TypeAlias"), false).0;
+            quote_declaration(hpp_includes, obj_field, &format_ident!("TypeAlias"));
         quote! {
             #docstring
             static #pascal_case_ident #snake_case_ident(#param_declaration)
@@ -654,18 +648,12 @@ impl quote::ToTokens for Includes {
     }
 }
 
-/// Returns type name as string and whether it was force unwrapped.
-///
-/// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
-/// becomes just `String`.
-/// The returned boolean indicates whether there was anything to unwrap at all.
 fn quote_declaration_with_docstring(
     includes: &mut Includes,
     obj_field: &ObjectField,
     name: &syn::Ident,
-    unwrap: bool,
-) -> (TokenStream, bool) {
-    let (quoted, unwrapped) = quote_declaration(includes, obj_field, name, unwrap);
+) -> TokenStream {
+    let quoted = quote_declaration(includes, obj_field, name);
 
     let docstring = quote_docstrings(&obj_field.docs);
 
@@ -674,21 +662,15 @@ fn quote_declaration_with_docstring(
         #quoted
     };
 
-    (quoted, unwrapped)
+    quoted
 }
 
-/// Returns type name as string and whether it was force unwrapped.
-///
-/// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
-/// becomes just `String`.
-/// The returned boolean indicates whether there was anything to unwrap at all.
 fn quote_declaration(
     includes: &mut Includes,
     obj_field: &ObjectField,
     name: &syn::Ident,
-    unwrap: bool,
-) -> (TokenStream, bool) {
-    let quoted = if obj_field.is_nullable {
+) -> TokenStream {
+    if obj_field.is_nullable {
         includes.system.insert("optional".to_owned());
         match &obj_field.typ {
             Type::UInt8 => quote! { std::optional<uint8_t> #name },
@@ -715,12 +697,8 @@ fn quote_declaration(
             }
             Type::Vector { elem_type } => {
                 let elem_type = quote_element_type(includes, elem_type);
-                if unwrap {
-                    quote! { std::optional<#elem_type> #name }
-                } else {
-                    includes.system.insert("vector".to_owned());
-                    quote! { std::optional<std::vector<#elem_type>> #name }
-                }
+                includes.system.insert("vector".to_owned());
+                quote! { std::optional<std::vector<#elem_type>> #name }
             }
             Type::Object(fqname) => {
                 let type_name = quote_fqname_as_type_path(includes, fqname);
@@ -748,30 +726,20 @@ fn quote_declaration(
             Type::Array { elem_type, length } => {
                 let elem_type = quote_element_type(includes, elem_type);
                 let length = proc_macro2::Literal::usize_unsuffixed(*length);
-                if unwrap {
-                    quote! { #elem_type #name }
-                } else {
-                    quote! { #elem_type #name[#length] }
-                }
+
+                quote! { #elem_type #name[#length] }
             }
             Type::Vector { elem_type } => {
                 let elem_type = quote_element_type(includes, elem_type);
-                if unwrap {
-                    quote! { #elem_type #name }
-                } else {
-                    includes.system.insert("vector".to_owned());
-                    quote! { std::vector<#elem_type> #name }
-                }
+                includes.system.insert("vector".to_owned());
+                quote! { std::vector<#elem_type> #name }
             }
             Type::Object(fqname) => {
                 let type_name = quote_fqname_as_type_path(includes, fqname);
                 quote! { #type_name #name }
             }
         }
-    };
-
-    let unwrapped = unwrap && matches!(obj_field.typ, Type::Array { .. } | Type::Vector { .. });
-    (quoted, unwrapped)
+    }
 }
 
 fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
