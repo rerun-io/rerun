@@ -128,6 +128,57 @@ where
     Ok(DataFrame::new(vec![series0, series1, series2])?)
 }
 
+pub fn df_builder1_arch<
+    'a,
+    C0: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C0>> + 'a,
+>(
+    c0: &[Option<C0>],
+) -> crate::Result<DataFrame> {
+    let array0 = C0::try_to_arrow_opt(c0.to_owned(), None)?;
+
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+
+    Ok(DataFrame::new(vec![series0])?)
+}
+
+pub fn df_builder2_arch<
+    'a,
+    C0: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C0>> + 'a,
+    C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+>(
+    c0: &[Option<C0>],
+    c1: &[Option<C1>],
+) -> crate::Result<DataFrame> {
+    let array0 = C0::try_to_arrow_opt(c0.to_owned(), None)?;
+    let array1 = C1::try_to_arrow_opt(c1.to_owned(), None)?;
+
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+
+    Ok(DataFrame::new(vec![series0, series1])?)
+}
+
+pub fn df_builder3_arch<
+    'a,
+    C0: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C0>> + 'a,
+    C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+    C2: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
+>(
+    c0: &[Option<C0>],
+    c1: &[Option<C1>],
+    c2: &[Option<C2>],
+) -> crate::Result<DataFrame> {
+    let array0 = C0::try_to_arrow_opt(c0.to_owned(), None)?;
+    let array1 = C1::try_to_arrow_opt(c1.to_owned(), None)?;
+    let array2 = C2::try_to_arrow_opt(c2.to_owned(), None)?;
+
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+    let series2 = Series::try_from((C2::name().as_ref(), array2.as_ref().clean_for_polars()))?;
+
+    Ok(DataFrame::new(vec![series0, series1, series2])?)
+}
+
 impl ComponentWithInstances {
     pub fn as_df<C0: SerializableComponent + DeserializableComponent>(
         &self,
