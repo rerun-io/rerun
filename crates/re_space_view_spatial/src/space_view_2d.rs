@@ -8,7 +8,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{register_contexts, PrimitiveCounter},
-    heuristics::auto_spawn_heuristic,
+    heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
     parts::{calculate_bounding_box, register_parts},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
@@ -57,10 +57,11 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ent_paths: &IntSet<EntityPath>,
         entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
-        state.update_object_property_heuristics(
+        update_object_property_heuristics(
             ctx,
             ent_paths,
             entity_properties,
+            &state.scene_bbox_accum,
             SpatialSpaceViewKind::TwoD,
         );
     }
