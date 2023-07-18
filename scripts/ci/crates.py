@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import os.path
+import shutil
 import subprocess
 from enum import Enum
 from glob import glob
@@ -33,9 +34,11 @@ from colorama import Fore
 from colorama import init as colorama_init
 from semver import VersionInfo
 
+CARGO_PATH = shutil.which("cargo") or "cargo"
+
 
 def cargo(args: str, cwd: str | Path | None = None, env: dict[str, Any] = {}) -> Any:
-    subprocess.check_output(["cargo"] + args.split(), cwd=cwd, env=env)
+    subprocess.check_output([CARGO_PATH] + args.split(), cwd=cwd, env=env)
 
 
 class Crate:
