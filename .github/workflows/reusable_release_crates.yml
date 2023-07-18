@@ -23,10 +23,15 @@ jobs:
         run: |
           python3 -m pip install -r scripts/ci/requirements.txt
 
-      - name: Build web viewer
-        run: |
-          cargo r -p re_build_web_viewer -- --release
-          cargo r -p re_build_web_viewer -- --debug
+      - name: Install WASM tools
+        shell: bash
+        run: ./scripts/setup_web.sh
+
+      - name: Build web-viewer (release)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked -p re_build_web_viewer -- --release
 
       - name: Publish
         run: |
