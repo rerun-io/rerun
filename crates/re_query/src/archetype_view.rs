@@ -273,6 +273,7 @@ impl<A: Archetype> ArchetypeView<A> {
     /// Iterate over the [`InstanceKey`]s.
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
+        // TODO(https://github.com/rerun-io/rerun/issues/2750): Maybe make this an intersection instead
         self.required_comp().iter_instance_keys()
     }
 

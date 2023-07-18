@@ -145,17 +145,17 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
 }
 
 /// Iterates over the rows of any number of components and their respective cluster keys, all from
-/// the single point-of-view of the `primary` component, returning an iterator of `EntityView`s.
+/// the point-of-view of the required components, returning an iterator of [`ArchetypeView`]s.
 ///
 /// An initial entity-view is yielded with the latest-at state at the start of the time range, if
 /// there is any.
 ///
-/// The iterator only ever yields entity-views iff the `primary` component has changed: a change
-/// affecting only secondary components will not yield an entity-view.
+/// The iterator only ever yields entity-views iff a required component has changed: a change
+/// affecting only optional components will not yield an entity-view.
 /// However, the changes in those secondary components will be accumulated into the next yielded
 /// entity-view.
 ///
-/// This is a streaming-join: every yielded entity-view will be the result of joining the latest
+/// This is a streaming-join: every yielded [`ArchetypeView`] will be the result of joining the latest
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
