@@ -66,5 +66,5 @@ jobs:
 
       - name: Publish
         run: |
-          python3 scripts/ci/crates.py release --token ${{ secrets.CRATES_IO_TOKEN }}
+          python3 scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}
 
