@@ -24,6 +24,7 @@ import subprocess
 from enum import Enum
 from glob import glob
 from pathlib import Path
+from time import sleep, time
 from typing import Any, Generator
 
 import requests
@@ -322,7 +323,11 @@ def publish(dry_run: bool, token: str) -> None:
     if not dry_run:
         env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
         for crate in crates.values():
+            start_s = time()
             publish_crate(crate, token, version, env)
+            elapsed_s = time() - start_s
+            if elapsed_s < 1:
+                sleep((1 - elapsed_s))
 
 
 def main() -> None:
