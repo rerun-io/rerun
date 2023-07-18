@@ -33,7 +33,7 @@ elif [ -x "$(command -v dnf)" ];   then
 fi
 
 # C++ SDK requires `apache-arrow` and `cmake`
-packagesNeeded='apache-arrow cmake flatbuffers'
+packagesNeeded='apache-arrow cmake'
 if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
 elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
 elif [ -x "$(command -v apt-get)" ]; then sudo apt-get -y install $packagesNeeded
