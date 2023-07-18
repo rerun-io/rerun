@@ -204,17 +204,13 @@ pub fn query_archetype<A: Archetype>(
     let required_components: Vec<_> = A::required_components()
         .iter()
         .map(|component| {
-            get_component_with_instances(store, query, ent_path, component.as_ref().into()).map(
-                |(_, component_result)| crate::ArchComponentWithInstances {
-                    instance_keys: component_result.instance_keys,
-                    values: component_result.values,
-                },
-            )
+            get_component_with_instances(store, query, ent_path, component.as_ref().into())
+                .map(|(_, component_result)| component_result.into())
         })
         .collect();
 
     if required_components.iter().any(|c| c.is_none()) {
-        return crate::Result::Err(QueryError::PrimaryNotFound);
+        return crate::Result::Err(QueryError::RequiredComponentNotFound);
     }
     let required_components = required_components.into_iter().flatten();
 
@@ -225,12 +221,8 @@ pub fn query_archetype<A: Archetype>(
         .iter()
         .chain(optional_components.iter())
         .filter_map(|component| {
-            get_component_with_instances(store, query, ent_path, component.as_ref().into()).map(
-                |(_, component_result)| crate::ArchComponentWithInstances {
-                    instance_keys: component_result.instance_keys,
-                    values: component_result.values,
-                },
-            )
+            get_component_with_instances(store, query, ent_path, component.as_ref().into())
+                .map(|(_, component_result)| component_result.into())
         });
 
     Ok(crate::ArchetypeView::from_components(
