@@ -40,6 +40,10 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         layout.add(controls::ZOOM_SCROLL_MODIFIER);
         layout.add(".\n");
 
+        layout.add("Scroll + ");
+        layout.add(controls::ASPECT_SCROLL_MODIFIER);
+        layout.add(" to change the aspect ratio.\n");
+
         layout.add("Drag ");
         layout.add(controls::SELECTION_RECT_ZOOM_BUTTON);
         layout.add(" to zoom in/out using a selection.\n");
@@ -121,7 +125,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
+        let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
+
         let mut plot = Plot::new(plot_id_src)
+            .allow_zoom(egui::plot::AxisBools {
+                x: true,
+                y: zoom_both_axis,
+            })
             .legend(Legend {
                 position: egui::plot::Corner::RightBottom,
                 ..Default::default()

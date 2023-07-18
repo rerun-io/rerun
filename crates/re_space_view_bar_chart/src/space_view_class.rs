@@ -35,6 +35,10 @@ impl SpaceViewClass for BarChartSpaceView {
         layout.add(controls::ZOOM_SCROLL_MODIFIER);
         layout.add(".\n");
 
+        layout.add("Scroll + ");
+        layout.add(controls::ASPECT_SCROLL_MODIFIER);
+        layout.add(" to change the aspect ratio.\n");
+
         layout.add("Drag ");
         layout.add(controls::SELECTION_RECT_ZOOM_BUTTON);
         layout.add(" to zoom in/out using a selection.\n\n");
@@ -84,10 +88,16 @@ impl SpaceViewClass for BarChartSpaceView {
 
         let charts = &parts.get::<BarChartViewPartSystem>()?.charts;
 
+        let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
+
         ui.scope(|ui| {
             Plot::new("bar_chart_plot")
                 .legend(Legend::default())
                 .clamp_grid(true)
+                .allow_zoom(egui::plot::AxisBools {
+                    x: true,
+                    y: zoom_both_axis,
+                })
                 .show(ui, |plot_ui| {
                     fn create_bar_chart<N: Into<f64>>(
                         ent_path: &EntityPath,
