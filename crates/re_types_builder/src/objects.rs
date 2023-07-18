@@ -610,9 +610,11 @@ impl Object {
             .is_some()
     }
 
-    /// Is plain-old-data (i.e. no destructor)?
-    pub fn is_pod(&self, objects: &Objects) -> bool {
-        self.fields.iter().all(|field| field.typ.is_pod(objects))
+    /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
+    pub fn has_default_destructor(&self, objects: &Objects) -> bool {
+        self.fields
+            .iter()
+            .all(|field| field.typ.has_default_destructor(objects))
     }
 
     /// Try to find the relative file path of the `.fbs` source file.
@@ -953,8 +955,8 @@ impl Type {
         }
     }
 
-    /// Is plain-old-data (i.e. no destructor)?
-    pub fn is_pod(&self, objects: &Objects) -> bool {
+    /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
+    pub fn has_default_destructor(&self, objects: &Objects) -> bool {
         match self {
             Self::UInt8
             | Self::UInt16
@@ -971,9 +973,9 @@ impl Type {
 
             Self::String | Self::Vector { .. } => false,
 
-            Self::Array { elem_type, .. } => elem_type.is_pod(objects),
+            Self::Array { elem_type, .. } => elem_type.has_default_destructor(objects),
 
-            Self::Object(fqname) => objects[fqname].is_pod(objects),
+            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
         }
     }
 }
@@ -1047,8 +1049,8 @@ impl ElementType {
         }
     }
 
-    /// Is plain-old-data (i.e. no destructor)?
-    pub fn is_pod(&self, objects: &Objects) -> bool {
+    /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
+    pub fn has_default_destructor(&self, objects: &Objects) -> bool {
         match self {
             Self::UInt8
             | Self::UInt16
@@ -1065,7 +1067,7 @@ impl ElementType {
 
             Self::String => false,
 
-            Self::Object(fqname) => objects[fqname].is_pod(objects),
+            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
         }
     }
 }

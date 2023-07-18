@@ -379,7 +379,7 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        let destructor = if obj.is_pod(objects) {
+        let destructor = if obj.has_default_destructor(objects) {
             // No destructor needed
             quote! {}
         } else {
@@ -395,8 +395,8 @@ impl QuotedObject {
                 let tag_ident = format_ident!("{}", obj_field.name);
                 let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
 
-                if obj_field.typ.is_pod(objects) {
-                    let comment = comment("Plain Old Data (POD): requires no destructor");
+                if obj_field.typ.has_default_destructor(objects) {
+                    let comment = comment("has a trivial destructor");
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
                             break; #comment
@@ -540,8 +540,8 @@ fn quote_static_constructor_for_enum_type(
         // We need special casing for constructing arrays:
         let length = proc_macro2::Literal::usize_unsuffixed(*length);
 
-        let element_assignment = if elem_type.is_pod(objects) {
-            // Generate nicer code in case of simple POD types:
+        let element_assignment = if elem_type.has_default_destructor(objects) {
+            // Generate simpoler code for simple types:
             quote! {
                 self._data.#snake_case_ident[i] = std::move(#snake_case_ident[i]);
             }
@@ -568,8 +568,8 @@ fn quote_static_constructor_for_enum_type(
                 return std::move(self);
             }
         }
-    } else if obj_field.typ.is_pod(objects) {
-        // Generate nicer code in case of simple POD types:
+    } else if obj_field.typ.has_default_destructor(objects) {
+        // Generate simpoler code for simple types:
         quote! {
             #docstring
             static #pascal_case_ident #snake_case_ident(#param_declaration)

@@ -73,10 +73,10 @@ namespace rr {
                         break; // Nothing to destroy
                     }
                     case detail::AffixFuzzer3Tag::degrees: {
-                        break; // Plain Old Data (POD): requires no destructor
+                        break; // has a trivial destructor
                     }
                     case detail::AffixFuzzer3Tag::radians: {
-                        break; // Plain Old Data (POD): requires no destructor
+                        break; // has a trivial destructor
                     }
                     case detail::AffixFuzzer3Tag::craziness: {
                         typedef std::vector<rr::datatypes::AffixFuzzer1> TypeAlias;
@@ -84,7 +84,7 @@ namespace rr {
                         break;
                     }
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
-                        break; // Plain Old Data (POD): requires no destructor
+                        break; // has a trivial destructor
                     }
                 }
             }
