@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -30,9 +30,9 @@ class DrawOrder:
     Draw order for entities with the same draw order is generally undefined.
     """
 
-    value: float = field()
+    value: float = field(converter=float)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:
@@ -41,7 +41,7 @@ class DrawOrder:
 
 DrawOrderLike = Union[DrawOrder, float]
 
-DrawOrderArrayLike = Union[DrawOrder, Sequence[DrawOrderLike], npt.NDArray[np.float32]]
+DrawOrderArrayLike = Union[DrawOrder, Sequence[DrawOrderLike], float, npt.NDArray[np.float32]]
 
 
 # --- Arrow support ---

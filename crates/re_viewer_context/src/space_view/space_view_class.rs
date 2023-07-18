@@ -3,11 +3,10 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, DynSpaceViewClass, Scene, SceneContext, ScenePartCollection,
-    SpaceViewClassName, SpaceViewId, SpaceViewState, ViewerContext,
+    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
-
-use super::scene::TypedScene;
 
 /// Defines a class of space view.
 ///
@@ -17,19 +16,6 @@ use super::scene::TypedScene;
 pub trait SpaceViewClass: std::marker::Sized {
     /// State of a space view.
     type State: SpaceViewState + Default + 'static;
-
-    /// Context of the scene, which is passed to all [`crate::ScenePart`]s and ui drawing on population.
-    type Context: SceneContext + Default + 'static;
-
-    /// Collection of [`crate::ScenePart`]s that this scene populates.
-    type SceneParts: ScenePartCollection<Self> + Default + 'static;
-
-    /// A piece of data that all scene parts have in common, useful for iterating over them.
-    ///
-    /// This is useful for retrieving data that is common to all scene parts of a [`SpaceViewClass`].
-    /// For example, if most scene parts produce ui elements, a concrete [`SpaceViewClass`]
-    /// can pick those up in its [`SpaceViewClass::ui`] method by iterating over all scene parts.
-    type ScenePartData;
 
     /// Name of this space view class.
     ///
@@ -42,6 +28,14 @@ pub trait SpaceViewClass: std::marker::Sized {
 
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::State) -> egui::WidgetText;
+
+    /// Called once upon registration of the class
+    ///
+    /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
+    fn on_register(
+        &self,
+        system_registry: &mut SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError>;
 
     /// Preferred aspect ratio for the ui tiles of this space view.
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
@@ -58,19 +52,6 @@ pub trait SpaceViewClass: std::marker::Sized {
         None
     }
 
-    /// Executed before the scene is populated, can be use for heuristic & state updates before populating the scene.
-    ///
-    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`].
-    /// Passed entity properties are individual properties without propagated values.
-    fn prepare_populate(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        _state: &Self::State,
-        _entity_paths: &IntSet<EntityPath>,
-        _entity_properties: &mut re_data_store::EntityPropertyMap,
-    ) {
-    }
-
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
@@ -83,19 +64,41 @@ pub trait SpaceViewClass: std::marker::Sized {
         space_view_id: SpaceViewId,
     );
 
+    /// Executed before the ui method is called, can be use for heuristic & state updates before populating the scene.
+    ///
+    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
+    /// Passed entity properties are individual properties without propagated values.
+    fn prepare_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        _state: &Self::State,
+        _entity_paths: &IntSet<EntityPath>,
+        _entity_properties: &mut re_data_store::EntityPropertyMap,
+    ) {
+    }
+
     /// Draws the ui for this space view class and handles ui events.
     ///
-    /// The passed scene is already populated for this frame
     /// The passed state is kept frame-to-frame.
+    ///
+    /// The passed systems (`view_ctx` and `parts`) are only valid for the duration of this frame and
+    /// were already executed upon entering this method.
+    ///
+    /// `draw_data` is all draw data gathered by executing the view part systems.
+    /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
+    ///              In the future, we likely want to move view builder handling to `re_viewport` with
+    ///              minimal configuration options exposed via [`crate::SpaceViewClass`].
+    #[allow(clippy::too_many_arguments)]
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut TypedScene<Self>,
-        space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
-    );
+        view_ctx: &ViewContextCollection,
+        parts: &ViewPartCollection,
+        query: &ViewQuery<'_>,
+        draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError>;
 }
 
 impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
@@ -115,13 +118,15 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     }
 
     #[inline]
-    fn new_scene(&self) -> Box<dyn Scene> {
-        Box::<TypedScene<Self>>::default()
-    }
-
-    #[inline]
     fn new_state(&self) -> Box<dyn SpaceViewState> {
         Box::<T::State>::default()
+    }
+
+    fn on_register(
+        &self,
+        system_registry: &mut SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        self.on_register(system_registry)
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
@@ -137,7 +142,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         self.blueprint_archetype()
     }
 
-    fn prepare_populate(
+    fn prepare_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
@@ -145,7 +150,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         entity_properties: &mut EntityPropertyMap,
     ) {
         typed_state_wrapper_mut(state, |state| {
-            self.prepare_populate(ctx, state, entity_paths, entity_properties);
+            self.prepare_ui(ctx, state, entity_paths, entity_properties);
         });
     }
 
@@ -163,25 +168,36 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         });
     }
 
-    #[inline]
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        mut scene: Box<dyn Scene>,
-        space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
+        systems: &SpaceViewSystemRegistry,
+        query: &ViewQuery<'_>,
     ) {
-        let Some(typed_scene) = scene.as_any_mut().downcast_mut()
-            else {
-                re_log::error_once!("Unexpected space view state type. Expected {}",
-                                    std::any::type_name::<TypedScene<T>>());
-                return;
-            };
+        // TODO(andreas): We should be able to parallelize both of these loops
+        let mut view_ctx = systems.new_context_collection();
+        for system in view_ctx.systems.values_mut() {
+            system.execute(ctx, query);
+        }
+
+        let mut parts = systems.new_part_collection();
+        let mut draw_data = Vec::new();
+        for part in parts.systems.values_mut() {
+            match part.execute(ctx, query, &view_ctx) {
+                Ok(part_draw_data) => draw_data.extend(part_draw_data),
+                Err(err) => {
+                    re_log::error_once!("Error executing view part system: {}", err);
+                }
+            }
+        }
 
         typed_state_wrapper_mut(state, |state| {
-            self.ui(ctx, ui, state, typed_scene, space_origin, space_view_id);
+            if let Err(err) = self.ui(ctx, ui, state, &view_ctx, &parts, query, draw_data) {
+                // TODO(andreas): Draw an error message on top of the space view ui instead of logging.
+                re_log::error_once!("Error drawing ui for space view: {}", err);
+            }
         });
     }
 }

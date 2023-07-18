@@ -82,6 +82,10 @@ class AffixFuzzer1(Archetype):
         metadata={"component": "primary"},
         converter=components.AffixFuzzer18Array.from_similar,  # type: ignore[misc]
     )
+    fuzz1019: components.AffixFuzzer19Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer19Array.from_similar,  # type: ignore[misc]
+    )
     fuzz1101: components.AffixFuzzer1Array = field(
         metadata={"component": "primary"},
         converter=components.AffixFuzzer1Array.from_similar,  # type: ignore[misc]

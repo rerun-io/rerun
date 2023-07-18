@@ -3,14 +3,17 @@
 #![allow(trivial_numeric_casts)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A Radius component."]
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+/// A Radius component.
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Radius(pub f32);
 
 impl<'a> From<Radius> for ::std::borrow::Cow<'a, Radius> {
@@ -27,9 +30,10 @@ impl<'a> From<&'a Radius> for ::std::borrow::Cow<'a, Radius> {
     }
 }
 
-impl crate::Component for Radius {
+impl crate::Loggable for Radius {
+    type Name = crate::ComponentName;
     #[inline]
-    fn name() -> crate::ComponentName {
+    fn name() -> Self::Name {
         crate::ComponentName::Borrowed("rerun.radius")
     }
 
@@ -48,7 +52,7 @@ impl crate::Component for Radius {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -91,7 +95,7 @@ impl crate::Component for Radius {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
@@ -108,3 +112,5 @@ impl crate::Component for Radius {
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Component for Radius {}

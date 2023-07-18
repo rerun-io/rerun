@@ -38,6 +38,41 @@ thread_local! {
     static LOCAL_BLUEPRINT_RECORDING: RefCell<Option<RecordingStream>> = RefCell::new(None);
 }
 
+/// Check whether we are the child of a fork.
+///
+/// If so, then our globals need to be cleaned up because they don't have associated batching
+/// or sink threads. The parent of the fork will continue to process any data in the original
+/// globals so nothing is being lost by doing this.
+pub fn cleanup_if_forked_child() {
+    if let Some(global_recording) = RecordingStream::global(StoreKind::Recording) {
+        if global_recording.is_forked_child() {
+            re_log::debug!("Fork detected. Forgetting global Recording");
+            RecordingStream::forget_global(StoreKind::Recording);
+        }
+    }
+
+    if let Some(global_blueprint) = RecordingStream::global(StoreKind::Blueprint) {
+        if global_blueprint.is_forked_child() {
+            re_log::debug!("Fork detected. Forgetting global Blueprint");
+            RecordingStream::forget_global(StoreKind::Recording);
+        }
+    }
+
+    if let Some(thread_recording) = RecordingStream::thread_local(StoreKind::Recording) {
+        if thread_recording.is_forked_child() {
+            re_log::debug!("Fork detected. Forgetting thread-local Recording");
+            RecordingStream::forget_thread_local(StoreKind::Recording);
+        }
+    }
+
+    if let Some(thread_blueprint) = RecordingStream::thread_local(StoreKind::Blueprint) {
+        if thread_blueprint.is_forked_child() {
+            re_log::debug!("Fork detected. Forgetting thread-local Blueprint");
+            RecordingStream::forget_thread_local(StoreKind::Blueprint);
+        }
+    }
+}
+
 impl RecordingStream {
     /// Returns `overrides` if it exists, otherwise returns the most appropriate active recording
     /// of the specified type (i.e. thread-local first, then global scope), if any.
@@ -106,6 +141,15 @@ impl RecordingStream {
         Self::set_any(RecordingScope::Global, kind, rec)
     }
 
+    /// Forgets the currently active recording of the specified type in the global scope.
+    ///
+    /// WARNING: this intentionally bypasses any drop/flush logic. This should only ever be used in
+    /// cases where you know the batcher/sink threads have been lost such as in a forked process.
+    #[inline]
+    pub fn forget_global(kind: StoreKind) {
+        Self::forget_any(RecordingScope::Global, kind);
+    }
+
     // --- Thread local ---
 
     /// Returns the currently active recording of the specified type in the thread-local scope,
@@ -123,6 +167,15 @@ impl RecordingStream {
         rec: Option<RecordingStream>,
     ) -> Option<RecordingStream> {
         Self::set_any(RecordingScope::ThreadLocal, kind, rec)
+    }
+
+    /// Forgets the currently active recording of the specified type in the thread-local scope.
+    ///
+    /// WARNING: this intentionally bypasses any drop/flush logic. This should only ever be used in
+    /// cases where you know the batcher/sink threads have been lost such as in a forked process.
+    #[inline]
+    pub fn forget_thread_local(kind: StoreKind) {
+        Self::forget_any(RecordingScope::ThreadLocal, kind);
     }
 
     // --- Internal helpers ---
@@ -176,6 +229,35 @@ impl RecordingStream {
                 RecordingScope::ThreadLocal => LOCAL_BLUEPRINT_RECORDING.with(|cell| {
                     let mut cell = cell.borrow_mut();
                     std::mem::replace(&mut *cell, rec)
+                }),
+            },
+        }
+    }
+
+    fn forget_any(scope: RecordingScope, kind: StoreKind) {
+        match kind {
+            StoreKind::Recording => match scope {
+                RecordingScope::Global => {
+                    if let Some(global) = GLOBAL_DATA_RECORDING.get() {
+                        std::mem::forget(global.write().take());
+                    }
+                }
+                RecordingScope::ThreadLocal => LOCAL_DATA_RECORDING.with(|cell| {
+                    if let Some(cell) = cell.take() {
+                        std::mem::forget(cell);
+                    }
+                }),
+            },
+            StoreKind::Blueprint => match scope {
+                RecordingScope::Global => {
+                    if let Some(global) = GLOBAL_BLUEPRINT_RECORDING.get() {
+                        std::mem::forget(global.write().take());
+                    }
+                }
+                RecordingScope::ThreadLocal => LOCAL_BLUEPRINT_RECORDING.with(|cell| {
+                    if let Some(cell) = cell.take() {
+                        std::mem::forget(cell);
+                    }
                 }),
             },
         }

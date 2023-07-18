@@ -29,17 +29,17 @@ pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
-pub use item::{Item, ItemCollection};
+pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use space_view::{
-    ArchetypeDefinition, DynSpaceViewClass, Scene, SceneContext, SceneContextPart, ScenePart,
-    ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewClassLayoutPriority,
+    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClass, SpaceViewClassLayoutPriority,
     SpaceViewClassName, SpaceViewClassRegistry, SpaceViewClassRegistryError,
     SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState,
-    TypedScene,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistry, ViewContextCollection,
+    ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

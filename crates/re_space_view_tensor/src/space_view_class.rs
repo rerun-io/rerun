@@ -11,11 +11,12 @@ use re_log_types::EntityPath;
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_viewer_context::{
-    gpu_bridge, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState, TensorStatsCache,
-    TypedScene, ViewerContext,
+    gpu_bridge, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
 
-use crate::{scene_part::SceneTensor, tensor_dimension_mapper::dimension_mapping_ui};
+use crate::{tensor_dimension_mapper::dimension_mapping_ui, view_part_system::TensorSystem};
 
 #[derive(Default)]
 pub struct TensorSpaceView;
@@ -119,9 +120,6 @@ impl PerTensorState {
 
 impl SpaceViewClass for TensorSpaceView {
     type State = ViewTensorState;
-    type Context = ();
-    type SceneParts = SceneTensor;
-    type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Tensor".into()
@@ -133,6 +131,13 @@ impl SpaceViewClass for TensorSpaceView {
 
     fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
         "Select the Space View to configure which dimensions are shown.".into()
+    }
+
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry.register_part_system::<TensorSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
@@ -163,13 +168,14 @@ impl SpaceViewClass for TensorSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-    ) {
+        _view_ctx: &ViewContextCollection,
+        parts: &ViewPartCollection,
+        _query: &ViewQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let tensors = &mut scene.parts.tensors;
+        let tensors = &parts.get::<TensorSystem>()?.tensors;
 
         if tensors.is_empty() {
             ui.centered_and_justified(|ui| ui.label("(empty)"));
@@ -206,6 +212,8 @@ impl SpaceViewClass for TensorSpaceView {
                 }
             }
         }
+
+        Ok(())
     }
 }
 

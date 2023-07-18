@@ -20,7 +20,7 @@ __all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
 class Label:
     """A String label component."""
 
-    value: str = field()
+    value: str = field(converter=str)
 
     def __str__(self) -> str:
         return str(self.value)
@@ -28,7 +28,7 @@ class Label:
 
 LabelLike = Union[Label, str]
 
-LabelArrayLike = Union[Label, Sequence[LabelLike], Sequence[str]]
+LabelArrayLike = Union[Label, Sequence[LabelLike], str, Sequence[str]]
 
 
 # --- Arrow support ---

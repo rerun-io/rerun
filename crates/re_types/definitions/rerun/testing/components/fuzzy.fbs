@@ -137,6 +137,13 @@ table AffixFuzzer18 (
   many_optional_unions: [rerun.testing.datatypes.AffixFuzzer4] (nullable, order: 118);
 }
 
+table AffixFuzzer19 (
+  "attr.rust.derive": "PartialEq",
+  order: 1900
+) {
+  just_a_table_nothing_shady: rerun.testing.datatypes.AffixFuzzer5 (order: 119);
+}
+
 // TODO(cmc): the ugly bug we need to take care of at some point
 // table AffixFuzzer14 (
 //   "attr.rust.derive": "PartialEq",

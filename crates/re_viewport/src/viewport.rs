@@ -38,7 +38,7 @@ impl ViewportState {
             .entry(space_view_id)
             .or_insert_with(|| {
                 space_view_class_registry
-                    .get_or_log_error(space_view_class)
+                    .get_class_or_log_error(space_view_class)
                     .new_state()
             })
             .as_mut()
@@ -223,7 +223,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             ui,
             space_view_blueprint,
             space_view_state,
-            highlights,
+            &highlights,
         );
 
         Default::default()
@@ -262,7 +262,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         if button_response.clicked() {
             if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
                 self.ctx
-                    .set_single_selection(Item::SpaceView(*space_view_id));
+                    .set_single_selection(&Item::SpaceView(*space_view_id));
             }
         }
     }
@@ -315,7 +315,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             {
                 *self.maximized = Some(space_view_id);
                 self.ctx
-                    .set_single_selection(Item::SpaceView(space_view_id));
+                    .set_single_selection(&Item::SpaceView(space_view_id));
             }
         }
 
@@ -355,7 +355,7 @@ fn space_view_ui(
     ui: &mut egui::Ui,
     space_view_blueprint: &mut SpaceViewBlueprint,
     space_view_state: &mut dyn SpaceViewState,
-    space_view_highlights: SpaceViewHighlights,
+    space_view_highlights: &SpaceViewHighlights,
 ) {
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered_and_justified(|ui| {

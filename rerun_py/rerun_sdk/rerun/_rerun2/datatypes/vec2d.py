@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,15 +27,13 @@ class Vec2D:
 
     xy: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.xy, dtype=dtype)
 
 
-Vec2DLike = Union[Vec2D, Tuple[float, float]]
+Vec2DLike = Union[Vec2D, npt.NDArray[Any], Sequence[float]]
 
-Vec2DArrayLike = Union[
-    Vec2D, Sequence[Vec2DLike], npt.NDArray[np.float32], Sequence[Tuple[float, float]], Sequence[float]
-]
+Vec2DArrayLike = Union[Vec2D, Sequence[Vec2DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
 
 
 # --- Arrow support ---

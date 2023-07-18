@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -30,7 +30,7 @@ class Color:
 
     rgba: int = field(converter=color_rgba_converter)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.rgba, dtype=dtype)
 
     def __int__(self) -> int:
@@ -40,7 +40,11 @@ class Color:
 ColorLike = Union[Color, int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]
 
 ColorArrayLike = Union[
-    Color, Sequence[ColorLike], Sequence[Sequence[int]], npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]]
+    Color,
+    Sequence[ColorLike],
+    int,
+    Sequence[Sequence[int]],
+    npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]],
 ]
 
 

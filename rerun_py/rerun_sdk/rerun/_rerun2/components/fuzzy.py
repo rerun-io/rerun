@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -17,6 +17,8 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from .._converters import (
+    float_or_none,
+    str_or_none,
     to_np_float32,
 )
 
@@ -58,6 +60,8 @@ __all__ = [
     "AffixFuzzer18ArrayLike",
     "AffixFuzzer18Like",
     "AffixFuzzer18Type",
+    "AffixFuzzer19Array",
+    "AffixFuzzer19Type",
     "AffixFuzzer1Array",
     "AffixFuzzer1Type",
     "AffixFuzzer2Array",
@@ -233,6 +237,7 @@ class AffixFuzzer7Type(BaseExtensionType):
                                 False,
                                 {},
                             ),
+                            pa.field("from_parent", pa.bool_(), True, {}),
                         ]
                     ),
                     True,
@@ -260,9 +265,9 @@ AffixFuzzer7Type._ARRAY_TYPE = AffixFuzzer7Array
 
 @define
 class AffixFuzzer8:
-    single_float_optional: float | None = field(default=None)
+    single_float_optional: float | None = field(default=None, converter=float_or_none)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.single_float_optional, dtype=dtype)
 
 
@@ -298,7 +303,7 @@ AffixFuzzer8Type._ARRAY_TYPE = AffixFuzzer8Array
 
 @define
 class AffixFuzzer9:
-    single_string_required: str = field()
+    single_string_required: str = field(converter=str)
 
     def __str__(self) -> str:
         return str(self.single_string_required)
@@ -336,7 +341,7 @@ AffixFuzzer9Type._ARRAY_TYPE = AffixFuzzer9Array
 
 @define
 class AffixFuzzer10:
-    single_string_optional: str | None = field(default=None)
+    single_string_optional: str | None = field(default=None, converter=str_or_none)
 
 
 AffixFuzzer10Like = AffixFuzzer10
@@ -373,7 +378,7 @@ AffixFuzzer10Type._ARRAY_TYPE = AffixFuzzer10Array
 class AffixFuzzer11:
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.many_floats_optional, dtype=dtype)
 
 
@@ -561,12 +566,19 @@ class AffixFuzzer16Type(BaseExtensionType):
                                                     False,
                                                     {},
                                                 ),
+                                                pa.field("from_parent", pa.bool_(), True, {}),
                                             ]
                                         ),
                                         False,
                                         {},
                                     )
                                 ),
+                                False,
+                                {},
+                            ),
+                            pa.field(
+                                "fixed_size_shenanigans",
+                                pa.list_(pa.field("item", pa.float32(), False, {}), 3),
                                 False,
                                 {},
                             ),
@@ -656,12 +668,19 @@ class AffixFuzzer17Type(BaseExtensionType):
                                                     False,
                                                     {},
                                                 ),
+                                                pa.field("from_parent", pa.bool_(), True, {}),
                                             ]
                                         ),
                                         False,
                                         {},
                                     )
                                 ),
+                                False,
+                                {},
+                            ),
+                            pa.field(
+                                "fixed_size_shenanigans",
+                                pa.list_(pa.field("item", pa.float32(), False, {}), 3),
                                 False,
                                 {},
                             ),
@@ -755,12 +774,19 @@ class AffixFuzzer18Type(BaseExtensionType):
                                                                 False,
                                                                 {},
                                                             ),
+                                                            pa.field("from_parent", pa.bool_(), True, {}),
                                                         ]
                                                     ),
                                                     False,
                                                     {},
                                                 )
                                             ),
+                                            False,
+                                            {},
+                                        ),
+                                        pa.field(
+                                            "fixed_size_shenanigans",
+                                            pa.list_(pa.field("item", pa.float32(), False, {}), 3),
                                             False,
                                             {},
                                         ),
@@ -827,12 +853,19 @@ class AffixFuzzer18Type(BaseExtensionType):
                                                                         False,
                                                                         {},
                                                                     ),
+                                                                    pa.field("from_parent", pa.bool_(), True, {}),
                                                                 ]
                                                             ),
                                                             False,
                                                             {},
                                                         )
                                                     ),
+                                                    False,
+                                                    {},
+                                                ),
+                                                pa.field(
+                                                    "fixed_size_shenanigans",
+                                                    pa.list_(pa.field("item", pa.float32(), False, {}), 3),
                                                     False,
                                                     {},
                                                 ),
@@ -903,12 +936,19 @@ class AffixFuzzer18Type(BaseExtensionType):
                                                                         False,
                                                                         {},
                                                                     ),
+                                                                    pa.field("from_parent", pa.bool_(), True, {}),
                                                                 ]
                                                             ),
                                                             False,
                                                             {},
                                                         )
                                                     ),
+                                                    False,
+                                                    {},
+                                                ),
+                                                pa.field(
+                                                    "fixed_size_shenanigans",
+                                                    pa.list_(pa.field("item", pa.float32(), False, {}), 3),
                                                     False,
                                                     {},
                                                 ),
@@ -944,3 +984,20 @@ AffixFuzzer18Type._ARRAY_TYPE = AffixFuzzer18Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer18Type())
+
+
+class AffixFuzzer19Type(BaseDelegatingExtensionType):
+    _TYPE_NAME = "rerun.testing.components.AffixFuzzer19"
+    _DELEGATED_EXTENSION_TYPE = datatypes.AffixFuzzer5Type
+
+
+class AffixFuzzer19Array(BaseDelegatingExtensionArray[datatypes.AffixFuzzer5ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer19"
+    _EXTENSION_TYPE = AffixFuzzer19Type
+    _DELEGATED_ARRAY_TYPE = datatypes.AffixFuzzer5Array
+
+
+AffixFuzzer19Type._ARRAY_TYPE = AffixFuzzer19Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer19Type())

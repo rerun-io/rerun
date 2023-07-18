@@ -13,11 +13,17 @@ use re_space_view::controls::{
     DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
     ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
-use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge, HoveredSpace, Item, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
+};
 
 use crate::{
-    axis_lines::add_axis_lines,
-    scene::{image_view_coordinates, SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
+    contexts::SharedRenderBuilders,
+    parts::{
+        collect_ui_labels, image_view_coordinates, CamerasPart,
+        SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    },
     space_camera_3d::SpaceCamera3D,
     ui::{
         create_labels, outline_config, picking, screenshot_context_menu, SpatialNavigationMode,
@@ -86,27 +92,27 @@ impl View3DState {
         space_cameras: &[SpaceCamera3D],
         view_coordinates: Option<ViewCoordinates>,
     ) -> &mut OrbitEye {
-        let tracking_camera = self
+        let orbit_camera = self
+            .orbit_eye
+            .get_or_insert_with(|| default_eye(scene_bbox_accum, &view_coordinates));
+
+        // Follow tracked camera if any.
+        if let Some(tracking_camera) = self
             .tracked_camera
             .as_ref()
-            .and_then(|c| find_camera(space_cameras, c));
-
-        if let Some(tracking_camera) = tracking_camera {
+            .and_then(|c| find_camera(space_cameras, c))
+        {
+            // While we're still interpolating towards it, we need to continuously update the interpolation target.
             if let Some(cam_interpolation) = &mut self.eye_interpolation {
-                // Update interpolation target:
                 cam_interpolation.target_orbit = None;
                 if cam_interpolation.target_eye != Some(tracking_camera) {
                     cam_interpolation.target_eye = Some(tracking_camera);
                     response.ctx.request_repaint();
                 }
             } else {
-                self.interpolate_to_eye(tracking_camera);
+                orbit_camera.copy_from_eye(&tracking_camera);
             }
         }
-
-        let orbit_camera = self
-            .orbit_eye
-            .get_or_insert_with(|| default_eye(scene_bbox_accum, &view_coordinates));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -266,24 +272,25 @@ pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
-    space: &EntityPath,
-    space_view_id: SpaceViewId,
-    scene: &mut SceneSpatial,
-) {
+    view_ctx: &ViewContextCollection,
+    parts: &ViewPartCollection,
+    query: &ViewQuery<'_>,
+    mut draw_data: Vec<re_renderer::QueueableDrawData>,
+) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
-    let highlights = &scene.highlights;
-    let space_cameras = &scene.parts.cameras.space_cameras;
+    let highlights = query.highlights;
+    let space_cameras = &parts.get::<CamerasPart>()?.space_cameras;
     let view_coordinates = ctx
         .store_db
         .store()
-        .query_latest_component(space, &ctx.current_query());
+        .query_latest_component(query.space_origin, &ctx.current_query());
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     if !rect.is_positive() {
-        return; // protect against problems with zero-sized views
+        return Ok(()); // protect against problems with zero-sized views
     }
 
     // If we're tracking a camera right now, we want to make it slightly sticky,
@@ -315,16 +322,17 @@ pub fn view_3d(
     let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx)
         .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-    // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
-    for camera in space_cameras {
-        let transform = camera.world_from_cam();
-        let axis_length =
-            eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
-        add_axis_lines(
+    // Origin gizmo if requested.
+    // TODO(andreas): Move this to the transform3d_arrow scene part.
+    //              As of #2522 state is now longer accessible there, move the property to a context?
+    if state.state_3d.show_axes {
+        let axis_length = 1.0; // The axes are also a measuring stick
+        crate::parts::add_axis_arrows(
             &mut line_builder,
-            transform,
-            Some(&camera.ent_path),
+            macaw::Affine3A::IDENTITY,
+            None,
             axis_length,
+            re_renderer::OutlineMaskPreference::NONE,
         );
     }
 
@@ -332,11 +340,11 @@ pub fn view_3d(
     let resolution_in_pixel =
         gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return;
+        return Ok(());
     }
 
     let target_config = TargetConfiguration {
-        name: space.to_string().into(),
+        name: query.space_origin.to_string().into(),
 
         resolution_in_pixel,
 
@@ -351,7 +359,7 @@ pub fn view_3d(
         pixels_from_point: ui.ctx().pixels_per_point(),
         auto_size_config: state.auto_size_config(),
 
-        outline_config: scene
+        outline_config: query
             .highlights
             .any_outlines()
             .then(|| outline_config(ui.ctx())),
@@ -361,7 +369,7 @@ pub fn view_3d(
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let (label_shapes, ui_rects) = create_labels(
-        &scene.parts.collect_ui_labels(),
+        &collect_ui_labels(parts),
         RectTransform::from_to(rect, rect),
         &eye,
         ui,
@@ -378,12 +386,12 @@ pub fn view_3d(
             ui,
             eye,
             &mut view_builder,
-            space_view_id,
             state,
-            scene,
+            view_ctx,
+            parts,
             &ui_rects,
-            space,
-        );
+            query,
+        )?;
     }
 
     // Double click changes camera to focus on an entity.
@@ -439,7 +447,7 @@ pub fn view_3d(
     let (_, screenshot_mode) = screenshot_context_menu(ctx, response);
     if let Some(mode) = screenshot_mode {
         view_builder
-            .schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode)
+            .schedule_screenshot(ctx.render_ctx, query.space_view_id.gpu_readback_id(), mode)
             .ok();
     }
 
@@ -450,16 +458,6 @@ pub fn view_3d(
         &state.state_3d.tracked_camera,
         &state.scene_bbox_accum,
     );
-
-    if state.state_3d.show_axes {
-        let axis_length = 1.0; // The axes are also a measuring stick
-        add_axis_lines(
-            &mut line_builder,
-            macaw::IsoTransform::IDENTITY,
-            None,
-            axis_length,
-        );
-    }
 
     if state.state_3d.show_bbox {
         let bbox = state.scene_bbox_accum;
@@ -511,15 +509,13 @@ pub fn view_3d(
         }
     }
 
-    for draw_data in scene.draw_data.drain(..) {
+    for draw_data in draw_data.drain(..) {
         view_builder.queue_draw(draw_data);
     }
-    for draw_data in scene
-        .context
-        .shared_render_builders
-        .queuable_draw_data(ctx.render_ctx)
-    {
-        view_builder.queue_draw(draw_data);
+    if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
+        for draw_data in shared_render_builders.queuable_draw_data(ctx.render_ctx) {
+            view_builder.queue_draw(draw_data);
+        }
     }
 
     // Commit ui induced lines.
@@ -540,7 +536,7 @@ pub fn view_3d(
         Ok(command_buffer) => command_buffer,
         Err(err) => {
             re_log::error_once!("Failed to fill view builder: {err}");
-            return;
+            return Ok(()); // TODO(andreas): Passing the error through would be better - we could show an error on the view instead then.
         }
     };
     ui.painter().add(gpu_bridge::renderer_paint_callback(
@@ -554,6 +550,8 @@ pub fn view_3d(
     // Add egui driven labels on top of re_renderer content.
     let painter = ui.painter().with_clip_rect(ui.max_rect());
     painter.extend(label_shapes);
+
+    Ok(())
 }
 
 fn show_projections_from_2d_space(

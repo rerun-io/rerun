@@ -3,14 +3,17 @@
 #![allow(trivial_numeric_casts)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "A unique numeric identifier for each individual instance within a batch."]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+/// A unique numeric identifier for each individual instance within a batch.
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InstanceKey(pub u64);
 
 impl<'a> From<InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
@@ -27,9 +30,10 @@ impl<'a> From<&'a InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
     }
 }
 
-impl crate::Component for InstanceKey {
+impl crate::Loggable for InstanceKey {
+    type Name = crate::ComponentName;
     #[inline]
-    fn name() -> crate::ComponentName {
+    fn name() -> Self::Name {
         crate::ComponentName::Borrowed("rerun.instance_key")
     }
 
@@ -48,7 +52,7 @@ impl crate::Component for InstanceKey {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -91,7 +95,7 @@ impl crate::Component for InstanceKey {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
@@ -108,3 +112,5 @@ impl crate::Component for InstanceKey {
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Component for InstanceKey {}

@@ -10,8 +10,6 @@ mod background_tasks;
 pub mod blueprint_components;
 pub mod env_vars;
 mod loading;
-#[cfg(not(target_arch = "wasm32"))]
-mod profiler;
 mod remote_viewer_app;
 mod saving;
 mod screenshotter;
@@ -45,9 +43,6 @@ pub mod external {
 pub mod native;
 #[cfg(not(target_arch = "wasm32"))]
 pub use native::{run_native_app, run_native_viewer_with_messages};
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use profiler::Profiler;
 
 // ----------------------------------------------------------------------------
 // When compiling for web:

@@ -2,7 +2,9 @@ use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
 use re_log_types::{ComponentName, EntityPath};
 
-use crate::{Scene, SpaceViewId, ViewerContext};
+use crate::{
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemRegistry, ViewQuery, ViewerContext,
+};
 
 /// First element is the primary component, all others are optional.
 ///
@@ -52,16 +54,18 @@ pub trait DynSpaceViewClass {
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText;
 
+    /// Called once upon registration of the class
+    ///
+    /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
+    fn on_register(
+        &self,
+        system_registry: &mut SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError>;
+
     /// Called once for every new space view instance of this class.
     ///
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
     fn new_state(&self) -> Box<dyn SpaceViewState>;
-
-    /// Returns a new scene for this space view class.
-    ///
-    /// Called both to determine the supported archetypes and
-    /// to populate a scene every frame.
-    fn new_scene(&self) -> Box<dyn Scene>;
 
     /// Optional archetype of the Space View's blueprint properties.
     ///
@@ -73,18 +77,6 @@ pub trait DynSpaceViewClass {
 
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
-
-    /// Executed before the scene is populated, can be use for heuristic & state updates before populating the scene.
-    ///
-    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
-    /// Passed entity properties are individual properties without propagated values.
-    fn prepare_populate(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        state: &mut dyn SpaceViewState,
-        entity_paths: &IntSet<EntityPath>,
-        entity_properties: &mut EntityPropertyMap,
-    );
 
     /// Ui shown when the user selects a space view of this class.
     ///
@@ -98,18 +90,28 @@ pub trait DynSpaceViewClass {
         space_view_id: SpaceViewId,
     );
 
+    /// Executed before the ui method is called, can be use for heuristic & state updates before populating the scene.
+    ///
+    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
+    /// Passed entity properties are individual properties without propagated values.
+    fn prepare_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        state: &mut dyn SpaceViewState,
+        entity_paths: &IntSet<EntityPath>,
+        entity_properties: &mut EntityPropertyMap,
+    );
+
     /// Draws the ui for this space view type and handles ui events.
     ///
-    /// The scene passed in was previously created by [`Self::new_scene`] and got populated by the time it is passed.
     /// The state passed in was previously created by [`Self::new_state`] and is kept frame-to-frame.
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        scene: Box<dyn Scene>,
-        space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
+        systems: &SpaceViewSystemRegistry,
+        query: &ViewQuery<'_>,
     );
 }
 

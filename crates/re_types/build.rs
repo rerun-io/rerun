@@ -2,21 +2,19 @@
 
 use std::path::PathBuf;
 
-use xshell::{cmd, Shell};
-
 use re_build_tools::{
     compute_crate_hash, compute_dir_hash, compute_strings_hash, is_tracked_env_var_set, iter_dir,
     read_versioning_hash, rerun_if_changed, rerun_if_changed_or_doesnt_exist,
     write_versioning_hash,
 };
 
-// NOTE: Don't need to add extra context to xshell invocations, it does so on its own.
-
 // ---
 
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
+const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
 const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
+const CPP_OUTPUT_DIR_PATH: &str = "../../rerun_cpp/src";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
 
@@ -99,70 +97,26 @@ fn main() {
         panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 
-    let sh = Shell::new().unwrap();
+    // passes 1 through 3: bfbs, semantic, arrow registry
+    let (objects, arrow_registry) =
+        re_types_builder::generate_lang_agnostic(DEFINITIONS_DIR_PATH, ENTRYPOINT_PATH);
 
-    re_types_builder::generate_rust_code(
-        DEFINITIONS_DIR_PATH,
-        RUST_OUTPUT_DIR_PATH,
-        "./definitions/rerun/archetypes.fbs",
+    join3(
+        || re_types_builder::generate_cpp_code(CPP_OUTPUT_DIR_PATH, &objects, &arrow_registry),
+        || re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry),
+        || {
+            re_types_builder::generate_python_code(
+                PYTHON_OUTPUT_DIR_PATH,
+                &objects,
+                &arrow_registry,
+            );
+        },
     );
-
-    // NOTE: We're purposefully ignoring the error here.
-    //
-    // In the very unlikely chance that the user doesn't have the `fmt` component installed,
-    // there's still no good reason to fail the build.
-    //
-    // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
-    cmd!(sh, "cargo fmt").run().ok();
-
-    re_types_builder::generate_python_code(
-        DEFINITIONS_DIR_PATH,
-        PYTHON_OUTPUT_DIR_PATH,
-        "./definitions/rerun/archetypes.fbs",
-    );
-
-    let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("pyproject.toml")
-        .to_string_lossy()
-        .to_string();
-
-    // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
-    // not end users.
-    // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
-    // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
-    // the CI!
-
-    // NOTE: We're purposefully ignoring the error here.
-    //
-    // If the user doesn't have `black` in their $PATH, there's still no good reason to fail
-    // the build.
-    //
-    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(
-        sh,
-        "black --config {pyproject_path} {PYTHON_OUTPUT_DIR_PATH}"
-    )
-    .run()
-    .ok();
-
-    // NOTE: We're purposefully ignoring the error here.
-    //
-    // If the user doesn't have `ruff` in their $PATH, there's still no good reason to fail
-    // the build.
-    //
-    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(
-        sh,
-        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
-    )
-    .run()
-    .ok();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+}
+
+// Do 3 things in parallel
+fn join3(a: impl FnOnce() + Send, b: impl FnOnce() + Send, c: impl FnOnce() + Send) {
+    rayon::join(a, || rayon::join(b, c));
 }

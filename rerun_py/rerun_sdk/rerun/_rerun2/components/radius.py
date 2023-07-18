@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -22,9 +22,9 @@ __all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType
 class Radius:
     """A Radius component."""
 
-    value: float = field()
+    value: float = field(converter=float)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:
@@ -33,7 +33,7 @@ class Radius:
 
 RadiusLike = Union[Radius, float]
 
-RadiusArrayLike = Union[Radius, Sequence[RadiusLike], npt.NDArray[np.float32]]
+RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.NDArray[np.float32]]
 
 
 # --- Arrow support ---

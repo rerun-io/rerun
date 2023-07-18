@@ -5,14 +5,18 @@ use re_components::Pinhole;
 use re_data_store::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
-use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge, HoveredSpace, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
+};
 
 use super::{
     eye::Eye,
     ui::{create_labels, picking, screenshot_context_menu},
 };
 use crate::{
-    scene::SceneSpatial,
+    contexts::SharedRenderBuilders,
+    parts::collect_ui_labels,
     ui::{outline_config, SpatialNavigationMode, SpatialSpaceViewState},
 };
 
@@ -215,15 +219,17 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
+#[allow(clippy::too_many_arguments)]
 pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
-    scene: &mut SceneSpatial,
-    space_origin: &EntityPath,
-    space_view_id: SpaceViewId,
+    view_ctx: &ViewContextCollection,
+    parts: &ViewPartCollection,
+    query: &ViewQuery<'_>,
     scene_rect_accum: Rect,
-) -> egui::Response {
+    mut draw_data: Vec<re_renderer::QueueableDrawData>,
+) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
     // Save off the available_size since this is used for some of the layout updates later
@@ -241,8 +247,10 @@ pub fn view_2d(
     // For that we need to check if this is defined by a pinhole camera.
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
-    let pinhole = store
-        .query_latest_component::<Pinhole>(space_origin, &ctx.rec_cfg.time_ctrl.current_query());
+    let pinhole = store.query_latest_component::<Pinhole>(
+        query.space_origin,
+        &ctx.rec_cfg.time_ctrl.current_query(),
+    );
     let canvas_rect = pinhole
         .and_then(|p| p.resolution())
         .map_or(scene_rect_accum, |res| {
@@ -262,13 +270,13 @@ pub fn view_2d(
         .scroll_offset(offset)
         .auto_shrink([false, false]);
 
-    let scroll_out = scroll_area.show(ui, |ui| {
+    let scroll_out = scroll_area.show(ui, |ui| -> Result<(), SpaceViewSystemExecutionError> {
         let desired_size = desired_size.at_least(Vec2::ZERO);
         let (mut response, painter) =
             ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
         if !response.rect.is_positive() {
-            return response; // protect against problems with zero-sized views
+            return Ok(());
         }
 
         let ui_from_canvas = egui::emath::RectTransform::from_to(canvas_rect, response.rect);
@@ -287,23 +295,23 @@ pub fn view_2d(
         let Ok(target_config) = setup_target_config(
                 &painter,
                 canvas_from_ui,
-                &space_origin.to_string(),
+                &query.space_origin.to_string(),
                 state.auto_size_config(),
-                scene.highlights.any_outlines(),
+                query.highlights.any_outlines(),
                 pinhole
             ) else {
-                return response;
+                return Ok(());
             };
 
         let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            &scene.parts.collect_ui_labels(),
+            &collect_ui_labels(parts),
             ui_from_canvas,
             &eye,
             ui,
-            &scene.highlights,
+            query.highlights,
             SpatialNavigationMode::TwoD,
         );
 
@@ -316,32 +324,30 @@ pub fn view_2d(
                 ui,
                 eye,
                 &mut view_builder,
-                space_view_id,
                 state,
-                scene,
+                view_ctx,
+                parts,
                 &ui_rects,
-                space_origin,
-            );
+                query,
+            )?;
         }
 
-        for draw_data in scene.draw_data.drain(..) {
+        for draw_data in draw_data.drain(..) {
             view_builder.queue_draw(draw_data);
         }
-        for draw_data in scene
-            .context
-            .shared_render_builders
-            .queuable_draw_data(ctx.render_ctx)
-        {
-            view_builder.queue_draw(draw_data);
+        if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
+            for draw_data in shared_render_builders.queuable_draw_data(ctx.render_ctx) {
+                view_builder.queue_draw(draw_data);
+            }
         }
 
         // ------------------------------------------------------------------------
 
         // Screenshot context menu.
-        let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
+        let (_, screenshot_mode) = screenshot_context_menu(ctx, response);
         if let Some(mode) = screenshot_mode {
             view_builder
-                .schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode)
+                .schedule_screenshot(ctx.render_ctx, query.space_view_id.gpu_readback_id(), mode)
                 .ok();
         }
 
@@ -353,7 +359,7 @@ pub fn view_2d(
                     Ok(command_buffer) => command_buffer,
                     Err(err) => {
                         re_log::error_once!("Failed to fill view builder: {err}");
-                        return response;
+                        return Ok(()); // TODO(andreas): Should make it possible to pass the error on.
                     }
                 };
             painter.add(gpu_bridge::renderer_paint_callback(
@@ -368,22 +374,23 @@ pub fn view_2d(
         painter.extend(show_projections_from_3d_space(
             ctx,
             ui,
-            space_origin,
+            query.space_origin,
             &ui_from_canvas,
         ));
 
         // Add egui driven labels on top of re_renderer content.
         painter.extend(label_shapes);
 
-        response
+        Ok(())
     });
+    scroll_out.inner?;
 
     // Update the scroll area based on the computed offset
     // This handles cases of dragging/zooming the space
     state
         .state_2d
         .capture_scroll(scroll_out.state.offset, available_size, scene_rect_accum);
-    scroll_out.inner
+    Ok(())
 }
 
 fn setup_target_config(

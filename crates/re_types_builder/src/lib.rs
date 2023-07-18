@@ -131,9 +131,9 @@ mod codegen;
 mod objects;
 
 pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
-pub use self::codegen::{CodeGenerator, PythonCodeGenerator, RustCodeGenerator};
+pub use self::codegen::{CodeGenerator, CppCodeGenerator, PythonCodeGenerator, RustCodeGenerator};
 pub use self::objects::{
-    Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, Objects, Type,
+    Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
 };
 
 // --- Attributes ---
@@ -159,7 +159,7 @@ pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
 
 // --- Entrypoints ---
 
-use std::path::{Path, PathBuf};
+use camino::{Utf8Path, Utf8PathBuf};
 
 /// Compiles binary reflection dumps from flatbuffers definitions.
 ///
@@ -180,13 +180,13 @@ use std::path::{Path, PathBuf};
 /// );
 /// ```
 pub fn compile_binary_schemas(
-    include_dir_path: impl AsRef<Path>,
-    output_dir_path: impl AsRef<Path>,
-    entrypoint_path: impl AsRef<Path>,
+    include_dir_path: impl AsRef<Utf8Path>,
+    output_dir_path: impl AsRef<Utf8Path>,
+    entrypoint_path: impl AsRef<Utf8Path>,
 ) {
-    let include_dir_path = include_dir_path.as_ref().to_str().unwrap();
-    let output_dir_path = output_dir_path.as_ref().to_str().unwrap();
-    let entrypoint_path = entrypoint_path.as_ref().to_str().unwrap();
+    let include_dir_path = include_dir_path.as_ref().as_str();
+    let output_dir_path = output_dir_path.as_ref().as_str();
+    let entrypoint_path = entrypoint_path.as_ref().as_str();
 
     use xshell::{cmd, Shell};
     let sh = Shell::new().unwrap();
@@ -205,34 +205,41 @@ pub fn compile_binary_schemas(
 /// 1. Generate binary reflection dumps for our definitions.
 /// 2. Run the semantic pass
 /// 3. Compute the Arrow registry
-fn generate_lang_agnostic(
-    include_dir_path: impl AsRef<Path>,
-    entrypoint_path: impl AsRef<Path>,
+///
+/// Panics on error.
+///
+/// - `include_dir_path`: path to the root directory of the fbs definition tree.
+/// - `entrypoint_path`: path to the root file of the fbs definition tree.
+pub fn generate_lang_agnostic(
+    include_dir_path: impl AsRef<Utf8Path>,
+    entrypoint_path: impl AsRef<Utf8Path>,
 ) -> (Objects, ArrowRegistry) {
+    re_tracing::profile_function!();
     use xshell::Shell;
 
     let sh = Shell::new().unwrap();
     let tmp = sh.create_temp_dir().unwrap();
+    let tmp_path = Utf8PathBuf::try_from(tmp.path().to_path_buf()).unwrap();
 
     let entrypoint_path = entrypoint_path.as_ref();
     let entrypoint_filename = entrypoint_path.file_name().unwrap();
 
     let include_dir_path = include_dir_path.as_ref();
     let include_dir_path = include_dir_path
-        .canonicalize()
+        .canonicalize_utf8()
         .with_context(|| format!("failed to canonicalize include path: {include_dir_path:?}"))
         .unwrap();
 
     // generate bfbs definitions
-    compile_binary_schemas(&include_dir_path, tmp.path(), entrypoint_path);
+    compile_binary_schemas(&include_dir_path, &tmp_path, entrypoint_path);
 
-    let mut binary_entrypoint_path = PathBuf::from(entrypoint_filename);
+    let mut binary_entrypoint_path = Utf8PathBuf::from(entrypoint_filename);
     binary_entrypoint_path.set_extension("bfbs");
 
     // semantic pass: high level objects from low-level reflection data
     let mut objects = Objects::from_buf(
         include_dir_path,
-        sh.read_binary_file(tmp.path().join(binary_entrypoint_path))
+        sh.read_binary_file(tmp_path.join(binary_entrypoint_path))
             .unwrap()
             .as_slice(),
     );
@@ -246,59 +253,121 @@ fn generate_lang_agnostic(
     (objects, arrow_registry)
 }
 
-/// Generates Rust code from a set of flatbuffers definitions.
+/// Generates C++ code.
 ///
 /// Panics on error.
 ///
-/// - `include_dir_path`: path to the root directory of the fbs definition tree.
-/// - `output_crate_path`: path to the root of the output crate.
-/// - `entrypoint_path`: path to the root file of the fbs definition tree.
+/// - `output_path`: path to the root of the output.
 ///
 /// E.g.:
 /// ```no_run
-/// re_types_builder::generate_rust_code(
+/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
 ///     "./definitions",
-///     ".",
 ///     "./definitions/rerun/archetypes.fbs",
+/// );
+/// re_types_builder::generate_cpp_code(
+///     ".",
+///     &objects,
+///     &arrow_registry,
+/// );
+/// ```
+pub fn generate_cpp_code(
+    output_path: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
+) {
+    re_tracing::profile_function!();
+    let mut gen = CppCodeGenerator::new(output_path.as_ref());
+    let _filepaths = gen.generate(objects, arrow_registry);
+}
+
+/// Generates Rust code.
+///
+/// Panics on error.
+///
+/// - `output_crate_path`: path to the root of the output crate.
+///
+/// E.g.:
+/// ```no_run
+/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
+///     "./definitions",
+///     "./definitions/rerun/archetypes.fbs",
+/// );
+/// re_types_builder::generate_rust_code(
+///     ".",
+///     &objects,
+///     &arrow_registry,
 /// );
 /// ```
 pub fn generate_rust_code(
-    include_dir_path: impl AsRef<Path>,
-    output_crate_path: impl AsRef<Path>,
-    entrypoint_path: impl AsRef<Path>,
+    output_crate_path: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
 ) {
-    // passes 1 through 3: bfbs, semantic, arrow registry
-    let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
-
+    re_tracing::profile_function!();
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let _filepaths = gen.generate(&objects, &arrow_registry);
+    let _filepaths = gen.generate(objects, arrow_registry);
 }
 
-/// Generates Python code from a set of flatbuffers definitions.
+/// Generates Python code.
 ///
 /// Panics on error.
 ///
-/// - `include_dir_path`: path to the root directory of the fbs definition tree.
 /// - `output_pkg_path`: path to the root of the output package.
-/// - `entrypoint_path`: path to the root file of the fbs definition tree.
 ///
 /// E.g.:
 /// ```no_run
-/// re_types_builder::generate_python_code(
+/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
 ///     "./definitions",
-///     "./rerun_py",
 ///     "./definitions/rerun/archetypes.fbs",
+/// );
+/// re_types_builder::generate_python_code(
+///     "./rerun_py",
+///     &objects,
+///     &arrow_registry,
 /// );
 /// ```
 pub fn generate_python_code(
-    include_dir_path: impl AsRef<Path>,
-    output_pkg_path: impl AsRef<Path>,
-    entrypoint_path: impl AsRef<Path>,
+    output_pkg_path: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
 ) {
-    // passes 1 through 3: bfbs, semantic, arrow registry
-    let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
-
-    // generate python code
+    re_tracing::profile_function!();
     let mut gen = PythonCodeGenerator::new(output_pkg_path.as_ref());
-    let _filepaths = gen.generate(&objects, &arrow_registry);
+    let _filepaths = gen.generate(objects, arrow_registry);
+}
+
+pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
+    let workspace_root = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        let manifest_dir = camino::Utf8PathBuf::from(manifest_dir);
+        manifest_dir
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf()
+    } else {
+        let file_path = camino::Utf8PathBuf::from(file!());
+        file_path
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf()
+    };
+
+    assert!(
+        workspace_root.exists(),
+        "Failed to find workspace root, expected it at {workspace_root:?}"
+    );
+
+    // Check for something that only exists in root:
+    assert!(
+        workspace_root.join("CODE_OF_CONDUCT.md").exists(),
+        "Failed to find workspace root, expected it at {workspace_root:?}"
+    );
+
+    workspace_root
 }

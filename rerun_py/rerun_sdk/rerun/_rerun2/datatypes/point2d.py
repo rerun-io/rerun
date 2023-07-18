@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, Union
+from typing import Any, Sequence, Tuple, Union
 
-import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
@@ -22,10 +21,10 @@ __all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2
 class Point2D:
     """A point in 2D space."""
 
-    x: float = field()
-    y: float = field()
+    x: float = field(converter=float)
+    y: float = field(converter=float)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return point2d_as_array(self, dtype=dtype)
 
 
@@ -34,8 +33,8 @@ Point2DLike = Union[Point2D, Sequence[float]]
 Point2DArrayLike = Union[
     Point2D,
     Sequence[Point2DLike],
-    npt.NDArray[np.float32],
-    Sequence[npt.NDArray[np.float32]],
+    npt.NDArray[Any],
+    Sequence[npt.NDArray[Any]],
     Sequence[Tuple[float, float]],
     Sequence[float],
 ]

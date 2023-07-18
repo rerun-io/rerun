@@ -3,20 +3,23 @@
 #![allow(trivial_numeric_casts)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
+#![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[doc = "Draw order used for the display order of 2D elements."]
-#[doc = ""]
-#[doc = "Higher values are drawn on top of lower values."]
-#[doc = "An entity can have only a single draw order component."]
-#[doc = "Within an entity draw order is governed by the order of the components."]
-#[doc = ""]
-#[doc = "Draw order for entities with the same draw order is generally undefined."]
-#[derive(Debug, Clone, Copy)]
+/// Draw order used for the display order of 2D elements.
+///
+/// Higher values are drawn on top of lower values.
+/// An entity can have only a single draw order component.
+/// Within an entity draw order is governed by the order of the components.
+///
+/// Draw order for entities with the same draw order is generally undefined.
+#[derive(Clone, Debug, Copy)]
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);
 
@@ -34,9 +37,10 @@ impl<'a> From<&'a DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
     }
 }
 
-impl crate::Component for DrawOrder {
+impl crate::Loggable for DrawOrder {
+    type Name = crate::ComponentName;
     #[inline]
-    fn name() -> crate::ComponentName {
+    fn name() -> Self::Name {
         crate::ComponentName::Borrowed("rerun.draw_order")
     }
 
@@ -55,7 +59,7 @@ impl crate::Component for DrawOrder {
     where
         Self: Clone + 'a,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -98,7 +102,7 @@ impl crate::Component for DrawOrder {
     where
         Self: Sized,
     {
-        use crate::{Component as _, Datatype as _};
+        use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
@@ -115,3 +119,5 @@ impl crate::Component for DrawOrder {
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
+
+impl crate::Component for DrawOrder {}

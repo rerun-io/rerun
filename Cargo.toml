@@ -7,7 +7,7 @@ members = [
   "rerun_py",
   "run_wasm",
   "tests/rust/test_*",
-  "tests/rust/roundtrips/points2d",
+  "tests/rust/roundtrips/*",
 ]
 
 [workspace.package]
@@ -73,6 +73,7 @@ anyhow = "1.0"
 arrow2 = "0.17"
 arrow2_convert = "0.5.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+camino = "1.1"
 cfg-if = "1.0"
 clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
@@ -102,6 +103,7 @@ polars-core = "0.29"
 polars-lazy = "0.29"
 polars-ops = "0.29"
 puffin = "0.15"
+puffin_http = "0.12"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"

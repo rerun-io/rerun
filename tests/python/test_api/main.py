@@ -22,7 +22,7 @@ import numpy as np
 import rerun as rr  # pip install rerun-sdk
 
 
-def run_segmentation() -> None:
+def run_segmentation(experimental_api: bool) -> None:
     rr.set_time_seconds("sim_time", 1)
 
     # Log an image before we have set up our labels
@@ -33,18 +33,20 @@ def run_segmentation() -> None:
     rr.log_segmentation_image("seg_test/img", segmentation_img)
 
     # Log a bunch of classified 2D points
-    if rr.ENABLE_NEXT_GEN_API:
+    if experimental_api:
+        import rerun.experimental as rr_exp
+
         # Note: this uses the new, WIP object-oriented API
-        rr.log_any("seg_test/single_point", rr.Points2D([64, 64], class_ids=13))
-        rr.log_any("seg_test/single_point_labeled", rr.Points2D([90, 50], class_ids=13, labels="labeled point"))
-        rr.log_any("seg_test/several_points0", rr.Points2D([[20, 50], [100, 70], [60, 30]], class_ids=42))
-        rr.log_any(
+        rr_exp.log_any("seg_test/single_point", rr_exp.Points2D([64, 64], class_ids=13))
+        rr_exp.log_any("seg_test/single_point_labeled", rr_exp.Points2D([90, 50], class_ids=13, labels="labeled point"))
+        rr_exp.log_any("seg_test/several_points0", rr_exp.Points2D([[20, 50], [100, 70], [60, 30]], class_ids=42))
+        rr_exp.log_any(
             "seg_test/several_points1",
-            rr.Points2D([[40, 50], [120, 70], [80, 30]], class_ids=np.array([13, 42, 99], dtype=np.uint8)),
+            rr_exp.Points2D([[40, 50], [120, 70], [80, 30]], class_ids=np.array([13, 42, 99], dtype=np.uint8)),
         )
-        rr.log_any(
+        rr_exp.log_any(
             "seg_test/many points",
-            rr.Points2D(
+            rr_exp.Points2D(
                 [[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)],
                 class_ids=np.array([42], dtype=np.uint8),
             ),
@@ -93,7 +95,7 @@ def run_segmentation() -> None:
     rr.log_text_entry("logs/seg_test_log", "label1 disappears and everything with label3 is now default colored again")
 
 
-def small_image() -> None:
+def small_image(experimental_api: bool) -> None:
     img = [
         [[255, 0, 0], [0, 255, 0], [0, 0, 255]],
         [[0, 0, 255], [255, 0, 0], [0, 255, 0]],
@@ -101,7 +103,7 @@ def small_image() -> None:
     rr.log_image("small_image", img)
 
 
-def run_2d_layering() -> None:
+def run_2d_layering(experimental_api: bool) -> None:
     rr.set_time_seconds("sim_time", 1)
 
     # Large gray background.
@@ -139,45 +141,53 @@ def run_2d_layering() -> None:
     )
 
 
-def transform_test() -> None:
-    rr.log_disconnected_space("transform_test/disconnected", timeless=True)
-    rr.log_transform3d(
-        "transform_test/child_from_parent_mat3",
-        rr.TranslationAndMat3((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
-        from_parent=True,
-    )
-    rr.log_transform3d("transform_test/parent_from_child_mat3", rr.TranslationAndMat3((123, 456, 789)))
-    rr.log_transform3d("transform_test/empty_translation_mat3", rr.TranslationAndMat3())
+def transform_test(experimental_api: bool) -> None:
+    rr.log_view_coordinates("transform_test", up="+Y")
 
-    # Log translation only.
-    rr.log_transform3d("transform_test/translation", rr.Translation3D((2, 1, 3)))
+    # Log a disconnected space (this doesn't do anything here, but can be used to force a new space)
+    rr.log_disconnected_space("transform_test/disconnected")
 
     # Log scale along the x axis only.
     rr.log_transform3d("transform_test/x_scaled", rr.Scale3D((3, 1, 1)))
 
     # Log a rotation around the z axis.
-    rr.log_transform3d("transform_test/z_rotated_object", rr.RotationAxisAngle((0, 0, 1), degrees=20))
+    rr.log_transform3d("transform_test/z_rotated_object", rr.RotationAxisAngle((1, 0, 0), degrees=45))
 
-    # Log scale followed by translation along the Y-axis.
+    # Log a transform from parent to child with a translation and skew along y and x.
     rr.log_transform3d(
-        "transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0.0, 1.0, 0.0], scale=2)
+        "transform_test/child_from_parent_translation",
+        rr.Translation3D((-1, 0, 0)),
+        from_parent=True,
     )
 
+    # Log translation only.
+    rr.log_transform3d("transform_test/translation", rr.Translation3D((2, 0, 0)))
+    rr.log_transform3d("transform_test/translation2", rr.TranslationAndMat3((3, 0, 0)))
+
+    # Log uniform scale followed by translation along the Y-axis.
+    rr.log_transform3d("transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0, 0, 1], scale=3))
+
     # Log translation + rotation, also called a rigid transform.
-    rr.log_transform3d("transform_test/rigid3", rr.Rigid3D([1, 2, 3], rr.RotationAxisAngle((0, 1, 0), radians=1.57)))
+    rr.log_transform3d("transform_test/rigid3", rr.Rigid3D([1, 0, 1], rr.RotationAxisAngle((0, 1, 0), radians=1.57)))
 
     # Log translation, rotation & scale all at once.
     rr.log_transform3d(
         "transform_test/transformed",
         rr.TranslationRotationScale3D(
-            translation=[0, 1, 5],
+            translation=[2, 0, 1],
             rotation=rr.RotationAxisAngle((0, 0, 1), degrees=20),
             scale=2,
         ),
     )
 
+    # Log a transform with translation and shear along x.
+    rr.log_transform3d(
+        "transform_test/shear",
+        rr.TranslationAndMat3((3, 0, 1), np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
+    )
 
-def run_2d_lines() -> None:
+
+def run_2d_lines(experimental_api: bool) -> None:
     import numpy as np
 
     T = np.linspace(0, 5, 100)
@@ -190,7 +200,7 @@ def run_2d_lines() -> None:
         rr.log_line_strip("2d_lines/spiral", positions=pts)
 
 
-def run_3d_points() -> None:
+def run_3d_points(experimental_api: bool) -> None:
     import random
 
     rr.set_time_seconds("sim_time", 1)
@@ -210,7 +220,7 @@ def run_3d_points() -> None:
     )
 
 
-def raw_mesh() -> None:
+def raw_mesh(experimental_api: bool) -> None:
     rr.log_mesh(
         "mesh_test/triangle",
         positions=[[0, 0, 0], [0, 0.7, 0], [1.0, 0.0, 0]],
@@ -218,7 +228,7 @@ def raw_mesh() -> None:
     )
 
 
-def run_rects() -> None:
+def run_rects(experimental_api: bool) -> None:
     import random
 
     rr.set_time_seconds("sim_time", 1)
@@ -241,7 +251,7 @@ def run_rects() -> None:
     rr.log_rects("rects_test/rects", [])
 
 
-def run_text_logs() -> None:
+def run_text_logs(experimental_api: bool) -> None:
     rr.log_text_entry("logs", "Text with explicitly set color", color=[255, 215, 0], timeless=True)
     rr.log_text_entry("logs", "this entry has loglevel TRACE", level=rr.LogLevel.TRACE)
 
@@ -250,7 +260,7 @@ def run_text_logs() -> None:
     logging.info("This log got added through a `LoggingHandler`")
 
 
-def run_log_cleared() -> None:
+def run_log_cleared(experimental_api: bool) -> None:
     rr.set_time_seconds("sim_time", 1)
     rr.log_rect("null_test/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
     rr.log_rect("null_test/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
@@ -264,7 +274,7 @@ def run_log_cleared() -> None:
     rr.log_rect("null_test/rect/1", [10, 5, 4, 4])
 
 
-def transforms_rigid_3d() -> None:
+def transforms_rigid_3d(experimental_api: bool) -> None:
     rr.set_time_seconds("sim_time", 0)
 
     sun_to_planet_distance = 6.0
@@ -336,7 +346,7 @@ def transforms_rigid_3d() -> None:
         )
 
 
-def run_bounding_box() -> None:
+def run_bounding_box(experimental_api: bool) -> None:
     rr.set_time_seconds("sim_time", 0)
     rr.log_obb(
         "bbox_test/bbox",
@@ -360,7 +370,7 @@ def run_bounding_box() -> None:
     )
 
 
-def run_extension_component() -> None:
+def run_extension_component(experimental_api: bool) -> None:
     rr.set_time_seconds("sim_time", 0)
     # Hack to establish 2d view bounds
     rr.log_rect("extension_components", [0, 0, 128, 128])
@@ -381,7 +391,7 @@ def run_extension_component() -> None:
     )
 
 
-def run_image_tensors() -> None:
+def run_image_tensors(experimental_api: bool) -> None:
     # Make sure you use a colorful image with alpha!
     dir_path = os.path.dirname(os.path.realpath(__file__))
     img_path = f"{dir_path}/../../../crates/re_ui/data/logo_dark_mode.png"
@@ -453,6 +463,12 @@ def main() -> None:
         action="store_true",
         help="If specified, each test will be its own recording",
     )
+    parser.add_argument(
+        "--experimental-api",
+        dest="experimental_api",
+        action="store_true",
+        help="If specified run tests using the new experimental APIs",
+    )
 
     rr.script_add_args(parser)
     args = parser.parse_args()
@@ -485,16 +501,16 @@ def main() -> None:
             else:
                 logging.info(f"Starting {name}")
                 with rec:
-                    test()
+                    test(args.experimental_api)
 
         for t in threads:
             t.join()
     else:
         if args.split_recordings:
             with rr.script_setup(args, f"test_api/{args.test}"):
-                tests[args.test]()
+                tests[args.test](args.experimental_api)
         else:
-            tests[args.test]()
+            tests[args.test](args.experimental_api)
 
     rr.script_teardown(args)
 

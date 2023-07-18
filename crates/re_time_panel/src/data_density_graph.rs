@@ -370,7 +370,7 @@ pub fn data_density_graph_ui(
     time_histogram: &TimeHistogram,
     row_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
-    item: Item,
+    item: &Item,
 ) {
     re_tracing::profile_function!();
 
@@ -470,7 +470,7 @@ pub fn data_density_graph_ui(
         data_dentity_graph_painter,
         row_rect.y_range(),
         time_area_painter,
-        graph_color(ctx, &item, ui),
+        graph_color(ctx, item, ui),
         hovered_x_range,
     );
 
@@ -487,7 +487,7 @@ pub fn data_density_graph_ui(
             show_row_ids_tooltip(
                 ctx,
                 ui.ctx(),
-                &item,
+                item,
                 hovered_time_range,
                 num_hovered_messages,
             );

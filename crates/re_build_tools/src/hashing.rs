@@ -17,7 +17,7 @@ fn encode_hex(bytes: &[u8]) -> String {
     s
 }
 
-/// Walks the directory at `path` in filename order.
+/// Recursively walks the directory at `path` in filename order.
 ///
 /// If `extensions` is specified, only files with the right extensions will be iterated.
 /// Specified extensions should _not_ include the leading dot, e.g. `fbs` rather than `.fbs`.
@@ -156,7 +156,7 @@ pub fn write_versioning_hash(path: impl AsRef<Path>, hash: impl AsRef<str>) {
         {hash}
         "
     ));
-    std::fs::write(path, contents.trim())
+    std::fs::write(path, contents.trim_start())
         .with_context(|| format!("couldn't write to {path:?}"))
         .unwrap();
 }

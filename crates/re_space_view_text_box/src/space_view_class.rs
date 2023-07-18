@@ -1,10 +1,11 @@
 use egui::Label;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName, SpaceViewId,
-    SpaceViewState, TypedScene, ViewerContext,
+    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
-use super::scene_part::SceneTextBox;
+use super::view_part_system::TextBoxSystem;
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq)]
@@ -37,9 +38,6 @@ pub struct TextBoxSpaceView;
 
 impl SpaceViewClass for TextBoxSpaceView {
     type State = TextBoxSpaceViewState;
-    type Context = ();
-    type SceneParts = SceneTextBox;
-    type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Text Box".into()
@@ -51,6 +49,13 @@ impl SpaceViewClass for TextBoxSpaceView {
 
     fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
         "Displays text from a text entry components.".into()
+    }
+
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry.register_part_system::<TextBoxSystem>()
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
@@ -81,11 +86,12 @@ impl SpaceViewClass for TextBoxSpaceView {
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-    ) {
-        let scene = &scene.parts;
+        _view_ctx: &ViewContextCollection,
+        parts: &ViewPartCollection,
+        _query: &ViewQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let text_box = parts.get::<TextBoxSystem>()?;
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
@@ -97,8 +103,8 @@ impl SpaceViewClass for TextBoxSpaceView {
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
                         // TODO(jleibs): better handling for multiple results
-                        if scene.text_entries.len() == 1 {
-                            let mut text = egui::RichText::new(&scene.text_entries[0].body);
+                        if text_box.text_entries.len() == 1 {
+                            let mut text = egui::RichText::new(&text_box.text_entries[0].body);
 
                             if state.monospace {
                                 text = text.monospace();
@@ -108,12 +114,14 @@ impl SpaceViewClass for TextBoxSpaceView {
                         } else {
                             ui.label(format!(
                                 "Unexpected number of text entries: {}. Limit your query to 1.",
-                                scene.text_entries.len()
+                                text_box.text_entries.len()
                             ));
                         }
                     })
             })
             .response
         });
+
+        Ok(())
     }
 }

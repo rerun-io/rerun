@@ -1,5 +1,13 @@
 //! Helpers for tracing/spans/flamegraphs and such.
 
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "server")]
+mod server;
+
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "server")]
+pub use server::Profiler;
+
 pub mod reexports {
     #[cfg(not(target_arch = "wasm32"))]
     pub use puffin;

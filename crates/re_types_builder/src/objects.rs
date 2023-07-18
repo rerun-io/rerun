@@ -3,12 +3,11 @@
 //! The semantic pass transforms the low-level raw reflection data into higher level types that
 //! are much easier to inspect and manipulate / friendler to work with.
 
+use std::collections::{HashMap, HashSet};
+
 use anyhow::Context as _;
+use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
-use std::{
-    collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
-};
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
@@ -29,13 +28,13 @@ impl Objects {
     /// Runs the semantic pass on a serialized flatbuffers schema.
     ///
     /// The buffer must be a serialized [`FbsSchema`] (i.e. `.bfbs` data).
-    pub fn from_buf(include_dir_path: impl AsRef<Path>, buf: &[u8]) -> Self {
+    pub fn from_buf(include_dir_path: impl AsRef<Utf8Path>, buf: &[u8]) -> Self {
         let schema = root_as_schema(buf).unwrap();
         Self::from_raw_schema(include_dir_path, &schema)
     }
 
     /// Runs the semantic pass on a deserialized flatbuffers [`FbsSchema`].
-    pub fn from_raw_schema(include_dir_path: impl AsRef<Path>, schema: &FbsSchema<'_>) -> Self {
+    pub fn from_raw_schema(include_dir_path: impl AsRef<Utf8Path>, schema: &FbsSchema<'_>) -> Self {
         let mut resolved_objs = HashMap::new();
         let mut resolved_enums = HashMap::new();
 
@@ -125,15 +124,16 @@ impl Objects {
             .filter(|(_, obj)| !obj.is_transparent())
             .collect();
 
-        // Check for nullable unions -- these cannot be represented in Arrow!
+        // Check for top-level nullable unions -- these cannot be represented in Arrow!
         for obj in this.objects.values() {
             for field in &obj.fields {
-                if !field.is_nullable {
+                if !obj.is_arrow_transparent() || !field.is_nullable {
                     continue;
                 }
 
                 if let Type::Object(fqname) = &field.typ {
                     let target = &this.objects[fqname];
+
                     assert!(
                         !(target.is_enum() || target.is_union()),
                         "nullable unions cannot be represented in Arrow, found one at {:?}",
@@ -207,6 +207,8 @@ pub enum ObjectKind {
 }
 
 impl ObjectKind {
+    pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
+
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
         let pkg_name = pkg_name.as_ref().replace(".testing", "");
@@ -218,6 +220,14 @@ impl ObjectKind {
             ObjectKind::Archetype
         } else {
             panic!("unknown package {pkg_name:?}");
+        }
+    }
+
+    pub fn plural_snake_case(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "datatypes",
+            ObjectKind::Component => "components",
+            ObjectKind::Archetype => "archetypes",
         }
     }
 }
@@ -249,23 +259,23 @@ pub struct Docs {
     pub tagged_docs: HashMap<String, Vec<String>>,
 
     /// Contents of all the files included using `\include:<path>`.
-    pub included_files: HashMap<PathBuf, String>,
+    pub included_files: HashMap<Utf8PathBuf, String>,
 }
 
 impl Docs {
     fn from_raw_docs(
-        filepath: &Path,
+        filepath: &Utf8Path,
         docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
     ) -> Self {
         let mut included_files = HashMap::default();
 
         let include_file = |included_files: &mut HashMap<_, _>, raw_path: &str| {
-            let path: PathBuf = raw_path
+            let path: Utf8PathBuf = raw_path
                 .parse()
                 .with_context(|| format!("couldn't parse included path: {raw_path:?}"))
                 .unwrap();
 
-            let path = filepath.join(path);
+            let path = filepath.parent().unwrap().join(path);
 
             included_files
                 .entry(path.clone())
@@ -351,11 +361,11 @@ impl Docs {
 /// an enum.
 #[derive(Debug, Clone)]
 pub struct Object {
-    /// Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    /// Utf8Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
     pub virtpath: String,
 
     /// Absolute filepath of the associated fbs definition.
-    pub filepath: PathBuf,
+    pub filepath: Utf8PathBuf,
 
     /// Fully-qualified name of the object, e.g. `rerun.components.Point2D`.
     pub fqname: String,
@@ -397,7 +407,7 @@ impl Object {
     /// Resolves a raw [`crate::Object`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
     pub fn from_raw_object(
-        include_dir_path: impl AsRef<Path>,
+        include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         obj: &FbsObject<'_>,
@@ -416,7 +426,13 @@ impl Object {
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        assert!(virtpath.ends_with(".fbs"), "Bad virtpath: {virtpath:?}");
+
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
+        assert!(
+            filepath.to_string().ends_with(".fbs"),
+            "Bad filepath: {filepath:?}"
+        );
 
         let docs = Docs::from_raw_docs(&filepath, obj.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
@@ -465,7 +481,7 @@ impl Object {
     /// Resolves a raw [`FbsEnum`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
     pub fn from_raw_enum(
-        include_dir_path: impl AsRef<Path>,
+        include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         enm: &FbsEnum<'_>,
@@ -590,6 +606,45 @@ impl Object {
             .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
             .is_some()
     }
+
+    /// Try to find the relative file path of the `.fbs` source file.
+    pub fn relative_filepath(&self) -> Option<&Utf8Path> {
+        self.filepath
+            .strip_prefix(crate::rerun_workspace_path())
+            .ok()
+    }
+
+    /// The `snake_case` name of the object, e.g. `translation_and_mat3x3`.
+    pub fn snake_case_name(&self) -> String {
+        to_snake_case(&self.name)
+    }
+}
+
+fn to_snake_case(s: &str) -> String {
+    // Other crates (convert_case, case, heck, …) all get this wrong. See unit test.
+    let mut last_char: Option<char> = None;
+
+    let mut out = String::new();
+    for c in s.chars() {
+        if let Some(last_char) = last_char {
+            if last_char.is_lowercase() && c.is_uppercase() {
+                out.push('_');
+            }
+        }
+        out.push(c.to_ascii_lowercase());
+        last_char = Some(c);
+    }
+
+    out
+}
+
+#[test]
+fn test_snake_case() {
+    assert_eq!(to_snake_case("Point2D"), "point2d");
+    assert_eq!(
+        to_snake_case("TranslationAndMat3x3"),
+        "translation_and_mat3x3"
+    );
 }
 
 /// Properties specific to either structs or unions, but not both.
@@ -608,11 +663,11 @@ pub enum ObjectSpecifics {
 /// union value.
 #[derive(Debug, Clone)]
 pub struct ObjectField {
-    /// Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    /// Utf8Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
     pub virtpath: String,
 
     /// Absolute filepath of the associated fbs definition.
-    pub filepath: PathBuf,
+    pub filepath: Utf8PathBuf,
 
     /// Fully-qualified name of the field, e.g. `rerun.components.Point2D#position`.
     pub fqname: String,
@@ -620,7 +675,7 @@ pub struct ObjectField {
     /// Fully-qualified package name of the field, e.g. `rerun.components`.
     pub pkg_name: String,
 
-    /// Name of the object, e.g. `Point2D`.
+    /// Name of the field, e.g. `x`.
     pub name: String,
 
     /// The field's multiple layers of documentation.
@@ -653,7 +708,7 @@ pub struct ObjectField {
 
 impl ObjectField {
     pub fn from_raw_object_field(
-        include_dir_path: impl AsRef<Path>,
+        include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         obj: &FbsObject<'_>,
@@ -701,7 +756,7 @@ impl ObjectField {
     }
 
     pub fn from_raw_enum_value(
-        include_dir_path: impl AsRef<Path>,
+        include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         enm: &FbsEnum<'_>,
@@ -1070,14 +1125,12 @@ impl Attributes {
 }
 
 fn filepath_from_declaration_file(
-    include_dir_path: impl AsRef<Path>,
+    include_dir_path: impl AsRef<Utf8Path>,
     declaration_file: impl AsRef<str>,
-) -> PathBuf {
+) -> Utf8PathBuf {
     include_dir_path.as_ref().join("rerun").join(
-        PathBuf::from(declaration_file.as_ref())
-            .parent()
-            .unwrap() // NOTE: safe, this _must_ be a file
-            .to_string_lossy()
+        Utf8PathBuf::from(declaration_file.as_ref())
+            .to_string()
             .replace("//", ""),
     )
 }

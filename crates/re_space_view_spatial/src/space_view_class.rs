@@ -1,9 +1,13 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
-use re_viewer_context::{SpaceViewClass, SpaceViewId};
+use re_viewer_context::{
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+};
 
 use crate::{
-    scene::{SpatialSceneContext, SpatialScenePartCollection, SpatialScenePartData},
+    contexts::register_contexts,
+    parts::register_parts,
     ui::{SpatialNavigationMode, SpatialSpaceViewState},
 };
 
@@ -12,9 +16,6 @@ pub struct SpatialSpaceView;
 
 impl SpaceViewClass for SpatialSpaceView {
     type State = SpatialSpaceViewState;
-    type Context = SpatialSceneContext;
-    type SceneParts = SpatialScenePartCollection;
-    type ScenePartData = SpatialScenePartData;
 
     fn name(&self) -> re_viewer_context::SpaceViewClassName {
         "Spatial".into()
@@ -26,6 +27,15 @@ impl SpaceViewClass for SpatialSpaceView {
 
     fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::State) -> egui::WidgetText {
         state.help_text(re_ui)
+    }
+
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        register_contexts(system_registry)?;
+        register_parts(system_registry)?;
+        Ok(())
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &Self::State) -> Option<f32> {
@@ -42,9 +52,9 @@ impl SpaceViewClass for SpatialSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::High
     }
 
-    fn prepare_populate(
+    fn prepare_ui(
         &self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         state: &Self::State,
         entity_paths: &IntSet<EntityPath>,
         entity_properties: &mut re_data_store::EntityPropertyMap,
@@ -65,13 +75,14 @@ impl SpaceViewClass for SpatialSpaceView {
 
     fn ui(
         &self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut re_viewer_context::TypedScene<Self>,
-        space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
-    ) {
-        state.view_spatial(ctx, ui, scene, space_origin, space_view_id);
+        view_ctx: &ViewContextCollection,
+        parts: &ViewPartCollection,
+        query: &ViewQuery<'_>,
+        draw_data: Vec<re_renderer::QueueableDrawData>,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        state.view_spatial(ctx, ui, view_ctx, parts, query, draw_data)
     }
 }
