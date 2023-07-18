@@ -56,7 +56,7 @@ jobs:
 
   set-config:
     name: Set Config
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
@@ -68,13 +68,13 @@ jobs:
         run: |
           case "${{ inputs.platform }}" in
             linux)
-              runner="ubuntu-latest"
+              runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               run_tests="true"
               container="{'image': 'rerunio/ci_docker:0.7'}"
               ;;
             windows)
-              runner="windows-latest"
+              runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
               run_tests="true"
               container="null"
