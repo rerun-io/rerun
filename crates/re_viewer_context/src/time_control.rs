@@ -528,7 +528,7 @@ fn min(values: &BTreeSet<TimeInt>) -> TimeInt {
 }
 
 fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
-    *values.iter().rev().next().unwrap_or(&TimeInt::BEGINNING)
+    *values.iter().next_back().unwrap_or(&TimeInt::BEGINNING)
 }
 
 fn range(values: &BTreeSet<TimeInt>) -> TimeRange {
@@ -565,7 +565,7 @@ fn step_fwd_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
 }
 
 fn step_back_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
-    if let Some(previous) = values.range(..time.ceil()).rev().next() {
+    if let Some(previous) = values.range(..time.ceil()).next_back() {
         *previous
     } else {
         max(values)
@@ -599,11 +599,7 @@ fn step_back_time_looped(
 ) -> TimeReal {
     if time <= loop_range.min || loop_range.max < time {
         loop_range.max
-    } else if let Some(previous) = values
-        .range(loop_range.min.ceil()..time.ceil())
-        .rev()
-        .next()
-    {
+    } else if let Some(previous) = values.range(loop_range.min.ceil()..time.ceil()).next_back() {
         TimeReal::from(*previous)
     } else {
         step_back_time(time, values).into()

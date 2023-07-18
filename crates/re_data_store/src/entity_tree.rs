@@ -208,8 +208,7 @@ impl EntityTree {
                 let mut results = vec![];
                 let mut trees = vec![];
                 trees.push(leaf);
-                while !trees.is_empty() {
-                    let next = trees.pop().unwrap();
+                while let Some(next) = trees.pop() {
                     trees.extend(next.children.values_mut().collect::<Vec<&mut Self>>());
 
                     // Track that any future children need a Null at the right

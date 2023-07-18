@@ -1,4 +1,5 @@
-///! A toast notification system for egui, roughly based on <https://github.com/urholaukkarinen/egui-toast>.
+//! A toast notification system for egui, roughly based on <https://github.com/urholaukkarinen/egui-toast>.
+
 use std::collections::HashMap;
 
 use egui::Color32;

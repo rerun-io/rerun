@@ -148,7 +148,7 @@ struct Args {
 #[derive(Debug, Clone, Subcommand)]
 enum Commands {
     /// Configure the behavior of our analytics.
-    #[cfg(all(feature = "analytics"))]
+    #[cfg(feature = "analytics")]
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
@@ -267,7 +267,7 @@ where
 
     let res = if let Some(commands) = &args.commands {
         match commands {
-            #[cfg(all(feature = "analytics"))]
+            #[cfg(feature = "analytics")]
             Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
 
             Commands::Compare {
@@ -361,7 +361,7 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
     re_log_types::DataTable::similar(&table1, &table2)
 }
 
-#[cfg(all(feature = "analytics"))]
+#[cfg(feature = "analytics")]
 fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
     match cmd {
         #[allow(clippy::unit_arg)]
