@@ -32,6 +32,8 @@ impl Transform3D {
     pub const ALL_COMPONENTS: [crate::ComponentName; 1usize] = [crate::ComponentName::Borrowed(
         "rerun.components.Transform3D",
     )];
+
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
 impl crate::Archetype for Transform3D {
@@ -53,6 +55,11 @@ impl crate::Archetype for Transform3D {
     #[inline]
     fn optional_components() -> Vec<crate::ComponentName> {
         Self::OPTIONAL_COMPONENTS.to_vec()
+    }
+
+    #[inline]
+    fn all_components() -> Vec<crate::ComponentName> {
+        Self::ALL_COMPONENTS.to_vec()
     }
 
     #[inline]

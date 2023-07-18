@@ -910,6 +910,8 @@ fn quote_trait_impls_from_obj(
                     pub const OPTIONAL_COMPONENTS: [crate::ComponentName; #num_optional] = [#optional];
 
                     pub const ALL_COMPONENTS: [crate::ComponentName; #num_all] = [#required #recommended #optional];
+
+                    pub const NUM_COMPONENTS: usize = #num_all;
                 }
 
                 impl crate::Archetype for #name {
@@ -931,6 +933,11 @@ fn quote_trait_impls_from_obj(
                     #[inline]
                     fn optional_components() -> Vec<crate::ComponentName> {
                         Self::OPTIONAL_COMPONENTS.to_vec()
+                    }
+
+                    #[inline]
+                    fn all_components() -> Vec<crate::ComponentName> {
+                        Self::ALL_COMPONENTS.to_vec()
                     }
 
                     #[inline]

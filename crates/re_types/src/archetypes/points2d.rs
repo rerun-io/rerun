@@ -107,6 +107,8 @@ impl Points2D {
         crate::ComponentName::Borrowed("rerun.keypoint_id"),
         crate::ComponentName::Borrowed("rerun.instance_key"),
     ];
+
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl crate::Archetype for Points2D {
@@ -128,6 +130,11 @@ impl crate::Archetype for Points2D {
     #[inline]
     fn optional_components() -> Vec<crate::ComponentName> {
         Self::OPTIONAL_COMPONENTS.to_vec()
+    }
+
+    #[inline]
+    fn all_components() -> Vec<crate::ComponentName> {
+        Self::ALL_COMPONENTS.to_vec()
     }
 
     #[inline]

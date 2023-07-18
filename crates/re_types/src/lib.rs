@@ -252,6 +252,9 @@ pub trait Archetype {
     /// when constructing this archetype.
     fn optional_components() -> Vec<ComponentName>;
 
+    /// All components including required, recommended, and optional.
+    fn all_components() -> Vec<ComponentName>;
+
     // ---
 
     /// Serializes all non-null [`Component`]s of this [`Archetype`] into Arrow arrays.

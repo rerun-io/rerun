@@ -7,7 +7,7 @@ use re_types::{
     components::InstanceKey, Archetype, Component, ComponentName, DeserializationResult, Loggable,
 };
 
-use crate::QueryError;
+use crate::{ComponentWithInstances, QueryError};
 
 /// A type-erased array of [`Component`] values and the corresponding [`InstanceKey`] keys.
 ///
@@ -16,6 +16,15 @@ use crate::QueryError;
 pub struct ArchComponentWithInstances {
     pub(crate) instance_keys: DataCell,
     pub(crate) values: DataCell,
+}
+
+impl From<ComponentWithInstances> for ArchComponentWithInstances {
+    fn from(other: ComponentWithInstances) -> Self {
+        ArchComponentWithInstances {
+            instance_keys: other.instance_keys,
+            values: other.values,
+        }
+    }
 }
 
 impl ArchComponentWithInstances {
