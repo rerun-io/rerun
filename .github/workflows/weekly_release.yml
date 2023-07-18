@@ -3,7 +3,7 @@ name: Release a branch or target with the given version
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0 * * MON"
+    - cron: "0 14 * * MON"
   push:
     branches: [main]
 
