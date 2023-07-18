@@ -6,12 +6,16 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace rr {
     namespace components {
         struct AffixFuzzer13 {
             std::optional<std::vector<std::string>> many_strings_optional;
+
+            AffixFuzzer13(std::optional<std::vector<std::string>> many_strings_optional)
+                : many_strings_optional(std::move(many_strings_optional)) {}
         };
     } // namespace components
 } // namespace rr

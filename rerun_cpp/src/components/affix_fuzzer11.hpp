@@ -5,12 +5,16 @@
 
 #include <cstdint>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace rr {
     namespace components {
         struct AffixFuzzer11 {
             std::optional<std::vector<float>> many_floats_optional;
+
+            AffixFuzzer11(std::optional<std::vector<float>> many_floats_optional)
+                : many_floats_optional(std::move(many_floats_optional)) {}
         };
     } // namespace components
 } // namespace rr

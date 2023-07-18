@@ -200,12 +200,12 @@ struct QuotedObject {
 impl QuotedObject {
     pub fn new(objects: &Objects, obj: &crate::Object) -> Self {
         match obj.specifics {
-            crate::ObjectSpecifics::Struct => Self::from_struct(obj),
+            crate::ObjectSpecifics::Struct => Self::from_struct(objects, obj),
             crate::ObjectSpecifics::Union { .. } => Self::from_union(objects, obj),
         }
     }
 
-    fn from_struct(obj: &crate::Object) -> QuotedObject {
+    fn from_struct(_objects: &Objects, obj: &crate::Object) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case());
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}");
@@ -231,6 +231,27 @@ impl QuotedObject {
             })
             .collect_vec();
 
+        let constructor = if obj.fields.len() == 1 {
+            // Single-field struct - it is a newtype wrapper.
+            // Create a implicit constructor from its own field-type.
+            let obj_field = &obj.fields[0];
+            if let Type::Array { .. } = &obj_field.typ {
+                // TODO(emilk): implicit constructor for arrays
+                quote! {}
+            } else {
+                hpp_includes.system.insert("utility".to_owned()); // std::move
+
+                let field_ident = format_ident!("{}", obj_field.name);
+                let parameter_declaration =
+                    quote_declaration(&mut hpp_includes, obj_field, &field_ident, false).0;
+                quote! {
+                    #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident)) {}
+                }
+            }
+        } else {
+            quote! {}
+        };
+
         let hpp = quote! {
             #hpp_includes
 
@@ -239,6 +260,8 @@ impl QuotedObject {
                     #quoted_docs
                     struct #pascal_case_ident {
                         #(#field_declarations;)*
+
+                        #constructor
                     };
                 }
             }

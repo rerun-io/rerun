@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 #include "../components/transform3d.hpp"
 
@@ -13,6 +14,8 @@ namespace rr {
         struct Transform3D {
             /// The transform
             rr::components::Transform3D transform;
+
+            Transform3D(rr::components::Transform3D transform) : transform(std::move(transform)) {}
         };
     } // namespace archetypes
 } // namespace rr

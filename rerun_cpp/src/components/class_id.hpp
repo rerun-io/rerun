@@ -4,12 +4,15 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 namespace rr {
     namespace components {
         /// A 16-bit ID representing a type of semantic class.
         struct ClassId {
             uint16_t id;
+
+            ClassId(uint16_t id) : id(std::move(id)) {}
         };
     } // namespace components
 } // namespace rr

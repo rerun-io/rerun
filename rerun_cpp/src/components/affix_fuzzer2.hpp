@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 #include "../datatypes/affix_fuzzer1.hpp"
 
@@ -11,6 +12,9 @@ namespace rr {
     namespace components {
         struct AffixFuzzer2 {
             rr::datatypes::AffixFuzzer1 single_required;
+
+            AffixFuzzer2(rr::datatypes::AffixFuzzer1 single_required)
+                : single_required(std::move(single_required)) {}
         };
     } // namespace components
 } // namespace rr

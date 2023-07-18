@@ -5,11 +5,15 @@
 
 #include <cstdint>
 #include <optional>
+#include <utility>
 
 namespace rr {
     namespace components {
         struct AffixFuzzer8 {
             std::optional<float> single_float_optional;
+
+            AffixFuzzer8(std::optional<float> single_float_optional)
+                : single_float_optional(std::move(single_float_optional)) {}
         };
     } // namespace components
 } // namespace rr

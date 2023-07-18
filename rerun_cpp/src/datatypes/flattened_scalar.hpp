@@ -4,11 +4,14 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 namespace rr {
     namespace datatypes {
         struct FlattenedScalar {
             float value;
+
+            FlattenedScalar(float value) : value(std::move(value)) {}
         };
     } // namespace datatypes
 } // namespace rr

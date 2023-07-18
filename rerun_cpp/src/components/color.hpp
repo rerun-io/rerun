@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 namespace rr {
     namespace components {
@@ -11,6 +12,8 @@ namespace rr {
         /// alpha.
         struct Color {
             uint32_t rgba;
+
+            Color(uint32_t rgba) : rgba(std::move(rgba)) {}
         };
     } // namespace components
 } // namespace rr

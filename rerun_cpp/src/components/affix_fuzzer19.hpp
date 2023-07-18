@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 #include "../datatypes/affix_fuzzer5.hpp"
 
@@ -11,6 +12,9 @@ namespace rr {
     namespace components {
         struct AffixFuzzer19 {
             rr::datatypes::AffixFuzzer5 just_a_table_nothing_shady;
+
+            AffixFuzzer19(rr::datatypes::AffixFuzzer5 just_a_table_nothing_shady)
+                : just_a_table_nothing_shady(std::move(just_a_table_nothing_shady)) {}
         };
     } // namespace components
 } // namespace rr

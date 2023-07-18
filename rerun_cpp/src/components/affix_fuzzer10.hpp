@@ -6,11 +6,15 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 
 namespace rr {
     namespace components {
         struct AffixFuzzer10 {
             std::optional<std::string> single_string_optional;
+
+            AffixFuzzer10(std::optional<std::string> single_string_optional)
+                : single_string_optional(std::move(single_string_optional)) {}
         };
     } // namespace components
 } // namespace rr

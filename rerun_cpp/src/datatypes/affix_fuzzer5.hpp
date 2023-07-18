@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <utility>
 
 #include "../datatypes/affix_fuzzer4.hpp"
 
@@ -12,6 +13,9 @@ namespace rr {
     namespace datatypes {
         struct AffixFuzzer5 {
             std::optional<rr::datatypes::AffixFuzzer4> single_optional_union;
+
+            AffixFuzzer5(std::optional<rr::datatypes::AffixFuzzer4> single_optional_union)
+                : single_optional_union(std::move(single_optional_union)) {}
         };
     } // namespace datatypes
 } // namespace rr

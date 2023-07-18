@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 namespace rr {
     namespace components {
@@ -16,6 +17,8 @@ namespace rr {
         /// Draw order for entities with the same draw order is generally undefined.
         struct DrawOrder {
             float value;
+
+            DrawOrder(float value) : value(std::move(value)) {}
         };
     } // namespace components
 } // namespace rr

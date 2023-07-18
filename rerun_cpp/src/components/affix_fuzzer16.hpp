@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "../datatypes/affix_fuzzer3.hpp"
@@ -12,6 +13,9 @@ namespace rr {
     namespace components {
         struct AffixFuzzer16 {
             std::vector<rr::datatypes::AffixFuzzer3> many_required_unions;
+
+            AffixFuzzer16(std::vector<rr::datatypes::AffixFuzzer3> many_required_unions)
+                : many_required_unions(std::move(many_required_unions)) {}
         };
     } // namespace components
 } // namespace rr
