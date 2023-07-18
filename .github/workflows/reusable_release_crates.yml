@@ -23,7 +23,7 @@ jobs:
         run: |
           python3 -m pip install -r scripts/ci/requirements.txt
 
-      - name: Install WASM tools
+      - name: Install Wasm tools
         shell: bash
         run: ./scripts/setup_web.sh
 
