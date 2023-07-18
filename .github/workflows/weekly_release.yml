@@ -50,6 +50,8 @@ jobs:
 
             The release process will begin once this pull request is merged.
 
+            <!-- [weekly-release] -->
+
   publish-crates:
     name: "Publish Crates"
     runs-on: ubuntu-latest
