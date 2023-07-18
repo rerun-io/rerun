@@ -9,7 +9,7 @@ on:
       ADHOC_NAME:
         type: string
         required: false
-        default: ''
+        default: ""
       MARK_PRERELEASE_FOR_MAINLINE:
         required: false
         type: boolean
@@ -21,17 +21,17 @@ on:
       RELEASE_VERSION:
         required: false
         type: string
-        default: 'prerelease'
+        default: "prerelease"
       RRD_ARTIFACT_NAME:
         required: false
         type: string
-        default: ''
+        default: ""
       # We need this because PRs use a merged commit but we really want
       # to track uploads based on the source commit.
       UPLOAD_COMMIT_OVERRIDE:
         required: false
         type: string
-        default: ''
+        default: ""
       UPLOAD_COMMIT:
         required: false
         type: boolean
@@ -42,7 +42,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   upload-web:
     name: Upload web build to google cloud (wasm32 + wasm-bindgen)
     permissions:
@@ -65,7 +64,6 @@ jobs:
         with:
           name: web_viewer
           path: web_viewer
-
 
       # Upload the wasm, html etc to a Google cloud bucket:
       - id: "auth"
@@ -107,7 +105,6 @@ jobs:
           destination: "rerun-web-viewer/prerelease"
           parent: false
 
-
       - name: "Upload RRD (prerelease)"
         if: inputs.MARK_PRERELEASE_FOR_MAINLINE
         uses: google-github-actions/upload-cloud-storage@v1
@@ -147,3 +144,4 @@ jobs:
           path: "rrd"
           destination: "rerun-example-rrd/adhoc/${{inputs.ADHOC_NAME}}"
           parent: false
+

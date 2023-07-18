@@ -9,20 +9,19 @@ on:
       WHEEL_ARTIFACT_NAME:
         required: false
         type: string
-        default: ''
+        default: ""
       # We need this because PRs use a merged commit but we really want
       # to track uploads based on the source commit.
       UPLOAD_COMMIT_OVERRIDE:
         required: false
         type: string
-        default: ''
+        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-run-notebook
   cancel-in-progress: true
 
 jobs:
-
   run-notebook:
     name: Run notebook
 
@@ -80,3 +79,4 @@ jobs:
           path: "/tmp/cube.html"
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/notebooks"
           parent: false
+

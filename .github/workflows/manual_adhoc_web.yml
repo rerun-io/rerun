@@ -5,30 +5,29 @@ on:
     inputs:
       EXTRA_FLAGS:
         type: string
-        description: 'Extra flags to pass to `re_build_web_viewer`'
+        description: "Extra flags to pass to `re_build_web_viewer`"
         required: false
-        default: ''
+        default: ""
       ADHOC_NAME:
         type: string
-        description: 'Name of the stored adhoc build'
+        description: "Name of the stored adhoc build"
         required: true
 
 jobs:
-
   min-test-wheel:
-    name: 'Minimum Test Wheel'
+    name: "Minimum Test Wheel"
     # The upload-web job uses the min-test-wheel to get the RRD
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
       PLATFORM: linux
-      MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
+      MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 
   build-web-adhoc:
-    name: 'Build Web'
+    name: "Build Web"
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
@@ -36,7 +35,7 @@ jobs:
     secrets: inherit
 
   upload-web:
-    name: 'Upload Web'
+    name: "Upload Web"
     needs: [min-test-wheel, build-web-adhoc]
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
@@ -49,7 +48,7 @@ jobs:
     secrets: inherit
 
   build-web-demo-adhoc:
-    name: 'Build Web Demo'
+    name: "Build Web Demo"
     needs: [min-test-wheel, build-web-adhoc]
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
@@ -58,7 +57,7 @@ jobs:
     secrets: inherit
 
   upload-web-demo:
-    name: 'Upload Web Demo'
+    name: "Upload Web Demo"
     needs: [build-web-demo-adhoc]
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
@@ -68,3 +67,4 @@ jobs:
       ADHOC_NAME: ${{ github.event.inputs.ADHOC_NAME }}
       UPLOAD_COMMIT: false
     secrets: inherit
+
