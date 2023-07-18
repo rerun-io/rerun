@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
 
@@ -374,79 +374,13 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let tag_ident = format_ident!("{}", obj_field.name);
-                let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
-                let docstring = quote_docstrings(&obj_field.docs);
-
-                let param_declaration =
-                    quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident, false).0;
-
-                if let Type::Array { elem_type, length } = &obj_field.typ {
-                    // We need special casing for constructing arrays:
-                    let length = proc_macro2::Literal::usize_unsuffixed(*length);
-
-                    let element_assignment = if elem_type.is_pod(objects) {
-                        // Generate nicer code in case of simple POD types:
-                        quote!{
-                            self._data.#snake_case_ident[i] = std::move(#snake_case_ident[i]);
-                        }
-                    } else {
-                        // We need to use placement-new since the union is in an uninitialized state here:
-                        hpp_includes.system.insert("new".to_owned()); // placement-new
-                        quote!{
-                            new (&self._data.#snake_case_ident[i]) TypeAlias(std::move(#snake_case_ident[i]));
-                        }
-                    };
-
-                    let elem_type = quote_element_type(&mut hpp_includes, elem_type);
-
-                    quote! {
-                        #docstring
-                        static #pascal_case_ident #snake_case_ident(#param_declaration)
-                        {
-                            typedef #elem_type TypeAlias;
-                            #pascal_case_ident self;
-                            self._tag = detail::#tag_typename::#tag_ident;
-                            for (size_t i = 0; i < #length; i += 1) {
-                                #element_assignment
-                            }
-                            return std::move(self);
-                        }
-                    }
-                } else if obj_field.typ.is_pod(objects) {
-                    // Generate nicer code in case of simple POD types:
-                    quote! {
-                        #docstring
-                        static #pascal_case_ident #snake_case_ident(#param_declaration)
-                        {
-                            #pascal_case_ident self;
-                            self._tag = detail::#tag_typename::#tag_ident;
-                            self._data.#snake_case_ident = std::move(#snake_case_ident);
-                            return std::move(self);
-                        }
-                    }
-                } else {
-                    // We need to use placement-new since the union is in an uninitialized state here:
-                    hpp_includes.system.insert("new".to_owned()); // placement-new
-                    let typedef_declaration = quote_declaration(
-                        &mut hpp_includes,
-                        obj_field,
-                        &format_ident!("TypeAlias"),
-                        false,
-                    )
-                    .0;
-                    quote! {
-                        #docstring
-                        static #pascal_case_ident #snake_case_ident(#param_declaration)
-                        {
-                            typedef #typedef_declaration;
-                            #pascal_case_ident self;
-                            self._tag = detail::#tag_typename::#tag_ident;
-                            new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));
-                            return std::move(self);
-                        }
-                    }
-                }
+                quote_static_constructor_for_enum_type(
+                    objects,
+                    &mut hpp_includes,
+                    obj_field,
+                    &pascal_case_ident,
+                    &tag_typename,
+                )
             })
             .collect_vec();
 
@@ -590,6 +524,83 @@ impl QuotedObject {
         let cpp = quote! {};
 
         Self { hpp, cpp }
+    }
+}
+
+/// e.g. `static Angle radians(float radians);` -> `auto angle = Angle::radians(radians);`
+fn quote_static_constructor_for_enum_type(
+    objects: &Objects,
+    hpp_includes: &mut Includes,
+    obj_field: &ObjectField,
+    pascal_case_ident: &Ident,
+    tag_typename: &Ident,
+) -> TokenStream {
+    let tag_ident = format_ident!("{}", obj_field.name);
+    let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+    let docstring = quote_docstrings(&obj_field.docs);
+
+    let param_declaration = quote_declaration(hpp_includes, obj_field, &snake_case_ident, false).0;
+
+    if let Type::Array { elem_type, length } = &obj_field.typ {
+        // We need special casing for constructing arrays:
+        let length = proc_macro2::Literal::usize_unsuffixed(*length);
+
+        let element_assignment = if elem_type.is_pod(objects) {
+            // Generate nicer code in case of simple POD types:
+            quote! {
+                self._data.#snake_case_ident[i] = std::move(#snake_case_ident[i]);
+            }
+        } else {
+            // We need to use placement-new since the union is in an uninitialized state here:
+            hpp_includes.system.insert("new".to_owned()); // placement-new
+            quote! {
+                new (&self._data.#snake_case_ident[i]) TypeAlias(std::move(#snake_case_ident[i]));
+            }
+        };
+
+        let elem_type = quote_element_type(hpp_includes, elem_type);
+
+        quote! {
+            #docstring
+            static #pascal_case_ident #snake_case_ident(#param_declaration)
+            {
+                typedef #elem_type TypeAlias;
+                #pascal_case_ident self;
+                self._tag = detail::#tag_typename::#tag_ident;
+                for (size_t i = 0; i < #length; i += 1) {
+                    #element_assignment
+                }
+                return std::move(self);
+            }
+        }
+    } else if obj_field.typ.is_pod(objects) {
+        // Generate nicer code in case of simple POD types:
+        quote! {
+            #docstring
+            static #pascal_case_ident #snake_case_ident(#param_declaration)
+            {
+                #pascal_case_ident self;
+                self._tag = detail::#tag_typename::#tag_ident;
+                self._data.#snake_case_ident = std::move(#snake_case_ident);
+                return std::move(self);
+            }
+        }
+    } else {
+        // We need to use placement-new since the union is in an uninitialized state here:
+        hpp_includes.system.insert("new".to_owned()); // placement-new
+        let typedef_declaration =
+            quote_declaration(hpp_includes, obj_field, &format_ident!("TypeAlias"), false).0;
+        quote! {
+            #docstring
+            static #pascal_case_ident #snake_case_ident(#param_declaration)
+            {
+                typedef #typedef_declaration;
+                #pascal_case_ident self;
+                self._tag = detail::#tag_typename::#tag_ident;
+                new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));
+                return std::move(self);
+            }
+        }
     }
 }
 
