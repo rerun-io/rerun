@@ -123,7 +123,7 @@ impl SpatialSpaceViewState {
 
         for entity_path in ent_paths {
             self.update_pinhole_property_heuristics(ctx, entity_path, entity_properties);
-            self.update_depth_cloud_property_heuristics(
+            Self::update_depth_cloud_property_heuristics(
                 ctx,
                 entity_path,
                 entity_properties,
@@ -182,7 +182,6 @@ impl SpatialSpaceViewState {
     }
 
     fn update_depth_cloud_property_heuristics(
-        &self,
         ctx: &mut ViewerContext<'_>,
         entity_path: &EntityPath,
         entity_properties: &mut re_data_store::EntityPropertyMap,
