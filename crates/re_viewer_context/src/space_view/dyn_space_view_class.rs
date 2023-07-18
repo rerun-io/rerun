@@ -3,7 +3,8 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::{ComponentName, EntityPath};
 
 use crate::{
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemRegistry, ViewQuery, ViewerContext,
+    AutoSpawnHeuristic, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemRegistry,
+    ViewQuery, ViewerContext,
 };
 
 /// First element is the primary component, all others are optional.
@@ -78,6 +79,17 @@ pub trait DynSpaceViewClass {
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
 
+    /// Heuristic used to determine which space view is the best fit for a set of paths.
+    ///
+    /// For each path in `ent_paths`, at least one of the registered [`crate::ViewPartSystem`] for this class
+    /// returned true when calling [`crate::ViewPartSystem::queries_any_components_of`].
+    fn auto_spawn_heuristic(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        space_origin: &EntityPath,
+        ent_paths: &IntSet<EntityPath>,
+    ) -> AutoSpawnHeuristic;
+
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
@@ -98,7 +110,7 @@ pub trait DynSpaceViewClass {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
-        entity_paths: &IntSet<EntityPath>,
+        ent_paths: &IntSet<EntityPath>,
         entity_properties: &mut EntityPropertyMap,
     );
 

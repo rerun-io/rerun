@@ -5,7 +5,9 @@ use nohash_hasher::IntSet;
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_components::{DisconnectedSpace, Pinhole, Tensor};
 use re_data_store::EntityPath;
-use re_viewer_context::{SpaceViewClassName, ViewPartCollection, ViewerContext};
+use re_viewer_context::{
+    AutoSpawnHeuristic, SpaceViewClassName, ViewPartCollection, ViewerContext,
+};
 
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 
@@ -107,6 +109,8 @@ fn is_interesting_space_view_not_at_root(
     classes_with_interesting_roots: &[SpaceViewClassName],
     query: &LatestAtQuery,
 ) -> bool {
+    // TODO(andreas): Can we express this with [`AutoSpawnHeuristic`] instead?
+
     // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
     if candidate.space_origin.len() == 1
         && !classes_with_interesting_roots.contains(candidate.class_name())
@@ -138,15 +142,22 @@ pub fn default_created_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceViewBlueprint> {
-    let candidates = all_possible_space_views(ctx, spaces_info);
-    default_created_space_views_from_candidates(&ctx.store_db.entity_db.data_store, candidates)
-}
-
-fn default_created_space_views_from_candidates(
-    store: &re_arrow_store::DataStore,
-    candidates: Vec<SpaceViewBlueprint>,
-) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();
+
+    let store = ctx.store_db.store();
+    let candidates = all_possible_space_views(ctx, spaces_info)
+        .into_iter()
+        .map(|c| {
+            (
+                c.class(ctx.space_view_class_registry).auto_spawn_heuristic(
+                    ctx,
+                    &c.space_origin,
+                    c.data_blueprint.entity_paths(),
+                ),
+                c,
+            )
+        })
+        .collect::<Vec<_>>();
 
     // All queries are "right most" on the log timeline.
     let query = LatestAtQuery::latest(Timeline::log_time());
@@ -154,29 +165,34 @@ fn default_created_space_views_from_candidates(
     // First pass to look for interesting roots, as their existence influences the heuristic for non-roots!
     let classes_with_interesting_roots = candidates
         .iter()
-        .filter_map(|space_view_candidate| {
+        .filter_map(|(_, space_view_candidate)| {
             (space_view_candidate.space_origin.is_root()
                 && is_interesting_space_view_at_root(store, space_view_candidate, &query))
             .then_some(*space_view_candidate.class_name())
         })
         .collect::<Vec<_>>();
 
-    let mut space_views = Vec::new();
+    let mut space_views: Vec<(SpaceViewBlueprint, AutoSpawnHeuristic)> = Vec::new();
 
     // Main pass through all candidates.
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
-    for candidate in candidates {
-        if candidate.space_origin.is_root() {
-            if !classes_with_interesting_roots.contains(candidate.class_name()) {
+    for (spawn_heuristic, candidate) in candidates {
+        if spawn_heuristic == AutoSpawnHeuristic::NeverSpawn {
+            continue;
+        }
+        if spawn_heuristic != AutoSpawnHeuristic::AlwaysSpawn {
+            if candidate.space_origin.is_root() {
+                if !classes_with_interesting_roots.contains(candidate.class_name()) {
+                    continue;
+                }
+            } else if !is_interesting_space_view_not_at_root(
+                store,
+                &candidate,
+                &classes_with_interesting_roots,
+                &query,
+            ) {
                 continue;
             }
-        } else if !is_interesting_space_view_not_at_root(
-            store,
-            &candidate,
-            &classes_with_interesting_roots,
-            &query,
-        ) {
-            continue;
         }
 
         // For tensors create one space view for each tensor (even though we're able to stack them in one view)
@@ -188,7 +204,7 @@ fn default_created_space_views_from_candidates(
                     &[entity_path.clone()],
                 );
                 space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
-                space_views.push(space_view);
+                space_views.push((space_view, AutoSpawnHeuristic::AlwaysSpawn));
             }
             continue;
         }
@@ -253,17 +269,53 @@ fn default_created_space_views_from_candidates(
                         &entities,
                     );
                     space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
-                    space_views.push(space_view);
+                    space_views.push((space_view, AutoSpawnHeuristic::AlwaysSpawn));
                 }
                 continue;
             }
         }
 
-        // Take the candidate as is.
-        space_views.push(candidate);
+        // TODO(andreas): Interaction of [`AutoSpawnHeuristic`] with above hardcoded heuristics is a bit wonky.
+
+        // `AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot` means we're competing with other candidates for the same root.
+        if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score) = spawn_heuristic {
+            let mut should_spawn_new = true;
+            for (prev_candidate, prev_spawn_heuristic) in &mut space_views {
+                if prev_candidate.space_origin == candidate.space_origin {
+                    #[allow(clippy::match_same_arms)]
+                    match prev_spawn_heuristic {
+                        AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(prev_score) => {
+                            // If we're competing with a candidate for the same root, we either replace a lower score, or we yield.
+                            should_spawn_new = false;
+                            if *prev_score < score {
+                                // Replace the previous candidate with this one.
+                                *prev_candidate = candidate.clone();
+                                *prev_spawn_heuristic = spawn_heuristic;
+                            } else {
+                                // We have a lower score, so we don't spawn.
+                                break;
+                            }
+                        }
+                        AutoSpawnHeuristic::AlwaysSpawn => {
+                            // We can live side by side with always-spawn candidates.
+                        }
+                        AutoSpawnHeuristic::NeverSpawn => {
+                            // Never spawn candidates should not be in the list, this is weird!
+                            // But let's not fail on this since our heuristics are not perfect anyways.
+                        }
+                    }
+                }
+            }
+
+            if should_spawn_new {
+                space_views.push((candidate, spawn_heuristic));
+            }
+        } else {
+            space_views.push((candidate, spawn_heuristic));
+        }
     }
 
-    space_views
+    space_views.into_iter().map(|(s, _)| s).collect()
 }
 
 /// List of entities a space view queries by default for a given category.
@@ -343,51 +395,3 @@ fn is_entity_processed_by_part_collection(
 
     false
 }
-
-// TODO:
-/*
-
-/// Heuristic whether the default way of looking at this scene should be 2d or 3d.
-pub fn preferred_navigation_mode(
-    context: &ViewContextCollection,
-    parts: &ViewPartCollection,
-    space_info_path: &EntityPath,
-) -> SpatialNavigationMode {
-    // If there's any space cameras that are not the root, we need to go 3D, otherwise we can't display them.
-    if parts
-        .get::<CamerasPart>()
-        .map(|cameras| {
-            cameras
-                .space_cameras
-                .iter()
-                .any(|camera| &camera.ent_path != space_info_path)
-        })
-        .unwrap_or(false)
-    {
-        return SpatialNavigationMode::ThreeD;
-    }
-
-    if parts
-        .get::<ImagesPart>()
-        .map(|images| !images.images.is_empty())
-        .unwrap_or(false)
-    {
-        return SpatialNavigationMode::TwoD;
-    }
-
-    if context
-        .get::<PrimitiveCounter>()
-        .map(|c| {
-            c.num_3d_primitives
-                .load(std::sync::atomic::Ordering::Relaxed)
-        })
-        .unwrap_or(0)
-        == 0
-    {
-        return SpatialNavigationMode::TwoD;
-    }
-
-    SpatialNavigationMode::ThreeD
-}
-
-*/

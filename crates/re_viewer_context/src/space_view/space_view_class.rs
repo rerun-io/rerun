@@ -3,9 +3,9 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, SpaceViewClassName,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 /// Defines a class of space view.
@@ -45,6 +45,19 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority;
 
+    /// Heuristic used to determine which space view is the best fit for a set of paths.
+    ///
+    /// For each path in `ent_paths`, at least one of the registered [`crate::ViewPartSystem`] for this class
+    /// returned true when calling [`crate::ViewPartSystem::queries_any_components_of`].
+    fn auto_spawn_heuristic(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _space_origin: &EntityPath,
+        ent_paths: &IntSet<EntityPath>,
+    ) -> AutoSpawnHeuristic {
+        AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(ent_paths.len() as f32)
+    }
+
     /// Optional archetype of the Space View's blueprint properties.
     ///
     /// Blueprint components that only apply to the space view itself, not to the entities it displays.
@@ -72,7 +85,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         &self,
         _ctx: &mut ViewerContext<'_>,
         _state: &Self::State,
-        _entity_paths: &IntSet<EntityPath>,
+        _ent_paths: &IntSet<EntityPath>,
         _entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
     }
@@ -138,6 +151,17 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         self.layout_priority()
     }
 
+    #[inline]
+    fn auto_spawn_heuristic(
+        &self,
+        ctx: &ViewerContext<'_>,
+        space_origin: &EntityPath,
+        ent_paths: &IntSet<EntityPath>,
+    ) -> AutoSpawnHeuristic {
+        self.auto_spawn_heuristic(ctx, space_origin, ent_paths)
+    }
+
+    #[inline]
     fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
         self.blueprint_archetype()
     }
@@ -146,11 +170,11 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
-        entity_paths: &IntSet<EntityPath>,
+        ent_paths: &IntSet<EntityPath>,
         entity_properties: &mut EntityPropertyMap,
     ) {
         typed_state_wrapper_mut(state, |state| {
-            self.prepare_ui(ctx, state, entity_paths, entity_properties);
+            self.prepare_ui(ctx, state, ent_paths, entity_properties);
         });
     }
 

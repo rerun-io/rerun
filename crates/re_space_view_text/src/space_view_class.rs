@@ -1,11 +1,12 @@
+use nohash_hasher::IntSet;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartCollection, ViewQuery, ViewerContext,
+    level_to_rich_text, AutoSpawnHeuristic, SpaceViewClass, SpaceViewClassName,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use super::view_part_system::{TextEntry, TextSystem};
@@ -65,6 +66,20 @@ impl SpaceViewClass for TextSpaceView {
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
+    }
+
+    fn auto_spawn_heuristic(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        space_origin: &EntityPath,
+        ent_paths: &IntSet<EntityPath>,
+    ) -> re_viewer_context::AutoSpawnHeuristic {
+        // Always spawn a single text view for the root and nothing else.
+        if space_origin.is_root() && !ent_paths.is_empty() {
+            AutoSpawnHeuristic::AlwaysSpawn
+        } else {
+            AutoSpawnHeuristic::NeverSpawn
+        }
     }
 
     fn selection_ui(

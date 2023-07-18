@@ -1,15 +1,19 @@
 use nohash_hasher::IntSet;
-use re_log_types::EntityPath;
+use re_arrow_store::LatestAtQuery;
+use re_components::Pinhole;
+use re_log_types::{EntityPath, Timeline};
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    AutoSpawnHeuristic, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
+    ViewerContext,
 };
 
 use crate::{
     contexts::{register_contexts, PrimitiveCounter},
+    heuristics::auto_spawn_heuristic,
     parts::{calculate_bounding_box, register_parts},
     ui::SpatialSpaceViewState,
-    SpatialSpaceViewKind,
+    view_kind::SpatialSpaceViewKind,
 };
 
 #[derive(Default)]
@@ -47,16 +51,51 @@ impl SpaceViewClass for SpatialSpaceView3D {
         re_viewer_context::SpaceViewClassLayoutPriority::High
     }
 
+    fn auto_spawn_heuristic(
+        &self,
+        ctx: &ViewerContext<'_>,
+        space_origin: &EntityPath,
+        ent_paths: &IntSet<EntityPath>,
+    ) -> AutoSpawnHeuristic {
+        let score =
+            auto_spawn_heuristic(&self.name(), ctx, ent_paths, SpatialSpaceViewKind::ThreeD);
+
+        if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(mut score) = score {
+            // If there's a camera at a non-root path, make 3D view higher priority.
+            for ent_path in ent_paths {
+                if ent_path == space_origin {
+                    continue;
+                }
+
+                if ctx
+                    .store_db
+                    .store()
+                    .query_latest_component::<Pinhole>(
+                        ent_path,
+                        &LatestAtQuery::latest(Timeline::log_time()),
+                    )
+                    .is_some()
+                {
+                    score += 100.0;
+                }
+            }
+
+            AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)
+        } else {
+            score
+        }
+    }
+
     fn prepare_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &Self::State,
-        entity_paths: &IntSet<EntityPath>,
+        ent_paths: &IntSet<EntityPath>,
         entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
         state.update_object_property_heuristics(
             ctx,
-            entity_paths,
+            ent_paths,
             entity_properties,
             SpatialSpaceViewKind::ThreeD,
         );

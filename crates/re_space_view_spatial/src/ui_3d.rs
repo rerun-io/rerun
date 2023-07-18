@@ -26,7 +26,7 @@ use crate::{
     },
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
-    SpatialSpaceViewKind,
+    view_kind::SpatialSpaceViewKind,
 };
 
 use super::eye::{Eye, OrbitEye};

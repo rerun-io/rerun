@@ -4,6 +4,7 @@
 
 mod contexts;
 mod eye;
+mod heuristics;
 mod instance_hash_conversions;
 mod mesh_cache;
 mod mesh_loader;
@@ -21,8 +22,10 @@ pub use space_view_3d::SpatialSpaceView3D;
 
 // ---
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SpatialSpaceViewKind {
-    TwoD,
-    ThreeD,
+mod view_kind {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum SpatialSpaceViewKind {
+        TwoD,
+        ThreeD,
+    }
 }

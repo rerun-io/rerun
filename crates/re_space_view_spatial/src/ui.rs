@@ -1,8 +1,8 @@
 use eframe::epaint::text::TextWrapping;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
-use nohash_hasher::IntSet;
 
+use nohash_hasher::IntSet;
 use re_components::{Pinhole, Tensor, TensorDataMeaning, Transform3D};
 use re_data_store::{EditableAutoValue, EntityPath};
 use re_data_ui::{item_ui, DataUi};
@@ -18,13 +18,11 @@ use re_viewer_context::{
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
-use crate::contexts::{AnnotationSceneContext, NonInteractiveEntities};
-use crate::parts::{CamerasPart, ImagesPart};
-use crate::SpatialSpaceViewKind;
-
 use crate::{
-    parts::{UiLabel, UiLabelTarget},
+    contexts::{AnnotationSceneContext, NonInteractiveEntities},
+    parts::{CamerasPart, ImagesPart, UiLabel, UiLabelTarget},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
+    view_kind::SpatialSpaceViewKind,
 };
 
 /// Default auto point radius in UI points.
@@ -113,16 +111,17 @@ impl SpatialSpaceViewState {
         config
     }
 
-    pub(crate) fn update_object_property_heuristics(
+    // TODO(andreas): Move to heuristics.rs
+    pub fn update_object_property_heuristics(
         &self,
         ctx: &mut ViewerContext<'_>,
-        entity_paths: &IntSet<EntityPath>,
+        ent_paths: &IntSet<EntityPath>,
         entity_properties: &mut re_data_store::EntityPropertyMap,
         spatial_kind: SpatialSpaceViewKind,
     ) {
         re_tracing::profile_function!();
 
-        for entity_path in entity_paths {
+        for entity_path in ent_paths {
             self.update_pinhole_property_heuristics(ctx, entity_path, entity_properties);
             self.update_depth_cloud_property_heuristics(
                 ctx,
@@ -288,7 +287,7 @@ impl SpatialSpaceViewState {
         entity_properties.set(ent_path.clone(), properties);
     }
 
-    pub(crate) fn selection_ui(
+    pub fn selection_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -473,7 +472,7 @@ fn size_ui(
     }
 }
 
-pub(crate) fn create_labels(
+pub fn create_labels(
     labels: &[UiLabel],
     ui_from_canvas: egui::emath::RectTransform,
     eye3d: &Eye,
@@ -618,7 +617,7 @@ pub fn screenshot_context_menu(
 }
 
 #[allow(clippy::too_many_arguments)] // TODO(andreas): Make this method sane.
-pub(crate) fn picking(
+pub fn picking(
     ctx: &mut ViewerContext<'_>,
     mut response: egui::Response,
     space_from_ui: egui::emath::RectTransform,

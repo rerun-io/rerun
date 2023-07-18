@@ -1,4 +1,4 @@
-use crate::parts::UiLabel;
+use crate::{parts::UiLabel, view_kind::SpatialSpaceViewKind};
 
 /// Common data struct for all spatial scene elements.
 ///
@@ -6,9 +6,18 @@ use crate::parts::UiLabel;
 pub struct SpatialViewPartData {
     pub ui_labels: Vec<UiLabel>,
     pub bounding_box: macaw::BoundingBox,
+    pub preferred_view_kind: SpatialSpaceViewKind,
 }
 
 impl SpatialViewPartData {
+    pub fn new(preferred_view_kind: SpatialSpaceViewKind) -> Self {
+        Self {
+            ui_labels: Vec::new(),
+            bounding_box: macaw::BoundingBox::nothing(),
+            preferred_view_kind,
+        }
+    }
+
     pub fn extend_bounding_box(
         &mut self,
         other: macaw::BoundingBox,
@@ -30,14 +39,5 @@ impl SpatialViewPartData {
 
     pub fn as_any(&self) -> &dyn std::any::Any {
         self
-    }
-}
-
-impl Default for SpatialViewPartData {
-    fn default() -> Self {
-        Self {
-            ui_labels: Vec::new(),
-            bounding_box: macaw::BoundingBox::nothing(),
-        }
     }
 }

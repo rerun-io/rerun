@@ -11,11 +11,16 @@ use super::SpatialViewPartData;
 use crate::{
     contexts::SpatialSceneEntityContext,
     instance_hash_conversions::picking_layer_id_from_instance_path_hash, mesh_cache::MeshCache,
-    parts::entity_iterator::process_entity_views,
+    parts::entity_iterator::process_entity_views, view_kind::SpatialSpaceViewKind,
 };
 
-#[derive(Default)]
 pub struct MeshPart(SpatialViewPartData);
+
+impl Default for MeshPart {
+    fn default() -> Self {
+        Self(SpatialViewPartData::new(SpatialSpaceViewKind::ThreeD))
+    }
+}
 
 impl MeshPart {
     fn process_entity_view(

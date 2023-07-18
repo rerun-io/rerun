@@ -12,14 +12,23 @@ use crate::{
     contexts::{pinhole_camera_view_coordinates, SharedRenderBuilders, TransformContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     space_camera_3d::SpaceCamera3D,
+    view_kind::SpatialSpaceViewKind,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
-#[derive(Default)]
 pub struct CamerasPart {
     pub data: SpatialViewPartData,
     pub space_cameras: Vec<SpaceCamera3D>,
+}
+
+impl Default for CamerasPart {
+    fn default() -> Self {
+        Self {
+            data: (SpatialViewPartData::new(SpatialSpaceViewKind::TwoD)),
+            space_cameras: Vec::new(),
+        }
+    }
 }
 
 impl CamerasPart {

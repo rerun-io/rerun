@@ -192,7 +192,7 @@ impl SpaceViewBlueprint {
         class.prepare_ui(
             ctx,
             view_state,
-            &self.data_blueprint.entity_paths().clone(), // Clone to workaround borrow checker.
+            &self.data_blueprint.entity_paths().clone(), // Clone to work around borrow checker.
             self.data_blueprint.data_blueprints_individual(),
         );
 

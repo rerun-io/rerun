@@ -1,15 +1,17 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    AutoSpawnHeuristic, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
+    ViewerContext,
 };
 
 use crate::{
     contexts::{register_contexts, PrimitiveCounter},
+    heuristics::auto_spawn_heuristic,
     parts::{calculate_bounding_box, register_parts},
     ui::SpatialSpaceViewState,
-    SpatialSpaceViewKind,
+    view_kind::SpatialSpaceViewKind,
 };
 
 #[derive(Default)]
@@ -52,15 +54,24 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &Self::State,
-        entity_paths: &IntSet<EntityPath>,
+        ent_paths: &IntSet<EntityPath>,
         entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
         state.update_object_property_heuristics(
             ctx,
-            entity_paths,
+            ent_paths,
             entity_properties,
             SpatialSpaceViewKind::TwoD,
         );
+    }
+
+    fn auto_spawn_heuristic(
+        &self,
+        ctx: &ViewerContext<'_>,
+        _space_origin: &EntityPath,
+        ent_paths: &IntSet<EntityPath>,
+    ) -> AutoSpawnHeuristic {
+        auto_spawn_heuristic(&self.name(), ctx, ent_paths, SpatialSpaceViewKind::TwoD)
     }
 
     fn selection_ui(

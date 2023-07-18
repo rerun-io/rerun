@@ -13,6 +13,7 @@ use crate::{
     parts::{
         entity_iterator::process_entity_views, load_keypoint_connections, UiLabel, UiLabelTarget,
     },
+    view_kind::SpatialSpaceViewKind,
 };
 
 use super::{
@@ -30,7 +31,7 @@ impl Default for Points3DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: Default::default(),
+            data: SpatialViewPartData::new(SpatialSpaceViewKind::ThreeD),
         }
     }
 }

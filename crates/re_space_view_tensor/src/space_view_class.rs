@@ -255,11 +255,11 @@ fn view_tensor(
         let dm = &state.slice.dim_mapping;
         [
             (
-                dimension_name(&tensor.shape, dm.width.unwrap()),
+                dimension_name(&tensor.shape, dm.width.unwrap_or_default()),
                 dm.invert_width,
             ),
             (
-                dimension_name(&tensor.shape, dm.height.unwrap()),
+                dimension_name(&tensor.shape, dm.height.unwrap_or_default()),
                 dm.invert_height,
             ),
         ]

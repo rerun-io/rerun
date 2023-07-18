@@ -7,12 +7,19 @@ use re_viewer_context::{
     ViewPartSystem, ViewQuery, ViewerContext,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, parts::entity_iterator::process_entity_views};
-
 use super::{picking_id_from_instance_key, SpatialViewPartData};
+use crate::{
+    contexts::SpatialSceneEntityContext, parts::entity_iterator::process_entity_views,
+    view_kind::SpatialSpaceViewKind,
+};
 
-#[derive(Default)]
 pub struct Lines3DPart(SpatialViewPartData);
+
+impl Default for Lines3DPart {
+    fn default() -> Self {
+        Self(SpatialViewPartData::new(SpatialSpaceViewKind::TwoD))
+    }
+}
 
 impl Lines3DPart {
     fn process_entity_view(

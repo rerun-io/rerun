@@ -12,12 +12,18 @@ use re_viewer_context::{
 use crate::{
     contexts::SpatialSceneEntityContext,
     parts::{entity_iterator::process_entity_views, UiLabel, UiLabelTarget},
+    view_kind::SpatialSpaceViewKind,
 };
 
 use super::{picking_id_from_instance_key, SpatialViewPartData};
 
-#[derive(Default)]
 pub struct Boxes3DPart(SpatialViewPartData);
+
+impl Default for Boxes3DPart {
+    fn default() -> Self {
+        Self(SpatialViewPartData::new(SpatialSpaceViewKind::ThreeD))
+    }
+}
 
 impl Boxes3DPart {
     fn process_entity_view(

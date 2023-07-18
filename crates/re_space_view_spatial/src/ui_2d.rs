@@ -18,7 +18,7 @@ use crate::{
     contexts::SharedRenderBuilders,
     parts::collect_ui_labels,
     ui::{outline_config, SpatialSpaceViewState},
-    SpatialSpaceViewKind,
+    view_kind::SpatialSpaceViewKind,
 };
 
 // ---

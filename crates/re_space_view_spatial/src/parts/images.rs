@@ -25,6 +25,7 @@ use re_viewer_context::{
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
     parts::{entity_iterator::process_entity_views, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
+    view_kind::SpatialSpaceViewKind,
 };
 
 use super::SpatialViewPartData;
@@ -118,11 +119,20 @@ struct ImageGrouping {
     draw_order: DrawOrder,
 }
 
-#[derive(Default)]
 pub struct ImagesPart {
     pub data: SpatialViewPartData,
     pub images: Vec<Image>,
     pub depth_cloud_entities: IntSet<EntityPathHash>,
+}
+
+impl Default for ImagesPart {
+    fn default() -> Self {
+        Self {
+            data: SpatialViewPartData::new(SpatialSpaceViewKind::TwoD),
+            images: Vec::new(),
+            depth_cloud_entities: IntSet::default(),
+        }
+    }
 }
 
 impl ImagesPart {

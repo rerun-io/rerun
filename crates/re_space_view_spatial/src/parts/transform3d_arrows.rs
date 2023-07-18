@@ -7,12 +7,20 @@ use re_viewer_context::{
     ViewQuery, ViewerContext,
 };
 
-use crate::contexts::{SharedRenderBuilders, TransformContext};
+use crate::{
+    contexts::{SharedRenderBuilders, TransformContext},
+    view_kind::SpatialSpaceViewKind,
+};
 
 use super::SpatialViewPartData;
 
-#[derive(Default)]
 pub struct Transform3DArrowsPart(SpatialViewPartData);
+
+impl Default for Transform3DArrowsPart {
+    fn default() -> Self {
+        Self(SpatialViewPartData::new(SpatialSpaceViewKind::ThreeD))
+    }
+}
 
 impl ViewPartSystem for Transform3DArrowsPart {
     fn archetype(&self) -> ArchetypeDefinition {
