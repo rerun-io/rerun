@@ -280,7 +280,7 @@ impl QuotedObject {
         // Putting non-POD types in a union requires C++11.
         //
         // enum class Rotation3DTag {
-        //     NONE = 0, // Makes it possible to implement move semantics
+        //     NONE = 0,
         //     Quaternion,
         //     AxisAngle,
         // };
@@ -304,10 +304,14 @@ impl QuotedObject {
         let data_typename = format_ident!("{pascal_case_name}Data");
 
         let tag_fields = std::iter::once({
-            let comment = comment("Makes it possible to implement move semantics");
+            let comment = doc_comment(
+                "Having a special empty state makes it possible to implement move-semantics. \
+                We need to be able to leave the object in a state which we can run the destructor on.");
             let tag_name = format_ident!("NONE");
             quote! {
-                #tag_name = 0, #comment
+                #NEWLINE_TOKEN
+                #comment
+                #tag_name = 0,
             }
         })
         .chain(obj.fields.iter().map(|obj_field| {

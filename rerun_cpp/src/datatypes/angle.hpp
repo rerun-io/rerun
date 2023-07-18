@@ -12,7 +12,10 @@ namespace rr {
     namespace datatypes {
         namespace detail {
             enum class AngleTag {
-                NONE = 0, // Makes it possible to implement move semantics
+                /// Having a special empty state makes it possible to implement move-semantics. We
+                /// need to be able to leave the object in a state which we can run the destructor
+                /// on.
+                NONE = 0,
                 Radians,
                 Degrees,
             };
