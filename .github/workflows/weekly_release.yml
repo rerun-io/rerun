@@ -43,6 +43,12 @@ jobs:
           labels: "⛴ release"
           committer: "Rerun Bot <bot@rerun.io>"
           author: "Rerun Bot <bot@rerun.io>"
+          body: |
+            ### What
+
+            - [x] Bump all crate versions to `${{ env.CRATE_VERSION }}`
+
+            The release process will begin once this pull request is merged.
 
   publish-crates:
     name: "Publish Crates"
