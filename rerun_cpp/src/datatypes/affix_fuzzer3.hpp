@@ -40,6 +40,8 @@ namespace rr {
                 ~AffixFuzzer3Data() {}
 
                 void swap(AffixFuzzer3Data& other) noexcept {
+                    // This bitwise swap would fail for self-referential types, but we don't have
+                    // any of those.
                     char temp[sizeof(AffixFuzzer3Data)];
                     std::memcpy(temp, this, sizeof(AffixFuzzer3Data));
                     std::memcpy(this, &other, sizeof(AffixFuzzer3Data));

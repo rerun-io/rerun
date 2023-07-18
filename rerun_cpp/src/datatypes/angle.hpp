@@ -29,6 +29,8 @@ namespace rr {
                 ~AngleData() {}
 
                 void swap(AngleData& other) noexcept {
+                    // This bitwise swap would fail for self-referential types, but we don't have
+                    // any of those.
                     char temp[sizeof(AngleData)];
                     std::memcpy(temp, this, sizeof(AngleData));
                     std::memcpy(this, &other, sizeof(AngleData));

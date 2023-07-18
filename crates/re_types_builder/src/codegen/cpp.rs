@@ -515,6 +515,8 @@ impl QuotedObject {
             }
         };
 
+        let swap_comment = comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
+
         let hpp = quote! {
             #hpp_includes
 
@@ -532,6 +534,8 @@ impl QuotedObject {
                             ~#data_typename() {}
 
                             void swap(#data_typename& other) noexcept {
+                                #NEWLINE_TOKEN
+                                #swap_comment
                                 char temp[sizeof(#data_typename)];
                                 std::memcpy(temp, this, sizeof(#data_typename));
                                 std::memcpy(this, &other, sizeof(#data_typename));

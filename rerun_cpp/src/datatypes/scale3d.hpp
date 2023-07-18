@@ -33,6 +33,8 @@ namespace rr {
                 ~Scale3DData() {}
 
                 void swap(Scale3DData& other) noexcept {
+                    // This bitwise swap would fail for self-referential types, but we don't have
+                    // any of those.
                     char temp[sizeof(Scale3DData)];
                     std::memcpy(temp, this, sizeof(Scale3DData));
                     std::memcpy(this, &other, sizeof(Scale3DData));

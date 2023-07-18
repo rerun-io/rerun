@@ -32,6 +32,8 @@ namespace rr {
                 ~Transform3DData() {}
 
                 void swap(Transform3DData& other) noexcept {
+                    // This bitwise swap would fail for self-referential types, but we don't have
+                    // any of those.
                     char temp[sizeof(Transform3DData)];
                     std::memcpy(temp, this, sizeof(Transform3DData));
                     std::memcpy(this, &other, sizeof(Transform3DData));
