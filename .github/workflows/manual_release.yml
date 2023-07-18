@@ -12,7 +12,34 @@ on:
         type: string
         required: false
 
+permissions:
+  contents: write
+  id-token: "write"
+
 jobs:
+  get-commit-sha:
+    name: Get Commit Sha
+    runs-on: ubuntu-latest
+    outputs:
+      short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
+      full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
+    steps:
+      - name: "Set short-sha"
+        id: get-short-sha
+        run: |
+          if [ -z "${{ inputs.OVERRIDE_COMMIT }}" ]; then
+            USED_SHA=${{ github.sha }}
+          else
+            USED_SHA=${{ inputs.OVERRIDE_COMMIT }}
+          fi
+          echo "short-sha=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: "Set full-sha"
+        id: get-full-sha
+        run: |
+          FULL_SHA=$(git rev-parse ${{ steps.get-short-sha.outputs.short_sha }})
+          echo "full-sha=$FULL_SHA" >> $GITHUB_OUTPUT
+
   deploy-docs:
     name: Deploy Docs
     uses: ./.github/workflows/reusable_deploy_docs.yml
@@ -24,32 +51,13 @@ jobs:
 
   publish-wheels:
     name: "Publish Wheels"
-
-    permissions:
-      contents: write
-      id-token: "write"
-
+    needs: [get-commit-sha]
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
-
-      - name: Add SHORT_SHA env property with commit short sha
-        run: |
-          if [ -z "${{ inputs.OVERRIDE_COMMIT }}" ]; then
-            USED_SHA=${{ github.sha }}
-          else
-            USED_SHA=${{ inputs.OVERRIDE_COMMIT }}
-          fi
-          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
-
-      - name: Expand short hash to FULL_SHA hash
-        run: |
-          FULL_SHA=$(git rev-parse ${{ env.SHORT_SHA }})
-          echo "FULL_SHA=$FULL_SHA" >> $GITHUB_ENV
 
       - id: "auth"
         uses: google-github-actions/auth@v1
@@ -71,7 +79,7 @@ jobs:
           BUCKET_PATH:
         run: |
           mkdir wheels
-          gsutil cp "gs://rerun-builds/commit/${{ env.SHORT_SHA }}/wheels/*.whl" wheels/
+          gsutil cp "gs://rerun-builds/commit/${{ needs.get-commit-sha.outputs.short-sha }}/wheels/*.whl" wheels/
 
       - name: Verify wheels match the expected release
         run: |
@@ -87,6 +95,43 @@ jobs:
           command: upload
           args: --skip-existing wheels/*
 
+  publish-web-demo:
+    name: "Publish Web Demo"
+    needs: [get-commit-sha]
+    runs-on: ubuntu-latest
+    steps:
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+        with:
+          version: ">= 363.0.0"
+
+      - name: Release Web Demo
+        run: |
+          gsutil -m cp -r "gs://rerun-demo/commit/${{ needs.get-commit-sha.outputs.short-sha }}/*" "gs://rerun-demo/version/latest/"
+
+  publish-crates:
+    name: "Publish Crates"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -r scripts/ci/requirements.txt
+
+      - name: Publish
+        run: |
+          python3 ./scripts/ci/crates.py release --token ${{ secrets.CRATES_IO_TOKEN }}
+
+  github-release:
+    name: "GitHub Release"
+    needs: [get-commit-sha, deploy-docs, publish-wheels, publish-web-demo, publish-crates]
+    runs-on: ubuntu-latest
+    steps:
       # Create the actual prerelease
       # https://github.com/ncipollo/release-action
       - name: GitHub Release
@@ -94,14 +139,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: "Release - ${{ inputs.RELEASE_VERSION }}"
-          commit: ${{ env.FULL_SHA }}
+          commit: ${{ needs.get-commit-sha.outputs.full-sha }}
           tag: ${{ inputs.RELEASE_VERSION }}
           artifacts: "wheels/*.whl"
           generateReleaseNotes: true
           allowUpdates: true
           draft: true
-
-      - name: Release Web Demo
-        run: |
-          gsutil -m cp -r "gs://rerun-demo/commit/${{ env.SHORT_SHA }}/*" "gs://rerun-demo/version/latest/"
 
