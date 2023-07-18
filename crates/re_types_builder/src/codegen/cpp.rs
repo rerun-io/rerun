@@ -325,7 +325,6 @@ impl QuotedObject {
         let mut hpp_includes = Includes::default();
 
         hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
-        hpp_includes.system.insert("new".to_owned()); // placement-new
         hpp_includes.system.insert("utility".to_owned()); // std::move
 
         let enum_data_declarations = obj
@@ -387,10 +386,13 @@ impl QuotedObject {
                     let length = proc_macro2::Literal::usize_unsuffixed(*length);
 
                     let element_assignment = if elem_type.is_pod(objects) {
+                        // Generate nicer code in case of simple POD types:
                         quote!{
                             self._data.#snake_case_ident[i] = std::move(#snake_case_ident[i]);
                         }
                     } else {
+                        // We need to use placement-new since the union is in an uninitialized state here:
+                        hpp_includes.system.insert("new".to_owned()); // placement-new
                         quote!{
                             new (&self._data.#snake_case_ident[i]) TypeAlias(std::move(#snake_case_ident[i]));
                         }
@@ -406,13 +408,13 @@ impl QuotedObject {
                             #pascal_case_ident self;
                             self._tag = detail::#tag_typename::#tag_ident;
                             for (size_t i = 0; i < #length; i += 1) {
-                                // new (&self._data.#snake_case_ident[i]) TypeAlias(std::move(#snake_case_ident[i]));
                                 #element_assignment
                             }
                             return std::move(self);
                         }
                     }
                 } else if obj_field.typ.is_pod(objects) {
+                    // Generate nicer code in case of simple POD types:
                     quote! {
                         #docstring
                         static #pascal_case_ident #snake_case_ident(#param_declaration)
@@ -424,6 +426,8 @@ impl QuotedObject {
                         }
                     }
                 } else {
+                    // We need to use placement-new since the union is in an uninitialized state here:
+                    hpp_includes.system.insert("new".to_owned()); // placement-new
                     let typedef_declaration = quote_declaration(
                         &mut hpp_includes,
                         obj_field,

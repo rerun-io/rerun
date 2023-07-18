@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include <new>
 #include <utility>
 
 #include "../datatypes/translation_and_mat3x3.hpp"

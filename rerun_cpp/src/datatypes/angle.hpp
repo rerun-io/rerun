@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include <new>
 #include <utility>
 
 namespace rr {
