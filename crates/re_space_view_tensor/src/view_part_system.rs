@@ -28,7 +28,7 @@ impl ViewPartSystem for TensorSystem {
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
         ) {
-            !tensor.is_shaped_like_an_image()
+            !tensor.is_shaped_like_an_image() && !tensor.is_vector()
         } else {
             false
         }
