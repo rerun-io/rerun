@@ -42,7 +42,7 @@ env:
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
   # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_GHA_ENABLED: "false"
   RUSTC_WRAPPER: "sccache"
 
 permissions:
