@@ -156,20 +156,21 @@ impl DataStore {
     ///
     /// ```rust
     /// # use polars_core::{prelude::*, series::Series};
-    /// # use re_log_types::{ComponentName, EntityPath, RowId, TimeInt};
+    /// # use re_log_types::{EntityPath, RowId, TimeInt};
+    /// # use re_types::{ComponentName};
     /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
     /// #
     /// pub fn latest_component(
     ///     store: &DataStore,
     ///     query: &LatestAtQuery,
     ///     ent_path: &EntityPath,
-    ///     primary: ComponentName,
+    ///     primary: &ComponentName,
     /// ) -> anyhow::Result<DataFrame> {
     ///     let cluster_key = store.cluster_key();
     ///
-    ///     let components = &[cluster_key, primary];
+    ///     let components = [cluster_key, primary.clone()];
     ///     let (_, cells) = store
-    ///         .latest_at(&query, ent_path, primary, components)
+    ///         .latest_at(&query, ent_path, primary, &components)
     ///         .unwrap_or((RowId::ZERO, [(); 2].map(|_| None)));
     ///
     ///     let series: Result<Vec<_>, _> = cells
@@ -177,7 +178,7 @@ impl DataStore {
     ///         .flatten()
     ///         .map(|cell| {
     ///             Series::try_from((
-    ///                 cell.component_name().as_str(),
+    ///                 cell.component_name().as_ref(),
     ///                 cell.to_arrow(),
     ///             ))
     ///         })
@@ -325,8 +326,9 @@ impl DataStore {
     /// ```rust
     /// # use arrow2::array::Array;
     /// # use polars_core::{prelude::*, series::Series};
-    /// # use re_log_types::{ComponentName, DataCell, EntityPath, RowId, TimeInt};
+    /// # use re_log_types::{DataCell, EntityPath, RowId, TimeInt};
     /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
+    /// # use re_types::ComponentName;
     /// #
     /// # pub fn dataframe_from_cells<const N: usize>(
     /// #     cells: [Option<DataCell>; N],
@@ -336,7 +338,7 @@ impl DataStore {
     /// #         .flatten()
     /// #         .map(|cell| {
     /// #             Series::try_from((
-    /// #                 cell.component_name().as_str(),
+    /// #                 cell.component_name().as_ref(),
     /// #                 cell.to_arrow(),
     /// #             ))
     /// #         })
@@ -349,11 +351,11 @@ impl DataStore {
     ///     store: &'a DataStore,
     ///     query: &'a RangeQuery,
     ///     ent_path: &'a EntityPath,
-    ///     primary: ComponentName,
+    ///     primary: &ComponentName,
     /// ) -> impl Iterator<Item = anyhow::Result<(Option<TimeInt>, DataFrame)>> + 'a {
     ///     let cluster_key = store.cluster_key();
     ///
-    ///     let components = [cluster_key, primary];
+    ///     let components = [cluster_key, primary.clone()];
     ///
     ///     // Fetch the latest-at data just before the start of the time range.
     ///     let latest_time = query.range.min.as_i64().saturating_sub(1).into();
@@ -369,7 +371,7 @@ impl DataStore {
     ///     std::iter::once(df_latest.map(|df| (Some(latest_time), df)))
     ///         // ..but only if it's not an empty dataframe.
     ///         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
-    ///         .chain(store.range(query, ent_path, components).map(
+    ///         .chain(store.range(query, ent_path, &components).map(
     ///             move |(time, _, cells)| dataframe_from_cells(cells).map(|df| (time, df))
     ///         ))
     /// }

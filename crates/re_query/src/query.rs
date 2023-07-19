@@ -14,7 +14,8 @@ use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_components::Point2D;
-/// # use re_log_types::{Timeline, Component};
+/// # use re_log_types::Timeline;
+/// # use re_types::Loggable as _;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -24,7 +25,7 @@ use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 ///   &store,
 ///   &query,
 ///   &ent_path.into(),
-///   Point2D::name(),
+///   &Point2D::name(),
 /// )
 /// .unwrap();
 ///
@@ -86,7 +87,8 @@ pub fn get_component_with_instances(
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_components::{Point2D, ColorRGBA};
-/// # use re_log_types::{Timeline, Component};
+/// # use re_log_types::Timeline;
+/// # use re_types::Loggable as _;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";

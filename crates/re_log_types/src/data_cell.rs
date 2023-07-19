@@ -75,8 +75,9 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # use arrow2_convert::field::ArrowField as _;
 /// # use itertools::Itertools as _;
 /// #
-/// # use re_log_types::{DataCell, Component as _};
+/// # use re_log_types::{DataCell};
 /// # use re_log_types::example_components::MyPoint;
+/// # use re_types::Loggable as _;
 /// #
 /// let points: &[MyPoint] = &[
 ///     MyPoint { x: 10.0, y: 10.0 },
