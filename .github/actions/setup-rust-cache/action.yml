@@ -26,13 +26,18 @@ runs:
     - name: Set up rust-cache
       uses: Swatinem/rust-cache@v2
       with:
-        save-if: ${{ inputs.save }}
+        save-if: true
 
     - name: Set up sccache
-      uses: rerun-io/sccache-action@v0.2.0
+      uses: rerun-io/sccache-action@v0.6.4
       with:
+        use_gcs: true
         gcs_bucket: rerun-sccache
-        gcs_read_only: ${{ !inputs.save }}
+        gcs_read_only: false
+
+    - name: Display sccache config
+      run: |
+        cat $HOME/.config/sccache/config
 
     - name: Verify sccache
       shell: bash
