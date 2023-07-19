@@ -130,7 +130,7 @@ jobs:
           save-if: true
 
       - name: Set up sccache
-        uses: rerun-io/sccache-action@v0.6.3
+        uses: rerun-io/sccache-action@v0.6.4
         with:
           use_gcs: true
           gcs_bucket: rerun-sccache
