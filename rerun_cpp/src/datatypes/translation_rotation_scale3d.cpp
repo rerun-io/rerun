@@ -5,6 +5,10 @@
 
 #include "translation_rotation_scale3d.hpp"
 
-static std::shared_ptr<arrow::DataType> to_arrow_datatype() {
-    return arrow::struct_({});
-}
+namespace rr {
+    namespace datatypes {
+        std::shared_ptr<arrow::DataType> TranslationRotationScale3D::to_arrow_datatype() {
+            return arrow::struct_({});
+        }
+    } // namespace datatypes
+} // namespace rr

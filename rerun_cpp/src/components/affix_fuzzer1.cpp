@@ -5,6 +5,10 @@
 
 #include "affix_fuzzer1.hpp"
 
-static std::shared_ptr<arrow::DataType> to_arrow_datatype() {
-    return arrow::struct_({});
-}
+namespace rr {
+    namespace components {
+        std::shared_ptr<arrow::DataType> AffixFuzzer1::to_arrow_datatype() {
+            return arrow::struct_({});
+        }
+    } // namespace components
+} // namespace rr

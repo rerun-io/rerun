@@ -18,7 +18,7 @@ use crate::{
 
 use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
-use self::method::Method;
+use self::method::{Method, MethodDeclaration};
 
 // Special strings we insert as tokens, then search-and-replace later.
 // This is so that we can insert comments and whitespace into the generated code.
@@ -263,9 +263,9 @@ impl QuotedObject {
                     quote_declaration(&mut hpp_includes, obj_field, &field_ident);
 
                 methods.push(Method {
-                    declaration: quote! {
+                    declaration: MethodDeclaration::constructor(quote! {
                         #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
-                    },
+                    }),
                     ..Method::default()
                 });
             }
@@ -275,8 +275,10 @@ impl QuotedObject {
             ObjectKind::Datatype | ObjectKind::Component => {
                 methods.push(Method {
                     doc_string: "Returns the arrow data type this type corresponds to.".to_owned(),
-                    declaration: quote! {
-                        static std::shared_ptr<arrow::DataType> to_arrow_datatype()
+                    declaration: MethodDeclaration {
+                        is_static: true,
+                        return_type: quote! { std::shared_ptr<arrow::DataType> },
+                        name_and_parameters: quote! { to_arrow_datatype() },
                     },
                     definition_body: quote! { return arrow::struct_({}); },
                     inline: false,
@@ -312,11 +314,15 @@ impl QuotedObject {
             }
         };
 
-        let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens());
+        let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
         let cpp = quote! {
             #cpp_includes
 
-            #(#cpp_methods)*
+            namespace rr {
+                namespace #namespace_ident {
+                    #(#cpp_methods)*
+                }
+            }
         };
 
         Self { hpp, cpp }
@@ -626,7 +632,7 @@ fn quote_static_constructor_for_enum_type(
             }
         }
     } else if obj_field.typ.has_default_destructor(objects) {
-        // Generate simpoler code for simple types:
+        // Generate simpler code for simple types:
         quote! {
             #docstring
             static #pascal_case_ident #snake_case_ident(#param_declaration)

@@ -5,6 +5,10 @@
 
 #include "mat4x4.hpp"
 
-static std::shared_ptr<arrow::DataType> to_arrow_datatype() {
-    return arrow::struct_({});
-}
+namespace rr {
+    namespace datatypes {
+        std::shared_ptr<arrow::DataType> Mat4x4::to_arrow_datatype() {
+            return arrow::struct_({});
+        }
+    } // namespace datatypes
+} // namespace rr

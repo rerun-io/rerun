@@ -5,6 +5,10 @@
 
 #include "point2d.hpp"
 
-static std::shared_ptr<arrow::DataType> to_arrow_datatype() {
-    return arrow::struct_({});
-}
+namespace rr {
+    namespace components {
+        std::shared_ptr<arrow::DataType> Point2D::to_arrow_datatype() {
+            return arrow::struct_({});
+        }
+    } // namespace components
+} // namespace rr
