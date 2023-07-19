@@ -29,7 +29,7 @@ runs:
         save-if: ${{ inputs.save }}
 
     - name: Set up sccache
-      uses: rerun-io/sccache-action@v0.1.0
+      uses: rerun-io/sccache-action@v0.2.0
       with:
         gcs_bucket: rerun-sccache
         gcs_read_only: ${{ !inputs.save }}

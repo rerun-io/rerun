@@ -43,6 +43,7 @@ env:
 
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
+  SCCACHE_CONF: ".sccache"
   RUSTC_WRAPPER: "sccache"
 
 permissions:
