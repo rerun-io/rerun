@@ -217,9 +217,6 @@ impl DataCell {
         C: Component + Clone + 'a,
         C: Into<::std::borrow::Cow<'a, C>>,
     {
-        //let values: Vec<C> = values.into_iter().map(Into::into).collect();
-        //Self::from_native(values)
-        //let values: Vec<C> = values.into_iter().map(Into::into).collect();
         Self::from_native(values.into_iter().map(Into::into))
     }
 
@@ -235,10 +232,6 @@ impl DataCell {
         C: Component + Clone + 'a,
         C: Into<::std::borrow::Cow<'a, C>>,
     {
-        //let values: Vec<_> = values
-        // .into_iter()
-        // .map(|value| value.map(Into::into))
-        // .collect();
         Self::from_native_sparse(values.into_iter().map(|value| value.map(Into::into)))
     }
 

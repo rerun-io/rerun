@@ -323,7 +323,7 @@ fn latest_at_impl(store: &mut DataStore) {
         )
         .unwrap();
 
-        let df_expected = joint_df(&store.cluster_key(), rows);
+        let df_expected = joint_df(store.cluster_key(), rows);
 
         store.sort_indices_if_needed();
         assert_eq!(df_expected, df, "{store}");
@@ -456,9 +456,9 @@ fn range_impl(store: &mut DataStore) {
             for (time, rows) in rows_at_times {
                 if let Some(time) = time {
                     let dfs = expected_at_times.entry(*time).or_default();
-                    dfs.push(joint_df(&store.cluster_key(), rows));
+                    dfs.push(joint_df(store.cluster_key(), rows));
                 } else {
-                    expected_timeless.push(joint_df(&store.cluster_key(), rows));
+                    expected_timeless.push(joint_df(store.cluster_key(), rows));
                 }
             }
 
@@ -797,11 +797,11 @@ fn range_impl(store: &mut DataStore) {
 // --- Common helpers ---
 
 /// Given a list of rows, crafts a `latest_components`-looking dataframe.
-fn joint_df(cluster_key: &ComponentName, rows: &[(ComponentName, &DataRow)]) -> DataFrame {
+fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> DataFrame {
     let df = rows
         .iter()
         .map(|(component, row)| {
-            let cluster_comp = if let Some(idx) = row.find_cell(cluster_key) {
+            let cluster_comp = if let Some(idx) = row.find_cell(&cluster_key) {
                 Series::try_from((cluster_key.as_ref(), row.cells[idx].to_arrow_monolist()))
                     .unwrap()
             } else {
@@ -830,7 +830,7 @@ fn joint_df(cluster_key: &ComponentName, rows: &[(ComponentName, &DataRow)]) -> 
         })
         .unwrap_or_default();
 
-    let df = polars_util::drop_all_nulls(&df, cluster_key).unwrap();
+    let df = polars_util::drop_all_nulls(&df, &cluster_key).unwrap();
 
     df.sort([cluster_key.as_ref()], false).unwrap_or(df)
 }
