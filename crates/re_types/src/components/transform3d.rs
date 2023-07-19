@@ -37,7 +37,7 @@ impl crate::Loggable for Transform3D {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.components.Transform3D")
+        "rerun.components.Transform3D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

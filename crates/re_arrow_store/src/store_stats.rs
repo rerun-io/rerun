@@ -1,3 +1,4 @@
+use nohash_hasher::IntMap;
 use re_log_types::{SizeBytes, TimePoint};
 use re_types::ComponentName;
 
@@ -156,7 +157,7 @@ impl SizeBytes for DataTypeRegistry {
 
         // NOTE: This is only here to make sure this method fails to compile if the inner type
         // changes, as the following size computation assumes POD types.
-        let inner: &ahash::HashMap<K, _> = &self.0;
+        let inner: &IntMap<K, _> = &self.0;
 
         let keys_size_bytes = std::mem::size_of::<K>() * inner.len();
         // NOTE: It's all on the heap at this point.

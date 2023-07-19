@@ -33,7 +33,7 @@ impl DataUi for InstancePath {
                         store,
                         query,
                         &self.entity_path,
-                        &component_name,
+                        component_name,
                     ) else {
                         continue; // no need to show components that are unset at this point in time
                     };

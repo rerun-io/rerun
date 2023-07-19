@@ -35,7 +35,7 @@ impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer1")
+        "rerun.testing.components.AffixFuzzer1".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -204,7 +204,7 @@ impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer2")
+        "rerun.testing.components.AffixFuzzer2".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -375,7 +375,7 @@ impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer3")
+        "rerun.testing.components.AffixFuzzer3".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -546,7 +546,7 @@ impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer4")
+        "rerun.testing.components.AffixFuzzer4".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -713,7 +713,7 @@ impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer5")
+        "rerun.testing.components.AffixFuzzer5".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -882,7 +882,7 @@ impl crate::Loggable for AffixFuzzer6 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer6")
+        "rerun.testing.components.AffixFuzzer6".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1051,7 +1051,7 @@ impl crate::Loggable for AffixFuzzer7 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer7")
+        "rerun.testing.components.AffixFuzzer7".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1235,7 +1235,7 @@ impl crate::Loggable for AffixFuzzer8 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8")
+        "rerun.testing.components.AffixFuzzer8".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1352,7 +1352,7 @@ impl crate::Loggable for AffixFuzzer9 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9")
+        "rerun.testing.components.AffixFuzzer9".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1486,7 +1486,7 @@ impl crate::Loggable for AffixFuzzer10 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10")
+        "rerun.testing.components.AffixFuzzer10".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1618,7 +1618,7 @@ impl crate::Loggable for AffixFuzzer11 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11")
+        "rerun.testing.components.AffixFuzzer11".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1820,7 +1820,7 @@ impl crate::Loggable for AffixFuzzer12 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12")
+        "rerun.testing.components.AffixFuzzer12".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -2040,7 +2040,7 @@ impl crate::Loggable for AffixFuzzer13 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13")
+        "rerun.testing.components.AffixFuzzer13".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -2258,7 +2258,7 @@ impl crate::Loggable for AffixFuzzer14 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer14")
+        "rerun.testing.components.AffixFuzzer14".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -2415,7 +2415,7 @@ impl crate::Loggable for AffixFuzzer15 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer15")
+        "rerun.testing.components.AffixFuzzer15".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -2570,7 +2570,7 @@ impl crate::Loggable for AffixFuzzer16 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer16")
+        "rerun.testing.components.AffixFuzzer16".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -2765,7 +2765,7 @@ impl crate::Loggable for AffixFuzzer17 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer17")
+        "rerun.testing.components.AffixFuzzer17".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -2958,7 +2958,7 @@ impl crate::Loggable for AffixFuzzer18 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer18")
+        "rerun.testing.components.AffixFuzzer18".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -3151,7 +3151,7 @@ impl crate::Loggable for AffixFuzzer19 {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer19")
+        "rerun.testing.components.AffixFuzzer19".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

@@ -81,7 +81,7 @@ pub fn range_entity_with_primary<
                 store,
                 &LatestAtQuery::new(query.timeline, latest_time),
                 ent_path,
-                primary,
+                *primary,
             );
         }
 
@@ -96,7 +96,7 @@ pub fn range_entity_with_primary<
         .map(move |cwis| (latest_time, true, cwis))
         .chain(
             store
-                .range(query, ent_path, &components)
+                .range(query, ent_path, components)
                 .map(move |(time, row_id, mut cells)| {
                     // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
                     // by the store.
@@ -139,9 +139,7 @@ pub fn range_entity_with_primary<
                     components: components
                         .iter()
                         .zip(state.iter().cloned() /* shallow */)
-                        .filter_map(|(component, cwi)| {
-                            cwi.map(|(_, cwi)| ((*component).clone(), cwi))
-                        })
+                        .filter_map(|(component, cwi)| cwi.map(|(_, cwi)| (*component, cwi)))
                         .collect(),
                     phantom: std::marker::PhantomData,
                 };
@@ -175,7 +173,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     // TODO(jleibs) this shim is super gross
     let components: [ComponentName; N] = A::all_components().try_into().unwrap();
 
-    let primary: ComponentName = A::recommended_components()[0].clone();
+    let primary: ComponentName = A::recommended_components()[0];
     let cluster_key = store.cluster_key();
 
     // TODO(cmc): Ideally, we'd want to simply add the cluster and primary key to the `components`
@@ -222,7 +220,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
                 store,
                 &LatestAtQuery::new(query.timeline, latest_time),
                 ent_path,
-                primary,
+                *primary,
             );
         }
 
@@ -237,7 +235,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
         .map(move |cwis| (latest_time, true, cwis))
         .chain(
             store
-                .range(query, ent_path, &components)
+                .range(query, ent_path, components)
                 .map(move |(time, row_id, mut cells)| {
                     // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
                     // by the store.

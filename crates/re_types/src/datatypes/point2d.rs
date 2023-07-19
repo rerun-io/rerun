@@ -37,7 +37,7 @@ impl crate::Loggable for Point2D {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Point2D")
+        "rerun.datatypes.Point2D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

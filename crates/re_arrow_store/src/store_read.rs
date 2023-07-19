@@ -1,6 +1,7 @@
 use std::{ops::RangeBounds, sync::atomic::Ordering};
 
 use itertools::Itertools;
+use nohash_hasher::IntSet;
 use re_log::trace;
 use re_log_types::{DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline};
 use re_types::ComponentName;
@@ -106,7 +107,7 @@ impl DataStore {
             "query started..."
         );
 
-        let timeless: Option<ahash::HashSet<_>> = self
+        let timeless: Option<IntSet<_>> = self
             .timeless_tables
             .get(&ent_path_hash)
             .map(|table| table.columns.keys().cloned().collect());
@@ -164,7 +165,7 @@ impl DataStore {
     ///     store: &DataStore,
     ///     query: &LatestAtQuery,
     ///     ent_path: &EntityPath,
-    ///     primary: &ComponentName,
+    ///     primary: ComponentName,
     /// ) -> anyhow::Result<DataFrame> {
     ///     let cluster_key = store.cluster_key();
     ///
@@ -178,7 +179,7 @@ impl DataStore {
     ///         .flatten()
     ///         .map(|cell| {
     ///             Series::try_from((
-    ///                 cell.component_name().as_ref(),
+    ///                 cell.component_name().as_str(),
     ///                 cell.to_arrow(),
     ///             ))
     ///         })
@@ -197,7 +198,7 @@ impl DataStore {
         &self,
         query: &LatestAtQuery,
         ent_path: &EntityPath,
-        primary: &ComponentName,
+        primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
         re_tracing::profile_function!();
@@ -351,11 +352,11 @@ impl DataStore {
     ///     store: &'a DataStore,
     ///     query: &'a RangeQuery,
     ///     ent_path: &'a EntityPath,
-    ///     primary: &ComponentName,
+    ///     primary: ComponentName,
     /// ) -> impl Iterator<Item = anyhow::Result<(Option<TimeInt>, DataFrame)>> + 'a {
     ///     let cluster_key = store.cluster_key();
     ///
-    ///     let components = [cluster_key, primary.clone()];
+    ///     let components = [cluster_key, primary];
     ///
     ///     // Fetch the latest-at data just before the start of the time range.
     ///     let latest_time = query.range.min.as_i64().saturating_sub(1).into();
@@ -387,7 +388,7 @@ impl DataStore {
         &'a self,
         query: &RangeQuery,
         ent_path: &EntityPath,
-        components: &[ComponentName; N],
+        components: [ComponentName; N],
     ) -> impl Iterator<Item = (Option<TimeInt>, RowId, [Option<DataCell>; N])> + 'a {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
@@ -410,7 +411,7 @@ impl DataStore {
         let temporal = self
             .tables
             .get(&(query.timeline, ent_path_hash))
-            .map(|index| index.range(query.range, components.clone()))
+            .map(|index| index.range(query.range, components))
             .into_iter()
             .flatten()
             .map(|(time, row_id, cells)| (Some(time), row_id, cells));
@@ -421,7 +422,7 @@ impl DataStore {
                 .get(&ent_path_hash)
                 .map(|index| {
                     index
-                        .range(components.clone())
+                        .range(components)
                         .map(|(row_id, cells)| (None, row_id, cells))
                 })
                 .into_iter()
@@ -457,13 +458,13 @@ impl IndexedTable {
     pub fn latest_at<const N: usize>(
         &self,
         time: TimeInt,
-        primary: &ComponentName,
+        primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
         re_tracing::profile_function!();
 
         // Early-exit if this entire table is unaware of this component.
-        if !self.all_components.contains(primary) {
+        if !self.all_components.contains(&primary) {
             return None;
         }
 
@@ -538,7 +539,7 @@ impl IndexedTable {
                     "found bucket in range"
                 );
 
-                bucket.range(time_range, components.clone())
+                bucket.range(time_range, components)
             })
     }
 
@@ -665,7 +666,7 @@ impl IndexedBucket {
     pub fn latest_at<const N: usize>(
         &self,
         time: TimeInt,
-        primary: &ComponentName,
+        primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
         re_tracing::profile_function!();
@@ -685,7 +686,7 @@ impl IndexedBucket {
         debug_assert!(is_sorted);
 
         // Early-exit if this bucket is unaware of this component.
-        let column = columns.get(primary)?;
+        let column = columns.get(&primary)?;
 
         trace!(
             kind = "latest_at",
@@ -987,7 +988,7 @@ impl PersistentIndexedTable {
     /// the `primary` component.
     fn latest_at<const N: usize>(
         &self,
-        primary: &ComponentName,
+        primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
         if self.is_empty() {
@@ -995,7 +996,7 @@ impl PersistentIndexedTable {
         }
 
         // Early-exit if this bucket is unaware of this component.
-        let column = self.columns.get(primary)?;
+        let column = self.columns.get(&primary)?;
 
         re_tracing::profile_function!();
 

@@ -130,10 +130,8 @@ impl EntityDb {
             {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
-                let cell = DataCell::from_arrow_empty(
-                    component_path.component_name.clone(),
-                    data_type.clone(),
-                );
+                let cell =
+                    DataCell::from_arrow_empty(component_path.component_name, data_type.clone());
 
                 // NOTE(cmc): The fact that this inserts data to multiple entity paths using a
                 // single `RowId` is... interesting. Keep it in mind.

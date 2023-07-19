@@ -27,7 +27,6 @@ pub mod hash;
 mod index;
 mod instance_key;
 pub mod path;
-mod size_bytes;
 mod time;
 pub mod time_point;
 mod time_range;
@@ -54,11 +53,14 @@ pub use self::data_table::{
 pub use self::index::*;
 pub use self::instance_key::InstanceKey;
 pub use self::path::*;
-pub use self::size_bytes::SizeBytes;
 pub use self::time::{Duration, Time};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
+
+// Re-export `ComponentName` for convenience
+pub use re_types::ComponentName;
+pub use re_types::SizeBytes;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::data_table_batcher::{
@@ -440,14 +442,11 @@ macro_rules! component_legacy_shim {
             where
                 Self: Clone + 'a,
             {
-                // TODO(jleibs) What do we do with the extension_wrapper?
-
                 let input = data.into_iter().map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     datum.map(|d| d.into_owned())
                 });
 
-                // TODO(jleibs): Why can't we feed input directly into try_into_arrow?
                 let vec: Vec<_> = input.collect();
 
                 let arrow = arrow2_convert::serialize::TryIntoArrow::try_into_arrow(vec.iter())
@@ -466,7 +465,6 @@ macro_rules! component_legacy_shim {
             {
                 use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 
-                // TODO(jleibs): These collects are going to be problematic
                 let native = arrow_array_deserialize_iterator(data)
                     .map_err(|err| {
                         re_types::DeserializationError::ArrowConvertFailure(err.to_string())

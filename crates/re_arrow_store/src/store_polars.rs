@@ -191,7 +191,7 @@ impl PersistentIndexedTable {
             .flatten() // filter options
             .chain(columns.iter().filter_map(|(component, cells)| {
                 let datatype = store.lookup_datatype(component)?.clone();
-                column_as_series(store, num_rows, datatype, component, cells).into()
+                column_as_series(store, num_rows, datatype, *component, cells).into()
             }));
 
         DataFrame::new(comp_series.collect::<Vec<_>>())
@@ -247,7 +247,7 @@ impl IndexedBucket {
         // One column for each component index.
         .chain(columns.iter().filter_map(|(component, cells)| {
             let datatype = store.lookup_datatype(component)?.clone();
-            column_as_series(store, num_rows, datatype, component, cells).into()
+            column_as_series(store, num_rows, datatype, *component, cells).into()
         }));
 
         DataFrame::new(comp_series.collect::<Vec<_>>())
@@ -274,7 +274,7 @@ fn column_as_series(
     store: &DataStore,
     num_rows: usize,
     datatype: arrow2::datatypes::DataType,
-    component: &ComponentName,
+    component: ComponentName,
     cells: &[Option<DataCell>],
 ) -> Series {
     re_tracing::profile_function!();

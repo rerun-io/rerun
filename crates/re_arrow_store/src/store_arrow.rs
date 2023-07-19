@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
+use nohash_hasher::IntMap;
 use re_log_types::{
     DataCellColumn, DataTable, DataTableResult, RowId, Timeline, COLUMN_INSERT_ID,
     COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
@@ -93,7 +94,7 @@ fn serialize(
     col_insert_id: &[u64],
     col_row_id: &[RowId],
     col_num_instances: &[u32],
-    table: &ahash::HashMap<ComponentName, DataCellColumn>,
+    table: &IntMap<ComponentName, DataCellColumn>,
 ) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
     re_tracing::profile_function!();
 
@@ -173,7 +174,7 @@ fn serialize_control_columns(
 
 fn serialize_data_columns(
     cluster_key: &ComponentName,
-    table: &ahash::HashMap<ComponentName, DataCellColumn>,
+    table: &IntMap<ComponentName, DataCellColumn>,
 ) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
     re_tracing::profile_function!();
 

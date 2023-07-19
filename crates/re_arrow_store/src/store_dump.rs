@@ -198,7 +198,7 @@ impl DataStore {
                     let mut columns2 = BTreeMap::default();
                     for (component, column) in columns {
                         let column = filter_column(col_time, column.iter(), time_filter).collect();
-                        columns2.insert(component.clone(), DataCellColumn(column));
+                        columns2.insert(*component, DataCellColumn(column));
                     }
 
                     Some(DataTable {

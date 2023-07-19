@@ -40,7 +40,7 @@ impl crate::Loggable for Scale3D {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Scale3D")
+        "rerun.datatypes.Scale3D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
