@@ -36,7 +36,7 @@ impl DrawOrder {
     pub const DEFAULT_POINTS2D: DrawOrder = DrawOrder(30.0);
 }
 
-impl re_log_types::Component for DrawOrder {
+impl re_log_types::LegacyComponent for DrawOrder {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.draw_order".into()

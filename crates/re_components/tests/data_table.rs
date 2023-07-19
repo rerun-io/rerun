@@ -195,7 +195,7 @@ fn data_table_sizes_unions() {
         Pinhole(re_components::Pinhole),
     }
 
-    impl re_log_types::Component for DenseTransform {
+    impl re_log_types::LegacyComponent for DenseTransform {
         #[inline]
         fn legacy_name() -> re_log_types::ComponentName {
             "rerun.dense_transform".into()
@@ -252,7 +252,7 @@ fn data_table_sizes_unions() {
         Pinhole(re_components::Pinhole),
     }
 
-    impl re_log_types::Component for SparseTransform {
+    impl re_log_types::LegacyComponent for SparseTransform {
         #[inline]
         fn legacy_name() -> re_log_types::ComponentName {
             "rerun.sparse_transform".into()

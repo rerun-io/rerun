@@ -21,7 +21,7 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 #[arrow_field(transparent)]
 pub struct ClassId(pub u16);
 
-impl re_log_types::Component for ClassId {
+impl re_log_types::LegacyComponent for ClassId {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.class_id".into()

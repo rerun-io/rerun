@@ -27,7 +27,7 @@ use rerun::{
         re_log_types::external::{arrow2, arrow2_convert},
         re_types,
     },
-    Component, EntityPath, MsgSender, RecordingStream,
+    EntityPath, LegacyComponent, MsgSender, RecordingStream,
 };
 
 // --- Rerun logging ---
@@ -92,7 +92,7 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     #[arrow_field(transparent)]
     struct Confidence(f32);
 
-    impl Component for Confidence {
+    impl LegacyComponent for Confidence {
         fn legacy_name() -> re_log_types::ComponentName {
             "ext.confidence".into()
         }
@@ -120,7 +120,7 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     #[arrow_field(transparent)]
     struct Corner(String);
 
-    impl Component for Corner {
+    impl LegacyComponent for Corner {
         fn legacy_name() -> re_log_types::ComponentName {
             "ext.corner".into()
         }
@@ -137,7 +137,7 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     #[arrow_field(transparent)]
     struct Training(bool);
 
-    impl Component for Training {
+    impl LegacyComponent for Training {
         fn legacy_name() -> re_log_types::ComponentName {
             "ext.training".into()
         }

@@ -539,7 +539,7 @@ impl Transform3D {
     }
 }
 
-impl re_log_types::Component for Transform3D {
+impl re_log_types::LegacyComponent for Transform3D {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.transform3d".into()

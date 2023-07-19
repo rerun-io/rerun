@@ -37,7 +37,7 @@ impl From<Vec<[f32; 2]>> for LineStrip2D {
     }
 }
 
-impl re_log_types::Component for LineStrip2D {
+impl re_log_types::LegacyComponent for LineStrip2D {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.linestrip2d".into()
@@ -125,7 +125,7 @@ impl From<Vec<[f32; 3]>> for LineStrip3D {
     }
 }
 
-impl re_log_types::Component for LineStrip3D {
+impl re_log_types::LegacyComponent for LineStrip3D {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.linestrip3d".into()

@@ -1,4 +1,4 @@
-use re_log_types::{Component, EntityPath};
+use re_log_types::{EntityPath, LegacyComponent};
 use re_query::{
     query_archetype_with_history, query_primary_with_history, ArchetypeView, EntityView, QueryError,
 };
@@ -27,7 +27,7 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
     mut fun: F,
 ) -> Result<(), SpaceViewSystemExecutionError>
 where
-    Primary: Component + re_types::Component + 'a,
+    Primary: LegacyComponent + re_types::Component + 'a,
     F: FnMut(
         &mut ViewerContext<'_>,
         &EntityPath,

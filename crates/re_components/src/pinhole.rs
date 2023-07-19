@@ -60,7 +60,7 @@ pub struct Pinhole {
     pub resolution: Option<Vec2D>,
 }
 
-impl re_log_types::Component for Pinhole {
+impl re_log_types::LegacyComponent for Pinhole {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.pinhole".into()

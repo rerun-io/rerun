@@ -21,7 +21,7 @@ impl Label {
     }
 }
 
-impl re_log_types::Component for Label {
+impl re_log_types::LegacyComponent for Label {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.label".into()

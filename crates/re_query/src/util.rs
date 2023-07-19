@@ -1,6 +1,6 @@
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
 use re_data_store::ExtraQueryHistory;
-use re_log_types::{Component, EntityPath};
+use re_log_types::{EntityPath, LegacyComponent};
 use re_types::{Archetype, ComponentName};
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 /// depending on whether `ExtraQueryHistory` is set.
 pub fn query_primary_with_history<
     'a,
-    Primary: Component + re_types::Component + 'a,
+    Primary: LegacyComponent + re_types::Component + 'a,
     const N: usize,
 >(
     store: &'a DataStore,

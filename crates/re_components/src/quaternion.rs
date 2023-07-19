@@ -56,7 +56,7 @@ impl Quaternion {
     }
 }
 
-impl re_log_types::Component for Quaternion {
+impl re_log_types::LegacyComponent for Quaternion {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.quaternion".into()

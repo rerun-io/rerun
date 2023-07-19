@@ -7,7 +7,7 @@ use re_log_types::{
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    Component, DataCell, DeserializableComponent, InstanceKey, RowId, SerializableComponent,
+    DataCell, DeserializableComponent, InstanceKey, LegacyComponent, RowId, SerializableComponent,
 };
 use re_types::ComponentName;
 
@@ -248,14 +248,14 @@ where
 /// batch. When iterating over individual components, they will be implicitly joined onto
 /// the primary component using instance keys.
 #[derive(Clone, Debug)]
-pub struct EntityView<Primary: Component> {
+pub struct EntityView<Primary: LegacyComponent> {
     pub(crate) row_id: RowId,
     pub(crate) primary: ComponentWithInstances,
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
     pub(crate) phantom: PhantomData<Primary>,
 }
 
-impl<Primary: Component> std::fmt::Display for EntityView<Primary> {
+impl<Primary: LegacyComponent> std::fmt::Display for EntityView<Primary> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let primary_table = arrow::format_table(
             [
@@ -271,7 +271,7 @@ impl<Primary: Component> std::fmt::Display for EntityView<Primary> {
 
 impl<Primary> EntityView<Primary>
 where
-    Primary: Component,
+    Primary: LegacyComponent,
 {
     #[inline]
     pub fn num_instances(&self) -> usize {
@@ -315,7 +315,7 @@ where
 
     /// Check if the entity has a component and its not empty
     #[inline]
-    pub fn has_component<C: Component + re_types::Component>(&self) -> bool {
+    pub fn has_component<C: LegacyComponent + re_types::Component>(&self) -> bool {
         self.components
             .get(&C::name())
             .map_or(false, |c| !c.is_empty())
@@ -374,7 +374,7 @@ where
         component: (&'a [InstanceKey], &'a [C]),
     ) -> Self
     where
-        C: Component + re_types::Component + Clone + 'a + 'static,
+        C: LegacyComponent + re_types::Component + Clone + 'a + 'static,
         C: ArrowSerialize + ArrowField<Type = C>,
         &'a C: Into<::std::borrow::Cow<'a, C>>,
     {

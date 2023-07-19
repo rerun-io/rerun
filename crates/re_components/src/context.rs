@@ -167,7 +167,7 @@ pub struct AnnotationContext {
     pub class_map: HashMap<ClassId, ClassDescription>,
 }
 
-impl re_log_types::Component for AnnotationContext {
+impl re_log_types::LegacyComponent for AnnotationContext {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.annotation_context".into()

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{Component, DataRow, EntityPath, InstanceKey, RowId};
+use re_log_types::{DataRow, EntityPath, InstanceKey, LegacyComponent, RowId};
 use re_types::Archetype;
 use re_types::{ComponentName, Loggable};
 
@@ -121,7 +121,7 @@ pub fn get_component_with_instances(
 /// └──────────┴───────────┴────────────┘
 /// ```
 ///
-pub fn query_entity_with_primary<Primary: Component + re_types::Component>(
+pub fn query_entity_with_primary<Primary: LegacyComponent + re_types::Component>(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,

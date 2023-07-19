@@ -6,8 +6,8 @@ use itertools::Itertools;
 use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
 use re_log_types::{
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, Component,
-    DeserializableComponent, InstanceKey, SerializableComponent,
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
+    DeserializableComponent, InstanceKey, LegacyComponent, SerializableComponent,
 };
 use re_types::{Archetype, Loggable};
 
@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Make it so that our arrays can be deserialized again by arrow2-convert
-fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
+fn fix_polars_nulls<C: LegacyComponent>(array: &dyn Array) -> Box<dyn Array> {
     // TODO(jleibs): This is an ugly work-around but gets our serializers
     // working again
     //

@@ -37,7 +37,7 @@ impl Box3D {
     }
 }
 
-impl re_log_types::Component for Box3D {
+impl re_log_types::LegacyComponent for Box3D {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.box3d".into()

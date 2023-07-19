@@ -559,7 +559,7 @@ impl Tensor {
     }
 }
 
-impl re_log_types::Component for Tensor {
+impl re_log_types::LegacyComponent for Tensor {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.tensor".into()

@@ -23,7 +23,7 @@ pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 pub use re_sdk_comms::default_server_addr;
 
 pub use re_log_types::{
-    ApplicationId, Component, EntityPath, SerializableComponent, StoreId, StoreKind,
+    ApplicationId, EntityPath, LegacyComponent, SerializableComponent, StoreId, StoreKind,
 };
 pub use re_types::ComponentName;
 

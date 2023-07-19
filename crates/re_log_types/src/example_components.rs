@@ -2,7 +2,7 @@
 
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::{Component, ComponentName};
+use crate::{ComponentName, LegacyComponent};
 
 // ----------------------------------------------------------------------------
 
@@ -12,7 +12,7 @@ pub struct MyPoint {
     pub y: f32,
 }
 
-impl Component for MyPoint {
+impl LegacyComponent for MyPoint {
     #[inline]
     fn legacy_name() -> ComponentName {
         "test.point2d".into()
@@ -40,7 +40,7 @@ re_log_types::component_legacy_shim!(MyPoint);
 #[repr(transparent)]
 pub struct MyColor(pub u32);
 
-impl Component for MyColor {
+impl LegacyComponent for MyColor {
     #[inline]
     fn legacy_name() -> ComponentName {
         "test.colorrgba".into()
@@ -56,7 +56,7 @@ re_log_types::component_legacy_shim!(MyColor);
 #[arrow_field(transparent)]
 pub struct MyLabel(pub String);
 
-impl Component for MyLabel {
+impl LegacyComponent for MyLabel {
     #[inline]
     fn legacy_name() -> ComponentName {
         "test.label".into()
