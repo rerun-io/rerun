@@ -158,7 +158,7 @@ pub fn resolve_mono_instance_path(
                 store,
                 query,
                 &instance.entity_path,
-                component,
+                &component,
             ) {
                 if instances.len() > 1 {
                     return instance.clone();

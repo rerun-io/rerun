@@ -31,7 +31,7 @@ impl ArchComponentWithInstances {
     /// Name of the [`Component`]
     #[inline]
     pub fn name(&self) -> ComponentName {
-        self.values.component_name().as_str().into()
+        self.values.component_name()
     }
 
     /// Number of values. 1 for splats.
@@ -58,7 +58,7 @@ impl ArchComponentWithInstances {
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + 'a> {
         if C::name() != self.name() {
-            return Err(QueryError::NewTypeMismatch {
+            return Err(QueryError::TypeMismatch {
                 actual: self.name().clone(),
                 requested: C::name(),
             });
@@ -70,7 +70,7 @@ impl ArchComponentWithInstances {
     /// Look up the value that corresponds to a given [`InstanceKey`] and convert to [`Component`]
     pub fn lookup<C: Component>(&self, instance_key: &InstanceKey) -> crate::Result<C> {
         if C::name() != self.name() {
-            return Err(QueryError::NewTypeMismatch {
+            return Err(QueryError::TypeMismatch {
                 actual: self.name().clone(),
                 requested: C::name(),
             });
@@ -120,8 +120,8 @@ impl ArchComponentWithInstances {
         let instance_keys = InstanceKey::to_arrow(instance_keys, None);
         let values = C::to_arrow(values, None);
         ArchComponentWithInstances {
-            instance_keys: DataCell::from_arrow(InstanceKey::name().as_ref().into(), instance_keys),
-            values: DataCell::from_arrow(C::name().as_ref().into(), values),
+            instance_keys: DataCell::from_arrow(InstanceKey::name(), instance_keys),
+            values: DataCell::from_arrow(C::name(), values),
         }
     }
 }

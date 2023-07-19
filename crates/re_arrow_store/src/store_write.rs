@@ -1,14 +1,14 @@
 use arrow2::datatypes::DataType;
 use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
 use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    ComponentName, DataCell, DataCellColumn, DataCellError, DataRow, DataTable, InstanceKey, RowId,
+    DataCell, DataCellColumn, DataCellError, DataRow, DataTable, InstanceKey, RowId,
     SizeBytes as _, TimeInt, TimePoint, TimeRange,
 };
+use re_types::{ComponentName, Loggable};
 
 use crate::{
     store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
@@ -162,7 +162,9 @@ impl DataStore {
             let index = self
                 .timeless_tables
                 .entry(ent_path_hash)
-                .or_insert_with(|| PersistentIndexedTable::new(self.cluster_key, ent_path.clone()));
+                .or_insert_with(|| {
+                    PersistentIndexedTable::new(self.cluster_key.clone(), ent_path.clone())
+                });
 
             index.insert_row(insert_id, generated_cluster_cell, row);
         } else {
@@ -171,7 +173,9 @@ impl DataStore {
                 let index = self
                     .tables
                     .entry((*timeline, ent_path_hash))
-                    .or_insert_with(|| IndexedTable::new(self.cluster_key, *timeline, ent_path));
+                    .or_insert_with(|| {
+                        IndexedTable::new(self.cluster_key.clone(), *timeline, ent_path)
+                    });
 
                 index.insert_row(
                     &self.config,
@@ -215,7 +219,6 @@ impl DataStore {
             // let cell = DataCell::from_component::<InstanceKey>(0..len as u64);
 
             // ...so we create it manually instead.
-            use re_log_types::Component as _;
             let values =
                 arrow2::array::UInt64Array::from_vec((0..num_instances as u64).collect_vec())
                     .boxed();
@@ -279,7 +282,7 @@ impl IndexedTable {
     ) {
         re_tracing::profile_function!();
 
-        let components: IntSet<_> = row.component_names().collect();
+        let components: ahash::HashSet<_> = row.component_names().collect();
 
         // borrowck workaround
         let timeline = self.timeline;
@@ -366,7 +369,7 @@ impl IndexedTable {
                         (new_time_bound).into(),
                         IndexedBucket {
                             timeline,
-                            cluster_key: self.cluster_key,
+                            cluster_key: self.cluster_key.clone(),
                             inner: RwLock::new(inner),
                         },
                     );
@@ -413,7 +416,7 @@ impl IndexedBucket {
         time: TimeInt,
         generated_cluster_cell: Option<DataCell>,
         row: &DataRow,
-        components: &IntSet<ComponentName>,
+        components: &ahash::HashSet<ComponentName>,
     ) -> u64 {
         re_tracing::profile_function!();
 
@@ -450,7 +453,7 @@ impl IndexedBucket {
         // insert auto-generated cluster cell if present
         if let Some(cluster_cell) = generated_cluster_cell {
             let component = cluster_cell.component_name();
-            let column = columns.entry(component).or_insert_with(|| {
+            let column = columns.entry(component.clone()).or_insert_with(|| {
                 let column = DataCellColumn::empty(num_rows);
                 size_bytes_added += component.total_size_bytes();
                 size_bytes_added += column.total_size_bytes();
@@ -465,7 +468,7 @@ impl IndexedBucket {
         // 2-way merge, step 1: left-to-right
         for cell in row.cells().iter() {
             let component = cell.component_name();
-            let column = columns.entry(component).or_insert_with(|| {
+            let column = columns.entry(component.clone()).or_insert_with(|| {
                 let column = DataCellColumn::empty(col_time.len().saturating_sub(1));
                 size_bytes_added += component.total_size_bytes();
                 size_bytes_added += column.total_size_bytes();
@@ -601,13 +604,13 @@ impl IndexedBucket {
             };
 
             // this updates `columns1` in-place!
-            let columns2: IntMap<_, _> = {
+            let columns2: ahash::HashMap<_, _> = {
                 re_tracing::profile_scope!("data");
                 columns1
                     .iter_mut()
                     .map(|(name, column1)| {
                         if split_idx >= column1.len() {
-                            return (*name, DataCellColumn(SmallVec::default()));
+                            return (name.clone(), DataCellColumn(SmallVec::default()));
                         }
 
                         // this updates `column1` in-place!
@@ -616,7 +619,7 @@ impl IndexedBucket {
                             column1.0.truncate(split_idx);
                             second_half
                         });
-                        (*name, column2)
+                        (name.clone(), column2)
                     })
                     .collect()
             };
@@ -637,7 +640,7 @@ impl IndexedBucket {
             };
             let bucket2 = Self {
                 timeline,
-                cluster_key: self.cluster_key,
+                cluster_key: self.cluster_key.clone(),
                 inner: RwLock::new(inner2),
             };
 
@@ -806,7 +809,7 @@ impl PersistentIndexedTable {
             columns,
         } = self;
 
-        let components: IntSet<_> = row.component_names().collect();
+        let components: ahash::HashSet<_> = row.component_names().collect();
 
         // --- update all control columns ---
 

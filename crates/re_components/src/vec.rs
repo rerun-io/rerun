@@ -58,7 +58,7 @@ where
 }
 
 impl re_log_types::Component for Vec2D {
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.vec2d".into()
     }
 }
@@ -88,6 +88,8 @@ impl std::fmt::Display for Vec2D {
         )
     }
 }
+
+re_log_types::component_legacy_shim!(Vec2D);
 
 // --- Vec3D ---
 
@@ -155,7 +157,7 @@ where
 }
 
 impl re_log_types::Component for Vec3D {
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.vec3d".into()
     }
 }
@@ -188,6 +190,8 @@ impl std::fmt::Display for Vec3D {
         )
     }
 }
+
+re_log_types::component_legacy_shim!(Vec3D);
 
 // --- Vec4D ---
 

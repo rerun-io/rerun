@@ -1,7 +1,8 @@
-use re_components::{ClassId, ColorRGBA, Component as _, InstanceKey, Label, Radius, Rect2D};
+use re_components::{ClassId, ColorRGBA, InstanceKey, Label, Radius, Rect2D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
+use re_types::Loggable as _;
 use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartSystem, ViewQuery, ViewerContext,

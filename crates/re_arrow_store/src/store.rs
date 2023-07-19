@@ -3,13 +3,14 @@ use std::sync::atomic::AtomicU64;
 
 use ahash::HashMap;
 use arrow2::datatypes::DataType;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use parking_lot::RwLock;
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
 use re_log_types::{
-    ComponentName, DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec,
-    NumInstancesVec, RowId, RowIdVec, SizeBytes, TimeInt, TimePoint, TimeRange, Timeline,
+    DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstancesVec, RowId,
+    RowIdVec, SizeBytes, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 // --- Data store ---
@@ -78,10 +79,14 @@ pub type InsertIdVec = SmallVec<[u64; 4]>;
 ///
 /// See also [`DataStore::lookup_datatype`].
 #[derive(Debug, Default, Clone)]
-pub struct DataTypeRegistry(pub IntMap<ComponentName, DataType>);
+// TODO(jleibs): Can we use IntMap
+//pub struct DataTypeRegistry(pub IntMap<ComponentName, DataType>);
+pub struct DataTypeRegistry(pub ahash::HashMap<ComponentName, DataType>);
 
 impl std::ops::Deref for DataTypeRegistry {
-    type Target = IntMap<ComponentName, DataType>;
+    // TODO(jleibs): Can we use IntMap
+    //type Target = IntMap<ComponentName, DataType>;
+    type Target = ahash::HashMap<ComponentName, DataType>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -226,7 +231,7 @@ pub struct DataStore {
 impl Clone for DataStore {
     fn clone(&self) -> Self {
         Self {
-            cluster_key: self.cluster_key,
+            cluster_key: self.cluster_key.clone(),
             config: self.config.clone(),
             type_registry: self.type_registry.clone(),
             metadata_registry: self.metadata_registry.clone(),
@@ -276,7 +281,7 @@ impl DataStore {
 
     /// See [`Self::cluster_key`] for more information about the cluster key.
     pub fn cluster_key(&self) -> ComponentName {
-        self.cluster_key
+        self.cluster_key.clone()
     }
 
     /// See [`DataStoreConfig`] for more information about configuration.
@@ -335,7 +340,8 @@ impl DataStore {
 #[test]
 fn datastore_internal_repr() {
     use re_components::datagen::data_table_example;
-    use re_log_types::{Component as _, InstanceKey};
+    use re_log_types::InstanceKey;
+    use re_types::Loggable as _;
 
     let mut store = DataStore::new(
         InstanceKey::name(),
@@ -399,7 +405,9 @@ pub struct IndexedTable {
     /// Note that this set will never be purged and will continue to return components that may
     /// have been set in the past even if all instances of that component have since been purged
     /// to free up space.
-    pub all_components: IntSet<ComponentName>,
+    // TODO(jleibs): Can we use IntSet?
+    //pub all_components: IntSet<ComponentName>,
+    pub all_components: ahash::HashSet<ComponentName>,
 
     /// The number of rows stored in this table, across all of its buckets.
     pub buckets_num_rows: u64,
@@ -414,7 +422,7 @@ pub struct IndexedTable {
 
 impl IndexedTable {
     pub fn new(cluster_key: ComponentName, timeline: Timeline, ent_path: EntityPath) -> Self {
-        let bucket = IndexedBucket::new(cluster_key, timeline);
+        let bucket = IndexedBucket::new(cluster_key.clone(), timeline);
         let buckets_size_bytes = bucket.total_size_bytes();
         Self {
             timeline,
@@ -447,7 +455,7 @@ impl Clone for IndexedBucket {
     fn clone(&self) -> Self {
         Self {
             timeline: self.timeline,
-            cluster_key: self.cluster_key,
+            cluster_key: self.cluster_key.clone(),
             inner: RwLock::new(self.inner.read().clone()),
         }
     }
@@ -499,7 +507,9 @@ pub struct IndexedBucketInner {
     ///
     /// The cells are optional since not all rows will have data for every single component
     /// (i.e. the table is sparse).
-    pub columns: IntMap<ComponentName, DataCellColumn>,
+    // TODO(jleibs): Can we use HashMap
+    //pub columns: IntMap<ComponentName, DataCellColumn>,
+    pub columns: ahash::HashMap<ComponentName, DataCellColumn>,
 
     /// The size of both the control & component data stored in this bucket, heap and stack
     /// included, in bytes.
@@ -568,7 +578,9 @@ pub struct PersistentIndexedTable {
     ///
     /// The cells are optional since not all rows will have data for every single component
     /// (i.e. the table is sparse).
-    pub columns: IntMap<ComponentName, DataCellColumn>,
+    // TODO(jleibs): Can we use IntMapI
+    //pub columns: IntMap<ComponentName, DataCellColumn>,
+    pub columns: ahash::HashMap<ComponentName, DataCellColumn>,
 }
 
 impl PersistentIndexedTable {

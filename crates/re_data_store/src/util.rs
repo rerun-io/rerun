@@ -1,4 +1,5 @@
-use re_log_types::{DataRow, EntityPath, RowId, SerializableComponent, TimePoint};
+use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
+use re_types::Component;
 
 use crate::StoreDb;
 
@@ -9,18 +10,21 @@ use crate::StoreDb;
 /// BEWARE: This does more than just writing component data to the datastore, it actually updates
 /// several other datastructures in the process.
 /// This is _not_ equivalent to [`re_arrow_store::DataStore::insert_component`]!
-pub fn store_one_component<C: SerializableComponent>(
+pub fn store_one_component<'a, C>(
     store_db: &mut StoreDb,
     entity_path: &EntityPath,
     timepoint: &TimePoint,
     component: C,
-) {
+) where
+    C: Component + Clone + 'a,
+    C: Into<::std::borrow::Cow<'a, C>>,
+{
     let mut row = DataRow::from_cells1(
         RowId::random(),
         entity_path.clone(),
         timepoint.clone(),
         1,
-        [component].as_slice(),
+        [component],
     );
     row.compute_all_size_bytes();
 

@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{Component, ComponentName, DataRow, EntityPath, InstanceKey, RowId};
+use re_log_types::{Component, DataRow, EntityPath, InstanceKey, RowId};
 use re_types::Archetype;
+use re_types::{ComponentName, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 
@@ -50,11 +51,11 @@ pub fn get_component_with_instances(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,
-    component: ComponentName,
+    component: &ComponentName,
 ) -> Option<(RowId, ComponentWithInstances)> {
     debug_assert_eq!(store.cluster_key(), InstanceKey::name());
 
-    let components = [InstanceKey::name(), component];
+    let components = [InstanceKey::name(), component.clone()];
 
     let (row_id, mut cells) = store.latest_at(query, ent_path, component, &components)?;
 
@@ -118,7 +119,7 @@ pub fn get_component_with_instances(
 /// └──────────┴───────────┴────────────┘
 /// ```
 ///
-pub fn query_entity_with_primary<Primary: Component>(
+pub fn query_entity_with_primary<Primary: Component + re_types::Component>(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,
@@ -126,7 +127,7 @@ pub fn query_entity_with_primary<Primary: Component>(
 ) -> crate::Result<EntityView<Primary>> {
     re_tracing::profile_function!();
 
-    let (row_id, primary) = get_component_with_instances(store, query, ent_path, Primary::name())
+    let (row_id, primary) = get_component_with_instances(store, query, ent_path, &Primary::name())
         .ok_or(QueryError::PrimaryNotFound)?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
@@ -140,8 +141,8 @@ pub fn query_entity_with_primary<Primary: Component>(
         // always queried above when creating the primary.
         .filter(|component| *component != &Primary::name() && *component != &InstanceKey::name())
         .filter_map(|component| {
-            get_component_with_instances(store, query, ent_path, *component)
-                .map(|(_, component_result)| (*component, component_result))
+            get_component_with_instances(store, query, ent_path, component)
+                .map(|(_, component_result)| ((*component).clone(), component_result))
         })
         .collect();
 
@@ -204,7 +205,7 @@ pub fn query_archetype<A: Archetype>(
     let required_components: Vec<_> = A::required_components()
         .iter()
         .map(|component| {
-            get_component_with_instances(store, query, ent_path, component.as_ref().into())
+            get_component_with_instances(store, query, ent_path, component)
                 .map(|(_, component_result)| component_result.into())
         })
         .collect();
@@ -227,7 +228,7 @@ pub fn query_archetype<A: Archetype>(
         .iter()
         .chain(optional_components.iter())
         .filter_map(|component| {
-            get_component_with_instances(store, query, ent_path, component.as_ref().into())
+            get_component_with_instances(store, query, ent_path, component)
                 .map(|(_, component_result)| component_result.into())
         });
 
@@ -277,7 +278,7 @@ pub fn __populate_example_store() -> DataStore {
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
     use re_components::Point2D;
-    use re_log_types::{Component as _, Timeline};
+    use re_log_types::Timeline;
 
     let store = __populate_example_store();
 
@@ -285,7 +286,7 @@ fn simple_get_component() {
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
     let (_, component) =
-        get_component_with_instances(&store, &query, &ent_path.into(), Point2D::name()).unwrap();
+        get_component_with_instances(&store, &query, &ent_path.into(), &Point2D::name()).unwrap();
 
     #[cfg(feature = "polars")]
     {
@@ -313,7 +314,7 @@ fn simple_get_component() {
 fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
     use re_components::{ColorRGBA, Point2D};
-    use re_log_types::{Component as _, Timeline};
+    use re_log_types::Timeline;
 
     let store = __populate_example_store();
 

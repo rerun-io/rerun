@@ -65,8 +65,8 @@ macro_rules! create_visitor {
 
         ) -> crate::Result<()>
         where $(
-            $CC: Clone + DeserializableComponent,
-            for<'a> &'a $CC::ArrayType: IntoIterator,
+            $CC: Clone + DeserializableComponent + re_types::Component,
+            for<'b> &'b $CC::ArrayType: IntoIterator,
         )*
         {
             re_tracing::profile_function!();
@@ -90,9 +90,11 @@ macro_rules! create_visitor {
     );
 }
 
-impl<Primary: SerializableComponent + DeserializableComponent> EntityView<Primary>
+impl<'a, Primary> EntityView<Primary>
 where
-    for<'a> &'a Primary::ArrayType: IntoIterator,
+    Primary: SerializableComponent + DeserializableComponent + re_types::Component + Clone,
+    &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
+    for<'b> &'b Primary::ArrayType: IntoIterator,
 {
     create_visitor! {visit1; ;}
     create_visitor! {visit2; C1; _c1}

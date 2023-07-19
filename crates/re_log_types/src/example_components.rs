@@ -14,7 +14,7 @@ pub struct MyPoint {
 
 impl Component for MyPoint {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "test.point2d".into()
     }
 }
@@ -38,7 +38,7 @@ pub struct MyColor(pub u32);
 
 impl Component for MyColor {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "test.colorrgba".into()
     }
 }
@@ -52,7 +52,7 @@ pub struct MyLabel(pub String);
 
 impl Component for MyLabel {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "test.label".into()
     }
 }

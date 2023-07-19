@@ -51,13 +51,13 @@ fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
 }
 
 /// Iterator for a single column in a dataframe as the rust-native Component type
-pub fn iter_column<'a, C: DeserializableComponent>(
+pub fn iter_column<'a, C: DeserializableComponent + re_types::Component>(
     df: &'a DataFrame,
 ) -> impl Iterator<Item = Option<C>> + 'a
 where
     for<'b> &'b C::ArrayType: IntoIterator,
 {
-    let res = match df.column(C::name().as_str()) {
+    let res = match df.column(C::name().as_ref()) {
         Ok(col) => itertools::Either::Left(col.chunks().iter().flat_map(|array| {
             let fixed_array = fix_polars_nulls::<C>(array.as_ref());
             // TODO(jleibs): the need to collect here isn't ideal
@@ -70,22 +70,24 @@ where
     res.into_iter()
 }
 
-pub fn df_builder1<C0: SerializableComponent>(c0: &Vec<Option<C0>>) -> crate::Result<DataFrame> {
+pub fn df_builder1<C0: SerializableComponent + re_types::Component>(
+    c0: &Vec<Option<C0>>,
+) -> crate::Result<DataFrame> {
     use arrow2::array::MutableArray;
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
 
     let array0 =
         arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0)?.as_box();
 
-    let series0 = Series::try_from((C0::name().as_str(), array0.as_ref().clean_for_polars()));
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()));
 
     Ok(DataFrame::new(vec![series0?])?)
 }
 
 pub fn df_builder2<C0, C1>(c0: &Vec<Option<C0>>, c1: &Vec<Option<C1>>) -> crate::Result<DataFrame>
 where
-    C0: SerializableComponent,
-    C1: SerializableComponent,
+    C0: SerializableComponent + re_types::Component,
+    C1: SerializableComponent + re_types::Component,
 {
     use arrow2::array::MutableArray;
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
@@ -95,8 +97,8 @@ where
     let array1 =
         arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1)?.as_box();
 
-    let series0 = Series::try_from((C0::name().as_str(), array0.as_ref().clean_for_polars()))?;
-    let series1 = Series::try_from((C1::name().as_str(), array1.as_ref().clean_for_polars()))?;
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
 
     Ok(DataFrame::new(vec![series0, series1])?)
 }
@@ -107,9 +109,9 @@ pub fn df_builder3<C0, C1, C2>(
     c2: &Vec<Option<C2>>,
 ) -> crate::Result<DataFrame>
 where
-    C0: SerializableComponent,
-    C1: SerializableComponent,
-    C2: SerializableComponent,
+    C0: SerializableComponent + re_types::Component,
+    C1: SerializableComponent + re_types::Component,
+    C2: SerializableComponent + re_types::Component,
 {
     use arrow2::array::MutableArray;
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
@@ -121,9 +123,9 @@ where
     let array2 =
         arrow_serialize_to_mutable_array::<Option<C2>, Option<C2>, &Vec<Option<C2>>>(c2)?.as_box();
 
-    let series0 = Series::try_from((C0::name().as_str(), array0.as_ref().clean_for_polars()))?;
-    let series1 = Series::try_from((C1::name().as_str(), array1.as_ref().clean_for_polars()))?;
-    let series2 = Series::try_from((C2::name().as_str(), array2.as_ref().clean_for_polars()))?;
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+    let series2 = Series::try_from((C2::name().as_ref(), array2.as_ref().clean_for_polars()))?;
 
     Ok(DataFrame::new(vec![series0, series1, series2])?)
 }
@@ -184,7 +186,7 @@ where
 }
 
 impl ComponentWithInstances {
-    pub fn as_df<C0: SerializableComponent + DeserializableComponent>(
+    pub fn as_df<C0: SerializableComponent + DeserializableComponent + re_types::Component>(
         &self,
     ) -> crate::Result<DataFrame>
     where
@@ -206,10 +208,11 @@ impl ComponentWithInstances {
     }
 }
 
-impl<Primary> EntityView<Primary>
+impl<'a, Primary> EntityView<Primary>
 where
-    Primary: SerializableComponent + DeserializableComponent,
-    for<'a> &'a Primary::ArrayType: IntoIterator,
+    Primary: SerializableComponent + DeserializableComponent + re_types::Component + Clone,
+    &'a Primary: Into<::std::borrow::Cow<'a, Primary>>,
+    for<'b> &'b Primary::ArrayType: IntoIterator,
 {
     pub fn as_df1(&self) -> crate::Result<DataFrame> {
         let instance_keys = self.primary.iter_instance_keys().map(Some).collect_vec();
@@ -221,8 +224,8 @@ where
 
     pub fn as_df2<C1>(&self) -> crate::Result<DataFrame>
     where
-        C1: SerializableComponent + DeserializableComponent + Clone,
-        for<'a> &'a C1::ArrayType: IntoIterator,
+        C1: SerializableComponent + DeserializableComponent + re_types::Component + Clone,
+        for<'b> &'b C1::ArrayType: IntoIterator,
     {
         let instance_keys = self.primary.iter_instance_keys().map(Some).collect_vec();
 
@@ -330,7 +333,7 @@ fn test_df_builder() {
     let expected = df![
         "x" => &[1.0_f32, 3.0_f32, 5.0_f32, 7.0_f32],
         "y" => &[2.0_f32, 4.0_f32, 6.0_f32, 8.0_f32],
-        ColorRGBA::name().as_str() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
+        ColorRGBA::name().as_ref() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
     ]
     .unwrap();
 

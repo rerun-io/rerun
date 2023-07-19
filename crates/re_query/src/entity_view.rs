@@ -7,9 +7,9 @@ use re_log_types::{
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    Component, ComponentName, DataCell, DeserializableComponent, InstanceKey, RowId,
-    SerializableComponent,
+    Component, DataCell, DeserializableComponent, InstanceKey, RowId, SerializableComponent,
 };
+use re_types::ComponentName;
 
 use crate::QueryError;
 
@@ -58,7 +58,7 @@ impl ComponentWithInstances {
 
     /// Iterate over the values and convert them to a native `Component`
     #[inline]
-    pub fn iter_values<C: DeserializableComponent>(
+    pub fn iter_values<C: DeserializableComponent + re_types::Component>(
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + '_>
     where
@@ -77,7 +77,10 @@ impl ComponentWithInstances {
     }
 
     /// Look up the value that corresponds to a given `InstanceKey` and convert to `Component`
-    pub fn lookup<C: DeserializableComponent>(&self, instance_key: &InstanceKey) -> crate::Result<C>
+    pub fn lookup<C: DeserializableComponent + re_types::Component>(
+        &self,
+        instance_key: &InstanceKey,
+    ) -> crate::Result<C>
     where
         for<'a> &'a C::ArrayType: IntoIterator,
     {
@@ -125,10 +128,14 @@ impl ComponentWithInstances {
     }
 
     /// Produce a `ComponentWithInstances` from native component types
-    pub fn from_native<C: SerializableComponent>(
+    pub fn from_native<'a, C>(
         instance_keys: &[InstanceKey],
-        values: &[C],
-    ) -> ComponentWithInstances {
+        values: &'a [C],
+    ) -> ComponentWithInstances
+    where
+        C: SerializableComponent + re_types::Component + Clone,
+        &'a C: Into<::std::borrow::Cow<'a, C>>,
+    {
         let instance_keys = DataCell::from_native(instance_keys);
         let values = DataCell::from_native(values);
         ComponentWithInstances {
@@ -255,7 +262,7 @@ impl<Primary: Component> std::fmt::Display for EntityView<Primary> {
                 self.primary.instance_keys.as_arrow_ref(),
                 self.primary.values.as_arrow_ref(),
             ],
-            ["InstanceId", self.primary.name().as_str()],
+            ["InstanceId", self.primary.name().as_ref()],
         );
 
         f.write_fmt(format_args!("EntityView:\n{primary_table}"))
@@ -277,9 +284,11 @@ where
     }
 }
 
-impl<Primary: SerializableComponent + DeserializableComponent> EntityView<Primary>
+impl<'a, Primary> EntityView<Primary>
 where
-    for<'a> &'a Primary::ArrayType: IntoIterator,
+    Primary: SerializableComponent + DeserializableComponent + re_types::Component + Clone,
+    &'a Primary: Into<::std::borrow::Cow<'a, Primary>>,
+    for<'b> &'b Primary::ArrayType: IntoIterator,
 {
     /// Iterate over the instance keys
     #[inline]
@@ -306,7 +315,7 @@ where
 
     /// Check if the entity has a component and its not empty
     #[inline]
-    pub fn has_component<C: Component>(&self) -> bool {
+    pub fn has_component<C: Component + re_types::Component>(&self) -> bool {
         self.components
             .get(&C::name())
             .map_or(false, |c| !c.is_empty())
@@ -315,7 +324,7 @@ where
     /// Iterate over the values of a `Component`.
     ///
     /// Always produces an iterator of length `self.primary.len()`
-    pub fn iter_component<C: DeserializableComponent + Clone>(
+    pub fn iter_component<C: DeserializableComponent + Clone + re_types::Component>(
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + '_>
     where
@@ -348,7 +357,7 @@ where
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
     #[inline]
-    pub fn from_native(c0: (&[InstanceKey], &[Primary])) -> Self {
+    pub fn from_native(c0: (&'a [InstanceKey], &'a [Primary])) -> Self {
         let primary = ComponentWithInstances::from_native(c0.0, c0.1);
         Self {
             row_id: RowId::ZERO,
@@ -361,15 +370,17 @@ where
     /// Helper function to produce an `EntityView` from rust-native `field_types`
     #[inline]
     pub fn from_native2<C>(
-        primary: (&[InstanceKey], &[Primary]),
-        component: (&[InstanceKey], &[C]),
+        primary: (&'a [InstanceKey], &'a [Primary]),
+        component: (&'a [InstanceKey], &'a [C]),
     ) -> Self
     where
-        C: Component + 'static,
+        C: Component + re_types::Component + Clone + 'a + 'static,
         C: ArrowSerialize + ArrowField<Type = C>,
+        &'a C: Into<::std::borrow::Cow<'a, C>>,
     {
-        let primary = ComponentWithInstances::from_native(primary.0, primary.1);
-        let component_c1 = ComponentWithInstances::from_native(component.0, component.1);
+        let primary = ComponentWithInstances::from_native::<Primary>(primary.0, primary.1);
+        // TODO(jleibs): Lifetime shenanigans
+        let component_c1 = ComponentWithInstances::from_native::<C>(component.0, component.1);
 
         let components = [(component_c1.name(), component_c1)].into();
 

@@ -2,8 +2,9 @@ mod common;
 
 use re_arrow_store::DataStore;
 use re_components::{datagen::build_frame_nr, ColorRGBA, Point2D};
-use re_log_types::{Component, DataRow, InstanceKey, RowId};
+use re_log_types::{DataRow, InstanceKey, RowId};
 use re_query::query_entity_with_primary;
+use re_types::Loggable;
 
 #[test]
 fn simple_query() {

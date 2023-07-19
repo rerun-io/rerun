@@ -18,7 +18,7 @@ pub struct Scalar(pub f64);
 
 impl re_log_types::Component for Scalar {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.scalar".into()
     }
 }
@@ -36,6 +36,8 @@ impl From<Scalar> for f64 {
         value.0
     }
 }
+
+re_log_types::component_legacy_shim!(Scalar);
 
 // ---
 
@@ -61,7 +63,9 @@ pub struct ScalarPlotProps {
 
 impl re_log_types::Component for ScalarPlotProps {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.scalar_plot_props".into()
     }
 }
+
+re_log_types::component_legacy_shim!(ScalarPlotProps);

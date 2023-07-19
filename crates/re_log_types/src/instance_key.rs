@@ -100,7 +100,7 @@ impl From<u64> for InstanceKey {
 
 impl Component for InstanceKey {
     #[inline]
-    fn name() -> crate::ComponentName {
+    fn legacy_name() -> crate::ComponentName {
         "rerun.instance_key".into()
     }
 }
@@ -108,5 +108,74 @@ impl Component for InstanceKey {
 impl From<re_types::components::InstanceKey> for InstanceKey {
     fn from(other: re_types::components::InstanceKey) -> Self {
         Self(other.0)
+    }
+}
+
+// Can't use
+impl re_types::Loggable for InstanceKey {
+    type Name = re_types::ComponentName;
+
+    #[inline]
+    fn name() -> Self::Name {
+        Self::legacy_name().as_str().into()
+    }
+
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        Self::field().data_type().clone()
+    }
+
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+        _extension_wrapper: Option<&str>,
+    ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        // TODO(jleibs) What do we do with the extension_wrapper?
+
+        let input = data.into_iter().map(|datum| {
+            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+            datum.map(|d| d.into_owned())
+        });
+
+        // TODO(jleibs): Why can't we feed input directly into try_into_arrow?
+        let vec: Vec<_> = input.collect();
+
+        let arrow = arrow2_convert::serialize::TryIntoArrow::try_into_arrow(vec.iter())
+            .map_err(|e| re_types::SerializationError::ArrowConvertFailure(e.to_string()))?;
+
+        Ok(arrow)
+    }
+
+    fn try_from_arrow_opt(
+        data: &dyn arrow2::array::Array,
+    ) -> re_types::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
+
+        // TODO(jleibs): These collects are going to be problematic
+        let native = arrow_array_deserialize_iterator(data)
+            .map_err(|e| re_types::DeserializationError::ArrowConvertFailure(e.to_string()))?
+            .collect();
+
+        Ok(native)
+    }
+}
+
+impl re_types::Component for InstanceKey {}
+
+impl<'a> From<InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
+    #[inline]
+    fn from(value: InstanceKey) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
+    #[inline]
+    fn from(value: &'a InstanceKey) -> Self {
+        std::borrow::Cow::Borrowed(value)
     }
 }

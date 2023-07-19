@@ -33,19 +33,19 @@ impl DataUi for InstancePath {
                         store,
                         query,
                         &self.entity_path,
-                        component_name,
+                        &component_name,
                     ) else {
                         continue; // no need to show components that are unset at this point in time
                     };
 
                     // Certain fields are hidden.
-                    if HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY.contains(&component_name.as_str()) {
+                    if HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY.contains(&component_name.as_ref()) {
                         continue;
                     }
                     match verbosity {
                         UiVerbosity::Small | UiVerbosity::Reduced => {
                             if HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY
-                                .contains(&component_name.as_str())
+                                .contains(&component_name.as_ref())
                             {
                                 continue;
                             }

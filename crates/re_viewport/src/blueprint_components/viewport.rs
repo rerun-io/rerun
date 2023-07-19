@@ -24,10 +24,12 @@ pub struct AutoSpaceViews(pub bool);
 
 impl Component for AutoSpaceViews {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "rerun.blueprint.auto_space_views".into()
     }
 }
+
+re_log_types::component_legacy_shim!(AutoSpaceViews);
 
 /// Whether a space view is maximized
 ///
@@ -49,10 +51,12 @@ pub struct SpaceViewMaximized(
 
 impl Component for SpaceViewMaximized {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "rerun.blueprint.maximized".into()
     }
 }
+
+re_log_types::component_legacy_shim!(SpaceViewMaximized);
 
 /// The layout of a `Viewport`
 ///
@@ -83,10 +87,12 @@ pub struct ViewportLayout {
 
 impl Component for ViewportLayout {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "rerun.blueprint.viewport_layout".into()
     }
 }
+
+re_log_types::component_legacy_shim!(ViewportLayout);
 
 #[test]
 fn test_maximized_roundtrip() {

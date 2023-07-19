@@ -13,9 +13,8 @@ use re_arrow_store::{
 use re_components::datagen::{
     build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
 };
-use re_log_types::{
-    Component as _, DataCell, Duration, EntityPath, InstanceKey, Time, TimeType, Timeline,
-};
+use re_log_types::{DataCell, Duration, EntityPath, InstanceKey, Time, TimeType, Timeline};
+use re_types::Loggable as _;
 
 // ---
 
@@ -113,7 +112,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &ent_path,
-            InstanceKey::name(),
+            &InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -124,7 +123,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &ent_path,
-            InstanceKey::name(),
+            &InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -135,7 +134,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
-            InstanceKey::name(),
+            &InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -148,7 +147,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
-                InstanceKey::name(),
+                &InstanceKey::name(),
                 components,
             )
             .unwrap();
@@ -161,7 +160,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
-                InstanceKey::name(),
+                &InstanceKey::name(),
                 &[],
             )
             .unwrap();
@@ -173,7 +172,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
-            InstanceKey::name(),
+            &InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -184,7 +183,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_kind, frame40),
             &EntityPath::from("does/not/exist"),
-            InstanceKey::name(),
+            &InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -240,7 +239,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         store,
         &query,
         &ent_path,
-        Point2D::name(),
+        &Point2D::name(),
         components,
         &JoinType::Outer,
     )
@@ -254,9 +253,9 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         let colors: Box<dyn Array> = colors.try_into_arrow().unwrap();
 
         DataFrame::new(vec![
-            Series::try_from((InstanceKey::name().as_str(), instances)).unwrap(),
-            Series::try_from((Point2D::name().as_str(), points)).unwrap(),
-            Series::try_from((ColorRGBA::name().as_str(), colors)).unwrap(),
+            Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),
+            Series::try_from((Point2D::name().as_ref(), points)).unwrap(),
+            Series::try_from((ColorRGBA::name().as_ref(), colors)).unwrap(),
         ])
         .unwrap()
     };

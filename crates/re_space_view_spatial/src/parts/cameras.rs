@@ -1,7 +1,8 @@
 use glam::vec3;
-use re_components::{Component, InstanceKey, Pinhole, Transform3D, ViewCoordinates};
+use re_components::{InstanceKey, Pinhole, Transform3D, ViewCoordinates};
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
+use re_types::Loggable as _;
 use re_viewer_context::{
     ArchetypeDefinition, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,

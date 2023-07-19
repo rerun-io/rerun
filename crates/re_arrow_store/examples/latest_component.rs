@@ -11,6 +11,7 @@ use re_components::{
     Point2D, Rect2D,
 };
 use re_log_types::{Component, EntityPath, InstanceKey};
+use re_types::Loggable;
 
 fn main() {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
@@ -33,10 +34,13 @@ fn main() {
         &store,
         &LatestAtQuery::new(timeline_frame_nr, 10.into()),
         &ent_path,
-        Rect2D::name(),
+        &Rect2D::name(),
     )
     .unwrap();
-    println!("Query results from {:?}'s PoV:\n{df}", Rect2D::name());
+    println!(
+        "Query results from {:?}'s PoV:\n{df}",
+        Rect2D::legacy_name()
+    );
 
     println!("\n-----\n");
 
@@ -44,7 +48,7 @@ fn main() {
         &store,
         &LatestAtQuery::new(timeline_frame_nr, 10.into()),
         &ent_path,
-        Point2D::name(),
+        &Point2D::name(),
     )
     .unwrap();
     println!("Query results from {:?}'s PoV:\n{df}", Point2D::name());

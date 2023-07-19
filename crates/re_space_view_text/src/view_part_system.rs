@@ -1,7 +1,8 @@
 use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
-use re_log_types::{Component as _, InstanceKey, RowId};
+use re_log_types::{InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
+use re_types::Loggable as _;
 use re_viewer_context::{
     ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,

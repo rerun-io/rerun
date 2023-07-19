@@ -107,7 +107,11 @@ pub fn process_colors<'a, Primary>(
     annotation_infos: &'a [ResolvedAnnotationInfo],
 ) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError>
 where
-    Primary: re_log_types::SerializableComponent + re_log_types::DeserializableComponent,
+    Primary: re_log_types::SerializableComponent
+        + re_log_types::DeserializableComponent
+        + re_types::Component
+        + Clone,
+    &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
     for<'b> &'b Primary::ArrayType: IntoIterator,
 {
     re_tracing::profile_function!();
@@ -146,7 +150,11 @@ pub fn process_radii<'a, Primary>(
     entity_view: &'a re_query::EntityView<Primary>,
 ) -> Result<impl Iterator<Item = re_renderer::Size> + 'a, re_query::QueryError>
 where
-    Primary: re_log_types::SerializableComponent + re_log_types::DeserializableComponent,
+    Primary: re_log_types::SerializableComponent
+        + re_log_types::DeserializableComponent
+        + re_types::Component
+        + Clone,
+    &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
     for<'b> &'b Primary::ArrayType: IntoIterator,
 {
     re_tracing::profile_function!();
@@ -197,13 +205,17 @@ pub fn process_radii_arch<'a, A: Archetype>(
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
-fn process_annotations_and_keypoints<Primary>(
+fn process_annotations_and_keypoints<'a, Primary>(
     query: &ViewQuery<'_>,
     entity_view: &re_query::EntityView<Primary>,
     annotations: &Arc<Annotations>,
 ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), re_query::QueryError>
 where
-    Primary: re_log_types::SerializableComponent + re_log_types::DeserializableComponent,
+    Primary: re_log_types::SerializableComponent
+        + re_log_types::DeserializableComponent
+        + re_types::Component
+        + Clone,
+    &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
     for<'b> &'b Primary::ArrayType: IntoIterator,
     glam::Vec3: std::convert::From<Primary>,
 {

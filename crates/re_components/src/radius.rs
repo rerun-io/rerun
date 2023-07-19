@@ -16,7 +16,9 @@ pub struct Radius(pub f32);
 
 impl re_log_types::Component for Radius {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.radius".into()
     }
 }
+
+re_log_types::component_legacy_shim!(Radius);

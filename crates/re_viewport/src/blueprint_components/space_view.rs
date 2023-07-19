@@ -31,7 +31,7 @@ impl SpaceViewComponent {
 
 impl Component for SpaceViewComponent {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "rerun.blueprint.spaceview".into()
     }
 }
@@ -41,6 +41,8 @@ impl std::fmt::Debug for SpaceViewComponent {
         write!(f, "SpaceViewComponent")
     }
 }
+
+re_log_types::component_legacy_shim!(SpaceViewComponent);
 
 #[test]
 fn test_spaceview() {

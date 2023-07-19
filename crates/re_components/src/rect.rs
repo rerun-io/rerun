@@ -87,7 +87,9 @@ impl Rect2D {
 
 impl re_log_types::Component for Rect2D {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.rect2d".into()
     }
 }
+
+re_log_types::component_legacy_shim!(Rect2D);

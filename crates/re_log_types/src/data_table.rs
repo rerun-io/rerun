@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
-use nohash_hasher::IntSet;
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
 use crate::{
-    ArrowMsg, ComponentName, DataCell, DataCellError, DataRow, DataRowError, EntityPath, RowId,
-    SizeBytes, TimePoint, Timeline,
+    ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath, RowId, SizeBytes,
+    TimePoint, Timeline,
 };
 
 // ---
@@ -370,7 +370,9 @@ impl DataTable {
         let rows = rows.into_iter();
 
         // Explode all rows into columns, and keep track of which components are involved.
-        let mut components = IntSet::default();
+        // TODO(jleibs): Can we make IntSet work w/ the new ComponentName
+        // let mut components = IntSet::default();
+        let mut components = ahash::HashSet::default();
         #[allow(clippy::type_complexity)]
         let (col_row_id, col_timepoint, col_entity_path, col_num_instances, column): (
             RowIdVec,
@@ -775,7 +777,7 @@ impl DataTable {
             // but I'm not sure if returning an empty column is the right thing to do there.
             // See: https://github.com/rerun-io/rerun/issues/2005
             if rows.iter().any(|c| c.is_some()) {
-                let (field, column) = Self::serialize_data_column(component.as_str(), rows)?;
+                let (field, column) = Self::serialize_data_column(component, rows)?;
                 schema.fields.push(field);
                 columns.push(column);
             }
@@ -937,12 +939,12 @@ impl DataTable {
                 })
             })
             .map(|(name, index)| {
-                let component: ComponentName = name.into();
+                let component: ComponentName = name.to_owned().into();
                 chunk
                     .get(index)
                     .ok_or(DataTableError::MissingColumn(name.to_owned()))
                     .and_then(|column| {
-                        Self::deserialize_data_column(component, &**column)
+                        Self::deserialize_data_column(&component, &**column)
                             .map(|data| (component, data))
                     })
             })
@@ -990,7 +992,7 @@ impl DataTable {
 
     /// Deserializes a sparse data column.
     fn deserialize_data_column(
-        component: ComponentName,
+        component: &ComponentName,
         column: &dyn Array,
     ) -> DataTableResult<DataCellColumn> {
         re_tracing::profile_function!();
@@ -1002,7 +1004,7 @@ impl DataTable {
                 .iter()
                 // TODO(#1805): Schema metadata gets cloned in every single array.
                 // This'll become a problem as soon as we enable batching.
-                .map(|array| array.map(|values| DataCell::from_arrow(component, values)))
+                .map(|array| array.map(|values| DataCell::from_arrow(component.clone(), values)))
                 .collect(),
         ))
     }

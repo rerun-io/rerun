@@ -95,13 +95,8 @@ impl<'a> AppBlueprint<'a> {
 
             let component = PanelState { expanded };
 
-            let row = DataRow::from_cells1_sized(
-                RowId::random(),
-                entity_path,
-                timepoint,
-                1,
-                [component].as_slice(),
-            );
+            let row =
+                DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 1, [component]);
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
                 blueprint_db.store_id().clone(),

@@ -1,4 +1,6 @@
-use crate::{path::EntityPath, ComponentName};
+use re_types::ComponentName;
+
+use crate::path::EntityPath;
 
 /// A [`EntityPath`] plus a [`ComponentName`].
 ///

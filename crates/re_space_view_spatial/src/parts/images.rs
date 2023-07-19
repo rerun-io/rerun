@@ -6,8 +6,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_arrow_store::LatestAtQuery;
 use re_components::{
-    ColorRGBA, Component as _, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor,
-    TensorDataMeaning,
+    ColorRGBA, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor, TensorDataMeaning,
 };
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{ComponentName, EntityPathHash, TimeInt, Timeline};
@@ -16,6 +15,7 @@ use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,
 };
+use re_types::Loggable as _;
 use re_viewer_context::ViewContextCollection;
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,

@@ -10,7 +10,8 @@ use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     Point2D, Rect2D,
 };
-use re_log_types::{Component as _, EntityPath, InstanceKey, TimeType, Timeline};
+use re_log_types::{EntityPath, InstanceKey, TimeType, Timeline};
+use re_types::Loggable;
 
 fn main() {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
@@ -54,7 +55,7 @@ fn main() {
         &store,
         &query,
         &ent_path,
-        Rect2D::name(),
+        &Rect2D::name(),
         [InstanceKey::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );
@@ -76,7 +77,7 @@ fn main() {
         &store,
         &query,
         &ent_path,
-        Point2D::name(),
+        &Point2D::name(),
         [InstanceKey::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );

@@ -5,9 +5,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use arrow2::{array::PrimitiveArray, datatypes::PhysicalType, types::PrimitiveType};
 use criterion::{criterion_group, Criterion};
-use re_log_types::{
-    external::arrow2_convert::deserialize::TryIntoCollection, Component as _, DataCell, InstanceKey,
-};
+use re_log_types::{DataCell, InstanceKey};
+use re_types::Loggable as _;
 
 // ---
 
@@ -99,7 +98,7 @@ fn deserialize(c: &mut Criterion) {
     {
         group.bench_function("arrow2_convert", |b| {
             b.iter(|| {
-                let keys: Vec<InstanceKey> = data.as_ref().try_into_collection().unwrap();
+                let keys: Vec<InstanceKey> = InstanceKey::from_arrow(data.as_ref());
                 assert_eq!(NUM_INSTANCES, keys.len());
                 assert_eq!(
                     InstanceKey(NUM_INSTANCES as u64 / 2),

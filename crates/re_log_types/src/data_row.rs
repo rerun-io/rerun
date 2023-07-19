@@ -1,10 +1,8 @@
 use ahash::HashSetExt;
-use nohash_hasher::IntSet;
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
-use crate::{
-    ComponentName, DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint,
-};
+use crate::{DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint};
 
 // ---
 
@@ -265,11 +263,13 @@ impl DataRow {
         let entity_path = entity_path.into();
         let timepoint = timepoint.into();
 
-        let mut components = IntSet::with_capacity(cells.len());
+        // TODO(jleibs): Can we make IntSet work w/ the new ComponentName
+        //let mut components = IntSet::with_capacity(cells.len());
+        let mut components = ahash::HashSet::with_capacity(cells.len());
         for cell in cells.iter() {
             let component = cell.component_name();
 
-            if !components.insert(component) {
+            if !components.insert(component.clone()) {
                 return Err(DataRowError::DupedComponent {
                     entity_path,
                     component,

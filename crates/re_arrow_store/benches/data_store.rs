@@ -13,9 +13,9 @@ use re_components::{
     Rect2D,
 };
 use re_log_types::{
-    Component as _, ComponentName, DataCell, DataRow, DataTable, EntityPath, InstanceKey, RowId,
-    TableId, TimeType, Timeline,
+    DataCell, DataRow, DataTable, EntityPath, InstanceKey, RowId, TableId, TimeType, Timeline,
 };
+use re_types::{ComponentName, Loggable as _};
 
 criterion_group!(benches, insert, latest_at, latest_at_missing, range, gc);
 criterion_main!(benches);
@@ -104,7 +104,7 @@ fn latest_at(c: &mut Criterion) {
         group.bench_function("default", |b| {
             let store = insert_table(Default::default(), InstanceKey::name(), &table);
             b.iter(|| {
-                let cells = latest_data_at(&store, Rect2D::name(), &[Rect2D::name()]);
+                let cells = latest_data_at(&store, &Rect2D::name(), &[Rect2D::name()]);
                 let rects = cells[0]
                     .as_ref()
                     .unwrap()
@@ -128,7 +128,7 @@ fn latest_at(c: &mut Criterion) {
             );
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
-                    let cells = latest_data_at(&store, Rect2D::name(), &[Rect2D::name()]);
+                    let cells = latest_data_at(&store, &Rect2D::name(), &[Rect2D::name()]);
                     let rects = cells[0]
                         .as_ref()
                         .unwrap()
@@ -156,8 +156,11 @@ fn latest_at_missing(c: &mut Criterion) {
         let store = insert_table(Default::default(), InstanceKey::name(), &table);
         group.bench_function("primary/default", |b| {
             b.iter(|| {
-                let results =
-                    latest_data_at(&store, "non_existing_component".into(), &[Rect2D::name()]);
+                let results = latest_data_at(
+                    &store,
+                    &("non_existing_component".into()),
+                    &[Rect2D::name()],
+                );
                 assert!(results[0].is_none());
             });
         });
@@ -165,7 +168,7 @@ fn latest_at_missing(c: &mut Criterion) {
             b.iter(|| {
                 let results = latest_data_at(
                     &store,
-                    Rect2D::name(),
+                    &Rect2D::name(),
                     &[
                         "non_existing_component1".into(),
                         "non_existing_component2".into(),
@@ -190,8 +193,11 @@ fn latest_at_missing(c: &mut Criterion) {
             );
             group.bench_function(format!("primary/bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
-                    let results =
-                        latest_data_at(&store, "non_existing_component".into(), &[Rect2D::name()]);
+                    let results = latest_data_at(
+                        &store,
+                        &("non_existing_component".into()),
+                        &[Rect2D::name()],
+                    );
                     assert!(results[0].is_none());
                 });
             });
@@ -199,7 +205,7 @@ fn latest_at_missing(c: &mut Criterion) {
                 b.iter(|| {
                     let results = latest_data_at(
                         &store,
-                        Rect2D::name(),
+                        &Rect2D::name(),
                         &[
                             "non_existing_component1".into(),
                             "non_existing_component2".into(),
@@ -241,9 +247,10 @@ fn range(c: &mut Criterion) {
                 InstanceKey::name(),
                 &table,
             );
+            let components = [Rect2D::name()];
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
-                    let rows = range_data(&store, [Rect2D::name()]);
+                    let rows = range_data(&store, &components);
                     for (cur_time, (time, cells)) in rows.enumerate() {
                         let time = time.unwrap();
                         assert_eq!(cur_time as i64, time.as_i64());
@@ -347,7 +354,7 @@ fn insert_table(
 
 fn latest_data_at<const N: usize>(
     store: &DataStore,
-    primary: ComponentName,
+    primary: &ComponentName,
     secondaries: &[ComponentName; N],
 ) -> [Option<DataCell>; N] {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -359,10 +366,10 @@ fn latest_data_at<const N: usize>(
         .map_or_else(|| [(); N].map(|_| None), |(_, cells)| cells)
 }
 
-fn range_data<const N: usize>(
-    store: &DataStore,
-    components: [ComponentName; N],
-) -> impl Iterator<Item = (Option<TimeInt>, [Option<DataCell>; N])> + '_ {
+fn range_data<'a, const N: usize>(
+    store: &'a DataStore,
+    components: &'a [ComponentName; N],
+) -> impl Iterator<Item = (Option<TimeInt>, [Option<DataCell>; N])> + 'a {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(0.into(), NUM_ROWS.into()));
     let ent_path = EntityPath::from("rects");

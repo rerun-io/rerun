@@ -14,11 +14,11 @@ use crate::ComponentName;
 /// Examples of components include positions and colors.
 pub trait Component: ArrowField {
     /// The name of the component.
-    fn name() -> ComponentName;
+    fn legacy_name() -> ComponentName;
 
     /// Create a [`Field`] for this [`Component`].
     fn field() -> Field {
-        Field::new(Self::name().as_str(), Self::data_type(), false)
+        Field::new(Self::legacy_name().as_str(), Self::data_type(), false)
     }
 }
 

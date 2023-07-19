@@ -325,6 +325,9 @@ pub enum SerializationError {
         location: String,
         source: Box<SerializationError>,
     },
+
+    #[error("arrow2-convert serialization Failed: {0}")]
+    ArrowConvertFailure(String),
 }
 
 pub type SerializationResult<T> = ::std::result::Result<T, SerializationError>;
@@ -366,6 +369,9 @@ pub enum DeserializationError {
 
     #[error("Expected single-instanced component but found {got} instances instead")]
     MonoMismatch { got: usize, backtrace: _Backtrace },
+
+    #[error("arrow2-convert deserialization Failed: {0}")]
+    ArrowConvertFailure(String),
 }
 
 pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;

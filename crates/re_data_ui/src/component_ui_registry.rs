@@ -7,8 +7,9 @@ use super::{DataUi, EntityDataUi};
 
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
     /// Registers how to show a given component in the ui.
-    pub fn add<C: DeserializableComponent + EntityDataUi>(registry: &mut ComponentUiRegistry)
-    where
+    pub fn add<C: DeserializableComponent + EntityDataUi + re_types::Component>(
+        registry: &mut ComponentUiRegistry,
+    ) where
         for<'a> &'a C::ArrayType: IntoIterator,
     {
         registry.add(
