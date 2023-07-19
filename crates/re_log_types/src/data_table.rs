@@ -1140,12 +1140,14 @@ impl DataTable {
                 for (c1, c2) in cells1.0.iter().zip(&cells2.0) {
                     if c1 != c2 {
                         anyhow::ensure!(
-                            c1.total_size_bytes() == c2.total_size_bytes(),
-                            "Found discrepancy in row #{ri}, cells' sizes don't match! {} ({}) vs. {} ({}) bytes",
-                            c1.total_size_bytes(),
-                            c1.component_name(),
-                            c2.total_size_bytes(),
-                            c2.component_name(),
+                            c1.datatype() == c2.datatype(),
+                            "Found discrepancy in row #{ri}, cells' datatypes don't match!\n{}",
+                            similar_asserts::SimpleDiff::from_str(
+                                &format!("{:?}", c1.datatype()),
+                                &format!("{:?}", c2.datatype()),
+                                "cell1",
+                                "cell2"
+                            )
                         );
 
                         let arr1 = c1.as_arrow_ref();
@@ -1192,18 +1194,67 @@ impl DataTable {
                     }
                 }
 
+                let mut size_mismatches = vec![];
+                for (c1, c2) in cells1.0.iter().zip(&cells2.0) {
+                    if c1.total_size_bytes() != c2.total_size_bytes() {
+                        size_mismatches.push(format!(
+                            "Found discrepancy in row #{ri}, cells' sizes don't match! {} ({}) vs. {} ({}) bytes",
+                            c1.total_size_bytes(),
+                            c1.component_name(),
+                            c2.total_size_bytes(),
+                            c2.component_name(),
+                        ));
+
+                        fn cell_to_bytes(cell: DataCell) -> Vec<u8> {
+                            let row = DataRow::from_cells1(
+                                RowId::random(),
+                                "cell",
+                                TimePoint::default(),
+                                cell.num_instances(),
+                                cell,
+                            );
+                            let table = DataTable::from_rows(TableId::ZERO, [row]);
+
+                            let msg = table.to_arrow_msg().unwrap();
+
+                            use arrow2::io::ipc::write::StreamWriter;
+                            let mut buf = Vec::<u8>::new();
+                            let mut writer = StreamWriter::new(&mut buf, Default::default());
+                            writer.start(&msg.schema, None).unwrap();
+                            writer.write(&msg.chunk, None).unwrap();
+                            writer.finish().unwrap();
+
+                            buf
+                        }
+
+                        let c1_bytes = cell_to_bytes(c1.clone());
+                        let c2_bytes = cell_to_bytes(c1.clone());
+
+                        size_mismatches.push(
+                            similar_asserts::SimpleDiff::from_str(
+                                &format!("{c1_bytes:?}"),
+                                &format!("{c2_bytes:?}"),
+                                "cell1_ipc",
+                                "cell2_ipc",
+                            )
+                            .to_string(),
+                        );
+                    }
+                }
+
                 anyhow::ensure!(
                     timepoint1 == timepoint2
                         && entity_path1 == entity_path2
                         && num_instances1 == num_instances2
                         && cells1 == cells2,
-                    "Found discrepancy in row #{ri}:\n{}",
+                    "Found discrepancy in row #{ri}:\n{}\n{}",
                     similar_asserts::SimpleDiff::from_str(
                         &row1.to_string(),
                         &row2.to_string(),
                         "row1",
                         "row2"
                     ),
+                    size_mismatches.join("\n"),
                 );
             }
         }
