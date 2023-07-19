@@ -117,12 +117,29 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Rust Cache
-        uses: ./.github/actions/setup-rust-cache
+      - name: Set up GCP credentials
+        uses: google-github-actions/auth@v1
         with:
-          save: true
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      # Rust-cache will cache our dependencies, which is a large chunk of the build
+      # See: https://github.com/Swatinem/rust-cache
+      - name: Set up rust-cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          save-if: true
+
+      - name: Set up sccache
+        uses: rerun-io/sccache-action@v0.2.0
+        with:
+          gcs_bucket: rerun-sccache
+          gcs_read_only: false
+
+      - name: Verify sccache
+        shell: bash
+        run: |
+          sccache --show-stats
 
       - name: Show context
         run: |
