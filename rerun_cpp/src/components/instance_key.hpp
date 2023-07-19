@@ -3,8 +3,16 @@
 
 #pragma once
 
+#include <cstdint>
+#include <utility>
+
 namespace rr {
     namespace components {
-        struct InstanceKey {};
+        /// A unique numeric identifier for each individual instance within a batch.
+        struct InstanceKey {
+            uint64_t value;
+
+            InstanceKey(uint64_t value) : value(std::move(value)) {}
+        };
     } // namespace components
 } // namespace rr

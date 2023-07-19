@@ -3,8 +3,17 @@
 
 #pragma once
 
+#include <cstdint>
+#include <utility>
+
 namespace rr {
     namespace components {
-        struct Color {};
+        /// An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear
+        /// alpha.
+        struct Color {
+            uint32_t rgba;
+
+            Color(uint32_t rgba) : rgba(std::move(rgba)) {}
+        };
     } // namespace components
 } // namespace rr

@@ -547,17 +547,22 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
 /// becomes just `String`.
 /// The returned boolean indicates whether there was anything to unwrap at all.
 fn quote_field_type_from_field(obj_field: &ObjectField, unwrap: bool) -> (TokenStream, bool) {
-    let obj_field_type = TypeTokenizer(&obj_field.typ, unwrap);
+    let obj_field_type = TypeTokenizer {
+        typ: &obj_field.typ,
+        unwrap,
+    };
     let unwrapped = unwrap && matches!(obj_field.typ, Type::Array { .. } | Type::Vector { .. });
     (quote!(#obj_field_type), unwrapped)
 }
 
-/// `(type, unwrap)`
-struct TypeTokenizer<'a>(&'a Type, bool);
+struct TypeTokenizer<'a> {
+    typ: &'a Type,
+    unwrap: bool,
+}
 
 impl quote::ToTokens for TypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self(typ, unwrap) = self;
+        let Self { typ, unwrap } = self;
         match typ {
             Type::UInt8 => quote!(u8),
             Type::UInt16 => quote!(u16),
@@ -568,7 +573,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Int32 => quote!(i32),
             Type::Int64 => quote!(i64),
             Type::Bool => quote!(bool),
-            Type::Float16 => unimplemented!("{typ:#?}"), // NOLINT
+            Type::Float16 => unimplemented!("{typ:#?}"),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
             Type::String => quote!(String),
@@ -604,7 +609,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Int32 => quote!(i32),
             ElementType::Int64 => quote!(i64),
             ElementType::Bool => quote!(bool),
-            ElementType::Float16 => unimplemented!("{self:#?}"), // NOLINT
+            ElementType::Float16 => unimplemented!("{self:#?}"),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
             ElementType::String => quote!(String),
@@ -774,8 +779,7 @@ fn quote_trait_impls_from_obj(
                     let component = quote!(crate::components::#component);
 
                     let fqname = obj_field.typ.fqname().unwrap();
-                    let legacy_fqname = objects
-                        .get(fqname)
+                    let legacy_fqname = objects[fqname]
                         .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
                         .unwrap_or_else(|| fqname.to_owned());
 
@@ -1113,7 +1117,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                 quote!(DataType::Extension(#name.to_owned(), Box::new(#datatype), #metadata))
             }
 
-            _ => unimplemented!("{:#?}", self.0), // NOLINT
+            _ => unimplemented!("{:#?}", self.0),
         }
         .to_tokens(tokens);
     }
@@ -1461,7 +1465,7 @@ fn quote_arrow_serializer(
                     ).boxed()
                 }}
             }
-            _ => unimplemented!("{datatype:#?}"), // NOLINT
+            _ => unimplemented!("{datatype:#?}"),
         }
     }
 }
@@ -1556,7 +1560,7 @@ fn quote_arrow_field_serializer(
             );
 
             let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(objects.get(fqname))
+                Some(&objects[fqname])
             } else {
                 None
             };
@@ -1652,7 +1656,7 @@ fn quote_arrow_field_serializer(
             }}
         }
 
-        _ => unimplemented!("{datatype:#?}"), // NOLINT
+        _ => unimplemented!("{datatype:#?}"),
     }
 }
 
@@ -1894,7 +1898,7 @@ fn quote_arrow_deserializer(
                 }}
             }
 
-            _ => unimplemented!("{datatype:#?}"), // NOLINT
+            _ => unimplemented!("{datatype:#?}"),
         }
     }
 }
@@ -1959,7 +1963,7 @@ fn quote_arrow_field_deserializer(
             );
 
             let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(objects.get(fqname))
+                Some(&objects[fqname])
             } else {
                 None
             };
@@ -2104,7 +2108,7 @@ fn quote_arrow_field_deserializer(
             quote!(#fqname_use::try_from_arrow_opt(#data_src)?.into_iter())
         }
 
-        _ => unimplemented!("{datatype:#?}"), // NOLINT
+        _ => unimplemented!("{datatype:#?}"),
     }
 }
 

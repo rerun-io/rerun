@@ -371,3 +371,30 @@ pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
 
     workspace_root
 }
+
+pub(crate) fn to_snake_case(s: &str) -> String {
+    // Other crates (convert_case, case, heck, …) all get this wrong. See unit test.
+    let mut last_char: Option<char> = None;
+
+    let mut out = String::new();
+    for c in s.chars() {
+        if let Some(last_char) = last_char {
+            if last_char.is_lowercase() && c.is_uppercase() {
+                out.push('_');
+            }
+        }
+        out.push(c.to_ascii_lowercase());
+        last_char = Some(c);
+    }
+
+    out
+}
+
+#[test]
+fn test_snake_case() {
+    assert_eq!(to_snake_case("Point2D"), "point2d");
+    assert_eq!(
+        to_snake_case("TranslationAndMat3x3"),
+        "translation_and_mat3x3"
+    );
+}

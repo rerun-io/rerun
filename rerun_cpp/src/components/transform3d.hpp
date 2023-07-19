@@ -3,8 +3,19 @@
 
 #pragma once
 
+#include <cstdint>
+#include <utility>
+
+#include "../datatypes/transform3d.hpp"
+
 namespace rr {
     namespace components {
-        struct Transform3D {};
+        /// An affine transform between two 3D spaces, represented in a given direction.
+        struct Transform3D {
+            /// Representation of the transform.
+            rr::datatypes::Transform3D repr;
+
+            Transform3D(rr::datatypes::Transform3D repr) : repr(std::move(repr)) {}
+        };
     } // namespace components
 } // namespace rr

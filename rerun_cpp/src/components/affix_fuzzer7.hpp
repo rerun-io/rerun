@@ -3,8 +3,20 @@
 
 #pragma once
 
+#include <cstdint>
+#include <optional>
+#include <utility>
+#include <vector>
+
+#include "../datatypes/affix_fuzzer1.hpp"
+
 namespace rr {
     namespace components {
-        struct AffixFuzzer7 {};
+        struct AffixFuzzer7 {
+            std::optional<std::vector<rr::datatypes::AffixFuzzer1>> many_optional;
+
+            AffixFuzzer7(std::optional<std::vector<rr::datatypes::AffixFuzzer1>> many_optional)
+                : many_optional(std::move(many_optional)) {}
+        };
     } // namespace components
 } // namespace rr

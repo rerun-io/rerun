@@ -3,8 +3,22 @@
 
 #pragma once
 
+#include <cstdint>
+#include <utility>
+
 namespace rr {
     namespace components {
-        struct DrawOrder {};
+        /// Draw order used for the display order of 2D elements.
+        ///
+        /// Higher values are drawn on top of lower values.
+        /// An entity can have only a single draw order component.
+        /// Within an entity draw order is governed by the order of the components.
+        ///
+        /// Draw order for entities with the same draw order is generally undefined.
+        struct DrawOrder {
+            float value;
+
+            DrawOrder(float value) : value(std::move(value)) {}
+        };
     } // namespace components
 } // namespace rr
