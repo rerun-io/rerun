@@ -2566,7 +2566,7 @@ impl crate::Loggable for AffixFuzzer14 {
                     metadata: [].into(),
                 },
             ],
-            None,
+            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
             UnionMode::Dense,
         )
     }
@@ -2798,7 +2798,7 @@ impl crate::Loggable for AffixFuzzer15 {
                     metadata: [].into(),
                 },
             ],
-            None,
+            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
             UnionMode::Dense,
         )
     }
@@ -3030,7 +3030,7 @@ impl crate::Loggable for AffixFuzzer16 {
                         metadata: [].into(),
                     },
                 ],
-                None,
+                Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                 UnionMode::Dense,
             ),
             is_nullable: false,
@@ -3217,7 +3217,7 @@ impl crate::Loggable for AffixFuzzer16 {
                                             metadata: [].into(),
                                         },
                                     ],
-                                    None,
+                                    Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                                     UnionMode::Dense,
                                 ),
                                 is_nullable: false,
@@ -3477,7 +3477,7 @@ impl crate::Loggable for AffixFuzzer17 {
                         metadata: [].into(),
                     },
                 ],
-                None,
+                Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                 UnionMode::Dense,
             ),
             is_nullable: true,
@@ -3666,7 +3666,7 @@ impl crate::Loggable for AffixFuzzer17 {
                                             metadata: [].into(),
                                         },
                                     ],
-                                    None,
+                                    Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                                     UnionMode::Dense,
                                 ),
                                 is_nullable: true,
@@ -3932,7 +3932,7 @@ impl crate::Loggable for AffixFuzzer18 {
                                     metadata: [].into(),
                                 },
                             ],
-                            None,
+                            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                             UnionMode::Dense,
                         ),
                         is_nullable: false,
@@ -4063,7 +4063,7 @@ impl crate::Loggable for AffixFuzzer18 {
                                         metadata: [].into(),
                                     },
                                 ],
-                                None,
+                                Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                                 UnionMode::Dense,
                             ),
                             is_nullable: false,
@@ -4197,7 +4197,7 @@ impl crate::Loggable for AffixFuzzer18 {
                                         metadata: [].into(),
                                     },
                                 ],
-                                None,
+                                Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                                 UnionMode::Dense,
                             ),
                             is_nullable: true,
@@ -4207,7 +4207,7 @@ impl crate::Loggable for AffixFuzzer18 {
                         metadata: [].into(),
                     },
                 ],
-                None,
+                Some(vec![0i32, 1i32, 2i32, 3i32]),
                 UnionMode::Dense,
             ),
             is_nullable: true,
@@ -4304,7 +4304,7 @@ impl crate::Loggable for AffixFuzzer18 {
 
 ) , 3usize) , is_nullable : false , metadata : [] . into () , }
 
- ,] , None , UnionMode :: Dense) , is_nullable : false , metadata : [] . into () , }
+ ,] , Some (vec ! [0i32 , 1i32 , 2i32 , 3i32 , 4i32 ,]) , UnionMode :: Dense) , is_nullable : false , metadata : [] . into () , }
 
  , Field { name : "many_required" . to_owned () , data_type : DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : DataType :: Union (vec ! [Field { name : "_null_markers" . to_owned () , data_type : DataType :: Null , is_nullable : true , metadata : [] . into () , }
 
@@ -4346,7 +4346,7 @@ impl crate::Loggable for AffixFuzzer18 {
 
 ) , 3usize) , is_nullable : false , metadata : [] . into () , }
 
- ,] , None , UnionMode :: Dense) , is_nullable : false , metadata : [] . into () , }
+ ,] , Some (vec ! [0i32 , 1i32 , 2i32 , 3i32 , 4i32 ,]) , UnionMode :: Dense) , is_nullable : false , metadata : [] . into () , }
 
 )) , is_nullable : false , metadata : [] . into () , }
 
@@ -4390,11 +4390,11 @@ impl crate::Loggable for AffixFuzzer18 {
 
 ) , 3usize) , is_nullable : false , metadata : [] . into () , }
 
- ,] , None , UnionMode :: Dense) , is_nullable : true , metadata : [] . into () , }
+ ,] , Some (vec ! [0i32 , 1i32 , 2i32 , 3i32 , 4i32 ,]) , UnionMode :: Dense) , is_nullable : true , metadata : [] . into () , }
 
 )) , is_nullable : false , metadata : [] . into () , }
 
- ,] , None , UnionMode :: Dense) , is_nullable : true , metadata : [] . into () , }
+ ,] , Some (vec ! [0i32 , 1i32 , 2i32 , 3i32 ,]) , UnionMode :: Dense) , is_nullable : true , metadata : [] . into () , }
 
 ))) , None) . to_logical_type () . clone () }
 
@@ -4644,7 +4644,7 @@ impl crate::Loggable for AffixFuzzer19 {
                                     metadata: [].into(),
                                 },
                             ],
-                            None,
+                            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                             UnionMode::Dense,
                         ),
                         is_nullable: false,
@@ -4775,7 +4775,7 @@ impl crate::Loggable for AffixFuzzer19 {
                                         metadata: [].into(),
                                     },
                                 ],
-                                None,
+                                Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                                 UnionMode::Dense,
                             ),
                             is_nullable: false,
@@ -4909,7 +4909,7 @@ impl crate::Loggable for AffixFuzzer19 {
                                         metadata: [].into(),
                                     },
                                 ],
-                                None,
+                                Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
                                 UnionMode::Dense,
                             ),
                             is_nullable: true,
@@ -4919,7 +4919,7 @@ impl crate::Loggable for AffixFuzzer19 {
                         metadata: [].into(),
                     },
                 ],
-                None,
+                Some(vec![0i32, 1i32, 2i32, 3i32]),
                 UnionMode::Dense,
             ),
             is_nullable: true,

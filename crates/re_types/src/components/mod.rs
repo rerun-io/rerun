@@ -18,6 +18,7 @@ mod point2d_ext;
 mod radius;
 mod radius_ext;
 mod transform3d;
+mod transform3d_ext;
 
 pub use self::class_id::ClassId;
 pub use self::color::Color;

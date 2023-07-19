@@ -89,7 +89,7 @@ impl crate::Loggable for RotationAxisAngle {
                             metadata: [].into(),
                         },
                     ],
-                    None,
+                    Some(vec![0i32, 1i32, 2i32]),
                     UnionMode::Dense,
                 ),
                 is_nullable: false,

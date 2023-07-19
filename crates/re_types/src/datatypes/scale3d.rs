@@ -76,7 +76,7 @@ impl crate::Loggable for Scale3D {
                     metadata: [].into(),
                 },
             ],
-            None,
+            Some(vec![0i32, 1i32, 2i32]),
             UnionMode::Dense,
         )
     }
