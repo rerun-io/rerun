@@ -70,6 +70,10 @@ class AffixFuzzer1(Archetype):
         metadata={"component": "primary"},
         converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
     )
+    fuzz1015: components.AffixFuzzer15Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer15Array.from_similar,  # type: ignore[misc]
+    )
     fuzz1016: components.AffixFuzzer16Array = field(
         metadata={"component": "primary"},
         converter=components.AffixFuzzer16Array.from_similar,  # type: ignore[misc]
@@ -141,6 +145,10 @@ class AffixFuzzer1(Archetype):
     fuzz1114: components.AffixFuzzer14Array = field(
         metadata={"component": "primary"},
         converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz1115: components.AffixFuzzer15Array = field(
+        metadata={"component": "primary"},
+        converter=components.AffixFuzzer15Array.from_similar,  # type: ignore[misc]
     )
     fuzz1116: components.AffixFuzzer16Array = field(
         metadata={"component": "primary"},
@@ -223,6 +231,11 @@ class AffixFuzzer1(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2015: components.AffixFuzzer15Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer15Array.from_similar,  # type: ignore[misc]
     )
     fuzz2016: components.AffixFuzzer16Array | None = field(
         metadata={"component": "secondary"},
@@ -308,6 +321,11 @@ class AffixFuzzer1(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.AffixFuzzer14Array.from_similar,  # type: ignore[misc]
+    )
+    fuzz2115: components.AffixFuzzer15Array | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.AffixFuzzer15Array.from_similar,  # type: ignore[misc]
     )
     fuzz2116: components.AffixFuzzer16Array | None = field(
         metadata={"component": "secondary"},

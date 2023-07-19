@@ -3,8 +3,13 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace rr {
     namespace datatypes {
-        struct Mat4x4 {};
+        /// A 4x4 column-major Matrix.
+        struct Mat4x4 {
+            float coeffs[16];
+        };
     } // namespace datatypes
 } // namespace rr

@@ -3,8 +3,18 @@
 
 #pragma once
 
+#include <cstdint>
+#include <utility>
+
+#include "../datatypes/point2d.hpp"
+
 namespace rr {
     namespace components {
-        struct Point2D {};
+        /// A point in 2D space.
+        struct Point2D {
+            rr::datatypes::Point2D xy;
+
+            Point2D(rr::datatypes::Point2D xy) : xy(std::move(xy)) {}
+        };
     } // namespace components
 } // namespace rr

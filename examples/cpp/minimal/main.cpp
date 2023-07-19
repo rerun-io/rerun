@@ -22,4 +22,9 @@ int main(int argc, char** argv) {
 
     uint32_t num_instances = 3;
     rr_stream.log_data_row("points", num_instances, 1, data_cells);
+
+    // Test some type instantiation
+    auto tls = rr::datatypes::TranslationRotationScale3D{};
+    tls.translation = {1.0, 2.0, 3.0};
+    rr::datatypes::Transform3D t = std::move(tls);
 }

@@ -13,11 +13,11 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// An affine transform between two 3D spaces, represented in a given direction.
-#[derive(Clone, Debug)]
-pub struct Transform3D {
+#[derive(Clone, Debug, PartialEq)]
+pub struct Transform3D(
     /// Representation of the transform.
-    pub repr: crate::datatypes::Transform3D,
-}
+    pub crate::datatypes::Transform3D,
+);
 
 impl<'a> From<Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
     #[inline]
@@ -46,6 +46,12 @@ impl crate::Loggable for Transform3D {
         use ::arrow2::datatypes::*;
         DataType::Union(
             vec![
+                Field {
+                    name: "_null_markers".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: true,
+                    metadata: [].into(),
+                },
                 Field {
                     name: "TranslationAndMat3x3".to_owned(),
                     data_type: DataType::Struct(vec![
@@ -109,6 +115,12 @@ impl crate::Loggable for Transform3D {
                             data_type: DataType::Union(
                                 vec![
                                     Field {
+                                        name: "_null_markers".to_owned(),
+                                        data_type: DataType::Null,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
                                         name: "Quaternion".to_owned(),
                                         data_type: DataType::FixedSizeList(
                                             Box::new(Field {
@@ -144,6 +156,12 @@ impl crate::Loggable for Transform3D {
                                                 data_type: DataType::Union(
                                                     vec![
                                                         Field {
+                                                            name: "_null_markers".to_owned(),
+                                                            data_type: DataType::Null,
+                                                            is_nullable: true,
+                                                            metadata: [].into(),
+                                                        },
+                                                        Field {
                                                             name: "Radians".to_owned(),
                                                             data_type: DataType::Float32,
                                                             is_nullable: false,
@@ -156,7 +174,7 @@ impl crate::Loggable for Transform3D {
                                                             metadata: [].into(),
                                                         },
                                                     ],
-                                                    None,
+                                                    Some(vec![0i32, 1i32, 2i32]),
                                                     UnionMode::Dense,
                                                 ),
                                                 is_nullable: false,
@@ -167,7 +185,7 @@ impl crate::Loggable for Transform3D {
                                         metadata: [].into(),
                                     },
                                 ],
-                                None,
+                                Some(vec![0i32, 1i32, 2i32]),
                                 UnionMode::Dense,
                             ),
                             is_nullable: true,
@@ -177,6 +195,12 @@ impl crate::Loggable for Transform3D {
                             name: "scale".to_owned(),
                             data_type: DataType::Union(
                                 vec![
+                                    Field {
+                                        name: "_null_markers".to_owned(),
+                                        data_type: DataType::Null,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    },
                                     Field {
                                         name: "ThreeD".to_owned(),
                                         data_type: DataType::FixedSizeList(
@@ -198,7 +222,7 @@ impl crate::Loggable for Transform3D {
                                         metadata: [].into(),
                                     },
                                 ],
-                                None,
+                                Some(vec![0i32, 1i32, 2i32]),
                                 UnionMode::Dense,
                             ),
                             is_nullable: true,
@@ -215,7 +239,7 @@ impl crate::Loggable for Transform3D {
                     metadata: [].into(),
                 },
             ],
-            None,
+            Some(vec![0i32, 1i32, 2i32]),
             UnionMode::Dense,
         )
     }
@@ -231,26 +255,26 @@ impl crate::Loggable for Transform3D {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, repr): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self { repr } = datum.into_owned();
-                        repr
+                        let Self(data0) = datum.into_owned();
+                        data0
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let repr_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = repr_bitmap;
+                _ = data0_bitmap;
                 _ = extension_wrapper;
                 crate::datatypes::Transform3D::try_to_arrow_opt(
-                    repr,
+                    data0,
                     Some("rerun.components.Transform3D"),
                 )?
             }
@@ -266,15 +290,23 @@ impl crate::Loggable for Transform3D {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::Transform3D::try_from_arrow_opt(data)?
+        Ok(crate::datatypes::Transform3D::try_from_arrow_opt(data)
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.Transform3D#repr".into(),
+                source: Box::new(err),
+            })?
             .into_iter()
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
-            .map(|res| res.map(|repr| Some(Self { repr })))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
+            .map(|res| res.map(|v| Some(Self(v))))
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.Transform3D#repr".into(),
+                source: Box::new(err),
+            })?)
     }
 }
 

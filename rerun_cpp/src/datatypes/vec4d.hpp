@@ -3,8 +3,13 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace rr {
     namespace datatypes {
-        struct Vec4D {};
+        /// A vector in 4D space.
+        struct Vec4D {
+            float xyzw[4];
+        };
     } // namespace datatypes
 } // namespace rr

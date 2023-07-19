@@ -71,9 +71,6 @@
 //! auto-generated class.
 //! The simplest way to get started is to look at any of the existing examples.
 
-// TODO(cmc): `Datatype` & `Component` being full-blown copies of each other is a bit dumb... but
-// things are bound to evolve very soon anyway (see e.g. Jeremy's paper).
-
 // ---
 
 /// Anything that can be serialized to and deserialized from Arrow data.
@@ -104,7 +101,7 @@ pub trait Loggable {
     where
         Self: Clone + 'a,
     {
-        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper).unwrap()
+        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper).detailed_unwrap()
     }
 
     /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
@@ -140,7 +137,7 @@ pub trait Loggable {
     where
         Self: Clone + 'a,
     {
-        Self::try_to_arrow_opt(data, extension_wrapper).unwrap()
+        Self::try_to_arrow_opt(data, extension_wrapper).detailed_unwrap()
     }
 
     /// Given an iterator of options of owned or reference values to the current
@@ -169,7 +166,12 @@ pub trait Loggable {
     {
         Self::from_arrow_opt(data)
             .into_iter()
-            .map(Option::unwrap)
+            .map(|v| {
+                v.ok_or_else(|| DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .detailed_unwrap()
+            })
             .collect()
     }
 
@@ -187,7 +189,7 @@ pub trait Loggable {
             .into_iter()
             .map(|v| {
                 v.ok_or_else(|| DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
             .collect()
@@ -203,7 +205,7 @@ pub trait Loggable {
     where
         Self: Sized,
     {
-        Self::try_from_arrow_opt(data).unwrap()
+        Self::try_from_arrow_opt(data).detailed_unwrap()
     }
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
@@ -265,7 +267,7 @@ pub trait Archetype {
     /// For the fallible version, see [`Archetype::try_to_arrow`].
     #[inline]
     fn to_arrow(&self) -> Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)> {
-        self.try_to_arrow().unwrap()
+        self.try_to_arrow().detailed_unwrap()
     }
 
     /// Serializes all non-null [`Component`]s of this [`Archetype`] into Arrow arrays.
@@ -293,7 +295,7 @@ pub trait Archetype {
     where
         Self: Sized,
     {
-        Self::try_from_arrow(data).unwrap()
+        Self::try_from_arrow(data).detailed_unwrap()
     }
 
     /// Given an iterator of Arrow arrays and their respective field metadata, deserializes them
@@ -312,30 +314,38 @@ pub trait Archetype {
 
 // ---
 
-#[derive(thiserror::Error, Debug)]
+// NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
+// attempt to use nightly features.
+type _Backtrace = backtrace::Backtrace;
+
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum SerializationError {
-    #[error(
-        "Trying to serialize field {obj_field_fqname:?} with unsupported datatype: {datatype:#?}:"
-    )]
-    UnsupportedDatatype {
-        obj_field_fqname: String,
-        datatype: ::arrow2::datatypes::DataType,
+    #[error("Failed to serialize {location:?}")]
+    Context {
+        location: String,
+        source: Box<SerializationError>,
     },
 }
 
 pub type SerializationResult<T> = ::std::result::Result<T, SerializationError>;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum DeserializationError {
-    #[error("Missing data for {datatype:#?}")]
-    MissingData {
-        datatype: ::arrow2::datatypes::DataType,
+    #[error("Failed to deserialize {location:?}")]
+    Context {
+        location: String,
+        #[source]
+        source: Box<DeserializationError>,
     },
 
+    #[error("Expected non-nullable data but didn't find any")]
+    MissingData { backtrace: _Backtrace },
+
     #[error("Expected {expected:#?} but found {got:#?} instead")]
-    SchemaMismatch {
+    DatatypeMismatch {
         expected: ::arrow2::datatypes::DataType,
         got: ::arrow2::datatypes::DataType,
+        backtrace: _Backtrace,
     },
 
     #[error(
@@ -344,24 +354,87 @@ pub enum DeserializationError {
     OffsetsMismatch {
         bounds: (usize, usize),
         len: usize,
-        datatype: ::arrow2::datatypes::DataType,
+        backtrace: _Backtrace,
     },
 
     #[error("Expected array of length {expected} but found a length of {got:#?} instead")]
     ArrayLengthMismatch {
         expected: usize,
         got: usize,
-        datatype: ::arrow2::datatypes::DataType,
+        backtrace: _Backtrace,
     },
 
     #[error("Expected single-instanced component but found {got} instances instead")]
-    MonoMismatch {
-        got: usize,
-        datatype: ::arrow2::datatypes::DataType,
-    },
+    MonoMismatch { got: usize, backtrace: _Backtrace },
 }
 
 pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;
+
+trait ResultExt<T> {
+    fn detailed_unwrap(self) -> T;
+}
+
+impl<T> ResultExt<T> for SerializationResult<T> {
+    fn detailed_unwrap(self) -> T {
+        fn find_backtrace(err: &SerializationError) -> Option<_Backtrace> {
+            match err {
+                SerializationError::Context { .. } => None,
+            }
+        }
+
+        match self {
+            Ok(v) => v,
+            Err(err) => {
+                let bt = find_backtrace(&err).map(|mut bt| {
+                    bt.resolve();
+                    bt
+                });
+
+                let err = Box::new(err) as Box<dyn std::error::Error>;
+                if let Some(bt) = bt {
+                    panic!("{}:\n{:#?}", re_error::format(&err), bt)
+                } else {
+                    panic!("{}", re_error::format(&err))
+                }
+            }
+        }
+    }
+}
+
+impl<T> ResultExt<T> for DeserializationResult<T> {
+    fn detailed_unwrap(self) -> T {
+        fn find_backtrace(err: &DeserializationError) -> Option<_Backtrace> {
+            match err {
+                DeserializationError::Context {
+                    location: _,
+                    source,
+                } => find_backtrace(source),
+                DeserializationError::MissingData { backtrace }
+                | DeserializationError::DatatypeMismatch { backtrace, .. }
+                | DeserializationError::OffsetsMismatch { backtrace, .. }
+                | DeserializationError::ArrayLengthMismatch { backtrace, .. }
+                | DeserializationError::MonoMismatch { backtrace, .. } => Some(backtrace.clone()),
+            }
+        }
+
+        match self {
+            Ok(v) => v,
+            Err(err) => {
+                let bt = find_backtrace(&err).map(|mut bt| {
+                    bt.resolve();
+                    bt
+                });
+
+                let err = Box::new(err) as Box<dyn std::error::Error>;
+                if let Some(bt) = bt {
+                    panic!("{}:\n{:#?}", re_error::format(&err), bt)
+                } else {
+                    panic!("{}", re_error::format(&err))
+                }
+            }
+        }
+    }
+}
 
 // ---
 

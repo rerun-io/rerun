@@ -50,6 +50,12 @@ impl crate::Loggable for Transform3D {
         DataType::Union(
             vec![
                 Field {
+                    name: "_null_markers".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: true,
+                    metadata: [].into(),
+                },
+                Field {
                     name: "TranslationAndMat3x3".to_owned(),
                     data_type: DataType::Struct(vec![
                         Field {
@@ -112,6 +118,12 @@ impl crate::Loggable for Transform3D {
                             data_type: DataType::Union(
                                 vec![
                                     Field {
+                                        name: "_null_markers".to_owned(),
+                                        data_type: DataType::Null,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
                                         name: "Quaternion".to_owned(),
                                         data_type: DataType::FixedSizeList(
                                             Box::new(Field {
@@ -147,6 +159,12 @@ impl crate::Loggable for Transform3D {
                                                 data_type: DataType::Union(
                                                     vec![
                                                         Field {
+                                                            name: "_null_markers".to_owned(),
+                                                            data_type: DataType::Null,
+                                                            is_nullable: true,
+                                                            metadata: [].into(),
+                                                        },
+                                                        Field {
                                                             name: "Radians".to_owned(),
                                                             data_type: DataType::Float32,
                                                             is_nullable: false,
@@ -159,7 +177,7 @@ impl crate::Loggable for Transform3D {
                                                             metadata: [].into(),
                                                         },
                                                     ],
-                                                    None,
+                                                    Some(vec![0i32, 1i32, 2i32]),
                                                     UnionMode::Dense,
                                                 ),
                                                 is_nullable: false,
@@ -170,7 +188,7 @@ impl crate::Loggable for Transform3D {
                                         metadata: [].into(),
                                     },
                                 ],
-                                None,
+                                Some(vec![0i32, 1i32, 2i32]),
                                 UnionMode::Dense,
                             ),
                             is_nullable: true,
@@ -180,6 +198,12 @@ impl crate::Loggable for Transform3D {
                             name: "scale".to_owned(),
                             data_type: DataType::Union(
                                 vec![
+                                    Field {
+                                        name: "_null_markers".to_owned(),
+                                        data_type: DataType::Null,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    },
                                     Field {
                                         name: "ThreeD".to_owned(),
                                         data_type: DataType::FixedSizeList(
@@ -201,7 +225,7 @@ impl crate::Loggable for Transform3D {
                                         metadata: [].into(),
                                     },
                                 ],
-                                None,
+                                Some(vec![0i32, 1i32, 2i32]),
                                 UnionMode::Dense,
                             ),
                             is_nullable: true,
@@ -218,7 +242,7 @@ impl crate::Loggable for Transform3D {
                     metadata: [].into(),
                 },
             ],
-            None,
+            Some(vec![0i32, 1i32, 2i32]),
             UnionMode::Dense,
         )
     }
@@ -253,26 +277,28 @@ impl crate::Loggable for Transform3D {
                 })
                 .to_logical_type()
                 .clone(),
-                {
-                    data.iter()
-                        .flatten()
-                        .map(|v| match **v {
-                            Transform3D::TranslationAndMat3X3(_) => 0i8,
-                            Transform3D::TranslationRotationScale(_) => 1i8,
-                        })
-                        .collect()
-                },
+                data.iter()
+                    .map(|a| match a.as_deref() {
+                        None => 0,
+                        Some(Transform3D::TranslationAndMat3X3(_)) => 1i8,
+                        Some(Transform3D::TranslationRotationScale(_)) => 2i8,
+                    })
+                    .collect(),
                 vec![
+                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
+                        .boxed(),
                     {
                         let (somes, translation_and_mat_3_x_3): (Vec<_>, Vec<_>) = data
                             .iter()
-                            .flatten()
                             .filter(|datum| {
-                                matches!(***datum, Transform3D::TranslationAndMat3X3(_))
+                                matches!(
+                                    datum.as_deref(),
+                                    Some(Transform3D::TranslationAndMat3X3(_))
+                                )
                             })
                             .map(|datum| {
-                                let datum = match &**datum {
-                                    Transform3D::TranslationAndMat3X3(v) => Some(v.clone()),
+                                let datum = match datum.as_deref() {
+                                    Some(Transform3D::TranslationAndMat3X3(v)) => Some(v.clone()),
                                     _ => None,
                                 };
                                 (datum.is_some(), datum)
@@ -294,13 +320,17 @@ impl crate::Loggable for Transform3D {
                     {
                         let (somes, translation_rotation_scale): (Vec<_>, Vec<_>) = data
                             .iter()
-                            .flatten()
                             .filter(|datum| {
-                                matches!(***datum, Transform3D::TranslationRotationScale(_))
+                                matches!(
+                                    datum.as_deref(),
+                                    Some(Transform3D::TranslationRotationScale(_))
+                                )
                             })
                             .map(|datum| {
-                                let datum = match &**datum {
-                                    Transform3D::TranslationRotationScale(v) => Some(v.clone()),
+                                let datum = match datum.as_deref() {
+                                    Some(Transform3D::TranslationRotationScale(v)) => {
+                                        Some(v.clone())
+                                    }
                                     _ => None,
                                 };
                                 (datum.is_some(), datum)
@@ -323,16 +353,22 @@ impl crate::Loggable for Transform3D {
                 Some({
                     let mut translation_and_mat_3_x_3_offset = 0;
                     let mut translation_rotation_scale_offset = 0;
+                    let mut nulls_offset = 0;
                     data.iter()
-                        .flatten()
-                        .map(|v| match **v {
-                            Transform3D::TranslationAndMat3X3(_) => {
+                        .map(|v| match v.as_deref() {
+                            None => {
+                                let offset = nulls_offset;
+                                nulls_offset += 1;
+                                offset
+                            }
+
+                            Some(Transform3D::TranslationAndMat3X3(_)) => {
                                 let offset = translation_and_mat_3_x_3_offset;
                                 translation_and_mat_3_x_3_offset += 1;
                                 offset
                             }
 
-                            Transform3D::TranslationRotationScale(_) => {
+                            Some(Transform3D::TranslationRotationScale(_)) => {
                                 let offset = translation_rotation_scale_offset;
                                 translation_rotation_scale_offset += 1;
                                 offset
@@ -358,9 +394,14 @@ impl crate::Loggable for Transform3D {
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
-                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.datatypes.Transform3D".into(),
+                    source: Box::new(err),
                 })?;
             if data.is_empty() {
                 Vec::new()
@@ -368,52 +409,48 @@ impl crate::Loggable for Transform3D {
                 let (data_types, data_arrays, data_offsets) =
                     (data.types(), data.fields(), data.offsets().unwrap());
                 let translation_and_mat_3_x_3 = {
-                    let data = &*data_arrays[0usize];
+                    let data = &*data_arrays[1usize];
 
-                    crate::datatypes::TranslationAndMat3x3::try_from_arrow_opt(data)?
+                    crate::datatypes::TranslationAndMat3x3::try_from_arrow_opt(data)
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.Transform3D#TranslationAndMat3x3".into(),
+                            source: Box::new(err),
+                        })?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
                 let translation_rotation_scale = {
-                    let data = &*data_arrays[1usize];
+                    let data = &*data_arrays[2usize];
 
-                    crate::datatypes::TranslationRotationScale3D::try_from_arrow_opt(data)?
+                    crate::datatypes::TranslationRotationScale3D::try_from_arrow_opt(data)
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.Transform3D#TranslationRotationScale".into(),
+                            source: Box::new(err),
+                        })?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
-                data_types
-                    .iter()
-                    .enumerate()
-                    .map(|(i, typ)| {
-                        let offset = data_offsets[i];
+                data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
 
-                        Ok(Some(match typ {
-                            0i8 => Transform3D::TranslationAndMat3X3(
-                                translation_and_mat_3_x_3
-                                    .get(offset as usize)
-                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (offset as usize, offset as usize),
-                                        len: translation_and_mat_3_x_3.len(),
-                                        datatype: data.data_type().clone(),
-                                    })?
-                                    .clone()
-                                    .unwrap(),
-                            ),
-                            1i8 => Transform3D::TranslationRotationScale(
-                                translation_rotation_scale
-                                    .get(offset as usize)
-                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (offset as usize, offset as usize),
-                                        len: translation_rotation_scale.len(),
-                                        datatype: data.data_type().clone(),
-                                    })?
-                                    .clone()
-                                    .unwrap(),
-                            ),
-                            _ => unreachable!(),
-                        }))
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => Transform3D :: TranslationAndMat3X3 (translation_and_mat_3_x_3 . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : translation_and_mat_3_x_3 . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Transform3D#TranslationAndMat3x3" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => Transform3D :: TranslationRotationScale (translation_rotation_scale . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : translation_rotation_scale . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Transform3D#TranslationRotationScale" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Transform3D" . into () , source : Box :: new (err) , }
+
+) ?
             }
         })
     }

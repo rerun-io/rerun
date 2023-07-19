@@ -12,8 +12,10 @@ table Transform3D (
   // the arrow schemas. Otherwise the schema-patching in `array_to_rust` will set the
   // wrong schema for this component.
   //"attr.rerun.legacy_fqname": "rerun.transform3d",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.tuple_struct",
   order: 100
 ) {
   /// Representation of the transform.
-  repr: rerun.datatypes.Transform3D (required, order: 100);
+  repr: rerun.datatypes.Transform3D (order: 100);
 }

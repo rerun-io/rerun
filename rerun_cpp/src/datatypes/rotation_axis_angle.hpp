@@ -3,8 +3,24 @@
 
 #pragma once
 
+#include <cstdint>
+
+#include "../datatypes/angle.hpp"
+#include "../datatypes/vec3d.hpp"
+
 namespace rr {
     namespace datatypes {
-        struct RotationAxisAngle {};
+        /// 3D rotation represented by a rotation around a given axis.
+        struct RotationAxisAngle {
+            /// Axis to rotate around.
+            ///
+            /// This is not required to be normalized.
+            /// If normalization fails (typically because the vector is length zero), the rotation
+            /// is silently ignored.
+            rr::datatypes::Vec3D axis;
+
+            /// How much to rotate around the axis.
+            rr::datatypes::Angle angle;
+        };
     } // namespace datatypes
 } // namespace rr

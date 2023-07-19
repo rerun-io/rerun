@@ -4531,6 +4531,7 @@ version = "0.8.0-alpha.6"
 dependencies = [
  "anyhow",
  "arrow2",
+ "backtrace",
  "bytemuck",
  "document-features",
  "ecolor",
@@ -4539,6 +4540,7 @@ dependencies = [
  "macaw",
  "rayon",
  "re_build_tools",
+ "re_error",
  "re_types_builder",
  "similar-asserts",
  "thiserror",

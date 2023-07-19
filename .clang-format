@@ -12,10 +12,12 @@ AlwaysBreakBeforeMultilineStrings: true
 BinPackArguments: false
 ColumnLimit: 100
 ContinuationIndentWidth: 4
+EmptyLineBeforeAccessModifier: LogicalBlock
 IndentWidth: 4
 IndentWrappedFunctionNames: true
 InsertTrailingCommas: Wrapped
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: All
 PointerAlignment: Left
+SeparateDefinitionBlocks: Always
 SpacesBeforeTrailingComments: 1
