@@ -26,7 +26,7 @@ impl Default for DisconnectedSpace {
     }
 }
 
-impl re_log_types::Component for DisconnectedSpace {
+impl re_log_types::LegacyComponent for DisconnectedSpace {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.disconnected_space".into()

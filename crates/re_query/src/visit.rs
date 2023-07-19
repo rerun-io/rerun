@@ -43,7 +43,7 @@
 //! assert_eq!(colors.as_slice(), colors_out.as_slice());
 //! ```
 
-use re_log_types::{Component, DeserializableComponent, InstanceKey, SerializableComponent};
+use re_log_types::{DeserializableComponent, InstanceKey, LegacyComponent, SerializableComponent};
 
 use crate::EntityView;
 

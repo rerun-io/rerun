@@ -57,7 +57,7 @@ where
     }
 }
 
-impl re_log_types::Component for Vec2D {
+impl re_log_types::LegacyComponent for Vec2D {
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.vec2d".into()
     }
@@ -156,7 +156,7 @@ where
     }
 }
 
-impl re_log_types::Component for Vec3D {
+impl re_log_types::LegacyComponent for Vec3D {
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.vec3d".into()
     }

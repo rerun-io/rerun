@@ -41,7 +41,7 @@ pub mod serde_field;
 use std::sync::Arc;
 
 pub use self::arrow_msg::ArrowMsg;
-pub use self::component::{Component, DeserializableComponent, SerializableComponent};
+pub use self::component::{DeserializableComponent, LegacyComponent, SerializableComponent};
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
 pub use self::data_row::{DataCellRow, DataCellVec, DataRow, DataRowError, DataRowResult, RowId};
 pub use self::data_table::{

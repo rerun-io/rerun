@@ -10,7 +10,7 @@ use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     Point2D, Rect2D,
 };
-use re_log_types::{Component, EntityPath, InstanceKey};
+use re_log_types::{EntityPath, InstanceKey, LegacyComponent};
 use re_types::Loggable;
 
 fn main() {

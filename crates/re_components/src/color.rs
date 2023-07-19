@@ -59,7 +59,7 @@ impl From<[u8; 4]> for ColorRGBA {
     }
 }
 
-impl re_log_types::Component for ColorRGBA {
+impl re_log_types::LegacyComponent for ColorRGBA {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.colorrgba".into()

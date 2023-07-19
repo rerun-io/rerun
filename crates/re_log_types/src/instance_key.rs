@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::Component;
+use crate::LegacyComponent;
 
 /// A number used to specify a specific instance in an entity.
 ///
@@ -98,7 +98,7 @@ impl From<u64> for InstanceKey {
     }
 }
 
-impl Component for InstanceKey {
+impl LegacyComponent for InstanceKey {
     #[inline]
     fn legacy_name() -> crate::ComponentName {
         "rerun.instance_key".into()

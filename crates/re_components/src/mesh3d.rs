@@ -407,7 +407,7 @@ pub enum Mesh3D {
     Raw(RawMesh3D),
 }
 
-impl re_log_types::Component for Mesh3D {
+impl re_log_types::LegacyComponent for Mesh3D {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.mesh3d".into()

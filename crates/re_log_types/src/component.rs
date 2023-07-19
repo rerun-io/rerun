@@ -12,7 +12,7 @@ use re_types::ComponentName;
 /// A type that can used as a Component of an Entity.
 ///
 /// Examples of components include positions and colors.
-pub trait Component: ArrowField {
+pub trait LegacyComponent: ArrowField {
     /// The name of the component.
     fn legacy_name() -> ComponentName;
 
@@ -28,12 +28,12 @@ pub trait Component: ArrowField {
 /// A [`Component`] that fulfils all the conditions required to be serialized as an Arrow payload.
 pub trait SerializableComponent<ArrowFieldType = Self>
 where
-    Self: Component + ArrowSerialize + ArrowField<Type = Self> + 'static,
+    Self: LegacyComponent + ArrowSerialize + ArrowField<Type = Self> + 'static,
 {
 }
 
 impl<C> SerializableComponent for C where
-    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static
+    C: LegacyComponent + ArrowSerialize + ArrowField<Type = C> + 'static
 {
 }
 
@@ -49,7 +49,7 @@ impl<C> SerializableComponent for C where
 /// ```
 pub trait DeserializableComponent<ArrowFieldType = Self>
 where
-    Self: Component,
+    Self: LegacyComponent,
     Self: ArrowDeserialize + ArrowField<Type = ArrowFieldType> + 'static,
     Self::ArrayType: ArrowArray,
     for<'b> &'b Self::ArrayType: IntoIterator,
@@ -58,7 +58,7 @@ where
 
 impl<C> DeserializableComponent for C
 where
-    C: Component,
+    C: LegacyComponent,
     C: ArrowDeserialize + ArrowField<Type = C> + 'static,
     C::ArrayType: ArrowArray,
     for<'b> &'b C::ArrayType: IntoIterator,

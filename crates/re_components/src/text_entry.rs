@@ -47,7 +47,7 @@ impl TextEntry {
     }
 }
 
-impl re_log_types::Component for TextEntry {
+impl re_log_types::LegacyComponent for TextEntry {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.text_entry".into()

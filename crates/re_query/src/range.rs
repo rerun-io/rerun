@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
-use re_log_types::{Component, EntityPath};
+use re_log_types::{EntityPath, LegacyComponent};
 use re_types::{Archetype, ComponentName};
 
 use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances, EntityView};
@@ -24,7 +24,7 @@ use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances,
 /// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
 pub fn range_entity_with_primary<
     'a,
-    Primary: Component + re_types::Component + 'a,
+    Primary: LegacyComponent + re_types::Component + 'a,
     const N: usize,
 >(
     store: &'a DataStore,

@@ -99,7 +99,7 @@ pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_pat
 pub use re_log_types::InstanceKey;
 
 // This is very convenient to re-export
-pub use re_log_types::Component;
+pub use re_log_types::LegacyComponent;
 
 pub mod external {
     #[cfg(feature = "glam")]
@@ -114,35 +114,35 @@ pub mod external {
 lazy_static! {
     //TODO(john): use a run-time type registry
     static ref FIELDS: [Field; 29] = [
-        <AnnotationContext as Component>::field(),
-        <Arrow3D as Component>::field(),
-        <Box3D as Component>::field(),
-        <ClassId as Component>::field(),
-        <ColorRGBA as Component>::field(),
-        <DrawOrder as Component>::field(),
-        <DisconnectedSpace as Component>::field(),
-        <re_log_types::InstanceKey as Component>::field(),
-        <KeypointId as Component>::field(),
-        <Label as Component>::field(),
-        <LineStrip2D as Component>::field(),
-        <LineStrip3D as Component>::field(),
-        <Mesh3D as Component>::field(),
-        <Pinhole as Component>::field(),
-        <Point2D as Component>::field(),
-        <Point3D as Component>::field(),
-        <Quaternion as Component>::field(),
-        <Radius as Component>::field(),
-        <Rect2D as Component>::field(),
-        <Scalar as Component>::field(),
-        <ScalarPlotProps as Component>::field(),
-        <Size3D as Component>::field(),
-        <Tensor as Component>::field(),
-        <TextBox as Component>::field(),
-        <TextEntry as Component>::field(),
-        <Transform3D as Component>::field(),
-        <Vec2D as Component>::field(),
-        <Vec3D as Component>::field(),
-        <ViewCoordinates as Component>::field(),
+        <AnnotationContext as LegacyComponent>::field(),
+        <Arrow3D as LegacyComponent>::field(),
+        <Box3D as LegacyComponent>::field(),
+        <ClassId as LegacyComponent>::field(),
+        <ColorRGBA as LegacyComponent>::field(),
+        <DrawOrder as LegacyComponent>::field(),
+        <DisconnectedSpace as LegacyComponent>::field(),
+        <re_log_types::InstanceKey as LegacyComponent>::field(),
+        <KeypointId as LegacyComponent>::field(),
+        <Label as LegacyComponent>::field(),
+        <LineStrip2D as LegacyComponent>::field(),
+        <LineStrip3D as LegacyComponent>::field(),
+        <Mesh3D as LegacyComponent>::field(),
+        <Pinhole as LegacyComponent>::field(),
+        <Point2D as LegacyComponent>::field(),
+        <Point3D as LegacyComponent>::field(),
+        <Quaternion as LegacyComponent>::field(),
+        <Radius as LegacyComponent>::field(),
+        <Rect2D as LegacyComponent>::field(),
+        <Scalar as LegacyComponent>::field(),
+        <ScalarPlotProps as LegacyComponent>::field(),
+        <Size3D as LegacyComponent>::field(),
+        <Tensor as LegacyComponent>::field(),
+        <TextBox as LegacyComponent>::field(),
+        <TextEntry as LegacyComponent>::field(),
+        <Transform3D as LegacyComponent>::field(),
+        <Vec2D as LegacyComponent>::field(),
+        <Vec3D as LegacyComponent>::field(),
+        <ViewCoordinates as LegacyComponent>::field(),
     ];
 }
 

@@ -32,7 +32,7 @@ impl Point2D {
     }
 }
 
-impl re_log_types::Component for Point2D {
+impl re_log_types::LegacyComponent for Point2D {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.point2d".into()
@@ -108,7 +108,7 @@ impl Point3D {
     }
 }
 
-impl re_log_types::Component for Point3D {
+impl re_log_types::LegacyComponent for Point3D {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.point3d".into()

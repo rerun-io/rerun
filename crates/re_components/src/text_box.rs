@@ -33,7 +33,7 @@ impl TextBox {
     }
 }
 
-impl re_log_types::Component for TextBox {
+impl re_log_types::LegacyComponent for TextBox {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.text_box".into()

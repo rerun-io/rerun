@@ -16,7 +16,7 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 #[arrow_field(transparent)]
 pub struct Scalar(pub f64);
 
-impl re_log_types::Component for Scalar {
+impl re_log_types::LegacyComponent for Scalar {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.scalar".into()
@@ -61,7 +61,7 @@ pub struct ScalarPlotProps {
     pub scattered: bool,
 }
 
-impl re_log_types::Component for ScalarPlotProps {
+impl re_log_types::LegacyComponent for ScalarPlotProps {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.scalar_plot_props".into()
