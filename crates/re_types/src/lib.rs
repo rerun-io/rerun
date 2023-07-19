@@ -381,7 +381,9 @@ impl<T> ResultExt<T> for SerializationResult<T> {
     fn detailed_unwrap(self) -> T {
         fn find_backtrace(err: &SerializationError) -> Option<_Backtrace> {
             match err {
-                SerializationError::Context { .. } => None,
+                SerializationError::Context { .. } | SerializationError::ArrowConvertFailure(_) => {
+                    None
+                }
             }
         }
 
@@ -417,6 +419,7 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
                 | DeserializationError::OffsetsMismatch { backtrace, .. }
                 | DeserializationError::ArrayLengthMismatch { backtrace, .. }
                 | DeserializationError::MonoMismatch { backtrace, .. } => Some(backtrace.clone()),
+                DeserializationError::ArrowConvertFailure(_) => None,
             }
         }
 

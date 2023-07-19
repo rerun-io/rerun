@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use arrow2::{
     array::{Array, StructArray},
     datatypes::PhysicalType,
