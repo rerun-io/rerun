@@ -373,8 +373,10 @@ trait ResultExt<T> {
 
 impl<T> ResultExt<T> for SerializationResult<T> {
     fn detailed_unwrap(self) -> T {
-        fn find_backtrace(_err: &SerializationError) -> Option<_Backtrace> {
-            None
+        fn find_backtrace(err: &SerializationError) -> Option<_Backtrace> {
+            match err {
+                SerializationError::Context { .. } => None,
+            }
         }
 
         match self {
