@@ -252,7 +252,7 @@ where
 
     // No need to process annotations if we don't have keypoints or class-ids
     if !arch_view.has_component::<re_types::components::KeypointId>()
-        && !arch_view.has_component::<re_types::components::KeypointId>()
+        && !arch_view.has_component::<re_types::components::ClassId>()
     {
         let resolved_annotation = annotations.class_description(None).annotation_info();
         return Ok((
