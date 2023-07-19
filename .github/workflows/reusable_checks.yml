@@ -136,6 +136,10 @@ jobs:
           gcs_bucket: rerun-sccache
           gcs_read_only: false
 
+      - name: Display sccache config
+        run: |
+          cat $SCCACHE_CONF
+
       - name: Verify sccache
         shell: bash
         run: |
