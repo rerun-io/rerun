@@ -4,7 +4,8 @@ use re_types::{
     archetypes::Transform3D,
     components,
     datatypes::{
-        self, Angle, Rotation3D, RotationAxisAngle, Scale3D, TranslationRotationScale3D, Vec3D,
+        self, Angle, Mat3x3, Rotation3D, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
+        TranslationRotationScale3D, Vec3D,
     },
     Archetype as _,
 };
@@ -58,6 +59,33 @@ fn roundtrip() {
                 },
             )),
         }, //
+        Transform3D {
+            transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3X3(
+                TranslationAndMat3x3 {
+                    translation: None,
+                    matrix: None,
+                    from_parent: false,
+                },
+            )),
+        }, //
+        Transform3D {
+            transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3X3(
+                TranslationAndMat3x3 {
+                    translation: Some(Vec3D([1.0, 2.0, 3.0])),
+                    matrix: None,
+                    from_parent: true,
+                },
+            )),
+        }, //
+        Transform3D {
+            transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3X3(
+                TranslationAndMat3x3 {
+                    translation: None,
+                    matrix: Some(Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])),
+                    from_parent: true,
+                },
+            )),
+        }, //
     ];
 
     let all_arch = [
@@ -85,6 +113,16 @@ fn roundtrip() {
                 42.0,
             )
             .from_parent(),
+        )), //
+        Transform3D::new(datatypes::Transform3D::TranslationAndMat3X3(
+            TranslationAndMat3x3::IDENTITY,
+        )), //
+        Transform3D::new(datatypes::Transform3D::TranslationAndMat3X3(
+            TranslationAndMat3x3::translation([1.0, 2.0, 3.0]).from_parent(),
+        )), //
+        Transform3D::new(datatypes::Transform3D::TranslationAndMat3X3(
+            TranslationAndMat3x3::rotation([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+                .from_parent(),
         )), //
     ];
 
