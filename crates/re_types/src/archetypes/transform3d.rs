@@ -17,6 +17,8 @@
 /// ## Example
 ///
 /// ```ignore
+/// //! Log some transforms.
+///
 /// use rerun::{
 ///    experimental::{
 ///        archetypes::Transform3D,
