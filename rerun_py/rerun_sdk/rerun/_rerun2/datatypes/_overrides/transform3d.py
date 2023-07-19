@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 
 if TYPE_CHECKING:
@@ -132,7 +131,7 @@ def _build_union_array_from_rotation(rotation: Rotation3D | None, type_: pa.Dens
     return _build_dense_union(type_, rotation_discriminant, stored_rotation)
 
 
-def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> npt.NDArray[np.float32]:
+def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
     from .. import Mat3x3Type
 
     if mat is None:
