@@ -36,6 +36,8 @@ runs:
 
     - name: Verify sccache
       shell: bash
+      env:
+        SCCACHE_CONF: ".sccache"
       run: |
         sccache --show-stats
 
