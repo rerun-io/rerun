@@ -481,19 +481,21 @@ pub fn view_3d(
     // Show center of orbit camera when interacting with camera (it's quite helpful).
     {
         const FADE_DURATION: f32 = 0.1;
-        const FADE_OUT_DELAY: f64 = 0.4; // Need a relatively high delay, otherwise interaction from mouse wheel looks pretty bad.
 
         let ui_time = ui.input(|i| i.time);
+        let any_mouse_button_down = ui.input(|i| i.pointer.any_down());
 
-        if did_interact_with_eye && !state.state_3d.eye_interact_fade_in {
+        // Don't show for merely scrolling.
+        // Scroll events from a mouse wheel often happen with some pause between meaning we either need a long delay for the center to show
+        // or live with the flickering.
+        let should_show_center_of_orbit_camera = did_interact_with_eye && any_mouse_button_down;
+
+        if should_show_center_of_orbit_camera && !state.state_3d.eye_interact_fade_in {
             // Any interaction immediately causes fade in to start if it's not already on.
             state.state_3d.eye_interact_fade_change_time = ui_time;
             state.state_3d.eye_interact_fade_in = true;
-        } else if state.state_3d.eye_interact_fade_in
-            && !ui.input(|i| i.pointer.any_down())
-            && ui_time - state.state_3d.eye_interact_fade_change_time > FADE_OUT_DELAY
-        {
-            // Fade out on the other hand only happens if no mouse cursor is pressed and a bit of time has passed.
+        } else if state.state_3d.eye_interact_fade_in && !any_mouse_button_down {
+            // Fade out on the other hand only happens if no mouse cursor is pressed.
             state.state_3d.eye_interact_fade_change_time = ui_time;
             state.state_3d.eye_interact_fade_in = false;
         }
