@@ -43,7 +43,6 @@ env:
 
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
-  SCCACHE_CONF: ".sccache"
   RUSTC_WRAPPER: "sccache"
 
 permissions:
@@ -131,14 +130,14 @@ jobs:
           save-if: true
 
       - name: Set up sccache
-        uses: rerun-io/sccache-action@v0.3.0
+        uses: rerun-io/sccache-action@v0.4.0
         with:
           gcs_bucket: rerun-sccache
           gcs_read_only: false
 
       - name: Display sccache config
         run: |
-          cat $SCCACHE_CONF
+          cat $HOME/.config/sccache/config
 
       - name: Verify sccache
         shell: bash
