@@ -1127,28 +1127,134 @@ impl DataTable {
                     timepoint: timepoint1,
                     entity_path: entity_path1,
                     num_instances: num_instances1,
-                    cells: cells1,
+                    cells: ref cells1,
                 } = row1;
                 let DataRow {
                     row_id: _,
                     timepoint: timepoint2,
                     entity_path: entity_path2,
                     num_instances: num_instances2,
-                    cells: cells2,
+                    cells: ref cells2,
                 } = row2;
+
+                for (c1, c2) in cells1.0.iter().zip(&cells2.0) {
+                    if c1 != c2 {
+                        anyhow::ensure!(
+                            c1.datatype() == c2.datatype(),
+                            "Found discrepancy in row #{ri}, cells' datatypes don't match!\n{}",
+                            similar_asserts::SimpleDiff::from_str(
+                                &format!("{:?}", c1.datatype()),
+                                &format!("{:?}", c2.datatype()),
+                                "cell1",
+                                "cell2"
+                            )
+                        );
+
+                        let arr1 = c1.as_arrow_ref();
+                        let arr2 = c2.as_arrow_ref();
+
+                        if let (Some(arr1), Some(arr2)) = (
+                            arr1.as_any().downcast_ref::<arrow2::array::UnionArray>(),
+                            arr2.as_any().downcast_ref::<arrow2::array::UnionArray>(),
+                        ) {
+                            anyhow::ensure!(
+                                arr1.validity() == arr2.validity(),
+                                "Found discrepancy in row #{ri}, union arrays' validity bitmaps don't match!\n{}\n{}",
+                                similar_asserts::SimpleDiff::from_str(&row1.to_string(), &row2.to_string(), "row1", "row2"),
+                                similar_asserts::SimpleDiff::from_str(
+                                    &format!("{:?}", arr1.validity()),
+                                    &format!("{:?}", arr2.validity()),
+                                    "cell1",
+                                    "cell2"
+                                )
+                            );
+                            anyhow::ensure!(
+                                arr1.types() == arr2.types(),
+                                "Found discrepancy in row #{ri}, union arrays' type indices don't match!\n{}\n{}",
+                                similar_asserts::SimpleDiff::from_str(&row1.to_string(), &row2.to_string(), "row1", "row2"),
+                                similar_asserts::SimpleDiff::from_str(
+                                    &format!("{:?}", arr1.types()),
+                                    &format!("{:?}", arr2.types()),
+                                    "cell1",
+                                    "cell2"
+                                )
+                            );
+                            anyhow::ensure!(
+                                arr1.offsets() == arr2.offsets(),
+                                "Found discrepancy in row #{ri}, union arrays' offsets don't match!\n{}\n{}",
+                                similar_asserts::SimpleDiff::from_str(&row1.to_string(), &row2.to_string(), "row1", "row2"),
+                                similar_asserts::SimpleDiff::from_str(
+                                    &format!("{:?}", arr1.offsets()),
+                                    &format!("{:?}", arr2.offsets()),
+                                    "cell1",
+                                    "cell2"
+                                )
+                            );
+                        }
+                    }
+                }
+
+                let mut size_mismatches = vec![];
+                for (c1, c2) in cells1.0.iter().zip(&cells2.0) {
+                    if c1.total_size_bytes() != c2.total_size_bytes() {
+                        size_mismatches.push(format!(
+                            "Found discrepancy in row #{ri}, cells' sizes don't match! {} ({}) vs. {} ({}) bytes",
+                            c1.total_size_bytes(),
+                            c1.component_name(),
+                            c2.total_size_bytes(),
+                            c2.component_name(),
+                        ));
+
+                        fn cell_to_bytes(cell: DataCell) -> Vec<u8> {
+                            let row = DataRow::from_cells1(
+                                RowId::random(),
+                                "cell",
+                                TimePoint::default(),
+                                cell.num_instances(),
+                                cell,
+                            );
+                            let table = DataTable::from_rows(TableId::ZERO, [row]);
+
+                            let msg = table.to_arrow_msg().unwrap();
+
+                            use arrow2::io::ipc::write::StreamWriter;
+                            let mut buf = Vec::<u8>::new();
+                            let mut writer = StreamWriter::new(&mut buf, Default::default());
+                            writer.start(&msg.schema, None).unwrap();
+                            writer.write(&msg.chunk, None).unwrap();
+                            writer.finish().unwrap();
+
+                            buf
+                        }
+
+                        let c1_bytes = cell_to_bytes(c1.clone());
+                        let c2_bytes = cell_to_bytes(c1.clone());
+
+                        size_mismatches.push(
+                            similar_asserts::SimpleDiff::from_str(
+                                &format!("{c1_bytes:?}"),
+                                &format!("{c2_bytes:?}"),
+                                "cell1_ipc",
+                                "cell2_ipc",
+                            )
+                            .to_string(),
+                        );
+                    }
+                }
 
                 anyhow::ensure!(
                     timepoint1 == timepoint2
                         && entity_path1 == entity_path2
                         && num_instances1 == num_instances2
                         && cells1 == cells2,
-                    "Found discrepancy in row #{ri}:\n{}",
+                    "Found discrepancy in row #{ri}:\n{}\n{}",
                     similar_asserts::SimpleDiff::from_str(
                         &row1.to_string(),
                         &row2.to_string(),
                         "row1",
                         "row2"
-                    )
+                    ),
+                    size_mismatches.join("\n"),
                 );
             }
         }

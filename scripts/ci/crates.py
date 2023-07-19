@@ -331,7 +331,7 @@ def publish(dry_run: bool, token: str) -> None:
             publish_crate(crate, token, version, env)
             elapsed_s = time() - start_s
             if elapsed_s < 1:
-                sleep((1 - elapsed_s))
+                sleep(1 - elapsed_s)
 
 
 def get_version() -> None:

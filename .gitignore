@@ -9,6 +9,7 @@
 **/Makefile
 **/cmake_install.cmake
 _deps
+**/.cache/
 
 # Rust compile target directory:
 **/target

@@ -23,6 +23,7 @@ ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run our end-to-end cross-language roundtrip tests for all SDK")
     parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
+    parser.add_argument("--full-dump", action="store_true", help="Dump both rrd files as tables")
     parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
     parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
@@ -50,7 +51,15 @@ def main() -> None:
     for arch in archetypes:
         python_output_path = run_roundtrip_python(arch)
         rust_output_path = run_roundtrip_rust(arch, args.release, args.target, args.target_dir)
-        run_comparison(python_output_path, rust_output_path)
+        run_comparison(python_output_path, rust_output_path, args.full_dump)
+
+
+def roundtrip_env() -> dict[str, str]:
+    # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within
+    # the batcher will happily insert uninitialized padding bytes as needed!
+    env = os.environ.copy()
+    env["RERUN_FLUSH_NUM_ROWS"] = "0"
+    return env
 
 
 def run_roundtrip_python(arch: str) -> str:
@@ -63,8 +72,9 @@ def run_roundtrip_python(arch: str) -> str:
         python_executable = "python3"
 
     cmd = [python_executable, main_path, "--save", output_path]
+
     print(cmd)
-    roundtrip_process = subprocess.Popen(cmd)
+    roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = roundtrip_process.wait(timeout=30)
     assert returncode == 0, f"python roundtrip process exited with error code {returncode}"
 
@@ -89,18 +99,22 @@ def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir:
     cmd += ["--", "--save", output_path]
 
     print(cmd)
-    roundtrip_process = subprocess.Popen(cmd)
+    roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = roundtrip_process.wait(timeout=12000)
     assert returncode == 0, f"rust roundtrip process exited with error code {returncode}"
 
     return output_path
 
 
-def run_comparison(python_output_path: str, rust_output_path: str):
-    cmd = ["rerun", "compare", python_output_path, rust_output_path]
+def run_comparison(python_output_path: str, rust_output_path: str, full_dump: bool):
+    cmd = ["rerun", "compare"]
+    if full_dump:
+        cmd += ["--full-dump"]
+    cmd += [python_output_path, rust_output_path]
+
     print(cmd)
-    roundtrip_process = subprocess.Popen(cmd)
-    returncode = roundtrip_process.wait(timeout=30)
+    comparison_process = subprocess.Popen(cmd, env=roundtrip_env())
+    returncode = comparison_process.wait(timeout=30)
     assert returncode == 0, f"comparison process exited with error code {returncode}"
 
 

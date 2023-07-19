@@ -109,7 +109,7 @@ impl crate::Loggable for Rotation3D {
                                         metadata: [].into(),
                                     },
                                 ],
-                                None,
+                                Some(vec![0i32, 1i32, 2i32]),
                                 UnionMode::Dense,
                             ),
                             is_nullable: false,
@@ -120,7 +120,7 @@ impl crate::Loggable for Rotation3D {
                     metadata: [].into(),
                 },
             ],
-            None,
+            Some(vec![0i32, 1i32, 2i32]),
             UnionMode::Dense,
         )
     }

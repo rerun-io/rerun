@@ -19,14 +19,13 @@ use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, DrawOrder,
         Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D, Tensor,
-        TensorDataMeaning, TextEntry, Transform3D, Vec2D, Vec3D, ViewCoordinates,
+        TensorDataMeaning, TextEntry, Vec2D, Vec3D, ViewCoordinates,
     },
     coordinates::SignedAxis3,
     external::{
         re_log,
         re_log_types::external::{arrow2, arrow2_convert},
     },
-    transform::{Angle, RotationAxisAngle, TranslationRotationScale3D},
     Component, ComponentName, EntityPath, MsgSender, RecordingStream,
 };
 
@@ -36,26 +35,38 @@ fn test_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("bbox_test/bbox")
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Transform3D::new(RotationAxisAngle::new(
-            glam::Vec3::Z,
-            Angle::Degrees(180.0),
-        ))])?
         .with_component(&[ColorRGBA::from_rgb(0, 255, 0)])?
         .with_component(&[Radius(0.005)])?
         .with_component(&[Label("box/t0".to_owned())])?
         .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "bbox_test/bbox",
+        &rerun::experimental::archetypes::Transform3D::new(
+            rerun::experimental::datatypes::RotationAxisAngle::new(
+                glam::Vec3::Z,
+                rerun::experimental::datatypes::Angle::Degrees(180.0),
+            ),
+        ),
+    )?
+    .send(rec_stream)?;
 
     rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("bbox_test/bbox")
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
-            Vec3D::new(1.0, 0.0, 0.0),
-            RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
-        ))])?
         .with_component(&[ColorRGBA::from_rgb(255, 255, 0)])?
         .with_component(&[Radius(0.01)])?
         .with_component(&[Label("box/t1".to_owned())])?
         .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "bbox_test/bbox",
+        &rerun::experimental::archetypes::Transform3D::new(
+            rerun::experimental::datatypes::RotationAxisAngle::new(
+                [1.0, 0.0, 0.0],
+                rerun::experimental::datatypes::Angle::Degrees(180.0),
+            ),
+        ),
+    )?
+    .send(rec_stream)?;
 
     Ok(())
 }
@@ -597,24 +608,38 @@ fn test_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
         rec_stream.set_time_seconds("sim_time", Some(time as f64));
 
-        MsgSender::new("transforms3d/sun/planet")
-            .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
-                Vec3D::new(
-                    (time * rotation_speed_planet).sin() * sun_to_planet_distance,
-                    (time * rotation_speed_planet).cos() * sun_to_planet_distance,
-                    0.0,
+        MsgSender::from_archetype(
+            "transforms3d/sun/planet",
+            &rerun::experimental::archetypes::Transform3D::new(
+                rerun::experimental::datatypes::TranslationRotationScale3D::rigid(
+                    [
+                        (time * rotation_speed_planet).sin() * sun_to_planet_distance,
+                        (time * rotation_speed_planet).cos() * sun_to_planet_distance,
+                        0.0,
+                    ],
+                    rerun::experimental::datatypes::RotationAxisAngle::new(
+                        glam::Vec3::X,
+                        rerun::experimental::datatypes::Angle::Degrees(20.0),
+                    ),
                 ),
-                RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
-            ))])?
-            .send(rec_stream)?;
+            ),
+        )?
+        .send(rec_stream)?;
 
-        MsgSender::new("transforms3d/sun/planet/moon")
-            .with_component(&[Transform3D::from_parent(Vec3D::new(
-                (time * rotation_speed_moon).cos() * planet_to_moon_distance,
-                (time * rotation_speed_moon).sin() * planet_to_moon_distance,
-                0.0,
-            ))])?
-            .send(rec_stream)?;
+        MsgSender::from_archetype(
+            "transforms3d/sun/planet/moon",
+            &rerun::experimental::archetypes::Transform3D::new(
+                rerun::experimental::datatypes::TranslationRotationScale3D::from(
+                    rerun::experimental::datatypes::Vec3D::new(
+                        (time * rotation_speed_moon).cos() * planet_to_moon_distance,
+                        (time * rotation_speed_moon).sin() * planet_to_moon_distance,
+                        0.0,
+                    ),
+                )
+                .from_parent(),
+            ),
+        )?
+        .send(rec_stream)?;
     }
 
     Ok(())
