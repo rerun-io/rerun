@@ -1,11 +1,12 @@
 use std::collections::BTreeSet;
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::quote;
 
-use super::NEWLINE_TOKEN;
+use super::{NEWLINE_TOKEN, SYS_INCLUDE_PATH_PREFIX_TOKEN, SYS_INCLUDE_PATH_SUFFIX_TOKEN};
 
 /// Keeps track of necessary includes for a file.
+#[derive(Default)]
 pub struct Includes {
     /// `#include <vector>` etc
     pub system: BTreeSet<String>,
@@ -14,25 +15,14 @@ pub struct Includes {
     pub local: BTreeSet<String>,
 }
 
-impl Default for Includes {
-    fn default() -> Self {
-        let mut slf = Self {
-            system: BTreeSet::new(),
-            local: BTreeSet::new(),
-        };
-        slf.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
-        slf
-    }
-}
-
 impl quote::ToTokens for Includes {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self { system, local } = self;
 
         let hash = quote! { # };
         let system = system.iter().map(|name| {
-            let name = format_ident!("{}", name);
-            quote! { #hash include <#name> #NEWLINE_TOKEN }
+            // Need to mark system includes with tokens since they are usually not idents (can contain slashes and dots)
+            quote! { #hash include #SYS_INCLUDE_PATH_PREFIX_TOKEN #name #SYS_INCLUDE_PATH_SUFFIX_TOKEN #NEWLINE_TOKEN }
         });
         let local = local.iter().map(|name| {
             quote! { #hash include #name #NEWLINE_TOKEN }

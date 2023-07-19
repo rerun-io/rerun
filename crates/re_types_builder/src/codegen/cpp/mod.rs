@@ -1,5 +1,6 @@
 mod forward_decl;
 mod includes;
+mod method;
 
 use std::collections::BTreeSet;
 
@@ -17,6 +18,7 @@ use crate::{
 
 use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
+use self::method::Method;
 
 // Special strings we insert as tokens, then search-and-replace later.
 // This is so that we can insert comments and whitespace into the generated code.
@@ -27,6 +29,8 @@ const NORMAL_COMMENT_PREFIX_TOKEN: &str = "NORMAL_COMMENT_PREFIX_TOKEN";
 const NORMAL_COMMENT_SUFFIX_TOKEN: &str = "NORMAL_COMMENT_SUFFIX_TOKEN";
 const DOC_COMMENT_PREFIX_TOKEN: &str = "DOC_COMMENT_PREFIX_TOKEN";
 const DOC_COMMENT_SUFFIX_TOKEN: &str = "DOC_COMMENT_SUFFIX_TOKEN";
+const SYS_INCLUDE_PATH_PREFIX_TOKEN: &str = "SYS_INCLUDE_PATH_PREFIX_TOKEN";
+const SYS_INCLUDE_PATH_SUFFIX_TOKEN: &str = "SYS_INCLUDE_PATH_SUFFIX_TOKEN";
 const TODO_TOKEN: &str = "TODO_TOKEN";
 
 fn comment(text: &str) -> TokenStream {
@@ -53,6 +57,8 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
             .replace(&format!("\" {NORMAL_COMMENT_SUFFIX_TOKEN:?}"), "\n")
             .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "///")
             .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
+            .replace(&format!("{SYS_INCLUDE_PATH_PREFIX_TOKEN:?} \""), "<")
+            .replace(&format!("\" {SYS_INCLUDE_PATH_SUFFIX_TOKEN:?}"), ">")
             .replace(
                 &format!("{TODO_TOKEN:?}"),
                 "\n// TODO(#2647): code-gen for C++\n",
@@ -221,6 +227,8 @@ impl QuotedObject {
         let quoted_docs = quote_docstrings(&obj.docs);
 
         let mut hpp_includes = Includes::default();
+        hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
+        let mut cpp_includes = Includes::default();
         let mut hpp_declarations = ForwardDecls::default();
 
         let field_declarations = obj
@@ -239,58 +247,56 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        let constructor = if obj.fields.len() == 1 {
+        let mut methods = Vec::new();
+
+        if obj.fields.len() == 1 {
             // Single-field struct - it is a newtype wrapper.
             // Create a implicit constructor from its own field-type.
             let obj_field = &obj.fields[0];
             if let Type::Array { .. } = &obj_field.typ {
                 // TODO(emilk): implicit constructor for arrays
-                quote! {}
             } else {
                 hpp_includes.system.insert("utility".to_owned()); // std::move
 
                 let field_ident = format_ident!("{}", obj_field.name);
                 let parameter_declaration =
                     quote_declaration(&mut hpp_includes, obj_field, &field_ident);
-                quote! {
-                    #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident)) {}
-                }
+
+                methods.push(Method {
+                    declaration: quote! {
+                        #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
+                    },
+                    ..Method::default()
+                });
             }
-        } else {
-            quote! {}
         };
 
-        let public_methods_inline_and_decls = match obj.kind {
+        match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
-                // TODO: utility for method declaration?
-                let to_arrow_datatype_docs =
-                    doc_comment("Returns the arrow data type this type corresponds to.");
-                let to_arrow_datatype_decl = quote! {
-                    #NEWLINE_TOKEN
-                    #to_arrow_datatype_docs
-                    static std::shared_ptr<arrow::DataType> to_arrow_datatype();
-                };
+                methods.push(Method {
+                    doc_string: "Returns the arrow data type this type corresponds to.".to_owned(),
+                    declaration: quote! {
+                        static std::shared_ptr<arrow::DataType> to_arrow_datatype()
+                    },
+                    definition_body: quote! { return arrow::struct_({}); },
+                    inline: false,
+                });
                 hpp_declarations.insert("arrow", ForwardDecl::Class("DataType".to_owned()));
+                cpp_includes.system.insert("arrow/api.h".to_owned());
                 hpp_includes.system.insert("memory".to_owned()); // std::shared_ptr
-
-                vec![constructor, to_arrow_datatype_decl]
             }
-            ObjectKind::Archetype => vec![constructor],
+            ObjectKind::Archetype => {}
         };
 
-        let methods = public_methods_inline_and_decls
-            .into_iter()
-            .filter(|tokens| !tokens.is_empty())
-            .collect_vec();
-        let method_section = if methods.is_empty() {
+        let hpp_method_section = if methods.is_empty() {
             quote! {}
         } else {
+            let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
             quote! {
                 public:
-                    #(#methods)*
+                    #(#hpp_methods)*
             }
         };
-
         let hpp = quote! {
             #hpp_includes
             #hpp_declarations
@@ -300,13 +306,18 @@ impl QuotedObject {
                     #quoted_docs
                     struct #pascal_case_ident {
                         #(#field_declarations;)*
-                        #method_section
+                        #hpp_method_section
                     };
                 }
             }
         };
 
-        let cpp = quote! {}; // TODO(emilk): add Arrow serialization code here!
+        let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens());
+        let cpp = quote! {
+            #cpp_includes
+
+            #(#cpp_methods)*
+        };
 
         Self { hpp, cpp }
     }
@@ -359,7 +370,7 @@ impl QuotedObject {
         .collect_vec();
 
         let mut hpp_includes = Includes::default();
-
+        hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
         hpp_includes.system.insert("utility".to_owned()); // std::move
 
         let enum_data_declarations = obj
@@ -559,6 +570,14 @@ impl QuotedObject {
         Self { hpp, cpp }
     }
 }
+
+// fn quote_arrow_datatype(
+//     hpp_includes: &mut Includes,
+//     cpp_includes: &mut Includes,
+//     hpp_declarations: &mut ForwardDecl,
+// ) {
+//     // TODO:
+// }
 
 /// e.g. `static Angle radians(float radians);` -> `auto angle = Angle::radians(radians);`
 fn quote_static_constructor_for_enum_type(
