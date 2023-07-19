@@ -125,22 +125,10 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      # Rust-cache will cache our dependencies, which is a large chunk of the build
-      # See: https://github.com/Swatinem/rust-cache
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
+      - name: Set up Rust Cache
+        uses: ./.github/actions/setup-rust-cache
         with:
-          shared-key: "build-linux"
-          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # Don't update the cache -- it will be updated by the lint job
-          # TODO(jleibs): this job will likely run before rust.yml updates
-          # the cache. Better cross-job sequencing would be nice here
-          save-if: ${{ inputs.SAVE_CACHE }}
-
-      # Sccache will cache everything else
-      # See: https://github.com/marketplace/actions/sccache-action
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+          save: true
 
       # First do our check with --locked to make sure `Cargo.lock` is up to date
       - name: Check all features
