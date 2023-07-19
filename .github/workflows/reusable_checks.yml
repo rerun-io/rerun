@@ -129,6 +129,8 @@ jobs:
         uses: ./.github/actions/setup-rust-cache
         with:
           save: true
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       # First do our check with --locked to make sure `Cargo.lock` is up to date
       - name: Check all features
