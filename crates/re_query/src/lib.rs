@@ -34,8 +34,8 @@ pub enum QueryError {
     #[error("Could not find primary")]
     PrimaryNotFound,
 
-    #[error("Could not find required component")]
-    RequiredComponentNotFound,
+    #[error("Could not find required component: {0}")]
+    RequiredComponentNotFound(re_log_types::ComponentName),
 
     #[error("Could not find component")]
     ComponentNotFound,

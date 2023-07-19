@@ -300,7 +300,7 @@ impl<A: Archetype> ArchetypeView<A> {
             Ok(component_value_iter)
         } else {
             Err(re_types::DeserializationError::MissingData {
-                datatype: C::to_arrow_datatype(),
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
         }
     }

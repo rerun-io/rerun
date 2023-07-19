@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use arrow2::{
     array::{Array, StructArray},
     datatypes::PhysicalType,
@@ -128,29 +130,30 @@ where
     Ok(DataFrame::new(vec![series0, series1, series2])?)
 }
 
-pub fn df_builder1_arch<
-    'a,
+pub fn df_builder1_arch<'a, C0>(c0: &'a [Option<C0>]) -> crate::Result<DataFrame>
+where
     C0: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C0>> + 'a,
->(
-    c0: &[Option<C0>],
-) -> crate::Result<DataFrame> {
-    let array0 = C0::try_to_arrow_opt(c0.to_owned(), None)?;
+    &'a C0: Into<::std::borrow::Cow<'a, C0>>,
+{
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
 
     let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
 
     Ok(DataFrame::new(vec![series0])?)
 }
 
-pub fn df_builder2_arch<
-    'a,
+pub fn df_builder2_arch<'a, C0, C1>(
+    c0: &'a [Option<C0>],
+    c1: &'a [Option<C1>],
+) -> crate::Result<DataFrame>
+where
     C0: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C0>> + 'a,
     C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
->(
-    c0: &[Option<C0>],
-    c1: &[Option<C1>],
-) -> crate::Result<DataFrame> {
-    let array0 = C0::try_to_arrow_opt(c0.to_owned(), None)?;
-    let array1 = C1::try_to_arrow_opt(c1.to_owned(), None)?;
+    &'a C0: Into<::std::borrow::Cow<'a, C0>>,
+    &'a C1: Into<::std::borrow::Cow<'a, C1>>,
+{
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
+    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()), None)?;
 
     let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
     let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -158,19 +161,22 @@ pub fn df_builder2_arch<
     Ok(DataFrame::new(vec![series0, series1])?)
 }
 
-pub fn df_builder3_arch<
-    'a,
+pub fn df_builder3_arch<'a, C0, C1, C2>(
+    c0: &'a [Option<C0>],
+    c1: &'a [Option<C1>],
+    c2: &'a [Option<C2>],
+) -> crate::Result<DataFrame>
+where
     C0: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C0>> + 'a,
     C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
     C2: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
->(
-    c0: &[Option<C0>],
-    c1: &[Option<C1>],
-    c2: &[Option<C2>],
-) -> crate::Result<DataFrame> {
-    let array0 = C0::try_to_arrow_opt(c0.to_owned(), None)?;
-    let array1 = C1::try_to_arrow_opt(c1.to_owned(), None)?;
-    let array2 = C2::try_to_arrow_opt(c2.to_owned(), None)?;
+    &'a C0: Into<::std::borrow::Cow<'a, C0>>,
+    &'a C1: Into<::std::borrow::Cow<'a, C1>>,
+    &'a C2: Into<::std::borrow::Cow<'a, C2>>,
+{
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
+    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()), None)?;
+    let array2 = C2::try_to_arrow_opt(c2.iter().map(|c| c.as_ref()), None)?;
 
     let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
     let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;

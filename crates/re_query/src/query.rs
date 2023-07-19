@@ -209,9 +209,15 @@ pub fn query_archetype<A: Archetype>(
         })
         .collect();
 
+    // NOTE: It's important to use `PrimaryNotFound` here. Any other error will be
+    // reported to the user.
+    //
+    // `query_archetype` is currently run for every archetype on every path in the view
+    // each path that's missing the primary is then ignored rather than being visited.
     if required_components.iter().any(|c| c.is_none()) {
-        return crate::Result::Err(QueryError::RequiredComponentNotFound);
+        return crate::Result::Err(QueryError::PrimaryNotFound);
     }
+
     let required_components = required_components.into_iter().flatten();
 
     let recommended_components = A::recommended_components();
