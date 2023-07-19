@@ -47,6 +47,12 @@ impl crate::Loggable for Transform3D {
         DataType::Union(
             vec![
                 Field {
+                    name: "_null_markers".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: true,
+                    metadata: [].into(),
+                },
+                Field {
                     name: "TranslationAndMat3x3".to_owned(),
                     data_type: DataType::Struct(vec![
                         Field {
@@ -109,6 +115,12 @@ impl crate::Loggable for Transform3D {
                             data_type: DataType::Union(
                                 vec![
                                     Field {
+                                        name: "_null_markers".to_owned(),
+                                        data_type: DataType::Null,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
                                         name: "Quaternion".to_owned(),
                                         data_type: DataType::FixedSizeList(
                                             Box::new(Field {
@@ -144,6 +156,12 @@ impl crate::Loggable for Transform3D {
                                                 data_type: DataType::Union(
                                                     vec![
                                                         Field {
+                                                            name: "_null_markers".to_owned(),
+                                                            data_type: DataType::Null,
+                                                            is_nullable: true,
+                                                            metadata: [].into(),
+                                                        },
+                                                        Field {
                                                             name: "Radians".to_owned(),
                                                             data_type: DataType::Float32,
                                                             is_nullable: false,
@@ -177,6 +195,12 @@ impl crate::Loggable for Transform3D {
                             name: "scale".to_owned(),
                             data_type: DataType::Union(
                                 vec![
+                                    Field {
+                                        name: "_null_markers".to_owned(),
+                                        data_type: DataType::Null,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    },
                                     Field {
                                         name: "ThreeD".to_owned(),
                                         data_type: DataType::FixedSizeList(
@@ -266,15 +290,23 @@ impl crate::Loggable for Transform3D {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::Transform3D::try_from_arrow_opt(data)?
+        Ok(crate::datatypes::Transform3D::try_from_arrow_opt(data)
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.Transform3D#repr".into(),
+                source: Box::new(err),
+            })?
             .into_iter()
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
             .map(|res| res.map(|repr| Some(Self { repr })))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.Transform3D#repr".into(),
+                source: Box::new(err),
+            })?)
     }
 }
 

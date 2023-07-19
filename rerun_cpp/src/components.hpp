@@ -8,6 +8,7 @@
 #include "components/affix_fuzzer12.hpp"
 #include "components/affix_fuzzer13.hpp"
 #include "components/affix_fuzzer14.hpp"
+#include "components/affix_fuzzer15.hpp"
 #include "components/affix_fuzzer16.hpp"
 #include "components/affix_fuzzer17.hpp"
 #include "components/affix_fuzzer18.hpp"

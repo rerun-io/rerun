@@ -148,13 +148,15 @@ impl crate::Loggable for TranslationAndMat3x3 {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let translation_inner_data: Vec<_> = translation
                                 .iter()
-                                .flatten()
                                 .map(|datum| {
-                                    let crate::datatypes::Vec3D(data0) = datum;
-                                    data0
+                                    datum
+                                        .map(|datum| {
+                                            let crate::datatypes::Vec3D(data0) = datum;
+                                            data0
+                                        })
+                                        .unwrap_or_default()
                                 })
                                 .flatten()
-                                .map(ToOwned::to_owned)
                                 .map(Some)
                                 .collect();
                             let translation_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
@@ -212,13 +214,15 @@ impl crate::Loggable for TranslationAndMat3x3 {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let matrix_inner_data: Vec<_> = matrix
                                 .iter()
-                                .flatten()
                                 .map(|datum| {
-                                    let crate::datatypes::Mat3x3(data0) = datum;
-                                    data0
+                                    datum
+                                        .map(|datum| {
+                                            let crate::datatypes::Mat3x3(data0) = datum;
+                                            data0
+                                        })
+                                        .unwrap_or_default()
                                 })
                                 .flatten()
-                                .map(ToOwned::to_owned)
                                 .map(Some)
                                 .collect();
                             let matrix_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
@@ -302,9 +306,14 @@ impl crate::Loggable for TranslationAndMat3x3 {
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.datatypes.TranslationAndMat3x3".into(),
+                    source: Box::new(err),
                 })?;
             if data.is_empty() {
                 Vec::new()
@@ -321,18 +330,17 @@ impl crate::Loggable for TranslationAndMat3x3 {
                     let data = &**arrays_by_name["translation"];
 
                     {
-                        let datatype = data.data_type();
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                             .unwrap();
                         if data . is_empty () { Vec :: new () }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { datatype : DataType :: Float32 , }
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or_else (|| crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , datatype : datatype . clone () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , datatype : datatype . clone () , }
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) }
 
@@ -345,18 +353,17 @@ impl crate::Loggable for TranslationAndMat3x3 {
                     let data = &**arrays_by_name["matrix"];
 
                     {
-                        let datatype = data.data_type();
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                             .unwrap();
                         if data . is_empty () { Vec :: new () }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (9usize) . zip ((9usize ..) . step_by (9usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { datatype : DataType :: Float32 , }
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (9usize) . zip ((9usize ..) . step_by (9usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or_else (|| crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , datatype : datatype . clone () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 9usize , got : (end - start) as usize , datatype : datatype . clone () , }
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 9usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) }
 
@@ -381,16 +388,25 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                 Ok(Self {
                                     translation,
                                     matrix,
-                                    from_parent: from_parent.ok_or_else(|| {
-                                        crate::DeserializationError::MissingData {
-                                            datatype: data.data_type().clone(),
-                                        }
-                                    })?,
+                                    from_parent: from_parent
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location:
+                                                "rerun.datatypes.TranslationAndMat3x3#from_parent"
+                                                    .into(),
+                                            source: Box::new(err),
+                                        })?,
                                 })
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.TranslationAndMat3x3".into(),
+                        source: Box::new(err),
+                    })?
             }
         })
     }

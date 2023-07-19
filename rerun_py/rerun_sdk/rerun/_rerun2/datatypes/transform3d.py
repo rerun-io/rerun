@@ -54,6 +54,7 @@ class Transform3DType(BaseExtensionType):
             self,
             pa.dense_union(
                 [
+                    pa.field("_null_markers", pa.null(), True, {}),
                     pa.field(
                         "TranslationAndMat3x3",
                         pa.struct(
@@ -79,6 +80,7 @@ class Transform3DType(BaseExtensionType):
                                     "rotation",
                                     pa.dense_union(
                                         [
+                                            pa.field("_null_markers", pa.null(), True, {}),
                                             pa.field(
                                                 "Quaternion",
                                                 pa.list_(pa.field("item", pa.float32(), False, {}), 4),
@@ -99,6 +101,7 @@ class Transform3DType(BaseExtensionType):
                                                             "angle",
                                                             pa.dense_union(
                                                                 [
+                                                                    pa.field("_null_markers", pa.null(), True, {}),
                                                                     pa.field("Radians", pa.float32(), False, {}),
                                                                     pa.field("Degrees", pa.float32(), False, {}),
                                                                 ]
@@ -120,6 +123,7 @@ class Transform3DType(BaseExtensionType):
                                     "scale",
                                     pa.dense_union(
                                         [
+                                            pa.field("_null_markers", pa.null(), True, {}),
                                             pa.field(
                                                 "ThreeD",
                                                 pa.list_(pa.field("item", pa.float32(), False, {}), 3),

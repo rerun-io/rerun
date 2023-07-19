@@ -102,15 +102,23 @@ impl crate::Loggable for Point2D {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::Point2D::try_from_arrow_opt(data)?
+        Ok(crate::datatypes::Point2D::try_from_arrow_opt(data)
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.Point2D#xy".into(),
+                source: Box::new(err),
+            })?
             .into_iter()
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
             .map(|res| res.map(|xy| Some(Self { xy })))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.Point2D#xy".into(),
+                source: Box::new(err),
+            })?)
     }
 }
 

@@ -121,11 +121,15 @@ impl crate::Loggable for Label {
             .map(|v| v.map(ToOwned::to_owned))
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
             .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.Label#value".into(),
+                source: Box::new(err),
+            })?)
     }
 }
 

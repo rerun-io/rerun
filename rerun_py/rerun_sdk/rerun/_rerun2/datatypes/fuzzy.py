@@ -249,6 +249,7 @@ class AffixFuzzer3Type(BaseExtensionType):
             self,
             pa.dense_union(
                 [
+                    pa.field("_null_markers", pa.null(), True, {}),
                     pa.field("degrees", pa.float32(), False, {}),
                     pa.field("radians", pa.float32(), False, {}),
                     pa.field(
@@ -359,10 +360,12 @@ class AffixFuzzer4Type(BaseExtensionType):
             self,
             pa.dense_union(
                 [
+                    pa.field("_null_markers", pa.null(), True, {}),
                     pa.field(
                         "single_required",
                         pa.dense_union(
                             [
+                                pa.field("_null_markers", pa.null(), True, {}),
                                 pa.field("degrees", pa.float32(), False, {}),
                                 pa.field("radians", pa.float32(), False, {}),
                                 pa.field(
@@ -428,6 +431,7 @@ class AffixFuzzer4Type(BaseExtensionType):
                                 "item",
                                 pa.dense_union(
                                     [
+                                        pa.field("_null_markers", pa.null(), True, {}),
                                         pa.field("degrees", pa.float32(), False, {}),
                                         pa.field("radians", pa.float32(), False, {}),
                                         pa.field(
@@ -497,6 +501,7 @@ class AffixFuzzer4Type(BaseExtensionType):
                                 "item",
                                 pa.dense_union(
                                     [
+                                        pa.field("_null_markers", pa.null(), True, {}),
                                         pa.field("degrees", pa.float32(), False, {}),
                                         pa.field("radians", pa.float32(), False, {}),
                                         pa.field(
@@ -618,10 +623,12 @@ class AffixFuzzer5Type(BaseExtensionType):
                         "single_optional_union",
                         pa.dense_union(
                             [
+                                pa.field("_null_markers", pa.null(), True, {}),
                                 pa.field(
                                     "single_required",
                                     pa.dense_union(
                                         [
+                                            pa.field("_null_markers", pa.null(), True, {}),
                                             pa.field("degrees", pa.float32(), False, {}),
                                             pa.field("radians", pa.float32(), False, {}),
                                             pa.field(
@@ -693,6 +700,7 @@ class AffixFuzzer5Type(BaseExtensionType):
                                             "item",
                                             pa.dense_union(
                                                 [
+                                                    pa.field("_null_markers", pa.null(), True, {}),
                                                     pa.field("degrees", pa.float32(), False, {}),
                                                     pa.field("radians", pa.float32(), False, {}),
                                                     pa.field(
@@ -791,6 +799,7 @@ class AffixFuzzer5Type(BaseExtensionType):
                                             "item",
                                             pa.dense_union(
                                                 [
+                                                    pa.field("_null_markers", pa.null(), True, {}),
                                                     pa.field("degrees", pa.float32(), False, {}),
                                                     pa.field("radians", pa.float32(), False, {}),
                                                     pa.field(

@@ -108,13 +108,12 @@ table AffixFuzzer14 (
   single_required_union: rerun.testing.datatypes.AffixFuzzer3 (order: 114);
 }
 
-// NOTE: Illegal: union don't have top-level bitmaps! Commenting out will/should break the build.
-// table AffixFuzzer15 (
-//   "attr.rust.derive": "PartialEq",
-//   order: 1500
-// ) {
-//   single_optional_union: rerun.testing.datatypes.AffixFuzzer3 (nullable, order: 115);
-// }
+table AffixFuzzer15 (
+  "attr.rust.derive": "PartialEq",
+  order: 1500
+) {
+  single_optional_union: rerun.testing.datatypes.AffixFuzzer3 (nullable, order: 115);
+}
 
 table AffixFuzzer16 (
   "attr.rust.derive": "PartialEq",

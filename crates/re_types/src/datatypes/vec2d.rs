@@ -84,7 +84,7 @@ impl crate::Loggable for Vec2D {
                     .iter()
                     .flatten()
                     .flatten()
-                    .map(ToOwned::to_owned)
+                    .cloned()
                     .map(Some)
                     .collect();
                 let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
@@ -142,7 +142,6 @@ impl crate::Loggable for Vec2D {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let datatype = data.data_type();
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
@@ -163,7 +162,7 @@ impl crate::Loggable for Vec2D {
                     .map(|v| v.copied())
                     .map(|v| {
                         v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            datatype: DataType::Float32,
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
                         })
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()?;
@@ -175,10 +174,10 @@ impl crate::Loggable for Vec2D {
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
                                 data.get(start as usize..end as usize)
-                                    .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
-                                        datatype: datatype.clone(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
                                     })?
                                     .to_vec()
                                     .try_into()
@@ -186,7 +185,7 @@ impl crate::Loggable for Vec2D {
                                         crate::DeserializationError::ArrayLengthMismatch {
                                             expected: 2usize,
                                             got: (end - start) as usize,
-                                            datatype: datatype.clone(),
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
                                         }
                                     })
                             })
@@ -198,11 +197,15 @@ impl crate::Loggable for Vec2D {
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {
-                datatype: data.data_type().clone(),
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
         })
         .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
+        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .map_err(|err| crate::DeserializationError::Context {
+            location: "rerun.datatypes.Vec2D#xy".into(),
+            source: Box::new(err),
+        })?)
     }
 }
 
