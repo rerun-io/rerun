@@ -1,6 +1,6 @@
 use arrow2::datatypes::DataType;
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
 use smallvec::SmallVec;
 
@@ -279,7 +279,7 @@ impl IndexedTable {
     ) {
         re_tracing::profile_function!();
 
-        let components: ahash::HashSet<_> = row.component_names().collect();
+        let components: IntSet<_> = row.component_names().collect();
 
         // borrowck workaround
         let timeline = self.timeline;
@@ -413,7 +413,7 @@ impl IndexedBucket {
         time: TimeInt,
         generated_cluster_cell: Option<DataCell>,
         row: &DataRow,
-        components: &ahash::HashSet<ComponentName>,
+        components: &IntSet<ComponentName>,
     ) -> u64 {
         re_tracing::profile_function!();
 
@@ -806,7 +806,7 @@ impl PersistentIndexedTable {
             columns,
         } = self;
 
-        let components: ahash::HashSet<_> = row.component_names().collect();
+        let components: IntSet<_> = row.component_names().collect();
 
         // --- update all control columns ---
 

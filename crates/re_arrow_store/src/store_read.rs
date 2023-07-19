@@ -169,9 +169,9 @@ impl DataStore {
     /// ) -> anyhow::Result<DataFrame> {
     ///     let cluster_key = store.cluster_key();
     ///
-    ///     let components = [cluster_key, primary.clone()];
+    ///     let components = &[cluster_key, primary];
     ///     let (_, cells) = store
-    ///         .latest_at(&query, ent_path, primary, &components)
+    ///         .latest_at(&query, ent_path, primary, components)
     ///         .unwrap_or((RowId::ZERO, [(); 2].map(|_| None)));
     ///
     ///     let series: Result<Vec<_>, _> = cells
@@ -372,7 +372,7 @@ impl DataStore {
     ///     std::iter::once(df_latest.map(|df| (Some(latest_time), df)))
     ///         // ..but only if it's not an empty dataframe.
     ///         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
-    ///         .chain(store.range(query, ent_path, &components).map(
+    ///         .chain(store.range(query, ent_path, components).map(
     ///             move |(time, _, cells)| dataframe_from_cells(cells).map(|df| (time, df))
     ///         ))
     /// }
@@ -404,7 +404,7 @@ impl DataStore {
             id = self.query_id.load(Ordering::Relaxed),
             query = ?query,
             entity = %ent_path,
-            components = ?components.clone(),
+            ?components,
             "query started..."
         );
 
@@ -535,7 +535,7 @@ impl IndexedTable {
                         timeline.typ().format_range(bucket.inner.read().time_range),
                     timeline = %timeline.name(),
                     ?time_range,
-                    components = ?components.clone(),
+                    ?components,
                     "found bucket in range"
                 );
 
@@ -1084,7 +1084,7 @@ impl PersistentIndexedTable {
         // Early-exit if the table is unaware of any of our components of interest.
         if components
             .iter()
-            .all(|component| self.columns.get(component.as_ref()).is_none())
+            .all(|component| self.columns.get(component).is_none())
         {
             return itertools::Either::Right(std::iter::empty());
         }

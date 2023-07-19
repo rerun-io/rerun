@@ -25,7 +25,7 @@ use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 ///   &store,
 ///   &query,
 ///   &ent_path.into(),
-///   &Point2D::name(),
+///   Point2D::name(),
 /// )
 /// .unwrap();
 ///
