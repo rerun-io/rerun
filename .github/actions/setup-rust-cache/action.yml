@@ -1,4 +1,5 @@
 name: "Setup Rust Cache"
+
 inputs:
   save:
     type: boolean
@@ -10,6 +11,7 @@ inputs:
   service_account:
     type: string
     required: true
+
 runs:
   using: "composite"
   steps:
