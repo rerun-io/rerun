@@ -113,7 +113,7 @@ def run_comparison(python_output_path: str, rust_output_path: str, full_dump: bo
     cmd += [python_output_path, rust_output_path]
 
     print(cmd)
-    roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
+    comparison_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = roundtrip_process.wait(timeout=30)
     assert returncode == 0, f"comparison process exited with error code {returncode}"
 
