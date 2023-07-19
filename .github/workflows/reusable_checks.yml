@@ -114,6 +114,15 @@ jobs:
     container:
       image: rerunio/ci_docker:0.7
     steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust Cache
+        uses: ./.github/actions/setup-rust-cache
+        with:
+          save: true
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
       - name: Show context
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
@@ -125,15 +134,6 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           JOB_CONTEXT: ${{ toJson(job) }}
           INPUTS_CONTEXT: ${{ toJson(inputs) }}
-
-      - uses: actions/checkout@v3
-
-      - name: Set up Rust Cache
-        uses: ./.github/actions/setup-rust-cache
-        with:
-          save: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       # First do our check with --locked to make sure `Cargo.lock` is up to date
       - name: Check all features
