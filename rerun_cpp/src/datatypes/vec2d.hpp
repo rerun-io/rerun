@@ -4,12 +4,21 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace datatypes {
         /// A vector in 2D space.
         struct Vec2D {
             float xy[2];
+
+          public:
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace datatypes
 } // namespace rr

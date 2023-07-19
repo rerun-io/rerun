@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -215,6 +215,7 @@ impl QuotedObject {
         let quoted_docs = quote_docstrings(&obj.docs);
 
         let mut hpp_includes = Includes::default();
+        let mut hpp_declarations = ForwardDecls::default();
 
         let field_declarations = obj
             .fields
@@ -253,16 +254,47 @@ impl QuotedObject {
             quote! {}
         };
 
+        let public_methods_inline_and_decls = match obj.kind {
+            ObjectKind::Datatype | ObjectKind::Component => {
+                // TODO: utility for method declaration?
+                let to_arrow_datatype_docs =
+                    doc_comment("Returns the arrow data type this type corresponds to.");
+                let to_arrow_datatype_decl = quote! {
+                    #NEWLINE_TOKEN
+                    #to_arrow_datatype_docs
+                    static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+                };
+                hpp_declarations.insert("arrow", ForwardDecl::Class("DataType".to_owned()));
+                hpp_includes.system.insert("memory".to_owned()); // std::shared_ptr
+
+                vec![constructor, to_arrow_datatype_decl]
+            }
+            ObjectKind::Archetype => vec![constructor],
+        };
+
+        let methods = public_methods_inline_and_decls
+            .into_iter()
+            .filter(|tokens| !tokens.is_empty())
+            .collect_vec();
+        let method_section = if methods.is_empty() {
+            quote! {}
+        } else {
+            quote! {
+                public:
+                    #(#methods)*
+            }
+        };
+
         let hpp = quote! {
             #hpp_includes
+            #hpp_declarations
 
             namespace rr {
                 namespace #namespace_ident {
                     #quoted_docs
                     struct #pascal_case_ident {
                         #(#field_declarations;)*
-
-                        #constructor
+                        #method_section
                     };
                 }
             }
@@ -604,7 +636,7 @@ fn are_types_disjoint(fields: &[ObjectField]) -> bool {
     type_set.len() == fields.len()
 }
 
-/// Keep track of necessary includes for a file.
+/// Keeps track of necessary includes for a file.
 struct Includes {
     /// `#include <vector>` etc
     system: BTreeSet<String>,
@@ -641,6 +673,73 @@ impl quote::ToTokens for Includes {
             #(#system)*
             #NEWLINE_TOKEN
             #(#local)*
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+        }
+        .to_tokens(tokens);
+    }
+}
+
+/// A C++ forward declaration.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum ForwardDecl {
+    Struct(String),
+    Class(String),
+}
+
+impl quote::ToTokens for ForwardDecl {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            ForwardDecl::Struct(name) => {
+                let name_ident = format_ident!("{name}");
+                quote! { struct #name_ident; }
+            }
+            ForwardDecl::Class(name) => {
+                let name_ident = format_ident!("{name}");
+                quote! { class #name_ident; }
+            }
+        }
+        .to_tokens(tokens);
+    }
+}
+
+/// Keeps track of necessary forward decls for a file.
+#[derive(Default)]
+struct ForwardDecls {
+    /// E.g. `DataType` in `arrow` etc.
+    declarations_per_namespace: BTreeMap<String, BTreeSet<ForwardDecl>>,
+}
+
+impl ForwardDecls {
+    pub fn insert(&mut self, namespace: impl Into<String>, decl: ForwardDecl) {
+        self.declarations_per_namespace
+            .entry(namespace.into())
+            .or_default()
+            .insert(decl);
+    }
+}
+
+impl quote::ToTokens for ForwardDecls {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Self {
+            declarations_per_namespace,
+        } = self;
+
+        let declarations = declarations_per_namespace
+            .iter()
+            .map(|(namespace, declarations)| {
+                let namespace_ident = format_ident!("{namespace}");
+                quote! {
+                    #NEWLINE_TOKEN
+                    namespace #namespace_ident {
+                        #(#declarations)*
+                    }
+                }
+            });
+
+        quote! {
+            #NEWLINE_TOKEN
+            #(#declarations)*
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
         }

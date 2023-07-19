@@ -4,7 +4,12 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <utility>
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace components {
@@ -12,7 +17,11 @@ namespace rr {
         struct Radius {
             float value;
 
+          public:
             Radius(float value) : value(std::move(value)) {}
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace components
 } // namespace rr
