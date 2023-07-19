@@ -300,7 +300,7 @@ impl From<DataType> for LazyDatatype {
             DataType::Extension(name, datatype, metadata) => {
                 LazyDatatype::Extension(name, Box::new((*datatype).into()), metadata)
             }
-            _ => unimplemented!("{datatype:#?}"), // NOLINT
+            _ => unimplemented!("{datatype:#?}"),
         }
     }
 }

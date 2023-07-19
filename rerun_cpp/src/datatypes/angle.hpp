@@ -3,8 +3,80 @@
 
 #pragma once
 
+#include <cstdint>
+#include <cstring>
+#include <utility>
+
 namespace rr {
     namespace datatypes {
-        struct Angle {};
+        namespace detail {
+            enum class AngleTag {
+                /// Having a special empty state makes it possible to implement move-semantics. We
+                /// need to be able to leave the object in a state which we can run the destructor
+                /// on.
+                NONE = 0,
+                Radians,
+                Degrees,
+            };
+
+            union AngleData {
+                float radians;
+
+                float degrees;
+
+                AngleData() {}
+
+                ~AngleData() {}
+
+                void swap(AngleData& other) noexcept {
+                    // This bitwise swap would fail for self-referential types, but we don't have
+                    // any of those.
+                    char temp[sizeof(AngleData)];
+                    std::memcpy(temp, this, sizeof(AngleData));
+                    std::memcpy(this, &other, sizeof(AngleData));
+                    std::memcpy(&other, temp, sizeof(AngleData));
+                }
+            };
+        } // namespace detail
+
+        /// Angle in either radians or degrees.
+        struct Angle {
+          private:
+            detail::AngleTag _tag;
+            detail::AngleData _data;
+
+            Angle() : _tag(detail::AngleTag::NONE) {}
+
+          public:
+            Angle(Angle&& other) noexcept : _tag(detail::AngleTag::NONE) {
+                this->swap(other);
+            }
+
+            Angle& operator=(Angle&& other) noexcept {
+                this->swap(other);
+                return *this;
+            }
+
+            static Angle radians(float radians) {
+                Angle self;
+                self._tag = detail::AngleTag::Radians;
+                self._data.radians = std::move(radians);
+                return std::move(self);
+            }
+
+            static Angle degrees(float degrees) {
+                Angle self;
+                self._tag = detail::AngleTag::Degrees;
+                self._data.degrees = std::move(degrees);
+                return std::move(self);
+            }
+
+            void swap(Angle& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
+            }
+        };
     } // namespace datatypes
 } // namespace rr

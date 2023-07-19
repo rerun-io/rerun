@@ -148,25 +148,6 @@ impl Objects {
 }
 
 impl Objects {
-    /// Returns a resolved object using its fully-qualified name.
-    ///
-    /// Panics if missing.
-    ///
-    /// E.g.:
-    /// ```ignore
-    /// resolved.get("rerun.datatypes.Vec3D");
-    /// resolved.get("rerun.datatypes.Angle");
-    /// resolved.get("rerun.components.Label");
-    /// resolved.get("rerun.archetypes.Point2D");
-    /// ```
-    pub fn get(&self, fqname: impl AsRef<str>) -> &Object {
-        let fqname = fqname.as_ref();
-        self.objects
-            .get(fqname)
-            .with_context(|| format!("unknown object: {fqname:?}"))
-            .unwrap()
-    }
-
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
     pub fn ordered_objects_mut(&mut self, kind: Option<ObjectKind>) -> Vec<&mut Object> {
@@ -193,6 +174,28 @@ impl Objects {
         objs.sort_by_key(|anyobj| anyobj.order);
 
         objs
+    }
+}
+
+/// Returns a resolved object using its fully-qualified name.
+///
+/// Panics if missing.
+///
+/// E.g.:
+/// ```ignore
+/// # let objects = Objects::default();
+/// let obj = &objects["rerun.datatypes.Vec3D"];
+/// let obj = &objects["rerun.datatypes.Angle"];
+/// let obj = &objects["rerun.components.Label"];
+/// let obj = &objects["rerun.archetypes.Point2D"];
+/// ```
+impl std::ops::Index<&str> for Objects {
+    type Output = Object;
+
+    fn index(&self, fqname: &str) -> &Self::Output {
+        self.objects
+            .get(fqname)
+            .unwrap_or_else(|| panic!("unknown object: {fqname:?}"))
     }
 }
 
@@ -607,6 +610,13 @@ impl Object {
             .is_some()
     }
 
+    /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
+    pub fn has_default_destructor(&self, objects: &Objects) -> bool {
+        self.fields
+            .iter()
+            .all(|field| field.typ.has_default_destructor(objects))
+    }
+
     /// Try to find the relative file path of the `.fbs` source file.
     pub fn relative_filepath(&self) -> Option<&Utf8Path> {
         self.filepath
@@ -616,41 +626,14 @@ impl Object {
 
     /// The `snake_case` name of the object, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
-        to_snake_case(&self.name)
+        crate::to_snake_case(&self.name)
     }
-}
-
-fn to_snake_case(s: &str) -> String {
-    // Other crates (convert_case, case, heck, …) all get this wrong. See unit test.
-    let mut last_char: Option<char> = None;
-
-    let mut out = String::new();
-    for c in s.chars() {
-        if let Some(last_char) = last_char {
-            if last_char.is_lowercase() && c.is_uppercase() {
-                out.push('_');
-            }
-        }
-        out.push(c.to_ascii_lowercase());
-        last_char = Some(c);
-    }
-
-    out
-}
-
-#[test]
-fn test_snake_case() {
-    assert_eq!(to_snake_case("Point2D"), "point2d");
-    assert_eq!(
-        to_snake_case("TranslationAndMat3x3"),
-        "translation_and_mat3x3"
-    );
 }
 
 /// Properties specific to either structs or unions, but not both.
 #[derive(Debug, Clone)]
 pub enum ObjectSpecifics {
-    Struct {},
+    Struct,
     Union {
         /// The underlying type of the union.
         ///
@@ -834,7 +817,7 @@ impl ObjectField {
 }
 
 /// The underlying type of an [`ObjectField`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Type {
     UInt8,
     UInt16,
@@ -927,8 +910,8 @@ impl Type {
                 ),
             },
             FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
-                unimplemented!("{typ:#?}") // NOLINT
-            } // NOLINT
+                unimplemented!("{typ:#?}")
+            }
             // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants...
             _ => unreachable!("{typ:#?}"),
         }
@@ -937,38 +920,62 @@ impl Type {
     /// True if this is some kind of array/vector.
     pub fn is_plural(&self) -> bool {
         match self {
-            Type::Array {
+            Self::Array {
                 elem_type: _,
                 length: _,
             }
-            | Type::Vector { elem_type: _ } => true,
-            Type::UInt8
-            | Type::UInt16
-            | Type::UInt32
-            | Type::UInt64
-            | Type::Int8
-            | Type::Int16
-            | Type::Int32
-            | Type::Int64
-            | Type::Bool
-            | Type::Float16
-            | Type::Float32
-            | Type::Float64
-            | Type::String
-            | Type::Object(_) => false,
+            | Self::Vector { elem_type: _ } => true,
+            Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Bool
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64
+            | Self::String
+            | Self::Object(_) => false,
         }
     }
 
     /// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            Type::Object(fqname) => Some(fqname.as_str()),
-            Type::Array {
+            Self::Object(fqname) => Some(fqname.as_str()),
+            Self::Array {
                 elem_type,
                 length: _,
             }
-            | Type::Vector { elem_type } => elem_type.fqname(),
+            | Self::Vector { elem_type } => elem_type.fqname(),
             _ => None,
+        }
+    }
+
+    /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
+    pub fn has_default_destructor(&self, objects: &Objects) -> bool {
+        match self {
+            Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Bool
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64 => true,
+
+            Self::String | Self::Vector { .. } => false,
+
+            Self::Array { elem_type, .. } => elem_type.has_default_destructor(objects),
+
+            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
         }
     }
 }
@@ -977,7 +984,7 @@ impl Type {
 ///
 /// Flatbuffers doesn't support directly nesting multiple layers of arrays, they
 /// always have to be wrapped into intermediate layers of structs or tables!
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ElementType {
     UInt8,
     UInt16,
@@ -1037,8 +1044,30 @@ impl ElementType {
     /// `Some(fqname)` if this is an `Object`.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            ElementType::Object(fqname) => Some(fqname.as_str()),
+            Self::Object(fqname) => Some(fqname.as_str()),
             _ => None,
+        }
+    }
+
+    /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
+    pub fn has_default_destructor(&self, objects: &Objects) -> bool {
+        match self {
+            Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Bool
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64 => true,
+
+            Self::String => false,
+
+            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
         }
     }
 }

@@ -3,8 +3,13 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace rr {
     namespace datatypes {
-        struct Quaternion {};
+        /// A Quaternion represented by 4 real numbers.
+        struct Quaternion {
+            float xyzw[4];
+        };
     } // namespace datatypes
 } // namespace rr
