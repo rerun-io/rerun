@@ -8,7 +8,7 @@
 namespace rr {
     namespace components {
         std::shared_ptr<arrow::DataType> Radius::to_arrow_datatype() {
-            return arrow::struct_({});
+            return arrow::float32();
         }
     } // namespace components
 } // namespace rr

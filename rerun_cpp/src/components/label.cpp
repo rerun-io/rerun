@@ -8,7 +8,7 @@
 namespace rr {
     namespace components {
         std::shared_ptr<arrow::DataType> Label::to_arrow_datatype() {
-            return arrow::struct_({});
+            return arrow::utf8();
         }
     } // namespace components
 } // namespace rr

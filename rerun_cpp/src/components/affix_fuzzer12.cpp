@@ -8,7 +8,7 @@
 namespace rr {
     namespace components {
         std::shared_ptr<arrow::DataType> AffixFuzzer12::to_arrow_datatype() {
-            return arrow::struct_({});
+            return arrow::list(arrow::field("item", arrow::utf8(), false, nullptr));
         }
     } // namespace components
 } // namespace rr

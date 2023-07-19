@@ -8,7 +8,7 @@
 namespace rr {
     namespace components {
         std::shared_ptr<arrow::DataType> InstanceKey::to_arrow_datatype() {
-            return arrow::struct_({});
+            return arrow::uint64();
         }
     } // namespace components
 } // namespace rr

@@ -8,7 +8,21 @@
 namespace rr {
     namespace datatypes {
         std::shared_ptr<arrow::DataType> RotationAxisAngle::to_arrow_datatype() {
-            return arrow::struct_({});
+            return arrow::struct_({
+                arrow::field("axis",
+                             arrow::fixed_size_list(
+                                 arrow::field("item", arrow::float32(), false, nullptr), 3),
+                             false,
+                             nullptr),
+                arrow::field("angle",
+                             arrow::dense_union({
+                                 arrow::field("_null_markers", arrow::null(), true, nullptr),
+                                 arrow::field("Radians", arrow::float32(), false, nullptr),
+                                 arrow::field("Degrees", arrow::float32(), false, nullptr),
+                             }),
+                             false,
+                             nullptr),
+            });
         }
     } // namespace datatypes
 } // namespace rr

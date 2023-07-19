@@ -8,7 +8,9 @@
 namespace rr {
     namespace datatypes {
         std::shared_ptr<arrow::DataType> FlattenedScalar::to_arrow_datatype() {
-            return arrow::struct_({});
+            return arrow::struct_({
+                arrow::field("value", arrow::float32(), false, nullptr),
+            });
         }
     } // namespace datatypes
 } // namespace rr

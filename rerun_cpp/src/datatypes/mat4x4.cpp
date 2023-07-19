@@ -8,7 +8,8 @@
 namespace rr {
     namespace datatypes {
         std::shared_ptr<arrow::DataType> Mat4x4::to_arrow_datatype() {
-            return arrow::struct_({});
+            return arrow::fixed_size_list(arrow::field("item", arrow::float32(), false, nullptr),
+                                          16);
         }
     } // namespace datatypes
 } // namespace rr

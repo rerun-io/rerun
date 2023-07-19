@@ -7,6 +7,7 @@ use super::NEWLINE_TOKEN;
 
 /// A C++ forward declaration.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(dead_code)]
 pub enum ForwardDecl {
     Struct(String),
     Class(String),
