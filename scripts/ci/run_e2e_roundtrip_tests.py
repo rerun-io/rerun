@@ -54,6 +54,14 @@ def main() -> None:
         run_comparison(python_output_path, rust_output_path, args.full_dump)
 
 
+def roundtrip_env() -> dict[str, str]:
+    # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within
+    # the batcher will happily insert uninitialized padding bytes as needed!
+    env = os.environ.copy()
+    env["RERUN_FLUSH_NUM_ROWS"] = "0"
+    return env
+
+
 def run_roundtrip_python(arch: str) -> str:
     main_path = f"tests/python/roundtrips/{arch}/main.py"
     output_path = f"tests/python/roundtrips/{arch}/out.rrd"
@@ -64,8 +72,9 @@ def run_roundtrip_python(arch: str) -> str:
         python_executable = "python3"
 
     cmd = [python_executable, main_path, "--save", output_path]
+
     print(cmd)
-    roundtrip_process = subprocess.Popen(cmd)
+    roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = roundtrip_process.wait(timeout=30)
     assert returncode == 0, f"python roundtrip process exited with error code {returncode}"
 
@@ -90,7 +99,7 @@ def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir:
     cmd += ["--", "--save", output_path]
 
     print(cmd)
-    roundtrip_process = subprocess.Popen(cmd)
+    roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = roundtrip_process.wait(timeout=12000)
     assert returncode == 0, f"rust roundtrip process exited with error code {returncode}"
 
@@ -102,8 +111,9 @@ def run_comparison(python_output_path: str, rust_output_path: str, full_dump: bo
     if full_dump:
         cmd += ["--full-dump"]
     cmd += [python_output_path, rust_output_path]
+
     print(cmd)
-    roundtrip_process = subprocess.Popen(cmd)
+    roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = roundtrip_process.wait(timeout=30)
     assert returncode == 0, f"comparison process exited with error code {returncode}"
 
