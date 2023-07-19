@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
+mod forward_decl;
+mod includes;
+
+use std::collections::BTreeSet;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -11,6 +14,9 @@ use crate::{
     codegen::AUTOGEN_WARNING, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
     Type,
 };
+
+use self::forward_decl::{ForwardDecl, ForwardDecls};
+use self::includes::Includes;
 
 // Special strings we insert as tokens, then search-and-replace later.
 // This is so that we can insert comments and whitespace into the generated code.
@@ -634,117 +640,6 @@ fn quote_static_constructor_for_enum_type(
 fn are_types_disjoint(fields: &[ObjectField]) -> bool {
     let type_set: std::collections::HashSet<&Type> = fields.iter().map(|f| &f.typ).collect();
     type_set.len() == fields.len()
-}
-
-/// Keeps track of necessary includes for a file.
-struct Includes {
-    /// `#include <vector>` etc
-    system: BTreeSet<String>,
-
-    /// `#include datatypes.hpp"` etc
-    local: BTreeSet<String>,
-}
-
-impl Default for Includes {
-    fn default() -> Self {
-        let mut slf = Self {
-            system: BTreeSet::new(),
-            local: BTreeSet::new(),
-        };
-        slf.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
-        slf
-    }
-}
-
-impl quote::ToTokens for Includes {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self { system, local } = self;
-
-        let hash = quote! { # };
-        let system = system.iter().map(|name| {
-            let name = format_ident!("{}", name);
-            quote! { #hash include <#name> #NEWLINE_TOKEN }
-        });
-        let local = local.iter().map(|name| {
-            quote! { #hash include #name #NEWLINE_TOKEN }
-        });
-
-        quote! {
-            #(#system)*
-            #NEWLINE_TOKEN
-            #(#local)*
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-        }
-        .to_tokens(tokens);
-    }
-}
-
-/// A C++ forward declaration.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum ForwardDecl {
-    Struct(String),
-    Class(String),
-}
-
-impl quote::ToTokens for ForwardDecl {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            ForwardDecl::Struct(name) => {
-                let name_ident = format_ident!("{name}");
-                quote! { struct #name_ident; }
-            }
-            ForwardDecl::Class(name) => {
-                let name_ident = format_ident!("{name}");
-                quote! { class #name_ident; }
-            }
-        }
-        .to_tokens(tokens);
-    }
-}
-
-/// Keeps track of necessary forward decls for a file.
-#[derive(Default)]
-struct ForwardDecls {
-    /// E.g. `DataType` in `arrow` etc.
-    declarations_per_namespace: BTreeMap<String, BTreeSet<ForwardDecl>>,
-}
-
-impl ForwardDecls {
-    pub fn insert(&mut self, namespace: impl Into<String>, decl: ForwardDecl) {
-        self.declarations_per_namespace
-            .entry(namespace.into())
-            .or_default()
-            .insert(decl);
-    }
-}
-
-impl quote::ToTokens for ForwardDecls {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self {
-            declarations_per_namespace,
-        } = self;
-
-        let declarations = declarations_per_namespace
-            .iter()
-            .map(|(namespace, declarations)| {
-                let namespace_ident = format_ident!("{namespace}");
-                quote! {
-                    #NEWLINE_TOKEN
-                    namespace #namespace_ident {
-                        #(#declarations)*
-                    }
-                }
-            });
-
-        quote! {
-            #NEWLINE_TOKEN
-            #(#declarations)*
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-        }
-        .to_tokens(tokens);
-    }
 }
 
 fn quote_declaration_with_docstring(
