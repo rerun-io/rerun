@@ -52,7 +52,8 @@ pub struct View3DState {
     pub show_axes: bool,
     pub show_bbox: bool,
 
-    last_eye_interact_time: f64,
+    eye_interact_fade_in: bool,
+    eye_interact_fade_change_time: f64,
 }
 
 impl Default for View3DState {
@@ -65,7 +66,8 @@ impl Default for View3DState {
             spin: false,
             show_axes: false,
             show_bbox: false,
-            last_eye_interact_time: f64::NEG_INFINITY,
+            eye_interact_fade_in: false,
+            eye_interact_fade_change_time: f64::NEG_INFINITY,
         }
     }
 }
@@ -313,7 +315,6 @@ pub fn view_3d(
     let eye = orbit_eye.to_eye();
 
     if did_interact_with_eye {
-        state.state_3d.last_eye_interact_time = ui.input(|i| i.time);
         state.state_3d.eye_interpolation = None;
         state.state_3d.tracked_camera = None;
         state.state_3d.camera_before_tracked_camera = None;
@@ -477,24 +478,46 @@ pub fn view_3d(
         }
     }
 
+    // Show center of orbit camera when interacting with camera (it's quite helpful).
     {
-        let orbit_center_alpha = egui::remap_clamp(
-            ui.input(|i| i.time) - state.state_3d.last_eye_interact_time,
-            0.0..=0.4,
-            1.0..=0.0,
-        ) as f32;
+        const FADE_DURATION: f32 = 0.1;
+        const FADE_OUT_DELAY: f64 = 0.4; // Need a relatively high delay, otherwise interaction from mouse wheel looks pretty bad.
 
-        if orbit_center_alpha > 0.0 {
-            // Show center of orbit camera when interacting with camera (it's quite helpful).
+        let ui_time = ui.input(|i| i.time);
+
+        if did_interact_with_eye && !state.state_3d.eye_interact_fade_in {
+            // Any interaction immediately causes fade in to start if it's not already on.
+            state.state_3d.eye_interact_fade_change_time = ui_time;
+            state.state_3d.eye_interact_fade_in = true;
+        } else if state.state_3d.eye_interact_fade_in
+            && !ui.input(|i| i.pointer.any_down())
+            && ui_time - state.state_3d.eye_interact_fade_change_time > FADE_OUT_DELAY
+        {
+            // Fade out on the other hand only happens if no mouse cursor is pressed and a bit of time has passed.
+            state.state_3d.eye_interact_fade_change_time = ui_time;
+            state.state_3d.eye_interact_fade_in = false;
+        }
+
+        pub fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+            let t = f32::clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+            t * t * (3.0 - t * 2.0)
+        }
+
+        // Compute smooth fade.
+        let time_since_fade_change =
+            (ui_time - state.state_3d.eye_interact_fade_change_time) as f32;
+        let orbit_center_fade = if state.state_3d.eye_interact_fade_in {
+            // Fade in.
+            smoothstep(0.0, FADE_DURATION, time_since_fade_change)
+        } else {
+            // Fade out.
+            smoothstep(FADE_DURATION, 0.0, time_since_fade_change)
+        };
+
+        if orbit_center_fade > 0.001 {
             let half_line_length = orbit_eye.orbit_radius * 0.03;
 
-            // We can't fade via alpha yet, but we can do so by making it smaller.
-            // Do so very quickly at the end of time we display "show period".
-            pub fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
-                let t = f32::clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
-                t * t * (3.0 - t * 2.0)
-            }
-            let half_line_length = half_line_length * smoothstep(0.0, 0.2, orbit_center_alpha);
+            let half_line_length = half_line_length * orbit_center_fade;
 
             line_builder
                 .batch("center orbit orientation help")
