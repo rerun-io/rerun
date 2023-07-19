@@ -142,7 +142,7 @@ impl re_types::Loggable for InstanceKey {
         let vec: Vec<_> = input.collect();
 
         let arrow = arrow2_convert::serialize::TryIntoArrow::try_into_arrow(vec.iter())
-            .map_err(|e| re_types::SerializationError::ArrowConvertFailure(e.to_string()))?;
+            .map_err(|err| re_types::SerializationError::ArrowConvertFailure(err.to_string()))?;
 
         Ok(arrow)
     }
@@ -157,7 +157,7 @@ impl re_types::Loggable for InstanceKey {
 
         // TODO(jleibs): These collects are going to be problematic
         let native = arrow_array_deserialize_iterator(data)
-            .map_err(|e| re_types::DeserializationError::ArrowConvertFailure(e.to_string()))?
+            .map_err(|err| re_types::DeserializationError::ArrowConvertFailure(err.to_string()))?
             .collect();
 
         Ok(native)

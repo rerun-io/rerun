@@ -19,6 +19,10 @@ impl Component for MyPoint {
     }
 }
 
+use crate as re_log_types;
+
+re_log_types::component_legacy_shim!(MyPoint);
+
 // ----------------------------------------------------------------------------
 
 #[derive(
@@ -43,6 +47,8 @@ impl Component for MyColor {
     }
 }
 
+re_log_types::component_legacy_shim!(MyColor);
+
 // ----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
@@ -56,3 +62,5 @@ impl Component for MyLabel {
         "test.label".into()
     }
 }
+
+re_log_types::component_legacy_shim!(MyLabel);
