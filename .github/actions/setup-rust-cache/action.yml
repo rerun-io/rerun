@@ -35,6 +35,6 @@ runs:
         gcs_read_only: ${{ !inputs.save }}
 
     - name: Verify sccache
-      runs: |
+      run: |
         sccache --show-stats
 
