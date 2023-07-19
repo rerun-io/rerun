@@ -706,7 +706,7 @@ fn quote_trait_impls_from_obj(
 
                     #[inline]
                     fn name() -> Self::Name {
-                        crate::#kind_name::Borrowed(#legacy_fqname)
+                        #legacy_fqname.into()
                     }
 
                     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -759,7 +759,7 @@ fn quote_trait_impls_from_obj(
                     })
                     .collect::<Vec<_>>();
                 let num_components = components.len();
-                let quoted_components = quote!(#(crate::ComponentName::Borrowed(#components),)*);
+                let quoted_components = quote!(#(#components.into(),)*);
                 (num_components, quoted_components)
             }
 
@@ -945,15 +945,15 @@ fn quote_trait_impls_from_obj(
             };
 
             quote! {
+                static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_required]> = once_cell::sync::Lazy::new(|| {[#required]});
+
+                static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_recommended]> = once_cell::sync::Lazy::new(|| {[#recommended]});
+
+                static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_optional]> = once_cell::sync::Lazy::new(|| {[#optional]});
+
+                static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_all]> = once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
+
                 impl #name {
-                    pub const REQUIRED_COMPONENTS: [crate::ComponentName; #num_required] = [#required];
-
-                    pub const RECOMMENDED_COMPONENTS: [crate::ComponentName; #num_recommended] = [#recommended];
-
-                    pub const OPTIONAL_COMPONENTS: [crate::ComponentName; #num_optional] = [#optional];
-
-                    pub const ALL_COMPONENTS: [crate::ComponentName; #num_all] = [#required #recommended #optional];
-
                     pub const NUM_COMPONENTS: usize = #num_all;
                 }
 
@@ -964,23 +964,23 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
-                    fn required_components() -> Vec<crate::ComponentName> {
-                        Self::REQUIRED_COMPONENTS.to_vec()
+                    fn required_components() -> &'static [crate::ComponentName] {
+                        REQUIRED_COMPONENTS.as_slice()
                     }
 
                     #[inline]
-                    fn recommended_components() -> Vec<crate::ComponentName> {
-                        Self::RECOMMENDED_COMPONENTS.to_vec()
+                    fn recommended_components() -> &'static [crate::ComponentName]  {
+                        RECOMMENDED_COMPONENTS.as_slice()
                     }
 
                     #[inline]
-                    fn optional_components() -> Vec<crate::ComponentName> {
-                        Self::OPTIONAL_COMPONENTS.to_vec()
+                    fn optional_components() -> &'static [crate::ComponentName]  {
+                        OPTIONAL_COMPONENTS.as_slice()
                     }
 
                     #[inline]
-                    fn all_components() -> Vec<crate::ComponentName> {
-                        Self::ALL_COMPONENTS.to_vec()
+                    fn all_components() -> &'static [crate::ComponentName]  {
+                        ALL_COMPONENTS.as_slice()
                     }
 
                     #[inline]

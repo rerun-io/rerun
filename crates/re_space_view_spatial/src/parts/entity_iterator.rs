@@ -74,7 +74,7 @@ where
             &query.latest_at,
             &props.visible_history,
             ent_path,
-            archetype.clone(),
+            archetype,
         )
         .and_then(|entity_views| {
             for ent_view in entity_views {

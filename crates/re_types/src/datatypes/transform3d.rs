@@ -40,7 +40,7 @@ impl crate::Loggable for Transform3D {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Transform3D")
+        "rerun.datatypes.Transform3D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

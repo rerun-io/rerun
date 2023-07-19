@@ -33,13 +33,13 @@ pub fn latest_component(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,
-    primary: &ComponentName,
+    primary: ComponentName,
 ) -> SharedResult<DataFrame> {
     let cluster_key = store.cluster_key();
 
-    let components = [cluster_key.clone(), primary.clone()];
+    let components = &[cluster_key, primary];
     let (_, cells) = store
-        .latest_at(query, ent_path, primary, &components)
+        .latest_at(query, ent_path, primary, components)
         .unwrap_or((RowId::ZERO, [(); 2].map(|_| None)));
 
     dataframe_from_cells(&cells)
@@ -72,9 +72,9 @@ pub fn latest_components(
     let dfs = primaries
         .iter()
         .filter(|primary| **primary != cluster_key)
-        .map(|primary| latest_component(store, query, ent_path, primary));
+        .map(|primary| latest_component(store, query, ent_path, *primary));
 
-    join_dataframes(cluster_key.clone(), join_type, dfs)
+    join_dataframes(cluster_key, join_type, dfs)
 }
 
 // --- Range ---
@@ -104,7 +104,7 @@ pub fn range_components<'a, const N: usize>(
     store: &'a DataStore,
     query: &'a RangeQuery,
     ent_path: &'a EntityPath,
-    primary: &ComponentName,
+    primary: ComponentName,
     components: [ComponentName; N],
     join_type: &'a JoinType,
 ) -> impl Iterator<Item = SharedResult<(Option<TimeInt>, DataFrame)>> + 'a {
@@ -119,7 +119,7 @@ pub fn range_components<'a, const N: usize>(
     // would be to drop the constant sizes all the way down, which would be way more painful to
     // deal with.
     assert!(components.contains(&cluster_key));
-    assert!(components.contains(primary));
+    assert!(components.contains(&primary));
 
     let mut state = None;
 
@@ -148,7 +148,7 @@ pub fn range_components<'a, const N: usize>(
 
     let primary_col = components
         .iter()
-        .find_position(|component| *component == primary)
+        .find_position(|component| **component == primary)
         .map(|(col, _)| col)
         .unwrap(); // asserted on entry
 
@@ -159,7 +159,7 @@ pub fn range_components<'a, const N: usize>(
         // followed by the range
         .chain(
             store
-                .range(query, ent_path, &components)
+                .range(query, ent_path, components)
                 .map(move |(time, _, cells)| {
                     (
                         time,
@@ -170,7 +170,7 @@ pub fn range_components<'a, const N: usize>(
         )
         .filter_map(move |(time, is_primary, df)| {
             state = Some(join_dataframes(
-                cluster_key.clone(),
+                cluster_key,
                 join_type,
                 // The order matters here: the newly yielded dataframe goes to the right so that it
                 // overwrites the data in the state if their column overlaps!
@@ -248,8 +248,8 @@ pub fn join_dataframes(
 
             left.join(
                 &right,
-                [cluster_key.clone()],
-                [cluster_key.clone()],
+                [cluster_key],
+                [cluster_key],
                 join_type.clone(),
                 None,
             )
@@ -258,7 +258,7 @@ pub fn join_dataframes(
         })
         .unwrap_or_else(|| Ok(DataFrame::default()))?;
 
-    Ok(df.sort([cluster_key], false).unwrap_or(df))
+    Ok(df.sort([cluster_key.as_str()], false).unwrap_or(df))
 }
 
 /// Returns a new `DataFrame` where all rows that only contain null values (ignoring the cluster
@@ -267,7 +267,7 @@ pub fn drop_all_nulls(df: &DataFrame, cluster_key: &ComponentName) -> PolarsResu
     let cols = df
         .get_column_names()
         .into_iter()
-        .filter(|col| *col != cluster_key);
+        .filter(|col| *col != cluster_key.as_str());
 
     let mut iter = df.select_series(cols)?.into_iter();
 

@@ -379,7 +379,6 @@ where
         &'a C: Into<::std::borrow::Cow<'a, C>>,
     {
         let primary = ComponentWithInstances::from_native::<Primary>(primary.0, primary.1);
-        // TODO(jleibs): Lifetime shenanigans
         let component_c1 = ComponentWithInstances::from_native::<C>(component.0, component.1);
 
         let components = [(component_c1.name(), component_c1)].into();

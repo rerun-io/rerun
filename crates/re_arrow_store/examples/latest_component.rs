@@ -34,7 +34,7 @@ fn main() {
         &store,
         &LatestAtQuery::new(timeline_frame_nr, 10.into()),
         &ent_path,
-        &Rect2D::name(),
+        Rect2D::name(),
     )
     .unwrap();
     println!(
@@ -48,7 +48,7 @@ fn main() {
         &store,
         &LatestAtQuery::new(timeline_frame_nr, 10.into()),
         &ent_path,
-        &Point2D::name(),
+        Point2D::name(),
     )
     .unwrap();
     println!("Query results from {:?}'s PoV:\n{df}", Point2D::name());

@@ -55,7 +55,7 @@ fn main() {
         &store,
         &query,
         &ent_path,
-        &Rect2D::name(),
+        Rect2D::name(),
         [InstanceKey::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );
@@ -77,7 +77,7 @@ fn main() {
         &store,
         &query,
         &ent_path,
-        &Point2D::name(),
+        Point2D::name(),
         [InstanceKey::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );

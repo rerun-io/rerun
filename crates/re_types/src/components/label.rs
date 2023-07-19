@@ -35,7 +35,7 @@ impl crate::Loggable for Label {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.label")
+        "rerun.label".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

@@ -34,7 +34,7 @@ impl crate::Loggable for Vec2D {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Vec2D")
+        "rerun.datatypes.Vec2D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

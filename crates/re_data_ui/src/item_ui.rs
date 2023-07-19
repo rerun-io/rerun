@@ -117,12 +117,10 @@ pub fn component_path_button(
     ui: &mut egui::Ui,
     component_path: &ComponentPath,
 ) -> egui::Response {
-    // TODO(jleibs): implement short_name for ComponentName
     component_path_button_to(
         ctx,
         ui,
-        //component_path.component_name.short_name(),
-        component_path.component_name.as_ref(),
+        component_path.component_name.short_name(),
         component_path,
     )
 }

@@ -161,7 +161,6 @@ impl DataCell {
     where
         C: Component + Clone + 'a,
     {
-        // TODO(jleibs) where does extension_wrapper come from?
         Ok(Self::from_arrow(C::name(), C::try_to_arrow(values, None)?))
     }
 
@@ -406,7 +405,7 @@ impl DataCell {
     /// The name of the component type stored in the cell.
     #[inline]
     pub fn component_name(&self) -> ComponentName {
-        self.inner.name.clone()
+        self.inner.name
     }
 
     /// The type of the component stored in the cell, i.e. the cell is an array of that type.
@@ -627,7 +626,6 @@ fn data_cell_sizes() {
             DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         cell.compute_size_bytes();
 
-        // TODO(jleibs): Understand if this makes sense with COW-based ComponentName
         assert_eq!(224, cell.heap_size_bytes());
         assert_eq!(224, cell.heap_size_bytes());
     }
@@ -641,7 +639,6 @@ fn data_cell_sizes() {
         cell.compute_size_bytes();
 
         // zero-sized + 3x u64s
-        // TODO(jleibs): Understand if this makes sense with COW-based ComponentName
         assert_eq!(248, cell.heap_size_bytes());
         assert_eq!(248, cell.heap_size_bytes());
     }

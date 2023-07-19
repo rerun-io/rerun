@@ -44,7 +44,7 @@ impl crate::Loggable for RotationAxisAngle {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.RotationAxisAngle")
+        "rerun.datatypes.RotationAxisAngle".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

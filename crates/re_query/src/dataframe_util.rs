@@ -62,7 +62,6 @@ where
     let res = match df.column(C::name().as_ref()) {
         Ok(col) => itertools::Either::Left(col.chunks().iter().flat_map(|array| {
             let fixed_array = fix_polars_nulls::<C>(array.as_ref());
-            // TODO(jleibs): the need to collect here isn't ideal
             arrow_array_deserialize_iterator::<Option<C>>(fixed_array.as_ref())
                 .unwrap()
                 .collect_vec()

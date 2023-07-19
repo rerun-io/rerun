@@ -4547,11 +4547,16 @@ dependencies = [
  "glam",
  "itertools 0.11.0",
  "macaw",
+ "nohash-hasher",
+ "once_cell",
  "rayon",
  "re_build_tools",
  "re_error",
+ "re_string_interner",
  "re_types_builder",
+ "serde",
  "similar-asserts",
+ "smallvec",
  "thiserror",
 ]
 

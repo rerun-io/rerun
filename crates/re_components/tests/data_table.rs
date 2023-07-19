@@ -34,7 +34,6 @@ fn data_table_sizes_basics() {
         BooleanArray::from(vec![Some(true), Some(false), Some(true)]).boxed(),
     );
     cell.compute_size_bytes();
-    // TODO(jleibs): Understand this size difference
     expect(
         cell.clone(), //
         10_000,       // num_rows
@@ -206,7 +205,6 @@ fn data_table_sizes_unions() {
     re_log_types::component_legacy_shim!(DenseTransform);
 
     // dense union (uniform)
-    // TODO(jleibs): understand this size change
     expect(
         DataCell::from_native(
             [

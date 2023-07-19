@@ -22,7 +22,7 @@ impl DataStore {
     ) -> Option<C> {
         re_tracing::profile_function!();
 
-        let (_, cells) = self.latest_at(query, entity_path, &C::name(), &[C::name()])?;
+        let (_, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
         let cell = cells.get(0)?.as_ref()?;
 
         let mut iter = cell
@@ -128,12 +128,12 @@ impl DataStore {
         &mut self,
         entity_path: &EntityPath,
         timepoint: &TimePoint,
-        component: &ComponentName,
+        component: ComponentName,
     ) {
         re_tracing::profile_function!();
 
-        if let Some(datatype) = self.lookup_datatype(component) {
-            let cell = DataCell::from_arrow_empty(component.clone(), datatype.clone());
+        if let Some(datatype) = self.lookup_datatype(&component) {
+            let cell = DataCell::from_arrow_empty(component, datatype.clone());
 
             let mut row = match DataRow::try_from_cells1(
                 RowId::random(),

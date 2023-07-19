@@ -1,4 +1,5 @@
 use ahash::HashSetExt;
+use nohash_hasher::IntSet;
 use re_types::ComponentName;
 use smallvec::SmallVec;
 
@@ -263,13 +264,11 @@ impl DataRow {
         let entity_path = entity_path.into();
         let timepoint = timepoint.into();
 
-        // TODO(jleibs): Can we make IntSet work w/ the new ComponentName
-        //let mut components = IntSet::with_capacity(cells.len());
-        let mut components = ahash::HashSet::with_capacity(cells.len());
+        let mut components = IntSet::with_capacity(cells.len());
         for cell in cells.iter() {
             let component = cell.component_name();
 
-            if !components.insert(component.clone()) {
+            if !components.insert(component) {
                 return Err(DataRowError::DupedComponent {
                     entity_path,
                     component,

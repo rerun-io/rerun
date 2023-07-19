@@ -46,7 +46,7 @@ impl crate::Loggable for Color {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.colorrgba")
+        "rerun.colorrgba".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

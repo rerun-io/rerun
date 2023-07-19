@@ -34,7 +34,7 @@ impl crate::Loggable for Mat4x4 {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Mat4x4")
+        "rerun.datatypes.Mat4x4".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

@@ -52,11 +52,11 @@ pub fn get_component_with_instances(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,
-    component: &ComponentName,
+    component: ComponentName,
 ) -> Option<(RowId, ComponentWithInstances)> {
     debug_assert_eq!(store.cluster_key(), InstanceKey::name());
 
-    let components = [InstanceKey::name(), component.clone()];
+    let components = [InstanceKey::name(), component];
 
     let (row_id, mut cells) = store.latest_at(query, ent_path, component, &components)?;
 
@@ -129,7 +129,7 @@ pub fn query_entity_with_primary<Primary: Component + re_types::Component>(
 ) -> crate::Result<EntityView<Primary>> {
     re_tracing::profile_function!();
 
-    let (row_id, primary) = get_component_with_instances(store, query, ent_path, &Primary::name())
+    let (row_id, primary) = get_component_with_instances(store, query, ent_path, Primary::name())
         .ok_or(QueryError::PrimaryNotFound)?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
@@ -143,8 +143,8 @@ pub fn query_entity_with_primary<Primary: Component + re_types::Component>(
         // always queried above when creating the primary.
         .filter(|component| *component != &Primary::name() && *component != &InstanceKey::name())
         .filter_map(|component| {
-            get_component_with_instances(store, query, ent_path, component)
-                .map(|(_, component_result)| ((*component).clone(), component_result))
+            get_component_with_instances(store, query, ent_path, *component)
+                .map(|(_, component_result)| (*component, component_result))
         })
         .collect();
 
@@ -207,7 +207,7 @@ pub fn query_archetype<A: Archetype>(
     let required_components: Vec<_> = A::required_components()
         .iter()
         .map(|component| {
-            get_component_with_instances(store, query, ent_path, component)
+            get_component_with_instances(store, query, ent_path, *component)
                 .map(|(_, component_result)| component_result.into())
         })
         .collect();
@@ -230,7 +230,7 @@ pub fn query_archetype<A: Archetype>(
         .iter()
         .chain(optional_components.iter())
         .filter_map(|component| {
-            get_component_with_instances(store, query, ent_path, component)
+            get_component_with_instances(store, query, ent_path, *component)
                 .map(|(_, component_result)| component_result.into())
         });
 
@@ -288,7 +288,7 @@ fn simple_get_component() {
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
     let (_, component) =
-        get_component_with_instances(&store, &query, &ent_path.into(), &Point2D::name()).unwrap();
+        get_component_with_instances(&store, &query, &ent_path.into(), Point2D::name()).unwrap();
 
     #[cfg(feature = "polars")]
     {

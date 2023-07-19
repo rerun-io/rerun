@@ -150,7 +150,7 @@ fn entity_ui(
         components.sort(); // Make the order predicatable
         for component in components {
             ui.collapsing(component.to_string(), |ui| {
-                component_ui(ui, store_db, timeline, entity_path, &component);
+                component_ui(ui, store_db, timeline, entity_path, component);
             });
         }
     }
@@ -161,7 +161,7 @@ fn component_ui(
     store_db: &re_data_store::StoreDb,
     timeline: re_log_types::Timeline,
     entity_path: &re_log_types::EntityPath,
-    component_name: &re_types::ComponentName,
+    component_name: re_types::ComponentName,
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:

@@ -38,7 +38,7 @@ impl crate::Loggable for KeypointId {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.keypoint_id")
+        "rerun.keypoint_id".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

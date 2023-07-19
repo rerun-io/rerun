@@ -34,7 +34,7 @@ impl crate::Loggable for Quaternion {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Quaternion")
+        "rerun.datatypes.Quaternion".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

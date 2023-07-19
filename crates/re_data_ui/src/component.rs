@@ -33,9 +33,7 @@ impl DataUi for EntityComponentWithInstances {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        // TODO(jleibs): fix full_name
-        //re_tracing::profile_function!(self.component_name().full_name());
-        re_tracing::profile_function!(self.component_name());
+        re_tracing::profile_function!(self.component_name().full_name());
 
         let instance_keys: Vec<_> = self.component_data.iter_instance_keys().collect();
 
@@ -81,9 +79,7 @@ impl DataUi for EntityComponentWithInstances {
                         ui.label("Instance Key");
                     });
                     header.col(|ui| {
-                        // TODO(jleibs): fix short_name
-                        //ui.label(self.component_name().short_name());
-                        ui.label(self.component_name());
+                        ui.label(self.component_name().short_name());
                     });
                 })
                 .body(|mut body| {

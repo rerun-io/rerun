@@ -6,13 +6,11 @@
 //!
 //! The [`Index`]es are for tables, arrays etc.
 
-mod component_name;
 mod component_path;
 mod entity_path;
 mod entity_path_impl;
 mod parse_path;
 
-pub use component_name::ComponentName;
 pub use component_path::ComponentPath;
 pub use entity_path::{EntityPath, EntityPathHash};
 pub use entity_path_impl::EntityPathImpl;

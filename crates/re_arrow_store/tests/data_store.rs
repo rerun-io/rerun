@@ -87,9 +87,9 @@ fn all_components() {
         let cluster_key = store.cluster_key();
 
         let components_a = &[
-            ColorRGBA::name(),   // added by test, timeless
-            Rect2D::name(),      // added by test
-            cluster_key.clone(), // always here
+            ColorRGBA::name(), // added by test, timeless
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let components_b = &[
@@ -142,9 +142,9 @@ fn all_components() {
         // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(),   // added by test, timeless
-            Rect2D::name(),      // added by test
-            cluster_key.clone(), // always here
+            ColorRGBA::name(), // added by test, timeless
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let components_b = &[
@@ -203,16 +203,16 @@ fn all_components() {
         // └──────────┴────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(),   // added by test, timeless
-            Rect2D::name(),      // added by test
-            cluster_key.clone(), // always here
+            ColorRGBA::name(), // added by test, timeless
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let components_b = &[
-            ColorRGBA::name(),   // added by test, timeless
-            Point2D::name(),     // added by test but not contained in the second bucket
-            Rect2D::name(),      // added by test
-            cluster_key.clone(), // always here
+            ColorRGBA::name(), // added by test, timeless
+            Point2D::name(),   // added by test but not contained in the second bucket
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -466,17 +466,13 @@ fn range_impl(store: &mut DataStore) {
 
             store.sort_indices_if_needed(); // for assertions below
 
-            let components = [
-                InstanceKey::name(),
-                components[0].clone(),
-                components[1].clone(),
-            ];
+            let components = [InstanceKey::name(), components[0], components[1]];
             let query = RangeQuery::new(timeline_frame_nr, time_range);
             let dfs = polars_util::range_components(
                 &store,
                 &query,
                 &ent_path,
-                &(components[1].clone()),
+                components[1],
                 components,
                 &JoinType::Outer,
             );

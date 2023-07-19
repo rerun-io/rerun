@@ -226,9 +226,6 @@ pub type DatatypeName = ::std::borrow::Cow<'static, str>;
 /// A [`Datatype`] describes plain old data that can be used by any number of [`Component`].
 pub trait Datatype: Loggable {}
 
-/// The fully-qualified name of a [`Component`], e.g. `rerun.components.Point2D`.
-pub type ComponentName = ::std::borrow::Cow<'static, str>;
-
 pub trait Component: Loggable<Name = ComponentName> {}
 
 // ---
@@ -244,18 +241,18 @@ pub trait Archetype {
 
     /// The fully-qualified component names of every component that _must_ be provided by the user
     /// when constructing this archetype.
-    fn required_components() -> Vec<ComponentName>;
+    fn required_components() -> &'static [ComponentName];
 
     /// The fully-qualified component names of every component that _should_ be provided by the user
     /// when constructing this archetype.
-    fn recommended_components() -> Vec<ComponentName>;
+    fn recommended_components() -> &'static [ComponentName];
 
     /// The fully-qualified component names of every component that _could_ be provided by the user
     /// when constructing this archetype.
-    fn optional_components() -> Vec<ComponentName>;
+    fn optional_components() -> &'static [ComponentName];
 
     /// All components including required, recommended, and optional.
-    fn all_components() -> Vec<ComponentName>;
+    fn all_components() -> &'static [ComponentName];
 
     // ---
 
@@ -448,5 +445,10 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
 pub const DISPLAY_PRECISION: usize = 3;
 
 pub mod archetypes;
+mod component_name;
 pub mod components;
 pub mod datatypes;
+mod size_bytes;
+
+pub use component_name::ComponentName;
+pub use size_bytes::SizeBytes;

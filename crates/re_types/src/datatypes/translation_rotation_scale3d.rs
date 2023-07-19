@@ -49,7 +49,7 @@ impl crate::Loggable for TranslationRotationScale3D {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.TranslationRotationScale3D")
+        "rerun.datatypes.TranslationRotationScale3D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

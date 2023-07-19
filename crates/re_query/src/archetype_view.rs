@@ -59,7 +59,7 @@ impl ArchComponentWithInstances {
     ) -> crate::Result<impl Iterator<Item = Option<C>> + 'a> {
         if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
-                actual: self.name().clone(),
+                actual: self.name(),
                 requested: C::name(),
             });
         }
@@ -71,7 +71,7 @@ impl ArchComponentWithInstances {
     pub fn lookup<C: Component>(&self, instance_key: &InstanceKey) -> crate::Result<C> {
         if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
-                actual: self.name().clone(),
+                actual: self.name(),
                 requested: C::name(),
             });
         }
@@ -266,7 +266,7 @@ impl<A: Archetype> ArchetypeView<A> {
 impl<A: Archetype> ArchetypeView<A> {
     fn required_comp(&self) -> &ArchComponentWithInstances {
         // TODO(jleibs): Do all archetypes always have at least 1 required components?
-        let first_required = A::required_components()[0].clone();
+        let first_required = A::required_components()[0];
         &self.components[&first_required]
     }
 
@@ -347,7 +347,7 @@ impl<A: Archetype> ArchetypeView<A> {
             row_id: RowId::ZERO,
             components: components
                 .into_iter()
-                .map(|comp| (comp.name().clone(), comp))
+                .map(|comp| (comp.name(), comp))
                 .collect(),
             phantom: PhantomData,
         }
@@ -411,14 +411,11 @@ fn lookup_value() {
         QueryError::ComponentNotFound
     ));
 
-    // TODO(jleibs): Add another type
-    /*
-    let missing_value = component.lookup::<Rect2D>(&InstanceKey(99));
+    let missing_value = component.lookup::<re_components::Rect2D>(&InstanceKey(99));
     assert!(matches!(
         missing_value.err().unwrap(),
         QueryError::TypeMismatch { .. }
     ));
-    */
 }
 
 #[test]

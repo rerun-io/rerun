@@ -5,7 +5,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 
-use crate::ComponentName;
+use re_types::ComponentName;
 
 // ---
 

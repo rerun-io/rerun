@@ -112,7 +112,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &ent_path,
-            &InstanceKey::name(),
+            InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -123,7 +123,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &ent_path,
-            &InstanceKey::name(),
+            InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -134,7 +134,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
-            &InstanceKey::name(),
+            InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -147,7 +147,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
-                &InstanceKey::name(),
+                InstanceKey::name(),
                 components,
             )
             .unwrap();
@@ -160,7 +160,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
-                &InstanceKey::name(),
+                InstanceKey::name(),
                 &[],
             )
             .unwrap();
@@ -172,7 +172,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
-            &InstanceKey::name(),
+            InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -183,7 +183,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_kind, frame40),
             &EntityPath::from("does/not/exist"),
-            &InstanceKey::name(),
+            InstanceKey::name(),
             &[InstanceKey::name()],
         );
         assert!(cells.is_none());
@@ -239,7 +239,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         store,
         &query,
         &ent_path,
-        &Point2D::name(),
+        Point2D::name(),
         components,
         &JoinType::Outer,
     )
