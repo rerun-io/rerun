@@ -1,0 +1,26 @@
+name: "Setup Rust Cache"
+inputs:
+  save:
+    type: boolean
+    required: true
+    default: true
+runs:
+  - name: Set up GCP credentials
+    uses: google-github-actions/auth@v1
+    with:
+      workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+      service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+  # Rust-cache will cache our dependencies, which is a large chunk of the build
+  # See: https://github.com/Swatinem/rust-cache
+  - name: Set up rust-cache
+    uses: Swatinem/rust-cache@v2
+    with:
+      save-if: ${{ inputs.save }}
+
+  - name: Set up sccache
+    uses: rerun-io/sccache-action@v0.1.0
+    with:
+      gcs_bucket: rerun-sccache
+      gcs_read_only: ${{ !inputs.save }}
+
