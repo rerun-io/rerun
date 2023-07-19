@@ -27,7 +27,6 @@ use rerun::{
         re_log_types::external::{arrow2, arrow2_convert},
         re_types,
     },
-    transform::{Angle, RotationAxisAngle, TranslationRotationScale3D},
     Component, EntityPath, MsgSender, RecordingStream,
 };
 
