@@ -62,7 +62,7 @@ pub struct Pinhole {
 
 impl re_log_types::Component for Pinhole {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.pinhole".into()
     }
 }
@@ -133,6 +133,8 @@ impl Pinhole {
         .extend(pixel.z)
     }
 }
+
+re_log_types::component_legacy_shim!(Pinhole);
 
 #[test]
 fn test_pinhole_roundtrip() {

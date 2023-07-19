@@ -483,7 +483,8 @@ impl TimePanel {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
-                let component_path = ComponentPath::new(tree.path.clone(), *component_name);
+                let component_path =
+                    ComponentPath::new(tree.path.clone(), (*component_name).clone());
 
                 let response = ui
                     .horizontal(|ui| {

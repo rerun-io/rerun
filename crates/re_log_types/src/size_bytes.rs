@@ -37,6 +37,14 @@ impl SizeBytes for String {
     }
 }
 
+impl SizeBytes for re_types::ComponentName {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // TODO(jleibs): Double-check this
+        0
+    }
+}
+
 impl<K: SizeBytes, V: SizeBytes> SizeBytes for BTreeMap<K, V> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {

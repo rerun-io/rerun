@@ -21,10 +21,8 @@ use re_components::{
     },
     ColorRGBA, InstanceKey, Point2D, Rect2D,
 };
-use re_log_types::{
-    Component as _, ComponentName, DataCell, DataRow, DataTable, EntityPath, TableId, TimeType,
-    Timeline,
-};
+use re_log_types::{DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
+use re_types::{ComponentName, Loggable as _};
 
 // --- LatestComponentsAt ---
 
@@ -89,9 +87,9 @@ fn all_components() {
         let cluster_key = store.cluster_key();
 
         let components_a = &[
-            ColorRGBA::name(), // added by test, timeless
-            Rect2D::name(),    // added by test
-            cluster_key,       // always here
+            ColorRGBA::name(),   // added by test, timeless
+            Rect2D::name(),      // added by test
+            cluster_key.clone(), // always here
         ];
 
         let components_b = &[
@@ -144,9 +142,9 @@ fn all_components() {
         // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(), // added by test, timeless
-            Rect2D::name(),    // added by test
-            cluster_key,       // always here
+            ColorRGBA::name(),   // added by test, timeless
+            Rect2D::name(),      // added by test
+            cluster_key.clone(), // always here
         ];
 
         let components_b = &[
@@ -205,16 +203,16 @@ fn all_components() {
         // └──────────┴────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(), // added by test, timeless
-            Rect2D::name(),    // added by test
-            cluster_key,       // always here
+            ColorRGBA::name(),   // added by test, timeless
+            Rect2D::name(),      // added by test
+            cluster_key.clone(), // always here
         ];
 
         let components_b = &[
-            ColorRGBA::name(), // added by test, timeless
-            Point2D::name(),   // added by test but not contained in the second bucket
-            Rect2D::name(),    // added by test
-            cluster_key,       // always here
+            ColorRGBA::name(),   // added by test, timeless
+            Point2D::name(),     // added by test but not contained in the second bucket
+            Rect2D::name(),      // added by test
+            cluster_key.clone(), // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -325,7 +323,7 @@ fn latest_at_impl(store: &mut DataStore) {
         )
         .unwrap();
 
-        let df_expected = joint_df(store.cluster_key(), rows);
+        let df_expected = joint_df(&store.cluster_key(), rows);
 
         store.sort_indices_if_needed();
         assert_eq!(df_expected, df, "{store}");
@@ -458,9 +456,9 @@ fn range_impl(store: &mut DataStore) {
             for (time, rows) in rows_at_times {
                 if let Some(time) = time {
                     let dfs = expected_at_times.entry(*time).or_default();
-                    dfs.push(joint_df(store.cluster_key(), rows));
+                    dfs.push(joint_df(&store.cluster_key(), rows));
                 } else {
-                    expected_timeless.push(joint_df(store.cluster_key(), rows));
+                    expected_timeless.push(joint_df(&store.cluster_key(), rows));
                 }
             }
 
@@ -468,13 +466,17 @@ fn range_impl(store: &mut DataStore) {
 
             store.sort_indices_if_needed(); // for assertions below
 
-            let components = [InstanceKey::name(), components[0], components[1]];
+            let components = [
+                InstanceKey::name(),
+                components[0].clone(),
+                components[1].clone(),
+            ];
             let query = RangeQuery::new(timeline_frame_nr, time_range);
             let dfs = polars_util::range_components(
                 &store,
                 &query,
                 &ent_path,
-                components[1],
+                &(components[1].clone()),
                 components,
                 &JoinType::Outer,
             );
@@ -799,17 +801,17 @@ fn range_impl(store: &mut DataStore) {
 // --- Common helpers ---
 
 /// Given a list of rows, crafts a `latest_components`-looking dataframe.
-fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> DataFrame {
+fn joint_df(cluster_key: &ComponentName, rows: &[(ComponentName, &DataRow)]) -> DataFrame {
     let df = rows
         .iter()
         .map(|(component, row)| {
-            let cluster_comp = if let Some(idx) = row.find_cell(&cluster_key) {
-                Series::try_from((cluster_key.as_str(), row.cells[idx].to_arrow_monolist()))
+            let cluster_comp = if let Some(idx) = row.find_cell(cluster_key) {
+                Series::try_from((cluster_key.as_ref(), row.cells[idx].to_arrow_monolist()))
                     .unwrap()
             } else {
                 let num_instances = row.num_instances();
                 Series::try_from((
-                    cluster_key.as_str(),
+                    cluster_key.as_ref(),
                     DataCell::from_component::<InstanceKey>(0..num_instances as u64)
                         .to_arrow_monolist(),
                 ))
@@ -819,7 +821,7 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
             let comp_idx = row.find_cell(component).unwrap();
             let df = DataFrame::new(vec![
                 cluster_comp,
-                Series::try_from((component.as_str(), row.cells[comp_idx].to_arrow_monolist()))
+                Series::try_from((component.as_ref(), row.cells[comp_idx].to_arrow_monolist()))
                     .unwrap(),
             ])
             .unwrap();
@@ -827,14 +829,14 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
             df.explode(df.get_column_names()).unwrap()
         })
         .reduce(|left, right| {
-            left.outer_join(&right, [cluster_key.as_str()], [cluster_key.as_str()])
+            left.outer_join(&right, [cluster_key.as_ref()], [cluster_key.as_ref()])
                 .unwrap()
         })
         .unwrap_or_default();
 
-    let df = polars_util::drop_all_nulls(&df, &cluster_key).unwrap();
+    let df = polars_util::drop_all_nulls(&df, cluster_key).unwrap();
 
-    df.sort([cluster_key.as_str()], false).unwrap_or(df)
+    df.sort([cluster_key.as_ref()], false).unwrap_or(df)
 }
 
 // --- GC ---

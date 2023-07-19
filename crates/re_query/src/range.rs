@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
-use re_log_types::{Component, ComponentName, EntityPath};
-use re_types::Archetype;
+use re_log_types::{Component, EntityPath};
+use re_types::{Archetype, ComponentName};
 
 use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances, EntityView};
 
@@ -22,7 +22,11 @@ use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances,
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
-pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
+pub fn range_entity_with_primary<
+    'a,
+    Primary: Component + re_types::Component + 'a,
+    const N: usize,
+>(
     store: &'a DataStore,
     query: &RangeQuery,
     ent_path: &'a EntityPath,
@@ -77,7 +81,7 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
                 store,
                 &LatestAtQuery::new(query.timeline, latest_time),
                 ent_path,
-                *primary,
+                primary,
             );
         }
 
@@ -92,7 +96,7 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
         .map(move |cwis| (latest_time, true, cwis))
         .chain(
             store
-                .range(query, ent_path, components)
+                .range(query, ent_path, &components)
                 .map(move |(time, row_id, mut cells)| {
                     // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
                     // by the store.
@@ -135,7 +139,9 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
                     components: components
                         .iter()
                         .zip(state.iter().cloned() /* shallow */)
-                        .filter_map(|(component, cwi)| cwi.map(|(_, cwi)| (*component, cwi)))
+                        .filter_map(|(component, cwi)| {
+                            cwi.map(|(_, cwi)| ((*component).clone(), cwi))
+                        })
                         .collect(),
                     phantom: std::marker::PhantomData,
                 };
@@ -167,14 +173,9 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     re_tracing::profile_function!();
 
     // TODO(jleibs) this shim is super gross
-    let components: [ComponentName; N] = A::all_components()
-        .iter()
-        .map(|c| c.as_ref().into())
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
+    let components: [ComponentName; N] = A::all_components().try_into().unwrap();
 
-    let primary: ComponentName = A::recommended_components()[0].as_ref().into();
+    let primary: ComponentName = A::recommended_components()[0].clone();
     let cluster_key = store.cluster_key();
 
     // TODO(cmc): Ideally, we'd want to simply add the cluster and primary key to the `components`
@@ -221,7 +222,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
                 store,
                 &LatestAtQuery::new(query.timeline, latest_time),
                 ent_path,
-                *primary,
+                primary,
             );
         }
 
@@ -236,7 +237,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
         .map(move |cwis| (latest_time, true, cwis))
         .chain(
             store
-                .range(query, ent_path, components)
+                .range(query, ent_path, &components)
                 .map(move |(time, row_id, mut cells)| {
                     // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
                     // by the store.

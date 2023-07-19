@@ -23,10 +23,12 @@ use rerun::{
     },
     coordinates::SignedAxis3,
     external::{
-        re_log,
+        re_log, re_log_types,
         re_log_types::external::{arrow2, arrow2_convert},
+        re_types,
     },
-    Component, ComponentName, EntityPath, MsgSender, RecordingStream,
+    transform::{Angle, RotationAxisAngle, TranslationRotationScale3D},
+    Component, EntityPath, MsgSender, RecordingStream,
 };
 
 // --- Rerun logging ---
@@ -82,15 +84,22 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     // TODO(cmc): not that great to have to dig around for arrow2-* reexports :/
     // TODO(cmc): not that great either to have all that boilerplate just to declare the component
     // name.
-    #[derive(arrow2_convert::ArrowField, arrow2_convert::ArrowSerialize)]
+    #[derive(
+        arrow2_convert::ArrowField,
+        arrow2_convert::ArrowDeserialize,
+        arrow2_convert::ArrowSerialize,
+        Clone,
+    )]
     #[arrow_field(transparent)]
     struct Confidence(f32);
 
     impl Component for Confidence {
-        fn name() -> ComponentName {
+        fn legacy_name() -> re_log_types::ComponentName {
             "ext.confidence".into()
         }
     }
+
+    re_log_types::component_legacy_shim!(Confidence);
 
     // Single point with our custom component!
     rec_stream.set_time_seconds("sim_time", 0f64);
@@ -103,25 +112,39 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     // Batch points with extension
 
     // Separate extension components
-    #[derive(arrow2_convert::ArrowField, arrow2_convert::ArrowSerialize)]
+    #[derive(
+        arrow2_convert::ArrowField,
+        arrow2_convert::ArrowDeserialize,
+        arrow2_convert::ArrowSerialize,
+        Clone,
+    )]
     #[arrow_field(transparent)]
     struct Corner(String);
 
     impl Component for Corner {
-        fn name() -> ComponentName {
+        fn legacy_name() -> re_log_types::ComponentName {
             "ext.corner".into()
         }
     }
 
-    #[derive(arrow2_convert::ArrowField, arrow2_convert::ArrowSerialize)]
+    re_log_types::component_legacy_shim!(Corner);
+
+    #[derive(
+        arrow2_convert::ArrowField,
+        arrow2_convert::ArrowDeserialize,
+        arrow2_convert::ArrowSerialize,
+        Clone,
+    )]
     #[arrow_field(transparent)]
     struct Training(bool);
 
     impl Component for Training {
-        fn name() -> ComponentName {
+        fn legacy_name() -> re_log_types::ComponentName {
             "ext.training".into()
         }
     }
+
+    re_log_types::component_legacy_shim!(Training);
 
     rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("extension_components/points")

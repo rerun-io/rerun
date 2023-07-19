@@ -1,7 +1,8 @@
 use egui::Color32;
-use re_components::{Component as _, Transform3D};
+use re_components::Transform3D;
 use re_log_types::EntityPath;
 use re_renderer::LineStripSeriesBuilder;
+use re_types::Loggable as _;
 use re_viewer_context::{
     ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,

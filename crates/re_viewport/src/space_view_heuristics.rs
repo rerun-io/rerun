@@ -5,8 +5,8 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
 use re_components::{DisconnectedSpace, Pinhole, Tensor};
-use re_data_store::{ComponentName, EntityPath};
-use re_log_types::Component as _;
+use re_data_store::EntityPath;
+use re_types::{ComponentName, Loggable as _};
 use re_viewer_context::{SpaceViewClassName, ViewerContext};
 
 use crate::{

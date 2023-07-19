@@ -17,7 +17,7 @@ impl DataUi for ComponentPath {
             store,
             query,
             self.entity_path(),
-            self.component_name,
+            &self.component_name,
         ) {
             super::component::EntityComponentWithInstances {
                 entity_path: self.entity_path.clone(),

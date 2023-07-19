@@ -39,7 +39,7 @@ impl From<Vec<[f32; 2]>> for LineStrip2D {
 
 impl re_log_types::Component for LineStrip2D {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.linestrip2d".into()
     }
 }
@@ -96,6 +96,8 @@ impl ArrowDeserialize for LineStrip2D {
     }
 }
 
+re_log_types::component_legacy_shim!(LineStrip2D);
+
 /// A Line Strip of 3D points
 ///
 /// ```
@@ -125,7 +127,7 @@ impl From<Vec<[f32; 3]>> for LineStrip3D {
 
 impl re_log_types::Component for LineStrip3D {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.linestrip3d".into()
     }
 }
@@ -181,6 +183,8 @@ impl ArrowDeserialize for LineStrip3D {
         <Vec<Vec3D> as ArrowDeserialize>::arrow_deserialize(v).map(Self)
     }
 }
+
+re_log_types::component_legacy_shim!(LineStrip3D);
 
 #[test]
 fn test_line2d_roundtrip() {

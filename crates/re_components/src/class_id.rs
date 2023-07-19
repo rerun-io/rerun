@@ -23,7 +23,7 @@ pub struct ClassId(pub u16);
 
 impl re_log_types::Component for ClassId {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.class_id".into()
     }
 }
@@ -33,3 +33,5 @@ impl From<re_types::components::ClassId> for ClassId {
         Self(other.0)
     }
 }
+
+re_log_types::component_legacy_shim!(ClassId);

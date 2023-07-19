@@ -121,10 +121,12 @@ impl DataUi for [DataCell] {
 
 fn format_cell(cell: &DataCell) -> String {
     // TODO(emilk): if there's only once instance, and the byte size is small, then deserialize and show the value.
+    // TODO(jleibs): short_name
     format!(
         "{}x {}",
         cell.num_instances(),
-        cell.component_name().short_name()
+        //cell.component_name().short_name()
+        cell.component_name()
     )
 }
 

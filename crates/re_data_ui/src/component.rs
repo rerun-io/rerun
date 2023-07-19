@@ -1,5 +1,6 @@
-use re_data_store::{ComponentName, EntityPath, InstancePath};
+use re_data_store::{EntityPath, InstancePath};
 use re_query::ComponentWithInstances;
+use re_types::ComponentName;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -32,7 +33,9 @@ impl DataUi for EntityComponentWithInstances {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        re_tracing::profile_function!(self.component_name().full_name());
+        // TODO(jleibs): fix full_name
+        //re_tracing::profile_function!(self.component_name().full_name());
+        re_tracing::profile_function!(self.component_name());
 
         let instance_keys: Vec<_> = self.component_data.iter_instance_keys().collect();
 
@@ -78,7 +81,9 @@ impl DataUi for EntityComponentWithInstances {
                         ui.label("Instance Key");
                     });
                     header.col(|ui| {
-                        ui.label(self.component_name().short_name());
+                        // TODO(jleibs): fix short_name
+                        //ui.label(self.component_name().short_name());
+                        ui.label(self.component_name());
                     });
                 })
                 .body(|mut body| {

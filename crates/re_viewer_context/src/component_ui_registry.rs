@@ -2,8 +2,9 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
-use re_log_types::{Component, ComponentName, InstanceKey};
+use re_log_types::InstanceKey;
 use re_query::ComponentWithInstances;
+use re_types::{ComponentName, Loggable as _};
 
 use crate::ViewerContext;
 
@@ -66,7 +67,9 @@ impl ComponentUiRegistry {
         component: &ComponentWithInstances,
         instance_key: &InstanceKey,
     ) {
-        re_tracing::profile_function!(component.name().full_name());
+        // TODO(jleibs) fix full_name
+        //re_tracing::profile_function!(component.name().full_name());
+        re_tracing::profile_function!(component.name());
 
         if component.name() == InstanceKey::name() {
             // The user wants to show a ui for the `InstanceKey` component - well, that's easy:

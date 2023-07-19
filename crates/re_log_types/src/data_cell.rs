@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use arrow2::datatypes::DataType;
-use itertools::Itertools as _;
+use re_types::{Component, ComponentName};
 
-use crate::{Component, ComponentName, DeserializableComponent, SerializableComponent, SizeBytes};
+use crate::SizeBytes;
 
 // ---
 
@@ -14,6 +14,12 @@ pub enum DataCellError {
 
     #[error("Could not serialize/deserialize data to/from Arrow: {0}")]
     Arrow(#[from] arrow2::error::Error),
+
+    #[error("Could not deserialize data from Arrow: {0}")]
+    LoggableDeserialize(#[from] re_types::DeserializationError),
+
+    #[error("Could not serialize data from Arrow: {0}")]
+    LoggableSerialize(#[from] re_types::SerializationError),
 
     // Needed to handle TryFrom<T> -> T
     #[error("Infallible")]
@@ -148,14 +154,14 @@ impl DataCell {
     /// Fails if the given iterable cannot be serialized to arrow, which should never happen when
     /// using Rerun's builtin components.
     #[inline]
-    pub fn try_from_native<'a, C: SerializableComponent>(
-        values: impl IntoIterator<Item = &'a C>,
-    ) -> DataCellResult<Self> {
-        use arrow2_convert::serialize::TryIntoArrow;
-        Ok(Self::from_arrow(
-            C::name(),
-            TryIntoArrow::try_into_arrow(values.into_iter())?,
-        ))
+    pub fn try_from_native<'a, C>(
+        values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
+    ) -> DataCellResult<Self>
+    where
+        C: Component + Clone + 'a,
+    {
+        // TODO(jleibs) where does extension_wrapper come from?
+        Ok(Self::from_arrow(C::name(), C::try_to_arrow(values, None)?))
     }
 
     /// Builds a new `DataCell` from a uniform iterable of native component values.
@@ -163,13 +169,15 @@ impl DataCell {
     /// Fails if the given iterable cannot be serialized to arrow, which should never happen when
     /// using Rerun's builtin components.
     #[inline]
-    pub fn try_from_native_sparse<'a, C: SerializableComponent>(
-        values: impl IntoIterator<Item = &'a Option<C>>,
-    ) -> DataCellResult<Self> {
-        use arrow2_convert::serialize::TryIntoArrow;
+    pub fn try_from_native_sparse<'a, C>(
+        values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, C>>>>,
+    ) -> DataCellResult<Self>
+    where
+        C: Component + Clone + 'a,
+    {
         Ok(Self::from_arrow(
             C::name(),
-            TryIntoArrow::try_into_arrow(values.into_iter())?,
+            C::try_to_arrow_opt(values, None)?,
         ))
     }
 
@@ -179,9 +187,12 @@ impl DataCell {
     /// using Rerun's builtin components.
     /// See [`Self::try_from_native`] for the fallible alternative.
     #[inline]
-    pub fn from_native<'a, C: SerializableComponent>(
-        values: impl IntoIterator<Item = &'a C>,
-    ) -> Self {
+    pub fn from_native<'a, C>(
+        values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
+    ) -> Self
+    where
+        C: Component + Clone + 'a,
+    {
         Self::try_from_native(values).unwrap()
     }
 
@@ -191,26 +202,25 @@ impl DataCell {
     /// using Rerun's builtin components.
     /// See [`Self::try_from_native`] for the fallible alternative.
     #[inline]
-    pub fn from_native_sparse<'a, C: SerializableComponent>(
-        values: impl IntoIterator<Item = &'a Option<C>>,
-    ) -> Self {
+    pub fn from_native_sparse<'a, C>(
+        values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, C>>>>,
+    ) -> Self
+    where
+        C: Component + Clone + 'a,
+    {
         Self::try_from_native_sparse(values).unwrap()
     }
 
     /// Builds a cell from an iterable of items that can be turned into a [`Component`].
-    ///
-    /// ⚠ Due to quirks in `arrow2-convert`, this requires consuming and collecting the passed-in
-    /// iterator into a vector first.
-    /// Prefer [`Self::from_native`] when performance matters.
-    pub fn from_component_sparse<C>(values: impl IntoIterator<Item = Option<impl Into<C>>>) -> Self
+    pub fn from_component<'a, C>(values: impl IntoIterator<Item = impl Into<C>>) -> Self
     where
-        C: SerializableComponent,
+        C: Component + Clone + 'a,
+        C: Into<::std::borrow::Cow<'a, C>>,
     {
-        let values = values
-            .into_iter()
-            .map(|value| value.map(Into::into))
-            .collect_vec();
-        Self::from_native_sparse(values.iter())
+        //let values: Vec<C> = values.into_iter().map(Into::into).collect();
+        //Self::from_native(values)
+        //let values: Vec<C> = values.into_iter().map(Into::into).collect();
+        Self::from_native(values.into_iter().map(Into::into))
     }
 
     /// Builds a cell from an iterable of items that can be turned into a [`Component`].
@@ -218,12 +228,18 @@ impl DataCell {
     /// ⚠ Due to quirks in `arrow2-convert`, this requires consuming and collecting the passed-in
     /// iterator into a vector first.
     /// Prefer [`Self::from_native`] when performance matters.
-    pub fn from_component<C>(values: impl IntoIterator<Item = impl Into<C>>) -> Self
+    pub fn from_component_sparse<'a, C>(
+        values: impl IntoIterator<Item = Option<impl Into<C>>>,
+    ) -> Self
     where
-        C: SerializableComponent,
+        C: Component + Clone + 'a,
+        C: Into<::std::borrow::Cow<'a, C>>,
     {
-        let values = values.into_iter().map(Into::into).collect_vec();
-        Self::from_native(values.iter())
+        //let values: Vec<_> = values
+        // .into_iter()
+        // .map(|value| value.map(Into::into))
+        // .collect();
+        Self::from_native_sparse(values.into_iter().map(|value| value.map(Into::into)))
     }
 
     /// Builds a new `DataCell` from an arrow array.
@@ -261,7 +277,7 @@ impl DataCell {
     // `(component, type)` tuple kinda thing.
     #[inline]
     pub fn from_native_empty<C: Component>() -> Self {
-        Self::from_arrow_empty(C::name(), C::data_type())
+        Self::from_arrow_empty(C::name(), C::to_arrow_datatype())
     }
 
     /// Builds an empty `DataCell` from an arrow datatype.
@@ -349,60 +365,38 @@ impl DataCell {
     /// Returns the contents of the cell as an iterator of native components.
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
-    //
-    // TODO(#1694): There shouldn't need to be HRTBs (Higher-Rank Trait Bounds) here.
     #[inline]
-    pub fn try_to_native<C: DeserializableComponent>(
-        &self,
-    ) -> DataCellResult<impl Iterator<Item = C> + '_>
-    where
-        for<'a> &'a C::ArrayType: IntoIterator,
-    {
-        use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
-        arrow_array_deserialize_iterator(&*self.inner.values).map_err(Into::into)
+    pub fn try_to_native<'a, C: Component + 'a>(
+        &'a self,
+    ) -> DataCellResult<impl Iterator<Item = C> + '_> {
+        Ok(C::try_from_arrow(self.inner.values.as_ref())?.into_iter())
     }
 
     /// Returns the contents of the cell as an iterator of native components.
     ///
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native`] for a fallible alternative.
-    //
-    // TODO(#1694): There shouldn't need to be HRTBs here.
     #[inline]
-    pub fn to_native<C: DeserializableComponent>(&self) -> impl Iterator<Item = C> + '_
-    where
-        for<'a> &'a C::ArrayType: IntoIterator,
-    {
+    pub fn to_native<'a, C: Component + 'a>(&'a self) -> impl Iterator<Item = C> + '_ {
         self.try_to_native().unwrap()
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
-    //
-    // TODO(#1694): There shouldn't need to be HRTBs (Higher-Rank Trait Bounds) here.
     #[inline]
-    pub fn try_to_native_opt<C: DeserializableComponent>(
-        &self,
-    ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_>
-    where
-        for<'a> &'a C::ArrayType: IntoIterator,
-    {
-        use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
-        arrow_array_deserialize_iterator(&*self.inner.values).map_err(Into::into)
+    pub fn try_to_native_opt<'a, C: Component + 'a>(
+        &'a self,
+    ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_> {
+        Ok(C::try_from_arrow_opt(self.inner.values.as_ref())?.into_iter())
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.
     ///
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native_opt`] for a fallible alternative.
-    //
-    // TODO(#1694): There shouldn't need to be HRTBs here.
     #[inline]
-    pub fn to_native_opt<C: DeserializableComponent>(&self) -> impl Iterator<Item = Option<C>> + '_
-    where
-        for<'a> &'a C::ArrayType: IntoIterator,
-    {
+    pub fn to_native_opt<'a, C: Component + 'a>(&'a self) -> impl Iterator<Item = Option<C>> + '_ {
         self.try_to_native_opt().unwrap()
     }
 }
@@ -411,7 +405,7 @@ impl DataCell {
     /// The name of the component type stored in the cell.
     #[inline]
     pub fn component_name(&self) -> ComponentName {
-        self.inner.name
+        self.inner.name.clone()
     }
 
     /// The type of the component stored in the cell, i.e. the cell is an array of that type.
@@ -480,26 +474,47 @@ impl DataCell {
 
 // ---
 
-// TODO(#1693): this should be `C: Component`, nothing else.
-
-impl<C: SerializableComponent> From<&[C]> for DataCell {
+impl<'a, C> From<&'a [C]> for DataCell
+where
+    C: Component + Clone + 'a,
+    &'a C: Into<::std::borrow::Cow<'a, C>>,
+{
     #[inline]
-    fn from(values: &[C]) -> Self {
+    fn from(values: &'a [C]) -> Self {
         Self::from_native(values.iter())
     }
 }
 
-impl<C: SerializableComponent> From<Vec<C>> for DataCell {
+impl<'a, C> From<[C; 1]> for DataCell
+where
+    C: Component + Clone + 'a,
+    C: Into<::std::borrow::Cow<'a, C>>,
+{
     #[inline]
-    fn from(c: Vec<C>) -> Self {
+    fn from(values: [C; 1]) -> Self {
+        Self::from_native(values.into_iter())
+    }
+}
+
+impl<'a, C> From<&'a Vec<C>> for DataCell
+where
+    C: Component + Clone + 'a,
+    &'a C: Into<::std::borrow::Cow<'a, C>>,
+{
+    #[inline]
+    fn from(c: &'a Vec<C>) -> Self {
         c.as_slice().into()
     }
 }
 
-impl<C: SerializableComponent> From<&Vec<C>> for DataCell {
+impl<'a, C> From<Vec<C>> for DataCell
+where
+    C: Component + Clone + 'a,
+    C: Into<::std::borrow::Cow<'a, C>>,
+{
     #[inline]
-    fn from(c: &Vec<C>) -> Self {
-        c.as_slice().into()
+    fn from(c: Vec<C>) -> Self {
+        Self::from_native(c.into_iter())
     }
 }
 
@@ -593,8 +608,9 @@ impl DataCellInner {
 
 #[test]
 fn data_cell_sizes() {
-    use crate::{Component as _, DataCell, InstanceKey};
+    use crate::{DataCell, InstanceKey};
     use arrow2::array::UInt64Array;
+    use re_types::Loggable as _;
 
     // not computed
     // NOTE: Unsized cells are illegal in debug mode and will flat out crash.
@@ -610,8 +626,9 @@ fn data_cell_sizes() {
             DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         cell.compute_size_bytes();
 
-        assert_eq!(216, cell.heap_size_bytes());
-        assert_eq!(216, cell.heap_size_bytes());
+        // TODO(jleibs): Understand if this makes sense with COW-based ComponentName
+        assert_eq!(224, cell.heap_size_bytes());
+        assert_eq!(224, cell.heap_size_bytes());
     }
 
     // anything else
@@ -623,7 +640,8 @@ fn data_cell_sizes() {
         cell.compute_size_bytes();
 
         // zero-sized + 3x u64s
-        assert_eq!(240, cell.heap_size_bytes());
-        assert_eq!(240, cell.heap_size_bytes());
+        // TODO(jleibs): Understand if this makes sense with COW-based ComponentName
+        assert_eq!(248, cell.heap_size_bytes());
+        assert_eq!(248, cell.heap_size_bytes());
     }
 }

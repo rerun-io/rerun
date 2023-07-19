@@ -1,6 +1,7 @@
 use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
-use re_log_types::{ComponentName, EntityPath};
+use re_log_types::EntityPath;
+use re_types::ComponentName;
 
 use crate::{
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemRegistry, ViewQuery, ViewerContext,

@@ -58,7 +58,7 @@ impl Quaternion {
 
 impl re_log_types::Component for Quaternion {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.quaternion".into()
     }
 }
@@ -129,3 +129,5 @@ impl ArrowDeserialize for Quaternion {
         })
     }
 }
+
+re_log_types::component_legacy_shim!(Quaternion);

@@ -1,7 +1,8 @@
 use re_log_types::{
-    ComponentName, DataCellColumn, SizeBytes as _, TimeRange, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
+    DataCellColumn, SizeBytes as _, TimeRange, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
     COLUMN_TIMEPOINT,
 };
+use re_types::ComponentName;
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
 
@@ -198,7 +199,7 @@ impl IndexedBucket {
                 .chain(
                     columns
                         .iter()
-                        .map(|(component, column)| (*component, column.len())),
+                        .map(|(component, column)| ((*component).clone(), column.len())),
                 )
                 .map(|(component, len)| (component, len as u64));
 
@@ -219,7 +220,7 @@ impl IndexedBucket {
                     columns
                         .get(cluster_key)
                         .ok_or(SanityError::ClusterColumnMissing {
-                            cluster_key: *cluster_key,
+                            cluster_key: (*cluster_key).clone(),
                         })?;
                 if !cluster_column.iter().all(|cell| cell.is_some()) {
                     return Err(SanityError::ClusterColumnSparse {
@@ -279,7 +280,7 @@ impl PersistentIndexedTable {
             .chain(
                 columns
                     .iter()
-                    .map(|(component, column)| (*component, column.len())),
+                    .map(|(component, column)| ((*component).clone(), column.len())),
             )
             .map(|(component, len)| (component, len as u64));
 
@@ -300,7 +301,7 @@ impl PersistentIndexedTable {
                 columns
                     .get(cluster_key)
                     .ok_or(SanityError::ClusterColumnMissing {
-                        cluster_key: *cluster_key,
+                        cluster_key: (*cluster_key).clone(),
                     })?;
             if !cluster_column.iter().all(|cell| cell.is_some()) {
                 return Err(SanityError::ClusterColumnSparse {

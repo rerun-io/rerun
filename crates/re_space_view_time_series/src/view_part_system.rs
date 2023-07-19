@@ -1,6 +1,7 @@
 use re_arrow_store::TimeRange;
-use re_log_types::{Component, ComponentName, InstanceKey};
+use re_log_types::InstanceKey;
 use re_query::{range_entity_with_primary, QueryError};
+use re_types::{ComponentName, Loggable as _};
 use re_viewer_context::{
     AnnotationMap, DefaultColor, SpaceViewSystemExecutionError, ViewPartSystem, ViewQuery,
     ViewerContext,

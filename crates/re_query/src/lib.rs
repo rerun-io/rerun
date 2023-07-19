@@ -40,14 +40,8 @@ pub enum QueryError {
     #[error("Could not find component")]
     ComponentNotFound,
 
-    #[error("Tried to access component of type '{actual:?}' using deserializer for type '{requested:?}'")]
-    TypeMismatch {
-        actual: re_log_types::ComponentName,
-        requested: re_log_types::ComponentName,
-    },
-
     #[error("Tried to access component of type '{actual:?}' using component '{requested:?}'")]
-    NewTypeMismatch {
+    TypeMismatch {
         actual: re_types::ComponentName,
         requested: re_types::ComponentName,
     },

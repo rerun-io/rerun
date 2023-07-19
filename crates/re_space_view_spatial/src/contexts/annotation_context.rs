@@ -1,5 +1,5 @@
 use re_components::AnnotationContext;
-use re_log_types::Component;
+use re_types::Loggable as _;
 use re_viewer_context::{AnnotationMap, ArchetypeDefinition, ViewContextSystem};
 
 #[derive(Default)]

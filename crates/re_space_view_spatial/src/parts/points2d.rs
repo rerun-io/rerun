@@ -171,14 +171,7 @@ impl Points2DPart {
 
 impl ViewPartSystem for Points2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
-        // TODO(jleibs): cleanup
-        vec1::Vec1::try_from_vec(
-            Points2D::all_components()
-                .into_iter()
-                .map(|c| c.as_ref().into())
-                .collect(),
-        )
-        .unwrap()
+        vec1::Vec1::try_from_vec(Points2D::all_components()).unwrap()
     }
 
     fn execute(

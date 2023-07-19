@@ -10,7 +10,8 @@ use re_arrow_store::{
 use re_components::datagen::{
     build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
 };
-use re_log_types::{Component as _, DataTable, EntityPath, InstanceKey, TableId};
+use re_log_types::{DataTable, EntityPath, InstanceKey, TableId};
+use re_types::Loggable as U;
 
 // --- Dump ---
 

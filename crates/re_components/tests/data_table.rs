@@ -3,7 +3,7 @@ use re_log_types::{DataCell, DataRow, DataTable, RowId, SizeBytes as _, TableId,
 #[test]
 fn data_table_sizes_basics() {
     use arrow2::array::{BooleanArray, UInt64Array};
-    use re_log_types::Component as _;
+    use re_types::Loggable as _;
 
     fn expect(mut cell: DataCell, num_rows: usize, num_bytes: u64) {
         cell.compute_size_bytes();
@@ -197,10 +197,12 @@ fn data_table_sizes_unions() {
 
     impl re_log_types::Component for DenseTransform {
         #[inline]
-        fn name() -> re_log_types::ComponentName {
+        fn legacy_name() -> re_log_types::ComponentName {
             "rerun.dense_transform".into()
         }
     }
+
+    re_log_types::component_legacy_shim!(DenseTransform);
 
     // dense union (uniform)
     expect(
@@ -252,10 +254,12 @@ fn data_table_sizes_unions() {
 
     impl re_log_types::Component for SparseTransform {
         #[inline]
-        fn name() -> re_log_types::ComponentName {
+        fn legacy_name() -> re_log_types::ComponentName {
             "rerun.sparse_transform".into()
         }
     }
+
+    re_log_types::component_legacy_shim!(SparseTransform);
 
     // sparse union (uniform)
     expect(

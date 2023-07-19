@@ -3,7 +3,7 @@ use re_query::{
     query_archetype_with_history, query_primary_with_history, ArchetypeView, EntityView, QueryError,
 };
 use re_renderer::DepthOffset;
-use re_types::Archetype;
+use re_types::{Archetype, ComponentName};
 use re_viewer_context::{
     ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
     ViewerContext,
@@ -27,7 +27,7 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
     mut fun: F,
 ) -> Result<(), SpaceViewSystemExecutionError>
 where
-    Primary: Component + 'a,
+    Primary: Component + re_types::Component + 'a,
     F: FnMut(
         &mut ViewerContext<'_>,
         &EntityPath,
@@ -35,7 +35,7 @@ where
         &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError>,
 {
-    let archetype = match archetype.try_into() {
+    let archetype: [ComponentName; N] = match archetype.try_into() {
         Ok(archetype) => archetype,
         Err(archetype) => {
             re_log::error_once!(
@@ -74,7 +74,7 @@ where
             &query.latest_at,
             &props.visible_history,
             ent_path,
-            archetype,
+            archetype.clone(),
         )
         .and_then(|entity_views| {
             for ent_view in entity_views {

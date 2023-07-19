@@ -1,11 +1,9 @@
 use std::{ops::RangeBounds, sync::atomic::Ordering};
 
 use itertools::Itertools;
-use nohash_hasher::IntSet;
 use re_log::trace;
-use re_log_types::{
-    ComponentName, DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline,
-};
+use re_log_types::{DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline};
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
@@ -108,10 +106,10 @@ impl DataStore {
             "query started..."
         );
 
-        let timeless: Option<IntSet<_>> = self
+        let timeless: Option<ahash::HashSet<_>> = self
             .timeless_tables
             .get(&ent_path_hash)
-            .map(|table| table.columns.keys().copied().collect());
+            .map(|table| table.columns.keys().cloned().collect());
 
         let temporal = self
             .tables
@@ -198,7 +196,7 @@ impl DataStore {
         &self,
         query: &LatestAtQuery,
         ent_path: &EntityPath,
-        primary: ComponentName,
+        primary: &ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
         re_tracing::profile_function!();
@@ -387,7 +385,7 @@ impl DataStore {
         &'a self,
         query: &RangeQuery,
         ent_path: &EntityPath,
-        components: [ComponentName; N],
+        components: &[ComponentName; N],
     ) -> impl Iterator<Item = (Option<TimeInt>, RowId, [Option<DataCell>; N])> + 'a {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
@@ -403,14 +401,14 @@ impl DataStore {
             id = self.query_id.load(Ordering::Relaxed),
             query = ?query,
             entity = %ent_path,
-            ?components,
+            components = ?components.clone(),
             "query started..."
         );
 
         let temporal = self
             .tables
             .get(&(query.timeline, ent_path_hash))
-            .map(|index| index.range(query.range, components))
+            .map(|index| index.range(query.range, components.clone()))
             .into_iter()
             .flatten()
             .map(|(time, row_id, cells)| (Some(time), row_id, cells));
@@ -421,7 +419,7 @@ impl DataStore {
                 .get(&ent_path_hash)
                 .map(|index| {
                     index
-                        .range(components)
+                        .range(components.clone())
                         .map(|(row_id, cells)| (None, row_id, cells))
                 })
                 .into_iter()
@@ -457,13 +455,13 @@ impl IndexedTable {
     pub fn latest_at<const N: usize>(
         &self,
         time: TimeInt,
-        primary: ComponentName,
+        primary: &ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
         re_tracing::profile_function!();
 
         // Early-exit if this entire table is unaware of this component.
-        if !self.all_components.contains(&primary) {
+        if !self.all_components.contains(primary) {
             return None;
         }
 
@@ -534,11 +532,11 @@ impl IndexedTable {
                         timeline.typ().format_range(bucket.inner.read().time_range),
                     timeline = %timeline.name(),
                     ?time_range,
-                    ?components,
+                    components = ?components.clone(),
                     "found bucket in range"
                 );
 
-                bucket.range(time_range, components)
+                bucket.range(time_range, components.clone())
             })
     }
 
@@ -665,7 +663,7 @@ impl IndexedBucket {
     pub fn latest_at<const N: usize>(
         &self,
         time: TimeInt,
-        primary: ComponentName,
+        primary: &ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
         re_tracing::profile_function!();
@@ -685,7 +683,7 @@ impl IndexedBucket {
         debug_assert!(is_sorted);
 
         // Early-exit if this bucket is unaware of this component.
-        let column = columns.get(&primary)?;
+        let column = columns.get(primary)?;
 
         trace!(
             kind = "latest_at",
@@ -987,7 +985,7 @@ impl PersistentIndexedTable {
     /// the `primary` component.
     fn latest_at<const N: usize>(
         &self,
-        primary: ComponentName,
+        primary: &ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
         if self.is_empty() {
@@ -995,7 +993,7 @@ impl PersistentIndexedTable {
         }
 
         // Early-exit if this bucket is unaware of this component.
-        let column = self.columns.get(&primary)?;
+        let column = self.columns.get(primary)?;
 
         re_tracing::profile_function!();
 
@@ -1083,7 +1081,7 @@ impl PersistentIndexedTable {
         // Early-exit if the table is unaware of any of our components of interest.
         if components
             .iter()
-            .all(|component| self.columns.get(component).is_none())
+            .all(|component| self.columns.get(component.as_ref()).is_none())
         {
             return itertools::Either::Right(std::iter::empty());
         }

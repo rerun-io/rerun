@@ -1,6 +1,6 @@
 use re_arrow_store::LatestAtQuery;
-use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
+use re_types::Loggable as _;
 use re_viewer_context::{
     ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,

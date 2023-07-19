@@ -38,7 +38,7 @@ impl DrawOrder {
 
 impl re_log_types::Component for DrawOrder {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.draw_order".into()
     }
 }
@@ -85,3 +85,5 @@ impl From<DrawOrder> for f32 {
         value.0
     }
 }
+
+re_log_types::component_legacy_shim!(DrawOrder);

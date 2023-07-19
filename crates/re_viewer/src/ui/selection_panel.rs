@@ -140,8 +140,11 @@ fn what_is_selected_ui(
                     ui.end_row();
 
                     ui.label("Component:");
-                    ui.label(component_name.short_name())
-                        .on_hover_text(component_name.full_name());
+                    // TODO(jleibs) fix short/full_name
+                    //ui.label(component_name.short_name())
+                    //.on_hover_text(component_name.full_name());
+                    ui.label(component_name.as_ref())
+                        .on_hover_text(component_name.as_ref());
                     ui.end_row();
                 });
         }

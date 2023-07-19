@@ -187,7 +187,9 @@ fn item_to_string(blueprint: &ViewportBlueprint<'_>, item: &Item) -> String {
             }
         }
         Item::ComponentPath(path) => {
-            format!("{} {}", path.entity_path, path.component_name.short_name(),)
+            // TODO(jleibs) fix short_name
+            //format!("{} {}", path.entity_path, path.component_name.short_name(),)
+            format!("{} {}", path.entity_path, path.component_name,)
         }
     }
 }

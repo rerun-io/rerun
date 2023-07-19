@@ -23,8 +23,9 @@ pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 pub use re_sdk_comms::default_server_addr;
 
 pub use re_log_types::{
-    ApplicationId, Component, ComponentName, EntityPath, SerializableComponent, StoreId, StoreKind,
+    ApplicationId, Component, EntityPath, SerializableComponent, StoreId, StoreKind,
 };
+pub use re_types::ComponentName;
 
 pub use global::cleanup_if_forked_child;
 
@@ -107,6 +108,7 @@ pub mod external {
     pub use re_log_types;
     pub use re_memory;
     pub use re_sdk_comms;
+    pub use re_types;
 
     #[cfg(feature = "glam")]
     pub use re_components::external::glam;

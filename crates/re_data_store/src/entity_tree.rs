@@ -2,9 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    ComponentName, ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint,
-    Timeline,
+    ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint, Timeline,
 };
+use re_types::ComponentName;
 
 // ----------------------------------------------------------------------------
 
@@ -157,7 +157,7 @@ impl EntityTree {
 
         let fields = leaf
             .components
-            .entry(component_path.component_name)
+            .entry(component_path.component_name.clone())
             .or_insert_with(|| {
                 // If we needed to create a new leaf to hold this data, we also want to
                 // insert all of the historical pending clear operations
@@ -201,7 +201,9 @@ impl EntityTree {
                 // For every existing field return a clear event
                 leaf.components
                     .keys()
-                    .map(|component_name| ComponentPath::new(entity_path.clone(), *component_name))
+                    .map(|component_name| {
+                        ComponentPath::new(entity_path.clone(), (*component_name).clone())
+                    })
                     .collect_vec()
             }
             PathOp::ClearRecursive(_) => {
@@ -226,7 +228,7 @@ impl EntityTree {
                     // For every existing field append a clear event into the
                     // results
                     results.extend(next.components.keys().map(|component_name| {
-                        ComponentPath::new(next.path.clone(), *component_name)
+                        ComponentPath::new(next.path.clone(), (*component_name).clone())
                     }));
                 }
                 results
