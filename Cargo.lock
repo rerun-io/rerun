@@ -3991,6 +3991,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_tracing",
+ "re_types",
  "rmp-serde",
  "serde",
  "similar-asserts",
@@ -4152,6 +4153,7 @@ dependencies = [
  "re_string_interner",
  "re_tracing",
  "re_tuid",
+ "re_types",
  "rmp-serde",
  "serde",
  "serde_bytes",
@@ -4189,6 +4191,7 @@ name = "re_query"
 version = "0.8.0-alpha.6"
 dependencies = [
  "arrow2",
+ "backtrace",
  "criterion",
  "document-features",
  "itertools 0.11.0",
@@ -4201,6 +4204,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_tracing",
+ "re_types",
  "thiserror",
 ]
 
@@ -4366,6 +4370,7 @@ dependencies = [
  "re_renderer",
  "re_space_view",
  "re_tracing",
+ "re_types",
  "re_ui",
  "re_viewer_context",
  "serde",

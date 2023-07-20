@@ -27,3 +27,9 @@ impl re_log_types::Component for ClassId {
         "rerun.class_id".into()
     }
 }
+
+impl From<re_types::components::ClassId> for ClassId {
+    fn from(other: re_types::components::ClassId) -> Self {
+        Self(other.0)
+    }
+}

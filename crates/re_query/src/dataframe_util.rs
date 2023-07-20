@@ -9,10 +9,11 @@ use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, Component,
     DeserializableComponent, InstanceKey, SerializableComponent,
 };
+use re_types::{Archetype, Loggable};
 
 use crate::{
     entity_view::{ComponentWithInstances, EntityView},
-    QueryError,
+    ArchetypeView, QueryError,
 };
 
 /// Make it so that our arrays can be deserialized again by arrow2-convert
@@ -127,6 +128,61 @@ where
     Ok(DataFrame::new(vec![series0, series1, series2])?)
 }
 
+pub fn df_builder1_arch<'a, C0>(c0: &'a [Option<C0>]) -> crate::Result<DataFrame>
+where
+    C0: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C0>> + 'a,
+    &'a C0: Into<::std::borrow::Cow<'a, C0>>,
+{
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
+
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+
+    Ok(DataFrame::new(vec![series0])?)
+}
+
+pub fn df_builder2_arch<'a, C0, C1>(
+    c0: &'a [Option<C0>],
+    c1: &'a [Option<C1>],
+) -> crate::Result<DataFrame>
+where
+    C0: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C0>> + 'a,
+    C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+    &'a C0: Into<::std::borrow::Cow<'a, C0>>,
+    &'a C1: Into<::std::borrow::Cow<'a, C1>>,
+{
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
+    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()), None)?;
+
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+
+    Ok(DataFrame::new(vec![series0, series1])?)
+}
+
+pub fn df_builder3_arch<'a, C0, C1, C2>(
+    c0: &'a [Option<C0>],
+    c1: &'a [Option<C1>],
+    c2: &'a [Option<C2>],
+) -> crate::Result<DataFrame>
+where
+    C0: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C0>> + 'a,
+    C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+    C2: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
+    &'a C0: Into<::std::borrow::Cow<'a, C0>>,
+    &'a C1: Into<::std::borrow::Cow<'a, C1>>,
+    &'a C2: Into<::std::borrow::Cow<'a, C2>>,
+{
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
+    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()), None)?;
+    let array2 = C2::try_to_arrow_opt(c2.iter().map(|c| c.as_ref()), None)?;
+
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+    let series2 = Series::try_from((C2::name().as_ref(), array2.as_ref().clean_for_polars()))?;
+
+    Ok(DataFrame::new(vec![series0, series1, series2])?)
+}
+
 impl ComponentWithInstances {
     pub fn as_df<C0: SerializableComponent + DeserializableComponent>(
         &self,
@@ -175,6 +231,46 @@ where
         let c1_values = self.iter_component::<C1>()?.collect_vec();
 
         df_builder3::<InstanceKey, Primary, C1>(&instance_keys, &primary_values, &c1_values)
+    }
+}
+
+impl<A: Archetype> ArchetypeView<A> {
+    pub fn as_df1<'a, C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a>(
+        &self,
+    ) -> crate::Result<DataFrame> {
+        let array0 =
+            re_types::components::InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
+        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
+
+        let series0 = Series::try_from((
+            re_types::components::InstanceKey::name().as_ref(),
+            array0.as_ref().clean_for_polars(),
+        ))?;
+        let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+
+        Ok(DataFrame::new(vec![series0, series1])?)
+    }
+
+    pub fn as_df2<
+        'a,
+        C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+        C2: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
+    >(
+        &self,
+    ) -> crate::Result<DataFrame> {
+        let array0 =
+            re_types::components::InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
+        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
+        let array2 = C2::try_to_arrow_opt(self.iter_optional_component::<C2>()?, None)?;
+
+        let series0 = Series::try_from((
+            re_types::components::InstanceKey::name().as_ref(),
+            array0.as_ref().clean_for_polars(),
+        ))?;
+        let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+        let series2 = Series::try_from((C2::name().as_ref(), array2.as_ref().clean_for_polars()))?;
+
+        Ok(DataFrame::new(vec![series0, series1, series2])?)
     }
 }
 

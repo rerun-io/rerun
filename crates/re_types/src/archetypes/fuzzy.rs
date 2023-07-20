@@ -246,6 +246,8 @@ impl AffixFuzzer1 {
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer17"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer18"),
     ];
+
+    pub const NUM_COMPONENTS: usize = 73usize;
 }
 
 impl crate::Archetype for AffixFuzzer1 {
@@ -267,6 +269,11 @@ impl crate::Archetype for AffixFuzzer1 {
     #[inline]
     fn optional_components() -> Vec<crate::ComponentName> {
         Self::OPTIONAL_COMPONENTS.to_vec()
+    }
+
+    #[inline]
+    fn all_components() -> Vec<crate::ComponentName> {
+        Self::ALL_COMPONENTS.to_vec()
     }
 
     #[inline]

@@ -6,6 +6,7 @@
 
 // TODO(jleibs) better crate documentation.
 
+mod archetype_view;
 mod entity_view;
 mod query;
 mod range;
@@ -15,10 +16,11 @@ pub mod visit;
 #[cfg(feature = "polars")]
 pub mod dataframe_util;
 
+pub use self::archetype_view::{ArchComponentWithInstances, ArchetypeView};
 pub use self::entity_view::{ComponentWithInstances, EntityView};
-pub use self::query::{get_component_with_instances, query_entity_with_primary};
-pub use self::range::range_entity_with_primary;
-pub use self::util::query_primary_with_history;
+pub use self::query::{get_component_with_instances, query_archetype, query_entity_with_primary};
+pub use self::range::{range_archetype, range_entity_with_primary};
+pub use self::util::{query_archetype_with_history, query_primary_with_history};
 
 // Used for doc-tests
 #[doc(hidden)]
@@ -32,6 +34,9 @@ pub enum QueryError {
     #[error("Could not find primary")]
     PrimaryNotFound,
 
+    #[error("Could not find required component: {0}")]
+    RequiredComponentNotFound(re_log_types::ComponentName),
+
     #[error("Could not find component")]
     ComponentNotFound,
 
@@ -41,8 +46,20 @@ pub enum QueryError {
         requested: re_log_types::ComponentName,
     },
 
+    #[error("Tried to access component of type '{actual:?}' using component '{requested:?}'")]
+    NewTypeMismatch {
+        actual: re_types::ComponentName,
+        requested: re_types::ComponentName,
+    },
+
     #[error("Error with one or more the underlying data cells: {0}")]
     DataCell(#[from] re_log_types::DataCellError),
+
+    #[error("Error deserializing: {0}")]
+    DeserializationError(#[from] re_types::DeserializationError),
+
+    #[error("Error serializing: {0}")]
+    SerializationError(#[from] re_types::SerializationError),
 
     #[error("Error converting arrow data: {0}")]
     ArrowError(#[from] arrow2::error::Error),
@@ -50,6 +67,9 @@ pub enum QueryError {
     #[cfg(feature = "polars")]
     #[error("Error from within Polars")]
     PolarsError(#[from] polars_core::prelude::PolarsError),
+
+    #[error("Not implemented")]
+    NotImplemented,
 }
 
 pub type Result<T> = std::result::Result<T, QueryError>;

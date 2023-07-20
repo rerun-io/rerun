@@ -229,7 +229,7 @@ pub trait Datatype: Loggable {}
 /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Point2D`.
 pub type ComponentName = ::std::borrow::Cow<'static, str>;
 
-pub trait Component: Loggable {}
+pub trait Component: Loggable<Name = ComponentName> {}
 
 // ---
 
@@ -253,6 +253,9 @@ pub trait Archetype {
     /// The fully-qualified component names of every component that _could_ be provided by the user
     /// when constructing this archetype.
     fn optional_components() -> Vec<ComponentName>;
+
+    /// All components including required, recommended, and optional.
+    fn all_components() -> Vec<ComponentName>;
 
     // ---
 

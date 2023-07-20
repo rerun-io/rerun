@@ -29,3 +29,9 @@ impl re_log_types::Component for KeypointId {
         "rerun.keypoint_id".into()
     }
 }
+
+impl From<re_types::components::KeypointId> for KeypointId {
+    fn from(other: re_types::components::KeypointId) -> Self {
+        Self(other.0)
+    }
+}

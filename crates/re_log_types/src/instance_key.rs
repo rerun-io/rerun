@@ -104,3 +104,9 @@ impl Component for InstanceKey {
         "rerun.instance_key".into()
     }
 }
+
+impl From<re_types::components::InstanceKey> for InstanceKey {
+    fn from(other: re_types::components::InstanceKey) -> Self {
+        Self(other.0)
+    }
+}
