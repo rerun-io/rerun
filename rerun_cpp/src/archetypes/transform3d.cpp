@@ -2,3 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/transform3d.fbs"
 
 #include "transform3d.hpp"
+
+namespace rr {
+    namespace archetypes {}
+} // namespace rr

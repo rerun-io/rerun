@@ -4,10 +4,15 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 
 #include "../datatypes/mat3x3.hpp"
 #include "../datatypes/vec3d.hpp"
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace datatypes {
@@ -24,6 +29,10 @@ namespace rr {
             /// If true, the transform maps from the parent space to the space where the transform
             /// was logged. Otherwise, the transform maps from the space to its parent.
             bool from_parent;
+
+          public:
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace datatypes
 } // namespace rr
