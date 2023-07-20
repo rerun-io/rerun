@@ -19,20 +19,12 @@ use re_types::{
 const NUM_FRAMES_POINTS: u32 = 1_000;
 #[cfg(not(debug_assertions))]
 const NUM_POINTS: u32 = 1_000;
-#[cfg(not(debug_assertions))]
-const NUM_FRAMES_VECS: u32 = 10;
-#[cfg(not(debug_assertions))]
-const NUM_VECS: u32 = 100_000;
 
 // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
 #[cfg(debug_assertions)]
 const NUM_FRAMES_POINTS: u32 = 1;
 #[cfg(debug_assertions)]
 const NUM_POINTS: u32 = 1;
-#[cfg(debug_assertions)]
-const NUM_FRAMES_VECS: u32 = 1;
-#[cfg(debug_assertions)]
-const NUM_VECS: u32 = 1;
 
 criterion_group!(benches, mono_points, batch_points);
 criterion_main!(benches);
