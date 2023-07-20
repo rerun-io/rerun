@@ -259,10 +259,12 @@ fn joint_visit() {
     let mut colors_out = Vec::<Option<ColorRGBA>>::new();
 
     entity_view
-        .visit2(|_: InstanceKey, point: LegacyPoint2D, color: Option<ColorRGBA>| {
-            points_out.push(point);
-            colors_out.push(color);
-        })
+        .visit2(
+            |_: InstanceKey, point: LegacyPoint2D, color: Option<ColorRGBA>| {
+                points_out.push(point);
+                colors_out.push(color);
+            },
+        )
         .ok()
         .unwrap();
 

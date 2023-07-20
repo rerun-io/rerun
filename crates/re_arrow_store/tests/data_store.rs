@@ -93,10 +93,10 @@ fn all_components() {
         ];
 
         let components_b = &[
-            ColorRGBA::name(),     // added by test, timeless
-            Point2D::name(), // added by test
-            Rect2D::name(),        // added by test
-            cluster_key,           // always here
+            ColorRGBA::name(), // added by test, timeless
+            Point2D::name(),   // added by test
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -148,10 +148,10 @@ fn all_components() {
         ];
 
         let components_b = &[
-            ColorRGBA::name(),     // added by test, timeless
-            Rect2D::name(),        // ⚠ inherited before the buckets got split apart!
-            Point2D::name(), // added by test
-            cluster_key,           // always here
+            ColorRGBA::name(), // added by test, timeless
+            Rect2D::name(),    // ⚠ inherited before the buckets got split apart!
+            Point2D::name(),   // added by test
+            cluster_key,       // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -209,10 +209,10 @@ fn all_components() {
         ];
 
         let components_b = &[
-            ColorRGBA::name(),     // added by test, timeless
-            Point2D::name(), // added by test but not contained in the second bucket
-            Rect2D::name(),        // added by test
-            cluster_key,           // always here
+            ColorRGBA::name(), // added by test, timeless
+            Point2D::name(),   // added by test but not contained in the second bucket
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -511,10 +511,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame0),
-                &[
-                    (ColorRGBA::name(), &row4_3),
-                    (Point2D::name(), &row4_4),
-                ],
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_4)],
             ), // timeless
             (
                 Some(frame1),
@@ -566,10 +563,7 @@ fn range_impl(store: &mut DataStore) {
             ),
             (
                 Some(frame4),
-                &[
-                    (ColorRGBA::name(), &row4_3),
-                    (Point2D::name(), &row4_25),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
         ],
     );
@@ -579,10 +573,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame4),
-                &[
-                    (ColorRGBA::name(), &row4_3),
-                    (Point2D::name(), &row4_4),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_4)], // !!!
             ), //
         ],
     );
@@ -595,10 +586,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame0),
-                &[
-                    (Point2D::name(), &row4_4),
-                    (ColorRGBA::name(), &row4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ), // timeless
         ],
     );
@@ -643,17 +631,11 @@ fn range_impl(store: &mut DataStore) {
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &row4_25),
-                    (ColorRGBA::name(), &row4_2),
-                ],
+                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &row4_4),
-                    (ColorRGBA::name(), &row4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ),
         ],
     );
@@ -663,10 +645,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &row4_4),
-                    (ColorRGBA::name(), &row4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ), //
         ],
     );
@@ -679,10 +658,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame0),
-                &[
-                    (ColorRGBA::name(), &row4_3),
-                    (Point2D::name(), &row4_4),
-                ],
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_4)],
             ), // timeless
             (
                 Some(frame1),
@@ -701,10 +677,7 @@ fn range_impl(store: &mut DataStore) {
             ),
             (
                 Some(frame4),
-                &[
-                    (ColorRGBA::name(), &row4_3),
-                    (Point2D::name(), &row4_25),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
         ],
     );
@@ -717,10 +690,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame0),
-                &[
-                    (Point2D::name(), &row4_4),
-                    (ColorRGBA::name(), &row4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ), // timeless
             (
                 Some(frame2),
@@ -732,17 +702,11 @@ fn range_impl(store: &mut DataStore) {
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &row4_25),
-                    (ColorRGBA::name(), &row4_2),
-                ],
+                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &row4_4),
-                    (ColorRGBA::name(), &row4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ),
         ],
     );
@@ -764,10 +728,7 @@ fn range_impl(store: &mut DataStore) {
             ),
             (
                 None,
-                &[
-                    (ColorRGBA::name(), &row4_3),
-                    (Point2D::name(), &row4_25),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
             (
                 Some(frame1),
@@ -786,10 +747,7 @@ fn range_impl(store: &mut DataStore) {
             ),
             (
                 Some(frame4),
-                &[
-                    (ColorRGBA::name(), &row4_3),
-                    (Point2D::name(), &row4_25),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
         ],
     );
@@ -810,17 +768,11 @@ fn range_impl(store: &mut DataStore) {
             ),
             (
                 None,
-                &[
-                    (Point2D::name(), &row4_25),
-                    (ColorRGBA::name(), &row4_2),
-                ],
+                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
             ),
             (
                 None,
-                &[
-                    (Point2D::name(), &row4_4),
-                    (ColorRGBA::name(), &row4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ),
             (
                 Some(frame2),
@@ -832,17 +784,11 @@ fn range_impl(store: &mut DataStore) {
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &row4_25),
-                    (ColorRGBA::name(), &row4_2),
-                ],
+                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &row4_4),
-                    (ColorRGBA::name(), &row4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ),
         ],
     );

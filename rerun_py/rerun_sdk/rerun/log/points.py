@@ -11,7 +11,7 @@ from rerun.components.color import ColorRGBAArray
 from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
-from rerun.components.point import Point2DArray, Point3DArray
+from rerun.components.point import Point3DArray
 from rerun.components.radius import RadiusArray
 from rerun.log import (
     Color,
@@ -105,16 +105,30 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
+    # NOTE: Point2D goes through the new API!
+    if position is not None and position.size == 2:
+        from rerun.experimental import Points2D, log_any
+
+        p = Points2D(
+            points=position,
+            radii=radius,
+            colors=color,
+            labels=label,
+            draw_order=draw_order,
+            class_ids=class_id,
+            keypoint_ids=keypoint_id,
+        )
+        log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
+        return
+
     instanced: dict[str, Any] = {}
     splats: dict[str, Any] = {}
 
     if position is not None:
-        if position.size == 2:
-            instanced["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
-        elif position.size == 3:
+        if position.size == 3:
             instanced["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
         else:
-            raise TypeError("Position must have a total size of 2 or 3")
+            raise TypeError("Position must have a total size of 3")
 
     if color is not None:
         colors = _normalize_colors(color)
@@ -227,12 +241,6 @@ def log_points(
     else:
         positions = np.require(positions, dtype="float32")
 
-    colors = _normalize_colors(colors)
-    radii = _normalize_radii(radii)
-    labels = _normalize_labels(labels)
-    class_ids = _normalize_ids(class_ids)
-    keypoint_ids = _normalize_ids(keypoint_ids)
-
     identifiers_np = np.array((), dtype="uint64")
     if identifiers is not None:
         try:
@@ -240,16 +248,38 @@ def log_points(
         except ValueError:
             _send_warning("Only integer identifiers supported", 1)
 
+    # NOTE: Point2D goes through the new API!
+    if positions.any() and positions.shape[1] == 2:
+        from rerun.experimental import Points2D, log_any
+
+        # TODO: but then we probably don't support empty positions anymore...
+        p = Points2D(
+            points=positions,
+            radii=radii,
+            colors=colors,
+            labels=labels,
+            draw_order=draw_order,
+            class_ids=class_ids,
+            keypoint_ids=keypoint_ids,
+            instance_keys=identifiers_np,
+        )
+        log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
+        return
+
+    colors = _normalize_colors(colors)
+    radii = _normalize_radii(radii)
+    labels = _normalize_labels(labels)
+    class_ids = _normalize_ids(class_ids)
+    keypoint_ids = _normalize_ids(keypoint_ids)
+
     # 0 = instanced, 1 = splat
     comps = [{}, {}]  # type: ignore[var-annotated]
 
     if positions.any():
-        if positions.shape[1] == 2:
-            comps[0]["rerun.point2d"] = Point2DArray.from_numpy(positions)
-        elif positions.shape[1] == 3:
+        if positions.shape[1] == 3:
             comps[0]["rerun.point3d"] = Point3DArray.from_numpy(positions)
         else:
-            raise TypeError("Positions should be either Nx2 or Nx3")
+            raise TypeError("Positions should be Nx3")
 
     if len(identifiers_np):
         comps[0]["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)

@@ -99,7 +99,10 @@ fn data_table_sizes_basics() {
         5_260_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(re_components::LegacyPoint2D::name(), cell.to_arrow().sliced(1, 1)),
+        DataCell::from_arrow(
+            re_components::LegacyPoint2D::name(),
+            cell.to_arrow().sliced(1, 1),
+        ),
         10_000,    // num_rows
         5_100_064, // expected_num_bytes
     );
@@ -120,7 +123,10 @@ fn data_table_sizes_basics() {
         4_080_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(re_components::LegacyPoint2D::name(), cell.to_arrow().sliced(1, 1)),
+        DataCell::from_arrow(
+            re_components::LegacyPoint2D::name(),
+            cell.to_arrow().sliced(1, 1),
+        ),
         10_000,    // num_rows
         3_920_064, // expected_num_bytes
     );
@@ -141,7 +147,10 @@ fn data_table_sizes_basics() {
         6_120_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(re_components::LegacyPoint2D::name(), cell.to_arrow().sliced(1, 1)),
+        DataCell::from_arrow(
+            re_components::LegacyPoint2D::name(),
+            cell.to_arrow().sliced(1, 1),
+        ),
         10_000,    // num_rows
         5_560_064, // expected_num_bytes
     );
