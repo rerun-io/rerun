@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataRow, EntityPath, LegacyComponent, RowId};
-use re_types::Archetype;
 use re_types::{components::InstanceKey, ComponentName, Loggable};
+use re_types::{Archetype, Component};
 
 use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 
@@ -121,7 +121,7 @@ pub fn get_component_with_instances(
 /// └──────────┴───────────┴────────────┘
 /// ```
 ///
-pub fn query_entity_with_primary<Primary: LegacyComponent + re_types::Component>(
+pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,
