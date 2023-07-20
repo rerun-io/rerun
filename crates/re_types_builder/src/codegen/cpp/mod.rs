@@ -217,7 +217,7 @@ impl QuotedObject {
     pub fn new(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &crate::Object) -> Self {
         match obj.specifics {
             crate::ObjectSpecifics::Struct => Self::from_struct(arrow_registry, objects, obj),
-            crate::ObjectSpecifics::Union { .. } => Self::from_union(objects, obj),
+            crate::ObjectSpecifics::Union { .. } => Self::from_union(arrow_registry, objects, obj),
         }
     }
 
@@ -326,7 +326,11 @@ impl QuotedObject {
         Self { hpp, cpp }
     }
 
-    fn from_union(objects: &Objects, obj: &crate::Object) -> QuotedObject {
+    fn from_union(
+        arrow_registry: &ArrowRegistry,
+        objects: &Objects,
+        obj: &crate::Object,
+    ) -> QuotedObject {
         // We implement sum-types as tagged unions;
         // Putting non-POD types in a union requires C++11.
         //
@@ -376,6 +380,9 @@ impl QuotedObject {
         let mut hpp_includes = Includes::default();
         hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
         hpp_includes.system.insert("utility".to_owned()); // std::move
+        hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
+        let mut cpp_includes = Includes::default();
+        let mut hpp_declarations = ForwardDecls::default();
 
         let enum_data_declarations = obj
             .fields
@@ -395,7 +402,7 @@ impl QuotedObject {
 
         let mut methods = Vec::new();
 
-        // Static constructors:
+        // Add one static constructor for every field.
         for obj_field in &obj.fields {
             methods.push(static_constructor_for_enum_type(
                 objects,
@@ -424,6 +431,13 @@ impl QuotedObject {
             // Cannot make implicit constructors, e.g. for
             // `enum Angle { Radians(f32), Degrees(f32) };`
         };
+
+        methods.push(arrow_data_type_method(
+            &arrow_registry.get(&obj.fqname),
+            &mut hpp_includes,
+            &mut cpp_includes,
+            &mut hpp_declarations,
+        ));
 
         let destructor = if obj.has_default_destructor(objects) {
             // No destructor needed
@@ -488,11 +502,9 @@ impl QuotedObject {
             }
         };
 
-        hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
-        let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
-
         let swap_comment = comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
 
+        let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
         let hpp = quote! {
             #hpp_includes
 
@@ -561,7 +573,16 @@ impl QuotedObject {
             }
         };
 
-        let cpp = quote! {}; // TODO(emilk): add Arrow serialization code here!
+        let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
+        let cpp = quote! {
+            #cpp_includes
+
+            namespace rr {
+                namespace #namespace_ident {
+                    #(#cpp_methods)*
+                }
+            }
+        };
 
         Self { hpp, cpp }
     }
@@ -892,8 +913,7 @@ fn quote_arrow_data_type(
 
         DataType::Extension(fqname, datatype, _metadata) => {
             // If we're not at the top level, we should have already a `to_arrow_datatype` method that we can relay to.
-            // TODO(andreas): Unions don't have `to_arrow_datatype` yet.
-            if is_top_level_type || matches!(datatype.as_ref(), DataType::Union(..)) {
+            if is_top_level_type {
                 // TODO(andreas): We're no`t emitting the actual extension types here yet which is why we're skipping the extension type at top level.
                 // Currently, we wrap only Components in extension types but this is done in `rerun_c`.
                 // In the future we'll add the extension type here to the schema.

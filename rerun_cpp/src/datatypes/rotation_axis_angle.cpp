@@ -3,6 +3,7 @@
 
 #include "rotation_axis_angle.hpp"
 
+#include "../datatypes/angle.hpp"
 #include "../datatypes/vec3d.hpp"
 
 #include <arrow/api.h>
@@ -12,14 +13,7 @@ namespace rr {
         std::shared_ptr<arrow::DataType> RotationAxisAngle::to_arrow_datatype() {
             return arrow::struct_({
                 arrow::field("axis", rr::datatypes::Vec3D::to_arrow_datatype(), false, nullptr),
-                arrow::field("angle",
-                             arrow::dense_union({
-                                 arrow::field("_null_markers", arrow::null(), true, nullptr),
-                                 arrow::field("Radians", arrow::float32(), false, nullptr),
-                                 arrow::field("Degrees", arrow::float32(), false, nullptr),
-                             }),
-                             false,
-                             nullptr),
+                arrow::field("angle", rr::datatypes::Angle::to_arrow_datatype(), false, nullptr),
             });
         }
     } // namespace datatypes

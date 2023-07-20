@@ -2,3 +2,33 @@
 // Based on "crates/re_types/definitions/rerun/testing/datatypes/fuzzy.fbs"
 
 #include "affix_fuzzer4.hpp"
+
+#include "../datatypes/affix_fuzzer3.hpp"
+
+#include <arrow/api.h>
+
+namespace rr {
+    namespace datatypes {
+        std::shared_ptr<arrow::DataType> AffixFuzzer4::to_arrow_datatype() {
+            return arrow::dense_union({
+                arrow::field("_null_markers", arrow::null(), true, nullptr),
+                arrow::field("single_required",
+                             rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                             false,
+                             nullptr),
+                arrow::field(
+                    "many_required",
+                    arrow::list(arrow::field(
+                        "item", rr::datatypes::AffixFuzzer3::to_arrow_datatype(), false, nullptr)),
+                    false,
+                    nullptr),
+                arrow::field(
+                    "many_optional",
+                    arrow::list(arrow::field(
+                        "item", rr::datatypes::AffixFuzzer3::to_arrow_datatype(), true, nullptr)),
+                    false,
+                    nullptr),
+            });
+        }
+    } // namespace datatypes
+} // namespace rr

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <utility>
 
 namespace rr {
@@ -86,6 +87,9 @@ namespace rr {
             Scale3D(float uniform) {
                 *this = Scale3D::uniform(std::move(uniform));
             }
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
 
             void swap(Scale3D& other) noexcept {
                 auto tag_temp = this->_tag;

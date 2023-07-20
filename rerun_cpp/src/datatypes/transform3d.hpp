@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <utility>
 
 namespace rr {
@@ -84,6 +85,9 @@ namespace rr {
                 *this =
                     Transform3D::translation_rotation_scale(std::move(translation_rotation_scale));
             }
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
 
             void swap(Transform3D& other) noexcept {
                 auto tag_temp = this->_tag;

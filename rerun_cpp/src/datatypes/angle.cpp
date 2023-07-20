@@ -2,3 +2,17 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/angle.fbs"
 
 #include "angle.hpp"
+
+#include <arrow/api.h>
+
+namespace rr {
+    namespace datatypes {
+        std::shared_ptr<arrow::DataType> Angle::to_arrow_datatype() {
+            return arrow::dense_union({
+                arrow::field("_null_markers", arrow::null(), true, nullptr),
+                arrow::field("Radians", arrow::float32(), false, nullptr),
+                arrow::field("Degrees", arrow::float32(), false, nullptr),
+            });
+        }
+    } // namespace datatypes
+} // namespace rr

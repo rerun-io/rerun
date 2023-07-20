@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <utility>
 
 namespace rr {
@@ -87,6 +88,9 @@ namespace rr {
             Rotation3D(rr::datatypes::RotationAxisAngle axis_angle) {
                 *this = Rotation3D::axis_angle(std::move(axis_angle));
             }
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
 
             void swap(Rotation3D& other) noexcept {
                 auto tag_temp = this->_tag;
