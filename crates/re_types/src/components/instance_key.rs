@@ -13,7 +13,18 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A unique numeric identifier for each individual instance within a batch.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    serde :: Serialize,
+    serde :: Deserialize,
+)]
 pub struct InstanceKey(pub u64);
 
 impl<'a> From<InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {

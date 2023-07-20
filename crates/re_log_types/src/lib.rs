@@ -41,7 +41,7 @@ pub mod serde_field;
 use std::sync::Arc;
 
 pub use self::arrow_msg::ArrowMsg;
-pub use self::component::{DeserializableComponent, LegacyComponent, SerializableComponent};
+pub use self::component::LegacyComponent;
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
 pub use self::data_row::{DataCellRow, DataCellVec, DataRow, DataRowError, DataRowResult, RowId};
 pub use self::data_table::{
@@ -51,7 +51,7 @@ pub use self::data_table::{
     METADATA_KIND_CONTROL, METADATA_KIND_DATA,
 };
 pub use self::index::*;
-pub use self::instance_key::InstanceKey;
+pub use self::instance_key::LegacyInstanceKey;
 pub use self::path::*;
 pub use self::time::{Duration, Time};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
@@ -424,13 +424,13 @@ macro_rules! component_legacy_shim {
 
             #[inline]
             fn name() -> Self::Name {
-                <Self as re_log_types::Component>::legacy_name()
+                <Self as re_log_types::LegacyComponent>::legacy_name()
                     .as_str()
                     .into()
             }
 
             fn to_arrow_datatype() -> arrow2::datatypes::DataType {
-                <Self as re_log_types::Component>::field()
+                <Self as re_log_types::LegacyComponent>::field()
                     .data_type()
                     .clone()
             }

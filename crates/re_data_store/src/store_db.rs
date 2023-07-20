@@ -5,10 +5,10 @@ use nohash_hasher::IntMap;
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
     ApplicationId, ArrowMsg, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
-    EntityPathHash, EntityPathOpMsg, InstanceKey, LogMsg, PathOp, RowId, SetStoreInfo, StoreId,
-    StoreInfo, StoreKind, TimePoint, Timeline,
+    EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RowId, SetStoreInfo, StoreId, StoreInfo,
+    StoreKind, TimePoint, Timeline,
 };
-use re_types::Loggable as _;
+use re_types::{components::InstanceKey, Loggable as _};
 
 use crate::{Error, TimesPerTimeline};
 

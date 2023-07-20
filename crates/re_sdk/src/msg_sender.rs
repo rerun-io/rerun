@@ -1,12 +1,12 @@
 use re_log_types::{
-    external::arrow2::datatypes::DataType, DataRow, DataTableError, InstanceKey, RowId, StoreId,
+    external::arrow2::datatypes::DataType, DataRow, DataTableError, RowId, StoreId,
 };
-use re_types::Archetype;
+use re_types::{components::InstanceKey, Archetype};
 
 use crate::{
     log::DataCell,
     time::{Time, TimeInt, TimePoint, Timeline},
-    EntityPath, RecordingStream, SerializableComponent,
+    EntityPath, RecordingStream,
 };
 use re_types::{Component, Loggable as _};
 
@@ -299,7 +299,7 @@ impl MsgSender {
     /// Doing so will return an error when trying to `send()` the message.
     pub fn with_splat<'a, C>(mut self, data: C) -> Result<Self, MsgSenderError>
     where
-        C: SerializableComponent + re_types::Component + Clone,
+        C: Component + 'a,
         C: Into<::std::borrow::Cow<'a, C>>,
     {
         if C::name() == InstanceKey::name() {
@@ -317,7 +317,7 @@ impl MsgSender {
     /// See [`Self::with_splat`].
     pub fn with_splat_opt<'a, C>(self, data: Option<C>) -> Result<Self, MsgSenderError>
     where
-        C: SerializableComponent + re_types::Component + Clone,
+        C: Component + 'a,
         C: Into<::std::borrow::Cow<'a, C>>,
     {
         if let Some(data) = data {

@@ -18,6 +18,7 @@ pub use cameras::CamerasPart;
 pub use images::Image;
 pub use images::ImagesPart;
 use re_types::components::Color;
+use re_types::components::InstanceKey;
 use re_types::Archetype;
 pub use spatial_view_part::SpatialViewPartData;
 pub use transform3d_arrows::add_axis_arrows;
@@ -95,7 +96,7 @@ pub fn collect_ui_labels(parts: &ViewPartCollection) -> Vec<UiLabel> {
 }
 
 pub fn picking_id_from_instance_key(
-    instance_key: re_log_types::InstanceKey,
+    instance_key: InstanceKey,
 ) -> re_renderer::PickingLayerInstanceId {
     re_renderer::PickingLayerInstanceId(instance_key.0)
 }
@@ -107,12 +108,8 @@ pub fn process_colors<'a, Primary>(
     annotation_infos: &'a [ResolvedAnnotationInfo],
 ) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError>
 where
-    Primary: re_log_types::SerializableComponent
-        + re_log_types::DeserializableComponent
-        + re_types::Component
-        + Clone,
+    Primary: re_types::Component,
     &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
-    for<'b> &'b Primary::ArrayType: IntoIterator,
 {
     re_tracing::profile_function!();
     let default_color = DefaultColor::EntityPath(ent_path);
@@ -150,12 +147,8 @@ pub fn process_radii<'a, Primary>(
     entity_view: &'a re_query::EntityView<Primary>,
 ) -> Result<impl Iterator<Item = re_renderer::Size> + 'a, re_query::QueryError>
 where
-    Primary: re_log_types::SerializableComponent
-        + re_log_types::DeserializableComponent
-        + re_types::Component
-        + Clone,
+    Primary: re_types::Component,
     &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
-    for<'b> &'b Primary::ArrayType: IntoIterator,
 {
     re_tracing::profile_function!();
     let ent_path = ent_path.clone();
@@ -211,12 +204,8 @@ fn process_annotations_and_keypoints<'a, Primary>(
     annotations: &Arc<Annotations>,
 ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), re_query::QueryError>
 where
-    Primary: re_log_types::SerializableComponent
-        + re_log_types::DeserializableComponent
-        + re_types::Component
-        + Clone,
+    Primary: re_types::Component + 'a,
     &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
-    for<'b> &'b Primary::ArrayType: IntoIterator,
     glam::Vec3: std::convert::From<Primary>,
 {
     re_tracing::profile_function!();
@@ -369,9 +358,7 @@ pub fn load_keypoint_connections(
                 .color(color)
                 .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
                 // Select the entire object when clicking any of the lines.
-                .picking_instance_id(re_renderer::PickingLayerInstanceId(
-                    re_log_types::InstanceKey::SPLAT.0,
-                ));
+                .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
         }
     }
 }

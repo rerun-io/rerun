@@ -7,11 +7,11 @@ use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_components::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d, build_some_vec3d},
-    ColorRGBA, InstanceKey, Point2D, Vec3D,
+    ColorRGBA, Point2D, Vec3D,
 };
 use re_log_types::{entity_path, DataRow, EntityPath, Index, RowId, TimeType, Timeline};
 use re_query::query_entity_with_primary;
-use re_types::Loggable as _;
+use re_types::{components::InstanceKey, Loggable as _};
 
 // ---
 

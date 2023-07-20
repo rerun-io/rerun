@@ -2,9 +2,8 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
-use re_log_types::InstanceKey;
 use re_query::ComponentWithInstances;
-use re_types::{ComponentName, Loggable as _};
+use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 
 use crate::ViewerContext;
 

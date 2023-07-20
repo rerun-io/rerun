@@ -274,7 +274,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
                 let components: Vec<_> = state
                     .clone()
                     .into_iter()
-                    .filter_map(|cwi| cwi.map(|(_, cwi)| cwi.into()))
+                    .filter_map(|cwi| cwi.map(|(_, cwi)| cwi))
                     .collect();
 
                 let mut arch_view = ArchetypeView::from_components(components);

@@ -23,10 +23,10 @@ use crate::LegacyComponent;
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
-pub struct InstanceKey(pub u64);
+pub struct LegacyInstanceKey(pub u64);
 
-impl InstanceKey {
-    /// A special value indicating that this [`InstanceKey]` is referring to all instances of an entity,
+impl LegacyInstanceKey {
+    /// A special value indicating that this [`LegacyInstanceKey]` is referring to all instances of an entity,
     /// for example all points in a point cloud entity.
     pub const SPLAT: Self = Self(u64::MAX);
 
@@ -54,11 +54,11 @@ impl InstanceKey {
 
     /// Returns `None` if splat, otherwise the index.
     #[inline]
-    pub fn specific_index(self) -> Option<InstanceKey> {
+    pub fn specific_index(self) -> Option<LegacyInstanceKey> {
         self.is_specific().then_some(self)
     }
 
-    /// Creates a new [`InstanceKey`] that identifies a 2d coordinate.
+    /// Creates a new [`LegacyInstanceKey`] that identifies a 2d coordinate.
     pub fn from_2d_image_coordinate([x, y]: [u32; 2], image_width: u64) -> Self {
         Self((x as u64) + (y as u64) * image_width)
     }
@@ -69,7 +69,7 @@ impl InstanceKey {
     }
 }
 
-impl std::fmt::Debug for InstanceKey {
+impl std::fmt::Debug for LegacyInstanceKey {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_splat() {
@@ -80,7 +80,7 @@ impl std::fmt::Debug for InstanceKey {
     }
 }
 
-impl std::fmt::Display for InstanceKey {
+impl std::fmt::Display for LegacyInstanceKey {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_splat() {
@@ -91,26 +91,32 @@ impl std::fmt::Display for InstanceKey {
     }
 }
 
-impl From<u64> for InstanceKey {
+impl From<u64> for LegacyInstanceKey {
     #[inline]
     fn from(value: u64) -> Self {
         Self(value)
     }
 }
 
-impl LegacyComponent for InstanceKey {
+impl LegacyComponent for LegacyInstanceKey {
     #[inline]
     fn legacy_name() -> crate::ComponentName {
         "rerun.instance_key".into()
     }
 }
 
-impl From<re_types::components::InstanceKey> for InstanceKey {
+impl From<re_types::components::InstanceKey> for LegacyInstanceKey {
     fn from(other: re_types::components::InstanceKey) -> Self {
+        Self(other.0)
+    }
+}
+
+impl From<LegacyInstanceKey> for re_types::components::InstanceKey {
+    fn from(other: LegacyInstanceKey) -> Self {
         Self(other.0)
     }
 }
 
 use crate as re_log_types;
 
-re_log_types::component_legacy_shim!(InstanceKey);
+re_log_types::component_legacy_shim!(LegacyInstanceKey);

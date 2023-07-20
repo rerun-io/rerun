@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{DataRow, EntityPath, InstanceKey, LegacyComponent, RowId};
+use re_log_types::{DataRow, EntityPath, LegacyComponent, RowId};
 use re_types::Archetype;
-use re_types::{ComponentName, Loggable};
+use re_types::{components::InstanceKey, ComponentName, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 
@@ -208,7 +208,7 @@ pub fn query_archetype<A: Archetype>(
         .iter()
         .map(|component| {
             get_component_with_instances(store, query, ent_path, *component)
-                .map(|(_, component_result)| component_result.into())
+                .map(|(_, component_result)| component_result)
         })
         .collect();
 
@@ -231,7 +231,7 @@ pub fn query_archetype<A: Archetype>(
         .chain(optional_components.iter())
         .filter_map(|component| {
             get_component_with_instances(store, query, ent_path, *component)
-                .map(|(_, component_result)| component_result.into())
+                .map(|(_, component_result)| component_result)
         });
 
     Ok(ArchetypeView::from_components(

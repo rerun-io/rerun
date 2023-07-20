@@ -10,8 +10,8 @@ use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     Point2D, Rect2D,
 };
-use re_log_types::{EntityPath, InstanceKey, LegacyComponent};
-use re_types::Loggable;
+use re_log_types::EntityPath;
+use re_types::{components::InstanceKey, Loggable};
 
 fn main() {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
@@ -37,10 +37,7 @@ fn main() {
         Rect2D::name(),
     )
     .unwrap();
-    println!(
-        "Query results from {:?}'s PoV:\n{df}",
-        Rect2D::legacy_name()
-    );
+    println!("Query results from {:?}'s PoV:\n{df}", Rect2D::name());
 
     println!("\n-----\n");
 

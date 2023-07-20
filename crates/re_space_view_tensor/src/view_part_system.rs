@@ -1,8 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
-use re_log_types::InstanceKey;
-use re_types::Loggable as _;
+use re_types::{components::InstanceKey, Loggable as _};
 use re_viewer_context::{
     ArchetypeDefinition, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
     ViewPartSystem, ViewQuery, ViewerContext,
