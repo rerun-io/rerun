@@ -421,6 +421,7 @@ macro_rules! component_legacy_shim {
     ($entity:ident) => {
         impl re_types::Loggable for $entity {
             type Name = re_types::ComponentName;
+            type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
 
             #[inline]
             fn name() -> Self::Name {
@@ -472,6 +473,33 @@ macro_rules! component_legacy_shim {
                     .collect();
 
                 Ok(native)
+            }
+
+            fn try_from_arrow_iter(
+                data: &dyn arrow2::array::Array,
+            ) -> re_types::DeserializationResult<Self::Iter<'_, Self>> {
+                use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
+
+                let native = arrow_array_deserialize_iterator(data).map_err(|err| {
+                    re_types::DeserializationError::ArrowConvertFailure(err.to_string())
+                })?;
+
+                Ok(Box::new(native))
+            }
+
+            fn try_from_arrow_opt_iter(
+                data: &dyn arrow2::array::Array,
+            ) -> re_types::DeserializationResult<Self::Iter<'_, Option<Self>>>
+            where
+                Self: Sized,
+            {
+                use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
+
+                let native = arrow_array_deserialize_iterator(data).map_err(|err| {
+                    re_types::DeserializationError::ArrowConvertFailure(err.to_string())
+                })?;
+
+                Ok(Box::new(native))
             }
         }
 

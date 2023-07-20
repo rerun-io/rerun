@@ -40,13 +40,13 @@ impl ComponentWithInstances {
     /// Iterate over the [`InstanceKey`]s.
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
-        InstanceKey::from_arrow(self.instance_keys.as_arrow_ref()).into_iter()
+        self.instance_keys.to_native::<InstanceKey>()
     }
 
     /// Iterate over the values and convert them to a native [`Component`]
     #[inline]
     pub fn iter_values<'a, C: Component + 'a>(
-        &self,
+        &'a self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + 'a> {
         if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
@@ -55,7 +55,7 @@ impl ComponentWithInstances {
             });
         }
 
-        Ok(C::try_from_arrow_opt(self.values.as_arrow_ref())?.into_iter())
+        Ok(self.values.try_to_native_opt::<'a, C>()?)
     }
 
     /// Look up the value that corresponds to a given [`InstanceKey`] and convert to [`Component`]

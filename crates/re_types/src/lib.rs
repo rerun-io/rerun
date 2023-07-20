@@ -76,6 +76,7 @@
 /// Anything that can be serialized to and deserialized from Arrow data.
 pub trait Loggable {
     type Name;
+    type Iter<'a, I>: Iterator<Item = I>;
 
     /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.
     fn name() -> Self::Name;
@@ -216,6 +217,18 @@ pub trait Loggable {
     fn try_from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized;
+
+    fn try_from_arrow_iter(
+        data: &dyn ::arrow2::array::Array,
+    ) -> DeserializationResult<Self::Iter<'_, Self>>
+    where
+        Self: Sized;
+
+    fn try_from_arrow_opt_iter(
+        data: &dyn ::arrow2::array::Array,
+    ) -> DeserializationResult<Self::Iter<'_, Option<Self>>>
     where
         Self: Sized;
 }
