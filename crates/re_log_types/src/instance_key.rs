@@ -106,12 +106,14 @@ impl LegacyComponent for LegacyInstanceKey {
 }
 
 impl From<re_types::components::InstanceKey> for LegacyInstanceKey {
+    #[inline]
     fn from(other: re_types::components::InstanceKey) -> Self {
         Self(other.0)
     }
 }
 
 impl From<LegacyInstanceKey> for re_types::components::InstanceKey {
+    #[inline]
     fn from(other: LegacyInstanceKey) -> Self {
         Self(other.0)
     }

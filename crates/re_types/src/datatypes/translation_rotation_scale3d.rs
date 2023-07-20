@@ -45,9 +45,12 @@ impl<'a> From<&'a TranslationRotationScale3D>
     }
 }
 
+impl TranslationRotationScale3D {}
+
 impl crate::Loggable for TranslationRotationScale3D {
     type Name = crate::DatatypeName;
-    type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
+    type Item<'a> = Option<Self>;
+    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.TranslationRotationScale3D".into()
@@ -368,19 +371,17 @@ impl crate::Loggable for TranslationRotationScale3D {
         })
     }
 
-    fn try_from_arrow_iter(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Self>> {
-        Ok(Box::new(Self::try_from_arrow(data)?.into_iter()))
-    }
-
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Option<Self>>>
+    ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 

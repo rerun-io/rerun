@@ -74,9 +74,10 @@
 // ---
 
 /// Anything that can be serialized to and deserialized from Arrow data.
-pub trait Loggable {
+pub trait Loggable: Sized {
     type Name;
-    type Iter<'a, I>: Iterator<Item = I>;
+    type Item<'a>;
+    type IterItem<'a>: Iterator<Item = Self::Item<'a>>;
 
     /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.
     fn name() -> Self::Name;
@@ -161,10 +162,7 @@ pub trait Loggable {
     /// Panics if the data schema doesn't match, or if optional entries were missing at runtime.
     /// For the non-fallible version, see [`Loggable::try_from_arrow`].
     #[inline]
-    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self>
-    where
-        Self: Sized,
-    {
+    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
         Self::from_arrow_opt(data)
             .into_iter()
             .map(|v| {
@@ -182,10 +180,7 @@ pub trait Loggable {
     /// [`Loggable::to_arrow_datatype`].
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
-    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
         Self::try_from_arrow_opt(data)?
             .into_iter()
             .map(|v| {
@@ -202,10 +197,7 @@ pub trait Loggable {
     /// [`Loggable::to_arrow_datatype`].
     /// For the fallible version, see [`Loggable::try_from_arrow_opt`].
     #[inline]
-    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>>
-    where
-        Self: Sized,
-    {
+    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>> {
         Self::try_from_arrow_opt(data).detailed_unwrap()
     }
 
@@ -216,21 +208,13 @@ pub trait Loggable {
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     fn try_from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized;
+    ) -> DeserializationResult<Vec<Option<Self>>>;
 
-    fn try_from_arrow_iter(
-        data: &dyn ::arrow2::array::Array,
-    ) -> DeserializationResult<Self::Iter<'_, Self>>
-    where
-        Self: Sized;
+    fn iter_mapper(item: Self::Item<'_>) -> Option<Self>;
 
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
-    ) -> DeserializationResult<Self::Iter<'_, Option<Self>>>
-    where
-        Self: Sized;
+    ) -> DeserializationResult<Self::IterItem<'_>>;
 }
 
 /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.

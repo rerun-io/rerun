@@ -419,9 +419,13 @@ macro_rules! profile_scope {
 #[macro_export]
 macro_rules! component_legacy_shim {
     ($entity:ident) => {
+        impl $entity {}
+
         impl re_types::Loggable for $entity {
             type Name = re_types::ComponentName;
-            type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
+            type Item<'a> = <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::Item;
+            type IterItem<'a> =
+                <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter;
 
             #[inline]
             fn name() -> Self::Name {
@@ -430,12 +434,14 @@ macro_rules! component_legacy_shim {
                     .into()
             }
 
+            #[inline]
             fn to_arrow_datatype() -> arrow2::datatypes::DataType {
                 <Self as re_log_types::LegacyComponent>::field()
                     .data_type()
                     .clone()
             }
 
+            #[inline]
             fn try_to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
                 _extension_wrapper: Option<&str>,
@@ -458,6 +464,7 @@ macro_rules! component_legacy_shim {
                 Ok(arrow)
             }
 
+            #[inline]
             fn try_from_arrow_opt(
                 data: &dyn arrow2::array::Array,
             ) -> re_types::DeserializationResult<Vec<Option<Self>>>
@@ -465,41 +472,29 @@ macro_rules! component_legacy_shim {
                 Self: Sized,
             {
                 use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
-
                 let native = arrow_array_deserialize_iterator(data)
                     .map_err(|err| {
                         re_types::DeserializationError::ArrowConvertFailure(err.to_string())
                     })?
                     .collect();
-
                 Ok(native)
             }
 
-            fn try_from_arrow_iter(
-                data: &dyn arrow2::array::Array,
-            ) -> re_types::DeserializationResult<Self::Iter<'_, Self>> {
-                use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
-
-                let native = arrow_array_deserialize_iterator(data).map_err(|err| {
-                    re_types::DeserializationError::ArrowConvertFailure(err.to_string())
-                })?;
-
-                Ok(Box::new(native))
-            }
-
+            #[inline]
             fn try_from_arrow_opt_iter(
                 data: &dyn arrow2::array::Array,
-            ) -> re_types::DeserializationResult<Self::Iter<'_, Option<Self>>>
+            ) -> re_types::DeserializationResult<Self::IterItem<'_>>
             where
                 Self: Sized,
             {
-                use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
+                let native =
+                       <<Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as arrow2_convert::deserialize::ArrowArray>::iter_from_array_ref(data);
+                Ok(native)
+            }
 
-                let native = arrow_array_deserialize_iterator(data).map_err(|err| {
-                    re_types::DeserializationError::ArrowConvertFailure(err.to_string())
-                })?;
-
-                Ok(Box::new(native))
+            #[inline]
+            fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+                <Self as arrow2_convert::deserialize::ArrowDeserialize>::arrow_deserialize(item)
             }
         }
 

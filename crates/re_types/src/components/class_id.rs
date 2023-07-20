@@ -32,9 +32,12 @@ impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
     }
 }
 
+impl ClassId {}
+
 impl crate::Loggable for ClassId {
     type Name = crate::ComponentName;
-    type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
+    type Item<'a> = Option<Self>;
+    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.class_id".into()
@@ -119,19 +122,17 @@ impl crate::Loggable for ClassId {
             })?)
     }
 
-    fn try_from_arrow_iter(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Self>> {
-        Ok(Box::new(Self::try_from_arrow(data)?.into_iter()))
-    }
-
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Option<Self>>>
+    ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 

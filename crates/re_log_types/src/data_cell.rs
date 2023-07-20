@@ -362,7 +362,9 @@ impl DataCell {
     pub fn try_to_native<'a, C: Component + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = C> + '_> {
-        Ok(C::try_from_arrow_iter(self.inner.values.as_ref())?)
+        Ok(C::try_from_arrow_opt_iter(self.inner.values.as_ref())?
+            .map(C::iter_mapper)
+            .map(|v| v.unwrap()))
     }
 
     /// Returns the contents of the cell as an iterator of native components.
@@ -381,7 +383,7 @@ impl DataCell {
     pub fn try_to_native_opt<'a, C: Component + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_> {
-        Ok(C::try_from_arrow_opt_iter(self.inner.values.as_ref())?)
+        Ok(C::try_from_arrow_opt_iter(self.inner.values.as_ref())?.map(C::iter_mapper))
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.

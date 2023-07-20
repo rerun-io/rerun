@@ -257,6 +257,7 @@ impl<A: Archetype> ArchetypeView<A> {
 }
 
 impl<A: Archetype> ArchetypeView<A> {
+    #[inline]
     fn required_comp(&self) -> &ComponentWithInstances {
         // TODO(jleibs): Do all archetypes always have at least 1 required components?
         let first_required = A::required_components()[0];
@@ -278,6 +279,7 @@ impl<A: Archetype> ArchetypeView<A> {
     }
 
     /// Iterate over the values of a required [`Component`].
+    #[inline]
     pub fn iter_required_component<'a, C: Component + Clone + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
@@ -304,6 +306,7 @@ impl<A: Archetype> ArchetypeView<A> {
     ///
     /// Always produces an iterator that matches the length of a primary
     /// component by joining on the `InstanceKey` values.
+    #[inline]
     pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = Option<C>> + '_> {

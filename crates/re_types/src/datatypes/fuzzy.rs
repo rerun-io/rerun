@@ -31,9 +31,12 @@ impl<'a> From<&'a FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
     }
 }
 
+impl FlattenedScalar {}
+
 impl crate::Loggable for FlattenedScalar {
     type Name = crate::DatatypeName;
-    type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
+    type Item<'a> = Option<Self>;
+    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.FlattenedScalar".into()
@@ -187,19 +190,17 @@ impl crate::Loggable for FlattenedScalar {
         })
     }
 
-    fn try_from_arrow_iter(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Self>> {
-        Ok(Box::new(Self::try_from_arrow(data)?.into_iter()))
-    }
-
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Option<Self>>>
+    ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 
@@ -232,9 +233,12 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
     }
 }
 
+impl AffixFuzzer1 {}
+
 impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::DatatypeName;
-    type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
+    type Item<'a> = Option<Self>;
+    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer1".into()
@@ -1004,19 +1008,17 @@ impl crate::Loggable for AffixFuzzer1 {
         })
     }
 
-    fn try_from_arrow_iter(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Self>> {
-        Ok(Box::new(Self::try_from_arrow(data)?.into_iter()))
-    }
-
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Option<Self>>>
+    ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 
@@ -1039,9 +1041,12 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
     }
 }
 
+impl AffixFuzzer2 {}
+
 impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::DatatypeName;
-    type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
+    type Item<'a> = Option<Self>;
+    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer2".into()
@@ -1124,19 +1129,17 @@ impl crate::Loggable for AffixFuzzer2 {
             })?)
     }
 
-    fn try_from_arrow_iter(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Self>> {
-        Ok(Box::new(Self::try_from_arrow(data)?.into_iter()))
-    }
-
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Option<Self>>>
+    ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 
@@ -1164,9 +1167,12 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
     }
 }
 
+impl AffixFuzzer3 {}
+
 impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::DatatypeName;
-    type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
+    type Item<'a> = Option<Self>;
+    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer3".into()
@@ -1619,19 +1625,17 @@ impl crate::Loggable for AffixFuzzer3 {
         })
     }
 
-    fn try_from_arrow_iter(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Self>> {
-        Ok(Box::new(Self::try_from_arrow(data)?.into_iter()))
-    }
-
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Option<Self>>>
+    ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 
@@ -1658,9 +1662,12 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
     }
 }
 
+impl AffixFuzzer4 {}
+
 impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::DatatypeName;
-    type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
+    type Item<'a> = Option<Self>;
+    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer4".into()
@@ -2053,19 +2060,17 @@ impl crate::Loggable for AffixFuzzer4 {
         })
     }
 
-    fn try_from_arrow_iter(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Self>> {
-        Ok(Box::new(Self::try_from_arrow(data)?.into_iter()))
-    }
-
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Option<Self>>>
+    ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 
@@ -2098,9 +2103,12 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
     }
 }
 
+impl AffixFuzzer5 {}
+
 impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::DatatypeName;
-    type Iter<'a, I> = Box<dyn Iterator<Item = I> + 'a>;
+    type Item<'a> = Option<Self>;
+    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer5".into()
@@ -2252,19 +2260,17 @@ impl crate::Loggable for AffixFuzzer5 {
         })
     }
 
-    fn try_from_arrow_iter(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Self>> {
-        Ok(Box::new(Self::try_from_arrow(data)?.into_iter()))
-    }
-
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_, Option<Self>>>
+    ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
         Self: Sized,
     {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 
