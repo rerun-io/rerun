@@ -62,20 +62,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          shared-key: "build-linux"
-          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # Don't update the cache -- it will be updated by the lint job
-          # TODO(jleibs): this job will likely run before rust.yml updates
-          # the cache. Better cross-job sequencing would be nice here
-          save-if: false
-
-      # Sccache will cache everything else
-      # See: https://github.com/marketplace/actions/sccache-action
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+          cache_key: "build-linux"
+          # Cache will be produced by `reusable_checks/rs-lints`
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
@@ -92,12 +86,6 @@ jobs:
             -p re_query \
             -p re_tuid \
             -- --output-format=bencher | tee /tmp/${{ env.SHORT_SHA }}
-
-      - id: "auth"
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v1"

@@ -113,19 +113,14 @@ jobs:
         with:
           fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
 
-      # Rust-cache will cache our dependencies, which is a large chunk of the build
-      # See: https://github.com/Swatinem/rust-cache
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          shared-key: "build-linux"
-          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          save-if: false
-
-      # Sccache will cache everything else
-      # See: https://github.com/marketplace/actions/sccache-action
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+          cache_key: "build-linux"
+          # Cache will be produced by `reusable_checks/rs-lints`
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Delete existing /target/doc
         run: rm -rf ./target/doc
