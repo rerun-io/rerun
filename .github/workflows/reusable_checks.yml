@@ -39,7 +39,6 @@ env:
 
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
-  RUSTC_WRAPPER: "sccache"
 
 permissions:
   id-token: "write"
@@ -290,7 +289,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: rerunio/ci_docker:0.7
-
     steps:
       - uses: actions/checkout@v3
 

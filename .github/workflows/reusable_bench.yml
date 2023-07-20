@@ -39,7 +39,6 @@ env:
 
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: "sccache"
 
 jobs:
   # ---------------------------------------------------------------------------
