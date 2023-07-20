@@ -24,8 +24,12 @@ impl ViewPartSystem for BarChartViewPartSystem {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        _components: &[ComponentName],
+        components: &[ComponentName],
     ) -> bool {
+        if !components.contains(&Tensor::name()) {
+            return false;
+        }
+
         if let Some(tensor) = store.query_latest_component::<Tensor>(
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
