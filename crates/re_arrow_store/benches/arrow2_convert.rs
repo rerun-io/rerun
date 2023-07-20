@@ -5,8 +5,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use arrow2::{array::PrimitiveArray, datatypes::PhysicalType, types::PrimitiveType};
 use criterion::{criterion_group, Criterion};
-use re_log_types::{DataCell, InstanceKey};
-use re_types::Loggable as _;
+use re_log_types::DataCell;
+use re_types::{components::InstanceKey, Loggable as _};
 
 // ---
 

@@ -9,8 +9,8 @@ use re_components::datagen::{
     build_frame_nr, build_log_time, build_some_instances, build_some_instances_from,
     build_some_point2d, build_some_rects,
 };
-use re_log_types::{EntityPath, InstanceKey, Time};
-use re_types::Loggable;
+use re_log_types::{EntityPath, Time};
+use re_types::{components::InstanceKey, Loggable};
 
 // ---
 

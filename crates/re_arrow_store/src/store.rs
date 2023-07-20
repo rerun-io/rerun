@@ -336,8 +336,7 @@ impl DataStore {
 #[test]
 fn datastore_internal_repr() {
     use re_components::datagen::data_table_example;
-    use re_log_types::InstanceKey;
-    use re_types::Loggable as _;
+    use re_types::{components::InstanceKey, Loggable as _};
 
     let mut store = DataStore::new(
         InstanceKey::name(),

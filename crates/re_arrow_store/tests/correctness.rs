@@ -13,8 +13,8 @@ use re_arrow_store::{
 use re_components::datagen::{
     build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
 };
-use re_log_types::{DataCell, Duration, EntityPath, InstanceKey, Time, TimeType, Timeline};
-use re_types::Loggable as _;
+use re_log_types::{DataCell, Duration, EntityPath, Time, TimeType, Timeline};
+use re_types::{components::InstanceKey, Loggable as _};
 
 // ---
 
@@ -213,13 +213,11 @@ fn range_join_across_single_row() {
 
 #[cfg(feature = "polars")]
 fn range_join_across_single_row_impl(store: &mut DataStore) {
-    use arrow2::array::Array;
     use polars_core::{
         prelude::{DataFrame, JoinType},
         series::Series,
     };
     use re_components::{ColorRGBA, Point2D};
-    use re_log_types::external::arrow2_convert::serialize::TryIntoArrow as _;
 
     let ent_path = EntityPath::from("this/that");
 
@@ -246,11 +244,10 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     .collect::<Vec<_>>();
 
     let df_expected = {
-        let instances: Box<dyn Array> = vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)]
-            .try_into_arrow()
-            .unwrap();
-        let points: Box<dyn Array> = points.try_into_arrow().unwrap();
-        let colors: Box<dyn Array> = colors.try_into_arrow().unwrap();
+        let instances =
+            InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)], None);
+        let points = Point2D::to_arrow(points, None);
+        let colors = ColorRGBA::to_arrow(colors, None);
 
         DataFrame::new(vec![
             Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),

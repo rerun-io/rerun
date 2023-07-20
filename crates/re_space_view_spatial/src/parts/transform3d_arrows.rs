@@ -1,5 +1,5 @@
 use egui::Color32;
-use re_components::Transform3D;
+use re_components::{InstanceKey, Transform3D};
 use re_log_types::EntityPath;
 use re_renderer::LineStripSeriesBuilder;
 use re_types::Loggable as _;
@@ -113,8 +113,7 @@ pub fn add_axis_arrows(
         .picking_object_id(re_renderer::PickingLayerObjectId(
             ent_path.map_or(0, |p| p.hash64()),
         ));
-    let picking_instance_id =
-        re_renderer::PickingLayerInstanceId(re_log_types::InstanceKey::SPLAT.0);
+    let picking_instance_id = re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0);
 
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)

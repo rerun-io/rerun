@@ -1,8 +1,9 @@
 use lazy_static::lazy_static;
 use nohash_hasher::IntMap;
 
-use re_log_types::{EntityPathHash, InstanceKey};
+use re_log_types::EntityPathHash;
 use re_renderer::OutlineMaskPreference;
+use re_types::components::InstanceKey;
 
 use crate::InteractionHighlight;
 

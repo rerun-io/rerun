@@ -601,9 +601,9 @@ impl DataCellInner {
 
 #[test]
 fn data_cell_sizes() {
-    use crate::{DataCell, InstanceKey};
+    use crate::DataCell;
     use arrow2::array::UInt64Array;
-    use re_types::Loggable as _;
+    use re_types::{components::InstanceKey, Loggable as _};
 
     // not computed
     // NOTE: Unsized cells are illegal in debug mode and will flat out crash.

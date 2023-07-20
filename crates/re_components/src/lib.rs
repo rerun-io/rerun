@@ -96,7 +96,7 @@ pub use self::tensor::{TensorImageLoadError, TensorImageSaveError};
 pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_path, FromFileError};
 
 // This is a component
-pub use re_log_types::InstanceKey;
+pub use re_types::components::InstanceKey;
 
 // This is very convenient to re-export
 pub use re_log_types::LegacyComponent;
@@ -121,7 +121,7 @@ lazy_static! {
         <ColorRGBA as LegacyComponent>::field(),
         <DrawOrder as LegacyComponent>::field(),
         <DisconnectedSpace as LegacyComponent>::field(),
-        <re_log_types::InstanceKey as LegacyComponent>::field(),
+        <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
         <KeypointId as LegacyComponent>::field(),
         <Label as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),

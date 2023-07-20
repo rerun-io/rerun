@@ -1,8 +1,8 @@
-use re_components::{ColorRGBA, InstanceKey, Mesh3D};
+use re_components::{ColorRGBA, Mesh3D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
-use re_types::Loggable as _;
+use re_types::{components::InstanceKey, Loggable as _};
 use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartSystem, ViewQuery, ViewerContext,

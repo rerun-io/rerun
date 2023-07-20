@@ -7,7 +7,8 @@
 //! # Usage
 //! ```
 //! # use re_query::EntityView;
-//! # use re_components::{ColorRGBA, InstanceKey, Point2D};
+//! # use re_components::{ColorRGBA, Point2D};
+//! # use re_types::components::InstanceKey;
 //!
 //! let instances = InstanceKey::from_iter(0..3);
 //!
@@ -43,7 +44,8 @@
 //! assert_eq!(colors.as_slice(), colors_out.as_slice());
 //! ```
 
-use re_log_types::{DeserializableComponent, InstanceKey, LegacyComponent, SerializableComponent};
+use re_types::components::InstanceKey;
+use re_types::Component;
 
 use crate::EntityView;
 
@@ -65,8 +67,10 @@ macro_rules! create_visitor {
 
         ) -> crate::Result<()>
         where $(
-            $CC: Clone + DeserializableComponent + re_types::Component,
-            for<'b> &'b $CC::ArrayType: IntoIterator,
+            $CC: re_types::Component,
+        )*
+        $(
+            &'a $CC: std::convert::Into<std::borrow::Cow<'a, $CC>> + 'a,
         )*
         {
             re_tracing::profile_function!();
@@ -92,9 +96,8 @@ macro_rules! create_visitor {
 
 impl<'a, Primary> EntityView<Primary>
 where
-    Primary: SerializableComponent + DeserializableComponent + re_types::Component + Clone,
-    &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
-    for<'b> &'b Primary::ArrayType: IntoIterator,
+    Primary: re_types::Component,
+    &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>> + 'a,
 {
     create_visitor! {visit1; ;}
     create_visitor! {visit2; C1; _c1}

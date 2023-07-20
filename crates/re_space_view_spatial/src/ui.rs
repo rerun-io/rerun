@@ -10,6 +10,7 @@ use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
+use re_types::components::InstanceKey;
 use re_viewer_context::{
     resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
     SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
@@ -786,7 +787,7 @@ pub fn picking(
 
         if response.double_clicked() {
             // Select entire entity on double-click:
-            instance_path.instance_key = re_log_types::InstanceKey::SPLAT;
+            instance_path.instance_key = InstanceKey::SPLAT;
         }
 
         if non_interactive
@@ -829,7 +830,7 @@ pub fn picking(
         };
         if picked_image_with_coords.is_some() {
             // We don't support selecting pixels yet.
-            instance_path.instance_key = re_log_types::InstanceKey::SPLAT;
+            instance_path.instance_key = InstanceKey::SPLAT;
         } else {
             instance_path = resolve_mono_instance_path(
                 &ctx.current_query(),

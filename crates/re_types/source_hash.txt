@@ -1,4 +1,4 @@
 # This is a sha256 hash for all direct and indirect dependencies of this crate's build script.
 # It can be safely removed at anytime to force the build script to run again.
 # Check out build.rs to see how it's computed.
-a5907a32ec4ff86a9b67647b4b77fc006eb36b19d15ed25b438cb6dc92af95d3
+38cf451937b585b78a47d2b1d5542f761bf3bd56d2fdd26eb4172c7ed5fcbf20

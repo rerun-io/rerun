@@ -226,7 +226,7 @@ pub type DatatypeName = ::std::borrow::Cow<'static, str>;
 /// A [`Datatype`] describes plain old data that can be used by any number of [`Component`].
 pub trait Datatype: Loggable {}
 
-pub trait Component: Loggable<Name = ComponentName> {}
+pub trait Component: Loggable<Name = ComponentName> + Clone {}
 
 // ---
 

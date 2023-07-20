@@ -1,9 +1,9 @@
 use re_viewer::external::{
     egui, re_components,
-    re_log_types::{EntityPath, InstanceKey},
+    re_log_types::EntityPath,
     re_query::query_entity_with_primary,
     re_renderer,
-    re_types::Loggable as _,
+    re_types::{components::InstanceKey, Loggable as _},
     re_viewer_context::{
         ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
         ViewQuery, ViewerContext,
