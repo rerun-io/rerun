@@ -59,133 +59,19 @@ impl crate::Loggable for TranslationRotationScale3D {
         DataType::Struct(vec![
             Field {
                 name: "translation".to_owned(),
-                data_type: DataType::FixedSizeList(
-                    Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    }),
-                    3usize,
-                ),
+                data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
             Field {
                 name: "rotation".to_owned(),
-                data_type: DataType::Union(
-                    vec![
-                        Field {
-                            name: "_null_markers".to_owned(),
-                            data_type: DataType::Null,
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "Quaternion".to_owned(),
-                            data_type: DataType::FixedSizeList(
-                                Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
-                                4usize,
-                            ),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "AxisAngle".to_owned(),
-                            data_type: DataType::Struct(vec![
-                                Field {
-                                    name: "axis".to_owned(),
-                                    data_type: DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    ),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "angle".to_owned(),
-                                    data_type: DataType::Union(
-                                        vec![
-                                            Field {
-                                                name: "_null_markers".to_owned(),
-                                                data_type: DataType::Null,
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "Radians".to_owned(),
-                                                data_type: DataType::Float32,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "Degrees".to_owned(),
-                                                data_type: DataType::Float32,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32]),
-                                        UnionMode::Dense,
-                                    ),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ],
-                    Some(vec![0i32, 1i32, 2i32]),
-                    UnionMode::Dense,
-                ),
+                data_type: <crate::datatypes::Rotation3D>::to_arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
             Field {
                 name: "scale".to_owned(),
-                data_type: DataType::Union(
-                    vec![
-                        Field {
-                            name: "_null_markers".to_owned(),
-                            data_type: DataType::Null,
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "ThreeD".to_owned(),
-                            data_type: DataType::FixedSizeList(
-                                Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
-                                3usize,
-                            ),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "Uniform".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ],
-                    Some(vec![0i32, 1i32, 2i32]),
-                    UnionMode::Dense,
-                ),
+                data_type: <crate::datatypes::Scale3D>::to_arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
