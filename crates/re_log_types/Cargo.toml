@@ -26,6 +26,7 @@ serde = [
   "dep:serde_bytes",
   "re_string_interner/serde",
   "re_tuid/serde",
+  "re_types/serde",
 ]
 
 
