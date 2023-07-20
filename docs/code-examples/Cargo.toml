@@ -115,6 +115,10 @@ path = "text_entry_simple.rs"
 name = "transform3d_simple"
 path = "transform3d_simple.rs"
 
+[[bin]]
+name = "transform3d_simple_v2"
+path = "transform3d_simple_v2.rs"
+
 
 [dependencies]
 ahash.workspace = true

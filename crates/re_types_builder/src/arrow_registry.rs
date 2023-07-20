@@ -109,7 +109,8 @@ impl ArrowRegistry {
                             metadata: Default::default(),
                         }))
                         .collect(),
-                        None,
+                        // NOTE: +1 to account for virtual nullability arm
+                        Some((0..(obj.fields.len() + 1) as i32).collect()),
                         if is_sparse {
                             arrow2::datatypes::UnionMode::Sparse
                         } else {

@@ -1137,13 +1137,17 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                 quote!(DataType::FixedSizeList(Box::new(#field), #length))
             }
 
-            DataType::Union(fields, _, mode) => {
+            DataType::Union(fields, types, mode) => {
                 let fields = fields.iter().map(ArrowFieldTokenizer);
                 let mode = match mode {
                     UnionMode::Dense => quote!(UnionMode::Dense),
                     UnionMode::Sparse => quote!(UnionMode::Sparse),
                 };
-                quote!(DataType::Union(vec![ #(#fields,)* ], None, #mode))
+                if let Some(types) = types {
+                    quote!(DataType::Union(vec![ #(#fields,)* ], Some(vec![ #(#types,)* ]), #mode))
+                } else {
+                    quote!(DataType::Union(vec![ #(#fields,)* ], None, #mode))
+                }
             }
 
             DataType::Struct(fields) => {

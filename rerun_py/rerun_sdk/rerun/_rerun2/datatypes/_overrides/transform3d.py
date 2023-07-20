@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 
 if TYPE_CHECKING:
@@ -35,8 +34,6 @@ def _build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: p
     Build a dense UnionArray given the `data_type`, a discriminant, and the child value array.
 
     If the discriminant string doesn't match any possible value, a `ValueError` is raised.
-
-    WARNING: Because of #705, each new union component needs to be handled in `array_to_rust` on the native side.
     """
     try:
         idx = [f.name for f in list(data_type)].index(discriminant)
@@ -57,10 +54,6 @@ def _build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: p
             buffers=[None, type_ids.buffers()[1], value_offsets.buffers()[1]],
             children=children,
         )
-        # Cast doesn't work for non-flat unions it seems - we're getting issues about the nullability of union variants.
-        # It's pointless anyway since on the native side we have to cast the field types
-        # See https://github.com/rerun-io/rerun/issues/795
-        # .cast(data_type)
 
     except ValueError as e:
         raise ValueError(e.args)
@@ -138,11 +131,13 @@ def _build_union_array_from_rotation(rotation: Rotation3D | None, type_: pa.Dens
     return _build_dense_union(type_, rotation_discriminant, stored_rotation)
 
 
-def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> npt.NDArray[np.float32]:
+def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
+    from .. import Mat3x3Type
+
     if mat is None:
-        return np.eye(3, dtype=np.float32).flatten(order="F")
+        return pa.nulls(1, type=Mat3x3Type().storage_type)
     else:
-        return mat.coeffs
+        return pa.FixedSizeListArray.from_arrays(mat.coeffs, type=Mat3x3Type().storage_type)
 
 
 def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
@@ -158,9 +153,7 @@ def _build_struct_array_from_translation_mat3x3(
     translation_mat3: TranslationAndMat3x3, type_: pa.StructType
 ) -> pa.StructArray:
     translation = _optional_translation_to_arrow(translation_mat3.translation)
-    matrix = pa.FixedSizeListArray.from_arrays(
-        _optional_mat3x3_to_arrow(translation_mat3.matrix), type=type_["matrix"].type
-    )
+    matrix = _optional_mat3x3_to_arrow(translation_mat3.matrix)
 
     return pa.StructArray.from_arrays(
         [

@@ -19,6 +19,7 @@ __all__ = [
     "cmp",
     "dt",
     "Points2D",
+    "Transform3D",
     "log_any",
 ]
 
@@ -26,5 +27,5 @@ __all__ = [
 from ._rerun2 import archetypes as arch
 from ._rerun2 import components as cmp
 from ._rerun2 import datatypes as dt
-from ._rerun2.archetypes import Points2D
+from ._rerun2.archetypes import Points2D, Transform3D
 from ._rerun2.log_any import log_any

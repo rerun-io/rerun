@@ -65,7 +65,7 @@ impl crate::Loggable for Angle {
                     metadata: [].into(),
                 },
             ],
-            None,
+            Some(vec![0i32, 1i32, 2i32]),
             UnionMode::Dense,
         )
     }
