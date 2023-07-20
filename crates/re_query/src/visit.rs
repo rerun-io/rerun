@@ -84,7 +84,7 @@ macro_rules! create_visitor {
             ).for_each(
                 |(instance_key, primary, $($cc,)*)| {
                     if let Some(primary) = primary {
-                        visit(instance_key, primary, $($cc,)*);
+                        visit(instance_key.into(), primary, $($cc,)*);
                     }
                 }
             );

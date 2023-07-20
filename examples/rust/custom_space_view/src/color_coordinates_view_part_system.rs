@@ -61,7 +61,7 @@ impl ViewPartSystem for InstanceColorSystem {
                                     let [r, g, b, _] = color.to_array();
                                     ColorWithInstanceKey {
                                         color: egui::Color32::from_rgb(r, g, b),
-                                        instance_key,
+                                        instance_key: instance_key.into(),
                                     }
                                 })
                             })

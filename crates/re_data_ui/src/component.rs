@@ -55,7 +55,7 @@ impl DataUi for EntityComponentWithInstances {
                     query,
                     &self.entity_path,
                     &self.component_data,
-                    instance_key,
+                    &(*instance_key).into(),
                 );
             } else {
                 ui.label(ctx.re_ui.error_text("Error: missing instance key"));
@@ -88,8 +88,10 @@ impl DataUi for EntityComponentWithInstances {
                     body.rows(row_height, num_instances, |index, mut row| {
                         if let Some(instance_key) = instance_keys.get(index) {
                             row.col(|ui| {
-                                let instance_path =
-                                    InstancePath::instance(self.entity_path.clone(), *instance_key);
+                                let instance_path = InstancePath::instance(
+                                    self.entity_path.clone(),
+                                    (*instance_key).into(),
+                                );
                                 item_ui::instance_path_button_to(
                                     ctx,
                                     ui,
@@ -106,7 +108,7 @@ impl DataUi for EntityComponentWithInstances {
                                     query,
                                     &self.entity_path,
                                     &self.component_data,
-                                    instance_key,
+                                    &(*instance_key).into(),
                                 );
                             });
                         }

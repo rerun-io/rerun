@@ -4,7 +4,8 @@ use arrow2::array::{Array, PrimitiveArray};
 use re_format::arrow;
 use re_log_types::{DataCell, RowId};
 use re_types::{
-    components::InstanceKey, Archetype, Component, ComponentName, DeserializationResult, Loggable,
+    components::InstanceKey, Archetype, Component, ComponentName, DeserializationError,
+    DeserializationResult, Loggable,
 };
 
 use crate::QueryError;
@@ -39,8 +40,9 @@ impl ComponentWithInstances {
 
     /// Iterate over the [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
-        self.instance_keys.to_native::<InstanceKey>()
+    pub fn iter_instance_keys(&self) -> impl Iterator<Item = re_log_types::LegacyInstanceKey> + '_ {
+        self.instance_keys
+            .to_native::<re_log_types::LegacyInstanceKey>()
     }
 
     /// Iterate over the values and convert them to a native [`Component`]
@@ -158,14 +160,14 @@ pub struct ComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
     pub primary_instance_key_iter: IIter1,
     pub component_instance_key_iter: IIter2,
     pub component_value_iter: VIter,
-    pub next_component_instance_key: Option<InstanceKey>,
+    pub next_component_instance_key: Option<re_log_types::LegacyInstanceKey>,
     pub splatted_component_value: Option<Val>,
 }
 
 impl<IIter1, IIter2, VIter, C> Iterator for ComponentJoinedIterator<IIter1, IIter2, VIter, C>
 where
-    IIter1: Iterator<Item = InstanceKey>,
-    IIter2: Iterator<Item = InstanceKey>,
+    IIter1: Iterator<Item = re_log_types::LegacyInstanceKey>,
+    IIter2: Iterator<Item = re_log_types::LegacyInstanceKey>,
     VIter: Iterator<Item = Option<C>>,
     C: Clone,
 {
@@ -263,7 +265,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Iterate over the [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
+    pub fn iter_instance_keys(&self) -> impl Iterator<Item = re_log_types::LegacyInstanceKey> + '_ {
         // TODO(https://github.com/rerun-io/rerun/issues/2750): Maybe make this an intersection instead
         self.required_comp().iter_instance_keys()
     }
@@ -285,8 +287,10 @@ impl<A: Archetype> ArchetypeView<A> {
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            let component_value_iter =
-                C::try_from_arrow(component.values.as_arrow_ref())?.into_iter();
+            let component_value_iter = component
+                .values
+                .try_to_native()
+                .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
 
             Ok(component_value_iter)
         } else {

@@ -382,6 +382,9 @@ pub enum DeserializationError {
 
     #[error("arrow2-convert deserialization Failed: {0}")]
     ArrowConvertFailure(String),
+
+    #[error("Datacell deserialization Failed: {0}")]
+    DataCellError(String),
 }
 
 pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;
@@ -432,7 +435,8 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
                 | DeserializationError::OffsetsMismatch { backtrace, .. }
                 | DeserializationError::ArrayLengthMismatch { backtrace, .. }
                 | DeserializationError::MonoMismatch { backtrace, .. } => Some(backtrace.clone()),
-                DeserializationError::ArrowConvertFailure(_) => None,
+                DeserializationError::ArrowConvertFailure(_)
+                | DeserializationError::DataCellError(_) => None,
             }
         }
 

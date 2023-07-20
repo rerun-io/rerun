@@ -223,7 +223,7 @@ fn single_visit() {
         arch_view.iter_required_component::<Point2D>().unwrap()
     )
     .for_each(|(inst, point)| {
-        instance_key_out.push(inst);
+        instance_key_out.push(inst.into());
         points_out.push(point);
     });
 
