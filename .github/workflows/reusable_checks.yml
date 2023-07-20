@@ -41,6 +41,7 @@ env:
   SCCACHE_GHA_ENABLED: "false"
 
 permissions:
+  contents: "read"
   id-token: "write"
 
 jobs:

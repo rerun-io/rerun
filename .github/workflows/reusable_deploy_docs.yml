@@ -19,6 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  contents: "write"
   id-token: "write"
 
 env:
