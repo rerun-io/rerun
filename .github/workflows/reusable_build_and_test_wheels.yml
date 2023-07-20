@@ -46,6 +46,9 @@ env:
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "true"
 
+permissions:
+  id-token: "write"
+
 jobs:
   # ---------------------------------------------------------------------------
 
