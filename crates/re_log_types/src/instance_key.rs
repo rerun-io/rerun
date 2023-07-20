@@ -5,11 +5,11 @@ use crate::LegacyComponent;
 /// A number used to specify a specific instance in an entity.
 ///
 /// Each entity can have many component of the same type.
-/// These are identified with [`InstanceKey`].
+/// These are identified with [`LegacyInstanceKey`].
 ///
 /// This is a special component type. All entities has this component, at least implicitly.
 ///
-/// For instance: A point cloud is one entity, and each point is an instance, idenitifed by an [`InstanceKey`].
+/// For instance: A point cloud is one entity, and each point is an instance, idenitifed by an [`LegacyInstanceKey`].
 ///
 /// ```
 /// use re_log_types::LegacyInstanceKey;

@@ -7,7 +7,7 @@ use crate::{DataStore, LatestAtQuery};
 // --- Read ---
 
 impl DataStore {
-    /// Get the latest value for a given [`re_log_types::Component`].
+    /// Get the latest value for a given [`re_types::Component`].
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -62,7 +62,7 @@ impl DataStore {
         None
     }
 
-    /// Get the latest value for a given [`re_log_types::Component`], assuming it is timeless.
+    /// Get the latest value for a given [`re_types::Component`], assuming it is timeless.
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -81,7 +81,7 @@ impl DataStore {
 // --- Write ---
 
 impl DataStore {
-    /// Stores a single value for a given [`re_log_types::Component`].
+    /// Stores a single value for a given [`re_types::Component`].
     ///
     /// This is a best-effort helper, it will merely log errors on failure.
     pub fn insert_component<'a, C>(

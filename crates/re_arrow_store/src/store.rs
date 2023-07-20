@@ -285,7 +285,7 @@ impl DataStore {
         &self.config
     }
 
-    /// Lookup the arrow [`DataType`] of a [`re_log_types::Component`] in the internal
+    /// Lookup the arrow [`DataType`] of a [`re_types::Component`] in the internal
     /// `DataTypeRegistry`.
     pub fn lookup_datatype(&self, component: &ComponentName) -> Option<&DataType> {
         self.type_registry.get(component)
