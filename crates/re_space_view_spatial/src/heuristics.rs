@@ -21,7 +21,7 @@ pub fn auto_spawn_heuristic(
         .space_view_class_registry
         .get_system_registry_or_log_error(class)
         .new_part_collection();
-    let parts_2d = parts
+    let parts_with_view_kind = parts
         .iter()
         .filter(|part| {
             part.data()
@@ -35,7 +35,7 @@ pub fn auto_spawn_heuristic(
                 continue;
             };
 
-        for part in &parts_2d {
+        for part in &parts_with_view_kind {
             if part.queries_any_components_of(store, ent_path, &components) {
                 score += 1.0;
                 break;
