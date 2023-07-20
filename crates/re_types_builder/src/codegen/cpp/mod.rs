@@ -585,7 +585,7 @@ fn arrow_data_type_method(
     cpp_includes.system.insert("arrow/api.h".to_owned());
     hpp_includes.system.insert("memory".to_owned()); // std::shared_ptr
 
-    let quoted_datatype = quote_arrow_data_type(datatype, cpp_includes, 0);
+    let quoted_datatype = quote_arrow_data_type(datatype, cpp_includes, true);
 
     Method {
         doc_string: "Returns the arrow data type this type corresponds to.".to_owned(),
@@ -836,7 +836,7 @@ fn quote_integer<T: std::fmt::Display>(t: T) -> TokenStream {
 fn quote_arrow_data_type(
     datatype: &::arrow2::datatypes::DataType,
     includes: &mut Includes,
-    depth: u32,
+    is_top_level_type: bool,
 ) -> TokenStream {
     use arrow2::datatypes::UnionMode;
     match datatype {
@@ -859,12 +859,12 @@ fn quote_arrow_data_type(
         DataType::LargeUtf8 => quote!(arrow::large_utf8()),
 
         DataType::List(field) => {
-            let quoted_field = quote_arrow_field(field, includes, depth + 1);
+            let quoted_field = quote_arrow_field(field, includes);
             quote!(arrow::list(#quoted_field))
         }
 
         DataType::FixedSizeList(field, length) => {
-            let quoted_field = quote_arrow_field(field, includes, depth + 1);
+            let quoted_field = quote_arrow_field(field, includes);
             let quoted_length = quote_integer(length);
             quote!(arrow::fixed_size_list(#quoted_field, #quoted_length))
         }
@@ -872,7 +872,7 @@ fn quote_arrow_data_type(
         DataType::Union(fields, _, mode) => {
             let quoted_fields = fields
                 .iter()
-                .map(|field| quote_arrow_field(field, includes, depth + 1));
+                .map(|field| quote_arrow_field(field, includes));
             match mode {
                 UnionMode::Dense => {
                     quote! { arrow::dense_union({ #(#quoted_fields,)* }) }
@@ -886,18 +886,18 @@ fn quote_arrow_data_type(
         DataType::Struct(fields) => {
             let fields = fields
                 .iter()
-                .map(|field| quote_arrow_field(field, includes, depth + 1));
+                .map(|field| quote_arrow_field(field, includes));
             quote! { arrow::struct_({ #(#fields,)* }) }
         }
 
         DataType::Extension(fqname, datatype, _metadata) => {
-            // TODO(andreas): We're no`t emitting the actual extension types here yet.
-            //                Currently, we wrap only Components in extension types but this is done in `rerun_c`.
-            //                In the future we'll express all extension types here directly!
-
+            // If we're not at the top level, we should have already a `to_arrow_datatype` method that we can relay to.
             // TODO(andreas): Unions don't have `to_arrow_datatype` yet.
-            if depth == 0 || matches!(datatype.as_ref(), DataType::Union(..)) {
-                quote_arrow_data_type(datatype, includes, depth + 1)
+            if is_top_level_type || matches!(datatype.as_ref(), DataType::Union(..)) {
+                // TODO(andreas): We're no`t emitting the actual extension types here yet which is why we're skipping the extension type at top level.
+                // Currently, we wrap only Components in extension types but this is done in `rerun_c`.
+                // In the future we'll add the extension type here to the schema.
+                quote_arrow_data_type(datatype, includes, false)
             } else {
                 let fqname_use = quote_fqname_as_type_path(includes, fqname);
                 quote! { #fqname_use::to_arrow_datatype() }
@@ -908,11 +908,7 @@ fn quote_arrow_data_type(
     }
 }
 
-fn quote_arrow_field(
-    field: &::arrow2::datatypes::Field,
-    includes: &mut Includes,
-    depth: u32,
-) -> TokenStream {
+fn quote_arrow_field(field: &::arrow2::datatypes::Field, includes: &mut Includes) -> TokenStream {
     let arrow2::datatypes::Field {
         name,
         data_type,
@@ -920,7 +916,7 @@ fn quote_arrow_field(
         metadata,
     } = field;
 
-    let datatype = quote_arrow_data_type(data_type, includes, depth + 1);
+    let datatype = quote_arrow_data_type(data_type, includes, false);
 
     let metadata = if metadata.is_empty() {
         quote!(nullptr)
