@@ -10,12 +10,18 @@ use re_viewer_context::{
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     parts::entity_iterator::process_entity_views,
+    view_kind::SpatialSpaceViewKind,
 };
 
 use super::{picking_id_from_instance_key, SpatialViewPartData};
 
-#[derive(Default)]
 pub struct Lines2DPart(SpatialViewPartData);
+
+impl Default for Lines2DPart {
+    fn default() -> Self {
+        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)))
+    }
+}
 
 impl Lines2DPart {
     fn process_entity_view(

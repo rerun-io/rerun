@@ -62,7 +62,14 @@ pub struct TimeSeriesSystem {
 
 impl ViewPartSystem for TimeSeriesSystem {
     fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
-        vec1::Vec1::try_from(Self::archetype_array()).unwrap() // TODO(wumpf): `archetype` should return a fixed sized array.
+        vec1::Vec1::try_from_vec(
+            Self::archetype_array()
+                .into_iter()
+                .skip(1) // Skip [`InstanceKey`]
+                .collect::<Vec<_>>(),
+        )
+        .unwrap()
+        // TODO(wumpf): `archetype` should return a fixed sized array.
     }
 
     fn execute(

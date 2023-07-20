@@ -4,6 +4,11 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace datatypes {
@@ -12,6 +17,10 @@ namespace rr {
             float x;
 
             float y;
+
+          public:
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace datatypes
 } // namespace rr

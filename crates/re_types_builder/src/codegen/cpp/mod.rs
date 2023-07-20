@@ -1,6 +1,11 @@
+mod forward_decl;
+mod includes;
+mod method;
+
 use std::collections::BTreeSet;
 
 use anyhow::Context as _;
+use arrow2::datatypes::DataType;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
 use proc_macro2::{Ident, TokenStream};
@@ -12,6 +17,10 @@ use crate::{
     Type,
 };
 
+use self::forward_decl::{ForwardDecl, ForwardDecls};
+use self::includes::Includes;
+use self::method::{Method, MethodDeclaration};
+
 // Special strings we insert as tokens, then search-and-replace later.
 // This is so that we can insert comments and whitespace into the generated code.
 // `TokenStream` ignores whitespace (including comments), but we can insert "quoted strings",
@@ -21,6 +30,8 @@ const NORMAL_COMMENT_PREFIX_TOKEN: &str = "NORMAL_COMMENT_PREFIX_TOKEN";
 const NORMAL_COMMENT_SUFFIX_TOKEN: &str = "NORMAL_COMMENT_SUFFIX_TOKEN";
 const DOC_COMMENT_PREFIX_TOKEN: &str = "DOC_COMMENT_PREFIX_TOKEN";
 const DOC_COMMENT_SUFFIX_TOKEN: &str = "DOC_COMMENT_SUFFIX_TOKEN";
+const SYS_INCLUDE_PATH_PREFIX_TOKEN: &str = "SYS_INCLUDE_PATH_PREFIX_TOKEN";
+const SYS_INCLUDE_PATH_SUFFIX_TOKEN: &str = "SYS_INCLUDE_PATH_SUFFIX_TOKEN";
 const TODO_TOKEN: &str = "TODO_TOKEN";
 
 fn comment(text: &str) -> TokenStream {
@@ -47,6 +58,8 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
             .replace(&format!("\" {NORMAL_COMMENT_SUFFIX_TOKEN:?}"), "\n")
             .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "///")
             .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
+            .replace(&format!("{SYS_INCLUDE_PATH_PREFIX_TOKEN:?} \""), "<")
+            .replace(&format!("\" {SYS_INCLUDE_PATH_SUFFIX_TOKEN:?}"), ">")
             .replace(
                 &format!("{TODO_TOKEN:?}"),
                 "\n// TODO(#2647): code-gen for C++\n",
@@ -167,10 +180,10 @@ fn write_file(filepath: &Utf8PathBuf, code: String) {
 
 fn generate_hpp_cpp(
     objects: &Objects,
-    _arrow_registry: &ArrowRegistry,
+    arrow_registry: &ArrowRegistry,
     obj: &crate::Object,
 ) -> (TokenStream, TokenStream) {
-    let QuotedObject { hpp, cpp } = QuotedObject::new(objects, obj);
+    let QuotedObject { hpp, cpp } = QuotedObject::new(arrow_registry, objects, obj);
     let snake_case_name = obj.snake_case_name();
     let hash = quote! { # };
     let pragma_once = pragma_once();
@@ -201,20 +214,27 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
-    pub fn new(objects: &Objects, obj: &crate::Object) -> Self {
+    pub fn new(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &crate::Object) -> Self {
         match obj.specifics {
-            crate::ObjectSpecifics::Struct => Self::from_struct(objects, obj),
+            crate::ObjectSpecifics::Struct => Self::from_struct(arrow_registry, objects, obj),
             crate::ObjectSpecifics::Union { .. } => Self::from_union(objects, obj),
         }
     }
 
-    fn from_struct(_objects: &Objects, obj: &crate::Object) -> QuotedObject {
+    fn from_struct(
+        arrow_registry: &ArrowRegistry,
+        _objects: &Objects,
+        obj: &crate::Object,
+    ) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
 
         let mut hpp_includes = Includes::default();
+        hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
+        let mut cpp_includes = Includes::default();
+        let mut hpp_declarations = ForwardDecls::default();
 
         let field_declarations = obj
             .fields
@@ -232,43 +252,76 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        let constructor = if obj.fields.len() == 1 {
+        let mut methods = Vec::new();
+
+        if obj.fields.len() == 1 {
             // Single-field struct - it is a newtype wrapper.
             // Create a implicit constructor from its own field-type.
             let obj_field = &obj.fields[0];
             if let Type::Array { .. } = &obj_field.typ {
                 // TODO(emilk): implicit constructor for arrays
-                quote! {}
             } else {
                 hpp_includes.system.insert("utility".to_owned()); // std::move
 
                 let field_ident = format_ident!("{}", obj_field.name);
                 let parameter_declaration =
                     quote_declaration(&mut hpp_includes, obj_field, &field_ident);
-                quote! {
-                    #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident)) {}
-                }
+
+                methods.push(Method {
+                    declaration: MethodDeclaration::constructor(quote! {
+                        #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
+                    }),
+                    ..Method::default()
+                });
             }
-        } else {
-            quote! {}
         };
 
+        match obj.kind {
+            ObjectKind::Datatype | ObjectKind::Component => {
+                methods.push(arrow_data_type_method(
+                    &arrow_registry.get(&obj.fqname),
+                    &mut hpp_includes,
+                    &mut cpp_includes,
+                    &mut hpp_declarations,
+                ));
+            }
+            ObjectKind::Archetype => {}
+        };
+
+        let hpp_method_section = if methods.is_empty() {
+            quote! {}
+        } else {
+            let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
+            quote! {
+                public:
+                    #(#hpp_methods)*
+            }
+        };
         let hpp = quote! {
             #hpp_includes
+            #hpp_declarations
 
             namespace rr {
                 namespace #namespace_ident {
                     #quoted_docs
                     struct #pascal_case_ident {
                         #(#field_declarations;)*
-
-                        #constructor
+                        #hpp_method_section
                     };
                 }
             }
         };
 
-        let cpp = quote! {}; // TODO(emilk): add Arrow serialization code here!
+        let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
+        let cpp = quote! {
+            #cpp_includes
+
+            namespace rr {
+                namespace #namespace_ident {
+                    #(#cpp_methods)*
+                }
+            }
+        };
 
         Self { hpp, cpp }
     }
@@ -321,7 +374,7 @@ impl QuotedObject {
         .collect_vec();
 
         let mut hpp_includes = Includes::default();
-
+        hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
         hpp_includes.system.insert("utility".to_owned()); // std::move
 
         let enum_data_declarations = obj
@@ -522,6 +575,30 @@ impl QuotedObject {
     }
 }
 
+fn arrow_data_type_method(
+    datatype: &DataType,
+    hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
+    hpp_declarations: &mut ForwardDecls,
+) -> Method {
+    hpp_declarations.insert("arrow", ForwardDecl::Class("DataType".to_owned()));
+    cpp_includes.system.insert("arrow/api.h".to_owned());
+    hpp_includes.system.insert("memory".to_owned()); // std::shared_ptr
+
+    let quoted_datatype = ArrowDataTypeTokenizer(datatype);
+
+    Method {
+        doc_string: "Returns the arrow data type this type corresponds to.".to_owned(),
+        declaration: MethodDeclaration {
+            is_static: true,
+            return_type: quote! { std::shared_ptr<arrow::DataType> },
+            name_and_parameters: quote! { to_arrow_datatype() },
+        },
+        definition_body: quote! { return #quoted_datatype; },
+        inline: false,
+    }
+}
+
 /// e.g. `static Angle radians(float radians);` -> `auto angle = Angle::radians(radians);`
 fn quote_static_constructor_for_enum_type(
     objects: &Objects,
@@ -569,7 +646,7 @@ fn quote_static_constructor_for_enum_type(
             }
         }
     } else if obj_field.typ.has_default_destructor(objects) {
-        // Generate simpoler code for simple types:
+        // Generate simpler code for simple types:
         quote! {
             #docstring
             static #pascal_case_ident #snake_case_ident(#param_declaration)
@@ -602,50 +679,6 @@ fn quote_static_constructor_for_enum_type(
 fn are_types_disjoint(fields: &[ObjectField]) -> bool {
     let type_set: std::collections::HashSet<&Type> = fields.iter().map(|f| &f.typ).collect();
     type_set.len() == fields.len()
-}
-
-/// Keep track of necessary includes for a file.
-struct Includes {
-    /// `#include <vector>` etc
-    system: BTreeSet<String>,
-
-    /// `#include datatypes.hpp"` etc
-    local: BTreeSet<String>,
-}
-
-impl Default for Includes {
-    fn default() -> Self {
-        let mut slf = Self {
-            system: BTreeSet::new(),
-            local: BTreeSet::new(),
-        };
-        slf.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
-        slf
-    }
-}
-
-impl quote::ToTokens for Includes {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self { system, local } = self;
-
-        let hash = quote! { # };
-        let system = system.iter().map(|name| {
-            let name = format_ident!("{}", name);
-            quote! { #hash include <#name> #NEWLINE_TOKEN }
-        });
-        let local = local.iter().map(|name| {
-            quote! { #hash include #name #NEWLINE_TOKEN }
-        });
-
-        quote! {
-            #(#system)*
-            #NEWLINE_TOKEN
-            #(#local)*
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-        }
-        .to_tokens(tokens);
-    }
 }
 
 fn quote_declaration_with_docstring(
@@ -790,5 +823,105 @@ fn quote_docstrings(docs: &Docs) -> TokenStream {
     quote! {
         #NEWLINE_TOKEN
         #(#quoted_lines)*
+    }
+}
+
+fn quote_integer<T: std::fmt::Display>(t: T) -> TokenStream {
+    let t = syn::LitInt::new(&t.to_string(), proc_macro2::Span::call_site());
+    quote!(#t)
+}
+
+// --- Arrow registry code generators ---
+
+struct ArrowDataTypeTokenizer<'a>(&'a ::arrow2::datatypes::DataType);
+
+impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        use arrow2::datatypes::UnionMode;
+        match self.0.to_logical_type() {
+            DataType::Null => quote!(arrow::null()),
+            DataType::Boolean => quote!(arrow::boolean()),
+            DataType::Int8 => quote!(arrow::int8()),
+            DataType::Int16 => quote!(arrow::int16()),
+            DataType::Int32 => quote!(arrow::int32()),
+            DataType::Int64 => quote!(arrow::int64()),
+            DataType::UInt8 => quote!(arrow::uint8()),
+            DataType::UInt16 => quote!(arrow::uint16()),
+            DataType::UInt32 => quote!(arrow::uint32()),
+            DataType::UInt64 => quote!(arrow::uint64()),
+            DataType::Float16 => quote!(arrow::float16()),
+            DataType::Float32 => quote!(arrow::float32()),
+            DataType::Float64 => quote!(arrow::float64()),
+            DataType::Binary => quote!(arrow::binary()),
+            DataType::LargeBinary => quote!(arrow::large_binary()),
+            DataType::Utf8 => quote!(arrow::utf8()),
+            DataType::LargeUtf8 => quote!(arrow::large_utf8()),
+
+            DataType::List(field) => {
+                let field = ArrowFieldTokenizer(field);
+                quote!(arrow::list(#field))
+            }
+
+            DataType::FixedSizeList(field, length) => {
+                let field = ArrowFieldTokenizer(field);
+                let length = quote_integer(length);
+                quote!(arrow::fixed_size_list(#field, #length))
+            }
+
+            DataType::Union(fields, _, mode) => {
+                let fields = fields.iter().map(ArrowFieldTokenizer);
+                match mode {
+                    UnionMode::Dense => {
+                        quote! { arrow::dense_union({ #(#fields,)* }) }
+                    }
+                    UnionMode::Sparse => {
+                        quote! { arrow::sparse_union({ #(#fields,)* }) }
+                    }
+                }
+            }
+
+            DataType::Struct(fields) => {
+                let fields = fields.iter().map(ArrowFieldTokenizer);
+                quote! { arrow::struct_({ #(#fields,)* }) }
+            }
+
+            DataType::Extension(_name, _datatype, _metadata) => {
+                // TODO(andreas): Need this eventually.
+                unimplemented!("Arrow extension types not yet implemented");
+            }
+
+            _ => unimplemented!("{:#?}", self.0),
+        }
+        .to_tokens(tokens);
+    }
+}
+
+struct ArrowFieldTokenizer<'a>(&'a ::arrow2::datatypes::Field);
+
+impl quote::ToTokens for ArrowFieldTokenizer<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let arrow2::datatypes::Field {
+            name,
+            data_type,
+            is_nullable,
+            metadata,
+        } = &self.0;
+
+        let datatype = ArrowDataTypeTokenizer(data_type);
+
+        let metadata = if metadata.is_empty() {
+            quote!(nullptr)
+        } else {
+            let keys = metadata.keys();
+            let values = metadata.values();
+            quote! {
+                arrow::KeyValueMetadata::Make({ #(#keys,)* }, { #(#values,)* })
+            }
+        };
+
+        quote! {
+            arrow::field(#name, #datatype, #is_nullable, #metadata)
+        }
+        .to_tokens(tokens);
     }
 }

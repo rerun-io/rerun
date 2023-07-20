@@ -10,11 +10,12 @@
 
 namespace rr {
     namespace archetypes {
-        /// A 3D transform
+        /// A 3D transform.
         struct Transform3D {
             /// The transform
             rr::components::Transform3D transform;
 
+          public:
             Transform3D(rr::components::Transform3D transform) : transform(std::move(transform)) {}
         };
     } // namespace archetypes

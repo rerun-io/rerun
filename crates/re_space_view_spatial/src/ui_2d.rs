@@ -17,7 +17,8 @@ use super::{
 use crate::{
     contexts::SharedRenderBuilders,
     parts::collect_ui_labels,
-    ui::{outline_config, SpatialNavigationMode, SpatialSpaceViewState},
+    ui::{outline_config, SpatialSpaceViewState},
+    view_kind::SpatialSpaceViewKind,
 };
 
 // ---
@@ -219,7 +220,6 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
-#[allow(clippy::too_many_arguments)]
 pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -227,15 +227,18 @@ pub fn view_2d(
     view_ctx: &ViewContextCollection,
     parts: &ViewPartCollection,
     query: &ViewQuery<'_>,
-    scene_rect_accum: Rect,
     mut draw_data: Vec<re_renderer::QueueableDrawData>,
 ) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
+    let store = ctx.store_db.store();
 
-    let store = &ctx.store_db.entity_db.data_store;
+    let scene_rect_accum = egui::Rect::from_min_max(
+        state.scene_bbox_accum.min.truncate().to_array().into(),
+        state.scene_bbox_accum.max.truncate().to_array().into(),
+    );
 
     // Determine the canvas which determines the extent of the explorable scene coordinates,
     // and thus the size of the scroll area.
@@ -312,7 +315,7 @@ pub fn view_2d(
             &eye,
             ui,
             query.highlights,
-            SpatialNavigationMode::TwoD,
+            SpatialSpaceViewKind::TwoD,
         );
 
         if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
@@ -329,6 +332,7 @@ pub fn view_2d(
                 parts,
                 &ui_rects,
                 query,
+                SpatialSpaceViewKind::TwoD,
             )?;
         }
 

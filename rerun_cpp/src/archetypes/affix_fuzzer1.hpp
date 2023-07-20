@@ -13,6 +13,7 @@
 #include "../components/affix_fuzzer12.hpp"
 #include "../components/affix_fuzzer13.hpp"
 #include "../components/affix_fuzzer14.hpp"
+#include "../components/affix_fuzzer15.hpp"
 #include "../components/affix_fuzzer16.hpp"
 #include "../components/affix_fuzzer17.hpp"
 #include "../components/affix_fuzzer18.hpp"
@@ -57,6 +58,8 @@ namespace rr {
 
             rr::components::AffixFuzzer14 fuzz1014;
 
+            rr::components::AffixFuzzer15 fuzz1015;
+
             rr::components::AffixFuzzer16 fuzz1016;
 
             rr::components::AffixFuzzer17 fuzz1017;
@@ -93,6 +96,8 @@ namespace rr {
 
             std::vector<rr::components::AffixFuzzer14> fuzz1114;
 
+            std::vector<rr::components::AffixFuzzer15> fuzz1115;
+
             std::vector<rr::components::AffixFuzzer16> fuzz1116;
 
             std::vector<rr::components::AffixFuzzer17> fuzz1117;
@@ -127,6 +132,8 @@ namespace rr {
 
             std::optional<rr::components::AffixFuzzer14> fuzz2014;
 
+            std::optional<rr::components::AffixFuzzer15> fuzz2015;
+
             std::optional<rr::components::AffixFuzzer16> fuzz2016;
 
             std::optional<rr::components::AffixFuzzer17> fuzz2017;
@@ -160,6 +167,8 @@ namespace rr {
             std::optional<std::vector<rr::components::AffixFuzzer13>> fuzz2113;
 
             std::optional<std::vector<rr::components::AffixFuzzer14>> fuzz2114;
+
+            std::optional<std::vector<rr::components::AffixFuzzer15>> fuzz2115;
 
             std::optional<std::vector<rr::components::AffixFuzzer16>> fuzz2116;
 

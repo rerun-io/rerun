@@ -928,7 +928,8 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut SpaceViewClassRegistry,
 ) -> Result<(), SpaceViewClassRegistryError> {
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
-    space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView2D>()?;
+    space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView3D>()?;
     space_view_class_registry.add_class::<re_space_view_tensor::TensorSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_text_box::TextBoxSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_text::TextSpaceView>()?;

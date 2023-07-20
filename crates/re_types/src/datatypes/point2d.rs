@@ -165,9 +165,14 @@ impl crate::Loggable for Point2D {
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.datatypes.Point2D".into(),
+                    source: Box::new(err),
                 })?;
             if data.is_empty() {
                 Vec::new()
@@ -205,16 +210,32 @@ impl crate::Loggable for Point2D {
                             .then(|| {
                                 Ok(Self {
                                     x: x.ok_or_else(|| crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| {
+                                        crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.Point2D#x".into(),
+                                            source: Box::new(err),
+                                        }
                                     })?,
                                     y: y.ok_or_else(|| crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| {
+                                        crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.Point2D#y".into(),
+                                            source: Box::new(err),
+                                        }
                                     })?,
                                 })
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.Point2D".into(),
+                        source: Box::new(err),
+                    })?
             }
         })
     }

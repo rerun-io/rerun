@@ -88,7 +88,7 @@ impl SpaceViewSystemRegistry {
         }
     }
 
-    pub(crate) fn new_part_collection(&self) -> ViewPartCollection {
+    pub fn new_part_collection(&self) -> ViewPartCollection {
         ViewPartCollection {
             systems: self
                 .parts

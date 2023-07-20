@@ -71,6 +71,12 @@ impl crate::Loggable for RotationAxisAngle {
                 data_type: DataType::Union(
                     vec![
                         Field {
+                            name: "_null_markers".to_owned(),
+                            data_type: DataType::Null,
+                            is_nullable: true,
+                            metadata: [].into(),
+                        },
+                        Field {
                             name: "Radians".to_owned(),
                             data_type: DataType::Float32,
                             is_nullable: false,
@@ -83,7 +89,7 @@ impl crate::Loggable for RotationAxisAngle {
                             metadata: [].into(),
                         },
                     ],
-                    None,
+                    Some(vec![0i32, 1i32, 2i32]),
                     UnionMode::Dense,
                 ),
                 is_nullable: false,
@@ -146,13 +152,15 @@ impl crate::Loggable for RotationAxisAngle {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let axis_inner_data: Vec<_> = axis
                                 .iter()
-                                .flatten()
                                 .map(|datum| {
-                                    let crate::datatypes::Vec3D(data0) = datum;
-                                    data0
+                                    datum
+                                        .map(|datum| {
+                                            let crate::datatypes::Vec3D(data0) = datum;
+                                            data0
+                                        })
+                                        .unwrap_or_default()
                                 })
                                 .flatten()
-                                .map(ToOwned::to_owned)
                                 .map(Some)
                                 .collect();
                             let axis_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
@@ -229,9 +237,14 @@ impl crate::Loggable for RotationAxisAngle {
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
                     expected: data.data_type().clone(),
                     got: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.datatypes.RotationAxisAngle".into(),
+                    source: Box::new(err),
                 })?;
             if data.is_empty() {
                 Vec::new()
@@ -248,18 +261,17 @@ impl crate::Loggable for RotationAxisAngle {
                     let data = &**arrays_by_name["axis"];
 
                     {
-                        let datatype = data.data_type();
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                             .unwrap();
                         if data . is_empty () { Vec :: new () }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { datatype : DataType :: Float32 , }
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or_else (|| crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , datatype : datatype . clone () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , datatype : datatype . clone () , }
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) }
 
@@ -271,7 +283,12 @@ impl crate::Loggable for RotationAxisAngle {
                 let angle = {
                     let data = &**arrays_by_name["angle"];
 
-                    crate::datatypes::Angle::try_from_arrow_opt(data)?.into_iter()
+                    crate::datatypes::Angle::try_from_arrow_opt(data)
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.RotationAxisAngle#angle".into(),
+                            source: Box::new(err),
+                        })?
+                        .into_iter()
                 };
                 ::itertools::izip!(axis, angle)
                     .enumerate()
@@ -279,21 +296,33 @@ impl crate::Loggable for RotationAxisAngle {
                         is_valid(i)
                             .then(|| {
                                 Ok(Self {
-                                    axis: axis.ok_or_else(|| {
-                                        crate::DeserializationError::MissingData {
-                                            datatype: data.data_type().clone(),
-                                        }
-                                    })?,
-                                    angle: angle.ok_or_else(|| {
-                                        crate::DeserializationError::MissingData {
-                                            datatype: data.data_type().clone(),
-                                        }
-                                    })?,
+                                    axis: axis
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.RotationAxisAngle#axis"
+                                                .into(),
+                                            source: Box::new(err),
+                                        })?,
+                                    angle: angle
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.RotationAxisAngle#angle"
+                                                .into(),
+                                            source: Box::new(err),
+                                        })?,
                                 })
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.RotationAxisAngle".into(),
+                        source: Box::new(err),
+                    })?
             }
         })
     }

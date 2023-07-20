@@ -158,13 +158,12 @@ fn roundtrip() {
         single_required_union: re_types::datatypes::AffixFuzzer3::Radians(None),
     };
 
-    // NOTE: nullable union -- illegal!
-    // let fuzzy15_1 = re_types::components::AffixFuzzer15 {
-    //     single_optional_union: None,
-    // };
-    // let fuzzy15_2 = re_types::components::AffixFuzzer15 {
-    //     single_optional_union: Some(re_types::datatypes::AffixFuzzer3::Radians(PI / 4.0)),
-    // };
+    let fuzzy15_1 = re_types::components::AffixFuzzer15 {
+        single_optional_union: None,
+    };
+    let fuzzy15_2 = re_types::components::AffixFuzzer15 {
+        single_optional_union: Some(re_types::datatypes::AffixFuzzer3::Radians(Some(PI / 4.0))),
+    };
 
     let fuzzy16_1 = re_types::components::AffixFuzzer16 {
         many_required_unions: vec![
@@ -277,7 +276,7 @@ fn roundtrip() {
     };
 
     let arch = AffixFuzzer1::new(
-        fuzzy1.clone(),
+        fuzzy1.clone(), //
         fuzzy2.clone(),
         fuzzy3.clone(),
         fuzzy4.clone(),
@@ -291,7 +290,7 @@ fn roundtrip() {
         fuzzy12_1.clone(),
         fuzzy13_1.clone(),
         fuzzy14_2.clone(),
-        // fuzzy15_1.clone(),
+        fuzzy15_1.clone(),
         fuzzy16_2.clone(),
         fuzzy17_2.clone(),
         fuzzy18_2.clone(),
@@ -310,7 +309,7 @@ fn roundtrip() {
         [fuzzy12_1.clone(), fuzzy12_2.clone(), fuzzy12_1.clone()],
         [fuzzy13_1.clone(), fuzzy13_2.clone(), fuzzy13_1.clone()],
         [fuzzy14_1.clone(), fuzzy14_2.clone(), fuzzy14_3.clone()],
-        // [fuzzy15_1.clone(), fuzzy15_2.clone(), fuzzy15_1.clone()],
+        [fuzzy15_1.clone(), fuzzy15_2.clone(), fuzzy15_1.clone()],
         [fuzzy16_1.clone(), fuzzy16_2.clone(), fuzzy16_1.clone()],
         [fuzzy17_1.clone(), fuzzy17_2.clone(), fuzzy17_1.clone()],
         [fuzzy18_1.clone(), fuzzy18_2.clone(), fuzzy18_3.clone()],
@@ -323,7 +322,7 @@ fn roundtrip() {
     .with_fuzz2011(fuzzy11_1.clone())
     .with_fuzz2013(fuzzy13_1.clone())
     .with_fuzz2014(fuzzy14_3.clone())
-    // .with_fuzz2015(fuzzy15_1.clone())
+    .with_fuzz2015(fuzzy15_1.clone())
     .with_fuzz2016(fuzzy16_1.clone())
     .with_fuzz2017(fuzzy17_1.clone())
     .with_fuzz2018(fuzzy18_1.clone())
@@ -334,6 +333,7 @@ fn roundtrip() {
     .with_fuzz2110([fuzzy10_1.clone(), fuzzy10_2.clone(), fuzzy10_1.clone()])
     .with_fuzz2112([fuzzy12_1.clone(), fuzzy12_2.clone(), fuzzy12_1.clone()])
     .with_fuzz2114([fuzzy14_1.clone(), fuzzy14_2.clone(), fuzzy14_3.clone()])
+    .with_fuzz2115([fuzzy15_1.clone(), fuzzy15_2.clone(), fuzzy15_1.clone()])
     .with_fuzz2116([fuzzy16_1.clone(), fuzzy16_2.clone(), fuzzy16_1.clone()])
     .with_fuzz2117([fuzzy17_1.clone(), fuzzy17_2.clone(), fuzzy17_1.clone()])
     .with_fuzz2118([fuzzy18_1.clone(), fuzzy18_2.clone(), fuzzy18_3.clone()]);

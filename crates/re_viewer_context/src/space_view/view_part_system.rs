@@ -1,4 +1,5 @@
 use ahash::HashMap;
+use re_log_types::{ComponentName, EntityPath};
 
 use crate::{ArchetypeDefinition, SpaceViewSystemExecutionError, ViewQuery, ViewerContext};
 
@@ -10,6 +11,25 @@ use super::view_context_system::ViewContextCollection;
 pub trait ViewPartSystem {
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
+
+    /// Returns true if the system queries given components on the given path in its [`Self::execute`] method.
+    ///
+    /// List of components is expected to be all components that have ever been logged on the entity path.
+    /// By default, this only checks if the primary components of the archetype are contained
+    /// in the list of components.
+    ///
+    /// Override this method only if a more detailed condition is required to inform heuristics whether
+    /// the given entity is relevant for this system.
+    fn queries_any_components_of(
+        &self,
+        _store: &re_arrow_store::DataStore,
+        _ent_path: &EntityPath,
+        components: &[ComponentName],
+    ) -> bool {
+        // TODO(andreas): Use new archetype definitions which also allows for several primaries.
+        let archetype = self.archetype();
+        components.contains(archetype.first())
+    }
 
     /// Queries the data store and performs data conversions to make it ready for display.
     ///

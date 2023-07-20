@@ -23,16 +23,13 @@ pub struct SpatialSceneEntityContext<'a> {
     pub depth_offset: DepthOffset,
     pub annotations: std::sync::Arc<Annotations>,
     pub shared_render_builders: &'a SharedRenderBuilders,
-    pub counter: &'a PrimitiveCounter,
 
     pub highlight: &'a re_viewer_context::SpaceViewOutlineMasks, // Not part of the context, but convenient to have here.
 }
 
-// TODO(andreas): num_3d_primitives is likely not needed in this form once 2D/3D separation is gone. num_primitives should be handled in a more general way?
 #[derive(Default)]
 pub struct PrimitiveCounter {
     pub num_primitives: AtomicUsize,
-    pub num_3d_primitives: AtomicUsize,
 }
 
 impl ViewContextSystem for PrimitiveCounter {
