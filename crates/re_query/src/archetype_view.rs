@@ -32,7 +32,7 @@ impl ComponentWithInstances {
     }
 
     #[inline]
-    /// Whether this [`ArchComponentWithInstances`] contains any data
+    /// Whether this [`ComponentWithInstances`] contains any data
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
@@ -103,7 +103,7 @@ impl ComponentWithInstances {
             })
     }
 
-    /// Produce a [`ArchComponentWithInstances`] from native [`Component`] types
+    /// Produce a [`ComponentWithInstances`] from native [`Component`] types
     pub fn from_native<'a, C: Component + Clone + 'a>(
         instance_keys: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, InstanceKey>>>,
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
@@ -329,7 +329,7 @@ impl<A: Archetype> ArchetypeView<A> {
         }
     }
 
-    /// Helper function to produce an [`ArchetypeView`] from a collection of [`ArchComponentWithInstances`]
+    /// Helper function to produce an [`ArchetypeView`] from a collection of [`ComponentWithInstances`]
     #[inline]
     pub fn from_components(components: impl IntoIterator<Item = ComponentWithInstances>) -> Self {
         Self {
