@@ -7,7 +7,7 @@
 use re_arrow_store::{DataStore, RangeQuery, TimeRange};
 use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Point2D, Rect2D,
+    LegacyPoint2D, Rect2D,
 };
 use re_log_types::{DataRow, EntityPath, RowId, TimeType};
 use re_query::range_entity_with_primary;
@@ -53,7 +53,7 @@ fn main() {
 
     println!("\n-----\n");
 
-    let components = [InstanceKey::name(), Rect2D::name(), Point2D::name()];
+    let components = [InstanceKey::name(), Rect2D::name(), LegacyPoint2D::name()];
     let ent_views = range_entity_with_primary::<Rect2D, 3>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
@@ -63,14 +63,15 @@ fn main() {
                 |time| TimeType::Sequence.format(time)
             ),
             Rect2D::name(),
-            &ent_view.as_df2::<Point2D>().unwrap()
+            &ent_view.as_df2::<LegacyPoint2D>().unwrap()
         );
     }
 
     println!("\n-----\n");
 
-    let components = [InstanceKey::name(), Rect2D::name(), Point2D::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let components = [InstanceKey::name(), Rect2D::name(), LegacyPoint2D::name()];
+    let ent_views =
+        range_entity_with_primary::<LegacyPoint2D, 3>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
@@ -78,7 +79,7 @@ fn main() {
                 || "<timeless>".into(),
                 |time| TimeType::Sequence.format(time)
             ),
-            Point2D::name(),
+            LegacyPoint2D::name(),
             &ent_view.as_df2::<Rect2D>().unwrap()
         );
     }

@@ -18,13 +18,13 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 /// );
 /// ```
 #[derive(Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
-pub struct Point2D {
+pub struct LegacyPoint2D {
     pub x: f32,
     pub y: f32,
 }
 
-impl Point2D {
-    pub const ZERO: Point2D = Point2D { x: 0.0, y: 0.0 };
+impl LegacyPoint2D {
+    pub const ZERO: LegacyPoint2D = LegacyPoint2D { x: 0.0, y: 0.0 };
 
     #[inline]
     pub fn new(x: f32, y: f32) -> Self {
@@ -32,14 +32,14 @@ impl Point2D {
     }
 }
 
-impl re_log_types::LegacyComponent for Point2D {
+impl re_log_types::LegacyComponent for LegacyPoint2D {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.point2d".into()
     }
 }
 
-impl From<[f32; 2]> for Point2D {
+impl From<[f32; 2]> for LegacyPoint2D {
     #[inline]
     fn from(p: [f32; 2]) -> Self {
         Self { x: p[0], y: p[1] }
@@ -47,7 +47,7 @@ impl From<[f32; 2]> for Point2D {
 }
 
 #[cfg(feature = "glam")]
-impl From<glam::Vec2> for Point2D {
+impl From<glam::Vec2> for LegacyPoint2D {
     #[inline]
     fn from(pt: glam::Vec2) -> Self {
         Self::new(pt.x, pt.y)
@@ -55,22 +55,22 @@ impl From<glam::Vec2> for Point2D {
 }
 
 #[cfg(feature = "glam")]
-impl From<Point2D> for glam::Vec2 {
+impl From<LegacyPoint2D> for glam::Vec2 {
     #[inline]
-    fn from(pt: Point2D) -> Self {
+    fn from(pt: LegacyPoint2D) -> Self {
         Self::new(pt.x, pt.y)
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<Point2D> for glam::Vec3 {
+impl From<LegacyPoint2D> for glam::Vec3 {
     #[inline]
-    fn from(pt: Point2D) -> Self {
+    fn from(pt: LegacyPoint2D) -> Self {
         Self::new(pt.x, pt.y, 0.0)
     }
 }
 
-re_log_types::component_legacy_shim!(Point2D);
+re_log_types::component_legacy_shim!(LegacyPoint2D);
 
 /// A point in 3D space.
 ///

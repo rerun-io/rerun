@@ -1,7 +1,7 @@
 //! Log some random points with color and radii.
 use rand::distributions::Uniform;
 use rand::Rng;
-use rerun::components::{ColorRGBA, Point2D, Radius, Rect2D, Vec4D};
+use rerun::components::{ColorRGBA, LegacyPoint2D, Radius, Rect2D, Vec4D};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut colors = vec![];
     let mut radii = vec![];
     for _ in 0..10 {
-        positions.push(Point2D::new(
+        positions.push(LegacyPoint2D::new(
             rng.sample(position_distribs),
             rng.sample(position_distribs),
         ));

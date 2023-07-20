@@ -10,7 +10,7 @@ use re_arrow_store::polars_util::latest_components;
 use re_arrow_store::{test_row, DataStore, LatestAtQuery, TimeType, Timeline};
 use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Point2D, Rect2D,
+    LegacyPoint2D, Rect2D,
 };
 use re_log_types::EntityPath;
 use re_types::{components::InstanceKey, Loggable};
@@ -31,7 +31,7 @@ fn main() {
         &store,
         &LatestAtQuery::new(timeline_frame_nr, 10.into()),
         &ent_path,
-        &[Point2D::name(), Rect2D::name()],
+        &[LegacyPoint2D::name(), Rect2D::name()],
         &JoinType::Outer,
     )
     .unwrap();

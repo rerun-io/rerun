@@ -18,7 +18,7 @@ use itertools::Itertools;
 use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, DrawOrder,
-        Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D, Tensor,
+        Label, LineStrip2D, LineStrip3D, LegacyPoint2D, Point3D, Radius, Rect2D, Tensor,
         TensorDataMeaning, TextEntry, Vec2D, Vec3D, ViewCoordinates,
     },
     coordinates::SignedAxis3,
@@ -103,7 +103,7 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     // Single point with our custom component!
     rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("extension_components/point")
-        .with_component(&[Point2D::new(64.0, 64.0)])?
+        .with_component(&[LegacyPoint2D::new(64.0, 64.0)])?
         .with_component(&[ColorRGBA::from_rgb(255, 0, 0)])?
         .with_component(&[Confidence(0.9)])?
         .send(rec_stream)?;
@@ -148,10 +148,10 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("extension_components/points")
         .with_component(&[
-            Point2D::new(32.0, 32.0),
-            Point2D::new(32.0, 96.0),
-            Point2D::new(96.0, 32.0),
-            Point2D::new(96.0, 96.0),
+            LegacyPoint2D::new(32.0, 32.0),
+            LegacyPoint2D::new(32.0, 96.0),
+            LegacyPoint2D::new(96.0, 32.0),
+            LegacyPoint2D::new(96.0, 96.0),
         ])?
         .with_splat(ColorRGBA::from_rgb(0, 255, 0))?
         .with_component(&[

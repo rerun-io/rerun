@@ -68,7 +68,7 @@ pub use self::{
     mat::Mat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},
     pinhole::Pinhole,
-    point::{Point2D, Point3D},
+    point::{LegacyPoint2D, Point3D},
     quaternion::Quaternion,
     radius::Radius,
     rect::Rect2D,
@@ -94,7 +94,7 @@ pub use self::tensor::{TensorImageLoadError, TensorImageSaveError};
 pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_path, FromFileError};
 
 // This is a component
-pub use re_types::components::InstanceKey;
+pub use re_types::components::{InstanceKey, Point2D};
 
 // This is very convenient to re-export
 pub use re_log_types::LegacyComponent;
@@ -126,7 +126,7 @@ lazy_static! {
         <LineStrip3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
         <Pinhole as LegacyComponent>::field(),
-        <Point2D as LegacyComponent>::field(),
+        <LegacyPoint2D as LegacyComponent>::field(),
         <Point3D as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
         <Radius as LegacyComponent>::field(),

@@ -10,7 +10,7 @@ use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
 use re_components::{
     datagen::{build_some_instances, build_some_point2d, build_some_rects},
-    Point2D, Rect2D,
+    LegacyPoint2D, Rect2D,
 };
 use re_log_types::{DataCell, SizeBytes as _};
 use re_types::{components::InstanceKey, Component};
@@ -295,7 +295,7 @@ fn estimated_size_bytes(c: &mut Criterion) {
         }
 
         {
-            fn generate_points() -> Vec<Vec<Point2D>> {
+            fn generate_points() -> Vec<Vec<LegacyPoint2D>> {
                 (0..NUM_ROWS)
                     .map(|_| build_some_point2d(NUM_INSTANCES))
                     .collect()

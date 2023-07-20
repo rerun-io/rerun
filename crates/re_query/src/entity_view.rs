@@ -154,17 +154,17 @@ where
 #[test]
 fn lookup_value() {
     use crate::QueryError;
-    use re_components::{Point2D, Rect2D};
+    use re_components::{LegacyPoint2D, Rect2D};
     use re_types::Loggable as _;
 
     let instance_keys = InstanceKey::from_iter(0..5);
 
     let points = [
-        Point2D { x: 1.0, y: 2.0 }, //
-        Point2D { x: 3.0, y: 4.0 },
-        Point2D { x: 5.0, y: 6.0 },
-        Point2D { x: 7.0, y: 8.0 },
-        Point2D { x: 9.0, y: 10.0 },
+        LegacyPoint2D::new(1.0, 2.0), //
+        LegacyPoint2D::new(3.0, 4.0),
+        LegacyPoint2D::new(5.0, 6.0),
+        LegacyPoint2D::new(7.0, 8.0),
+        LegacyPoint2D::new(9.0, 10.0),
     ];
 
     let component =
@@ -176,7 +176,7 @@ fn lookup_value() {
     let value = component.lookup_arrow(&InstanceKey(2)).unwrap();
 
     let expected_point = [points[2].clone()];
-    let expected_arrow = Point2D::to_arrow(expected_point, None);
+    let expected_arrow = LegacyPoint2D::to_arrow(expected_point, None);
 
     assert_eq!(expected_arrow, value);
 
@@ -196,16 +196,16 @@ fn lookup_value() {
     let value = component.lookup_arrow(&InstanceKey(99)).unwrap();
 
     let expected_point = [points[3].clone()];
-    let expected_arrow = Point2D::to_arrow(&expected_point, None);
+    let expected_arrow = LegacyPoint2D::to_arrow(&expected_point, None);
 
     assert_eq!(expected_arrow, value);
 
     // Lookups with serialization
 
-    let value = component.lookup::<Point2D>(&InstanceKey(99)).unwrap();
+    let value = component.lookup::<LegacyPoint2D>(&InstanceKey(99)).unwrap();
     assert_eq!(expected_point[0], value);
 
-    let missing_value = component.lookup::<Point2D>(&InstanceKey(46));
+    let missing_value = component.lookup::<LegacyPoint2D>(&InstanceKey(46));
     assert!(matches!(
         missing_value.err().unwrap(),
         QueryError::ComponentNotFound
@@ -220,20 +220,18 @@ fn lookup_value() {
 
 #[test]
 fn lookup_splat() {
-    use re_components::Point2D;
+    use re_components::LegacyPoint2D;
     let instances = [
         InstanceKey::SPLAT, //
     ];
-    let points = [
-        Point2D { x: 1.0, y: 2.0 }, //
-    ];
+    let points = [LegacyPoint2D::new(1.0, 2.0)];
 
     let component = ComponentWithInstances::from_native(instances.as_slice(), points.as_slice());
 
     // Any instance we look up will return the slatted value
-    let value = component.lookup::<Point2D>(&InstanceKey(1)).unwrap();
+    let value = component.lookup::<LegacyPoint2D>(&InstanceKey(1)).unwrap();
     assert_eq!(points[0], value);
 
-    let value = component.lookup::<Point2D>(&InstanceKey(99)).unwrap();
+    let value = component.lookup::<LegacyPoint2D>(&InstanceKey(99)).unwrap();
     assert_eq!(points[0], value);
 }
