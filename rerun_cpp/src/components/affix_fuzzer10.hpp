@@ -4,17 +4,26 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace components {
         struct AffixFuzzer10 {
             std::optional<std::string> single_string_optional;
 
+          public:
             AffixFuzzer10(std::optional<std::string> single_string_optional)
                 : single_string_optional(std::move(single_string_optional)) {}
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace components
 } // namespace rr

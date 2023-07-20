@@ -4,18 +4,27 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <utility>
 
 #include "../datatypes/affix_fuzzer3.hpp"
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace components {
         struct AffixFuzzer15 {
             std::optional<rr::datatypes::AffixFuzzer3> single_optional_union;
 
+          public:
             AffixFuzzer15(std::optional<rr::datatypes::AffixFuzzer3> single_optional_union)
                 : single_optional_union(std::move(single_optional_union)) {}
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace components
 } // namespace rr

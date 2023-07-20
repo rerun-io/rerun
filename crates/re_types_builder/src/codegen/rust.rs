@@ -667,7 +667,7 @@ fn quote_trait_impls_from_obj(
             let kind_name = format_ident!("{kind}Name");
 
             let datatype = arrow_registry.get(fqname);
-            let datatype = ArrowDataTypeTokenizer(&datatype);
+            let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
             let legacy_fqname = obj
                 .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
@@ -1121,13 +1121,14 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
 
 // --- Arrow registry code generators ---
 
-struct ArrowDataTypeTokenizer<'a>(&'a ::arrow2::datatypes::DataType);
+/// `(Datatype, is_recursive)`
+struct ArrowDataTypeTokenizer<'a>(&'a ::arrow2::datatypes::DataType, bool);
 
 impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use arrow2::datatypes::UnionMode;
-        // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
-        match self.0.to_logical_type() {
+        let Self(datatype, recursive) = self;
+        match datatype {
             DataType::Null => quote!(DataType::Null),
             DataType::Boolean => quote!(DataType::Boolean),
             DataType::Int8 => quote!(DataType::Int8),
@@ -1174,10 +1175,18 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                 quote!(DataType::Struct(vec![ #(#fields,)* ]))
             }
 
-            DataType::Extension(name, datatype, metadata) => {
-                let datatype = ArrowDataTypeTokenizer(datatype);
-                let metadata = OptionTokenizer(metadata.as_ref());
-                quote!(DataType::Extension(#name.to_owned(), Box::new(#datatype), #metadata))
+            DataType::Extension(fqname, datatype, _metadata) => {
+                if *recursive {
+                    let fqname_use = quote_fqname_as_type_path(fqname);
+                    quote!(<#fqname_use>::to_arrow_datatype())
+                } else {
+                    let datatype = ArrowDataTypeTokenizer(datatype.to_logical_type(), false);
+                    quote!(#datatype)
+                    // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
+                    // let datatype = ArrowDataTypeTokenizer(datatype, false);
+                    // let metadata = OptionTokenizer(metadata.as_ref());
+                    // quote!(DataType::Extension(#fqname.to_owned(), Box::new(#datatype), #metadata))
+                }
             }
 
             _ => unimplemented!("{:#?}", self.0),
@@ -1197,7 +1206,7 @@ impl quote::ToTokens for ArrowFieldTokenizer<'_> {
             metadata,
         } = &self.0;
 
-        let datatype = ArrowDataTypeTokenizer(data_type);
+        let datatype = ArrowDataTypeTokenizer(data_type, true);
         let metadata = StrStrMapTokenizer(metadata);
 
         quote! {
@@ -1554,7 +1563,7 @@ fn quote_arrow_field_serializer(
     bitmap_src: &proc_macro2::Ident,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
-    let quoted_datatype = ArrowDataTypeTokenizer(datatype);
+    let quoted_datatype = ArrowDataTypeTokenizer(datatype, false);
     let quoted_datatype = if let Some(ext) = extension_wrapper {
         quote!(DataType::Extension(#ext.to_owned(), Box::new(#quoted_datatype), None))
     } else {

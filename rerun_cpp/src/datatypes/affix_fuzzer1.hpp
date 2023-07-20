@@ -4,11 +4,16 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include "../datatypes/flattened_scalar.hpp"
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace datatypes {
@@ -30,6 +35,10 @@ namespace rr {
             rr::datatypes::FlattenedScalar almost_flattened_scalar;
 
             std::optional<bool> from_parent;
+
+          public:
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace datatypes
 } // namespace rr

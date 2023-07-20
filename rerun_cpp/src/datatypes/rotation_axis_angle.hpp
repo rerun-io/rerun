@@ -4,9 +4,14 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #include "../datatypes/angle.hpp"
 #include "../datatypes/vec3d.hpp"
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace datatypes {
@@ -21,6 +26,10 @@ namespace rr {
 
             /// How much to rotate around the axis.
             rr::datatypes::Angle angle;
+
+          public:
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace datatypes
 } // namespace rr

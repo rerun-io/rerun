@@ -4,9 +4,14 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <utility>
 
 #include "../datatypes/transform3d.hpp"
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace components {
@@ -15,7 +20,11 @@ namespace rr {
             /// Representation of the transform.
             rr::datatypes::Transform3D repr;
 
+          public:
             Transform3D(rr::datatypes::Transform3D repr) : repr(std::move(repr)) {}
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace components
 } // namespace rr
