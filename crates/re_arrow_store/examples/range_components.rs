@@ -8,7 +8,7 @@ use polars_core::prelude::JoinType;
 use re_arrow_store::{polars_util, test_row, DataStore, RangeQuery, TimeRange};
 use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    LegacyPoint2D, Rect2D,
+    Point2D, Rect2D,
 };
 use re_log_types::{EntityPath, TimeType, Timeline};
 use re_types::{components::InstanceKey, Loggable};
@@ -56,7 +56,7 @@ fn main() {
         &query,
         &ent_path,
         Rect2D::name(),
-        [InstanceKey::name(), Rect2D::name(), LegacyPoint2D::name()],
+        [InstanceKey::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {
@@ -77,8 +77,8 @@ fn main() {
         &store,
         &query,
         &ent_path,
-        LegacyPoint2D::name(),
-        [InstanceKey::name(), Rect2D::name(), LegacyPoint2D::name()],
+        Point2D::name(),
+        [InstanceKey::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {
@@ -88,7 +88,7 @@ fn main() {
                 || "<timeless>".into(),
                 |time| TimeType::Sequence.format(time)
             ),
-            LegacyPoint2D::name(),
+            Point2D::name(),
             df,
         );
     }
