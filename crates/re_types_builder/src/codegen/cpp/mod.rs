@@ -393,44 +393,37 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        let implicit_constructors = if are_types_disjoint(&obj.fields) {
+        let mut methods = Vec::new();
+
+        // Static constructors:
+        for obj_field in &obj.fields {
+            methods.push(static_constructor_for_enum_type(
+                objects,
+                &mut hpp_includes,
+                obj_field,
+                &pascal_case_ident,
+                &tag_typename,
+            ));
+        }
+
+        if are_types_disjoint(&obj.fields) {
             // Implicit construct from the different variant types:
-            obj.fields
-                .iter()
-                .map(|obj_field| {
-                    let snake_case_ident =
-                        format_ident!("{}", crate::to_snake_case(&obj_field.name));
-                    let docstring = quote_docstrings(&obj_field.docs);
-                    let param_declaration =
-                        quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident);
-                    quote! {
-                        #docstring
-                        #pascal_case_ident(#param_declaration)
-                        {
-                            *this = #pascal_case_ident::#snake_case_ident(std::move(#snake_case_ident));
-                        }
-                    }
-                })
-                .collect_vec()
+            for obj_field in &obj.fields {
+                let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                let param_declaration =
+                    quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident);
+
+                methods.push(Method {
+                    docs: obj_field.docs.clone().into(),
+                    declaration: MethodDeclaration::constructor(quote!(#pascal_case_ident(#param_declaration))),
+                    definition_body: quote!(*this = #pascal_case_ident::#snake_case_ident(std::move(#snake_case_ident));),
+                    inline: true,
+                });
+            }
         } else {
             // Cannot make implicit constructors, e.g. for
             // `enum Angle { Radians(f32), Degrees(f32) };`
-            vec![]
         };
-
-        let static_constructors = obj
-            .fields
-            .iter()
-            .map(|obj_field| {
-                quote_static_constructor_for_enum_type(
-                    objects,
-                    &mut hpp_includes,
-                    obj_field,
-                    &pascal_case_ident,
-                    &tag_typename,
-                )
-            })
-            .collect_vec();
 
         let destructor = if obj.has_default_destructor(objects) {
             // No destructor needed
@@ -496,6 +489,7 @@ impl QuotedObject {
         };
 
         hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
+        let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
 
         let swap_comment = comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
 
@@ -550,9 +544,7 @@ impl QuotedObject {
 
                         #destructor
 
-                        #(#static_constructors)*
-
-                        #(#implicit_constructors)*
+                        #(#hpp_methods)*
 
                         // This is useful for easily implementing the move constructor and move assignment operator:
                         void swap(#pascal_case_ident& other) noexcept {
@@ -588,7 +580,7 @@ fn arrow_data_type_method(
     let quoted_datatype = quote_arrow_data_type(datatype, cpp_includes, true);
 
     Method {
-        doc_string: "Returns the arrow data type this type corresponds to.".to_owned(),
+        docs: "Returns the arrow data type this type corresponds to.".into(),
         declaration: MethodDeclaration {
             is_static: true,
             return_type: quote! { std::shared_ptr<arrow::DataType> },
@@ -600,18 +592,23 @@ fn arrow_data_type_method(
 }
 
 /// e.g. `static Angle radians(float radians);` -> `auto angle = Angle::radians(radians);`
-fn quote_static_constructor_for_enum_type(
+fn static_constructor_for_enum_type(
     objects: &Objects,
     hpp_includes: &mut Includes,
     obj_field: &ObjectField,
     pascal_case_ident: &Ident,
     tag_typename: &Ident,
-) -> TokenStream {
+) -> Method {
     let tag_ident = format_ident!("{}", obj_field.name);
     let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
-    let docstring = quote_docstrings(&obj_field.docs);
+    let docs = obj_field.docs.clone().into();
 
     let param_declaration = quote_declaration(hpp_includes, obj_field, &snake_case_ident);
+    let declaration = MethodDeclaration {
+        is_static: true,
+        return_type: quote!(#pascal_case_ident),
+        name_and_parameters: quote!(#snake_case_ident(#param_declaration)),
+    };
 
     if let Type::Array { elem_type, length } = &obj_field.typ {
         // We need special casing for constructing arrays:
@@ -632,10 +629,10 @@ fn quote_static_constructor_for_enum_type(
 
         let elem_type = quote_element_type(hpp_includes, elem_type);
 
-        quote! {
-            #docstring
-            static #pascal_case_ident #snake_case_ident(#param_declaration)
-            {
+        Method {
+            docs,
+            declaration,
+            definition_body: quote! {
                 typedef #elem_type TypeAlias;
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
@@ -643,35 +640,38 @@ fn quote_static_constructor_for_enum_type(
                     #element_assignment
                 }
                 return std::move(self);
-            }
+            },
+            inline: true,
         }
     } else if obj_field.typ.has_default_destructor(objects) {
         // Generate simpler code for simple types:
-        quote! {
-            #docstring
-            static #pascal_case_ident #snake_case_ident(#param_declaration)
-            {
+        Method {
+            docs,
+            declaration,
+            definition_body: quote! {
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 self._data.#snake_case_ident = std::move(#snake_case_ident);
                 return std::move(self);
-            }
+            },
+            inline: true,
         }
     } else {
         // We need to use placement-new since the union is in an uninitialized state here:
         hpp_includes.system.insert("new".to_owned()); // placement-new
         let typedef_declaration =
             quote_declaration(hpp_includes, obj_field, &format_ident!("TypeAlias"));
-        quote! {
-            #docstring
-            static #pascal_case_ident #snake_case_ident(#param_declaration)
-            {
+        Method {
+            docs,
+            declaration,
+            definition_body: quote! {
                 typedef #typedef_declaration;
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));
                 return std::move(self);
-            }
+            },
+            inline: true,
         }
     }
 }

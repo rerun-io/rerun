@@ -1,7 +1,9 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
-use super::{doc_comment, NEWLINE_TOKEN};
+use crate::Docs;
+
+use super::{doc_comment, quote_docstrings, NEWLINE_TOKEN};
 
 #[derive(Default)]
 pub struct MethodDeclaration {
@@ -49,9 +51,47 @@ impl MethodDeclaration {
     }
 }
 
+#[derive(Default)]
+pub enum MethodDocumentation {
+    #[default]
+    None,
+    String(String),
+    Docs(Docs),
+}
+
+impl From<Docs> for MethodDocumentation {
+    fn from(d: Docs) -> Self {
+        Self::Docs(d)
+    }
+}
+
+impl From<String> for MethodDocumentation {
+    fn from(s: String) -> Self {
+        Self::String(s)
+    }
+}
+
+impl From<&str> for MethodDocumentation {
+    fn from(s: &str) -> Self {
+        Self::String(s.to_owned())
+    }
+}
+
+impl quote::ToTokens for MethodDocumentation {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            Self::None => {}
+            Self::String(s) => {
+                tokens.extend(doc_comment(s));
+            }
+            Self::Docs(docs) => tokens.extend(quote_docstrings(docs)),
+        }
+    }
+}
+
 /// A Cpp struct/class method.
 pub struct Method {
-    pub doc_string: String,
+    pub docs: MethodDocumentation,
     pub declaration: MethodDeclaration,
     pub definition_body: TokenStream,
     pub inline: bool,
@@ -60,7 +100,7 @@ pub struct Method {
 impl Default for Method {
     fn default() -> Self {
         Self {
-            doc_string: String::new(),
+            docs: MethodDocumentation::None,
             declaration: MethodDeclaration::default(),
             definition_body: TokenStream::new(),
             inline: true,
@@ -71,22 +111,17 @@ impl Default for Method {
 impl Method {
     pub fn to_hpp_tokens(&self) -> TokenStream {
         let Self {
-            doc_string,
+            docs,
             declaration,
             definition_body,
             inline: is_inline,
         } = self;
 
-        let quoted_doc = if doc_string.is_empty() {
-            quote! {}
-        } else {
-            doc_comment(doc_string)
-        };
         let declaration = declaration.to_hpp_tokens();
         if *is_inline {
             quote! {
                 #NEWLINE_TOKEN
-                #quoted_doc
+                #docs
                 #declaration {
                     #definition_body
                 }
@@ -94,7 +129,7 @@ impl Method {
         } else {
             quote! {
                 #NEWLINE_TOKEN
-                #quoted_doc
+                #docs
                 #declaration;
             }
         }
@@ -102,7 +137,7 @@ impl Method {
 
     pub fn to_cpp_tokens(&self, class_or_struct_name: &Ident) -> TokenStream {
         let Self {
-            doc_string: _,
+            docs: _,
             declaration,
             definition_body,
             inline,
