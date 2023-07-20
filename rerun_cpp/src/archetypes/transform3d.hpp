@@ -15,6 +15,7 @@ namespace rr {
             /// The transform
             rr::components::Transform3D transform;
 
+          public:
             Transform3D(rr::components::Transform3D transform) : transform(std::move(transform)) {}
         };
     } // namespace archetypes

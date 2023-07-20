@@ -21,7 +21,6 @@ jobs:
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      SAVE_CACHE: false
       PLATFORM: linux
       MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
       WHEEL_ARTIFACT_NAME: "linux-wheel-fast"

@@ -10,7 +10,7 @@ use re_viewer_context::{
 
 use super::DataUi;
 
-// TODO(andreas): This is where we want to go, but we need to figure out how get the `SpaceViewCategory` from the `SpaceViewId`.
+// TODO(andreas): This is where we want to go, but we need to figure out how get the [`re_viewer_context::SpaceViewClass`] from the `SpaceViewId`.
 // Simply pass in optional icons?
 //
 // Show a button to an [`Item`] with a given text.

@@ -15,7 +15,7 @@ use re_viewer::blueprint_components::panel::PanelState;
 use re_viewer_context::SpaceViewId;
 use re_viewport::{
     blueprint_components::{AutoSpaceViews, SpaceViewComponent, VIEWPORT_PATH},
-    SpaceViewBlueprint, ViewCategory,
+    SpaceViewBlueprint,
 };
 
 use re_log_types::{DataRow, StoreKind};
@@ -1167,7 +1167,6 @@ fn add_space_view(
 
     let mut space_view = SpaceViewBlueprint::new(
         "Spatial".into(),
-        ViewCategory::Spatial,
         &origin.into(),
         &entity_paths
             .into_iter()

@@ -63,6 +63,10 @@ pub const SPACE_VIEW_TEXTBOX: Icon = Icon::new(
     "spaceview_text",
     include_bytes!("../data/icons/spaceview_text.png"),
 );
+pub const SPACE_VIEW_2D: Icon = Icon::new(
+    "spaceview_2d",
+    include_bytes!("../data/icons/spaceview_2d.png"),
+);
 pub const SPACE_VIEW_3D: Icon = Icon::new(
     "spaceview_3d",
     include_bytes!("../data/icons/spaceview_3d.png"),

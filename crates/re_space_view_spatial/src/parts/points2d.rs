@@ -17,6 +17,7 @@ use crate::{
         process_annotations_and_keypoints_arch, process_colors_arch, process_radii_arch, UiLabel,
         UiLabelTarget,
     },
+    view_kind::SpatialSpaceViewKind,
 };
 
 use super::{picking_id_from_instance_key, SpatialViewPartData};
@@ -31,7 +32,7 @@ impl Default for Points2DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: Default::default(),
+            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
         }
     }
 }

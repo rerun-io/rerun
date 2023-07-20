@@ -2,3 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/testing/archetypes/fuzzy.fbs"
 
 #include "affix_fuzzer1.hpp"
+
+namespace rr {
+    namespace archetypes {}
+} // namespace rr

@@ -8,12 +8,19 @@ use re_viewer_context::{
     ViewPartSystem, ViewQuery, ViewerContext,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, parts::entity_iterator::process_entity_views};
-
 use super::{picking_id_from_instance_key, SpatialViewPartData};
+use crate::{
+    contexts::SpatialSceneEntityContext, parts::entity_iterator::process_entity_views,
+    view_kind::SpatialSpaceViewKind,
+};
 
-#[derive(Default)]
 pub struct Lines3DPart(SpatialViewPartData);
+
+impl Default for Lines3DPart {
+    fn default() -> Self {
+        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
+    }
+}
 
 impl Lines3DPart {
     fn process_entity_view(
@@ -98,10 +105,6 @@ impl ViewPartSystem for Lines3DPart {
             0,
             self.archetype(),
             |_ctx, ent_path, entity_view, ent_context| {
-                ent_context
-                    .counter
-                    .num_3d_primitives
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
         )?;

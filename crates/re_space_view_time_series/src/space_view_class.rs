@@ -26,10 +26,10 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_HISTOGRAM
+        &re_ui::icons::SPACE_VIEW_CHART
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
+    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
         let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
 
         layout.add("Pan by dragging, or scroll (+ ");

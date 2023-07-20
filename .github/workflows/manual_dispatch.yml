@@ -59,12 +59,6 @@ on:
         required: false
         default: false
 
-      SAVE_CACHE:
-        description: "Save the rust-cache where relevant"
-        type: boolean
-        required: false
-        default: false
-
 jobs:
   checks:
     name: Run All Checks
@@ -72,7 +66,6 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
-      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
     secrets: inherit
 
   deploy-docs:
@@ -102,7 +95,6 @@ jobs:
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
-      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
       MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
       WHEEL_ARTIFACT_NAME: ""
@@ -118,7 +110,6 @@ jobs:
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: manual-dispatch-linux-${{ github.run_id}}
-      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
@@ -131,7 +122,6 @@ jobs:
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: manual-dispatch-windows-${{ github.run_id}}
-      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ""
@@ -144,7 +134,6 @@ jobs:
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: manual-dispatch-macos-arm-${{ github.run_id}}
-      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ""
@@ -157,7 +146,6 @@ jobs:
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: manual-dispatch-macos-intel-${{ github.run_id}}
-      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
       RRD_ARTIFACT_NAME: ""

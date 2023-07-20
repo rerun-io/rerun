@@ -1,14 +1,12 @@
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath};
 use re_data_ui::item_ui;
 use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use crate::{
-    space_info::SpaceInfoCollection,
-    space_view::SpaceViewBlueprint,
-    view_category::{categorize_entity_path, ViewCategory},
+    space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint,
+    space_view_heuristics::is_entity_processed_by_class,
 };
 
 /// Window for adding/removing entities from a space view.
@@ -215,7 +213,7 @@ fn add_entities_line_ui(
                     |ui| {
                         let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
                         if response.clicked() {
-                            space_view.add_entity_subtree(entity_tree, spaces_info, ctx.store_db);
+                            space_view.add_entity_subtree(ctx, entity_tree, spaces_info);
                         }
 
                         if add_info
@@ -292,8 +290,6 @@ impl CanAddToSpaceView {
 
 #[derive(Default)]
 struct EntityAddInfo {
-    #[allow(dead_code)]
-    categories: enumset::EnumSet<ViewCategory>,
     can_add: CanAddToSpaceView,
     can_add_self_or_descendant: CanAddToSpaceView,
 }
@@ -307,28 +303,24 @@ fn create_entity_add_info(
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
     tree.visit_children_recursively(&mut |entity_path| {
-        let categories = categorize_entity_path(Timeline::log_time(), ctx.store_db, entity_path);
-        let can_add: CanAddToSpaceView = if categories.contains(space_view.category) {
-            match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
-                Ok(()) => CanAddToSpaceView::Compatible {
-                    already_added: space_view.data_blueprint.contains_entity(entity_path),
-                },
-                Err(reason) => CanAddToSpaceView::No {
-                    reason: reason.to_string(),
-                },
-            }
-        } else if categories.is_empty() {
-            CanAddToSpaceView::No {
-                reason: "Entity does not have any components".to_owned(),
-            }
-        } else {
-            CanAddToSpaceView::No {
-                reason: format!(
-                    "Entity can't be displayed by this class of Space View ({})",
-                    space_view.class_name()
-                ),
-            }
-        };
+        let can_add: CanAddToSpaceView =
+            if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path) {
+                match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
+                    Ok(()) => CanAddToSpaceView::Compatible {
+                        already_added: space_view.data_blueprint.contains_entity(entity_path),
+                    },
+                    Err(reason) => CanAddToSpaceView::No {
+                        reason: reason.to_string(),
+                    },
+                }
+            } else {
+                CanAddToSpaceView::No {
+                    reason: format!(
+                        "Entity can't be displayed by this class of Space View ({}), since it doesn't match any archetype that the Space View can process.",
+                        space_view.class_name()
+                    ),
+                }
+            };
 
         if can_add.is_compatible() {
             // Mark parents aware that there is some descendant that is compatible
@@ -344,7 +336,6 @@ fn create_entity_add_info(
         meta_data.insert(
             entity_path.clone(),
             EntityAddInfo {
-                categories,
                 can_add,
                 can_add_self_or_descendant,
             },

@@ -2,3 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/points2d.fbs"
 
 #include "points2d.hpp"
+
+namespace rr {
+    namespace archetypes {}
+} // namespace rr

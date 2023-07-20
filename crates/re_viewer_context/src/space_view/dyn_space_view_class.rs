@@ -4,7 +4,8 @@ use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemRegistry, ViewQuery, ViewerContext,
+    AutoSpawnHeuristic, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemRegistry,
+    ViewQuery, ViewerContext,
 };
 
 /// First element is the primary component, all others are optional.
@@ -53,7 +54,7 @@ pub trait DynSpaceViewClass {
     fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText;
+    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
     /// Called once upon registration of the class
     ///
@@ -79,6 +80,17 @@ pub trait DynSpaceViewClass {
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
 
+    /// Heuristic used to determine which space view is the best fit for a set of paths.
+    ///
+    /// For each path in `ent_paths`, at least one of the registered [`crate::ViewPartSystem`] for this class
+    /// returned true when calling [`crate::ViewPartSystem::queries_any_components_of`].
+    fn auto_spawn_heuristic(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        space_origin: &EntityPath,
+        ent_paths: &IntSet<EntityPath>,
+    ) -> AutoSpawnHeuristic;
+
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
@@ -99,7 +111,7 @@ pub trait DynSpaceViewClass {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
-        entity_paths: &IntSet<EntityPath>,
+        ent_paths: &IntSet<EntityPath>,
         entity_properties: &mut EntityPropertyMap,
     );
 

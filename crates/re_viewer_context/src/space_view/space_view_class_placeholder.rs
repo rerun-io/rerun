@@ -18,7 +18,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         &re_ui::icons::SPACE_VIEW_UNKNOWN
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &()) -> egui::WidgetText {
+    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
         "The Space View Class was not recognized.\nThis happens if either the Blueprint specifies an invalid Space View Class or this version of the Viewer does not know about this type.".into()
     }
 
@@ -47,13 +47,13 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        _state: &mut Self::State,
         _view_ctx: &ViewContextCollection,
         _parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
         _draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        ui.centered_and_justified(|ui| ui.label(self.help_text(ctx.re_ui, state)));
+        ui.centered_and_justified(|ui| ui.label(self.help_text(ctx.re_ui)));
         Ok(())
     }
 }

@@ -57,65 +57,13 @@ impl crate::Loggable for Rotation3D {
                 },
                 Field {
                     name: "Quaternion".to_owned(),
-                    data_type: DataType::FixedSizeList(
-                        Box::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }),
-                        4usize,
-                    ),
+                    data_type: <crate::datatypes::Quaternion>::to_arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },
                 Field {
                     name: "AxisAngle".to_owned(),
-                    data_type: DataType::Struct(vec![
-                        Field {
-                            name: "axis".to_owned(),
-                            data_type: DataType::FixedSizeList(
-                                Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
-                                3usize,
-                            ),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "angle".to_owned(),
-                            data_type: DataType::Union(
-                                vec![
-                                    Field {
-                                        name: "_null_markers".to_owned(),
-                                        data_type: DataType::Null,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Radians".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Degrees".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                ],
-                                Some(vec![0i32, 1i32, 2i32]),
-                                UnionMode::Dense,
-                            ),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ]),
+                    data_type: <crate::datatypes::RotationAxisAngle>::to_arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },

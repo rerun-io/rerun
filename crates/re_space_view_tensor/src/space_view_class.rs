@@ -126,10 +126,10 @@ impl SpaceViewClass for TensorSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_HISTOGRAM
+        &re_ui::icons::SPACE_VIEW_TENSOR
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
+    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
         "Select the Space View to configure which dimensions are shown.".into()
     }
 
@@ -255,11 +255,11 @@ fn view_tensor(
         let dm = &state.slice.dim_mapping;
         [
             (
-                dimension_name(&tensor.shape, dm.width.unwrap()),
+                dimension_name(&tensor.shape, dm.width.unwrap_or_default()),
                 dm.invert_width,
             ),
             (
-                dimension_name(&tensor.shape, dm.height.unwrap()),
+                dimension_name(&tensor.shape, dm.height.unwrap_or_default()),
                 dm.invert_height,
             ),
         ]

@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use re_arrow_store::LatestAtQuery;
 use re_components::Tensor;
 use re_data_store::EntityPath;
-use re_types::Loggable as _;
+use re_log_types::{TimeInt, Timeline};
+use re_types::{ComponentName, Loggable as _};
 use re_viewer_context::{
     ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,
@@ -18,6 +19,26 @@ pub struct BarChartViewPartSystem {
 impl ViewPartSystem for BarChartViewPartSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Tensor::name()]
+    }
+
+    fn queries_any_components_of(
+        &self,
+        store: &re_arrow_store::DataStore,
+        ent_path: &EntityPath,
+        components: &[ComponentName],
+    ) -> bool {
+        if !components.contains(&Tensor::name()) {
+            return false;
+        }
+
+        if let Some(tensor) = store.query_latest_component::<Tensor>(
+            ent_path,
+            &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        ) {
+            tensor.is_vector()
+        } else {
+            false
+        }
     }
 
     fn execute(

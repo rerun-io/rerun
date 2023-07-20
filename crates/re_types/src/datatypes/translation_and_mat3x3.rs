@@ -56,29 +56,13 @@ impl crate::Loggable for TranslationAndMat3x3 {
         DataType::Struct(vec![
             Field {
                 name: "translation".to_owned(),
-                data_type: DataType::FixedSizeList(
-                    Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    }),
-                    3usize,
-                ),
+                data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
             Field {
                 name: "matrix".to_owned(),
-                data_type: DataType::FixedSizeList(
-                    Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    }),
-                    9usize,
-                ),
+                data_type: <crate::datatypes::Mat3x3>::to_arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },

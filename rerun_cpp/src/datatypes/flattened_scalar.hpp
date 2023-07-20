@@ -4,14 +4,23 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <utility>
+
+namespace arrow {
+    class DataType;
+}
 
 namespace rr {
     namespace datatypes {
         struct FlattenedScalar {
             float value;
 
+          public:
             FlattenedScalar(float value) : value(std::move(value)) {}
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
         };
     } // namespace datatypes
 } // namespace rr

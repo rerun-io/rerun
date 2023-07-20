@@ -24,7 +24,7 @@ impl SpaceViewClass for BarChartSpaceView {
         &re_ui::icons::SPACE_VIEW_HISTOGRAM
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
+    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
         let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
 
         layout.add("Pan by dragging, or scroll (+ ");

@@ -65,7 +65,6 @@ where
             annotations: annotations.0.find(ent_path),
             shared_render_builders,
             highlight: query.highlights.entity_outline_mask(ent_path.hash()),
-            counter,
         };
 
         match query_primary_with_history::<Primary, N>(
@@ -136,7 +135,6 @@ where
             annotations: annotations.0.find(ent_path),
             shared_render_builders,
             highlight: query.highlights.entity_outline_mask(ent_path.hash()),
-            counter,
         };
 
         match query_archetype_with_history::<A, N>(

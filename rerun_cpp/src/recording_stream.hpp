@@ -28,6 +28,9 @@ namespace rr {
         /// Aborts if `init_global` has not yet been called.
         static RecordingStream global();
 
+        /// Logs raw data row to the recording stream.
+        ///
+        /// I.e. logs a number of components arrays (each with a same number of instances) to a single entity path.
         void log_data_row(const char* entity_path, uint32_t num_instances, size_t num_data_cells,
                           const DataCell* data_cells);
 

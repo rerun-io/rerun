@@ -57,15 +57,7 @@ impl crate::Loggable for Scale3D {
                 },
                 Field {
                     name: "ThreeD".to_owned(),
-                    data_type: DataType::FixedSizeList(
-                        Box::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }),
-                        3usize,
-                    ),
+                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },
