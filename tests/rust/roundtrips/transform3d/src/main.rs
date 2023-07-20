@@ -2,11 +2,15 @@
 
 use std::f32::consts::PI;
 
-use rerun::experimental::datatypes::{
-    Angle, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
+use rerun::{
+    archetypes::Transform3D,
+    datatypes,
+    datatypes::{
+        Angle, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
+    },
+    external::re_log,
+    MsgSender, RecordingStream,
 };
-use rerun::experimental::{archetypes::Transform3D, datatypes};
-use rerun::{external::re_log, MsgSender, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

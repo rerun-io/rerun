@@ -247,7 +247,7 @@ fn log_frame_annotations(
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
-    use rerun::components::{ColorRGBA, InstanceKey, LineStrip2D, LegacyPoint2D};
+    use rerun::components::{ColorRGBA, InstanceKey, LineStrip2D, Point2D};
 
     for ann in &annotations.annotations {
         // TODO(cmc): we shouldn't be using those preprojected 2D points to begin with, Rerun is
@@ -301,7 +301,7 @@ fn log_frame_annotations(
         } else {
             msg = msg
                 .with_component(&ids)?
-                .with_component(&points.into_iter().map(LegacyPoint2D::from).collect::<Vec<_>>())?;
+                .with_component(&points.into_iter().map(Point2D::from).collect::<Vec<_>>())?;
         }
 
         msg.send(rec_stream)?;

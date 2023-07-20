@@ -79,6 +79,7 @@ pub mod components {
         Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDataMeaning,
         TensorDimension, TensorId, TextEntry, Transform3D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
     };
+    pub use re_types::components::{Color, Point2D};
 }
 
 /// Transform helpers, for use with [`components::Transform3D`].
@@ -94,10 +95,7 @@ pub mod coordinates {
     pub use re_components::coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 }
 
-/// Experimental APIs, to try out upcoming Rerun features.
-pub mod experimental {
-    pub use re_types::{archetypes, components, datatypes, Archetype, Component, Datatype};
-}
+pub use re_types::{archetypes, datatypes, Archetype, Component, Datatype};
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]

@@ -1,6 +1,6 @@
 //! Log some very simple points.
 use rerun::{
-    components::{LegacyPoint2D, Rect2D, Vec4D},
+    components::{Point2D, Rect2D, Vec4D},
     MsgSender, RecordingStreamBuilder,
 };
 
@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let points = [[0.0, 0.0], [1.0, 1.0]]
         .into_iter()
-        .map(LegacyPoint2D::from)
+        .map(Point2D::from)
         .collect::<Vec<_>>();
 
     MsgSender::new("points")

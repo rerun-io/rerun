@@ -165,7 +165,7 @@ pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::Timeline;
 /// # use re_types::Component;
-/// # use re_types::components::{LegacyPoint2D, Color};
+/// # use re_types::components::{Point2D, Color};
 /// # use re_types::archetypes::Points2D;
 /// # let store = re_query::__populate_example_store();
 ///
@@ -180,7 +180,7 @@ pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
 /// .unwrap();
 ///
 /// # #[cfg(feature = "polars")]
-/// let df = arch_view.as_df2::<LegacyPoint2D, Color>().unwrap();
+/// let df = arch_view.as_df2::<Point2D, Color>().unwrap();
 ///
 /// //println!("{df:?}");
 /// ```

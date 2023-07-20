@@ -17,6 +17,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 use lazy_static::lazy_static;
+use re_types::Loggable;
 
 mod arrow;
 mod bbox;
@@ -117,16 +118,14 @@ lazy_static! {
         <Box3D as LegacyComponent>::field(),
         <ClassId as LegacyComponent>::field(),
         <ColorRGBA as LegacyComponent>::field(),
-        <DrawOrder as LegacyComponent>::field(),
         <DisconnectedSpace as LegacyComponent>::field(),
-        <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
+        <DrawOrder as LegacyComponent>::field(),
         <KeypointId as LegacyComponent>::field(),
         <Label as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),
         <LineStrip3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
         <Pinhole as LegacyComponent>::field(),
-        <LegacyPoint2D as LegacyComponent>::field(),
         <Point3D as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
         <Radius as LegacyComponent>::field(),
@@ -140,6 +139,8 @@ lazy_static! {
         <Vec2D as LegacyComponent>::field(),
         <Vec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
+        <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
+        Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
     ];
 }
 

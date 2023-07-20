@@ -5,12 +5,12 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 /// A point in 2D space.
 ///
 /// ```
-/// use re_components::Point2D;
+/// use re_components::LegacyPoint2D;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
 /// assert_eq!(
-///     Point2D::data_type(),
+///     LegacyPoint2D::data_type(),
 ///     DataType::Struct(vec![
 ///         Field::new("x", DataType::Float32, false),
 ///         Field::new("y", DataType::Float32, false),
