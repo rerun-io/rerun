@@ -18,6 +18,9 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-deploy-docs
   cancel-in-progress: true
 
+permissions:
+  id-token: "write"
+
 env:
   PYTHON_VERSION: "3.8"
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
