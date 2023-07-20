@@ -12,11 +12,11 @@ use crate::LegacyComponent;
 /// For instance: A point cloud is one entity, and each point is an instance, idenitifed by an [`InstanceKey`].
 ///
 /// ```
-/// use re_log_types::InstanceKey;
+/// use re_log_types::LegacyInstanceKey;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
-/// assert_eq!(InstanceKey::data_type(), DataType::UInt64);
+/// assert_eq!(LegacyInstanceKey::data_type(), DataType::UInt64);
 /// ```
 #[derive(
     Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, ArrowField, ArrowSerialize, ArrowDeserialize,

@@ -71,3 +71,21 @@ impl std::fmt::Display for InstanceKey {
         }
     }
 }
+
+// TODO(jleibs): allow cfg_attr for codegen
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for InstanceKey {
+    #[inline]
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.0.serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for InstanceKey {
+    #[inline]
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        u64::deserialize(deserializer).map(Self::from)
+    }
+}
