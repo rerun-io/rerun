@@ -4200,6 +4200,7 @@ dependencies = [
  "itertools 0.11.0",
  "mimalloc",
  "polars-core",
+ "rand",
  "re_arrow_store",
  "re_components",
  "re_data_store",

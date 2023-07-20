@@ -69,7 +69,7 @@ pub mod time {
 
 /// These are the different _components_ you can log.
 ///
-/// They all implement the [`Component`] trait,
+/// They all implement the [`Component`][`re_types::Component`] trait,
 /// and can be used in [`MsgSender::with_component`].
 pub mod components {
     pub use re_components::{

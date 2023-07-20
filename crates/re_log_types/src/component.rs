@@ -12,7 +12,7 @@ pub trait LegacyComponent: ArrowField {
     /// The name of the component.
     fn legacy_name() -> ComponentName;
 
-    /// Create a [`Field`] for this [`Component`].
+    /// Create a [`Field`] for this [`LegacyComponent`].
     fn field() -> Field {
         Field::new(Self::legacy_name().as_str(), Self::data_type(), false)
     }
