@@ -329,22 +329,216 @@ impl crate::Loggable for TranslationRotationScale3D {
                 let rotation = {
                     let data = &**arrays_by_name["rotation"];
 
-                    crate::datatypes::Rotation3D::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.TranslationRotationScale3D#rotation".into(),
-                            source: Box::new(err),
-                        })?
-                        .into_iter()
+                    {
+                        use crate::datatypes::*;
+                        use crate::Loggable as _;
+                        use ::arrow2::{array::*, datatypes::*};
+                        Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Rotation3D" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let quaternion = { let data = & * data_arrays [1usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (4usize) . zip ((4usize ..) . step_by (4usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 4usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Quaternion (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let axis_angle = { let data = & * data_arrays [2usize];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.RotationAxisAngle" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let axis = { let data = & * * arrays_by_name ["axis"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let angle = { let data = & * * arrays_by_name ["angle"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Angle" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let radians = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let degrees = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => Angle :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Angle#Radians" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => Angle :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Angle#Degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Angle" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; :: itertools :: izip ! (axis , angle) . enumerate () . map (| (i , (axis , angle)) | is_valid (i) . then (|| Ok (crate :: datatypes :: RotationAxisAngle { axis : axis . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.RotationAxisAngle#axis" . into () , source : Box :: new (err) , }
+
+) ? , angle : angle . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.RotationAxisAngle#angle" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.RotationAxisAngle" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => Rotation3D :: Quaternion (quaternion . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : quaternion . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Rotation3D#Quaternion" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => Rotation3D :: AxisAngle (axis_angle . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : axis_angle . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Rotation3D#AxisAngle" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Rotation3D" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter ()
+                    }
                 };
                 let scale = {
                     let data = &**arrays_by_name["scale"];
 
-                    crate::datatypes::Scale3D::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.TranslationRotationScale3D#scale".into(),
-                            source: Box::new(err),
-                        })?
-                        .into_iter()
+                    {
+                        use crate::datatypes::*;
+                        use crate::Loggable as _;
+                        use ::arrow2::{array::*, datatypes::*};
+                        Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Scale3D" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let three_d = { let data = & * data_arrays [1usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let uniform = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => Scale3D :: ThreeD (three_d . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : three_d . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Scale3D#ThreeD" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => Scale3D :: Uniform (uniform . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : uniform . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Scale3D#Uniform" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Scale3D" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter ()
+                    }
                 };
                 let from_parent = {
                     let data = &**arrays_by_name["from_parent"];
@@ -354,7 +548,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         .unwrap()
                         .into_iter()
                 };
-                :: itertools :: izip ! (translation , rotation , scale , from_parent) . enumerate () . map (| (i , (translation , rotation , scale , from_parent)) | is_valid (i) . then (|| Ok (Self { translation , rotation , scale , from_parent : from_parent . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+                :: itertools :: izip ! (translation , rotation , scale , from_parent) . enumerate () . map (| (i , (translation , rotation , scale , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: TranslationRotationScale3D { translation , rotation , scale , from_parent : from_parent . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.TranslationRotationScale3D#from_parent" . into () , source : Box :: new (err) , }
 

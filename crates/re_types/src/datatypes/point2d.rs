@@ -208,7 +208,7 @@ impl crate::Loggable for Point2D {
                     .map(|(i, (x, y))| {
                         is_valid(i)
                             .then(|| {
-                                Ok(Self {
+                                Ok(crate::datatypes::Point2D {
                                     x: x.ok_or_else(|| crate::DeserializationError::MissingData {
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                                     })

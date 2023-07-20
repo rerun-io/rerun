@@ -161,23 +161,151 @@ impl crate::Loggable for AffixFuzzer1 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
-            .map(|res| res.map(|single_required| Some(Self { single_required })))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
-                source: Box::new(err),
-            })?)
+        Ok ({ use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . map (| res | res . map (| single_required | Some (crate :: components :: AffixFuzzer1 { single_required }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer1#single_required" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -330,23 +458,149 @@ impl crate::Loggable for AffixFuzzer2 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
-                source: Box::new(err),
-            })?)
+        Ok ({ use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . map (| res | res . map (| v | Some (crate :: components :: AffixFuzzer2 (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer2#single_required" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -501,23 +755,151 @@ impl crate::Loggable for AffixFuzzer3 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
-            .map(|res| res.map(|single_required| Some(Self { single_required })))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
-                source: Box::new(err),
-            })?)
+        Ok ({ use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . map (| res | res . map (| single_required | Some (crate :: components :: AffixFuzzer3 { single_required }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer3#single_required" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -674,19 +1056,149 @@ impl crate::Loggable for AffixFuzzer4 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(Ok)
-            .map(|res| res.map(|single_optional| Some(Self { single_optional })))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
-                source: Box::new(err),
-            })?)
+        Ok ({ use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (Ok) . map (| res | res . map (| single_optional | Some (crate :: components :: AffixFuzzer4 { single_optional }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer4#single_optional" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -841,19 +1353,147 @@ impl crate::Loggable for AffixFuzzer5 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(Ok)
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
-                source: Box::new(err),
-            })?)
+        Ok ({ use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (Ok) . map (| res | res . map (| v | Some (crate :: components :: AffixFuzzer5 (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer5#single_optional" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -1010,19 +1650,149 @@ impl crate::Loggable for AffixFuzzer6 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(Ok)
-            .map(|res| res.map(|single_optional| Some(Self { single_optional })))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
-                source: Box::new(err),
-            })?)
+        Ok ({ use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (Ok) . map (| res | res . map (| single_optional | Some (crate :: components :: AffixFuzzer6 { single_optional }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer6#single_optional" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -1152,61 +1922,163 @@ impl crate::Loggable for AffixFuzzer7 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
-                let bitmap = data.validity().cloned();
-                let offsets = {
-                    let offsets = data.offsets();
-                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                };
-                let data = &**data.values();
-                let data = crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
-                        source: Box::new(err),
-                    })?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| {
-                        bitmap
-                            .as_ref()
-                            .map_or(true, |bitmap| bitmap.get_bit(i))
-                            .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
-                            })
-                            .transpose()
-                    })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-            }
-            .into_iter()
-        }
-        .map(Ok)
-        .map(|res| res.map(|many_optional| Some(Self { many_optional })))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
-            source: Box::new(err),
-        })?)
+        Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . map (Ok) . map (| res | res . map (| many_optional | Some (crate :: components :: AffixFuzzer7 { many_optional }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer7#many_optional" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -1314,7 +2186,7 @@ impl crate::Loggable for AffixFuzzer8 {
             .map(Ok)
             .map(|res| {
                 res.map(|single_float_optional| {
-                    Some(Self {
+                    Some(crate::components::AffixFuzzer8 {
                         single_float_optional,
                     })
                 })
@@ -1448,7 +2320,7 @@ impl crate::Loggable for AffixFuzzer9 {
             })
             .map(|res| {
                 res.map(|single_string_required| {
-                    Some(Self {
+                    Some(crate::components::AffixFuzzer9 {
                         single_string_required,
                     })
                 })
@@ -1580,7 +2452,7 @@ impl crate::Loggable for AffixFuzzer10 {
             .map(Ok)
             .map(|res| {
                 res.map(|single_string_optional| {
-                    Some(Self {
+                    Some(crate::components::AffixFuzzer10 {
                         single_string_optional,
                     })
                 })
@@ -1782,7 +2654,7 @@ impl crate::Loggable for AffixFuzzer11 {
         .map(Ok)
         .map(|res| {
             res.map(|many_floats_optional| {
-                Some(Self {
+                Some(crate::components::AffixFuzzer11 {
                     many_floats_optional,
                 })
             })
@@ -2002,7 +2874,7 @@ impl crate::Loggable for AffixFuzzer12 {
         })
         .map(|res| {
             res.map(|many_strings_required| {
-                Some(Self {
+                Some(crate::components::AffixFuzzer12 {
                     many_strings_required,
                 })
             })
@@ -2220,7 +3092,7 @@ impl crate::Loggable for AffixFuzzer13 {
         .map(Ok)
         .map(|res| {
             res.map(|many_strings_optional| {
-                Some(Self {
+                Some(crate::components::AffixFuzzer13 {
                     many_strings_optional,
                 })
             })
@@ -2364,29 +3236,237 @@ impl crate::Loggable for AffixFuzzer14 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
-            .map(|res| {
-                res.map(|single_required_union| {
-                    Some(Self {
-                        single_required_union,
-                    })
-                })
-            })
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
-                source: Box::new(err),
-            })?)
+        Ok ({ use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . map (| res | res . map (| single_required_union | Some (crate :: components :: AffixFuzzer14 { single_required_union }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer14#single_required_union" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -2523,25 +3603,235 @@ impl crate::Loggable for AffixFuzzer15 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(Ok)
-            .map(|res| {
-                res.map(|single_optional_union| {
-                    Some(Self {
-                        single_optional_union,
-                    })
-                })
-            })
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
-                source: Box::new(err),
-            })?)
+        Ok ({ use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (Ok) . map (| res | res . map (| single_optional_union | Some (crate :: components :: AffixFuzzer15 { single_optional_union }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer15#single_optional_union" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -2671,72 +3961,251 @@ impl crate::Loggable for AffixFuzzer16 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
-                let bitmap = data.validity().cloned();
-                let offsets = {
-                    let offsets = data.offsets();
-                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                };
-                let data = &**data.values();
-                let data = crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.components.AffixFuzzer16#many_required_unions"
-                            .into(),
-                        source: Box::new(err),
-                    })?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| {
-                        bitmap
-                            .as_ref()
-                            .map_or(true, |bitmap| bitmap.get_bit(i))
-                            .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
-                            })
-                            .transpose()
-                    })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-            }
-            .into_iter()
-        }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-        })
-        .map(|res| {
-            res.map(|many_required_unions| {
-                Some(Self {
-                    many_required_unions,
-                })
-            })
-        })
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer16#many_required_unions".into(),
-            source: Box::new(err),
-        })?)
+        Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . map (| res | res . map (| many_required_unions | Some (crate :: components :: AffixFuzzer16 { many_required_unions }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer16#many_required_unions" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -2868,68 +4337,249 @@ impl crate::Loggable for AffixFuzzer17 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
-                let bitmap = data.validity().cloned();
-                let offsets = {
-                    let offsets = data.offsets();
-                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                };
-                let data = &**data.values();
-                let data = crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.components.AffixFuzzer17#many_optional_unions"
-                            .into(),
-                        source: Box::new(err),
-                    })?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| {
-                        bitmap
-                            .as_ref()
-                            .map_or(true, |bitmap| bitmap.get_bit(i))
-                            .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
-                            })
-                            .transpose()
-                    })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-            }
-            .into_iter()
-        }
-        .map(Ok)
-        .map(|res| {
-            res.map(|many_optional_unions| {
-                Some(Self {
-                    many_optional_unions,
-                })
-            })
-        })
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer17#many_optional_unions".into(),
-            source: Box::new(err),
-        })?)
+        Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . map (Ok) . map (| res | res . map (| many_optional_unions | Some (crate :: components :: AffixFuzzer17 { many_optional_unions }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer17#many_optional_unions" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -3061,68 +4711,775 @@ impl crate::Loggable for AffixFuzzer18 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
-                let bitmap = data.validity().cloned();
-                let offsets = {
-                    let offsets = data.offsets();
-                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                };
-                let data = &**data.values();
-                let data = crate::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.components.AffixFuzzer18#many_optional_unions"
-                            .into(),
-                        source: Box::new(err),
-                    })?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| {
-                        bitmap
-                            .as_ref()
-                            .map_or(true, |bitmap| bitmap.get_bit(i))
-                            .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
-                            })
-                            .transpose()
-                    })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-            }
-            .into_iter()
-        }
-        .map(Ok)
-        .map(|res| {
-            res.map(|many_optional_unions| {
-                Some(Self {
-                    many_optional_unions,
-                })
-            })
-        })
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer18#many_optional_unions".into(),
-            source: Box::new(err),
-        })?)
+        Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let single_required = { let data = & * data_arrays [1usize];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let many_required = { let data = & * data_arrays [2usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let many_optional = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer4 :: SingleRequired (single_required . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : single_required . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#single_required" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer4 :: ManyRequired (many_required . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_required . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_required" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 3i8 => AffixFuzzer4 :: ManyOptional (many_optional . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_optional . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_optional" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . map (Ok) . map (| res | res . map (| many_optional_unions | Some (crate :: components :: AffixFuzzer18 { many_optional_unions }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer18#many_optional_unions" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 
@@ -3214,31 +5571,785 @@ impl crate::Loggable for AffixFuzzer19 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer5::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
-                    .into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
-            .map(|res| {
-                res.map(|just_a_table_nothing_shady| {
-                    Some(Self {
-                        just_a_table_nothing_shady,
-                    })
-                })
-            })
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
-                    .into(),
-                source: Box::new(err),
-            })?)
+        Ok ({ use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer5" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_optional_union = { let data = & * * arrays_by_name ["single_optional_union"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let single_required = { let data = & * data_arrays [1usize];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let many_required = { let data = & * data_arrays [2usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let many_optional = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let degrees = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let radians = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let craziness = { let data = & * data_arrays [3usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let single_float_optional = { let data = & * * arrays_by_name ["single_float_optional"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let single_string_required = { let data = & * * arrays_by_name ["single_string_required"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let single_string_optional = { let data = & * * arrays_by_name ["single_string_optional"];
+
+ data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) }
+
+ ; let many_floats_optional = { let data = & * * arrays_by_name ["many_floats_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_required = { let data = & * * arrays_by_name ["many_strings_required"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let many_strings_optional = { let data = & * * arrays_by_name ["many_strings_optional"];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
+
+ ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ }
+
+ ; let flattened_scalar = { let data = & * * arrays_by_name ["flattened_scalar"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; let almost_flattened_scalar = { let data = & * * arrays_by_name ["almost_flattened_scalar"];
+
+ { use :: arrow2 :: { datatypes :: * , array :: * }
+
+ ; use crate :: datatypes :: * ; use crate :: Loggable as _ ; Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let value = { let data = & * * arrays_by_name ["value"];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) }
+
+ ; :: itertools :: izip ! (value) . enumerate () . map (| (i , (value)) | is_valid (i) . then (|| Ok (crate :: datatypes :: FlattenedScalar { value : value . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar#value" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.FlattenedScalar" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; let from_parent = { let data = & * * arrays_by_name ["from_parent"];
+
+ data . as_any () . downcast_ref :: < BooleanArray > () . unwrap () . into_iter () }
+
+ ; :: itertools :: izip ! (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent) . enumerate () . map (| (i , (single_float_optional , single_string_required , single_string_optional , many_floats_optional , many_strings_required , many_strings_optional , flattened_scalar , almost_flattened_scalar , from_parent)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer1 { single_float_optional , single_string_required : single_string_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#single_string_required" . into () , source : Box :: new (err) , }
+
+) ? , single_string_optional , many_floats_optional , many_strings_required : many_strings_required . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#many_strings_required" . into () , source : Box :: new (err) , }
+
+) ? , many_strings_optional , flattened_scalar : flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , almost_flattened_scalar : almost_flattened_scalar . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar" . into () , source : Box :: new (err) , }
+
+) ? , from_parent , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer1" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; let fixed_size_shenanigans = { let data = & * data_arrays [4usize];
+
+ { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+
+ else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) ? . to_vec ()) }
+
+) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
+
+ . into_iter () }
+
+ . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer4 :: SingleRequired (single_required . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : single_required . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#single_required" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer4 :: ManyRequired (many_required . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_required . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_required" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 3i8 => AffixFuzzer4 :: ManyOptional (many_optional . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_optional . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_optional" . into () , source : Box :: new (err) , }
+
+) ? . clone ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ }
+
+ ; :: itertools :: izip ! (single_optional_union) . enumerate () . map (| (i , (single_optional_union)) | is_valid (i) . then (|| Ok (crate :: datatypes :: AffixFuzzer5 { single_optional_union , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer5" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter () }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+)) . map (| res | res . map (| just_a_table_nothing_shady | Some (crate :: components :: AffixFuzzer19 { just_a_table_nothing_shady }
+
+))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady" . into () , source : Box :: new (err) , }
+
+) ?)
     }
 }
 

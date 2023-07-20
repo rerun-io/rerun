@@ -108,7 +108,7 @@ impl crate::Loggable for InstanceKey {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
-            .map(|res| res.map(|v| Some(Self(v))))
+            .map(|res| res.map(|v| Some(crate::components::InstanceKey(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.components.InstanceKey#value".into(),

@@ -110,7 +110,7 @@ impl crate::Loggable for ClassId {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
-            .map(|res| res.map(|v| Some(Self(v))))
+            .map(|res| res.map(|v| Some(crate::components::ClassId(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.components.ClassId#id".into(),

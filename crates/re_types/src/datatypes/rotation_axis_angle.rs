@@ -252,19 +252,57 @@ impl crate::Loggable for RotationAxisAngle {
                 let angle = {
                     let data = &**arrays_by_name["angle"];
 
-                    crate::datatypes::Angle::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.RotationAxisAngle#angle".into(),
-                            source: Box::new(err),
-                        })?
-                        .into_iter()
+                    {
+                        use crate::datatypes::*;
+                        use crate::Loggable as _;
+                        use ::arrow2::{array::*, datatypes::*};
+                        Ok ({ let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: UnionArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Angle" . into () , source : Box :: new (err) , }
+
+) ? ; if data . is_empty () { Vec :: new () }
+
+ else { let (data_types , data_arrays , data_offsets) = (data . types () , data . fields () , data . offsets () . unwrap ()) ; let radians = { let data = & * data_arrays [1usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; let degrees = { let data = & * data_arrays [2usize];
+
+ data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . collect :: < Vec < _ >> () }
+
+ ; data_types . iter () . enumerate () . map (| (i , typ) | { let offset = data_offsets [i];
+
+ if * typ == 0 { Ok (None) }
+
+ else { Ok (Some (match typ { 1i8 => Angle :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Angle#Radians" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , 2i8 => Angle :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Angle#Degrees" . into () , source : Box :: new (err) , }
+
+) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+
+)) }
+
+ }
+
+) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Angle" . into () , source : Box :: new (err) , }
+
+) ? }
+
+ }
+
+) ? . into_iter ()
+                    }
                 };
                 ::itertools::izip!(axis, angle)
                     .enumerate()
                     .map(|(i, (axis, angle))| {
                         is_valid(i)
                             .then(|| {
-                                Ok(Self {
+                                Ok(crate::datatypes::RotationAxisAngle {
                                     axis: axis
                                         .ok_or_else(|| crate::DeserializationError::MissingData {
                                             backtrace: ::backtrace::Backtrace::new_unresolved(),

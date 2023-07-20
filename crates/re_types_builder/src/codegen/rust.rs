@@ -1759,6 +1759,7 @@ fn quote_arrow_deserializer(
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
 
+    let obj_name = quote_fqname_as_type_path(&obj.fqname);
     let obj_fqname = obj.fqname.as_str();
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
@@ -1780,6 +1781,7 @@ fn quote_arrow_deserializer(
         );
 
         let quoted_deserializer = quote_arrow_field_deserializer(
+            arrow_registry,
             objects,
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
@@ -1796,9 +1798,9 @@ fn quote_arrow_deserializer(
         };
 
         let quoted_opt_map = if is_tuple_struct {
-            quote!(.map(|res| res.map(|v| Some(Self(v)))))
+            quote!(.map(|res| res.map(|v| Some(#obj_name(v)))))
         } else {
-            quote!(.map(|res| res.map(|#data_dst| Some(Self { #data_dst }))))
+            quote!(.map(|res| res.map(|#data_dst| Some(#obj_name { #data_dst }))))
         };
 
         quote! {
@@ -1827,6 +1829,7 @@ fn quote_arrow_deserializer(
                     let data_dst = format_ident!("{}", obj_field.name);
 
                     let quoted_deserializer = quote_arrow_field_deserializer(
+                        arrow_registry,
                         objects,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
@@ -1904,7 +1907,7 @@ fn quote_arrow_deserializer(
 
                         ::itertools::izip!(#(#quoted_field_names),*)
                             .enumerate()
-                            .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
+                            .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(#obj_name {
                                 #(#quoted_unwrappings,)*
                             })).transpose())
                             // NOTE: implicit Vec<Result> to Result<Vec>
@@ -1927,6 +1930,7 @@ fn quote_arrow_deserializer(
                         let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
 
                         let quoted_deserializer = quote_arrow_field_deserializer(
+                            arrow_registry,
                             objects,
                             &arrow_registry.get(&obj_field.fqname),
                             obj_field.is_nullable,
@@ -2038,6 +2042,7 @@ fn quote_arrow_deserializer(
 }
 
 fn quote_arrow_field_deserializer(
+    arrow_registry: &ArrowRegistry,
     objects: &Objects,
     datatype: &DataType,
     is_nullable: bool,
@@ -2089,6 +2094,7 @@ fn quote_arrow_field_deserializer(
         DataType::FixedSizeList(inner, length) => {
             let inner_datatype = inner.data_type();
             let quoted_inner = quote_arrow_field_deserializer(
+                arrow_registry,
                 objects,
                 inner_datatype,
                 inner.is_nullable,
@@ -2179,6 +2185,7 @@ fn quote_arrow_field_deserializer(
             let inner_datatype = inner.data_type();
 
             let quoted_inner = quote_arrow_field_deserializer(
+                arrow_registry,
                 objects,
                 inner_datatype,
                 inner.is_nullable,
@@ -2236,15 +2243,22 @@ fn quote_arrow_field_deserializer(
 
         DataType::Struct(_) | DataType::Union(_, _, _) => {
             let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
-            let fqname_use = quote_fqname_as_type_path(fqname);
+            let xxx = quote_arrow_deserializer(arrow_registry, objects, &objects[fqname], data_src);
             quote! {
-                #fqname_use::try_from_arrow_opt(#data_src)
-                    .map_err(|err| crate::DeserializationError::Context {
-                            location: #obj_field_fqname.into(),
-                            source: Box::new(err),
-                        })
-                    ?.into_iter()
+                {
+                    use ::arrow2::{datatypes::*, array::*};
+                    use crate::datatypes::*;
+                    use crate::Loggable as _;
+                    Ok(#xxx)?.into_iter()
+                }
             }
+
+            // #fqname_use::try_from_arrow_opt(#data_src)
+            //     .map_err(|err| crate::DeserializationError::Context {
+            //             location: #obj_field_fqname.into(),
+            //             source: Box::new(err),
+            //         })
+            //     ?.into_iter()
         }
 
         _ => unimplemented!("{datatype:#?}"),

@@ -369,7 +369,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                     .map(|(i, (translation, matrix, from_parent))| {
                         is_valid(i)
                             .then(|| {
-                                Ok(Self {
+                                Ok(crate::datatypes::TranslationAndMat3x3 {
                                     translation,
                                     matrix,
                                     from_parent: from_parent

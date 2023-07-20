@@ -200,7 +200,7 @@ impl crate::Loggable for Vec3D {
                 backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
         })
-        .map(|res| res.map(|v| Some(Self(v))))
+        .map(|res| res.map(|v| Some(crate::datatypes::Vec3D(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
         .map_err(|err| crate::DeserializationError::Context {
             location: "rerun.datatypes.Vec3D#xyz".into(),

@@ -102,23 +102,104 @@ impl crate::Loggable for Point2D {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::Point2D::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Point2D#xy".into(),
-                source: Box::new(err),
+        Ok({
+            use crate::datatypes::*;
+            use crate::Loggable as _;
+            use ::arrow2::{array::*, datatypes::*};
+            Ok({
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::StructArray>()
+                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                        expected: data.data_type().clone(),
+                        got: data.data_type().clone(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.Point2D".into(),
+                        source: Box::new(err),
+                    })?;
+                if data.is_empty() {
+                    Vec::new()
+                } else {
+                    let (data_fields, data_arrays, data_bitmap) =
+                        (data.fields(), data.values(), data.validity());
+                    let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                    let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                        .iter()
+                        .map(|field| field.name.as_str())
+                        .zip(data_arrays)
+                        .collect();
+                    let x = {
+                        let data = &**arrays_by_name["x"];
+
+                        data.as_any()
+                            .downcast_ref::<Float32Array>()
+                            .unwrap()
+                            .into_iter()
+                            .map(|v| v.copied())
+                    };
+                    let y = {
+                        let data = &**arrays_by_name["y"];
+
+                        data.as_any()
+                            .downcast_ref::<Float32Array>()
+                            .unwrap()
+                            .into_iter()
+                            .map(|v| v.copied())
+                    };
+                    ::itertools::izip!(x, y)
+                        .enumerate()
+                        .map(|(i, (x, y))| {
+                            is_valid(i)
+                                .then(|| {
+                                    Ok(crate::datatypes::Point2D {
+                                        x: x.ok_or_else(|| {
+                                            crate::DeserializationError::MissingData {
+                                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                            }
+                                        })
+                                        .map_err(
+                                            |err| crate::DeserializationError::Context {
+                                                location: "rerun.datatypes.Point2D#x".into(),
+                                                source: Box::new(err),
+                                            },
+                                        )?,
+                                        y: y.ok_or_else(|| {
+                                            crate::DeserializationError::MissingData {
+                                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                            }
+                                        })
+                                        .map_err(
+                                            |err| crate::DeserializationError::Context {
+                                                location: "rerun.datatypes.Point2D#y".into(),
+                                                source: Box::new(err),
+                                            },
+                                        )?,
+                                    })
+                                })
+                                .transpose()
+                        })
+                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.Point2D".into(),
+                            source: Box::new(err),
+                        })?
+                }
             })?
             .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
+        }
+        .map(|v| {
+            v.ok_or_else(|| crate::DeserializationError::MissingData {
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
-            .map(|res| res.map(|xy| Some(Self { xy })))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Point2D#xy".into(),
-                source: Box::new(err),
-            })?)
+        })
+        .map(|res| res.map(|xy| Some(crate::components::Point2D { xy })))
+        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .map_err(|err| crate::DeserializationError::Context {
+            location: "rerun.components.Point2D#xy".into(),
+            source: Box::new(err),
+        })?)
     }
 }
 
