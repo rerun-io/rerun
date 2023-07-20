@@ -125,12 +125,14 @@ impl Method {
                 #declaration {
                     #definition_body
                 }
+                #NEWLINE_TOKEN
             }
         } else {
             quote! {
                 #NEWLINE_TOKEN
                 #docs
                 #declaration;
+                #NEWLINE_TOKEN
             }
         }
     }
