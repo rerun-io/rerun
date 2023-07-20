@@ -369,12 +369,7 @@ pub fn is_entity_processed_by_class(
         .space_view_class_registry
         .get_system_registry_or_log_error(class)
         .new_part_collection();
-    let result = is_entity_processed_by_part_collection(ctx.store_db.store(), &parts, ent_path);
-
-    if result && class.as_str() == "Bar Chart" {
-        println!("is_entity_processed_by_class: {ent_path} -> {result}");
-    }
-    result
+    is_entity_processed_by_part_collection(ctx.store_db.store(), &parts, ent_path);
 }
 
 /// Returns true if an entity is processed by any of the given [`re_viewer_context::ViewPartSystem`]s.
