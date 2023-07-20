@@ -4,6 +4,7 @@
 //! Does not implement any concrete space view.
 
 // TODO(andreas): Can we move some of these to the `re_space_view` crate?
+mod auto_spawn_heuristic;
 mod dyn_space_view_class;
 mod highlights;
 mod space_view_class;
@@ -13,6 +14,7 @@ mod view_context_system;
 mod view_part_system;
 mod view_query;
 
+pub use auto_spawn_heuristic::AutoSpawnHeuristic;
 pub use dyn_space_view_class::{
     ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName,
     SpaceViewState,

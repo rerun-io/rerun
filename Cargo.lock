@@ -4408,6 +4408,7 @@ version = "0.8.0-alpha.6"
 dependencies = [
  "egui",
  "egui_extras",
+ "nohash-hasher",
  "re_arrow_store",
  "re_components",
  "re_data_store",

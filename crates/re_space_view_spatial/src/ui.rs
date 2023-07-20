@@ -18,14 +18,11 @@ use re_viewer_context::{
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
-use crate::contexts::{AnnotationSceneContext, NonInteractiveEntities, PrimitiveCounter};
-use crate::parts::{calculate_bounding_box, CamerasPart, ImagesPart};
-
 use crate::{
-    parts::{preferred_navigation_mode, UiLabel, UiLabelTarget},
+    contexts::{AnnotationSceneContext, NonInteractiveEntities},
+    parts::{CamerasPart, ImagesPart, UiLabel, UiLabelTarget},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
-    ui_2d::view_2d,
-    ui_3d::view_3d,
+    view_kind::SpatialSpaceViewKind,
 };
 
 /// Default auto point radius in UI points.
@@ -33,23 +30,6 @@ const AUTO_POINT_RADIUS: f32 = 1.5;
 
 /// Default auto line radius in UI points.
 const AUTO_LINE_RADIUS: f32 = 1.5;
-
-/// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub enum SpatialNavigationMode {
-    #[default]
-    TwoD,
-    ThreeD,
-}
-
-impl From<SpatialNavigationMode> for WidgetText {
-    fn from(val: SpatialNavigationMode) -> Self {
-        match val {
-            SpatialNavigationMode::TwoD => "2D Pan & Zoom".into(),
-            SpatialNavigationMode::ThreeD => "3D Camera".into(),
-        }
-    }
-}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AutoSizeUnit {
@@ -68,11 +48,9 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
+/// TODO(andreas): Should turn this "inside out" - [`SpatialSpaceViewState`] should be used by [`View2DState`]/[`View3DState`], not the other way round.
 #[derive(Clone)]
 pub struct SpatialSpaceViewState {
-    /// How the scene is navigated.
-    pub nav_mode: EditableAutoValue<SpatialNavigationMode>,
-
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
     ///
     /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
@@ -97,7 +75,6 @@ pub struct SpatialSpaceViewState {
 impl Default for SpatialSpaceViewState {
     fn default() -> Self {
         Self {
-            nav_mode: EditableAutoValue::Auto(SpatialNavigationMode::ThreeD),
             scene_bbox_accum: BoundingBox::nothing(),
             scene_bbox: BoundingBox::nothing(),
             scene_num_primitives: 0,
@@ -134,17 +111,24 @@ impl SpatialSpaceViewState {
         config
     }
 
+    // TODO(andreas): Move to heuristics.rs
     pub fn update_object_property_heuristics(
         &self,
         ctx: &mut ViewerContext<'_>,
-        entity_paths: &IntSet<EntityPath>,
+        ent_paths: &IntSet<EntityPath>,
         entity_properties: &mut re_data_store::EntityPropertyMap,
+        spatial_kind: SpatialSpaceViewKind,
     ) {
         re_tracing::profile_function!();
 
-        for entity_path in entity_paths {
+        for entity_path in ent_paths {
             self.update_pinhole_property_heuristics(ctx, entity_path, entity_properties);
-            self.update_depth_cloud_property_heuristics(ctx, entity_path, entity_properties);
+            Self::update_depth_cloud_property_heuristics(
+                ctx,
+                entity_path,
+                entity_properties,
+                spatial_kind,
+            );
             self.update_transform3d_lines_heuristics(ctx, entity_path, entity_properties);
         }
     }
@@ -198,10 +182,10 @@ impl SpatialSpaceViewState {
     }
 
     fn update_depth_cloud_property_heuristics(
-        &self,
         ctx: &mut ViewerContext<'_>,
         entity_path: &EntityPath,
         entity_properties: &mut re_data_store::EntityPropertyMap,
+        spatial_kind: SpatialSpaceViewKind,
     ) -> Option<()> {
         let store = &ctx.store_db.entity_db.data_store;
         let tensor = store.query_latest_component::<Tensor>(entity_path, &ctx.current_query())?;
@@ -210,7 +194,7 @@ impl SpatialSpaceViewState {
         if properties.backproject_depth.is_auto() {
             properties.backproject_depth = EditableAutoValue::Auto(
                 tensor.meaning == TensorDataMeaning::Depth
-                    && *self.nav_mode.get() == SpatialNavigationMode::ThreeD,
+                    && spatial_kind == SpatialSpaceViewKind::ThreeD,
             );
         }
 
@@ -308,6 +292,7 @@ impl SpatialSpaceViewState {
         ui: &mut egui::Ui,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
+        spatial_kind: SpatialSpaceViewKind,
     ) {
         let view_coordinates = ctx
             .store_db
@@ -359,31 +344,7 @@ impl SpatialSpaceViewState {
             ctx.re_ui.grid_left_hand_label(ui, "Camera")
                 .on_hover_text("The virtual camera which controls what is shown on screen.");
             ui.vertical(|ui| {
-                let mut nav_mode = *self.nav_mode.get();
-                let mut changed = false;
-                egui::ComboBox::from_id_source("nav_mode")
-                    .selected_text(nav_mode)
-                    .show_ui(ui, |ui| {
-                        ui.style_mut().wrap = Some(false);
-                        ui.set_min_width(64.0);
-
-                        changed |= ui.selectable_value(
-                            &mut nav_mode,
-                            SpatialNavigationMode::TwoD,
-                            SpatialNavigationMode::TwoD,
-                        ).changed();
-
-                        changed |= ui.selectable_value(
-                            &mut nav_mode,
-                            SpatialNavigationMode::ThreeD,
-                            SpatialNavigationMode::ThreeD,
-                        ).changed();
-                    });
-                    if changed {
-                        self.nav_mode = EditableAutoValue::UserEdited(nav_mode);
-                    }
-
-                if *self.nav_mode.get() == SpatialNavigationMode::ThreeD {
+                if spatial_kind == SpatialSpaceViewKind::ThreeD {
                     if ui.button("Reset").on_hover_text(
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
@@ -396,7 +357,7 @@ impl SpatialSpaceViewState {
             });
             ui.end_row();
 
-            if *self.nav_mode.get() == SpatialNavigationMode::ThreeD {
+            if spatial_kind == SpatialSpaceViewKind::ThreeD {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view.");
                 ui.vertical(|ui|{
@@ -434,7 +395,7 @@ impl SpatialSpaceViewState {
                     format_f32(min.y),
                     format_f32(max.y),
                 ));
-                if *self.nav_mode.get() == SpatialNavigationMode::ThreeD {
+                if spatial_kind == SpatialSpaceViewKind::ThreeD {
                     ui.label(format!(
                         "z [{} - {}]",
                         format_f32(min.z),
@@ -444,64 +405,6 @@ impl SpatialSpaceViewState {
             });
             ui.end_row();
         });
-    }
-
-    pub fn view_spatial(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
-        query: &ViewQuery<'_>,
-        draw_data: Vec<re_renderer::QueueableDrawData>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        self.scene_bbox = calculate_bounding_box(parts);
-        if self.scene_bbox_accum.is_nothing() || !self.scene_bbox_accum.size().is_finite() {
-            self.scene_bbox_accum = self.scene_bbox;
-        } else {
-            self.scene_bbox_accum = self.scene_bbox_accum.union(self.scene_bbox);
-        }
-
-        if self.nav_mode.is_auto() {
-            self.nav_mode = EditableAutoValue::Auto(preferred_navigation_mode(
-                view_ctx,
-                parts,
-                query.space_origin,
-            ));
-        }
-        self.scene_num_primitives = view_ctx
-            .get::<PrimitiveCounter>()?
-            .num_3d_primitives
-            .load(std::sync::atomic::Ordering::Relaxed);
-
-        match *self.nav_mode.get() {
-            SpatialNavigationMode::ThreeD => {
-                view_3d(ctx, ui, self, view_ctx, parts, query, draw_data)
-            }
-            SpatialNavigationMode::TwoD => {
-                let scene_rect_accum = egui::Rect::from_min_max(
-                    self.scene_bbox_accum.min.truncate().to_array().into(),
-                    self.scene_bbox_accum.max.truncate().to_array().into(),
-                );
-                view_2d(
-                    ctx,
-                    ui,
-                    self,
-                    view_ctx,
-                    parts,
-                    query,
-                    scene_rect_accum,
-                    draw_data,
-                )
-            }
-        }
-    }
-
-    pub fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        match *self.nav_mode.get() {
-            SpatialNavigationMode::TwoD => super::ui_2d::help_text(re_ui),
-            SpatialNavigationMode::ThreeD => super::ui_3d::help_text(re_ui),
-        }
     }
 }
 
@@ -574,7 +477,7 @@ pub fn create_labels(
     eye3d: &Eye,
     parent_ui: &mut egui::Ui,
     highlights: &SpaceViewHighlights,
-    nav_mode: SpatialNavigationMode,
+    spatial_kind: SpatialSpaceViewKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
@@ -587,7 +490,7 @@ pub fn create_labels(
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
                 // TODO(#1640): 2D labels are not visible in 3D for now.
-                if nav_mode == SpatialNavigationMode::ThreeD {
+                if spatial_kind == SpatialSpaceViewKind::ThreeD {
                     continue;
                 }
                 let rect_in_ui = ui_from_canvas.transform_rect(rect);
@@ -599,7 +502,7 @@ pub fn create_labels(
             }
             UiLabelTarget::Point2D(pos) => {
                 // TODO(#1640): 2D labels are not visible in 3D for now.
-                if nav_mode == SpatialNavigationMode::ThreeD {
+                if spatial_kind == SpatialSpaceViewKind::ThreeD {
                     continue;
                 }
                 let pos_in_ui = ui_from_canvas.transform_pos(pos);
@@ -607,7 +510,7 @@ pub fn create_labels(
             }
             UiLabelTarget::Position3D(pos) => {
                 // TODO(#1640): 3D labels are not visible in 2D for now.
-                if nav_mode == SpatialNavigationMode::TwoD {
+                if spatial_kind == SpatialSpaceViewKind::TwoD {
                     continue;
                 }
                 let pos_in_ui = ui_from_world_3d * pos.extend(1.0);
@@ -712,7 +615,7 @@ pub fn screenshot_context_menu(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // TODO(andreas): Make this method sane.
 pub fn picking(
     ctx: &mut ViewerContext<'_>,
     mut response: egui::Response,
@@ -726,6 +629,7 @@ pub fn picking(
     parts: &ViewPartCollection,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
+    spatial_kind: SpatialSpaceViewKind,
 ) -> Result<egui::Response, SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
@@ -873,7 +777,7 @@ pub fn picking(
                             ui.separator();
                             ui.horizontal(|ui| {
                                 let (w, h) = (w as f32, h as f32);
-                                if *state.nav_mode.get() == SpatialNavigationMode::TwoD {
+                                if spatial_kind == SpatialSpaceViewKind::TwoD {
                                     let rect = egui::Rect::from_min_size(
                                         egui::Pos2::ZERO,
                                         egui::vec2(w, h),
@@ -924,14 +828,14 @@ pub fn picking(
 
     item_ui::select_hovered_on_click(ctx, &response, &hovered_items);
 
-    let hovered_space = match state.nav_mode.get() {
-        SpatialNavigationMode::TwoD => HoveredSpace::TwoD {
+    let hovered_space = match spatial_kind {
+        SpatialSpaceViewKind::TwoD => HoveredSpace::TwoD {
             space_2d: query.space_origin.clone(),
             pos: picking_context
                 .pointer_in_space2d
                 .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
         },
-        SpatialNavigationMode::ThreeD => {
+        SpatialSpaceViewKind::ThreeD => {
             let hovered_point = picking_result.space_position();
             HoveredSpace::ThreeD {
                 space_3d: query.space_origin.clone(),

@@ -283,12 +283,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let space_view_id = *space_view_id;
 
         let Some(space_view) = self.space_views.get(&space_view_id) else { return; };
-        let space_view_state = self.viewport_state.space_view_state_mut(
-            self.ctx.space_view_class_registry,
-            space_view_id,
-            space_view.class_name(),
-        );
-
         let num_space_views = tiles.tiles().filter(|tile| tile.is_pane()).count();
 
         ui.add_space(8.0); // margin within the frame
@@ -321,7 +315,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         let help_text = space_view
             .class(self.ctx.space_view_class_registry)
-            .help_text(self.ctx.re_ui, space_view_state);
+            .help_text(self.ctx.re_ui);
         re_ui::help_hover_button(ui).on_hover_text(help_text);
     }
 
