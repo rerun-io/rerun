@@ -355,10 +355,11 @@ impl ViewportBlueprint<'_> {
                     .selectable_label_with_icon(
                         ui,
                         space_view.class(ctx.space_view_class_registry).icon(),
-                        // if space_view.space_origin.is_root() {
-                        //     space_view.display_name.clone()
-                        // } else {
-                        space_view.space_origin.to_string(), //}
+                        if space_view.space_origin.is_root() {
+                            space_view.display_name.clone()
+                        } else {
+                            space_view.space_origin.to_string()
+                        },
                         false,
                     )
                     .clicked()
