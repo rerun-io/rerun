@@ -28,6 +28,7 @@ impl quote::ToTokens for ForwardDecl {
         .to_tokens(tokens);
     }
 }
+
 /// Keeps track of necessary forward decls for a file.
 #[derive(Default)]
 pub struct ForwardDecls {
