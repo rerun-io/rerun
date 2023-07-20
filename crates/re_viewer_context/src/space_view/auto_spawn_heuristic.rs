@@ -4,13 +4,19 @@
 /// Space View spawning.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AutoSpawnHeuristic {
-    /// Always spawn a Space View with this class if it is a candidate.
+    /// Always spawn the Space View if it is a candidate.
     AlwaysSpawn,
 
-    /// Never spawn a Space View with this class if it is a candidate.
+    /// Never spawn the Space View if it is a candidate.
     /// This means that the candidate can only be created manually.
     NeverSpawn,
 
     /// If there's several candidates for the same root, spawn only one with the highest score.
+    ///
+    /// Right now there is an implicit assumption that all SpaceViews which return
+    /// [`AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot`] are in some sense equivalent.
+    ///
+    /// TODO(andreas): This might be true today but ends up being a bit limiting.
+    /// Adding something like a `equivalency_id` along with the score would let us be a bit more explicit.
     SpawnClassWithHighestScoreForRoot(f32),
 }
