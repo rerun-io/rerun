@@ -853,7 +853,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
             DataType::Float32 => quote!(arrow::float32()),
             DataType::Float64 => quote!(arrow::float64()),
             DataType::Binary => quote!(arrow::binary()),
-            DataType::LargeBinary => quote!(arrow::::large_binary()),
+            DataType::LargeBinary => quote!(arrow::large_binary()),
             DataType::Utf8 => quote!(arrow::utf8()),
             DataType::LargeUtf8 => quote!(arrow::large_utf8()),
 
