@@ -2,7 +2,6 @@
 
 use std::collections::BTreeSet;
 
-use anyhow::Context as _;
 use camino::Utf8PathBuf;
 
 use crate::Docs;

@@ -253,6 +253,28 @@ pub fn generate_lang_agnostic(
     (objects, arrow_registry)
 }
 
+/// Generates a .gitattributes file that markes up all generated files as generated
+pub fn generate_gitattributes_for_generated_files(
+    output_path: impl AsRef<Utf8Path>,
+    files: impl Iterator<Item = Utf8PathBuf>,
+) {
+    let filename = ".gitattributes";
+    let path = output_path.as_ref().join(filename);
+
+    codegen::write_file(
+        &path,
+        std::iter::once(filename.to_owned()) // The attributes itself is generated!
+            .chain(files.map(|path| {
+                path.strip_prefix(output_path.as_ref().as_std_path())
+                    .context("Failed to make path relative to output path.")
+                    .unwrap()
+                    .to_string()
+            }))
+            .collect::<Vec<_>>()
+            .join(" linguist-generated=true\n"),
+    );
+}
+
 /// Generates C++ code.
 ///
 /// Panics on error.
@@ -278,7 +300,8 @@ pub fn generate_cpp_code(
 ) {
     re_tracing::profile_function!();
     let mut gen = CppCodeGenerator::new(output_path.as_ref());
-    let _filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(objects, arrow_registry);
+    generate_gitattributes_for_generated_files(output_path, filepaths.into_iter());
 }
 
 /// Generates Rust code.
@@ -306,7 +329,8 @@ pub fn generate_rust_code(
 ) {
     re_tracing::profile_function!();
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let _filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(objects, arrow_registry);
+    generate_gitattributes_for_generated_files(output_crate_path, filepaths.into_iter());
 }
 
 /// Generates Python code.
@@ -334,7 +358,8 @@ pub fn generate_python_code(
 ) {
     re_tracing::profile_function!();
     let mut gen = PythonCodeGenerator::new(output_pkg_path.as_ref());
-    let _filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(objects, arrow_registry);
+    generate_gitattributes_for_generated_files(output_pkg_path, filepaths.into_iter());
 }
 
 pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {

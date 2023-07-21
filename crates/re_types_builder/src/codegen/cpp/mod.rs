@@ -4,7 +4,6 @@ mod method;
 
 use std::collections::BTreeSet;
 
-use anyhow::Context as _;
 use arrow2::datatypes::DataType;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
