@@ -13,9 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer1 {
-    pub single_required: crate::datatypes::AffixFuzzer1,
-}
+pub struct AffixFuzzer1(pub crate::datatypes::AffixFuzzer1);
 
 impl<'a> From<AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
     #[inline]
@@ -126,26 +124,26 @@ impl crate::Loggable for AffixFuzzer1 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, single_required): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self { single_required } = datum.into_owned();
-                        single_required
+                        let Self(data0) = datum.into_owned();
+                        data0
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let single_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = single_required_bitmap;
+                _ = data0_bitmap;
                 _ = extension_wrapper;
                 crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
-                    single_required,
+                    data0,
                     Some("rerun.testing.components.AffixFuzzer1"),
                 )?
             }
@@ -172,7 +170,7 @@ impl crate::Loggable for AffixFuzzer1 {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
-            .map(|res| res.map(|single_required| Some(Self { single_required })))
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
@@ -353,9 +351,7 @@ impl crate::Loggable for AffixFuzzer2 {
 impl crate::Component for AffixFuzzer2 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer3 {
-    pub single_required: crate::datatypes::AffixFuzzer1,
-}
+pub struct AffixFuzzer3(pub crate::datatypes::AffixFuzzer1);
 
 impl<'a> From<AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
     #[inline]
@@ -466,26 +462,26 @@ impl crate::Loggable for AffixFuzzer3 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, single_required): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self { single_required } = datum.into_owned();
-                        single_required
+                        let Self(data0) = datum.into_owned();
+                        data0
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let single_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = single_required_bitmap;
+                _ = data0_bitmap;
                 _ = extension_wrapper;
                 crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
-                    single_required,
+                    data0,
                     Some("rerun.testing.components.AffixFuzzer3"),
                 )?
             }
@@ -512,7 +508,7 @@ impl crate::Loggable for AffixFuzzer3 {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
-            .map(|res| res.map(|single_required| Some(Self { single_required })))
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
@@ -524,9 +520,7 @@ impl crate::Loggable for AffixFuzzer3 {
 impl crate::Component for AffixFuzzer3 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer4 {
-    pub single_optional: Option<crate::datatypes::AffixFuzzer1>,
-}
+pub struct AffixFuzzer4(pub Option<crate::datatypes::AffixFuzzer1>);
 
 impl<'a> From<AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
     #[inline]
@@ -637,28 +631,28 @@ impl crate::Loggable for AffixFuzzer4 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, single_optional): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self { single_optional } = datum.into_owned();
-                            single_optional
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let single_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = single_optional_bitmap;
+                _ = data0_bitmap;
                 _ = extension_wrapper;
                 crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
-                    single_optional,
+                    data0,
                     Some("rerun.testing.components.AffixFuzzer4"),
                 )?
             }
@@ -681,7 +675,7 @@ impl crate::Loggable for AffixFuzzer4 {
             })?
             .into_iter()
             .map(Ok)
-            .map(|res| res.map(|single_optional| Some(Self { single_optional })))
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
@@ -860,9 +854,7 @@ impl crate::Loggable for AffixFuzzer5 {
 impl crate::Component for AffixFuzzer5 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer6 {
-    pub single_optional: Option<crate::datatypes::AffixFuzzer1>,
-}
+pub struct AffixFuzzer6(pub Option<crate::datatypes::AffixFuzzer1>);
 
 impl<'a> From<AffixFuzzer6> for ::std::borrow::Cow<'a, AffixFuzzer6> {
     #[inline]
@@ -973,28 +965,28 @@ impl crate::Loggable for AffixFuzzer6 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, single_optional): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self { single_optional } = datum.into_owned();
-                            single_optional
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let single_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = single_optional_bitmap;
+                _ = data0_bitmap;
                 _ = extension_wrapper;
                 crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
-                    single_optional,
+                    data0,
                     Some("rerun.testing.components.AffixFuzzer6"),
                 )?
             }
@@ -1017,7 +1009,7 @@ impl crate::Loggable for AffixFuzzer6 {
             })?
             .into_iter()
             .map(Ok)
-            .map(|res| res.map(|single_optional| Some(Self { single_optional })))
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
@@ -1029,9 +1021,7 @@ impl crate::Loggable for AffixFuzzer6 {
 impl crate::Component for AffixFuzzer6 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer7 {
-    pub many_optional: Option<Vec<crate::datatypes::AffixFuzzer1>>,
-}
+pub struct AffixFuzzer7(pub Option<Vec<crate::datatypes::AffixFuzzer1>>);
 
 impl<'a> From<AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
     #[inline]
@@ -1077,35 +1067,35 @@ impl crate::Loggable for AffixFuzzer7 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, many_optional): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self { many_optional } = datum.into_owned();
-                            many_optional
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let many_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let many_optional_inner_data: Vec<_> = many_optional
+                let data0_inner_data: Vec<_> = data0
                     .iter()
                     .flatten()
                     .flatten()
                     .cloned()
                     .map(Some)
                     .collect();
-                let many_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    many_optional
+                    data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
@@ -1129,14 +1119,14 @@ impl crate::Loggable for AffixFuzzer7 {
                     },
                     offsets,
                     {
-                        _ = many_optional_inner_bitmap;
+                        _ = data0_inner_bitmap;
                         _ = extension_wrapper;
                         crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
-                            many_optional_inner_data,
+                            data0_inner_data,
                             Some("rerun.testing.components.AffixFuzzer7"),
                         )?
                     },
-                    many_optional_bitmap,
+                    data0_bitmap,
                 )
                 .boxed()
             }
@@ -1201,7 +1191,7 @@ impl crate::Loggable for AffixFuzzer7 {
             .into_iter()
         }
         .map(Ok)
-        .map(|res| res.map(|many_optional| Some(Self { many_optional })))
+        .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
         .map_err(|err| crate::DeserializationError::Context {
             location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
@@ -1213,9 +1203,7 @@ impl crate::Loggable for AffixFuzzer7 {
 impl crate::Component for AffixFuzzer7 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer8 {
-    pub single_float_optional: Option<f32>,
-}
+pub struct AffixFuzzer8(pub Option<f32>);
 
 impl<'a> From<AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
     #[inline]
@@ -1256,22 +1244,20 @@ impl crate::Loggable for AffixFuzzer8 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, single_float_optional): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self {
-                                single_float_optional,
-                            } = datum.into_owned();
-                            single_float_optional
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let single_float_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -1286,11 +1272,8 @@ impl crate::Loggable for AffixFuzzer8 {
                     .to_logical_type()
                     .clone()
                 },
-                single_float_optional
-                    .into_iter()
-                    .map(|v| v.unwrap_or_default())
-                    .collect(),
-                single_float_optional_bitmap,
+                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0_bitmap,
             )
             .boxed()
         })
@@ -1312,13 +1295,7 @@ impl crate::Loggable for AffixFuzzer8 {
             .into_iter()
             .map(|v| v.copied())
             .map(Ok)
-            .map(|res| {
-                res.map(|single_float_optional| {
-                    Some(Self {
-                        single_float_optional,
-                    })
-                })
-            })
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer8#single_float_optional".into(),
@@ -1330,9 +1307,7 @@ impl crate::Loggable for AffixFuzzer8 {
 impl crate::Component for AffixFuzzer8 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer9 {
-    pub single_string_required: String,
-}
+pub struct AffixFuzzer9(pub String);
 
 impl<'a> From<AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
     #[inline]
@@ -1373,31 +1348,26 @@ impl crate::Loggable for AffixFuzzer9 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, single_string_required): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self {
-                            single_string_required,
-                        } = datum.into_owned();
-                        single_string_required
+                        let Self(data0) = datum.into_owned();
+                        data0
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let single_string_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                let inner_data: ::arrow2::buffer::Buffer<u8> = single_string_required
-                    .iter()
-                    .flatten()
-                    .flat_map(|s| s.bytes())
-                    .collect();
+                let inner_data: ::arrow2::buffer::Buffer<u8> =
+                    data0.iter().flatten().flat_map(|s| s.bytes()).collect();
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    single_string_required
+                    data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
@@ -1418,7 +1388,7 @@ impl crate::Loggable for AffixFuzzer9 {
                         },
                         offsets,
                         inner_data,
-                        single_string_required_bitmap,
+                        data0_bitmap,
                     )
                 }
                 .boxed()
@@ -1446,13 +1416,7 @@ impl crate::Loggable for AffixFuzzer9 {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
-            .map(|res| {
-                res.map(|single_string_required| {
-                    Some(Self {
-                        single_string_required,
-                    })
-                })
-            })
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer9#single_string_required".into(),
@@ -1464,9 +1428,7 @@ impl crate::Loggable for AffixFuzzer9 {
 impl crate::Component for AffixFuzzer9 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer10 {
-    pub single_string_optional: Option<String>,
-}
+pub struct AffixFuzzer10(pub Option<String>);
 
 impl<'a> From<AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
     #[inline]
@@ -1507,33 +1469,28 @@ impl crate::Loggable for AffixFuzzer10 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, single_string_optional): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self {
-                                single_string_optional,
-                            } = datum.into_owned();
-                            single_string_optional
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let single_string_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                let inner_data: ::arrow2::buffer::Buffer<u8> = single_string_optional
-                    .iter()
-                    .flatten()
-                    .flat_map(|s| s.bytes())
-                    .collect();
+                let inner_data: ::arrow2::buffer::Buffer<u8> =
+                    data0.iter().flatten().flat_map(|s| s.bytes()).collect();
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    single_string_optional
+                    data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
@@ -1554,7 +1511,7 @@ impl crate::Loggable for AffixFuzzer10 {
                         },
                         offsets,
                         inner_data,
-                        single_string_optional_bitmap,
+                        data0_bitmap,
                     )
                 }
                 .boxed()
@@ -1578,13 +1535,7 @@ impl crate::Loggable for AffixFuzzer10 {
             .into_iter()
             .map(|v| v.map(ToOwned::to_owned))
             .map(Ok)
-            .map(|res| {
-                res.map(|single_string_optional| {
-                    Some(Self {
-                        single_string_optional,
-                    })
-                })
-            })
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer10#single_string_optional".into(),
@@ -1596,9 +1547,7 @@ impl crate::Loggable for AffixFuzzer10 {
 impl crate::Component for AffixFuzzer10 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer11 {
-    pub many_floats_optional: Option<Vec<f32>>,
-}
+pub struct AffixFuzzer11(pub Option<Vec<f32>>);
 
 impl<'a> From<AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
     #[inline]
@@ -1644,37 +1593,35 @@ impl crate::Loggable for AffixFuzzer11 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, many_floats_optional): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self {
-                                many_floats_optional,
-                            } = datum.into_owned();
-                            many_floats_optional
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let many_floats_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let many_floats_optional_inner_data: Vec<_> = many_floats_optional
+                let data0_inner_data: Vec<_> = data0
                     .iter()
                     .flatten()
                     .flatten()
                     .cloned()
                     .map(Some)
                     .collect();
-                let many_floats_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    many_floats_optional
+                    data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
@@ -1708,14 +1655,14 @@ impl crate::Loggable for AffixFuzzer11 {
                             .to_logical_type()
                             .clone()
                         },
-                        many_floats_optional_inner_data
+                        data0_inner_data
                             .into_iter()
                             .map(|v| v.unwrap_or_default())
                             .collect(),
-                        many_floats_optional_inner_bitmap,
+                        data0_inner_bitmap,
                     )
                     .boxed(),
-                    many_floats_optional_bitmap,
+                    data0_bitmap,
                 )
                 .boxed()
             }
@@ -1780,13 +1727,7 @@ impl crate::Loggable for AffixFuzzer11 {
             .into_iter()
         }
         .map(Ok)
-        .map(|res| {
-            res.map(|many_floats_optional| {
-                Some(Self {
-                    many_floats_optional,
-                })
-            })
-        })
+        .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
         .map_err(|err| crate::DeserializationError::Context {
             location: "rerun.testing.components.AffixFuzzer11#many_floats_optional".into(),
@@ -1798,9 +1739,7 @@ impl crate::Loggable for AffixFuzzer11 {
 impl crate::Component for AffixFuzzer11 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer12 {
-    pub many_strings_required: Vec<String>,
-}
+pub struct AffixFuzzer12(pub Vec<String>);
 
 impl<'a> From<AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
     #[inline]
@@ -1846,35 +1785,33 @@ impl crate::Loggable for AffixFuzzer12 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, many_strings_required): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self {
-                            many_strings_required,
-                        } = datum.into_owned();
-                        many_strings_required
+                        let Self(data0) = datum.into_owned();
+                        data0
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let many_strings_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let many_strings_required_inner_data: Vec<_> = many_strings_required
+                let data0_inner_data: Vec<_> = data0
                     .iter()
                     .flatten()
                     .flatten()
                     .cloned()
                     .map(Some)
                     .collect();
-                let many_strings_required_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    many_strings_required
+                    data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
@@ -1898,14 +1835,13 @@ impl crate::Loggable for AffixFuzzer12 {
                     },
                     offsets,
                     {
-                        let inner_data: ::arrow2::buffer::Buffer<u8> =
-                            many_strings_required_inner_data
-                                .iter()
-                                .flatten()
-                                .flat_map(|s| s.bytes())
-                                .collect();
+                        let inner_data: ::arrow2::buffer::Buffer<u8> = data0_inner_data
+                            .iter()
+                            .flatten()
+                            .flat_map(|s| s.bytes())
+                            .collect();
                         let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            many_strings_required_inner_data.iter().map(|opt| {
+                            data0_inner_data.iter().map(|opt| {
                                 opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                             }),
                         )
@@ -1926,12 +1862,12 @@ impl crate::Loggable for AffixFuzzer12 {
                                 },
                                 offsets,
                                 inner_data,
-                                many_strings_required_inner_bitmap,
+                                data0_inner_bitmap,
                             )
                         }
                         .boxed()
                     },
-                    many_strings_required_bitmap,
+                    data0_bitmap,
                 )
                 .boxed()
             }
@@ -2000,13 +1936,7 @@ impl crate::Loggable for AffixFuzzer12 {
                 backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
         })
-        .map(|res| {
-            res.map(|many_strings_required| {
-                Some(Self {
-                    many_strings_required,
-                })
-            })
-        })
+        .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
         .map_err(|err| crate::DeserializationError::Context {
             location: "rerun.testing.components.AffixFuzzer12#many_strings_required".into(),
@@ -2018,9 +1948,7 @@ impl crate::Loggable for AffixFuzzer12 {
 impl crate::Component for AffixFuzzer12 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer13 {
-    pub many_strings_optional: Option<Vec<String>>,
-}
+pub struct AffixFuzzer13(pub Option<Vec<String>>);
 
 impl<'a> From<AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
     #[inline]
@@ -2066,37 +1994,35 @@ impl crate::Loggable for AffixFuzzer13 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, many_strings_optional): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self {
-                                many_strings_optional,
-                            } = datum.into_owned();
-                            many_strings_optional
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let many_strings_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let many_strings_optional_inner_data: Vec<_> = many_strings_optional
+                let data0_inner_data: Vec<_> = data0
                     .iter()
                     .flatten()
                     .flatten()
                     .cloned()
                     .map(Some)
                     .collect();
-                let many_strings_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    many_strings_optional
+                    data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
@@ -2120,14 +2046,13 @@ impl crate::Loggable for AffixFuzzer13 {
                     },
                     offsets,
                     {
-                        let inner_data: ::arrow2::buffer::Buffer<u8> =
-                            many_strings_optional_inner_data
-                                .iter()
-                                .flatten()
-                                .flat_map(|s| s.bytes())
-                                .collect();
+                        let inner_data: ::arrow2::buffer::Buffer<u8> = data0_inner_data
+                            .iter()
+                            .flatten()
+                            .flat_map(|s| s.bytes())
+                            .collect();
                         let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            many_strings_optional_inner_data.iter().map(|opt| {
+                            data0_inner_data.iter().map(|opt| {
                                 opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                             }),
                         )
@@ -2148,12 +2073,12 @@ impl crate::Loggable for AffixFuzzer13 {
                                 },
                                 offsets,
                                 inner_data,
-                                many_strings_optional_inner_bitmap,
+                                data0_inner_bitmap,
                             )
                         }
                         .boxed()
                     },
-                    many_strings_optional_bitmap,
+                    data0_bitmap,
                 )
                 .boxed()
             }
@@ -2218,13 +2143,7 @@ impl crate::Loggable for AffixFuzzer13 {
             .into_iter()
         }
         .map(Ok)
-        .map(|res| {
-            res.map(|many_strings_optional| {
-                Some(Self {
-                    many_strings_optional,
-                })
-            })
-        })
+        .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
         .map_err(|err| crate::DeserializationError::Context {
             location: "rerun.testing.components.AffixFuzzer13#many_strings_optional".into(),
@@ -2236,9 +2155,7 @@ impl crate::Loggable for AffixFuzzer13 {
 impl crate::Component for AffixFuzzer13 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer14 {
-    pub single_required_union: crate::datatypes::AffixFuzzer3,
-}
+pub struct AffixFuzzer14(pub crate::datatypes::AffixFuzzer3);
 
 impl<'a> From<AffixFuzzer14> for ::std::borrow::Cow<'a, AffixFuzzer14> {
     #[inline]
@@ -2327,28 +2244,26 @@ impl crate::Loggable for AffixFuzzer14 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, single_required_union): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self {
-                            single_required_union,
-                        } = datum.into_owned();
-                        single_required_union
+                        let Self(data0) = datum.into_owned();
+                        data0
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let single_required_union_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = single_required_union_bitmap;
+                _ = data0_bitmap;
                 _ = extension_wrapper;
                 crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
-                    single_required_union,
+                    data0,
                     Some("rerun.testing.components.AffixFuzzer14"),
                 )?
             }
@@ -2375,13 +2290,7 @@ impl crate::Loggable for AffixFuzzer14 {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
-            .map(|res| {
-                res.map(|single_required_union| {
-                    Some(Self {
-                        single_required_union,
-                    })
-                })
-            })
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
@@ -2393,9 +2302,7 @@ impl crate::Loggable for AffixFuzzer14 {
 impl crate::Component for AffixFuzzer14 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer15 {
-    pub single_optional_union: Option<crate::datatypes::AffixFuzzer3>,
-}
+pub struct AffixFuzzer15(pub Option<crate::datatypes::AffixFuzzer3>);
 
 impl<'a> From<AffixFuzzer15> for ::std::borrow::Cow<'a, AffixFuzzer15> {
     #[inline]
@@ -2484,30 +2391,28 @@ impl crate::Loggable for AffixFuzzer15 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, single_optional_union): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self {
-                                single_optional_union,
-                            } = datum.into_owned();
-                            single_optional_union
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let single_optional_union_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = single_optional_union_bitmap;
+                _ = data0_bitmap;
                 _ = extension_wrapper;
                 crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
-                    single_optional_union,
+                    data0,
                     Some("rerun.testing.components.AffixFuzzer15"),
                 )?
             }
@@ -2530,13 +2435,7 @@ impl crate::Loggable for AffixFuzzer15 {
             })?
             .into_iter()
             .map(Ok)
-            .map(|res| {
-                res.map(|single_optional_union| {
-                    Some(Self {
-                        single_optional_union,
-                    })
-                })
-            })
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
@@ -2548,9 +2447,7 @@ impl crate::Loggable for AffixFuzzer15 {
 impl crate::Component for AffixFuzzer15 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer16 {
-    pub many_required_unions: Vec<crate::datatypes::AffixFuzzer3>,
-}
+pub struct AffixFuzzer16(pub Vec<crate::datatypes::AffixFuzzer3>);
 
 impl<'a> From<AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
     #[inline]
@@ -2596,35 +2493,33 @@ impl crate::Loggable for AffixFuzzer16 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, many_required_unions): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self {
-                            many_required_unions,
-                        } = datum.into_owned();
-                        many_required_unions
+                        let Self(data0) = datum.into_owned();
+                        data0
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let many_required_unions_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let many_required_unions_inner_data: Vec<_> = many_required_unions
+                let data0_inner_data: Vec<_> = data0
                     .iter()
                     .flatten()
                     .flatten()
                     .cloned()
                     .map(Some)
                     .collect();
-                let many_required_unions_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    many_required_unions
+                    data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
@@ -2648,14 +2543,14 @@ impl crate::Loggable for AffixFuzzer16 {
                     },
                     offsets,
                     {
-                        _ = many_required_unions_inner_bitmap;
+                        _ = data0_inner_bitmap;
                         _ = extension_wrapper;
                         crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
-                            many_required_unions_inner_data,
+                            data0_inner_data,
                             Some("rerun.testing.components.AffixFuzzer16"),
                         )?
                     },
-                    many_required_unions_bitmap,
+                    data0_bitmap,
                 )
                 .boxed()
             }
@@ -2725,13 +2620,7 @@ impl crate::Loggable for AffixFuzzer16 {
                 backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
         })
-        .map(|res| {
-            res.map(|many_required_unions| {
-                Some(Self {
-                    many_required_unions,
-                })
-            })
-        })
+        .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
         .map_err(|err| crate::DeserializationError::Context {
             location: "rerun.testing.components.AffixFuzzer16#many_required_unions".into(),
@@ -2743,9 +2632,7 @@ impl crate::Loggable for AffixFuzzer16 {
 impl crate::Component for AffixFuzzer16 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer17 {
-    pub many_optional_unions: Option<Vec<crate::datatypes::AffixFuzzer3>>,
-}
+pub struct AffixFuzzer17(pub Option<Vec<crate::datatypes::AffixFuzzer3>>);
 
 impl<'a> From<AffixFuzzer17> for ::std::borrow::Cow<'a, AffixFuzzer17> {
     #[inline]
@@ -2791,37 +2678,35 @@ impl crate::Loggable for AffixFuzzer17 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, many_optional_unions): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self {
-                                many_optional_unions,
-                            } = datum.into_owned();
-                            many_optional_unions
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let many_optional_unions_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let many_optional_unions_inner_data: Vec<_> = many_optional_unions
+                let data0_inner_data: Vec<_> = data0
                     .iter()
                     .flatten()
                     .flatten()
                     .cloned()
                     .map(Some)
                     .collect();
-                let many_optional_unions_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    many_optional_unions
+                    data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
@@ -2845,14 +2730,14 @@ impl crate::Loggable for AffixFuzzer17 {
                     },
                     offsets,
                     {
-                        _ = many_optional_unions_inner_bitmap;
+                        _ = data0_inner_bitmap;
                         _ = extension_wrapper;
                         crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
-                            many_optional_unions_inner_data,
+                            data0_inner_data,
                             Some("rerun.testing.components.AffixFuzzer17"),
                         )?
                     },
-                    many_optional_unions_bitmap,
+                    data0_bitmap,
                 )
                 .boxed()
             }
@@ -2918,13 +2803,7 @@ impl crate::Loggable for AffixFuzzer17 {
             .into_iter()
         }
         .map(Ok)
-        .map(|res| {
-            res.map(|many_optional_unions| {
-                Some(Self {
-                    many_optional_unions,
-                })
-            })
-        })
+        .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
         .map_err(|err| crate::DeserializationError::Context {
             location: "rerun.testing.components.AffixFuzzer17#many_optional_unions".into(),
@@ -2936,9 +2815,7 @@ impl crate::Loggable for AffixFuzzer17 {
 impl crate::Component for AffixFuzzer17 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer18 {
-    pub many_optional_unions: Option<Vec<crate::datatypes::AffixFuzzer4>>,
-}
+pub struct AffixFuzzer18(pub Option<Vec<crate::datatypes::AffixFuzzer4>>);
 
 impl<'a> From<AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
     #[inline]
@@ -2984,37 +2861,35 @@ impl crate::Loggable for AffixFuzzer18 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, many_optional_unions): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum
                         .map(|datum| {
-                            let Self {
-                                many_optional_unions,
-                            } = datum.into_owned();
-                            many_optional_unions
+                            let Self(data0) = datum.into_owned();
+                            data0
                         })
                         .flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let many_optional_unions_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let many_optional_unions_inner_data: Vec<_> = many_optional_unions
+                let data0_inner_data: Vec<_> = data0
                     .iter()
                     .flatten()
                     .flatten()
                     .cloned()
                     .map(Some)
                     .collect();
-                let many_optional_unions_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    many_optional_unions
+                    data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
@@ -3038,14 +2913,14 @@ impl crate::Loggable for AffixFuzzer18 {
                     },
                     offsets,
                     {
-                        _ = many_optional_unions_inner_bitmap;
+                        _ = data0_inner_bitmap;
                         _ = extension_wrapper;
                         crate::datatypes::AffixFuzzer4::try_to_arrow_opt(
-                            many_optional_unions_inner_data,
+                            data0_inner_data,
                             Some("rerun.testing.components.AffixFuzzer18"),
                         )?
                     },
-                    many_optional_unions_bitmap,
+                    data0_bitmap,
                 )
                 .boxed()
             }
@@ -3111,13 +2986,7 @@ impl crate::Loggable for AffixFuzzer18 {
             .into_iter()
         }
         .map(Ok)
-        .map(|res| {
-            res.map(|many_optional_unions| {
-                Some(Self {
-                    many_optional_unions,
-                })
-            })
-        })
+        .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
         .map_err(|err| crate::DeserializationError::Context {
             location: "rerun.testing.components.AffixFuzzer18#many_optional_unions".into(),
@@ -3129,9 +2998,7 @@ impl crate::Loggable for AffixFuzzer18 {
 impl crate::Component for AffixFuzzer18 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer19 {
-    pub just_a_table_nothing_shady: crate::datatypes::AffixFuzzer5,
-}
+pub struct AffixFuzzer19(pub crate::datatypes::AffixFuzzer5);
 
 impl<'a> From<AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
     #[inline]
@@ -3177,28 +3044,26 @@ impl crate::Loggable for AffixFuzzer19 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, just_a_table_nothing_shady): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self {
-                            just_a_table_nothing_shady,
-                        } = datum.into_owned();
-                        just_a_table_nothing_shady
+                        let Self(data0) = datum.into_owned();
+                        data0
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let just_a_table_nothing_shady_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = just_a_table_nothing_shady_bitmap;
+                _ = data0_bitmap;
                 _ = extension_wrapper;
                 crate::datatypes::AffixFuzzer5::try_to_arrow_opt(
-                    just_a_table_nothing_shady,
+                    data0,
                     Some("rerun.testing.components.AffixFuzzer19"),
                 )?
             }
@@ -3226,13 +3091,7 @@ impl crate::Loggable for AffixFuzzer19 {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
-            .map(|res| {
-                res.map(|just_a_table_nothing_shady| {
-                    Some(Self {
-                        just_a_table_nothing_shady,
-                    })
-                })
-            })
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"

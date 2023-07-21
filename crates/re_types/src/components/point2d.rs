@@ -14,9 +14,7 @@
 
 /// A point in 2D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
-pub struct Point2D {
-    pub xy: crate::datatypes::Point2D,
-}
+pub struct Point2D(pub crate::datatypes::Point2D);
 
 impl<'a> From<Point2D> for ::std::borrow::Cow<'a, Point2D> {
     #[inline]
@@ -70,25 +68,28 @@ impl crate::Loggable for Point2D {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, xy): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self { xy } = datum.into_owned();
-                        xy
+                        let Self(data0) = datum.into_owned();
+                        data0
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let xy_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = xy_bitmap;
+                _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::Point2D::try_to_arrow_opt(xy, Some("rerun.components.Point2D"))?
+                crate::datatypes::Point2D::try_to_arrow_opt(
+                    data0,
+                    Some("rerun.components.Point2D"),
+                )?
             }
         })
     }
@@ -113,7 +114,7 @@ impl crate::Loggable for Point2D {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
             })
-            .map(|res| res.map(|xy| Some(Self { xy })))
+            .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.components.Point2D#xy".into(),
