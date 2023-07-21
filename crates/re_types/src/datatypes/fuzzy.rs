@@ -190,6 +190,7 @@ impl crate::Loggable for FlattenedScalar {
         })
     }
 
+    #[inline]
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
@@ -199,6 +200,7 @@ impl crate::Loggable for FlattenedScalar {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
     }
 
+    #[inline]
     fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
         item
     }
@@ -1008,6 +1010,7 @@ impl crate::Loggable for AffixFuzzer1 {
         })
     }
 
+    #[inline]
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
@@ -1017,6 +1020,7 @@ impl crate::Loggable for AffixFuzzer1 {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
     }
 
+    #[inline]
     fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
         item
     }
@@ -1129,6 +1133,7 @@ impl crate::Loggable for AffixFuzzer2 {
             })?)
     }
 
+    #[inline]
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
@@ -1138,6 +1143,7 @@ impl crate::Loggable for AffixFuzzer2 {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
     }
 
+    #[inline]
     fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
         item
     }
@@ -1625,6 +1631,7 @@ impl crate::Loggable for AffixFuzzer3 {
         })
     }
 
+    #[inline]
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
@@ -1634,6 +1641,7 @@ impl crate::Loggable for AffixFuzzer3 {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
     }
 
+    #[inline]
     fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
         item
     }
@@ -2060,6 +2068,7 @@ impl crate::Loggable for AffixFuzzer4 {
         })
     }
 
+    #[inline]
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
@@ -2069,6 +2078,7 @@ impl crate::Loggable for AffixFuzzer4 {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
     }
 
+    #[inline]
     fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
         item
     }
@@ -2260,6 +2270,7 @@ impl crate::Loggable for AffixFuzzer5 {
         })
     }
 
+    #[inline]
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
@@ -2269,6 +2280,7 @@ impl crate::Loggable for AffixFuzzer5 {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
     }
 
+    #[inline]
     fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
         item
     }

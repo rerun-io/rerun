@@ -750,6 +750,7 @@ fn quote_trait_impls_from_obj(
                     }
 
 
+                    #[inline]
                     fn try_from_arrow_opt_iter(
                         data: &dyn ::arrow2::array::Array,
                     ) -> crate::DeserializationResult<Self::IterItem<'_>>
@@ -759,6 +760,7 @@ fn quote_trait_impls_from_obj(
                         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
                     }
 
+                    #[inline]
                     fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
                         item
                     }

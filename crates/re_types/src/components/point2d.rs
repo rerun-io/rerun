@@ -132,6 +132,7 @@ impl crate::Loggable for Point2D {
             })?)
     }
 
+    #[inline]
     fn try_from_arrow_opt_iter(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
@@ -141,6 +142,7 @@ impl crate::Loggable for Point2D {
         Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
     }
 
+    #[inline]
     fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
         item
     }
