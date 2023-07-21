@@ -28,5 +28,6 @@
 #include "components/keypoint_id.hpp"
 #include "components/label.hpp"
 #include "components/point2d.hpp"
+#include "components/point3d.hpp"
 #include "components/radius.hpp"
 #include "components/transform3d.hpp"

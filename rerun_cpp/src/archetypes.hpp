@@ -4,4 +4,5 @@
 
 #include "archetypes/affix_fuzzer1.hpp"
 #include "archetypes/points2d.hpp"
+#include "archetypes/points3d.hpp"
 #include "archetypes/transform3d.hpp"

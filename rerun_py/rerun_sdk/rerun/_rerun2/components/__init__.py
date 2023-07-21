@@ -79,6 +79,7 @@ from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, I
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
 from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
 from .point2d import Point2DArray, Point2DType
+from .point3d import Point3DArray, Point3DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
 from .transform3d import Transform3DArray, Transform3DType
 
@@ -183,6 +184,8 @@ __all__ = [
     "LabelType",
     "Point2DArray",
     "Point2DType",
+    "Point3DArray",
+    "Point3DType",
     "Radius",
     "RadiusArray",
     "RadiusArrayLike",

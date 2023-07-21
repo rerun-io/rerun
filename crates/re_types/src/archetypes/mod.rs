@@ -2,8 +2,10 @@
 
 mod fuzzy;
 mod points2d;
+mod points3d;
 mod transform3d;
 
 pub use self::fuzzy::AffixFuzzer1;
 pub use self::points2d::Points2D;
+pub use self::points3d::Points3D;
 pub use self::transform3d::Transform3D;

@@ -4997,6 +4997,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_points3d"
+version = "0.8.0-alpha.6"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_transform3d"
 version = "0.8.0-alpha.6"
 dependencies = [
