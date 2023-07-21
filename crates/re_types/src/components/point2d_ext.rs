@@ -59,3 +59,13 @@ impl From<Point2D> for glam::Vec3 {
         Self::new(pt.x(), pt.y(), 0.0)
     }
 }
+
+// TODO: explain
+impl arrow2_convert::field::ArrowField for Point2D {
+    type Type = Self;
+
+    fn data_type() -> arrow2::datatypes::DataType {
+        use crate::Loggable as _;
+        Self::to_arrow_datatype()
+    }
+}

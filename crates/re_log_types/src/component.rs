@@ -17,3 +17,11 @@ pub trait LegacyComponent: ArrowField {
         Field::new(Self::legacy_name().as_str(), Self::data_type(), false)
     }
 }
+
+// TODO: explain
+impl LegacyComponent for re_types::components::Point2D {
+    fn legacy_name() -> ComponentName {
+        use re_types::Loggable as _;
+        Self::name()
+    }
+}

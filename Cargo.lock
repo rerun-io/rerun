@@ -4556,6 +4556,7 @@ version = "0.9.0-alpha.0"
 dependencies = [
  "anyhow",
  "arrow2",
+ "arrow2_convert",
  "backtrace",
  "bytemuck",
  "document-features",
