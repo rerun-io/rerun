@@ -13,7 +13,6 @@ table Transform3D (
   // wrong schema for this component.
   //"attr.rerun.legacy_fqname": "rerun.transform3d",
   "attr.rust.derive": "PartialEq",
-  "attr.rust.tuple_struct",
   order: 100
 ) {
   /// Representation of the transform.

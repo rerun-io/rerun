@@ -19,6 +19,12 @@ pub struct Transform3D(
     pub crate::datatypes::Transform3D,
 );
 
+impl From<crate::datatypes::Transform3D> for Transform3D {
+    fn from(v: crate::datatypes::Transform3D) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
     #[inline]
     fn from(value: Transform3D) -> Self {
