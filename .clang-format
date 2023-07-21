@@ -23,6 +23,7 @@ SeparateDefinitionBlocks: Always
 SpacesBeforeTrailingComments: 1
 ReflowComments: true
 
-# Disable include sorting. This is a dangerous practice as it changes compilation outcome.
+# Don't change include blocks, we want to control this manually.
+# Sorting headers however is allowed as all our headers should be standalone.
 IncludeBlocks: Preserve
 SortIncludes: CaseInsensitive
