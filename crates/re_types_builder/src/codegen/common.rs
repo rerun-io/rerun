@@ -78,3 +78,20 @@ pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeS
         }
     }
 }
+
+/// Write file if any changes were made and ensure folder hierarchy exists.
+pub fn write_file(filepath: &Utf8PathBuf, source: String) {
+    if let Ok(existing) = std::fs::read_to_string(filepath) {
+        if existing == source {
+            // Don't touch the timestamp unnecessarily
+            return;
+        }
+    }
+
+    let parent_dir = filepath.parent().unwrap();
+    std::fs::create_dir_all(parent_dir)
+        .unwrap_or_else(|err| panic!("Failed to create dir {parent_dir:?}: {err}"));
+
+    std::fs::write(filepath, source)
+        .unwrap_or_else(|err| panic!("Failed to write file {filepath:?}: {err}"));
+}

@@ -4,7 +4,6 @@ mod method;
 
 use std::collections::BTreeSet;
 
-use anyhow::Context as _;
 use arrow2::datatypes::DataType;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
@@ -12,6 +11,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
 
+use crate::codegen::common::write_file;
 use crate::{
     codegen::AUTOGEN_WARNING, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
     Type,
@@ -98,10 +98,6 @@ impl CppCodeGenerator {
         folder_name: &str,
     ) -> BTreeSet<Utf8PathBuf> {
         let folder_path = self.output_path.join(folder_name);
-        std::fs::create_dir_all(&folder_path)
-            .with_context(|| format!("{folder_path:?}"))
-            .unwrap();
-
         let mut filepaths = BTreeSet::default();
 
         // Generate folder contents:
@@ -163,19 +159,6 @@ impl crate::CodeGenerator for CppCodeGenerator {
             .flatten()
             .collect()
     }
-}
-
-fn write_file(filepath: &Utf8PathBuf, code: String) {
-    if let Ok(existing) = std::fs::read_to_string(filepath) {
-        if existing == code {
-            // Don't touch the timestamp unnecessarily
-            return;
-        }
-    }
-
-    std::fs::write(filepath, code)
-        .with_context(|| format!("{filepath}"))
-        .unwrap();
 }
 
 fn generate_hpp_cpp(

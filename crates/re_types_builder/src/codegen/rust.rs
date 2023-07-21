@@ -242,19 +242,7 @@ fn write_file(filepath: &Utf8PathBuf, mut code: String) {
         }
     }
 
-    if let Ok(existing) = std::fs::read_to_string(filepath) {
-        if existing == code {
-            // Don't touch the timestamp unnecessarily
-            return;
-        }
-    }
-
-    let parent_dir = filepath.parent().unwrap();
-    std::fs::create_dir_all(parent_dir)
-        .unwrap_or_else(|err| panic!("Failed to create dir {parent_dir:?}: {err}"));
-
-    std::fs::write(filepath, code)
-        .unwrap_or_else(|err| panic!("Failed to write file {filepath:?}: {err}"));
+    super::common::write_file(filepath, code);
 }
 
 /// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
