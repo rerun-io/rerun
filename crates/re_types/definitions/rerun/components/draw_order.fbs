@@ -22,7 +22,6 @@ struct DrawOrder (
   "attr.rerun.legacy_fqname": "rerun.draw_order",
   "attr.rust.derive": "Copy",
   "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct",
   order: 100
 ) {
    value: float (order: 100);

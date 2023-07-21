@@ -368,6 +368,8 @@ impl QuotedObject {
             quote! { pub struct #name { #(#quoted_fields,)* }}
         };
 
+        let quoted_from_impl = quote_from_impl_from_obj(obj);
+
         let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
 
         let quoted_builder = quote_builder_from_obj(obj);
@@ -378,6 +380,8 @@ impl QuotedObject {
             #quoted_derive_clause
             #quoted_repr_clause
             #quoted_struct
+
+            #quoted_from_impl
 
             #quoted_trait_impls
 
@@ -1011,6 +1015,45 @@ fn quote_trait_impls_from_obj(
                 }
             }
         }
+    }
+}
+
+/// Only makes sense for components & datatypes.
+fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
+    if obj.kind == ObjectKind::Archetype {
+        return TokenStream::new();
+    }
+    if obj.fields.len() != 1 {
+        return TokenStream::new();
+    }
+
+    let obj_field = &obj.fields[0];
+    if obj_field.typ.fqname().is_some() {
+        let quoted_obj_name = format_ident!("{}", obj.name);
+        let (quoted_type, _) = quote_field_type_from_field(&obj.fields[0], false);
+        let quoted_type = if obj_field.is_nullable {
+            quote!(Option<#quoted_type>)
+        } else {
+            quote!(#quoted_type)
+        };
+
+        let obj_is_tuple_struct = is_tuple_struct_from_obj(obj);
+        let quoted_binding = if obj_is_tuple_struct {
+            quote!(Self(v))
+        } else {
+            let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+            quote!(Self { #quoted_obj_field_name: v })
+        };
+
+        quote! {
+            impl From<#quoted_type> for #quoted_obj_name {
+                fn from(v: #quoted_type) -> Self {
+                    #quoted_binding
+                }
+            }
+        }
+    } else {
+        quote!()
     }
 }
 
@@ -2254,8 +2297,8 @@ fn quote_arrow_field_deserializer(
 // --- Helpers ---
 
 fn is_tuple_struct_from_obj(obj: &Object) -> bool {
-    let is_tuple_struct =
-        obj.is_struct() && obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some();
+    let is_tuple_struct = obj.kind == ObjectKind::Component
+        || (obj.is_struct() && obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some());
 
     assert!(
         !is_tuple_struct || obj.fields.len() == 1,
