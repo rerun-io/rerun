@@ -5,5 +5,6 @@ include "./components/instance_key.fbs";
 include "./components/keypoint_id.fbs";
 include "./components/label.fbs";
 include "./components/point2d.fbs";
+include "./components/point3d.fbs";
 include "./components/radius.fbs";
 include "./components/transform3d.fbs";
