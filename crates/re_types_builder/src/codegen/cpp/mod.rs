@@ -585,7 +585,7 @@ fn arrow_data_type_method(
     cpp_includes.system.insert("arrow/api.h".to_owned());
     hpp_includes.system.insert("memory".to_owned()); // std::shared_ptr
 
-    let quoted_datatype = ArrowDataTypeTokenizer(datatype);
+    let quoted_datatype = quote_arrow_data_type(datatype, cpp_includes, true);
 
     Method {
         doc_string: "Returns the arrow data type this type corresponds to.".to_owned(),
@@ -833,95 +833,102 @@ fn quote_integer<T: std::fmt::Display>(t: T) -> TokenStream {
 
 // --- Arrow registry code generators ---
 
-struct ArrowDataTypeTokenizer<'a>(&'a ::arrow2::datatypes::DataType);
+fn quote_arrow_data_type(
+    datatype: &::arrow2::datatypes::DataType,
+    includes: &mut Includes,
+    is_top_level_type: bool,
+) -> TokenStream {
+    use arrow2::datatypes::UnionMode;
+    match datatype {
+        DataType::Null => quote!(arrow::null()),
+        DataType::Boolean => quote!(arrow::boolean()),
+        DataType::Int8 => quote!(arrow::int8()),
+        DataType::Int16 => quote!(arrow::int16()),
+        DataType::Int32 => quote!(arrow::int32()),
+        DataType::Int64 => quote!(arrow::int64()),
+        DataType::UInt8 => quote!(arrow::uint8()),
+        DataType::UInt16 => quote!(arrow::uint16()),
+        DataType::UInt32 => quote!(arrow::uint32()),
+        DataType::UInt64 => quote!(arrow::uint64()),
+        DataType::Float16 => quote!(arrow::float16()),
+        DataType::Float32 => quote!(arrow::float32()),
+        DataType::Float64 => quote!(arrow::float64()),
+        DataType::Binary => quote!(arrow::binary()),
+        DataType::LargeBinary => quote!(arrow::large_binary()),
+        DataType::Utf8 => quote!(arrow::utf8()),
+        DataType::LargeUtf8 => quote!(arrow::large_utf8()),
 
-impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        use arrow2::datatypes::UnionMode;
-        match self.0.to_logical_type() {
-            DataType::Null => quote!(arrow::null()),
-            DataType::Boolean => quote!(arrow::boolean()),
-            DataType::Int8 => quote!(arrow::int8()),
-            DataType::Int16 => quote!(arrow::int16()),
-            DataType::Int32 => quote!(arrow::int32()),
-            DataType::Int64 => quote!(arrow::int64()),
-            DataType::UInt8 => quote!(arrow::uint8()),
-            DataType::UInt16 => quote!(arrow::uint16()),
-            DataType::UInt32 => quote!(arrow::uint32()),
-            DataType::UInt64 => quote!(arrow::uint64()),
-            DataType::Float16 => quote!(arrow::float16()),
-            DataType::Float32 => quote!(arrow::float32()),
-            DataType::Float64 => quote!(arrow::float64()),
-            DataType::Binary => quote!(arrow::binary()),
-            DataType::LargeBinary => quote!(arrow::large_binary()),
-            DataType::Utf8 => quote!(arrow::utf8()),
-            DataType::LargeUtf8 => quote!(arrow::large_utf8()),
+        DataType::List(field) => {
+            let quoted_field = quote_arrow_field(field, includes);
+            quote!(arrow::list(#quoted_field))
+        }
 
-            DataType::List(field) => {
-                let field = ArrowFieldTokenizer(field);
-                quote!(arrow::list(#field))
-            }
+        DataType::FixedSizeList(field, length) => {
+            let quoted_field = quote_arrow_field(field, includes);
+            let quoted_length = quote_integer(length);
+            quote!(arrow::fixed_size_list(#quoted_field, #quoted_length))
+        }
 
-            DataType::FixedSizeList(field, length) => {
-                let field = ArrowFieldTokenizer(field);
-                let length = quote_integer(length);
-                quote!(arrow::fixed_size_list(#field, #length))
-            }
-
-            DataType::Union(fields, _, mode) => {
-                let fields = fields.iter().map(ArrowFieldTokenizer);
-                match mode {
-                    UnionMode::Dense => {
-                        quote! { arrow::dense_union({ #(#fields,)* }) }
-                    }
-                    UnionMode::Sparse => {
-                        quote! { arrow::sparse_union({ #(#fields,)* }) }
-                    }
+        DataType::Union(fields, _, mode) => {
+            let quoted_fields = fields
+                .iter()
+                .map(|field| quote_arrow_field(field, includes));
+            match mode {
+                UnionMode::Dense => {
+                    quote! { arrow::dense_union({ #(#quoted_fields,)* }) }
+                }
+                UnionMode::Sparse => {
+                    quote! { arrow::sparse_union({ #(#quoted_fields,)* }) }
                 }
             }
-
-            DataType::Struct(fields) => {
-                let fields = fields.iter().map(ArrowFieldTokenizer);
-                quote! { arrow::struct_({ #(#fields,)* }) }
-            }
-
-            DataType::Extension(_name, _datatype, _metadata) => {
-                // TODO(andreas): Need this eventually.
-                unimplemented!("Arrow extension types not yet implemented");
-            }
-
-            _ => unimplemented!("{:#?}", self.0),
         }
-        .to_tokens(tokens);
+
+        DataType::Struct(fields) => {
+            let fields = fields
+                .iter()
+                .map(|field| quote_arrow_field(field, includes));
+            quote! { arrow::struct_({ #(#fields,)* }) }
+        }
+
+        DataType::Extension(fqname, datatype, _metadata) => {
+            // If we're not at the top level, we should have already a `to_arrow_datatype` method that we can relay to.
+            // TODO(andreas): Unions don't have `to_arrow_datatype` yet.
+            if is_top_level_type || matches!(datatype.as_ref(), DataType::Union(..)) {
+                // TODO(andreas): We're no`t emitting the actual extension types here yet which is why we're skipping the extension type at top level.
+                // Currently, we wrap only Components in extension types but this is done in `rerun_c`.
+                // In the future we'll add the extension type here to the schema.
+                quote_arrow_data_type(datatype, includes, false)
+            } else {
+                let fqname_use = quote_fqname_as_type_path(includes, fqname);
+                quote! { #fqname_use::to_arrow_datatype() }
+            }
+        }
+
+        _ => unimplemented!("{:#?}", datatype),
     }
 }
 
-struct ArrowFieldTokenizer<'a>(&'a ::arrow2::datatypes::Field);
+fn quote_arrow_field(field: &::arrow2::datatypes::Field, includes: &mut Includes) -> TokenStream {
+    let arrow2::datatypes::Field {
+        name,
+        data_type,
+        is_nullable,
+        metadata,
+    } = field;
 
-impl quote::ToTokens for ArrowFieldTokenizer<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let arrow2::datatypes::Field {
-            name,
-            data_type,
-            is_nullable,
-            metadata,
-        } = &self.0;
+    let datatype = quote_arrow_data_type(data_type, includes, false);
 
-        let datatype = ArrowDataTypeTokenizer(data_type);
-
-        let metadata = if metadata.is_empty() {
-            quote!(nullptr)
-        } else {
-            let keys = metadata.keys();
-            let values = metadata.values();
-            quote! {
-                arrow::KeyValueMetadata::Make({ #(#keys,)* }, { #(#values,)* })
-            }
-        };
-
+    let metadata = if metadata.is_empty() {
+        quote!(nullptr)
+    } else {
+        let keys = metadata.keys();
+        let values = metadata.values();
         quote! {
-            arrow::field(#name, #datatype, #is_nullable, #metadata)
+            arrow::KeyValueMetadata::Make({ #(#keys,)* }, { #(#values,)* })
         }
-        .to_tokens(tokens);
+    };
+
+    quote! {
+        arrow::field(#name, #datatype, #is_nullable, #metadata)
     }
 }

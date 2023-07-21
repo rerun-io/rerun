@@ -3,6 +3,7 @@
 
 #include <arrow/api.h>
 
+#include "../datatypes/flattened_scalar.hpp"
 #include "affix_fuzzer1.hpp"
 
 namespace rr {
@@ -26,9 +27,7 @@ namespace rr {
                              nullptr),
                 arrow::field("flattened_scalar", arrow::float32(), false, nullptr),
                 arrow::field("almost_flattened_scalar",
-                             arrow::struct_({
-                                 arrow::field("value", arrow::float32(), false, nullptr),
-                             }),
+                             rr::datatypes::FlattenedScalar::to_arrow_datatype(),
                              false,
                              nullptr),
                 arrow::field("from_parent", arrow::boolean(), true, nullptr),
