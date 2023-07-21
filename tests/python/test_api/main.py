@@ -379,28 +379,55 @@ def transforms_rigid_3d(experimental_api: bool) -> None:
         time = i / 120.0
         rr.set_time_seconds("sim_time", time)
 
-        rr.log_transform3d(
-            "transforms3d/sun/planet",
-            rr.TranslationRotationScale3D(
-                [
-                    math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
-                    math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
-                    0.0,
-                ],
-                rr.RotationAxisAngle((1, 0, 0), degrees=20),
-            ),
-        )
-        rr.log_transform3d(
-            "transforms3d/sun/planet/moon",
-            rr.TranslationRotationScale3D(
-                [
-                    math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
-                    math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
-                    0.0,
-                ]
-            ),
-            from_parent=True,
-        )
+        if experimental_api:
+            import rerun.experimental as rr_exp
+            from rerun.experimental import dt as rrd
+
+            rr_exp.log_any(
+                "transforms3d/sun/planet",
+                rrd.TranslationRotationScale3D(
+                    translation=[
+                        math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
+                        math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
+                        0.0,
+                    ],
+                    rotation=rrd.RotationAxisAngle(axis=(1, 0, 0), angle=rrd.Angle(deg=20)),
+                ),
+            )
+            rr_exp.log_any(
+                "transforms3d/sun/planet/moon",
+                rrd.TranslationRotationScale3D(
+                    translation=[
+                        math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
+                        math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
+                        0.0,
+                    ],
+                    from_parent=True,
+                ),
+            )
+        else:
+            rr.log_transform3d(
+                "transforms3d/sun/planet",
+                rr.TranslationRotationScale3D(
+                    [
+                        math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
+                        math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
+                        0.0,
+                    ],
+                    rr.RotationAxisAngle((1, 0, 0), degrees=20),
+                ),
+            )
+            rr.log_transform3d(
+                "transforms3d/sun/planet/moon",
+                rr.TranslationRotationScale3D(
+                    [
+                        math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
+                        math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
+                        0.0,
+                    ]
+                ),
+                from_parent=True,
+            )
 
 
 def run_bounding_box(experimental_api: bool) -> None:
