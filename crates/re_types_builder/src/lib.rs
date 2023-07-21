@@ -253,7 +253,7 @@ pub fn generate_lang_agnostic(
     (objects, arrow_registry)
 }
 
-/// Generates a .gitattributes file that markes up all generated files as generated
+/// Generates a .gitattributes file that marks up all generated files as generated
 pub fn generate_gitattributes_for_generated_files(
     output_path: impl AsRef<Utf8Path>,
     files: impl Iterator<Item = Utf8PathBuf>,
