@@ -8,19 +8,17 @@ impl Point2D {
 
     #[inline]
     pub const fn new(x: f32, y: f32) -> Self {
-        Self {
-            xy: crate::datatypes::Point2D::new(x, y),
-        }
+        Self(crate::datatypes::Point2D::new(x, y))
     }
 
     #[inline]
     pub fn x(&self) -> f32 {
-        self.xy.x
+        self.0.x
     }
 
     #[inline]
     pub fn y(&self) -> f32 {
-        self.xy.y
+        self.0.y
     }
 }
 
