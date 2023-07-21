@@ -297,12 +297,7 @@ fn estimated_size_bytes(c: &mut Criterion) {
         {
             fn generate_points() -> Vec<Vec<Point2D>> {
                 (0..NUM_ROWS)
-                    .map(|_| {
-                        build_some_point2d(NUM_INSTANCES)
-                            .into_iter()
-                            .map(|p| Point2D::new(p.x, p.y))
-                            .collect_vec()
-                    })
+                    .map(|_| build_some_point2d(NUM_INSTANCES))
                     .collect()
             }
 

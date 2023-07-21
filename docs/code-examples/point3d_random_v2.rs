@@ -1,10 +1,7 @@
 //! Log some random points with color and radii."""
 use rand::distributions::Uniform;
 use rand::Rng;
-use rerun::{
-    experimental::{archetypes::Points3D, components::Color},
-    MsgSender, RecordingStreamBuilder,
-};
+use rerun::{archetypes::Points3D, components::Color, MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("points").memory()?;

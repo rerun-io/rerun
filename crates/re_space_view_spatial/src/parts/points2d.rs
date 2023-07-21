@@ -1,7 +1,11 @@
 use re_components::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point2D, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
-use re_query::{EntityView, QueryError};
-use re_types::Loggable;
+use re_query::{ArchetypeView, QueryError};
+use re_types::{
+    archetypes::Points2D,
+    components::{Label, Point2D},
+    Archetype as _,
+};
 use re_viewer_context::{
     ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
@@ -118,9 +122,9 @@ impl Points2DPart {
 
             let point_positions = {
                 re_tracing::profile_scope!("collect_points");
-                entity_view
-                    .iter_primary()?
-                    .filter_map(|pt| pt.map(glam::Vec2::from))
+                arch_view
+                    .iter_required_component::<Point2D>()?
+                    .map(glam::Vec2::from)
             };
 
             let picking_instance_ids = entity_view

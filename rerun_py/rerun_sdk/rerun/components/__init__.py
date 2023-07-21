@@ -16,7 +16,6 @@ all = [
     "experimental",
     "label",
     "pinhole",
-    "point",
     "quaternion",
     "radius",
     "rect2d",

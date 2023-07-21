@@ -175,7 +175,7 @@ fn lookup_value() {
 
     let value = component.lookup_arrow(&InstanceKey(2)).unwrap();
 
-    let expected_point = [points[2].clone()];
+    let expected_point = [points[2]];
     let expected_arrow = Point2D::to_arrow(expected_point, None);
 
     assert_eq!(expected_arrow, value);
@@ -188,15 +188,15 @@ fn lookup_value() {
         InstanceKey(472),
     ];
 
-    let component = ComponentWithInstances::from_native(instance_keys.as_slice(), &points);
+    let component = ComponentWithInstances::from_native(instance_keys.as_slice(), points);
 
     let missing_value = component.lookup_arrow(&InstanceKey(46));
     assert_eq!(missing_value, None);
 
     let value = component.lookup_arrow(&InstanceKey(99)).unwrap();
 
-    let expected_point = [points[3].clone()];
-    let expected_arrow = Point2D::to_arrow(&expected_point, None);
+    let expected_point = [points[3]];
+    let expected_arrow = Point2D::to_arrow(expected_point, None);
 
     assert_eq!(expected_arrow, value);
 
