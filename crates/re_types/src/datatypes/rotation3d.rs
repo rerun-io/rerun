@@ -40,7 +40,7 @@ impl crate::Loggable for Rotation3D {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Rotation3D")
+        "rerun.datatypes.Rotation3D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

@@ -559,9 +559,9 @@ impl Tensor {
     }
 }
 
-impl re_log_types::Component for Tensor {
+impl re_log_types::LegacyComponent for Tensor {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.tensor".into()
     }
 }
@@ -1290,6 +1290,8 @@ impl std::borrow::Borrow<Tensor> for DecodedTensor {
         &self.0
     }
 }
+
+re_log_types::component_legacy_shim!(Tensor);
 
 // ----------------------------------------------------------------------------
 

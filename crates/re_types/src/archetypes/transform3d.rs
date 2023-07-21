@@ -77,19 +77,17 @@ pub struct Transform3D {
     pub transform: crate::components::Transform3D,
 }
 
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.Transform3D".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.Transform3D".into()]);
+
 impl Transform3D {
-    pub const REQUIRED_COMPONENTS: [crate::ComponentName; 1usize] =
-        [crate::ComponentName::Borrowed(
-            "rerun.components.Transform3D",
-        )];
-
-    pub const RECOMMENDED_COMPONENTS: [crate::ComponentName; 0usize] = [];
-
-    pub const OPTIONAL_COMPONENTS: [crate::ComponentName; 0usize] = [];
-
-    pub const ALL_COMPONENTS: [crate::ComponentName; 1usize] = [crate::ComponentName::Borrowed(
-        "rerun.components.Transform3D",
-    )];
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
 impl crate::Archetype for Transform3D {
@@ -99,18 +97,23 @@ impl crate::Archetype for Transform3D {
     }
 
     #[inline]
-    fn required_components() -> Vec<crate::ComponentName> {
-        Self::REQUIRED_COMPONENTS.to_vec()
+    fn required_components() -> &'static [crate::ComponentName] {
+        REQUIRED_COMPONENTS.as_slice()
     }
 
     #[inline]
-    fn recommended_components() -> Vec<crate::ComponentName> {
-        Self::RECOMMENDED_COMPONENTS.to_vec()
+    fn recommended_components() -> &'static [crate::ComponentName] {
+        RECOMMENDED_COMPONENTS.as_slice()
     }
 
     #[inline]
-    fn optional_components() -> Vec<crate::ComponentName> {
-        Self::OPTIONAL_COMPONENTS.to_vec()
+    fn optional_components() -> &'static [crate::ComponentName] {
+        OPTIONAL_COMPONENTS.as_slice()
+    }
+
+    #[inline]
+    fn all_components() -> &'static [crate::ComponentName] {
+        ALL_COMPONENTS.as_slice()
     }
 
     #[inline]

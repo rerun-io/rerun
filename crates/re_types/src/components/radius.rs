@@ -34,7 +34,7 @@ impl crate::Loggable for Radius {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.radius")
+        "rerun.radius".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

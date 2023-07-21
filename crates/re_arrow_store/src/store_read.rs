@@ -3,9 +3,8 @@ use std::{ops::RangeBounds, sync::atomic::Ordering};
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_log::trace;
-use re_log_types::{
-    ComponentName, DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline,
-};
+use re_log_types::{DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline};
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
@@ -111,7 +110,7 @@ impl DataStore {
         let timeless: Option<IntSet<_>> = self
             .timeless_tables
             .get(&ent_path_hash)
-            .map(|table| table.columns.keys().copied().collect());
+            .map(|table| table.columns.keys().cloned().collect());
 
         let temporal = self
             .tables
@@ -158,7 +157,8 @@ impl DataStore {
     ///
     /// ```rust
     /// # use polars_core::{prelude::*, series::Series};
-    /// # use re_log_types::{ComponentName, EntityPath, RowId, TimeInt};
+    /// # use re_log_types::{EntityPath, RowId, TimeInt};
+    /// # use re_types::{ComponentName};
     /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
     /// #
     /// pub fn latest_component(
@@ -327,8 +327,9 @@ impl DataStore {
     /// ```rust
     /// # use arrow2::array::Array;
     /// # use polars_core::{prelude::*, series::Series};
-    /// # use re_log_types::{ComponentName, DataCell, EntityPath, RowId, TimeInt};
+    /// # use re_log_types::{DataCell, EntityPath, RowId, TimeInt};
     /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
+    /// # use re_types::ComponentName;
     /// #
     /// # pub fn dataframe_from_cells<const N: usize>(
     /// #     cells: [Option<DataCell>; N],
@@ -338,7 +339,7 @@ impl DataStore {
     /// #         .flatten()
     /// #         .map(|cell| {
     /// #             Series::try_from((
-    /// #                 cell.component_name().as_str(),
+    /// #                 cell.component_name().as_ref(),
     /// #                 cell.to_arrow(),
     /// #             ))
     /// #         })

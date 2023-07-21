@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::*;
-use re_log_types::{ComponentName, DataCell, EntityPath, RowId, TimeInt};
+use re_log_types::{DataCell, EntityPath, RowId, TimeInt};
+use re_types::ComponentName;
 
 use crate::{ArrayExt, DataStore, LatestAtQuery, RangeQuery};
 
@@ -139,7 +140,7 @@ pub fn range_components<'a, const N: usize>(
         if df.as_ref().map_or(false, |df| {
             // We only care about the initial state if it A) isn't empty and B) contains any data
             // at all for the primary component.
-            !df.is_empty() && df.column(primary.as_str()).is_ok()
+            !df.is_empty() && df.column(primary.as_ref()).is_ok()
         }) {
             df_latest = Some(df);
         }
@@ -186,8 +187,9 @@ pub fn range_components<'a, const N: usize>(
                 let df = df
                     .select(
                         components
+                            .clone()
                             .iter()
-                            .filter(|col| columns.contains(&col.as_str())),
+                            .filter(|col| columns.contains(&col.as_ref())),
                     )
                     .unwrap();
                 (time, df)
@@ -207,7 +209,7 @@ pub fn dataframe_from_cells<const N: usize>(
         .flatten()
         .map(|cell| {
             Series::try_from((
-                cell.component_name().as_str(),
+                cell.component_name().as_ref(),
                 cell.as_arrow_ref().clean_for_polars(),
             ))
         })
@@ -239,15 +241,15 @@ pub fn join_dataframes(
             for col in right
                 .get_column_names()
                 .iter()
-                .filter(|col| *col != &cluster_key.as_str())
+                .filter(|col| *col != &cluster_key)
             {
                 _ = left.drop_in_place(col);
             }
 
             left.join(
                 &right,
-                [cluster_key.as_str()],
-                [cluster_key.as_str()],
+                [cluster_key],
+                [cluster_key],
                 join_type.clone(),
                 None,
             )

@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use re_log_types::{serde_field::SerdeField, Component, ComponentName};
+use re_log_types::{serde_field::SerdeField, ComponentName, LegacyComponent};
 
 use crate::space_view::SpaceViewBlueprint;
 
@@ -29,9 +29,9 @@ impl SpaceViewComponent {
     pub const SPACEVIEW_PREFIX: &str = "space_view";
 }
 
-impl Component for SpaceViewComponent {
+impl LegacyComponent for SpaceViewComponent {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "rerun.blueprint.spaceview".into()
     }
 }
@@ -41,6 +41,8 @@ impl std::fmt::Debug for SpaceViewComponent {
         write!(f, "SpaceViewComponent")
     }
 }
+
+re_log_types::component_legacy_shim!(SpaceViewComponent);
 
 #[test]
 fn test_spaceview() {

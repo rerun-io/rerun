@@ -12,10 +12,8 @@ use re_components::{
     datagen::{build_some_instances, build_some_point2d, build_some_rects},
     Point2D, Rect2D,
 };
-use re_log_types::{
-    external::arrow2_convert::serialize::TryIntoArrow, DataCell, InstanceKey,
-    SerializableComponent, SizeBytes as _,
-};
+use re_log_types::{DataCell, SizeBytes as _};
+use re_types::{components::InstanceKey, Component};
 
 // ---
 
@@ -98,13 +96,14 @@ fn erased_clone(c: &mut Criterion) {
     }
 
     // TODO(cmc): Use cells once `cell.size_bytes()` has landed (#1727)
-    fn bench_arrow<T: SerializableComponent>(
+    fn bench_arrow<'a, T: Component + 'a>(
         group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
-        data: &[T],
-    ) {
-        let arrays: Vec<Box<dyn Array>> = (0..NUM_ROWS)
-            .map(|_| TryIntoArrow::try_into_arrow(data).unwrap())
-            .collect_vec();
+        data: &'a [T],
+    ) where
+        &'a T: Into<::std::borrow::Cow<'a, T>>,
+    {
+        let arrays: Vec<Box<dyn Array>> =
+            (0..NUM_ROWS).map(|_| T::to_arrow(data, None)).collect_vec();
 
         let total_size_bytes = arrays
             .iter()

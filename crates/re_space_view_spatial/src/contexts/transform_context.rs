@@ -3,8 +3,8 @@ use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
 use re_components::{DisconnectedSpace, Pinhole, Transform3D, ViewCoordinates};
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
-use re_log_types::Component;
 use re_space_view::UnreachableTransformReason;
+use re_types::Loggable as _;
 use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};
 
 use crate::parts::image_view_coordinates;

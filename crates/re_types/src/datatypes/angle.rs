@@ -37,7 +37,7 @@ impl crate::Loggable for Angle {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Angle")
+        "rerun.datatypes.Angle".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

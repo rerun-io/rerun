@@ -9,7 +9,8 @@ use arrow2::{
     offset::Offsets,
 };
 use polars_core::{functions::diag_concat_df, prelude::*};
-use re_log_types::{ComponentName, DataCell, DataTable};
+use re_log_types::{DataCell, DataTable};
+use re_types::ComponentName;
 
 use crate::{
     store::InsertIdVec, ArrayExt, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
@@ -118,7 +119,7 @@ impl DataStore {
         let df = sort_df_columns(&df, self.config.store_insert_ids, &timelines);
 
         let has_timeless = df.column(TIMELESS_COL).is_ok();
-        let insert_id_col = DataStore::insert_id_key().as_str();
+        let insert_id_col = DataStore::insert_id_key();
 
         const ASCENDING: bool = false;
         const DESCENDING: bool = true;
@@ -130,9 +131,9 @@ impl DataStore {
             df.column(TIMELESS_COL)
                 .is_ok()
                 .then_some((TIMELESS_COL, DESCENDING)),
-            df.column(insert_id_col)
+            df.column(insert_id_col.as_ref())
                 .is_ok()
-                .then_some((insert_id_col, ASCENDING)),
+                .then_some((insert_id_col.as_ref(), ASCENDING)),
         ]
         .into_iter()
         .flatten()
@@ -263,7 +264,7 @@ fn insert_ids_as_series(col_insert_id: &InsertIdVec) -> Series {
 
     let insert_ids = arrow2::array::UInt64Array::from_slice(col_insert_id.as_slice());
     new_infallible_series(
-        DataStore::insert_id_key().as_str(),
+        DataStore::insert_id_key().as_ref(),
         &insert_ids,
         insert_ids.len(),
     )
@@ -309,7 +310,7 @@ fn column_as_series(
         Some(Bitmap::from(comp_validity)),
     );
 
-    new_infallible_series(component.as_str(), &comp_values, num_rows)
+    new_infallible_series(component.as_ref(), &comp_values, num_rows)
 }
 
 // ---

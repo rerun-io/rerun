@@ -80,33 +80,36 @@ pub struct Points2D {
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.point2d".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.radius".into(), "rerun.colorrgba".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.label".into(),
+            "rerun.draw_order".into(),
+            "rerun.class_id".into(),
+            "rerun.keypoint_id".into(),
+            "rerun.instance_key".into(),
+        ]
+    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.point2d".into(),
+            "rerun.radius".into(),
+            "rerun.colorrgba".into(),
+            "rerun.label".into(),
+            "rerun.draw_order".into(),
+            "rerun.class_id".into(),
+            "rerun.keypoint_id".into(),
+            "rerun.instance_key".into(),
+        ]
+    });
+
 impl Points2D {
-    pub const REQUIRED_COMPONENTS: [crate::ComponentName; 1usize] =
-        [crate::ComponentName::Borrowed("rerun.components.Point2D")];
-
-    pub const RECOMMENDED_COMPONENTS: [crate::ComponentName; 2usize] = [
-        crate::ComponentName::Borrowed("rerun.components.Radius"),
-        crate::ComponentName::Borrowed("rerun.components.Color"),
-    ];
-
-    pub const OPTIONAL_COMPONENTS: [crate::ComponentName; 5usize] = [
-        crate::ComponentName::Borrowed("rerun.components.Label"),
-        crate::ComponentName::Borrowed("rerun.components.DrawOrder"),
-        crate::ComponentName::Borrowed("rerun.components.ClassId"),
-        crate::ComponentName::Borrowed("rerun.components.KeypointId"),
-        crate::ComponentName::Borrowed("rerun.components.InstanceKey"),
-    ];
-
-    pub const ALL_COMPONENTS: [crate::ComponentName; 8usize] = [
-        crate::ComponentName::Borrowed("rerun.components.Point2D"),
-        crate::ComponentName::Borrowed("rerun.components.Radius"),
-        crate::ComponentName::Borrowed("rerun.components.Color"),
-        crate::ComponentName::Borrowed("rerun.components.Label"),
-        crate::ComponentName::Borrowed("rerun.components.DrawOrder"),
-        crate::ComponentName::Borrowed("rerun.components.ClassId"),
-        crate::ComponentName::Borrowed("rerun.components.KeypointId"),
-        crate::ComponentName::Borrowed("rerun.components.InstanceKey"),
-    ];
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl crate::Archetype for Points2D {
@@ -116,18 +119,23 @@ impl crate::Archetype for Points2D {
     }
 
     #[inline]
-    fn required_components() -> Vec<crate::ComponentName> {
-        Self::REQUIRED_COMPONENTS.to_vec()
+    fn required_components() -> &'static [crate::ComponentName] {
+        REQUIRED_COMPONENTS.as_slice()
     }
 
     #[inline]
-    fn recommended_components() -> Vec<crate::ComponentName> {
-        Self::RECOMMENDED_COMPONENTS.to_vec()
+    fn recommended_components() -> &'static [crate::ComponentName] {
+        RECOMMENDED_COMPONENTS.as_slice()
     }
 
     #[inline]
-    fn optional_components() -> Vec<crate::ComponentName> {
-        Self::OPTIONAL_COMPONENTS.to_vec()
+    fn optional_components() -> &'static [crate::ComponentName] {
+        OPTIONAL_COMPONENTS.as_slice()
+    }
+
+    #[inline]
+    fn all_components() -> &'static [crate::ComponentName] {
+        ALL_COMPONENTS.as_slice()
     }
 
     #[inline]

@@ -34,7 +34,7 @@ impl crate::Loggable for Mat3x3 {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Mat3x3")
+        "rerun.datatypes.Mat3x3".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

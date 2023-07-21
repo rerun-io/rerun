@@ -2,18 +2,11 @@ use arrow2::{
     array::{Array, StructArray},
     datatypes::PhysicalType,
 };
-use itertools::Itertools;
 use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
-use re_log_types::{
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, Component,
-    DeserializableComponent, InstanceKey, SerializableComponent,
-};
+use re_types::{components::InstanceKey, Archetype, Component, Loggable};
 
-use crate::{
-    entity_view::{ComponentWithInstances, EntityView},
-    QueryError,
-};
+use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 
 /// Make it so that our arrays can be deserialized again by arrow2-convert
 fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
@@ -39,7 +32,7 @@ fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
             // include optional fields.
             let validity = phys_arrow.values()[0].validity();
             let fixed_arrow = StructArray::new(
-                C::data_type(),
+                C::to_arrow_datatype(),
                 phys_arrow.clone().into_data().1,
                 validity.cloned(),
             );
@@ -50,90 +43,76 @@ fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
 }
 
 /// Iterator for a single column in a dataframe as the rust-native Component type
-pub fn iter_column<'a, C: DeserializableComponent>(
+pub fn iter_column<'a, C: Component + 'a>(
     df: &'a DataFrame,
-) -> impl Iterator<Item = Option<C>> + 'a
-where
-    for<'b> &'b C::ArrayType: IntoIterator,
-{
-    let res = match df.column(C::name().as_str()) {
+) -> impl Iterator<Item = Option<C>> + 'a {
+    let res = match df.column(C::name().as_ref()) {
         Ok(col) => itertools::Either::Left(col.chunks().iter().flat_map(|array| {
             let fixed_array = fix_polars_nulls::<C>(array.as_ref());
-            // TODO(jleibs): the need to collect here isn't ideal
-            arrow_array_deserialize_iterator::<Option<C>>(fixed_array.as_ref())
-                .unwrap()
-                .collect_vec()
+            C::from_arrow_opt(fixed_array.as_ref())
         })),
         Err(_) => itertools::Either::Right(std::iter::repeat_with(|| None).take(df.height())),
     };
     res.into_iter()
 }
 
-pub fn df_builder1<C0: SerializableComponent>(c0: &Vec<Option<C0>>) -> crate::Result<DataFrame> {
-    use arrow2::array::MutableArray;
-    use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
+pub fn df_builder1<'a, C0>(c0: &'a [Option<C0>]) -> crate::Result<DataFrame>
+where
+    C0: re_types::Component + Clone + 'a,
+    &'a C0: Into<::std::borrow::Cow<'a, C0>>,
+{
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
 
-    let array0 =
-        arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0)?.as_box();
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
 
-    let series0 = Series::try_from((C0::name().as_str(), array0.as_ref().clean_for_polars()));
-
-    Ok(DataFrame::new(vec![series0?])?)
+    Ok(DataFrame::new(vec![series0])?)
 }
 
-pub fn df_builder2<C0, C1>(c0: &Vec<Option<C0>>, c1: &Vec<Option<C1>>) -> crate::Result<DataFrame>
+pub fn df_builder2<'a, C0, C1>(
+    c0: &'a [Option<C0>],
+    c1: &'a [Option<C1>],
+) -> crate::Result<DataFrame>
 where
-    C0: SerializableComponent,
-    C1: SerializableComponent,
+    C0: re_types::Component + Clone + 'a,
+    C1: re_types::Component + Clone + 'a,
+    &'a C0: Into<::std::borrow::Cow<'a, C0>>,
+    &'a C1: Into<::std::borrow::Cow<'a, C1>>,
 {
-    use arrow2::array::MutableArray;
-    use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
+    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()), None)?;
 
-    let array0 =
-        arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0)?.as_box();
-    let array1 =
-        arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1)?.as_box();
-
-    let series0 = Series::try_from((C0::name().as_str(), array0.as_ref().clean_for_polars()))?;
-    let series1 = Series::try_from((C1::name().as_str(), array1.as_ref().clean_for_polars()))?;
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
 
     Ok(DataFrame::new(vec![series0, series1])?)
 }
 
-pub fn df_builder3<C0, C1, C2>(
-    c0: &Vec<Option<C0>>,
-    c1: &Vec<Option<C1>>,
-    c2: &Vec<Option<C2>>,
+pub fn df_builder3<'a, C0, C1, C2>(
+    c0: &'a [Option<C0>],
+    c1: &'a [Option<C1>],
+    c2: &'a [Option<C2>],
 ) -> crate::Result<DataFrame>
 where
-    C0: SerializableComponent,
-    C1: SerializableComponent,
-    C2: SerializableComponent,
+    C0: re_types::Component + Clone + 'a,
+    C1: re_types::Component + Clone + 'a,
+    C2: re_types::Component + Clone + 'a,
+    &'a C0: Into<::std::borrow::Cow<'a, C0>>,
+    &'a C1: Into<::std::borrow::Cow<'a, C1>>,
+    &'a C2: Into<::std::borrow::Cow<'a, C2>>,
 {
-    use arrow2::array::MutableArray;
-    use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
+    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()), None)?;
+    let array2 = C2::try_to_arrow_opt(c2.iter().map(|c| c.as_ref()), None)?;
 
-    let array0 =
-        arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0)?.as_box();
-    let array1 =
-        arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1)?.as_box();
-    let array2 =
-        arrow_serialize_to_mutable_array::<Option<C2>, Option<C2>, &Vec<Option<C2>>>(c2)?.as_box();
-
-    let series0 = Series::try_from((C0::name().as_str(), array0.as_ref().clean_for_polars()))?;
-    let series1 = Series::try_from((C1::name().as_str(), array1.as_ref().clean_for_polars()))?;
-    let series2 = Series::try_from((C2::name().as_str(), array2.as_ref().clean_for_polars()))?;
+    let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+    let series2 = Series::try_from((C2::name().as_ref(), array2.as_ref().clean_for_polars()))?;
 
     Ok(DataFrame::new(vec![series0, series1, series2])?)
 }
 
 impl ComponentWithInstances {
-    pub fn as_df<C0: SerializableComponent + DeserializableComponent>(
-        &self,
-    ) -> crate::Result<DataFrame>
-    where
-        for<'a> &'a C0::ArrayType: IntoIterator,
-    {
+    pub fn as_df<'a, C0: Component + 'a>(&'a self) -> crate::Result<DataFrame> {
         if C0::name() != self.name() {
             return Err(QueryError::TypeMismatch {
                 actual: self.name(),
@@ -141,40 +120,96 @@ impl ComponentWithInstances {
             });
         }
 
-        let instance_keys: Vec<Option<InstanceKey>> =
-            self.iter_instance_keys().map(Some).collect_vec();
+        let array0 = self.instance_keys.as_arrow_ref();
+        let array1 = self.values.as_arrow_ref();
 
-        let values = self.values.try_to_native_opt()?.collect_vec();
+        let series0 = Series::try_from((
+            re_types::components::InstanceKey::name().as_ref(),
+            array0.as_ref().clean_for_polars(),
+        ))?;
+        let series1 = Series::try_from((C0::name().as_ref(), array1.as_ref().clean_for_polars()))?;
 
-        df_builder2::<InstanceKey, C0>(&instance_keys, &values)
+        Ok(DataFrame::new(vec![series0, series1])?)
     }
 }
 
-impl<Primary> EntityView<Primary>
+impl<'a, Primary> EntityView<Primary>
 where
-    Primary: SerializableComponent + DeserializableComponent,
-    for<'a> &'a Primary::ArrayType: IntoIterator,
+    Primary: Component + 'a,
+    &'a Primary: Into<::std::borrow::Cow<'a, Primary>>,
 {
     pub fn as_df1(&self) -> crate::Result<DataFrame> {
-        let instance_keys = self.primary.iter_instance_keys().map(Some).collect_vec();
+        let array0 = self.primary.instance_keys.as_arrow_ref();
+        let array1 = self.primary.values.as_arrow_ref();
 
-        let primary_values = self.primary.values.try_to_native_opt()?.collect_vec();
+        let series0 = Series::try_from((
+            InstanceKey::name().as_ref(),
+            array0.as_ref().clean_for_polars(),
+        ))?;
+        let series1 =
+            Series::try_from((Primary::name().as_ref(), array1.as_ref().clean_for_polars()))?;
 
-        df_builder2::<InstanceKey, Primary>(&instance_keys, &primary_values)
+        Ok(DataFrame::new(vec![series0, series1])?)
     }
 
     pub fn as_df2<C1>(&self) -> crate::Result<DataFrame>
     where
-        C1: SerializableComponent + DeserializableComponent + Clone,
-        for<'a> &'a C1::ArrayType: IntoIterator,
+        C1: Component + 'a,
+        C1: Into<::std::borrow::Cow<'a, C1>>,
     {
-        let instance_keys = self.primary.iter_instance_keys().map(Some).collect_vec();
+        let array0 = self.primary.instance_keys.as_arrow_ref();
+        let array1 = self.primary.values.as_arrow_ref();
+        let array2 = C1::try_to_arrow_opt(self.iter_component::<C1>()?, None)?;
 
-        let primary_values = self.primary.values.try_to_native_opt()?.collect_vec();
+        let series0 = Series::try_from((
+            InstanceKey::name().as_ref(),
+            array0.as_ref().clean_for_polars(),
+        ))?;
+        let series1 =
+            Series::try_from((Primary::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+        let series2 = Series::try_from((C1::name().as_ref(), array2.as_ref().clean_for_polars()))?;
 
-        let c1_values = self.iter_component::<C1>()?.collect_vec();
+        Ok(DataFrame::new(vec![series0, series1, series2])?)
+    }
+}
 
-        df_builder3::<InstanceKey, Primary, C1>(&instance_keys, &primary_values, &c1_values)
+impl<A: Archetype> ArchetypeView<A> {
+    pub fn as_df1<'a, C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a>(
+        &self,
+    ) -> crate::Result<DataFrame> {
+        let array0 =
+            re_types::components::InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
+        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
+
+        let series0 = Series::try_from((
+            re_types::components::InstanceKey::name().as_ref(),
+            array0.as_ref().clean_for_polars(),
+        ))?;
+        let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+
+        Ok(DataFrame::new(vec![series0, series1])?)
+    }
+
+    pub fn as_df2<
+        'a,
+        C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+        C2: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
+    >(
+        &self,
+    ) -> crate::Result<DataFrame> {
+        let array0 =
+            re_types::components::InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
+        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
+        let array2 = C2::try_to_arrow_opt(self.iter_optional_component::<C2>()?, None)?;
+
+        let series0 = Series::try_from((
+            re_types::components::InstanceKey::name().as_ref(),
+            array0.as_ref().clean_for_polars(),
+        ))?;
+        let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
+        let series2 = Series::try_from((C2::name().as_ref(), array2.as_ref().clean_for_polars()))?;
+
+        Ok(DataFrame::new(vec![series0, series1, series2])?)
     }
 }
 
@@ -234,7 +269,7 @@ fn test_df_builder() {
     let expected = df![
         "x" => &[1.0_f32, 3.0_f32, 5.0_f32, 7.0_f32],
         "y" => &[2.0_f32, 4.0_f32, 6.0_f32, 8.0_f32],
-        ColorRGBA::name().as_str() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
+        ColorRGBA::name().as_ref() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
     ]
     .unwrap();
 

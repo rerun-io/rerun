@@ -1,6 +1,7 @@
 use itertools::Itertools;
-use re_components::{ColorRGBA, InstanceKey, Point2D};
+use re_components::{ColorRGBA, Point2D};
 use re_query::{ComponentWithInstances, EntityView};
+use re_types::components::InstanceKey;
 
 #[test]
 fn basic_single_iter() {
@@ -10,7 +11,7 @@ fn basic_single_iter() {
         Point2D { x: 3.0, y: 4.0 },
     ];
 
-    let component = ComponentWithInstances::from_native(&instance_keys, &points);
+    let component = ComponentWithInstances::from_native(instance_keys, &points);
 
     let results = itertools::izip!(
         points.into_iter(),

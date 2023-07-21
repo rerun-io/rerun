@@ -97,9 +97,9 @@ impl TryFrom<u8> for ViewDir {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ViewCoordinates(pub [ViewDir; 3]);
 
-impl re_log_types::Component for ViewCoordinates {
+impl re_log_types::LegacyComponent for ViewCoordinates {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.view_coordinates".into()
     }
 }
@@ -376,6 +376,8 @@ impl ArrowDeserialize for ViewCoordinates {
         })
     }
 }
+
+re_log_types::component_legacy_shim!(ViewCoordinates);
 
 // ----------------------------------------------------------------------------
 

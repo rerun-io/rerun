@@ -249,8 +249,10 @@ mod tests {
         Vec3D(Vec3D),
     }
 
-    impl re_log_types::Component for TestComponentWithUnionAndFixedSizeList {
-        fn name() -> re_log_types::ComponentName {
+    re_log_types::component_legacy_shim!(TestComponentWithUnionAndFixedSizeList);
+
+    impl re_log_types::LegacyComponent for TestComponentWithUnionAndFixedSizeList {
+        fn legacy_name() -> re_log_types::ComponentName {
             "test_component_with_union_and_fixed_size_list".into()
         }
     }

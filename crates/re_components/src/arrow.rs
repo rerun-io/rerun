@@ -35,12 +35,14 @@ pub struct Arrow3D {
     pub vector: Vec3D,
 }
 
-impl re_log_types::Component for Arrow3D {
+impl re_log_types::LegacyComponent for Arrow3D {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.arrow3d".into()
     }
 }
+
+re_log_types::component_legacy_shim!(Arrow3D);
 
 #[test]
 fn test_arrow3d_roundtrip() {

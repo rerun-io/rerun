@@ -21,10 +21,8 @@ use re_components::{
     },
     ColorRGBA, InstanceKey, Point2D, Rect2D,
 };
-use re_log_types::{
-    Component as _, ComponentName, DataCell, DataRow, DataTable, EntityPath, TableId, TimeType,
-    Timeline,
-};
+use re_log_types::{DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
+use re_types::{ComponentName, Loggable as _};
 
 // --- LatestComponentsAt ---
 
@@ -804,12 +802,12 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
         .iter()
         .map(|(component, row)| {
             let cluster_comp = if let Some(idx) = row.find_cell(&cluster_key) {
-                Series::try_from((cluster_key.as_str(), row.cells[idx].to_arrow_monolist()))
+                Series::try_from((cluster_key.as_ref(), row.cells[idx].to_arrow_monolist()))
                     .unwrap()
             } else {
                 let num_instances = row.num_instances();
                 Series::try_from((
-                    cluster_key.as_str(),
+                    cluster_key.as_ref(),
                     DataCell::from_component::<InstanceKey>(0..num_instances as u64)
                         .to_arrow_monolist(),
                 ))
@@ -819,7 +817,7 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
             let comp_idx = row.find_cell(component).unwrap();
             let df = DataFrame::new(vec![
                 cluster_comp,
-                Series::try_from((component.as_str(), row.cells[comp_idx].to_arrow_monolist()))
+                Series::try_from((component.as_ref(), row.cells[comp_idx].to_arrow_monolist()))
                     .unwrap(),
             ])
             .unwrap();
@@ -827,14 +825,14 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
             df.explode(df.get_column_names()).unwrap()
         })
         .reduce(|left, right| {
-            left.outer_join(&right, [cluster_key.as_str()], [cluster_key.as_str()])
+            left.outer_join(&right, [cluster_key.as_ref()], [cluster_key.as_ref()])
                 .unwrap()
         })
         .unwrap_or_default();
 
     let df = polars_util::drop_all_nulls(&df, &cluster_key).unwrap();
 
-    df.sort([cluster_key.as_str()], false).unwrap_or(df)
+    df.sort([cluster_key.as_ref()], false).unwrap_or(df)
 }
 
 // --- GC ---

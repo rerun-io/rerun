@@ -3,9 +3,10 @@ use std::collections::BTreeMap;
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 use nohash_hasher::IntMap;
 use re_log_types::{
-    ComponentName, DataCellColumn, DataTable, DataTableResult, RowId, Timeline, COLUMN_INSERT_ID,
+    DataCellColumn, DataTable, DataTableResult, RowId, Timeline, COLUMN_INSERT_ID,
     COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
 };
+use re_types::ComponentName;
 
 use crate::store::{IndexedBucket, IndexedBucketInner, PersistentIndexedTable};
 
@@ -188,8 +189,7 @@ fn serialize_data_columns(
     // NOTE: cannot fail, the cluster key _has_ to be there by definition
     let cluster_column = table.remove(&cluster_key).unwrap();
     {
-        let (field, column) =
-            DataTable::serialize_data_column(cluster_key.as_str(), cluster_column)?;
+        let (field, column) = DataTable::serialize_data_column(cluster_key, cluster_column)?;
         schema.fields.push(field);
         columns.push(column);
     }
@@ -197,7 +197,7 @@ fn serialize_data_columns(
     for (component, column) in table {
         // NOTE: Don't serialize columns with only null values.
         if column.iter().any(Option::is_some) {
-            let (field, column) = DataTable::serialize_data_column(component.as_str(), column)?;
+            let (field, column) = DataTable::serialize_data_column(component, column)?;
             schema.fields.push(field);
             columns.push(column);
         }

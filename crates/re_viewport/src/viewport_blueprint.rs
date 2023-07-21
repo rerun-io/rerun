@@ -4,7 +4,8 @@ use ahash::HashMap;
 use arrow2_convert::field::ArrowField;
 
 use re_data_store::{EntityPath, StoreDb};
-use re_log_types::{Component, DataCell, DataRow, RowId, SerializableComponent, TimePoint};
+use re_log_types::{DataCell, DataRow, RowId, TimePoint};
+use re_types::Loggable as _;
 use re_viewer_context::{
     CommandSender, Item, SpaceViewId, SystemCommand, SystemCommandSender, ViewerContext,
 };
@@ -244,18 +245,21 @@ impl<'a> ViewportBlueprint<'a> {
 // ----------------------------------------------------------------------------
 
 // TODO(jleibs): Move this helper to a better location
-pub fn add_delta_from_single_component<C: SerializableComponent>(
+pub fn add_delta_from_single_component<'a, C>(
     deltas: &mut Vec<DataRow>,
     entity_path: &EntityPath,
     timepoint: &TimePoint,
     component: C,
-) {
+) where
+    C: re_types::Component + Clone + 'a,
+    std::borrow::Cow<'a, C>: std::convert::From<C>,
+{
     let row = DataRow::from_cells1_sized(
         RowId::random(),
         entity_path.clone(),
         timepoint.clone(),
         1,
-        [component].as_slice(),
+        [component],
     );
 
     deltas.push(row);

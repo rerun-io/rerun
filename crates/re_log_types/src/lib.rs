@@ -27,7 +27,6 @@ pub mod hash;
 mod index;
 mod instance_key;
 pub mod path;
-mod size_bytes;
 mod time;
 pub mod time_point;
 mod time_range;
@@ -42,7 +41,7 @@ pub mod serde_field;
 use std::sync::Arc;
 
 pub use self::arrow_msg::ArrowMsg;
-pub use self::component::{Component, DeserializableComponent, SerializableComponent};
+pub use self::component::LegacyComponent;
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
 pub use self::data_row::{DataCellRow, DataCellVec, DataRow, DataRowError, DataRowResult, RowId};
 pub use self::data_table::{
@@ -52,13 +51,16 @@ pub use self::data_table::{
     METADATA_KIND_CONTROL, METADATA_KIND_DATA,
 };
 pub use self::index::*;
-pub use self::instance_key::InstanceKey;
+pub use self::instance_key::LegacyInstanceKey;
 pub use self::path::*;
-pub use self::size_bytes::SizeBytes;
 pub use self::time::{Duration, Time};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
+
+// Re-export `ComponentName` for convenience
+pub use re_types::ComponentName;
+pub use re_types::SizeBytes;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::data_table_batcher::{
@@ -410,5 +412,83 @@ macro_rules! profile_scope {
     ($($arg: tt)*) => {
         #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_scope!($($arg)*);
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! component_legacy_shim {
+    ($entity:ident) => {
+        impl re_types::Loggable for $entity {
+            type Name = re_types::ComponentName;
+
+            #[inline]
+            fn name() -> Self::Name {
+                <Self as re_log_types::LegacyComponent>::legacy_name()
+                    .as_str()
+                    .into()
+            }
+
+            fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+                <Self as re_log_types::LegacyComponent>::field()
+                    .data_type()
+                    .clone()
+            }
+
+            fn try_to_arrow_opt<'a>(
+                data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+                _extension_wrapper: Option<&str>,
+            ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
+            where
+                Self: Clone + 'a,
+            {
+                let input = data.into_iter().map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    datum.map(|d| d.into_owned())
+                });
+
+                let vec: Vec<_> = input.collect();
+
+                let arrow = arrow2_convert::serialize::TryIntoArrow::try_into_arrow(vec.iter())
+                    .map_err(|err| {
+                        re_types::SerializationError::ArrowConvertFailure(err.to_string())
+                    })?;
+
+                Ok(arrow)
+            }
+
+            fn try_from_arrow_opt(
+                data: &dyn arrow2::array::Array,
+            ) -> re_types::DeserializationResult<Vec<Option<Self>>>
+            where
+                Self: Sized,
+            {
+                use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
+
+                let native = arrow_array_deserialize_iterator(data)
+                    .map_err(|err| {
+                        re_types::DeserializationError::ArrowConvertFailure(err.to_string())
+                    })?
+                    .collect();
+
+                Ok(native)
+            }
+        }
+
+        impl re_types::Component for $entity {}
+
+        impl<'a> From<$entity> for ::std::borrow::Cow<'a, $entity> {
+            #[inline]
+            fn from(value: $entity) -> Self {
+                std::borrow::Cow::Owned(value)
+            }
+        }
+
+        impl<'a> From<&'a $entity> for ::std::borrow::Cow<'a, $entity> {
+            #[inline]
+            fn from(value: &'a $entity) -> Self {
+                std::borrow::Cow::Borrowed(value)
+            }
+        }
     };
 }
