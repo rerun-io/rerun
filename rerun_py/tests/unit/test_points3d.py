@@ -265,7 +265,9 @@ def test_points3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.points == rr_cmp.Point3DArray.from_similar([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]] if non_empty(points) else [])
+        assert arch.points == rr_cmp.Point3DArray.from_similar(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]] if non_empty(points) else []
+        )
         assert arch.radii == rr_cmp.RadiusArray.from_similar([42, 43] if non_empty(radii) else [])
         assert arch.colors == rr_cmp.ColorArray.from_similar([0xAA0000CC, 0x00BB00DD] if non_empty(colors) else [])
         assert arch.labels == rr_cmp.LabelArray.from_similar(["hello", "friend"] if non_empty(labels) else [])
