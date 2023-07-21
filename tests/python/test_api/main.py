@@ -147,44 +147,101 @@ def transform_test(experimental_api: bool) -> None:
     # Log a disconnected space (this doesn't do anything here, but can be used to force a new space)
     rr.log_disconnected_space("transform_test/disconnected")
 
-    # Log scale along the x axis only.
-    rr.log_transform3d("transform_test/x_scaled", rr.Scale3D((3, 1, 1)))
+    if experimental_api:
+        import rerun.experimental as rr_exp
+        from rerun.experimental import dt as rrd
 
-    # Log a rotation around the z axis.
-    rr.log_transform3d("transform_test/z_rotated_object", rr.RotationAxisAngle((1, 0, 0), degrees=45))
+        # Log scale along the x axis only.
+        rr_exp.log_any("transform_test/x_scaled", rrd.TranslationRotationScale3D(scale=(3, 1, 1)))
 
-    # Log a transform from parent to child with a translation and skew along y and x.
-    rr.log_transform3d(
-        "transform_test/child_from_parent_translation",
-        rr.Translation3D((-1, 0, 0)),
-        from_parent=True,
-    )
+        # Log a rotation around the z axis.
+        rr_exp.log_any(
+            "transform_test/z_rotated_object",
+            rrd.TranslationRotationScale3D(rotation=rrd.RotationAxisAngle(axis=(1, 0, 0), angle=rrd.Angle(deg=45))),
+        )
 
-    # Log translation only.
-    rr.log_transform3d("transform_test/translation", rr.Translation3D((2, 0, 0)))
-    rr.log_transform3d("transform_test/translation2", rr.TranslationAndMat3((3, 0, 0)))
+        # Log a transform from parent to child with a translation and skew along y and x.
+        rr_exp.log_any(
+            "transform_test/child_from_parent_translation",
+            rrd.TranslationRotationScale3D(translation=(-1, 0, 0), from_parent=True),
+        )
 
-    # Log uniform scale followed by translation along the Y-axis.
-    rr.log_transform3d("transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0, 0, 1], scale=3))
+        # Log translation only.
+        rr_exp.log_any("transform_test/translation", rrd.TranslationRotationScale3D(translation=(2, 0, 0)))
+        rr_exp.log_any("transform_test/translation2", rrd.TranslationAndMat3x3(translation=(3, 0, 0)))
 
-    # Log translation + rotation, also called a rigid transform.
-    rr.log_transform3d("transform_test/rigid3", rr.Rigid3D([1, 0, 1], rr.RotationAxisAngle((0, 1, 0), radians=1.57)))
+        # Log uniform scale followed by translation along the Y-axis.
+        rr_exp.log_any(
+            "transform_test/scaled_and_translated_object",
+            rrd.TranslationRotationScale3D(translation=[0, 0, 1], scale=3),
+        )
 
-    # Log translation, rotation & scale all at once.
-    rr.log_transform3d(
-        "transform_test/transformed",
-        rr.TranslationRotationScale3D(
-            translation=[2, 0, 1],
-            rotation=rr.RotationAxisAngle((0, 0, 1), degrees=20),
-            scale=2,
-        ),
-    )
+        # Log translation + rotation, also called a rigid transform.
+        rr_exp.log_any(
+            "transform_test/rigid3",
+            rrd.TranslationRotationScale3D(
+                translation=[1, 0, 1], rotation=rrd.RotationAxisAngle(axis=(0, 1, 0), angle=rrd.Angle(rad=1.57))
+            ),
+        )
 
-    # Log a transform with translation and shear along x.
-    rr.log_transform3d(
-        "transform_test/shear",
-        rr.TranslationAndMat3((3, 0, 1), np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
-    )
+        # Log translation, rotation & scale all at once.
+        rr_exp.log_any(
+            "transform_test/transformed",
+            rrd.TranslationRotationScale3D(
+                translation=[2, 0, 1],
+                rotation=rrd.RotationAxisAngle(axis=(0, 0, 1), angle=rrd.Angle(deg=20)),
+                scale=2,
+            ),
+        )
+
+        # Log a transform with translation and shear along x.
+        rr_exp.log_any(
+            "transform_test/shear",
+            rrd.TranslationAndMat3x3(translation=(3, 0, 1), matrix=np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
+        )
+    else:
+        # Log scale along the x axis only.
+        rr.log_transform3d("transform_test/x_scaled", rr.Scale3D((3, 1, 1)))
+
+        # Log a rotation around the z axis.
+        rr.log_transform3d("transform_test/z_rotated_object", rr.RotationAxisAngle((1, 0, 0), degrees=45))
+
+        # Log a transform from parent to child with a translation and skew along y and x.
+        rr.log_transform3d(
+            "transform_test/child_from_parent_translation",
+            rr.Translation3D((-1, 0, 0)),
+            from_parent=True,
+        )
+
+        # Log translation only.
+        rr.log_transform3d("transform_test/translation", rr.Translation3D((2, 0, 0)))
+        rr.log_transform3d("transform_test/translation2", rr.TranslationAndMat3((3, 0, 0)))
+
+        # Log uniform scale followed by translation along the Y-axis.
+        rr.log_transform3d(
+            "transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0, 0, 1], scale=3)
+        )
+
+        # Log translation + rotation, also called a rigid transform.
+        rr.log_transform3d(
+            "transform_test/rigid3", rr.Rigid3D([1, 0, 1], rr.RotationAxisAngle((0, 1, 0), radians=1.57))
+        )
+
+        # Log translation, rotation & scale all at once.
+        rr.log_transform3d(
+            "transform_test/transformed",
+            rr.TranslationRotationScale3D(
+                translation=[2, 0, 1],
+                rotation=rr.RotationAxisAngle((0, 0, 1), degrees=20),
+                scale=2,
+            ),
+        )
+
+        # Log a transform with translation and shear along x.
+        rr.log_transform3d(
+            "transform_test/shear",
+            rr.TranslationAndMat3((3, 0, 1), np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
+        )
 
 
 def run_2d_lines(experimental_api: bool) -> None:
@@ -322,28 +379,55 @@ def transforms_rigid_3d(experimental_api: bool) -> None:
         time = i / 120.0
         rr.set_time_seconds("sim_time", time)
 
-        rr.log_transform3d(
-            "transforms3d/sun/planet",
-            rr.TranslationRotationScale3D(
-                [
-                    math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
-                    math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
-                    0.0,
-                ],
-                rr.RotationAxisAngle((1, 0, 0), degrees=20),
-            ),
-        )
-        rr.log_transform3d(
-            "transforms3d/sun/planet/moon",
-            rr.TranslationRotationScale3D(
-                [
-                    math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
-                    math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
-                    0.0,
-                ]
-            ),
-            from_parent=True,
-        )
+        if experimental_api:
+            import rerun.experimental as rr_exp
+            from rerun.experimental import dt as rrd
+
+            rr_exp.log_any(
+                "transforms3d/sun/planet",
+                rrd.TranslationRotationScale3D(
+                    translation=[
+                        math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
+                        math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
+                        0.0,
+                    ],
+                    rotation=rrd.RotationAxisAngle(axis=(1, 0, 0), angle=rrd.Angle(deg=20)),
+                ),
+            )
+            rr_exp.log_any(
+                "transforms3d/sun/planet/moon",
+                rrd.TranslationRotationScale3D(
+                    translation=[
+                        math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
+                        math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
+                        0.0,
+                    ],
+                    from_parent=True,
+                ),
+            )
+        else:
+            rr.log_transform3d(
+                "transforms3d/sun/planet",
+                rr.TranslationRotationScale3D(
+                    [
+                        math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
+                        math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
+                        0.0,
+                    ],
+                    rr.RotationAxisAngle((1, 0, 0), degrees=20),
+                ),
+            )
+            rr.log_transform3d(
+                "transforms3d/sun/planet/moon",
+                rr.TranslationRotationScale3D(
+                    [
+                        math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
+                        math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
+                        0.0,
+                    ]
+                ),
+                from_parent=True,
+            )
 
 
 def run_bounding_box(experimental_api: bool) -> None:
