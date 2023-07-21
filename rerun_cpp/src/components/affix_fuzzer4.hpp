@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "../datatypes/affix_fuzzer1.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
-
-#include "../datatypes/affix_fuzzer1.hpp"
 
 namespace arrow {
     class DataType;

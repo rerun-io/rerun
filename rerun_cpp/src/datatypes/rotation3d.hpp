@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "../datatypes/quaternion.hpp"
+#include "../datatypes/rotation_axis_angle.hpp"
+
 #include <cstdint>
 #include <cstring>
 #include <utility>
-
-#include "../datatypes/quaternion.hpp"
-#include "../datatypes/rotation_axis_angle.hpp"
 
 namespace rr {
     namespace datatypes {

@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include "../datatypes/vec3d.hpp"
+
 #include <cstdint>
 #include <cstring>
 #include <utility>
-
-#include "../datatypes/vec3d.hpp"
 
 namespace rr {
     namespace datatypes {

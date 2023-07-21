@@ -28,10 +28,13 @@ impl quote::ToTokens for Includes {
             quote! { #hash include #name #NEWLINE_TOKEN }
         });
 
+        // Put the local includes first. This is less common but makes it easier for us to early detect
+        // when a header relies on some system includes being present.
+        // (all our headers should be standalone, i.e. don't assume something else was included before them)
         quote! {
-            #(#system)*
-            #NEWLINE_TOKEN
             #(#local)*
+            #NEWLINE_TOKEN
+            #(#system)*
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
         }

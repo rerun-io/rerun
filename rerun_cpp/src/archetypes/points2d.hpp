@@ -3,10 +3,6 @@
 
 #pragma once
 
-#include <cstdint>
-#include <optional>
-#include <vector>
-
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/draw_order.hpp"
@@ -15,6 +11,10 @@
 #include "../components/label.hpp"
 #include "../components/point2d.hpp"
 #include "../components/radius.hpp"
+
+#include <cstdint>
+#include <optional>
+#include <vector>
 
 namespace rr {
     namespace archetypes {

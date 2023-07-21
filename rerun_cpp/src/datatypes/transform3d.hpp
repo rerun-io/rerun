@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "../datatypes/translation_and_mat3x3.hpp"
+#include "../datatypes/translation_rotation_scale3d.hpp"
+
 #include <cstdint>
 #include <cstring>
 #include <utility>
-
-#include "../datatypes/translation_and_mat3x3.hpp"
-#include "../datatypes/translation_rotation_scale3d.hpp"
 
 namespace rr {
     namespace datatypes {

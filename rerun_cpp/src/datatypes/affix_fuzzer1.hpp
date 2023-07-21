@@ -3,13 +3,13 @@
 
 #pragma once
 
+#include "../datatypes/flattened_scalar.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
-
-#include "../datatypes/flattened_scalar.hpp"
 
 namespace arrow {
     class DataType;
