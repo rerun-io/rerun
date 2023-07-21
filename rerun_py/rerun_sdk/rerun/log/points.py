@@ -5,26 +5,13 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 
-from rerun import bindings
-from rerun.components.annotation import ClassIdArray
-from rerun.components.color import ColorRGBAArray
-from rerun.components.draw_order import DrawOrderArray
-from rerun.components.instance import InstanceArray
-from rerun.components.label import LabelArray
-from rerun.components.point import Point3DArray
-from rerun.components.radius import RadiusArray
 from rerun.log import (
     Color,
     Colors,
     OptionalClassIds,
     OptionalKeyPointIds,
-    _normalize_colors,
-    _normalize_ids,
-    _normalize_labels,
-    _normalize_radii,
 )
 from rerun.log.error_utils import _send_warning
-from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -98,6 +85,8 @@ def log_point(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
+    from rerun.experimental import Points2D, Points3D, log_any
+
     recording = RecordingStream.to_native(recording)
 
     if keypoint_id is not None and class_id is None:
@@ -105,59 +94,31 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    # NOTE: Point2D goes through the new API!
-    if position is not None and position.size == 2:
-        from rerun.experimental import Points2D, log_any
-
-        p = Points2D(
-            points=position,
-            radii=radius,
-            colors=color,
-            labels=label,
-            draw_order=draw_order,
-            class_ids=class_id,
-            keypoint_ids=keypoint_id,
-        )
-        log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
-        return
-
-    instanced: dict[str, Any] = {}
-    splats: dict[str, Any] = {}
-
     if position is not None:
-        if position.size == 3:
-            instanced["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
+        if position.size == 2:
+            p = Points2D(
+                points=position,
+                radii=radius,
+                colors=color,
+                labels=label,
+                draw_order=draw_order,
+                class_ids=class_id,
+                keypoint_ids=keypoint_id,
+            )
+            return log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
+        elif position.size == 3:
+            p = Points3D(
+                points=position,
+                radii=radius,
+                colors=color,
+                labels=label,
+                draw_order=draw_order,
+                class_ids=class_id,
+                keypoint_ids=keypoint_id,
+            )
+            return log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
         else:
-            raise TypeError("Position must have a total size of 3")
-
-    if color is not None:
-        colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
-
-    if radius:
-        radii = _normalize_radii([radius])
-        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
-
-    if label:
-        instanced["rerun.label"] = LabelArray.new([label])
-
-    if class_id:
-        class_ids = _normalize_ids([class_id])
-        instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
-
-    if draw_order is not None:
-        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
-
-    if ext:
-        _add_extension_components(instanced, splats, ext, None)
-
-    if splats:
-        splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+            raise TypeError("Position must have a total size of 2 or 3")
 
 
 @log_decorator
@@ -232,6 +193,8 @@ def log_points(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import Points2D, Points3D, log_any
+
     recording = RecordingStream.to_native(recording)
 
     if keypoint_ids is not None and class_ids is None:
@@ -248,73 +211,31 @@ def log_points(
         except ValueError:
             _send_warning("Only integer identifiers supported", 1)
 
-    # NOTE: Point2D goes through the new API!
-    if positions.any() and positions.shape[1] == 2:
-        from rerun.experimental import Points2D, log_any
-
-        # TODO: but then we probably don't support empty positions anymore...
-        p = Points2D(
-            points=positions,
-            radii=radii,
-            colors=colors,
-            labels=labels,
-            draw_order=draw_order,
-            class_ids=class_ids,
-            keypoint_ids=keypoint_ids,
-            instance_keys=identifiers_np,
-        )
-        log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
-        return
-
-    colors = _normalize_colors(colors)
-    radii = _normalize_radii(radii)
-    labels = _normalize_labels(labels)
-    class_ids = _normalize_ids(class_ids)
-    keypoint_ids = _normalize_ids(keypoint_ids)
-
-    # 0 = instanced, 1 = splat
-    comps = [{}, {}]  # type: ignore[var-annotated]
-
     if positions.any():
-        if positions.shape[1] == 3:
-            comps[0]["rerun.point3d"] = Point3DArray.from_numpy(positions)
+        if positions.shape[1] == 2:
+            # TODO: but then we probably don't support empty positions anymore...
+            p = Points2D(
+                points=positions,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
+                keypoint_ids=keypoint_ids,
+                instance_keys=identifiers_np,
+            )
+            return log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
+        elif positions.shape[1] == 3:
+            p = Points3D(
+                points=positions,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
+                keypoint_ids=keypoint_ids,
+                instance_keys=identifiers_np,
+            )
+            return log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
         else:
-            raise TypeError("Positions should be Nx3")
-
-    if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
-
-    if len(colors):
-        is_splat = len(colors.shape) == 1
-        if is_splat:
-            colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
-
-    if len(radii):
-        is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
-
-    if len(labels):
-        is_splat = len(labels) == 1
-        comps[is_splat]["rerun.label"] = LabelArray.new(labels)
-
-    if len(class_ids):
-        is_splat = len(class_ids) == 1
-        comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
-
-    if len(keypoint_ids):
-        is_splat = len(keypoint_ids) == 1
-        comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
-
-    if draw_order is not None:
-        comps[True]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
-
-    if ext:
-        _add_extension_components(comps[0], comps[1], ext, identifiers_np)
-
-    if comps[1]:
-        comps[1]["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless, recording=recording)
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless, recording=recording)
+            raise TypeError("Positions should be Nx2 or Nx3")

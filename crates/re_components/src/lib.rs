@@ -137,7 +137,7 @@ lazy_static! {
         <ViewCoordinates as LegacyComponent>::field(),
         <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
-        Field::new(Point3D::name().as_str(), Point2D::to_arrow_datatype(), false),
+        Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),
     ];
 }
 
