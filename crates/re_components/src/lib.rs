@@ -33,7 +33,6 @@ mod mat;
 mod mesh3d;
 mod pinhole;
 mod quaternion;
-mod radius;
 mod rect;
 mod scalar;
 mod tensor;
@@ -67,7 +66,6 @@ pub use self::{
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},
     pinhole::Pinhole,
     quaternion::Quaternion,
-    radius::Radius,
     rect::Rect2D,
     scalar::{Scalar, ScalarPlotProps},
     tensor::{
@@ -103,7 +101,7 @@ pub mod external {
 
 // ----------------------------------------------------------------------------
 
-use re_types::components::{DrawOrder, Label, Point2D, Point3D};
+use re_types::components::{DrawOrder, Label, Point2D, Point3D, Radius};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
@@ -120,7 +118,6 @@ lazy_static! {
         <Mesh3D as LegacyComponent>::field(),
         <Pinhole as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
-        <Radius as LegacyComponent>::field(),
         <Rect2D as LegacyComponent>::field(),
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
@@ -136,6 +133,7 @@ lazy_static! {
         Field::new(Label::name().as_str(), Label::to_arrow_datatype(), false),
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
         Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),
+        Field::new(Radius::name().as_str(), Radius::to_arrow_datatype(), false),
     ];
 }
 

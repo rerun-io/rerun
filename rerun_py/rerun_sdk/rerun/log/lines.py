@@ -11,7 +11,6 @@ from rerun.components.color import ColorRGBAArray
 from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
-from rerun.components.radius import RadiusArray
 from rerun.log import Color, Colors, _normalize_colors, _normalize_radii
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
@@ -114,8 +113,9 @@ def log_line_strip(
 
     # We store the stroke_width in radius
     if stroke_width:
+        from rerun.experimental import cmp as rrc
         radii = _normalize_radii([stroke_width / 2])
-        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -223,8 +223,9 @@ def log_line_strips_2d(
 
     # We store the stroke_width in radius
     if len(radii):
+        from rerun.experimental import cmp as rrc
         is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
+        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if draw_order is not None:
         comps[1]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -331,8 +332,9 @@ def log_line_strips_3d(
 
     # We store the stroke_width in radius
     if len(radii):
+        from rerun.experimental import cmp as rrc
         is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
+        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if draw_order is not None:
         comps[1]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -430,8 +432,9 @@ def log_line_segments(
 
     # We store the stroke_width in radius
     if stroke_width:
+        from rerun.experimental import cmp as rrc
         radii = _normalize_radii([stroke_width / 2])
-        splats["rerun.radius"] = RadiusArray.from_numpy(radii)
+        splats["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)

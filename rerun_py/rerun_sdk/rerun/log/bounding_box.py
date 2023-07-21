@@ -12,7 +12,6 @@ from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.quaternion import QuaternionArray
-from rerun.components.radius import RadiusArray
 from rerun.components.vec import Vec3DArray
 from rerun.log import (
     Color,
@@ -120,8 +119,9 @@ def log_obb(
 
     # We store the stroke_width in radius
     if stroke_width:
+        from rerun.experimental import cmp as rrc
         radii = _normalize_radii([stroke_width / 2])
-        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if label:
         instanced["rerun.label"] = LabelArray.new([label])
@@ -242,8 +242,9 @@ def log_obbs(
         comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if len(radii):
+        from rerun.experimental import cmp as rrc
         is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
+        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if len(labels):
         is_splat = len(labels) == 1

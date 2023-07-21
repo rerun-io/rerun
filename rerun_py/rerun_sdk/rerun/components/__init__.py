@@ -17,7 +17,6 @@ all = [
     "label",
     "pinhole",
     "quaternion",
-    "radius",
     "rect2d",
     "scalar_plot_props",
     "scalar",

@@ -1,8 +1,11 @@
-use re_components::{ColorRGBA, LineStrip2D, Radius};
+use re_components::{ColorRGBA, LineStrip2D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
-use re_types::{components::InstanceKey, Loggable as _};
+use re_types::{
+    components::{InstanceKey, Radius},
+    Loggable as _,
+};
 use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartSystem, ViewQuery, ViewerContext,

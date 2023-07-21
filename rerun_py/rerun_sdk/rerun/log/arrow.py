@@ -10,7 +10,6 @@ from rerun.components.arrow import Arrow3DArray
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
-from rerun.components.radius import RadiusArray
 from rerun.log import Color, _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
@@ -86,8 +85,9 @@ def log_arrow(
         instanced["rerun.label"] = LabelArray.new([label])
 
     if width_scale:
+        from rerun.experimental import cmp as rrc
         radii = _normalize_radii([width_scale / 2])
-        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)

@@ -8,7 +8,6 @@ from rerun import bindings
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
-from rerun.components.radius import RadiusArray
 from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
 from rerun.log import Color, _normalize_colors
 from rerun.log.extension_components import _add_extension_components
@@ -135,7 +134,8 @@ def log_scalar(
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if radius:
-        instanced["rerun.radius"] = RadiusArray.from_numpy(np.array([radius]))
+        from rerun.experimental import cmp as rrc
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(np.array([radius]))
 
     if scattered:
         props = [{"scattered": scattered}]
