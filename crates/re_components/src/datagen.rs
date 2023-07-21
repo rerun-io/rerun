@@ -23,12 +23,12 @@ pub fn build_some_labels(len: usize) -> Vec<String> {
 }
 
 /// Create `len` dummy `Point2D`
-pub fn build_some_point2d(len: usize) -> Vec<crate::LegacyPoint2D> {
+pub fn build_some_point2d(len: usize) -> Vec<crate::Point2D> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
     (0..len)
-        .map(|_| crate::LegacyPoint2D::new(rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)))
+        .map(|_| crate::Point2D::new(rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)))
         .collect()
 }
 
@@ -84,7 +84,7 @@ pub fn build_some_instances_from(instances: impl IntoIterator<Item = u64>) -> Ve
 /// Crafts a simple but interesting [`re_log_types::DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
 pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
-    use crate::{ColorRGBA, Label, LegacyPoint2D};
+    use crate::{ColorRGBA, Label, Point2D};
     use re_log_types::{DataRow, DataTable, RowId, TableId, TimePoint};
 
     let table_id = TableId::random();
@@ -106,7 +106,7 @@ pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
 
     let row0 = {
         let num_instances = 2;
-        let points: &[LegacyPoint2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+        let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
         let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
         let labels: &[Label] = &[];
 

@@ -86,9 +86,9 @@ fn data_table_sizes_basics() {
     // struct
     let mut cell = DataCell::from_native(
         [
-            re_components::LegacyPoint2D::new(42.0, 666.0),
-            re_components::LegacyPoint2D::new(42.0, 666.0),
-            re_components::LegacyPoint2D::new(42.0, 666.0),
+            re_components::Point2D::new(42.0, 666.0),
+            re_components::Point2D::new(42.0, 666.0),
+            re_components::Point2D::new(42.0, 666.0),
         ]
         .as_slice(),
     );
@@ -100,7 +100,7 @@ fn data_table_sizes_basics() {
     );
     expect(
         DataCell::from_arrow(
-            re_components::LegacyPoint2D::name(),
+            re_components::Point2D::name(),
             cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
@@ -124,7 +124,7 @@ fn data_table_sizes_basics() {
     );
     expect(
         DataCell::from_arrow(
-            re_components::LegacyPoint2D::name(),
+            re_components::Point2D::name(),
             cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
@@ -148,7 +148,7 @@ fn data_table_sizes_basics() {
     );
     expect(
         DataCell::from_arrow(
-            re_components::LegacyPoint2D::name(),
+            re_components::Point2D::name(),
             cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows

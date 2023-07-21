@@ -1,7 +1,7 @@
 use crossbeam::{channel::TryRecvError, select};
 use itertools::Itertools as _;
 
-use re_components::{ColorRGBA, Label, LegacyPoint2D};
+use re_components::{ColorRGBA, Label, Point2D};
 use re_log_types::{
     DataRow, DataTableBatcher, DataTableBatcherConfig, RowId, SizeBytes, TimePoint, Timeline,
 };
@@ -281,7 +281,7 @@ fn create_table() -> DataTable {
 
     let row0 = {
         let num_instances = 2;
-        let points: &[LegacyPoint2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+        let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
         let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
         let labels: &[Label] = &[];
 

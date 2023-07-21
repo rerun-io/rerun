@@ -69,7 +69,7 @@ pub use self::{
     mat::Mat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},
     pinhole::Pinhole,
-    point::{LegacyPoint2D, Point3D},
+    point::Point3D,
     quaternion::Quaternion,
     radius::Radius,
     rect::Rect2D,

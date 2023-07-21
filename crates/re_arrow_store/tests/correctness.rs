@@ -246,7 +246,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     let df_expected = {
         let instances =
             InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)], None);
-        let points = Point2D::to_arrow(points.into_iter().map(|p| Point2D::new(p.x, p.y)), None);
+        let points = Point2D::to_arrow(points, None);
         let colors = ColorRGBA::to_arrow(colors, None);
 
         DataFrame::new(vec![

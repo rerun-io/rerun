@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use re_components::{ColorRGBA, LegacyPoint2D};
+use re_components::{ColorRGBA, Point2D};
 use re_query::{ComponentWithInstances, EntityView};
 use re_types::components::InstanceKey;
 
@@ -7,15 +7,15 @@ use re_types::components::InstanceKey;
 fn basic_single_iter() {
     let instance_keys = InstanceKey::from_iter(0..2);
     let points = [
-        LegacyPoint2D { x: 1.0, y: 2.0 }, //
-        LegacyPoint2D { x: 3.0, y: 4.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
     ];
 
-    let component = ComponentWithInstances::from_native(instance_keys, &points);
+    let component = ComponentWithInstances::from_native(instance_keys, points);
 
     let results = itertools::izip!(
         points.into_iter(),
-        component.iter_values::<LegacyPoint2D>().unwrap()
+        component.iter_values::<Point2D>().unwrap()
     )
     .collect_vec();
     assert_eq!(results.len(), 2);
@@ -29,9 +29,9 @@ fn implicit_joined_iter() {
     let instance_keys = InstanceKey::from_iter(0..3);
 
     let points = [
-        LegacyPoint2D { x: 1.0, y: 2.0 }, //
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-        LegacyPoint2D { x: 5.0, y: 6.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
     ];
 
     let colors = [
@@ -66,9 +66,9 @@ fn implicit_primary_joined_iter() {
     let point_ids = InstanceKey::from_iter(0..3);
 
     let points = [
-        LegacyPoint2D { x: 1.0, y: 2.0 }, //
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-        LegacyPoint2D { x: 5.0, y: 6.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
     ];
 
     let color_ids = [
@@ -111,9 +111,9 @@ fn implicit_component_joined_iter() {
     ];
 
     let points = [
-        LegacyPoint2D { x: 1.0, y: 2.0 }, //
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-        LegacyPoint2D { x: 5.0, y: 6.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
     ];
 
     let color_ids = InstanceKey::from_iter(0..5);
@@ -157,10 +157,10 @@ fn complex_joined_iter() {
     ];
 
     let points = vec![
-        LegacyPoint2D { x: 1.0, y: 2.0 }, //
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-        LegacyPoint2D { x: 5.0, y: 6.0 },
-        LegacyPoint2D { x: 7.0, y: 8.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
+        Point2D::new(7.0, 8.0),
     ];
 
     let color_ids = vec![
@@ -205,19 +205,19 @@ fn complex_joined_iter() {
 fn single_visit() {
     let instance_keys = InstanceKey::from_iter(0..4);
     let points = [
-        LegacyPoint2D { x: 1.0, y: 2.0 },
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-        LegacyPoint2D { x: 5.0, y: 6.0 },
-        LegacyPoint2D { x: 7.0, y: 8.0 },
+        Point2D::new(1.0, 2.0),
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
+        Point2D::new(7.0, 8.0),
     ];
 
     let entity_view = EntityView::from_native((&instance_keys, &points));
 
     let mut instance_key_out = Vec::<InstanceKey>::new();
-    let mut points_out = Vec::<LegacyPoint2D>::new();
+    let mut points_out = Vec::<Point2D>::new();
 
     entity_view
-        .visit1(|instance_key: InstanceKey, point: LegacyPoint2D| {
+        .visit1(|instance_key: InstanceKey, point: Point2D| {
             instance_key_out.push(instance_key);
             points_out.push(point);
         })
@@ -231,11 +231,11 @@ fn single_visit() {
 #[test]
 fn joint_visit() {
     let points = vec![
-        LegacyPoint2D { x: 1.0, y: 2.0 }, //
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-        LegacyPoint2D { x: 5.0, y: 6.0 },
-        LegacyPoint2D { x: 7.0, y: 8.0 },
-        LegacyPoint2D { x: 9.0, y: 10.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
+        Point2D::new(7.0, 8.0),
+        Point2D::new(9.0, 10.0),
     ];
 
     let point_ids = InstanceKey::from_iter(0..5);
@@ -255,16 +255,14 @@ fn joint_visit() {
         (&color_ids, &colors),
     );
 
-    let mut points_out = Vec::<LegacyPoint2D>::new();
+    let mut points_out = Vec::<Point2D>::new();
     let mut colors_out = Vec::<Option<ColorRGBA>>::new();
 
     entity_view
-        .visit2(
-            |_: InstanceKey, point: LegacyPoint2D, color: Option<ColorRGBA>| {
-                points_out.push(point);
-                colors_out.push(color);
-            },
-        )
+        .visit2(|_: InstanceKey, point: Point2D, color: Option<ColorRGBA>| {
+            points_out.push(point);
+            colors_out.push(color);
+        })
         .ok()
         .unwrap();
 

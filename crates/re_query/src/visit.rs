@@ -7,15 +7,15 @@
 //! # Usage
 //! ```
 //! # use re_query::EntityView;
-//! # use re_components::{ColorRGBA, LegacyPoint2D};
+//! # use re_components::{ColorRGBA, Point2D};
 //! # use re_types::components::InstanceKey;
 //!
 //! let instances = InstanceKey::from_iter(0..3);
 //!
 //! let points = [
-//!     LegacyPoint2D { x: 1.0, y: 2.0 },
-//!     LegacyPoint2D { x: 3.0, y: 4.0 },
-//!     LegacyPoint2D { x: 5.0, y: 6.0 },
+//!     Point2D::new(1.0, 2.0),
+//!     Point2D::new(3.0, 4.0),
+//!     Point2D::new(5.0, 6.0),
 //! ];
 //!
 //! let colors = [
@@ -29,11 +29,11 @@
 //!     (&instances, &colors),
 //! );
 //!
-//! let mut points_out = Vec::<LegacyPoint2D>::new();
+//! let mut points_out = Vec::<Point2D>::new();
 //! let mut colors_out = Vec::<ColorRGBA>::new();
 //!
 //! entity_view
-//!     .visit2(|_: InstanceKey, point: LegacyPoint2D, color: Option<ColorRGBA>| {
+//!     .visit2(|_: InstanceKey, point: Point2D, color: Option<ColorRGBA>| {
 //!         points_out.push(point);
 //!         colors_out.push(color.unwrap());
 //!     })

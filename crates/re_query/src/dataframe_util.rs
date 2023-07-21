@@ -213,13 +213,13 @@ impl<A: Archetype> ArchetypeView<A> {
 
 #[test]
 fn test_df_builder() {
-    use re_components::{ColorRGBA, LegacyPoint2D};
+    use re_components::{ColorRGBA, Point2D};
 
     let points = vec![
-        Some(LegacyPoint2D { x: 1.0, y: 2.0 }),
-        Some(LegacyPoint2D { x: 3.0, y: 4.0 }),
-        Some(LegacyPoint2D { x: 5.0, y: 6.0 }),
-        Some(LegacyPoint2D { x: 7.0, y: 8.0 }),
+        Some(Point2D::new(1.0, 2.0)),
+        Some(Point2D::new(3.0, 4.0)),
+        Some(Point2D::new(5.0, 6.0)),
+        Some(Point2D::new(7.0, 8.0)),
     ];
 
     let colors = vec![
@@ -247,7 +247,7 @@ fn test_df_builder() {
     // └───────────┴────────────┘
 
     // Unnesting the struct makes it easier to validate the results.
-    let df = df.unnest([LegacyPoint2D::name()]).unwrap();
+    let df = df.unnest([Point2D::name()]).unwrap();
     // eprintln!("{df:?}");
     //
     // ┌─────┬─────┬────────────┐

@@ -1,7 +1,7 @@
 mod common;
 
 use re_arrow_store::DataStore;
-use re_components::{datagen::build_frame_nr, ColorRGBA, LegacyPoint2D};
+use re_components::{datagen::build_frame_nr, ColorRGBA, Point2D};
 use re_log_types::{DataRow, RowId};
 use re_query::query_entity_with_primary;
 use re_types::{components::InstanceKey, Loggable};
@@ -14,10 +14,7 @@ fn simple_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with implicit instances
-    let points = vec![
-        LegacyPoint2D { x: 1.0, y: 2.0 },
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-    ];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
@@ -36,7 +33,7 @@ fn simple_query() {
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let entity_view = query_entity_with_primary::<LegacyPoint2D>(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
@@ -61,10 +58,7 @@ fn simple_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(LegacyPoint2D { x: 1.0, y: 2.0 }),
-            Some(LegacyPoint2D { x: 3.0, y: 4.0 }),
-        ];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
@@ -88,10 +82,7 @@ fn timeless_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with implicit instances
-    let points = vec![
-        LegacyPoint2D { x: 1.0, y: 2.0 },
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-    ];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
@@ -105,7 +96,7 @@ fn timeless_query() {
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let entity_view = query_entity_with_primary::<LegacyPoint2D>(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
@@ -130,10 +121,7 @@ fn timeless_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(LegacyPoint2D { x: 1.0, y: 2.0 }),
-            Some(LegacyPoint2D { x: 3.0, y: 4.0 }),
-        ];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
@@ -157,10 +145,7 @@ fn no_instance_join_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with an implicit instance
-    let points = vec![
-        LegacyPoint2D { x: 1.0, y: 2.0 },
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-    ];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
@@ -172,7 +157,7 @@ fn no_instance_join_query() {
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let entity_view = query_entity_with_primary::<LegacyPoint2D>(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
@@ -197,10 +182,7 @@ fn no_instance_join_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(LegacyPoint2D { x: 1.0, y: 2.0 }),
-            Some(LegacyPoint2D { x: 3.0, y: 4.0 }),
-        ];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
         let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
@@ -224,17 +206,14 @@ fn missing_column_join_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with an implicit instance
-    let points = vec![
-        LegacyPoint2D { x: 1.0, y: 2.0 },
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-    ];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let entity_view = query_entity_with_primary::<LegacyPoint2D>(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
@@ -259,10 +238,7 @@ fn missing_column_join_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(LegacyPoint2D { x: 1.0, y: 2.0 }),
-            Some(LegacyPoint2D { x: 3.0, y: 4.0 }),
-        ];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
         let expected = df_builder2(&instances, &points).unwrap();
 
         //eprintln!("{df:?}");
@@ -285,10 +261,7 @@ fn splatted_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with implicit instances
-    let points = vec![
-        LegacyPoint2D { x: 1.0, y: 2.0 },
-        LegacyPoint2D { x: 3.0, y: 4.0 },
-    ];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
@@ -307,7 +280,7 @@ fn splatted_query() {
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let entity_view = query_entity_with_primary::<LegacyPoint2D>(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
@@ -332,10 +305,7 @@ fn splatted_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(LegacyPoint2D { x: 1.0, y: 2.0 }),
-            Some(LegacyPoint2D { x: 3.0, y: 4.0 }),
-        ];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
         let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
