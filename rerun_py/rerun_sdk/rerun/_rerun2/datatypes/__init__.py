@@ -38,6 +38,7 @@ from .fuzzy import (
 from .mat3x3 import Mat3x3, Mat3x3Array, Mat3x3ArrayLike, Mat3x3Like, Mat3x3Type
 from .mat4x4 import Mat4x4, Mat4x4Array, Mat4x4ArrayLike, Mat4x4Like, Mat4x4Type
 from .point2d import Point2D, Point2DArray, Point2DArrayLike, Point2DLike, Point2DType
+from .point3d import Point3D, Point3DArray, Point3DArrayLike, Point3DLike, Point3DType
 from .quaternion import Quaternion, QuaternionArray, QuaternionArrayLike, QuaternionLike, QuaternionType
 from .rotation3d import Rotation3D, Rotation3DArray, Rotation3DArrayLike, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
@@ -118,6 +119,11 @@ __all__ = [
     "Point2DArrayLike",
     "Point2DLike",
     "Point2DType",
+    "Point3D",
+    "Point3DArray",
+    "Point3DArrayLike",
+    "Point3DLike",
+    "Point3DType",
     "Quaternion",
     "QuaternionArray",
     "QuaternionArrayLike",

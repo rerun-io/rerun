@@ -8,6 +8,8 @@ mod mat3x3_ext;
 mod mat4x4;
 mod point2d;
 mod point2d_ext;
+mod point3d;
+mod point3d_ext;
 mod quaternion;
 mod quaternion_ext;
 mod rotation3d;
@@ -35,6 +37,7 @@ pub use self::fuzzy::{
 pub use self::mat3x3::Mat3x3;
 pub use self::mat4x4::Mat4x4;
 pub use self::point2d::Point2D;
+pub use self::point3d::Point3D;
 pub use self::quaternion::Quaternion;
 pub use self::rotation3d::Rotation3D;
 pub use self::rotation_axis_angle::RotationAxisAngle;

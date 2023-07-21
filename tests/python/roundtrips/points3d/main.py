@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Logs a `Points2D` archetype for roundtrip checks."""
+"""Logs a `Points3D` archetype for roundtrip checks."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import rerun.experimental as rr_exp
 
 
 def main() -> None:
-    points = np.array([1, 2, 3, 4], dtype=np.float32)
+    points = np.array([1, 2, 3, 4, 5, 6], dtype=np.float32)
     radii = np.array([0.42, 0.43], dtype=np.float32)
     colors = np.array(
         [
@@ -27,7 +27,7 @@ def main() -> None:
     keypoint_ids = np.array([2, 3], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
-    points2d = rr_exp.Points2D(
+    points3d = rr_exp.Points3D(
         points,
         radii=radii,
         colors=colors,
@@ -42,11 +42,9 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "roundtrip_points2d")
+    rr.script_setup(args, "roundtrip_points3d")
 
-    rr_exp.log_any("points2d", points2d)
-    # Hack to establish 2d view bounds
-    rr.log_rect("rect", [0, 0, 4, 6])
+    rr_exp.log_any("points3d", points3d)
 
     rr.script_teardown(args)
 
