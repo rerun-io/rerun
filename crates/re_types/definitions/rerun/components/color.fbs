@@ -20,7 +20,6 @@ struct Color (
   "attr.rerun.legacy_fqname": "rerun.colorrgba",
   "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct",
   order: 100
 ) {
   rgba: uint (order: 100);
