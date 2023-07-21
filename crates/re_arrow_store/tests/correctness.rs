@@ -217,7 +217,8 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         prelude::{DataFrame, JoinType},
         series::Series,
     };
-    use re_components::{ColorRGBA, Point2D};
+    use re_components::ColorRGBA;
+    use re_types::components::Point2D;
 
     let ent_path = EntityPath::from("this/that");
 

@@ -213,7 +213,8 @@ impl<A: Archetype> ArchetypeView<A> {
 
 #[test]
 fn test_df_builder() {
-    use re_components::{ColorRGBA, Point2D};
+    use re_components::ColorRGBA;
+    use re_types::components::Point2D;
 
     let points = vec![
         Some(Point2D::new(1.0, 2.0)),

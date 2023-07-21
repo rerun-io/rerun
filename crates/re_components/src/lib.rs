@@ -92,9 +92,6 @@ pub use self::tensor::{TensorImageLoadError, TensorImageSaveError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_path, FromFileError};
 
-// This is a component
-pub use re_types::components::{InstanceKey, Point2D, Point3D};
-
 // This is very convenient to re-export
 pub use re_log_types::LegacyComponent;
 
@@ -107,6 +104,8 @@ pub mod external {
 }
 
 // ----------------------------------------------------------------------------
+
+use re_types::components::{Point2D, Point3D};
 
 lazy_static! {
     //TODO(john): use a run-time type registry

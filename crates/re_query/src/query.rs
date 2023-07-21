@@ -13,7 +13,7 @@ use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_components::Point2D;
+/// # use re_types::components::Point2D;
 /// # use re_log_types::Timeline;
 /// # use re_types::Loggable as _;
 /// # let store = re_query::__populate_example_store();
@@ -86,7 +86,7 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_components::{Point2D, ColorRGBA};
+/// # use re_types::components::{Point2D, ColorRGBA};
 /// # use re_log_types::Timeline;
 /// # use re_types::Loggable as _;
 /// # let store = re_query::__populate_example_store();
@@ -241,7 +241,8 @@ pub fn query_archetype<A: Archetype>(
 
 /// Helper used to create an example store we can use for querying in doctests
 pub fn __populate_example_store() -> DataStore {
-    use re_components::{datagen::build_frame_nr, ColorRGBA, Point2D};
+    use re_components::{datagen::build_frame_nr, ColorRGBA};
+    use re_types::components::Point2D;
 
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
@@ -279,8 +280,8 @@ pub fn __populate_example_store() -> DataStore {
 #[test]
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
-    use re_components::Point2D;
     use re_log_types::Timeline;
+    use re_types::components::Point2D;
 
     let store = __populate_example_store();
 
@@ -312,8 +313,9 @@ fn simple_get_component() {
 #[test]
 fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
-    use re_components::{ColorRGBA, Point2D};
+    use re_components::ColorRGBA;
     use re_log_types::Timeline;
+    use re_types::components::Point2D;
 
     let store = __populate_example_store();
 

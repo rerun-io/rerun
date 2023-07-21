@@ -1,8 +1,7 @@
-use re_components::{Label, Point3D};
+use re_components::Label;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
-use re_types::archetypes::Points3D;
-use re_types::Archetype as _;
+use re_types::{archetypes::Points3D, components::Point3D, Archetype as _};
 use re_viewer_context::{
     ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,

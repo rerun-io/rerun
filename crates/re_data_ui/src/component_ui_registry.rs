@@ -45,8 +45,8 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_components::LineStrip2D>(&mut registry);
     add::<re_components::LineStrip3D>(&mut registry);
     add::<re_components::Mesh3D>(&mut registry);
-    // add::<re_components::Point2D>(&mut registry);
-    // add::<re_components::Point3D>(&mut registry);
+    // add::<re_types::components::Point2D>(&mut registry);
+    // add::<re_types::components::Point3D>(&mut registry);
     add::<re_components::Pinhole>(&mut registry);
     // add::<re_components::Quaternion>(&mut registry);
     // add::<re_components::Radius>(&mut registry);

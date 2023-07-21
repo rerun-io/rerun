@@ -5,9 +5,7 @@ use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_arrow_store::LatestAtQuery;
-use re_components::{
-    ColorRGBA, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor, TensorDataMeaning,
-};
+use re_components::{ColorRGBA, DecodedTensor, DrawOrder, Pinhole, Tensor, TensorDataMeaning};
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{ComponentName, EntityPathHash, TimeInt, Timeline};
 use re_query::{EntityView, QueryError};
@@ -15,7 +13,7 @@ use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,
 };
-use re_types::Loggable as _;
+use re_types::{components::InstanceKey, Loggable as _};
 use re_viewer_context::ViewContextCollection;
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,

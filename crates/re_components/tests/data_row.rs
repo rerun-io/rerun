@@ -1,6 +1,6 @@
-use re_components::{ColorRGBA, Label, Point2D};
+use re_components::{ColorRGBA, Label};
 use re_log_types::{DataRow, DataRowError, EntityPath, RowId, TimePoint};
-use re_types::Loggable as _;
+use re_types::{components::Point2D, Loggable as _};
 
 #[test]
 fn data_row_error_num_instances() {

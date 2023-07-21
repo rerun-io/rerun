@@ -1,10 +1,13 @@
 mod common;
 
 use re_arrow_store::{DataStore, TimeInt, TimeRange};
-use re_components::{datagen::build_frame_nr, ColorRGBA, Point2D};
+use re_components::{datagen::build_frame_nr, ColorRGBA};
 use re_log_types::{DataRow, EntityPath, RowId};
 use re_query::range_entity_with_primary;
-use re_types::{components::InstanceKey, Loggable as _};
+use re_types::{
+    components::{InstanceKey, Point2D},
+    Loggable as _,
+};
 
 #[test]
 fn simple_range() {

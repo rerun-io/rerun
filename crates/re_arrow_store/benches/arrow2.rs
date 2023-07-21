@@ -10,10 +10,13 @@ use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
 use re_components::{
     datagen::{build_some_instances, build_some_point2d, build_some_rects},
-    Point2D, Rect2D,
+    Rect2D,
 };
 use re_log_types::{DataCell, SizeBytes as _};
-use re_types::{components::InstanceKey, Component};
+use re_types::{
+    components::{InstanceKey, Point2D},
+    Component,
+};
 
 // ---
 

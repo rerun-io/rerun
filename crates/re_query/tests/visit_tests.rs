@@ -1,7 +1,7 @@
 use itertools::Itertools;
-use re_components::{ColorRGBA, Point2D};
+use re_components::ColorRGBA;
 use re_query::{ComponentWithInstances, EntityView};
-use re_types::components::InstanceKey;
+use re_types::components::{InstanceKey, Point2D};
 
 #[test]
 fn basic_single_iter() {

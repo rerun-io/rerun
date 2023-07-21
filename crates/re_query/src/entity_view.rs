@@ -154,7 +154,8 @@ where
 #[test]
 fn lookup_value() {
     use crate::QueryError;
-    use re_components::{Point2D, Rect2D};
+    use re_components::Rect2D;
+    use re_types::components::Point2D;
     use re_types::Loggable as _;
 
     let instance_keys = InstanceKey::from_iter(0..5);
@@ -220,7 +221,7 @@ fn lookup_value() {
 
 #[test]
 fn lookup_splat() {
-    use re_components::Point2D;
+    use re_types::components::Point2D;
     let instances = [
         InstanceKey::SPLAT, //
     ];

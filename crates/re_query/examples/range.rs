@@ -7,11 +7,14 @@
 use re_arrow_store::{DataStore, RangeQuery, TimeRange};
 use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Point2D, Rect2D,
+    Rect2D,
 };
 use re_log_types::{DataRow, EntityPath, RowId, TimeType};
 use re_query::range_entity_with_primary;
-use re_types::{components::InstanceKey, Loggable as _};
+use re_types::{
+    components::{InstanceKey, Point2D},
+    Loggable as _,
+};
 
 fn main() {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
@@ -70,8 +73,7 @@ fn main() {
     println!("\n-----\n");
 
     let components = [InstanceKey::name(), Rect2D::name(), Point2D::name()];
-    let ent_views =
-        range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",

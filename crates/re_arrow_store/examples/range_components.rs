@@ -8,10 +8,13 @@ use polars_core::prelude::JoinType;
 use re_arrow_store::{polars_util, test_row, DataStore, RangeQuery, TimeRange};
 use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Point2D, Rect2D,
+    Rect2D,
 };
 use re_log_types::{EntityPath, TimeType, Timeline};
-use re_types::{components::InstanceKey, Loggable};
+use re_types::{
+    components::{InstanceKey, Point2D},
+    Loggable as _,
+};
 
 fn main() {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());

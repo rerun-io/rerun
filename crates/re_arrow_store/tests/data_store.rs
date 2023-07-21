@@ -19,10 +19,13 @@ use re_components::{
         build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
         build_some_point2d, build_some_rects,
     },
-    ColorRGBA, InstanceKey, Point2D, Rect2D,
+    ColorRGBA, Rect2D,
 };
 use re_log_types::{DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
-use re_types::{ComponentName, Loggable as _};
+use re_types::{
+    components::{InstanceKey, Point2D},
+    ComponentName, Loggable as _,
+};
 
 // --- LatestComponentsAt ---
 

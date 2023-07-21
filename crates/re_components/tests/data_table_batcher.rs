@@ -1,11 +1,12 @@
 use crossbeam::{channel::TryRecvError, select};
 use itertools::Itertools as _;
 
-use re_components::{ColorRGBA, Label, Point2D};
+use re_components::{ColorRGBA, Label};
 use re_log_types::{
     DataRow, DataTableBatcher, DataTableBatcherConfig, RowId, SizeBytes, TimePoint, Timeline,
 };
 use re_log_types::{DataTable, TableId, Time};
+use re_types::components::Point2D;
 
 #[test]
 fn manual_trigger() {
