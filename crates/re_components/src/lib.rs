@@ -61,7 +61,7 @@ pub use self::{
     coordinates::ViewCoordinates,
     disconnected_space::DisconnectedSpace,
     keypoint_id::KeypointId,
-    label::Label,
+    label::LegacyLabel,
     linestrip::{LineStrip2D, LineStrip3D},
     mat::Mat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},
@@ -103,7 +103,7 @@ pub mod external {
 
 // ----------------------------------------------------------------------------
 
-use re_types::components::{DrawOrder, Point2D, Point3D};
+use re_types::components::{DrawOrder, Label, Point2D, Point3D};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
@@ -115,7 +115,6 @@ lazy_static! {
         <ColorRGBA as LegacyComponent>::field(),
         <DisconnectedSpace as LegacyComponent>::field(),
         <KeypointId as LegacyComponent>::field(),
-        <Label as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),
         <LineStrip3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
@@ -134,6 +133,7 @@ lazy_static! {
         <ViewCoordinates as LegacyComponent>::field(),
         <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
         Field::new(DrawOrder::name().as_str(), DrawOrder::to_arrow_datatype(), false),
+        Field::new(Label::name().as_str(), Label::to_arrow_datatype(), false),
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
         Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),
     ];

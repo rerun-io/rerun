@@ -12,51 +12,51 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 #[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
-pub struct Label(pub String);
+pub struct LegacyLabel(pub String);
 
-impl Label {
+impl LegacyLabel {
     #[inline]
     pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
 }
 
-impl re_log_types::LegacyComponent for Label {
+impl re_log_types::LegacyComponent for LegacyLabel {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.label".into()
     }
 }
 
-impl From<String> for Label {
+impl From<String> for LegacyLabel {
     #[inline]
     fn from(value: String) -> Self {
         Self(value)
     }
 }
 
-impl From<Label> for String {
+impl From<LegacyLabel> for String {
     #[inline]
-    fn from(value: Label) -> Self {
+    fn from(value: LegacyLabel) -> Self {
         value.0
     }
 }
 
-impl AsRef<str> for Label {
+impl AsRef<str> for LegacyLabel {
     #[inline]
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl std::borrow::Borrow<str> for Label {
+impl std::borrow::Borrow<str> for LegacyLabel {
     #[inline]
     fn borrow(&self) -> &str {
         self.as_str()
     }
 }
 
-impl std::ops::Deref for Label {
+impl std::ops::Deref for LegacyLabel {
     type Target = str;
     #[inline]
     fn deref(&self) -> &str {
@@ -64,4 +64,4 @@ impl std::ops::Deref for Label {
     }
 }
 
-re_log_types::component_legacy_shim!(Label);
+re_log_types::component_legacy_shim!(LegacyLabel);

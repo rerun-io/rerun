@@ -1,4 +1,4 @@
-use re_components::{Arrow3D, ColorRGBA, Label, Radius};
+use re_components::{Arrow3D, ColorRGBA, LegacyLabel, Radius};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
@@ -47,7 +47,7 @@ impl Arrows3DPart {
              arrow: Arrow3D,
              color: Option<ColorRGBA>,
              radius: Option<Radius>,
-             _label: Option<Label>| {
+             _label: Option<LegacyLabel>| {
                 // TODO(andreas): support labels
                 // TODO(andreas): support class ids for arrows
                 let annotation_info = ent_context
@@ -101,7 +101,7 @@ impl ViewPartSystem for Arrows3DPart {
             InstanceKey::name(),
             ColorRGBA::name(),
             Radius::name(),
-            Label::name(),
+            LegacyLabel::name(),
         ]
     }
 

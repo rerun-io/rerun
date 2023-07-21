@@ -1,4 +1,4 @@
-use re_components::{Box3D, ClassId, ColorRGBA, Label, Quaternion, Radius, Vec3D};
+use re_components::{Box3D, ClassId, ColorRGBA, LegacyLabel, Quaternion, Radius, Vec3D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
@@ -47,7 +47,7 @@ impl Boxes3DPart {
                        rotation: Option<Quaternion>,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
-                       label: Option<Label>,
+                       label: Option<LegacyLabel>,
                        class_id: Option<ClassId>| {
             let class_description = ent_context.annotations.class_description(class_id);
             let annotation_info = class_description.annotation_info();
@@ -109,7 +109,7 @@ impl ViewPartSystem for Boxes3DPart {
             Quaternion::name(), // obb.rotation
             ColorRGBA::name(),
             Radius::name(), // stroke_width
-            Label::name(),
+            LegacyLabel::name(),
             ClassId::name(),
         ]
     }

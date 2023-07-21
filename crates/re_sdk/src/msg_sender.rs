@@ -420,8 +420,8 @@ mod tests {
     #[test]
     fn full() -> Result<(), MsgSenderError> {
         let labels = vec![
-            components::Label("label1".into()),
-            components::Label("label2".into()),
+            components::LegacyLabel("label1".into()),
+            components::LegacyLabel("label2".into()),
         ];
         let transform = vec![components::Transform3D::IDENTITY];
         let color = components::ColorRGBA::from_rgb(255, 0, 255);
@@ -434,7 +434,7 @@ mod tests {
 
         {
             let standard = standard.unwrap();
-            let idx = standard.find_cell(&components::Label::name()).unwrap();
+            let idx = standard.find_cell(&components::LegacyLabel::name()).unwrap();
             let cell = &standard.cells[idx];
             assert!(cell.num_instances() == 2);
         }
@@ -473,7 +473,7 @@ mod tests {
 
         let sender = MsgSender::new("some/path")
             .with_timeless(true)
-            .with_component([components::Label("label1".into())].as_slice())?
+            .with_component([components::LegacyLabel("label1".into())].as_slice())?
             .with_time(my_timeline, 2);
         assert!(!sender.timepoint.is_empty()); // not yet
 
@@ -486,7 +486,7 @@ mod tests {
     #[test]
     fn illegal_instance_key() -> Result<(), MsgSenderError> {
         let _ = MsgSender::new("some/path")
-            .with_component([components::Label("label1".into())].as_slice())?
+            .with_component([components::LegacyLabel("label1".into())].as_slice())?
             .with_component([components::InstanceKey(u64::MAX)].as_slice())?
             .into_rows();
 
@@ -498,7 +498,7 @@ mod tests {
     #[test]
     fn splatted_instance_key() -> Result<(), MsgSenderError> {
         let res = MsgSender::new("some/path")
-            .with_component([components::Label("label1".into())].as_slice())?
+            .with_component([components::LegacyLabel("label1".into())].as_slice())?
             .with_splat(components::InstanceKey(42));
 
         assert!(matches!(res, Err(MsgSenderError::SplattedInstanceKeys)));
@@ -511,7 +511,7 @@ mod tests {
         // 1 for 1 -- fine
         {
             MsgSender::new("some/path")
-                .with_component([components::Label("label1".into())].as_slice())?
+                .with_component([components::LegacyLabel("label1".into())].as_slice())?
                 .with_component([components::ColorRGBA::from_rgb(1, 1, 1)].as_slice())?;
         }
 
@@ -520,9 +520,9 @@ mod tests {
             MsgSender::new("some/path")
                 .with_component(
                     [
-                        components::Label("label1".into()),
-                        components::Label("label2".into()),
-                        components::Label("label3".into()),
+                        components::LegacyLabel("label1".into()),
+                        components::LegacyLabel("label2".into()),
+                        components::LegacyLabel("label3".into()),
                     ]
                     .as_slice(),
                 )?
@@ -534,9 +534,9 @@ mod tests {
             let res = MsgSender::new("some/path")
                 .with_component(
                     [
-                        components::Label("label1".into()),
-                        components::Label("label2".into()),
-                        components::Label("label3".into()),
+                        components::LegacyLabel("label1".into()),
+                        components::LegacyLabel("label2".into()),
+                        components::LegacyLabel("label3".into()),
                     ]
                     .as_slice(),
                 )?

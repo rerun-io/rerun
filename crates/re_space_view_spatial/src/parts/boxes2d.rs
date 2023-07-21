@@ -1,4 +1,4 @@
-use re_components::{ClassId, ColorRGBA, Label, Radius, Rect2D};
+use re_components::{ClassId, ColorRGBA, LegacyLabel, Radius, Rect2D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
@@ -47,7 +47,7 @@ impl Boxes2DPart {
              rect,
              color: Option<ColorRGBA>,
              radius: Option<Radius>,
-             label: Option<Label>,
+             label: Option<LegacyLabel>,
              class_id: Option<ClassId>| {
                 let instance_hash =
                     re_data_store::InstancePathHash::instance(ent_path, instance_key);
@@ -112,7 +112,7 @@ impl ViewPartSystem for Boxes2DPart {
             InstanceKey::name(),
             ColorRGBA::name(),
             Radius::name(),
-            Label::name(),
+            LegacyLabel::name(),
             ClassId::name(),
         ]
     }

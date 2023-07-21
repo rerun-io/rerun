@@ -5,7 +5,7 @@ use arrow2_convert::{
     ArrowField, ArrowSerialize,
 };
 
-use crate::{ClassId, ColorRGBA, KeypointId, Label};
+use crate::{ClassId, ColorRGBA, KeypointId, LegacyLabel};
 
 /// Information about an Annotation.
 ///
@@ -15,7 +15,7 @@ use crate::{ClassId, ColorRGBA, KeypointId, Label};
 pub struct AnnotationInfo {
     /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
     pub id: u16,
-    pub label: Option<Label>,
+    pub label: Option<LegacyLabel>,
     pub color: Option<ColorRGBA>,
 }
 
@@ -258,7 +258,7 @@ fn test_context_roundtrip() {
             ClassDescription {
                 info: AnnotationInfo {
                     id: 32,
-                    label: Some(Label("hello".to_owned())),
+                    label: Some(LegacyLabel("hello".to_owned())),
                     color: Some(ColorRGBA(0x123456)),
                 },
                 keypoint_map: vec![
@@ -266,7 +266,7 @@ fn test_context_roundtrip() {
                         KeypointId(43),
                         AnnotationInfo {
                             id: 43,
-                            label: Some(Label("head".to_owned())),
+                            label: Some(LegacyLabel("head".to_owned())),
                             color: None,
                         },
                     ),
@@ -274,7 +274,7 @@ fn test_context_roundtrip() {
                         KeypointId(94),
                         AnnotationInfo {
                             id: 94,
-                            label: Some(Label("leg".to_owned())),
+                            label: Some(LegacyLabel("leg".to_owned())),
                             color: Some(ColorRGBA(0x654321)),
                         },
                     ),

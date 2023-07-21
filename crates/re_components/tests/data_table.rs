@@ -65,9 +65,9 @@ fn data_table_sizes_basics() {
     // utf8 (and more generally: dyn_binary)
     let mut cell = DataCell::from_native(
         [
-            re_components::Label("hey".into()),
-            re_components::Label("hey".into()),
-            re_components::Label("hey".into()),
+            re_components::LegacyLabel("hey".into()),
+            re_components::LegacyLabel("hey".into()),
+            re_components::LegacyLabel("hey".into()),
         ]
         .as_slice(),
     );
@@ -78,7 +78,7 @@ fn data_table_sizes_basics() {
         3_090_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(re_components::Label::name(), cell.to_arrow().sliced(1, 1)),
+        DataCell::from_arrow(re_components::LegacyLabel::name(), cell.to_arrow().sliced(1, 1)),
         10_000,    // num_rows
         2_950_064, // expected_num_bytes
     );
