@@ -1027,13 +1027,28 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
         return TokenStream::new();
     }
 
-    if let Some(inner_fqname) = &obj.fields[0].typ.fqname() {
+    let obj_field = &obj.fields[0];
+    if obj_field.typ.fqname().is_some() {
         let quoted_obj_name = format_ident!("{}", obj.name);
-        let quoted_inner_obj_name = quote_fqname_as_type_path(inner_fqname);
+        let (quoted_type, _) = quote_field_type_from_field(&obj.fields[0], false);
+        let quoted_type = if obj_field.is_nullable {
+            quote!(Option<#quoted_type>)
+        } else {
+            quote!(#quoted_type)
+        };
+
+        let obj_is_tuple_struct = is_tuple_struct_from_obj(obj);
+        let quoted_binding = if obj_is_tuple_struct {
+            quote!(Self(v))
+        } else {
+            let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+            quote!(Self { #quoted_obj_field_name: v })
+        };
+
         quote! {
-            impl From<#quoted_inner_obj_name> for #quoted_obj_name {
-                fn from(v: #quoted_inner_obj_name) -> Self {
-                    Self(v)
+            impl From<#quoted_type> for #quoted_obj_name {
+                fn from(v: #quoted_type) -> Self {
+                    #quoted_binding
                 }
             }
         }
