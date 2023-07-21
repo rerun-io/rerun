@@ -208,7 +208,7 @@ AffixFuzzer2Type._ARRAY_TYPE = AffixFuzzer2Array
 
 @define
 class AffixFuzzer3:
-    inner: float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32] = field()
+    inner: Union[float, list[datatypes.AffixFuzzer1], npt.NDArray[np.float32]] = field()
     """
     degrees (float):
 
@@ -323,7 +323,7 @@ AffixFuzzer3Type._ARRAY_TYPE = AffixFuzzer3Array
 
 @define
 class AffixFuzzer4:
-    inner: datatypes.AffixFuzzer3 | list[datatypes.AffixFuzzer3] = field()
+    inner: Union[datatypes.AffixFuzzer3, list[datatypes.AffixFuzzer3]] = field()
     """
     single_required (datatypes.AffixFuzzer3):
 

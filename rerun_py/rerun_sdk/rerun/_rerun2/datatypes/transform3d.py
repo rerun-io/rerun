@@ -21,7 +21,7 @@ __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform
 class Transform3D:
     """Representation of a 3D affine transform."""
 
-    inner: datatypes.TranslationAndMat3x3 | datatypes.TranslationRotationScale3D = field()
+    inner: Union[datatypes.TranslationAndMat3x3, datatypes.TranslationRotationScale3D] = field()
     """
     TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):
 
