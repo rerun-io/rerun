@@ -368,6 +368,8 @@ impl QuotedObject {
             quote! { pub struct #name { #(#quoted_fields,)* }}
         };
 
+        let quoted_from_impl = quote_from_impl_from_obj(obj);
+
         let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
 
         let quoted_builder = quote_builder_from_obj(obj);
@@ -378,6 +380,8 @@ impl QuotedObject {
             #quoted_derive_clause
             #quoted_repr_clause
             #quoted_struct
+
+            #quoted_from_impl
 
             #quoted_trait_impls
 
@@ -1011,6 +1015,30 @@ fn quote_trait_impls_from_obj(
                 }
             }
         }
+    }
+}
+
+/// Only makes sense for components & datatypes.
+fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
+    if obj.kind == ObjectKind::Archetype {
+        return TokenStream::new();
+    }
+    if obj.fields.len() != 1 {
+        return TokenStream::new();
+    }
+
+    if let Some(inner_fqname) = &obj.fields[0].typ.fqname() {
+        let quoted_obj_name = format_ident!("{}", obj.name);
+        let quoted_inner_obj_name = quote_fqname_as_type_path(inner_fqname);
+        quote! {
+            impl From<#quoted_inner_obj_name> for #quoted_obj_name {
+                fn from(v: #quoted_inner_obj_name) -> Self {
+                    Self(v)
+                }
+            }
+        }
+    } else {
+        quote!()
     }
 }
 
