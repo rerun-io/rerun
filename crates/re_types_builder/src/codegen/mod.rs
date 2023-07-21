@@ -24,6 +24,7 @@ mod cpp;
 mod python;
 mod rust;
 
+pub use self::common::write_file;
 pub use self::cpp::CppCodeGenerator;
 pub use self::python::PythonCodeGenerator;
 pub use self::rust::RustCodeGenerator;

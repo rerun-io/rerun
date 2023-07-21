@@ -1,1 +1,2 @@
 *.zip -text diff
+**/source_hash.txt linguist-generated=true
