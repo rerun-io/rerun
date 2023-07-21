@@ -1,9 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use nohash_hasher::IntMap;
-use re_components::DrawOrder;
 use re_log_types::EntityPathHash;
-use re_types::Loggable as _;
+use re_types::{components::DrawOrder, Loggable as _};
 use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};
 
 /// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].

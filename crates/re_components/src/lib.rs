@@ -26,7 +26,6 @@ mod color;
 pub mod context;
 pub mod coordinates;
 mod disconnected_space;
-mod draw_order;
 mod keypoint_id;
 mod label;
 mod linestrip;
@@ -61,7 +60,6 @@ pub use self::{
     context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
     disconnected_space::DisconnectedSpace,
-    draw_order::DrawOrder,
     keypoint_id::KeypointId,
     label::Label,
     linestrip::{LineStrip2D, LineStrip3D},
@@ -105,7 +103,7 @@ pub mod external {
 
 // ----------------------------------------------------------------------------
 
-use re_types::components::{Point2D, Point3D};
+use re_types::components::{DrawOrder, Point2D, Point3D};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
@@ -116,7 +114,6 @@ lazy_static! {
         <ClassId as LegacyComponent>::field(),
         <ColorRGBA as LegacyComponent>::field(),
         <DisconnectedSpace as LegacyComponent>::field(),
-        <DrawOrder as LegacyComponent>::field(),
         <KeypointId as LegacyComponent>::field(),
         <Label as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),
@@ -136,6 +133,7 @@ lazy_static! {
         <Vec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
         <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
+        Field::new(DrawOrder::name().as_str(), DrawOrder::to_arrow_datatype(), false),
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
         Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),
     ];
