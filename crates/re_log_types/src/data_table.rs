@@ -3,11 +3,12 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
 use crate::{
-    ArrowMsg, ComponentName, DataCell, DataCellError, DataRow, DataRowError, EntityPath, RowId,
-    SizeBytes, TimePoint, Timeline,
+    ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath, RowId, SizeBytes,
+    TimePoint, Timeline,
 };
 
 // ---
@@ -775,7 +776,7 @@ impl DataTable {
             // but I'm not sure if returning an empty column is the right thing to do there.
             // See: https://github.com/rerun-io/rerun/issues/2005
             if rows.iter().any(|c| c.is_some()) {
-                let (field, column) = Self::serialize_data_column(component.as_str(), rows)?;
+                let (field, column) = Self::serialize_data_column(component, rows)?;
                 schema.fields.push(field);
                 columns.push(column);
             }
@@ -937,7 +938,7 @@ impl DataTable {
                 })
             })
             .map(|(name, index)| {
-                let component: ComponentName = name.into();
+                let component: ComponentName = name.to_owned().into();
                 chunk
                     .get(index)
                     .ok_or(DataTableError::MissingColumn(name.to_owned()))

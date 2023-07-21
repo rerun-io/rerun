@@ -6,9 +6,10 @@ use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    ComponentName, DataCell, DataCellColumn, DataCellError, DataRow, DataTable, InstanceKey, RowId,
-    SizeBytes as _, TimeInt, TimePoint, TimeRange,
+    DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, SizeBytes as _, TimeInt,
+    TimePoint, TimeRange,
 };
+use re_types::{components::InstanceKey, ComponentName, Loggable};
 
 use crate::{
     store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
@@ -215,7 +216,6 @@ impl DataStore {
             // let cell = DataCell::from_component::<InstanceKey>(0..len as u64);
 
             // ...so we create it manually instead.
-            use re_log_types::Component as _;
             let values =
                 arrow2::array::UInt64Array::from_vec((0..num_instances as u64).collect_vec())
                     .boxed();

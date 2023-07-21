@@ -1,7 +1,7 @@
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
 use re_data_store::ExtraQueryHistory;
-use re_log_types::{Component, ComponentName, EntityPath};
-use re_types::Archetype;
+use re_log_types::{EntityPath, LegacyComponent};
+use re_types::{Archetype, ComponentName};
 
 use crate::{
     query_archetype, query_entity_with_primary, range::range_archetype, range_entity_with_primary,
@@ -10,7 +10,11 @@ use crate::{
 
 /// Either dispatch to `query_entity_with_primary` or `range_entity_with_primary`
 /// depending on whether `ExtraQueryHistory` is set.
-pub fn query_primary_with_history<'a, Primary: Component + 'a, const N: usize>(
+pub fn query_primary_with_history<
+    'a,
+    Primary: LegacyComponent + re_types::Component + 'a,
+    const N: usize,
+>(
     store: &'a DataStore,
     timeline: &'a Timeline,
     time: &'a TimeInt,

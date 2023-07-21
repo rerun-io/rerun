@@ -13,7 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A unique numeric identifier for each individual instance within a batch.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InstanceKey(pub u64);
 
 impl<'a> From<InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
@@ -34,7 +34,7 @@ impl crate::Loggable for InstanceKey {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.instance_key")
+        "rerun.instance_key".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

@@ -1,10 +1,9 @@
 use ahash::HashSetExt;
 use nohash_hasher::IntSet;
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
-use crate::{
-    ComponentName, DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint,
-};
+use crate::{DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint};
 
 // ---
 

@@ -1,7 +1,8 @@
 use re_log_types::{
-    ComponentName, DataCellColumn, SizeBytes as _, TimeRange, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
+    DataCellColumn, SizeBytes as _, TimeRange, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
     COLUMN_TIMEPOINT,
 };
+use re_types::ComponentName;
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
 

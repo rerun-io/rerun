@@ -16,8 +16,8 @@ pub mod visit;
 #[cfg(feature = "polars")]
 pub mod dataframe_util;
 
-pub use self::archetype_view::{ArchComponentWithInstances, ArchetypeView};
-pub use self::entity_view::{ComponentWithInstances, EntityView};
+pub use self::archetype_view::{ArchetypeView, ComponentWithInstances};
+pub use self::entity_view::EntityView;
 pub use self::query::{get_component_with_instances, query_archetype, query_entity_with_primary};
 pub use self::range::{range_archetype, range_entity_with_primary};
 pub use self::util::{query_archetype_with_history, query_primary_with_history};
@@ -40,14 +40,8 @@ pub enum QueryError {
     #[error("Could not find component")]
     ComponentNotFound,
 
-    #[error("Tried to access component of type '{actual:?}' using deserializer for type '{requested:?}'")]
-    TypeMismatch {
-        actual: re_log_types::ComponentName,
-        requested: re_log_types::ComponentName,
-    },
-
     #[error("Tried to access component of type '{actual:?}' using component '{requested:?}'")]
-    NewTypeMismatch {
+    TypeMismatch {
         actual: re_types::ComponentName,
         requested: re_types::ComponentName,
     },

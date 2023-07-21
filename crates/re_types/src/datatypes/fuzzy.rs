@@ -35,7 +35,7 @@ impl crate::Loggable for FlattenedScalar {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.testing.datatypes.FlattenedScalar")
+        "rerun.testing.datatypes.FlattenedScalar".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -220,7 +220,7 @@ impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer1")
+        "rerun.testing.datatypes.AffixFuzzer1".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1011,7 +1011,7 @@ impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer2")
+        "rerun.testing.datatypes.AffixFuzzer2".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1120,7 +1120,7 @@ impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer3")
+        "rerun.testing.datatypes.AffixFuzzer3".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1598,7 +1598,7 @@ impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer4")
+        "rerun.testing.datatypes.AffixFuzzer4".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -2014,7 +2014,7 @@ impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::DatatypeName;
     #[inline]
     fn name() -> Self::Name {
-        crate::DatatypeName::Borrowed("rerun.testing.datatypes.AffixFuzzer5")
+        "rerun.testing.datatypes.AffixFuzzer5".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

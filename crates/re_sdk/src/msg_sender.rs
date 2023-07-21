@@ -1,13 +1,14 @@
 use re_log_types::{
-    external::arrow2::datatypes::DataType, DataRow, DataTableError, InstanceKey, RowId, StoreId,
+    external::arrow2::datatypes::DataType, DataRow, DataTableError, RowId, StoreId,
 };
-use re_types::Archetype;
+use re_types::{components::InstanceKey, Archetype};
 
 use crate::{
     log::DataCell,
     time::{Time, TimeInt, TimePoint, Timeline},
-    Component, EntityPath, RecordingStream, SerializableComponent,
+    EntityPath, RecordingStream,
 };
+use re_types::{Component, Loggable as _};
 
 // ---
 
@@ -123,7 +124,8 @@ impl MsgSender {
             this = this.with_cell(DataCell::from_arrow(
                 // NOTE: Unwrapping is safe as we always include the legacy fqname into the Field's
                 // metadata while migrating towards HOPE.
-                legacy_fqname.as_deref().unwrap().into(),
+                //legacy_fqname.as_deref().unwrap().into(),
+                legacy_fqname.unwrap().into(),
                 array,
             ))?;
         }
@@ -237,10 +239,14 @@ impl MsgSender {
     /// The SDK does not yet support batch insertions, which are semantically identical to adding
     /// the same component type multiple times in a single message.
     /// Doing so will return an error when trying to `send()` the message.
-    pub fn with_component<'a, C: SerializableComponent>(
+    pub fn with_component<'a, C>(
         self,
         data: impl IntoIterator<Item = &'a C>,
-    ) -> Result<Self, MsgSenderError> {
+    ) -> Result<Self, MsgSenderError>
+    where
+        C: Component + Clone + 'a,
+        &'a C: Into<::std::borrow::Cow<'a, C>>,
+    {
         let cell = DataCell::try_from_native(data).map_err(DataTableError::from)?;
         self.with_cell(cell)
     }
@@ -291,13 +297,17 @@ impl MsgSender {
     /// The SDK does not yet support batch insertions, which are semantically identical to adding
     /// the same component type multiple times in a single message.
     /// Doing so will return an error when trying to `send()` the message.
-    pub fn with_splat<C: SerializableComponent>(mut self, data: C) -> Result<Self, MsgSenderError> {
+    pub fn with_splat<'a, C>(mut self, data: C) -> Result<Self, MsgSenderError>
+    where
+        C: Component + 'a,
+        C: Into<::std::borrow::Cow<'a, C>>,
+    {
         if C::name() == InstanceKey::name() {
             return Err(MsgSenderError::SplattedInstanceKeys);
         }
 
         self.splatted
-            .push(DataCell::try_from_native(&[data]).map_err(DataTableError::from)?);
+            .push(DataCell::try_from_native([data]).map_err(DataTableError::from)?);
 
         Ok(self)
     }
@@ -305,10 +315,11 @@ impl MsgSender {
     /// Helper to make it easier to optionally append splatted components.
     ///
     /// See [`Self::with_splat`].
-    pub fn with_splat_opt(
-        self,
-        data: Option<impl SerializableComponent>,
-    ) -> Result<Self, MsgSenderError> {
+    pub fn with_splat_opt<'a, C>(self, data: Option<C>) -> Result<Self, MsgSenderError>
+    where
+        C: Component + 'a,
+        C: Into<::std::borrow::Cow<'a, C>>,
+    {
         if let Some(data) = data {
             self.with_splat(data)
         } else {
@@ -385,7 +396,7 @@ impl MsgSender {
         // Splats
         // TODO(#1629): unsplit splats once new data cells are in
         rows[1] = (!splatted.is_empty()).then(|| {
-            splatted.push(DataCell::from_native(&[InstanceKey::SPLAT]));
+            splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
             DataRow::from_cells(RowId::random(), timepoint, entity_path, 1, splatted)
         });
 

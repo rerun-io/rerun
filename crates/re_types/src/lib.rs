@@ -226,10 +226,7 @@ pub type DatatypeName = ::std::borrow::Cow<'static, str>;
 /// A [`Datatype`] describes plain old data that can be used by any number of [`Component`].
 pub trait Datatype: Loggable {}
 
-/// The fully-qualified name of a [`Component`], e.g. `rerun.components.Point2D`.
-pub type ComponentName = ::std::borrow::Cow<'static, str>;
-
-pub trait Component: Loggable<Name = ComponentName> {}
+pub trait Component: Loggable<Name = ComponentName> + Clone {}
 
 // ---
 
@@ -244,18 +241,18 @@ pub trait Archetype {
 
     /// The fully-qualified component names of every component that _must_ be provided by the user
     /// when constructing this archetype.
-    fn required_components() -> Vec<ComponentName>;
+    fn required_components() -> &'static [ComponentName];
 
     /// The fully-qualified component names of every component that _should_ be provided by the user
     /// when constructing this archetype.
-    fn recommended_components() -> Vec<ComponentName>;
+    fn recommended_components() -> &'static [ComponentName];
 
     /// The fully-qualified component names of every component that _could_ be provided by the user
     /// when constructing this archetype.
-    fn optional_components() -> Vec<ComponentName>;
+    fn optional_components() -> &'static [ComponentName];
 
     /// All components including required, recommended, and optional.
-    fn all_components() -> Vec<ComponentName>;
+    fn all_components() -> &'static [ComponentName];
 
     // ---
 
@@ -325,6 +322,9 @@ pub enum SerializationError {
         location: String,
         source: Box<SerializationError>,
     },
+
+    #[error("arrow2-convert serialization Failed: {0}")]
+    ArrowConvertFailure(String),
 }
 
 pub type SerializationResult<T> = ::std::result::Result<T, SerializationError>;
@@ -366,6 +366,9 @@ pub enum DeserializationError {
 
     #[error("Expected single-instanced component but found {got} instances instead")]
     MonoMismatch { got: usize, backtrace: _Backtrace },
+
+    #[error("arrow2-convert deserialization Failed: {0}")]
+    ArrowConvertFailure(String),
 }
 
 pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;
@@ -378,7 +381,9 @@ impl<T> ResultExt<T> for SerializationResult<T> {
     fn detailed_unwrap(self) -> T {
         fn find_backtrace(err: &SerializationError) -> Option<_Backtrace> {
             match err {
-                SerializationError::Context { .. } => None,
+                SerializationError::Context { .. } | SerializationError::ArrowConvertFailure(_) => {
+                    None
+                }
             }
         }
 
@@ -414,6 +419,7 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
                 | DeserializationError::OffsetsMismatch { backtrace, .. }
                 | DeserializationError::ArrayLengthMismatch { backtrace, .. }
                 | DeserializationError::MonoMismatch { backtrace, .. } => Some(backtrace.clone()),
+                DeserializationError::ArrowConvertFailure(_) => None,
             }
         }
 
@@ -442,5 +448,10 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
 pub const DISPLAY_PRECISION: usize = 3;
 
 pub mod archetypes;
+mod component_name;
 pub mod components;
 pub mod datatypes;
+mod size_bytes;
+
+pub use component_name::ComponentName;
+pub use size_bytes::SizeBytes;

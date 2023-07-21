@@ -1,8 +1,7 @@
-use re_components::{
-    ClassId, ColorRGBA, Component as _, InstanceKey, KeypointId, Label, Point3D, Radius,
-};
+use re_components::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point3D, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{EntityView, QueryError};
+use re_types::Loggable as _;
 use re_viewer_context::{
     ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,

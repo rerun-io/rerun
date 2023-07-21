@@ -36,7 +36,7 @@ impl crate::Loggable for Point2D {
     type Name = crate::ComponentName;
     #[inline]
     fn name() -> Self::Name {
-        crate::ComponentName::Borrowed("rerun.point2d")
+        "rerun.point2d".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

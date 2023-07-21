@@ -7,31 +7,22 @@ use re_types::{
     components::InstanceKey, Archetype, Component, ComponentName, DeserializationResult, Loggable,
 };
 
-use crate::{ComponentWithInstances, QueryError};
+use crate::QueryError;
 
 /// A type-erased array of [`Component`] values and the corresponding [`InstanceKey`] keys.
 ///
 /// See: [`crate::get_component_with_instances`]
 #[derive(Clone, Debug)]
-pub struct ArchComponentWithInstances {
+pub struct ComponentWithInstances {
     pub(crate) instance_keys: DataCell,
     pub(crate) values: DataCell,
 }
 
-impl From<ComponentWithInstances> for ArchComponentWithInstances {
-    fn from(other: ComponentWithInstances) -> Self {
-        ArchComponentWithInstances {
-            instance_keys: other.instance_keys,
-            values: other.values,
-        }
-    }
-}
-
-impl ArchComponentWithInstances {
+impl ComponentWithInstances {
     /// Name of the [`Component`]
     #[inline]
     pub fn name(&self) -> ComponentName {
-        self.values.component_name().as_str().into()
+        self.values.component_name()
     }
 
     /// Number of values. 1 for splats.
@@ -41,7 +32,7 @@ impl ArchComponentWithInstances {
     }
 
     #[inline]
-    /// Whether this [`ArchComponentWithInstances`] contains any data
+    /// Whether this [`ComponentWithInstances`] contains any data
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
@@ -58,8 +49,8 @@ impl ArchComponentWithInstances {
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + 'a> {
         if C::name() != self.name() {
-            return Err(QueryError::NewTypeMismatch {
-                actual: self.name().clone(),
+            return Err(QueryError::TypeMismatch {
+                actual: self.name(),
                 requested: C::name(),
             });
         }
@@ -70,8 +61,8 @@ impl ArchComponentWithInstances {
     /// Look up the value that corresponds to a given [`InstanceKey`] and convert to [`Component`]
     pub fn lookup<C: Component>(&self, instance_key: &InstanceKey) -> crate::Result<C> {
         if C::name() != self.name() {
-            return Err(QueryError::NewTypeMismatch {
-                actual: self.name().clone(),
+            return Err(QueryError::TypeMismatch {
+                actual: self.name(),
                 requested: C::name(),
             });
         }
@@ -112,16 +103,16 @@ impl ArchComponentWithInstances {
             })
     }
 
-    /// Produce a [`ArchComponentWithInstances`] from native [`Component`] types
+    /// Produce a [`ComponentWithInstances`] from native [`Component`] types
     pub fn from_native<'a, C: Component + Clone + 'a>(
         instance_keys: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, InstanceKey>>>,
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
-    ) -> ArchComponentWithInstances {
+    ) -> ComponentWithInstances {
         let instance_keys = InstanceKey::to_arrow(instance_keys, None);
         let values = C::to_arrow(values, None);
-        ArchComponentWithInstances {
-            instance_keys: DataCell::from_arrow(InstanceKey::name().as_ref().into(), instance_keys),
-            values: DataCell::from_arrow(C::name().as_ref().into(), values),
+        ComponentWithInstances {
+            instance_keys: DataCell::from_arrow(InstanceKey::name(), instance_keys),
+            values: DataCell::from_arrow(C::name(), values),
         }
     }
 }
@@ -163,15 +154,15 @@ impl ArchComponentWithInstances {
 /// | val2  |
 ///
 /// ```
-struct ArchComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
-    primary_instance_key_iter: IIter1,
-    component_instance_key_iter: IIter2,
-    component_value_iter: VIter,
-    next_component_instance_key: Option<InstanceKey>,
-    splatted_component_value: Option<Val>,
+pub struct ComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
+    pub primary_instance_key_iter: IIter1,
+    pub component_instance_key_iter: IIter2,
+    pub component_value_iter: VIter,
+    pub next_component_instance_key: Option<InstanceKey>,
+    pub splatted_component_value: Option<Val>,
 }
 
-impl<IIter1, IIter2, VIter, C> Iterator for ArchComponentJoinedIterator<IIter1, IIter2, VIter, C>
+impl<IIter1, IIter2, VIter, C> Iterator for ComponentJoinedIterator<IIter1, IIter2, VIter, C>
 where
     IIter1: Iterator<Item = InstanceKey>,
     IIter2: Iterator<Item = InstanceKey>,
@@ -231,7 +222,7 @@ where
 #[derive(Clone, Debug)]
 pub struct ArchetypeView<A: Archetype> {
     pub(crate) row_id: RowId,
-    pub(crate) components: BTreeMap<ComponentName, ArchComponentWithInstances>,
+    pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
     pub(crate) phantom: PhantomData<A>,
 }
 
@@ -264,9 +255,9 @@ impl<A: Archetype> ArchetypeView<A> {
 }
 
 impl<A: Archetype> ArchetypeView<A> {
-    fn required_comp(&self) -> &ArchComponentWithInstances {
+    fn required_comp(&self) -> &ComponentWithInstances {
         // TODO(jleibs): Do all archetypes always have at least 1 required components?
-        let first_required = A::required_components()[0].clone();
+        let first_required = A::required_components()[0];
         &self.components[&first_required]
     }
 
@@ -324,7 +315,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
             let next_component_instance_key = component_instance_key_iter.next();
 
-            Ok(itertools::Either::Left(ArchComponentJoinedIterator {
+            Ok(itertools::Either::Left(ComponentJoinedIterator {
                 primary_instance_key_iter,
                 component_instance_key_iter,
                 component_value_iter,
@@ -338,16 +329,14 @@ impl<A: Archetype> ArchetypeView<A> {
         }
     }
 
-    /// Helper function to produce an [`ArchetypeView`] from a collection of [`ArchComponentWithInstances`]
+    /// Helper function to produce an [`ArchetypeView`] from a collection of [`ComponentWithInstances`]
     #[inline]
-    pub fn from_components(
-        components: impl IntoIterator<Item = ArchComponentWithInstances>,
-    ) -> Self {
+    pub fn from_components(components: impl IntoIterator<Item = ComponentWithInstances>) -> Self {
         Self {
             row_id: RowId::ZERO,
             components: components
                 .into_iter()
-                .map(|comp| (comp.name().clone(), comp))
+                .map(|comp| (comp.name(), comp))
                 .collect(),
             phantom: PhantomData,
         }
@@ -368,7 +357,7 @@ fn lookup_value() {
         Point2D::new(9.0, 10.0),
     ];
 
-    let component = ArchComponentWithInstances::from_native(instance_keys, points);
+    let component = ComponentWithInstances::from_native(instance_keys, points);
 
     let missing_value = component.lookup_arrow(&InstanceKey(5));
     assert_eq!(missing_value, None);
@@ -388,7 +377,7 @@ fn lookup_value() {
         InstanceKey(472),
     ];
 
-    let component = ArchComponentWithInstances::from_native(instance_keys, points);
+    let component = ComponentWithInstances::from_native(instance_keys, points);
 
     let missing_value = component.lookup_arrow(&InstanceKey(46));
     assert_eq!(missing_value, None);
@@ -411,14 +400,11 @@ fn lookup_value() {
         QueryError::ComponentNotFound
     ));
 
-    // TODO(jleibs): Add another type
-    /*
-    let missing_value = component.lookup::<Rect2D>(&InstanceKey(99));
+    let missing_value = component.lookup::<re_components::Rect2D>(&InstanceKey(99));
     assert!(matches!(
         missing_value.err().unwrap(),
         QueryError::TypeMismatch { .. }
     ));
-    */
 }
 
 #[test]
@@ -431,7 +417,7 @@ fn lookup_splat() {
         Point2D::new(1.0, 2.0), //
     ];
 
-    let component = ArchComponentWithInstances::from_native(instances, points);
+    let component = ComponentWithInstances::from_native(instances, points);
 
     // Any instance we look up will return the slatted value
     let value = component.lookup::<Point2D>(&InstanceKey(1)).unwrap();

@@ -2,7 +2,8 @@
 
 // TODO(#1810): It really is time for whole module to disappear.
 
-use re_log_types::{InstanceKey, Time, TimeInt, TimeType, Timeline};
+use re_log_types::{Time, TimeInt, TimeType, Timeline};
+use re_types::components::InstanceKey;
 
 /// Create `len` dummy rectangles
 pub fn build_some_rects(len: usize) -> Vec<crate::Rect2D> {

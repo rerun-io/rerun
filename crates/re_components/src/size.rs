@@ -17,9 +17,9 @@ impl From<Size3D> for glam::Vec3 {
     }
 }
 
-impl re_log_types::Component for Size3D {
+impl re_log_types::LegacyComponent for Size3D {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.size3d".into()
     }
 }

@@ -1,5 +1,6 @@
-use re_data_store::{ComponentName, EntityPath, InstancePath};
+use re_data_store::{EntityPath, InstancePath};
 use re_query::ComponentWithInstances;
+use re_types::ComponentName;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;

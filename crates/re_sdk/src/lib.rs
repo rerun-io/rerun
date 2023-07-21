@@ -22,9 +22,8 @@ pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 
 pub use re_sdk_comms::default_server_addr;
 
-pub use re_log_types::{
-    ApplicationId, Component, ComponentName, EntityPath, SerializableComponent, StoreId, StoreKind,
-};
+pub use re_log_types::{ApplicationId, EntityPath, LegacyComponent, StoreId, StoreKind};
+pub use re_types::ComponentName;
 
 pub use global::cleanup_if_forked_child;
 
@@ -70,7 +69,7 @@ pub mod time {
 
 /// These are the different _components_ you can log.
 ///
-/// They all implement the [`Component`] trait,
+/// They all implement the [`Component`][`re_types::Component`] trait,
 /// and can be used in [`MsgSender::with_component`].
 pub mod components {
     pub use re_components::{
@@ -107,6 +106,7 @@ pub mod external {
     pub use re_log_types;
     pub use re_memory;
     pub use re_sdk_comms;
+    pub use re_types;
 
     #[cfg(feature = "glam")]
     pub use re_components::external::glam;

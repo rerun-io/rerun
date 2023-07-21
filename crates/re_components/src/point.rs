@@ -32,9 +32,9 @@ impl Point2D {
     }
 }
 
-impl re_log_types::Component for Point2D {
+impl re_log_types::LegacyComponent for Point2D {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.point2d".into()
     }
 }
@@ -69,6 +69,8 @@ impl From<Point2D> for glam::Vec3 {
         Self::new(pt.x, pt.y, 0.0)
     }
 }
+
+re_log_types::component_legacy_shim!(Point2D);
 
 /// A point in 3D space.
 ///
@@ -106,9 +108,9 @@ impl Point3D {
     }
 }
 
-impl re_log_types::Component for Point3D {
+impl re_log_types::LegacyComponent for Point3D {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.point3d".into()
     }
 }
@@ -139,3 +141,5 @@ impl From<Point3D> for glam::Vec3 {
         Self::new(pt.x, pt.y, pt.z)
     }
 }
+
+re_log_types::component_legacy_shim!(Point3D);

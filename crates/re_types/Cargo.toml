@@ -26,6 +26,8 @@ ecolor = ["dep:ecolor"]
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["dep:glam", "dep:macaw"]
 
+## Enable (de)serialization using serde.
+serde = ["dep:serde", "re_string_interner/serde"]
 
 [dependencies]
 # Rerun
@@ -42,13 +44,19 @@ backtrace = "0.3"
 bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
 document-features = "0.2"
 itertools.workspace = true
+nohash-hasher.workspace = true
+once_cell.workspace = true
+smallvec.workspace = true
 thiserror.workspace = true
 
 # External (optional)
 ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 macaw = { workspace = true, optional = true }
+serde = { version = "1", optional = true, features = ["derive", "rc"] }
 
+# Rerun
+re_string_interner.workspace = true
 
 [dev-dependencies]
 

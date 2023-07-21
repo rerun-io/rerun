@@ -12,10 +12,8 @@ use re_components::{
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
     Rect2D,
 };
-use re_log_types::{
-    Component as _, ComponentName, DataCell, DataRow, DataTable, EntityPath, InstanceKey, RowId,
-    TableId, TimeType, Timeline,
-};
+use re_log_types::{DataCell, DataRow, DataTable, EntityPath, RowId, TableId, TimeType, Timeline};
+use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 
 criterion_group!(benches, insert, latest_at, latest_at_missing, range, gc);
 criterion_main!(benches);

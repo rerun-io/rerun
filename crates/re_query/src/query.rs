@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{Component, ComponentName, DataRow, EntityPath, InstanceKey, RowId};
-use re_types::Archetype;
+use re_log_types::{DataRow, EntityPath, LegacyComponent, RowId};
+use re_types::{components::InstanceKey, ComponentName, Loggable};
+use re_types::{Archetype, Component};
 
 use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 
@@ -13,7 +14,8 @@ use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_components::Point2D;
-/// # use re_log_types::{Timeline, Component};
+/// # use re_log_types::Timeline;
+/// # use re_types::Loggable as _;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -85,7 +87,8 @@ pub fn get_component_with_instances(
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_components::{Point2D, ColorRGBA};
-/// # use re_log_types::{Timeline, Component};
+/// # use re_log_types::Timeline;
+/// # use re_types::Loggable as _;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -118,7 +121,7 @@ pub fn get_component_with_instances(
 /// └──────────┴───────────┴────────────┘
 /// ```
 ///
-pub fn query_entity_with_primary<Primary: Component>(
+pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,
@@ -204,8 +207,8 @@ pub fn query_archetype<A: Archetype>(
     let required_components: Vec<_> = A::required_components()
         .iter()
         .map(|component| {
-            get_component_with_instances(store, query, ent_path, component.as_ref().into())
-                .map(|(_, component_result)| component_result.into())
+            get_component_with_instances(store, query, ent_path, *component)
+                .map(|(_, component_result)| component_result)
         })
         .collect();
 
@@ -227,8 +230,8 @@ pub fn query_archetype<A: Archetype>(
         .iter()
         .chain(optional_components.iter())
         .filter_map(|component| {
-            get_component_with_instances(store, query, ent_path, component.as_ref().into())
-                .map(|(_, component_result)| component_result.into())
+            get_component_with_instances(store, query, ent_path, *component)
+                .map(|(_, component_result)| component_result)
         });
 
     Ok(ArchetypeView::from_components(
@@ -277,7 +280,7 @@ pub fn __populate_example_store() -> DataStore {
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
     use re_components::Point2D;
-    use re_log_types::{Component as _, Timeline};
+    use re_log_types::Timeline;
 
     let store = __populate_example_store();
 
@@ -313,7 +316,7 @@ fn simple_get_component() {
 fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
     use re_components::{ColorRGBA, Point2D};
-    use re_log_types::{Component as _, Timeline};
+    use re_log_types::Timeline;
 
     let store = __populate_example_store();
 

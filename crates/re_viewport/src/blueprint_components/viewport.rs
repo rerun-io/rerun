@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use re_log_types::{serde_field::SerdeField, Component, ComponentName};
+use re_log_types::{serde_field::SerdeField, ComponentName, LegacyComponent};
 
 pub use re_viewer_context::SpaceViewId;
 
@@ -22,12 +22,14 @@ pub const VIEWPORT_PATH: &str = "viewport";
 #[arrow_field(transparent)]
 pub struct AutoSpaceViews(pub bool);
 
-impl Component for AutoSpaceViews {
+impl LegacyComponent for AutoSpaceViews {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "rerun.blueprint.auto_space_views".into()
     }
 }
+
+re_log_types::component_legacy_shim!(AutoSpaceViews);
 
 /// Whether a space view is maximized
 ///
@@ -47,12 +49,14 @@ pub struct SpaceViewMaximized(
     #[arrow_field(type = "SerdeField<Option<SpaceViewId>>")] pub Option<SpaceViewId>,
 );
 
-impl Component for SpaceViewMaximized {
+impl LegacyComponent for SpaceViewMaximized {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "rerun.blueprint.maximized".into()
     }
 }
+
+re_log_types::component_legacy_shim!(SpaceViewMaximized);
 
 /// The layout of a `Viewport`
 ///
@@ -81,12 +85,14 @@ pub struct ViewportLayout {
     pub has_been_user_edited: bool,
 }
 
-impl Component for ViewportLayout {
+impl LegacyComponent for ViewportLayout {
     #[inline]
-    fn name() -> ComponentName {
+    fn legacy_name() -> ComponentName {
         "rerun.blueprint.viewport_layout".into()
     }
 }
+
+re_log_types::component_legacy_shim!(ViewportLayout);
 
 #[test]
 fn test_maximized_roundtrip() {

@@ -1,16 +1,14 @@
 use re_arrow_store::LatestAtQuery;
-use re_log_types::{external::arrow2, DeserializableComponent, EntityPath, InstanceKey};
+use re_log_types::{external::arrow2, EntityPath};
 use re_query::ComponentWithInstances;
+use re_types::components::InstanceKey;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
 use super::{DataUi, EntityDataUi};
 
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
     /// Registers how to show a given component in the ui.
-    pub fn add<C: DeserializableComponent + EntityDataUi>(registry: &mut ComponentUiRegistry)
-    where
-        for<'a> &'a C::ArrayType: IntoIterator,
-    {
+    pub fn add<C: EntityDataUi + re_types::Component>(registry: &mut ComponentUiRegistry) {
         registry.add(
             C::name(),
             Box::new(

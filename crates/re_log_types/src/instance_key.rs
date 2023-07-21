@@ -1,32 +1,32 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::Component;
+use crate::LegacyComponent;
 
 /// A number used to specify a specific instance in an entity.
 ///
 /// Each entity can have many component of the same type.
-/// These are identified with [`InstanceKey`].
+/// These are identified with [`LegacyInstanceKey`].
 ///
 /// This is a special component type. All entities has this component, at least implicitly.
 ///
-/// For instance: A point cloud is one entity, and each point is an instance, idenitifed by an [`InstanceKey`].
+/// For instance: A point cloud is one entity, and each point is an instance, idenitifed by an [`LegacyInstanceKey`].
 ///
 /// ```
-/// use re_log_types::InstanceKey;
+/// use re_log_types::LegacyInstanceKey;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
-/// assert_eq!(InstanceKey::data_type(), DataType::UInt64);
+/// assert_eq!(LegacyInstanceKey::data_type(), DataType::UInt64);
 /// ```
 #[derive(
     Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, ArrowField, ArrowSerialize, ArrowDeserialize,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
-pub struct InstanceKey(pub u64);
+pub struct LegacyInstanceKey(pub u64);
 
-impl InstanceKey {
-    /// A special value indicating that this [`InstanceKey]` is referring to all instances of an entity,
+impl LegacyInstanceKey {
+    /// A special value indicating that this [`LegacyInstanceKey]` is referring to all instances of an entity,
     /// for example all points in a point cloud entity.
     pub const SPLAT: Self = Self(u64::MAX);
 
@@ -54,11 +54,11 @@ impl InstanceKey {
 
     /// Returns `None` if splat, otherwise the index.
     #[inline]
-    pub fn specific_index(self) -> Option<InstanceKey> {
+    pub fn specific_index(self) -> Option<LegacyInstanceKey> {
         self.is_specific().then_some(self)
     }
 
-    /// Creates a new [`InstanceKey`] that identifies a 2d coordinate.
+    /// Creates a new [`LegacyInstanceKey`] that identifies a 2d coordinate.
     pub fn from_2d_image_coordinate([x, y]: [u32; 2], image_width: u64) -> Self {
         Self((x as u64) + (y as u64) * image_width)
     }
@@ -69,7 +69,7 @@ impl InstanceKey {
     }
 }
 
-impl std::fmt::Debug for InstanceKey {
+impl std::fmt::Debug for LegacyInstanceKey {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_splat() {
@@ -80,7 +80,7 @@ impl std::fmt::Debug for InstanceKey {
     }
 }
 
-impl std::fmt::Display for InstanceKey {
+impl std::fmt::Display for LegacyInstanceKey {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_splat() {
@@ -91,22 +91,32 @@ impl std::fmt::Display for InstanceKey {
     }
 }
 
-impl From<u64> for InstanceKey {
+impl From<u64> for LegacyInstanceKey {
     #[inline]
     fn from(value: u64) -> Self {
         Self(value)
     }
 }
 
-impl Component for InstanceKey {
+impl LegacyComponent for LegacyInstanceKey {
     #[inline]
-    fn name() -> crate::ComponentName {
+    fn legacy_name() -> crate::ComponentName {
         "rerun.instance_key".into()
     }
 }
 
-impl From<re_types::components::InstanceKey> for InstanceKey {
+impl From<re_types::components::InstanceKey> for LegacyInstanceKey {
     fn from(other: re_types::components::InstanceKey) -> Self {
         Self(other.0)
     }
 }
+
+impl From<LegacyInstanceKey> for re_types::components::InstanceKey {
+    fn from(other: LegacyInstanceKey) -> Self {
+        Self(other.0)
+    }
+}
+
+use crate as re_log_types;
+
+re_log_types::component_legacy_shim!(LegacyInstanceKey);

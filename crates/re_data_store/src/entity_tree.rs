@@ -2,9 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    ComponentName, ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint,
-    Timeline,
+    ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint, Timeline,
 };
+use re_types::ComponentName;
 
 // ----------------------------------------------------------------------------
 

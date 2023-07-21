@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
-use re_log_types::{Component, ComponentName, EntityPath};
-use re_types::Archetype;
+use re_log_types::{EntityPath, LegacyComponent};
+use re_types::{Archetype, ComponentName};
 
 use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances, EntityView};
 
@@ -22,7 +22,11 @@ use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances,
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
-pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
+pub fn range_entity_with_primary<
+    'a,
+    Primary: LegacyComponent + re_types::Component + 'a,
+    const N: usize,
+>(
     store: &'a DataStore,
     query: &RangeQuery,
     ent_path: &'a EntityPath,
@@ -167,14 +171,9 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     re_tracing::profile_function!();
 
     // TODO(jleibs) this shim is super gross
-    let components: [ComponentName; N] = A::all_components()
-        .iter()
-        .map(|c| c.as_ref().into())
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
+    let components: [ComponentName; N] = A::all_components().try_into().unwrap();
 
-    let primary: ComponentName = A::recommended_components()[0].as_ref().into();
+    let primary: ComponentName = A::recommended_components()[0];
     let cluster_key = store.cluster_key();
 
     // TODO(cmc): Ideally, we'd want to simply add the cluster and primary key to the `components`
@@ -275,7 +274,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
                 let components: Vec<_> = state
                     .clone()
                     .into_iter()
-                    .filter_map(|cwi| cwi.map(|(_, cwi)| cwi.into()))
+                    .filter_map(|cwi| cwi.map(|(_, cwi)| cwi))
                     .collect();
 
                 let mut arch_view = ArchetypeView::from_components(components);

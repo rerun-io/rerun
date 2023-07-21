@@ -23,9 +23,9 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 #[arrow_field(transparent)]
 pub struct KeypointId(pub u16);
 
-impl re_log_types::Component for KeypointId {
+impl re_log_types::LegacyComponent for KeypointId {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.keypoint_id".into()
     }
 }
@@ -35,3 +35,5 @@ impl From<re_types::components::KeypointId> for KeypointId {
         Self(other.0)
     }
 }
+
+re_log_types::component_legacy_shim!(KeypointId);

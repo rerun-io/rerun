@@ -59,9 +59,9 @@ impl From<[u8; 4]> for ColorRGBA {
     }
 }
 
-impl re_log_types::Component for ColorRGBA {
+impl re_log_types::LegacyComponent for ColorRGBA {
     #[inline]
-    fn name() -> re_log_types::ComponentName {
+    fn legacy_name() -> re_log_types::ComponentName {
         "rerun.colorrgba".into()
     }
 }
@@ -73,6 +73,8 @@ impl From<ColorRGBA> for ecolor::Color32 {
         Self::from_rgba_premultiplied(r, g, b, a)
     }
 }
+
+re_log_types::component_legacy_shim!(ColorRGBA);
 
 #[test]
 fn test_colorrgba_roundtrip() {

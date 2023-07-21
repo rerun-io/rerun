@@ -94,7 +94,7 @@ impl Points2DPart {
                 re_tracing::profile_scope!("instance_hashes");
                 arch_view
                     .iter_instance_keys()
-                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key.into()))
+                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
                     .collect::<Vec<_>>()
             };
 
@@ -128,7 +128,7 @@ impl Points2DPart {
 
             let picking_instance_ids = arch_view
                 .iter_instance_keys()
-                .map(|key| picking_id_from_instance_key(key.into()));
+                .map(picking_id_from_instance_key);
 
             let mut point_range_builder = point_batch.add_points_2d(
                 arch_view.num_instances(),
@@ -145,7 +145,7 @@ impl Points2DPart {
                     // TODO(andreas/jeremy): We can do this much more efficiently
                     let highlighted_point_index = arch_view
                         .iter_instance_keys()
-                        .position(|key| *highlighted_key == key.into());
+                        .position(|key| *highlighted_key == key);
                     if let Some(highlighted_point_index) = highlighted_point_index {
                         point_range_builder = point_range_builder
                             .push_additional_outline_mask_ids_for_range(
@@ -172,14 +172,7 @@ impl Points2DPart {
 
 impl ViewPartSystem for Points2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
-        // TODO(jleibs): cleanup
-        vec1::Vec1::try_from_vec(
-            Points2D::all_components()
-                .into_iter()
-                .map(|c| c.as_ref().into())
-                .collect(),
-        )
-        .unwrap()
+        Points2D::all_components().try_into().unwrap()
     }
 
     fn execute(

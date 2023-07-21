@@ -5,11 +5,12 @@ use ahash::HashMap;
 use arrow2::datatypes::DataType;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
 use re_log_types::{
-    ComponentName, DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec,
-    NumInstancesVec, RowId, RowIdVec, SizeBytes, TimeInt, TimePoint, TimeRange, Timeline,
+    DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstancesVec, RowId,
+    RowIdVec, SizeBytes, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 // --- Data store ---
@@ -284,7 +285,7 @@ impl DataStore {
         &self.config
     }
 
-    /// Lookup the arrow [`DataType`] of a [`re_log_types::Component`] in the internal
+    /// Lookup the arrow [`DataType`] of a [`re_types::Component`] in the internal
     /// `DataTypeRegistry`.
     pub fn lookup_datatype(&self, component: &ComponentName) -> Option<&DataType> {
         self.type_registry.get(component)
@@ -335,7 +336,7 @@ impl DataStore {
 #[test]
 fn datastore_internal_repr() {
     use re_components::datagen::data_table_example;
-    use re_log_types::{Component as _, InstanceKey};
+    use re_types::{components::InstanceKey, Loggable as _};
 
     let mut store = DataStore::new(
         InstanceKey::name(),
