@@ -13,5 +13,18 @@ namespace rr {
             return arrow::list(arrow::field(
                 "item", rr::datatypes::AffixFuzzer3::to_arrow_datatype(), true, nullptr));
         }
+
+        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> AffixFuzzer17::to_arrow(
+            arrow::MemoryPool* memory_pool, const AffixFuzzer17* elements, size_t num_elements) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            auto builder = std::make_shared<arrow::ListBuilder>(memory_pool);
+            return builder;
+        }
     } // namespace components
 } // namespace rr

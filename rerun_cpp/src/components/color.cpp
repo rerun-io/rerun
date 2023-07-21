@@ -10,5 +10,18 @@ namespace rr {
         std::shared_ptr<arrow::DataType> Color::to_arrow_datatype() {
             return arrow::uint32();
         }
+
+        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> Color::to_arrow(
+            arrow::MemoryPool* memory_pool, const Color* elements, size_t num_elements) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            auto builder = std::make_shared<arrow::UInt32Builder>(memory_pool);
+            return builder;
+        }
     } // namespace components
 } // namespace rr

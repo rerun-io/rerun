@@ -11,5 +11,18 @@ namespace rr {
             return arrow::fixed_size_list(arrow::field("item", arrow::float32(), false, nullptr),
                                           2);
         }
+
+        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> Vec2D::to_arrow(
+            arrow::MemoryPool* memory_pool, const Vec2D* elements, size_t num_elements) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            auto builder = std::make_shared<arrow::FixedSizeListBuilder>(memory_pool);
+            return builder;
+        }
     } // namespace datatypes
 } // namespace rr

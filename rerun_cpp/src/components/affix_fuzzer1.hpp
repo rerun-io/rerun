@@ -5,13 +5,16 @@
 
 #include "../datatypes/affix_fuzzer1.hpp"
 
+#include <arrow/result.h>
 #include <cstdint>
 #include <memory>
 #include <utility>
 
 namespace arrow {
+    class ArrayBuilder;
     class DataType;
-}
+    class MemoryPool;
+} // namespace arrow
 
 namespace rr {
     namespace components {
@@ -24,6 +27,10 @@ namespace rr {
 
             /// Returns the arrow data type this type corresponds to.
             static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+
+            /// Fills out an arrow array builder with an array of this type.
+            static arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> to_arrow(
+                arrow::MemoryPool* memory_pool, const AffixFuzzer1* elements, size_t num_elements);
         };
     } // namespace components
 } // namespace rr

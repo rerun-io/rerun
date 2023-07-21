@@ -259,16 +259,28 @@ impl QuotedObject {
             }
         };
 
+        let datatype = arrow_registry.get(&obj.fqname);
+
         match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
                 methods.push(arrow_data_type_method(
-                    &arrow_registry.get(&obj.fqname),
+                    &datatype,
+                    &mut hpp_includes,
+                    &mut cpp_includes,
+                    &mut hpp_declarations,
+                ));
+
+                methods.push(to_arrow_method(
+                    &datatype,
+                    &pascal_case_ident,
                     &mut hpp_includes,
                     &mut cpp_includes,
                     &mut hpp_declarations,
                 ));
             }
-            ObjectKind::Archetype => {}
+            ObjectKind::Archetype => {
+                // TODO(andreas): Should also be convertable to arrow?
+            }
         };
 
         let hpp_method_section = if methods.is_empty() {
@@ -578,8 +590,8 @@ fn arrow_data_type_method(
     hpp_declarations: &mut ForwardDecls,
 ) -> Method {
     hpp_declarations.insert("arrow", ForwardDecl::Class("DataType".to_owned()));
-    cpp_includes.system.insert("arrow/api.h".to_owned());
     hpp_includes.system.insert("memory".to_owned()); // std::shared_ptr
+    cpp_includes.system.insert("arrow/api.h".to_owned());
 
     let quoted_datatype = quote_arrow_data_type(datatype, cpp_includes, true);
 
@@ -591,6 +603,145 @@ fn arrow_data_type_method(
             name_and_parameters: quote! { to_arrow_datatype() },
         },
         definition_body: quote! { return #quoted_datatype; },
+        inline: false,
+    }
+}
+
+fn to_arrow_method(
+    datatype: &DataType,
+    pascal_case_ident: &Ident,
+    hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
+    hpp_declarations: &mut ForwardDecls,
+) -> Method {
+    hpp_declarations.insert("arrow", ForwardDecl::Class("ArrayBuilder".to_owned()));
+    hpp_declarations.insert("arrow", ForwardDecl::Class("MemoryPool".to_owned()));
+    hpp_includes.system.insert("arrow/result.h".to_owned());
+    hpp_includes.system.insert("memory".to_owned()); // std::shared_ptr
+    cpp_includes.system.insert("arrow/api.h".to_owned());
+
+    let DataType::Extension(_fqname, logical_datatype, _metadata) = datatype else {
+        panic!("Can only generate arrow serialization code for extension types.");
+    };
+
+    let pool = format_ident!("memory_pool");
+
+    /// TODO: shorter code here for trivial ones?
+    let builder_initialization = match logical_datatype.as_ref() {
+        DataType::Boolean => {
+            quote!(auto builder = std::make_shared<arrow::BooleanBuilder>(#pool);)
+        }
+        DataType::Int8 => quote!(auto builder = std::make_shared<arrow::Int8Builder>(#pool);),
+        DataType::Int16 => {
+            quote!(auto builder = std::make_shared<arrow::Int16Builder>(#pool);)
+        }
+        DataType::Int32 => {
+            quote!(auto builder = std::make_shared<arrow::Int32Builder>(#pool);)
+        }
+        DataType::Int64 => {
+            quote!(auto builder = std::make_shared<arrow::Int64Builder>(#pool);)
+        }
+        DataType::UInt8 => {
+            quote!(auto builder = std::make_shared<arrow::UInt8Builder>(#pool);)
+        }
+        DataType::UInt16 => {
+            quote!(auto builder = std::make_shared<arrow::UInt16Builder>(#pool);)
+        }
+        DataType::UInt32 => {
+            quote!(auto builder = std::make_shared<arrow::UInt32Builder>(#pool);)
+        }
+        DataType::UInt64 => {
+            quote!(auto builder = std::make_shared<arrow::UInt64Builder>(#pool);)
+        }
+        DataType::Float16 => {
+            quote!(auto builder = std::make_shared<arrow::Float16Builder>(#pool);)
+        }
+        DataType::Float32 => {
+            quote!(auto builder = std::make_shared<arrow::Float32Builder>(#pool);)
+        }
+        DataType::Float64 => {
+            quote!(auto builder = std::make_shared<arrow::Float64Builder>(#pool);)
+        }
+        DataType::Binary => {
+            quote!(auto builder = std::make_shared<arrow::BinaryBuilder>(#pool);)
+        }
+        DataType::LargeBinary => {
+            quote!(auto builder = std::make_shared<arrow::LargeBinaryBuilder>(#pool);)
+        }
+        DataType::Utf8 => {
+            quote!(auto builder = std::make_shared<arrow::StringBuilder>(#pool);)
+        }
+        DataType::LargeUtf8 => {
+            quote!(auto builder = std::make_shared<arrow::LargeStringBuilder>(#pool);)
+        }
+        DataType::List(_) => {
+            quote!(auto builder = std::make_shared<arrow::ListBuilder>(#pool);)
+        }
+        DataType::FixedSizeList(_, _) => {
+            quote!(auto builder = std::make_shared<arrow::FixedSizeListBuilder>(#pool);)
+        }
+        DataType::Struct(_) => {
+            quote! {
+                auto datatype = #pascal_case_ident::to_arrow_datatype();
+                let builder = std::make_shared<arrow::FixedSizeBinaryBuilder>(
+                    datatype,
+                    #pool,
+                    {}, #TODO_TOKEN
+                );
+            }
+        }
+        DataType::Union(_, _, mode) => {
+            let builder_type = match mode {
+                arrow2::datatypes::UnionMode::Dense => "DenseUnionBuilder",
+                arrow2::datatypes::UnionMode::Sparse => "SparseUnionBuilder",
+            };
+            let builder_type = format_ident!("{builder_type}");
+
+            quote! {
+                auto datatype = #pascal_case_ident::to_arrow_datatype();
+                let builder = std::make_shared<arrow::#builder_type>(
+                    datatype,
+                    #pool,
+                    {}, #TODO_TOKEN
+                );
+            }
+        }
+        DataType::Extension(fqname, datatype, _metadata) => {
+            //if let  datatype // TODO: unions not yet supported
+
+            // Extension in extension only happens if this is a transparent type pointing to another extension type.
+            // TODO: remove unnecessary namespacing.
+            let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
+            quote! {
+                static_assert(sizeof(#pascal_case_ident) == sizeof(#quoted_fqname), "Expected fully transparent type.");
+                auto builder = #quoted_fqname::to_arrow(#pool, reinterpret_cast<const #quoted_fqname*>(elements), num_elements);
+            }
+        }
+        _ => unimplemented!("Arrow serialization for type: {:?}", logical_datatype),
+    };
+
+    Method {
+        docs: "Fills out an arrow array builder with an array of this type.".into(),
+        declaration: MethodDeclaration {
+            is_static: true,
+            return_type: quote! { arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> },
+            // TODO(andreas): Pass in validity map.
+            name_and_parameters: quote! {
+                to_arrow(arrow::MemoryPool* #pool, const #pascal_case_ident* elements, size_t num_elements)
+            },
+        },
+        definition_body: quote! {
+            if (!#pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            #builder_initialization
+            return builder;
+        },
         inline: false,
     }
 }
@@ -902,8 +1053,9 @@ fn quote_arrow_data_type(
                 // In the future we'll add the extension type here to the schema.
                 quote_arrow_data_type(datatype, includes, false)
             } else {
-                let fqname_use = quote_fqname_as_type_path(includes, fqname);
-                quote! { #fqname_use::to_arrow_datatype() }
+                // TODO: remove unnecessary namespacing.
+                let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
+                quote! { #quoted_fqname::to_arrow_datatype() }
             }
         }
 

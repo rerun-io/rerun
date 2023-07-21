@@ -34,5 +34,22 @@ namespace rr {
                 arrow::field("from_parent", arrow::boolean(), true, nullptr),
             });
         }
+
+        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> AffixFuzzer1::to_arrow(
+            arrow::MemoryPool* memory_pool, const AffixFuzzer1* elements, size_t num_elements) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            auto datatype = AffixFuzzer1::to_arrow_datatype();
+            let builder =
+                std::make_shared<arrow::FixedSizeBinaryBuilder>(datatype, memory_pool, {},
+                                                                // TODO(#2647): code-gen for C++
+                );
+            return builder;
+        }
     } // namespace datatypes
 } // namespace rr

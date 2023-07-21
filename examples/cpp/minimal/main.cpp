@@ -1,6 +1,37 @@
 #include <loguru.hpp>
 #include <rerun.hpp>
 
+#include <components/point2d.hpp>
+
+arrow::Result<std::shared_ptr<arrow::Table>> points2(size_t num_points, const float* xy) {
+    arrow::MemoryPool* pool = arrow::default_memory_pool();
+
+    auto x_builder = std::make_shared<arrow::FloatBuilder>(pool);
+    auto y_builder = std::make_shared<arrow::FloatBuilder>(pool);
+
+    auto nullable = false;
+
+    auto data_type = rr::components::Point2D::to_arrow_datatype();
+    auto struct_builder =
+        arrow::StructBuilder(data_type, pool, {x_builder, y_builder});
+
+    for (size_t i = 0; i < num_points; ++i) {
+        ARROW_RETURN_NOT_OK(struct_builder.Append());
+        ARROW_RETURN_NOT_OK(x_builder->Append(xy[2 * i + 0]));
+        ARROW_RETURN_NOT_OK(y_builder->Append(xy[2 * i + 1]));
+}
+
+    std::shared_ptr<arrow::Array> array;
+    ARROW_RETURN_NOT_OK(struct_builder.Finish(&array));
+
+    auto name = "points"; // Unused, but should be the name of the field in the archetype
+    auto schema = arrow::schema({arrow::field(name, data_type, nullable)});
+
+    return arrow::Table::Make(schema, {array});
+}
+
+
+
 int main(int argc, char** argv) {
     loguru::g_preamble_uptime = false;
     loguru::g_preamble_thread = false;
@@ -10,18 +41,37 @@ int main(int argc, char** argv) {
 
     auto rr_stream = rr::RecordingStream{"c-example-app", "127.0.0.1:9876"};
 
-    float xyz[9] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 5.0, 5.0, 5.0};
-    auto points = rr::points3(3, xyz).ValueOrDie();
-    auto buffer = rr::ipc_from_table(*points).ValueOrDie();
+    // Points3D, fully custom.
+    {
+        float xyz[9] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 5.0, 5.0, 5.0};
+        auto points = rr::points3(3, xyz).ValueOrDie();
+        auto buffer = rr::ipc_from_table(*points).ValueOrDie();
 
-    const rr::DataCell data_cells[1] = {rr::DataCell{
-        .component_name = "rerun.point3d",
-        .num_bytes = static_cast<size_t>(buffer->size()),
-        .bytes = buffer->data(),
-    }};
+        const rr::DataCell data_cells[1] = {rr::DataCell{
+            .component_name = "rerun.point3d",
+            .num_bytes = static_cast<size_t>(buffer->size()),
+            .bytes = buffer->data(),
+        }};
 
-    uint32_t num_instances = 3;
-    rr_stream.log_data_row("points", num_instances, 1, data_cells);
+        uint32_t num_instances = 3;
+        rr_stream.log_data_row("3d/points", num_instances, 1, data_cells);
+    }
+
+    // Points2D, via generated code.
+    {
+        float xy[6] = {0.0, 0.0, 1.0, 3.0, 5.0, 5.0};
+        auto points = points2(3, xy).ValueOrDie();
+        auto buffer = rr::ipc_from_table(*points).ValueOrDie();
+
+        const rr::DataCell data_cells[1] = {rr::DataCell{
+            .component_name = "rerun.point2d",
+            .num_bytes = static_cast<size_t>(buffer->size()),
+            .bytes = buffer->data(),
+        }};
+
+        uint32_t num_instances = 3;
+        rr_stream.log_data_row("2d/points", num_instances, 1, data_cells);
+    }
 
     // Test some type instantiation
     auto tls = rr::datatypes::TranslationRotationScale3D{};

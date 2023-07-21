@@ -10,5 +10,18 @@ namespace rr {
         std::shared_ptr<arrow::DataType> KeypointId::to_arrow_datatype() {
             return arrow::uint16();
         }
+
+        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> KeypointId::to_arrow(
+            arrow::MemoryPool* memory_pool, const KeypointId* elements, size_t num_elements) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            auto builder = std::make_shared<arrow::UInt16Builder>(memory_pool);
+            return builder;
+        }
     } // namespace components
 } // namespace rr

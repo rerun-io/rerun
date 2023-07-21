@@ -13,5 +13,22 @@ namespace rr {
                 arrow::field("y", arrow::float32(), false, nullptr),
             });
         }
+
+        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> Point2D::to_arrow(
+            arrow::MemoryPool* memory_pool, const Point2D* elements, size_t num_elements) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            auto datatype = Point2D::to_arrow_datatype();
+            let builder =
+                std::make_shared<arrow::FixedSizeBinaryBuilder>(datatype, memory_pool, {},
+                                                                // TODO(#2647): code-gen for C++
+                );
+            return builder;
+        }
     } // namespace datatypes
 } // namespace rr
