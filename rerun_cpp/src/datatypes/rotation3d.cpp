@@ -2,3 +2,24 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/rotation3d.fbs"
 
 #include "rotation3d.hpp"
+
+#include "../datatypes/quaternion.hpp"
+#include "../datatypes/rotation_axis_angle.hpp"
+
+#include <arrow/api.h>
+
+namespace rr {
+    namespace datatypes {
+        std::shared_ptr<arrow::DataType> Rotation3D::to_arrow_datatype() {
+            return arrow::dense_union({
+                arrow::field("_null_markers", arrow::null(), true, nullptr),
+                arrow::field(
+                    "Quaternion", rr::datatypes::Quaternion::to_arrow_datatype(), false, nullptr),
+                arrow::field("AxisAngle",
+                             rr::datatypes::RotationAxisAngle::to_arrow_datatype(),
+                             false,
+                             nullptr),
+            });
+        }
+    } // namespace datatypes
+} // namespace rr

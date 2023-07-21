@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <new>
 #include <optional>
 #include <utility>
@@ -112,6 +113,9 @@ namespace rr {
                 new (&self._data.many_optional) TypeAlias(std::move(many_optional));
                 return std::move(self);
             }
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
 
             void swap(AffixFuzzer4& other) noexcept {
                 auto tag_temp = this->_tag;

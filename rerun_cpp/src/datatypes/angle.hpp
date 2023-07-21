@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <utility>
 
 namespace rr {
@@ -70,6 +71,9 @@ namespace rr {
                 self._data.degrees = std::move(degrees);
                 return std::move(self);
             }
+
+            /// Returns the arrow data type this type corresponds to.
+            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
 
             void swap(Angle& other) noexcept {
                 auto tag_temp = this->_tag;

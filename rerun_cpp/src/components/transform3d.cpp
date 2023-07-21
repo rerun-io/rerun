@@ -3,25 +3,14 @@
 
 #include "transform3d.hpp"
 
-#include "../datatypes/translation_and_mat3x3.hpp"
-#include "../datatypes/translation_rotation_scale3d.hpp"
+#include "../datatypes/transform3d.hpp"
 
 #include <arrow/api.h>
 
 namespace rr {
     namespace components {
         std::shared_ptr<arrow::DataType> Transform3D::to_arrow_datatype() {
-            return arrow::dense_union({
-                arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field("TranslationAndMat3x3",
-                             rr::datatypes::TranslationAndMat3x3::to_arrow_datatype(),
-                             false,
-                             nullptr),
-                arrow::field("TranslationRotationScale",
-                             rr::datatypes::TranslationRotationScale3D::to_arrow_datatype(),
-                             false,
-                             nullptr),
-            });
+            return rr::datatypes::Transform3D::to_arrow_datatype();
         }
     } // namespace components
 } // namespace rr
