@@ -163,8 +163,9 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::try_from_arrow`].
     #[inline]
     fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
-        Self::from_arrow_opt(data)
-            .into_iter()
+        Self::try_from_arrow_iter_item(data)
+            .detailed_unwrap()
+            .map(Self::convert_item_to_self)
             .map(|v| {
                 v.ok_or_else(|| DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -174,15 +175,15 @@ pub trait Loggable: Sized {
             .collect()
     }
 
-    /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
+    /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
     ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::to_arrow_datatype`].
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
-        Self::try_from_arrow_opt(data)?
-            .into_iter()
+        Self::try_from_arrow_iter_item(data)?
+            .map(Self::convert_item_to_self)
             .map(|v| {
                 v.ok_or_else(|| DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -193,7 +194,7 @@ pub trait Loggable: Sized {
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
     ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::to_arrow_datatype`].
     /// For the fallible version, see [`Loggable::try_from_arrow_opt`].
     #[inline]
@@ -203,18 +204,39 @@ pub trait Loggable: Sized {
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
     ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::to_arrow_datatype`].
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
+    #[inline]
     fn try_from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>;
+    ) -> DeserializationResult<Vec<Option<Self>>> {
+        Ok(Self::try_from_arrow_iter_item(data)?
+            .map(Self::convert_item_to_self)
+            .collect())
+    }
 
-    fn iter_mapper(item: Self::Item<'_>) -> Option<Self>;
-
-    fn try_from_arrow_opt_iter(
+    /// Given an Arrow array, deserializes it into a iterator of [`Loggable::Item`]s.
+    ///
+    /// Note: mostly for reasons related to typing of trait implementations, the implementor
+    /// of [`Loggable`] may choose an arbitrary iterable [`Loggable::Item`] that  differs from
+    /// the [`Loggable`] itself.
+    ///
+    /// These items can be be converted to an optional [`Loggable`] using [`Loggable::convert_item_to_self`].
+    ///
+    /// This is the base deserialization mechanism that all [`Loggable`] implementors must provide. All other
+    /// conversions above can be generated from this primitive.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Loggable::to_arrow_datatype`].
+    fn try_from_arrow_iter_item(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Self::IterItem<'_>>;
+
+    /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
+    ///
+    /// This is intended to be used with [`Loggable::try_from_arrow_iter_item`]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self>;
 }
 
 /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.

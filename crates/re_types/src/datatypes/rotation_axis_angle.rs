@@ -301,7 +301,7 @@ impl crate::Loggable for RotationAxisAngle {
     }
 
     #[inline]
-    fn try_from_arrow_opt_iter(
+    fn try_from_arrow_iter_item(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
@@ -311,7 +311,7 @@ impl crate::Loggable for RotationAxisAngle {
     }
 
     #[inline]
-    fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }

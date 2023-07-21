@@ -464,24 +464,9 @@ macro_rules! component_legacy_shim {
                 Ok(arrow)
             }
 
-            #[inline]
-            fn try_from_arrow_opt(
-                data: &dyn arrow2::array::Array,
-            ) -> re_types::DeserializationResult<Vec<Option<Self>>>
-            where
-                Self: Sized,
-            {
-                use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
-                let native = arrow_array_deserialize_iterator(data)
-                    .map_err(|err| {
-                        re_types::DeserializationError::ArrowConvertFailure(err.to_string())
-                    })?
-                    .collect();
-                Ok(native)
-            }
 
             #[inline]
-            fn try_from_arrow_opt_iter(
+            fn try_from_arrow_iter_item(
                 data: &dyn arrow2::array::Array,
             ) -> re_types::DeserializationResult<Self::IterItem<'_>>
             where
@@ -493,7 +478,7 @@ macro_rules! component_legacy_shim {
             }
 
             #[inline]
-            fn iter_mapper(item: Self::Item<'_>) -> Option<Self> {
+            fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
                 <Self as arrow2_convert::deserialize::ArrowDeserialize>::arrow_deserialize(item)
             }
         }
