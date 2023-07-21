@@ -58,7 +58,7 @@ impl Points2DPart {
                     (point, Some(label)) => Some(UiLabel {
                         text: label,
                         color: *color,
-                        target: UiLabelTarget::Point2D(egui::pos2(point.xy.x, point.xy.y)),
+                        target: UiLabelTarget::Point2D(egui::pos2(point.x(), point.y())),
                         labeled_instance: *labeled_instance,
                     }),
                     _ => None,
