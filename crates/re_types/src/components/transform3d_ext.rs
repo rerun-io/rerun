@@ -38,12 +38,6 @@ impl Transform3D {
     }
 }
 
-impl From<Transform3DRepr> for Transform3D {
-    fn from(value: Transform3DRepr) -> Self {
-        Self(value)
-    }
-}
-
 impl From<RotationAxisAngle> for Transform3D {
     fn from(value: RotationAxisAngle) -> Self {
         Self(value.into())

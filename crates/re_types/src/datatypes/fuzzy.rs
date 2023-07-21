@@ -1996,9 +1996,11 @@ pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::datatypes::AffixFuzzer4>,
 }
 
-impl From<crate::datatypes::AffixFuzzer4> for AffixFuzzer5 {
-    fn from(v: crate::datatypes::AffixFuzzer4) -> Self {
-        Self(v)
+impl From<Option<crate::datatypes::AffixFuzzer4>> for AffixFuzzer5 {
+    fn from(v: Option<crate::datatypes::AffixFuzzer4>) -> Self {
+        Self {
+            single_optional_union: v,
+        }
     }
 }
 
