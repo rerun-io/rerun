@@ -109,4 +109,4 @@ datatypes/vec3d.cpp linguist-generated=true
 datatypes/vec3d.hpp linguist-generated=true
 datatypes/vec4d.cpp linguist-generated=true
 datatypes/vec4d.hpp linguist-generated=true
-datatypes.hpp
+datatypes.hpp linguist-generated=true

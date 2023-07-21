@@ -34,7 +34,7 @@ class Scale3D:
     ```
     """
 
-    inner: datatypes.Vec3D | float = field(converter=scale3d_inner_converter)
+    inner: Union[datatypes.Vec3D, float] = field(converter=scale3d_inner_converter)
     """
     ThreeD (datatypes.Vec3D):
         Individual scaling factors for each axis, distorting the original object.

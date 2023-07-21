@@ -270,8 +270,9 @@ pub fn generate_gitattributes_for_generated_files(
                     .unwrap()
                     .to_string()
             }))
+            .map(|s| format!("{s} linguist-generated=true\n"))
             .collect::<Vec<_>>()
-            .join(" linguist-generated=true\n"),
+            .join(""),
     );
 }
 

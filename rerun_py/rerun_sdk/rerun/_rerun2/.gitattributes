@@ -33,4 +33,4 @@ datatypes/translation_and_mat3x3.py linguist-generated=true
 datatypes/translation_rotation_scale3d.py linguist-generated=true
 datatypes/vec2d.py linguist-generated=true
 datatypes/vec3d.py linguist-generated=true
-datatypes/vec4d.py
+datatypes/vec4d.py linguist-generated=true

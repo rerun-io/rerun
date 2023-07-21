@@ -32,4 +32,4 @@ src/datatypes/translation_and_mat3x3.rs linguist-generated=true
 src/datatypes/translation_rotation_scale3d.rs linguist-generated=true
 src/datatypes/vec2d.rs linguist-generated=true
 src/datatypes/vec3d.rs linguist-generated=true
-src/datatypes/vec4d.rs
+src/datatypes/vec4d.rs linguist-generated=true
