@@ -55,7 +55,7 @@ where
 {
     /// Iterate over the instance keys
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = re_log_types::LegacyInstanceKey> + '_ {
+    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
         self.primary.iter_instance_keys()
     }
 

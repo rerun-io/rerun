@@ -92,7 +92,7 @@ impl Points3DPart {
                 re_tracing::profile_scope!("instance_hashes");
                 ent_view
                     .iter_instance_keys()
-                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key.into()))
+                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
                     .collect::<Vec<_>>()
             };
 
@@ -122,7 +122,7 @@ impl Points3DPart {
 
             let picking_instance_ids = ent_view
                 .iter_instance_keys()
-                .map(|k| picking_id_from_instance_key(k.into()));
+                .map(picking_id_from_instance_key);
             let mut point_range_builder = point_batch.add_points(
                 ent_view.num_instances(),
                 point_positions,
@@ -138,7 +138,7 @@ impl Points3DPart {
                     // TODO(andreas/jeremy): We can do this much more efficiently
                     let highlighted_point_index = ent_view
                         .iter_instance_keys()
-                        .position(|key| *highlighted_key == key.into());
+                        .position(|key| *highlighted_key == key);
                     if let Some(highlighted_point_index) = highlighted_point_index {
                         point_range_builder = point_range_builder
                             .push_additional_outline_mask_ids_for_range(

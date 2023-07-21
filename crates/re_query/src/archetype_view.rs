@@ -40,9 +40,15 @@ impl ComponentWithInstances {
 
     /// Iterate over the [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = re_log_types::LegacyInstanceKey> + '_ {
+    pub fn iter_instance_keys(
+        &self,
+    ) -> impl Iterator<Item = re_types::components::InstanceKey> + '_ {
+        // TODO(jleibs): It's important that we still iterate over these keys
+        // via the legacy interface to avoid a performance hit from the new
+        // code-generated instance_keys.
         self.instance_keys
             .to_native::<re_log_types::LegacyInstanceKey>()
+            .map(|k| k.into())
     }
 
     /// Iterate over the values and convert them to a native [`Component`]
@@ -160,14 +166,14 @@ pub struct ComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
     pub primary_instance_key_iter: IIter1,
     pub component_instance_key_iter: IIter2,
     pub component_value_iter: VIter,
-    pub next_component_instance_key: Option<re_log_types::LegacyInstanceKey>,
+    pub next_component_instance_key: Option<InstanceKey>,
     pub splatted_component_value: Option<Val>,
 }
 
 impl<IIter1, IIter2, VIter, C> Iterator for ComponentJoinedIterator<IIter1, IIter2, VIter, C>
 where
-    IIter1: Iterator<Item = re_log_types::LegacyInstanceKey>,
-    IIter2: Iterator<Item = re_log_types::LegacyInstanceKey>,
+    IIter1: Iterator<Item = InstanceKey>,
+    IIter2: Iterator<Item = InstanceKey>,
     VIter: Iterator<Item = Option<C>>,
     C: Clone,
 {
@@ -266,7 +272,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Iterate over the [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = re_log_types::LegacyInstanceKey> + '_ {
+    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
         // TODO(https://github.com/rerun-io/rerun/issues/2750): Maybe make this an intersection instead
         self.required_comp().iter_instance_keys()
     }
