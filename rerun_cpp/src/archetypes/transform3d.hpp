@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "../components/transform3d.hpp"
+
 #include <cstdint>
 #include <utility>
-
-#include "../components/transform3d.hpp"
 
 namespace rr {
     namespace archetypes {

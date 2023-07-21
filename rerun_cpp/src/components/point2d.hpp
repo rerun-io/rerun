@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include "../datatypes/point2d.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <utility>
-
-#include "../datatypes/point2d.hpp"
 
 namespace arrow {
     class DataType;

@@ -3,14 +3,14 @@
 
 #pragma once
 
+#include "../datatypes/affix_fuzzer1.hpp"
+
 #include <cstdint>
 #include <cstring>
 #include <new>
 #include <optional>
 #include <utility>
 #include <vector>
-
-#include "../datatypes/affix_fuzzer1.hpp"
 
 namespace rr {
     namespace datatypes {

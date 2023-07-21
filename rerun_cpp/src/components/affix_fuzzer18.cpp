@@ -3,9 +3,9 @@
 
 #include "affix_fuzzer18.hpp"
 
-#include <arrow/api.h>
-
 #include "../datatypes/affix_fuzzer1.hpp"
+
+#include <arrow/api.h>
 
 namespace rr {
     namespace components {

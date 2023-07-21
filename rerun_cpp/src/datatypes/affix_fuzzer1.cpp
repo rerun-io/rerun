@@ -3,9 +3,9 @@
 
 #include "affix_fuzzer1.hpp"
 
-#include <arrow/api.h>
-
 #include "../datatypes/flattened_scalar.hpp"
+
+#include <arrow/api.h>
 
 namespace rr {
     namespace datatypes {

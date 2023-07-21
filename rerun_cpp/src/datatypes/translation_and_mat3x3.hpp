@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "../datatypes/mat3x3.hpp"
+#include "../datatypes/vec3d.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <optional>
-
-#include "../datatypes/mat3x3.hpp"
-#include "../datatypes/vec3d.hpp"
 
 namespace arrow {
     class DataType;

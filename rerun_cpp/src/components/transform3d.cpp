@@ -3,10 +3,10 @@
 
 #include "transform3d.hpp"
 
-#include <arrow/api.h>
-
 #include "../datatypes/translation_and_mat3x3.hpp"
 #include "../datatypes/translation_rotation_scale3d.hpp"
+
+#include <arrow/api.h>
 
 namespace rr {
     namespace components {

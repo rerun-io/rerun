@@ -3,9 +3,9 @@
 
 #include "rotation_axis_angle.hpp"
 
-#include <arrow/api.h>
-
 #include "../datatypes/vec3d.hpp"
+
+#include <arrow/api.h>
 
 namespace rr {
     namespace datatypes {

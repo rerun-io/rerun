@@ -3,10 +3,10 @@
 
 #include "translation_and_mat3x3.hpp"
 
-#include <arrow/api.h>
-
 #include "../datatypes/mat3x3.hpp"
 #include "../datatypes/vec3d.hpp"
+
+#include <arrow/api.h>
 
 namespace rr {
     namespace datatypes {

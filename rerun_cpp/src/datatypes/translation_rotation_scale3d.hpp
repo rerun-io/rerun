@@ -3,13 +3,13 @@
 
 #pragma once
 
-#include <cstdint>
-#include <memory>
-#include <optional>
-
 #include "../datatypes/rotation3d.hpp"
 #include "../datatypes/scale3d.hpp"
 #include "../datatypes/vec3d.hpp"
+
+#include <cstdint>
+#include <memory>
+#include <optional>
 
 namespace arrow {
     class DataType;

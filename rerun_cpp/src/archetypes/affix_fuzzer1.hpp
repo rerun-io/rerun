@@ -3,10 +3,6 @@
 
 #pragma once
 
-#include <cstdint>
-#include <optional>
-#include <vector>
-
 #include "../components/affix_fuzzer1.hpp"
 #include "../components/affix_fuzzer10.hpp"
 #include "../components/affix_fuzzer11.hpp"
@@ -26,6 +22,10 @@
 #include "../components/affix_fuzzer7.hpp"
 #include "../components/affix_fuzzer8.hpp"
 #include "../components/affix_fuzzer9.hpp"
+
+#include <cstdint>
+#include <optional>
+#include <vector>
 
 namespace rr {
     namespace archetypes {

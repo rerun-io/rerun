@@ -3,11 +3,11 @@
 
 #include "translation_rotation_scale3d.hpp"
 
-#include <arrow/api.h>
-
 #include "../datatypes/quaternion.hpp"
 #include "../datatypes/rotation_axis_angle.hpp"
 #include "../datatypes/vec3d.hpp"
+
+#include <arrow/api.h>
 
 namespace rr {
     namespace datatypes {

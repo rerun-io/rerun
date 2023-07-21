@@ -3,9 +3,9 @@
 
 #include "point2d.hpp"
 
-#include <arrow/api.h>
-
 #include "../datatypes/point2d.hpp"
+
+#include <arrow/api.h>
 
 namespace rr {
     namespace components {

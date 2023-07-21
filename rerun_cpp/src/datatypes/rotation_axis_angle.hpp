@@ -3,11 +3,11 @@
 
 #pragma once
 
-#include <cstdint>
-#include <memory>
-
 #include "../datatypes/angle.hpp"
 #include "../datatypes/vec3d.hpp"
+
+#include <cstdint>
+#include <memory>
 
 namespace arrow {
     class DataType;
