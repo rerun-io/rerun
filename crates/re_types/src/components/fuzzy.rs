@@ -15,6 +15,12 @@
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer1(pub crate::datatypes::AffixFuzzer1);
 
+impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer1 {
+    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
     #[inline]
     fn from(value: AffixFuzzer1) -> Self {
@@ -183,6 +189,12 @@ impl crate::Component for AffixFuzzer1 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer2(pub crate::datatypes::AffixFuzzer1);
+
+impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer2 {
+    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+        Self(v)
+    }
+}
 
 impl<'a> From<AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
     #[inline]
@@ -353,6 +365,12 @@ impl crate::Component for AffixFuzzer2 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer3(pub crate::datatypes::AffixFuzzer1);
 
+impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer3 {
+    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
     #[inline]
     fn from(value: AffixFuzzer3) -> Self {
@@ -522,6 +540,12 @@ impl crate::Component for AffixFuzzer3 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer4(pub Option<crate::datatypes::AffixFuzzer1>);
 
+impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer4 {
+    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
     #[inline]
     fn from(value: AffixFuzzer4) -> Self {
@@ -688,6 +712,12 @@ impl crate::Component for AffixFuzzer4 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer5(pub Option<crate::datatypes::AffixFuzzer1>);
+
+impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer5 {
+    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+        Self(v)
+    }
+}
 
 impl<'a> From<AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
     #[inline]
@@ -856,6 +886,12 @@ impl crate::Component for AffixFuzzer5 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer6(pub Option<crate::datatypes::AffixFuzzer1>);
 
+impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer6 {
+    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<AffixFuzzer6> for ::std::borrow::Cow<'a, AffixFuzzer6> {
     #[inline]
     fn from(value: AffixFuzzer6) -> Self {
@@ -1022,6 +1058,12 @@ impl crate::Component for AffixFuzzer6 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer7(pub Option<Vec<crate::datatypes::AffixFuzzer1>>);
+
+impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer7 {
+    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+        Self(v)
+    }
+}
 
 impl<'a> From<AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
     #[inline]
@@ -2157,6 +2199,12 @@ impl crate::Component for AffixFuzzer13 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer14(pub crate::datatypes::AffixFuzzer3);
 
+impl From<crate::datatypes::AffixFuzzer3> for AffixFuzzer14 {
+    fn from(v: crate::datatypes::AffixFuzzer3) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<AffixFuzzer14> for ::std::borrow::Cow<'a, AffixFuzzer14> {
     #[inline]
     fn from(value: AffixFuzzer14) -> Self {
@@ -2304,6 +2352,12 @@ impl crate::Component for AffixFuzzer14 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer15(pub Option<crate::datatypes::AffixFuzzer3>);
 
+impl From<crate::datatypes::AffixFuzzer3> for AffixFuzzer15 {
+    fn from(v: crate::datatypes::AffixFuzzer3) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<AffixFuzzer15> for ::std::borrow::Cow<'a, AffixFuzzer15> {
     #[inline]
     fn from(value: AffixFuzzer15) -> Self {
@@ -2448,6 +2502,12 @@ impl crate::Component for AffixFuzzer15 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer16(pub Vec<crate::datatypes::AffixFuzzer3>);
+
+impl From<crate::datatypes::AffixFuzzer3> for AffixFuzzer16 {
+    fn from(v: crate::datatypes::AffixFuzzer3) -> Self {
+        Self(v)
+    }
+}
 
 impl<'a> From<AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
     #[inline]
@@ -2634,6 +2694,12 @@ impl crate::Component for AffixFuzzer16 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer17(pub Option<Vec<crate::datatypes::AffixFuzzer3>>);
 
+impl From<crate::datatypes::AffixFuzzer3> for AffixFuzzer17 {
+    fn from(v: crate::datatypes::AffixFuzzer3) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<AffixFuzzer17> for ::std::borrow::Cow<'a, AffixFuzzer17> {
     #[inline]
     fn from(value: AffixFuzzer17) -> Self {
@@ -2817,6 +2883,12 @@ impl crate::Component for AffixFuzzer17 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer18(pub Option<Vec<crate::datatypes::AffixFuzzer4>>);
 
+impl From<crate::datatypes::AffixFuzzer4> for AffixFuzzer18 {
+    fn from(v: crate::datatypes::AffixFuzzer4) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
     #[inline]
     fn from(value: AffixFuzzer18) -> Self {
@@ -2999,6 +3071,12 @@ impl crate::Component for AffixFuzzer18 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer19(pub crate::datatypes::AffixFuzzer5);
+
+impl From<crate::datatypes::AffixFuzzer5> for AffixFuzzer19 {
+    fn from(v: crate::datatypes::AffixFuzzer5) -> Self {
+        Self(v)
+    }
+}
 
 impl<'a> From<AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
     #[inline]

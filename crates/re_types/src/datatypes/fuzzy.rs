@@ -1996,6 +1996,12 @@ pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::datatypes::AffixFuzzer4>,
 }
 
+impl From<crate::datatypes::AffixFuzzer4> for AffixFuzzer5 {
+    fn from(v: crate::datatypes::AffixFuzzer4) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
     #[inline]
     fn from(value: AffixFuzzer5) -> Self {

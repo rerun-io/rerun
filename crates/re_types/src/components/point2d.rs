@@ -16,6 +16,12 @@
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Point2D(pub crate::datatypes::Point2D);
 
+impl From<crate::datatypes::Point2D> for Point2D {
+    fn from(v: crate::datatypes::Point2D) -> Self {
+        Self(v)
+    }
+}
+
 impl<'a> From<Point2D> for ::std::borrow::Cow<'a, Point2D> {
     #[inline]
     fn from(value: Point2D) -> Self {
