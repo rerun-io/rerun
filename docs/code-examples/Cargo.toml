@@ -84,8 +84,16 @@ name = "point3d_random"
 path = "point3d_random.rs"
 
 [[bin]]
+name = "point3d_random_v2"
+path = "point3d_random_v2.rs"
+
+[[bin]]
 name = "point3d_simple"
 path = "point3d_simple.rs"
+
+[[bin]]
+name = "point3d_simple_v2"
+path = "point3d_simple_v2.rs"
 
 [[bin]]
 name = "rect2d_simple"
