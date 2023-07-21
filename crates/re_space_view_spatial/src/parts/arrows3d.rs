@@ -1,4 +1,4 @@
-use re_components::{Arrow3D, ColorRGBA, LegacyLabel};
+use re_components::{Arrow3D, LegacyColor, LegacyLabel};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
@@ -48,7 +48,7 @@ impl Arrows3DPart {
         ent_view.visit4(
             |instance_key: InstanceKey,
              arrow: Arrow3D,
-             color: Option<ColorRGBA>,
+             color: Option<LegacyColor>,
              radius: Option<Radius>,
              _label: Option<LegacyLabel>| {
                 // TODO(andreas): support labels
@@ -102,7 +102,7 @@ impl ViewPartSystem for Arrows3DPart {
         vec1::vec1![
             Arrow3D::name(),
             InstanceKey::name(),
-            ColorRGBA::name(),
+            LegacyColor::name(),
             Radius::name(),
             LegacyLabel::name(),
         ]

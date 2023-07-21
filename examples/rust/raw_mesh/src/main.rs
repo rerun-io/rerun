@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 use bytes::Bytes;
 use rerun::components::{
-    ColorRGBA, Mesh3D, MeshId, RawMesh3D, Transform3D, Vec4D, ViewCoordinates,
+    LegacyColor, Mesh3D, MeshId, RawMesh3D, Transform3D, Vec4D, ViewCoordinates,
 };
 use rerun::transform::TranslationRotationScale3D;
 use rerun::{
@@ -210,7 +210,7 @@ struct GltfPrimitive {
     albedo_factor: Option<[f32; 4]>,
     indices: Option<Vec<u32>>,
     vertex_positions: Vec<[f32; 3]>,
-    vertex_colors: Option<Vec<ColorRGBA>>,
+    vertex_colors: Option<Vec<LegacyColor>>,
     vertex_normals: Option<Vec<[f32; 3]>>,
     #[allow(dead_code)]
     vertex_texcoords: Option<Vec<[f32; 2]>>,
@@ -281,7 +281,7 @@ fn node_primitives<'data>(
             let vertex_colors = vertex_colors.map(|colors| {
                 colors
                     .into_rgba_u8()
-                    .map(|[r, g, b, a]| ColorRGBA::from_unmultiplied_rgba(r, g, b, a))
+                    .map(|[r, g, b, a]| LegacyColor::from_unmultiplied_rgba(r, g, b, a))
                     .collect()
             });
 

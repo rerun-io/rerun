@@ -1,7 +1,7 @@
 use egui::Vec2;
 
 use re_components::{
-    ColorRGBA, LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+    LegacyColor, LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
 };
 use re_format::format_f32;
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -31,7 +31,7 @@ impl DataUi for [u8; 4] {
     }
 }
 
-impl DataUi for ColorRGBA {
+impl DataUi for LegacyColor {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,

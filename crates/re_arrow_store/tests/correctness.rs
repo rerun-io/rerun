@@ -14,7 +14,10 @@ use re_components::datagen::{
     build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
 };
 use re_log_types::{DataCell, Duration, EntityPath, Time, TimeType, Timeline};
-use re_types::{components::InstanceKey, Loggable as _};
+use re_types::{
+    components::{Color, InstanceKey},
+    Loggable as _,
+};
 
 // ---
 
@@ -217,7 +220,6 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         prelude::{DataFrame, JoinType},
         series::Series,
     };
-    use re_components::ColorRGBA;
     use re_types::components::Point2D;
 
     let ent_path = EntityPath::from("this/that");
@@ -233,7 +235,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         timeline_frame_nr,
         re_arrow_store::TimeRange::new(i64::MIN.into(), i64::MAX.into()),
     );
-    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), Color::name()];
     let dfs = re_arrow_store::polars_util::range_components(
         store,
         &query,
@@ -248,12 +250,12 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         let instances =
             InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)], None);
         let points = Point2D::to_arrow(points, None);
-        let colors = ColorRGBA::to_arrow(colors, None);
+        let colors = Color::to_arrow(colors, None);
 
         DataFrame::new(vec![
             Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),
             Series::try_from((Point2D::name().as_ref(), points)).unwrap(),
-            Series::try_from((ColorRGBA::name().as_ref(), colors)).unwrap(),
+            Series::try_from((Color::name().as_ref(), colors)).unwrap(),
         ])
         .unwrap()
     };

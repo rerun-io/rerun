@@ -7,7 +7,7 @@ use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_components::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d, build_some_vec3d},
-    ColorRGBA, Vec3D,
+    LegacyColor, Vec3D,
 };
 use re_log_types::{entity_path, DataRow, EntityPath, Index, RowId, TimeType, Timeline};
 use re_query::query_entity_with_primary;
@@ -175,7 +175,7 @@ fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> DataStore {
 
 struct SavePoint {
     _pos: Point2D,
-    _color: Option<ColorRGBA>,
+    _color: Option<LegacyColor>,
 }
 
 fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<SavePoint> {
@@ -186,9 +186,9 @@ fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Sa
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths.iter() {
-        query_entity_with_primary::<Point2D>(store, &query, path, &[ColorRGBA::name()])
+        query_entity_with_primary::<Point2D>(store, &query, path, &[LegacyColor::name()])
             .and_then(|entity_view| {
-                entity_view.visit2(|_: InstanceKey, pos: Point2D, color: Option<ColorRGBA>| {
+                entity_view.visit2(|_: InstanceKey, pos: Point2D, color: Option<LegacyColor>| {
                     points.push(SavePoint {
                         _pos: pos,
                         _color: color,

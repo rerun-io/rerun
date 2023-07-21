@@ -86,7 +86,7 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_types::components::{Point2D, ColorRGBA};
+/// # use re_types::components::{Point2D, Color};
 /// # use re_log_types::Timeline;
 /// # use re_types::Loggable as _;
 /// # let store = re_query::__populate_example_store();
@@ -98,7 +98,7 @@ pub fn get_component_with_instances(
 ///   &store,
 ///   &query,
 ///   &ent_path.into(),
-///   &[ColorRGBA::name()],
+///   &[Color::name()],
 /// )
 /// .unwrap();
 ///
@@ -241,7 +241,7 @@ pub fn query_archetype<A: Archetype>(
 
 /// Helper used to create an example store we can use for querying in doctests
 pub fn __populate_example_store() -> DataStore {
-    use re_components::{datagen::build_frame_nr, ColorRGBA};
+    use re_components::{datagen::build_frame_nr, LegacyColor};
     use re_types::components::Point2D;
 
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
@@ -262,7 +262,7 @@ pub fn __populate_example_store() -> DataStore {
     store.insert_row(&row).unwrap();
 
     let instances = vec![InstanceKey(96)];
-    let colors = vec![ColorRGBA(0xff000000)];
+    let colors = vec![LegacyColor(0xff000000)];
 
     let row = DataRow::from_cells2_sized(
         RowId::random(),
@@ -313,9 +313,9 @@ fn simple_get_component() {
 #[test]
 fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
-    use re_components::ColorRGBA;
+    use re_components::LegacyColor;
     use re_log_types::Timeline;
-    use re_types::components::Point2D;
+    use re_types::components::{Color, Point2D};
 
     let store = __populate_example_store();
 
@@ -326,18 +326,18 @@ fn simple_query_entity() {
         &store,
         &query,
         &ent_path.into(),
-        &[ColorRGBA::name()],
+        &[LegacyColor::name()],
     )
     .unwrap();
 
     #[cfg(feature = "polars")]
     {
-        let df = entity_view.as_df2::<ColorRGBA>().unwrap();
+        let df = entity_view.as_df2::<LegacyColor>().unwrap();
         eprintln!("{df:?}");
 
         let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let colors = vec![None, Some(Color(0xff000000))];
 
         let expected = crate::dataframe_util::df_builder3(&instances, &points, &colors).unwrap();
         assert_eq!(expected, df);

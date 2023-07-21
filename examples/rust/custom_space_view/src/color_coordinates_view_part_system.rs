@@ -27,7 +27,7 @@ impl ViewPartSystem for InstanceColorSystem {
     /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries
     ///              within the `populate` method to this archetype.
     fn archetype(&self) -> ArchetypeDefinition {
-        ArchetypeDefinition::new(re_components::ColorRGBA::name())
+        ArchetypeDefinition::new(re_components::LegacyColor::name())
     }
 
     /// Populates the scene part with data from the store.
@@ -44,11 +44,11 @@ impl ViewPartSystem for InstanceColorSystem {
             }
 
             // ...gather all colors and their instance ids.
-            if let Ok(ent_view) = query_entity_with_primary::<re_components::ColorRGBA>(
+            if let Ok(ent_view) = query_entity_with_primary::<re_components::LegacyColor>(
                 &ctx.store_db.entity_db.data_store,
                 &ctx.current_query(),
                 ent_path,
-                &[re_components::ColorRGBA::name()],
+                &[re_components::LegacyColor::name()],
             ) {
                 if let Ok(primary_iterator) = ent_view.iter_primary() {
                     self.colors.push((

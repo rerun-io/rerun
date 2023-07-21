@@ -1,4 +1,4 @@
-use re_components::{ColorRGBA, Mesh3D};
+use re_components::{LegacyColor, Mesh3D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
@@ -36,7 +36,7 @@ impl MeshPart {
 
         let visitor = |instance_key: InstanceKey,
                        mesh: re_components::Mesh3D,
-                       _color: Option<ColorRGBA>| {
+                       _color: Option<LegacyColor>| {
             let picking_instance_hash =
                 re_data_store::InstancePathHash::instance(ent_path, instance_key);
 
@@ -71,7 +71,7 @@ impl MeshPart {
 
 impl ViewPartSystem for MeshPart {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![Mesh3D::name(), InstanceKey::name(), ColorRGBA::name()]
+        vec1::vec1![Mesh3D::name(), InstanceKey::name(), LegacyColor::name()]
     }
 
     fn execute(

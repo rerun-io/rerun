@@ -9,7 +9,7 @@
 
 use std::f32::consts::TAU;
 
-use rerun::components::{Arrow3D, Box3D, ColorRGBA, Radius, Vec3D, ViewCoordinates};
+use rerun::components::{Arrow3D, Box3D, LegacyColor, Radius, Vec3D, ViewCoordinates};
 use rerun::coordinates::SignedAxis3;
 use rerun::{external::re_log, MsgSender, RecordingStream};
 
@@ -49,9 +49,9 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         Vec3D::new(length * angle.sin(), length * angle.cos(), 0.0)
     }
 
-    fn color(angle: f32, blue: u8) -> ColorRGBA {
+    fn color(angle: f32, blue: u8) -> LegacyColor {
         let c = (angle * 255.0) as u8;
-        ColorRGBA::from_unmultiplied_rgba(255 - c, c, blue, u8::max(128, blue))
+        LegacyColor::from_unmultiplied_rgba(255 - c, c, blue, u8::max(128, blue))
     }
 
     fn log_hand(

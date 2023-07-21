@@ -17,9 +17,9 @@ use std::{collections::HashSet, f32::consts::TAU};
 use itertools::Itertools;
 use rerun::{
     components::{
-        AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, DrawOrder,
-        Label, LegacyLabel, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D, Tensor,
-        TensorDataMeaning, TextEntry, Vec2D, Vec3D, ViewCoordinates,
+        AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, DrawOrder, Label,
+        LegacyColor, LegacyLabel, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D,
+        Tensor, TensorDataMeaning, TextEntry, Vec2D, Vec3D, ViewCoordinates,
     },
     coordinates::SignedAxis3,
     external::{
@@ -36,7 +36,7 @@ fn test_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("bbox_test/bbox")
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[ColorRGBA::from_rgb(0, 255, 0)])?
+        .with_component(&[LegacyColor::from_rgb(0, 255, 0)])?
         .with_component(&[Radius(0.005)])?
         .with_component(&[Label("box/t0".to_owned())])?
         .send(rec_stream)?;
@@ -52,7 +52,7 @@ fn test_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("bbox_test/bbox")
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[ColorRGBA::from_rgb(255, 255, 0)])?
+        .with_component(&[LegacyColor::from_rgb(255, 255, 0)])?
         .with_component(&[Radius(0.01)])?
         .with_component(&[Label("box/t1".to_owned())])?
         .send(rec_stream)?;
@@ -100,7 +100,7 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("extension_components/point")
         .with_component(&[Point2D::new(64.0, 64.0)])?
-        .with_component(&[ColorRGBA::from_rgb(255, 0, 0)])?
+        .with_component(&[LegacyColor::from_rgb(255, 0, 0)])?
         .with_component(&[Confidence(0.9)])?
         .send(rec_stream)?;
 
@@ -149,7 +149,7 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
             Point2D::new(96.0, 32.0),
             Point2D::new(96.0, 96.0),
         ])?
-        .with_splat(ColorRGBA::from_rgb(0, 255, 0))?
+        .with_splat(LegacyColor::from_rgb(0, 255, 0))?
         .with_component(&[
             Corner("upper left".into()),
             Corner("lower left".into()),
@@ -172,12 +172,12 @@ fn test_log_cleared(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("null_test/rect/0")
         .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
-        .with_component(&[ColorRGBA::from_rgb(255, 0, 0)])?
+        .with_component(&[LegacyColor::from_rgb(255, 0, 0)])?
         .with_component(&[Label("Rect1".into())])?
         .send(rec_stream)?;
     MsgSender::new("null_test/rect/1")
         .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
-        .with_component(&[ColorRGBA::from_rgb(0, 255, 0)])?
+        .with_component(&[LegacyColor::from_rgb(0, 255, 0)])?
         .with_component(&[Label("Rect2".into())])?
         .send(rec_stream)?;
 
@@ -217,7 +217,7 @@ fn test_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         x: impl Fn(f32) -> f32,
         y: impl Fn(f32) -> f32,
         z: impl Fn(f32) -> f32,
-    ) -> (Vec<Label>, Vec<Point3D>, Vec<Radius>, Vec<ColorRGBA>) {
+    ) -> (Vec<Label>, Vec<Point3D>, Vec<Radius>, Vec<LegacyColor>) {
         use rand::Rng as _;
         let mut rng = rand::thread_rng();
         itertools::multiunzip((0..n).map(|i| {
@@ -227,7 +227,7 @@ fn test_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
                 Label(i.to_string()),
                 Point3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
                 Radius(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
-                ColorRGBA::from_rgb(rng.gen(), rng.gen(), rng.gen()),
+                LegacyColor::from_rgb(rng.gen(), rng.gen(), rng.gen()),
             )
         }))
     }
@@ -272,7 +272,7 @@ fn test_rects(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .collect::<Vec<_>>();
     let colors = Array::random((20, 3), Uniform::new(0, 255))
         .axis_iter(Axis(0))
-        .map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2]))
+        .map(|c| LegacyColor::from_rgb(c[0], c[1], c[2]))
         .collect::<Vec<_>>();
 
     rec_stream.set_time_seconds("sim_time", 2f64);
@@ -447,7 +447,7 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
                 info: AnnotationInfo {
                     id,
                     label: label.map(|label| LegacyLabel(label.into())),
-                    color: color.map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2])),
+                    color: color.map(|c| LegacyColor::from_rgb(c[0], c[1], c[2])),
                 },
                 ..Default::default()
             },
@@ -516,7 +516,7 @@ fn test_text_logs(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
     MsgSender::new("logs")
         .with_component(&[TextEntry::new("Text with explicitly set color", None)])?
-        .with_component(&[ColorRGBA::from_rgb(255, 215, 0)])?
+        .with_component(&[LegacyColor::from_rgb(255, 215, 0)])?
         .send(rec_stream)?;
 
     MsgSender::new("logs")
@@ -547,7 +547,7 @@ fn test_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         MsgSender::new(ent_path.into())
             .with_timeless(true)
             .with_component(&[view_coords])?
-            .with_component(&[ColorRGBA::from_rgb(255, 215, 0)])?
+            .with_component(&[LegacyColor::from_rgb(255, 215, 0)])?
             .send(rec_stream)
             .map_err(Into::into)
     }
@@ -568,7 +568,7 @@ fn test_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         MsgSender::new(ent_path.into())
             .with_component(&[Point3D::ZERO])?
             .with_component(&[Radius(radius)])?
-            .with_component(&[ColorRGBA::from_rgb(color[0], color[1], color[2])])?
+            .with_component(&[LegacyColor::from_rgb(color[0], color[1], color[2])])?
             .send(rec_stream)
             .map_err(Into::into)
     }
@@ -600,7 +600,7 @@ fn test_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::new("transforms3d/sun/planet/dust")
         .with_component(&points)?
         .with_splat(Radius(0.025))?
-        .with_splat(ColorRGBA::from_rgb(80, 80, 80))?
+        .with_splat(LegacyColor::from_rgb(80, 80, 80))?
         .send(rec_stream)?;
 
     // paths where the planet & moon move

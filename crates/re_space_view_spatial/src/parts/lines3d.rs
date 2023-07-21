@@ -1,4 +1,4 @@
-use re_components::{ColorRGBA, LineStrip3D};
+use re_components::{LegacyColor, LineStrip3D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
@@ -45,7 +45,7 @@ impl Lines3DPart {
 
         let visitor = |instance_key: InstanceKey,
                        strip: LineStrip3D,
-                       color: Option<ColorRGBA>,
+                       color: Option<LegacyColor>,
                        radius: Option<Radius>| {
             // TODO(andreas): support class ids for lines
             let annotation_info = ent_context
@@ -88,7 +88,7 @@ impl ViewPartSystem for Lines3DPart {
         vec1::vec1![
             LineStrip3D::name(),
             InstanceKey::name(),
-            ColorRGBA::name(),
+            LegacyColor::name(),
             Radius::name(),
         ]
     }

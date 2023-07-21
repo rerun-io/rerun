@@ -55,7 +55,7 @@ pub use self::{
     arrow::Arrow3D,
     bbox::Box3D,
     class_id::ClassId,
-    color::ColorRGBA,
+    color::LegacyColor,
     context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
     disconnected_space::DisconnectedSpace,
@@ -101,7 +101,7 @@ pub mod external {
 
 // ----------------------------------------------------------------------------
 
-use re_types::components::{DrawOrder, Label, Point2D, Point3D, Radius};
+use re_types::components::{Color, DrawOrder, Label, Point2D, Point3D, Radius};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
@@ -110,7 +110,6 @@ lazy_static! {
         <Arrow3D as LegacyComponent>::field(),
         <Box3D as LegacyComponent>::field(),
         <ClassId as LegacyComponent>::field(),
-        <ColorRGBA as LegacyComponent>::field(),
         <DisconnectedSpace as LegacyComponent>::field(),
         <KeypointId as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),
@@ -129,6 +128,7 @@ lazy_static! {
         <Vec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
         <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
+        Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),
         Field::new(DrawOrder::name().as_str(), DrawOrder::to_arrow_datatype(), false),
         Field::new(Label::name().as_str(), Label::to_arrow_datatype(), false),
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),

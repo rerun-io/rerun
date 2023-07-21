@@ -38,7 +38,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     // add::<re_components::Arrow3D>(&mut registry);
     // add::<re_components::Box3D>(&mut registry);
     add::<re_components::ClassId>(&mut registry);
-    add::<re_components::ColorRGBA>(&mut registry);
+    add::<re_components::LegacyColor>(&mut registry);
     // add::<re_log_types::InstanceKey>(&mut registry);
     add::<re_components::KeypointId>(&mut registry);
     // add::<re_components::Label>(&mut registry);

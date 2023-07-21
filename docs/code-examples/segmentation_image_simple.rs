@@ -1,7 +1,7 @@
 //! Create and log a segmentation image.
 use ndarray::{s, Array, ShapeBuilder};
 use rerun::components::{
-    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, ColorRGBA, LegacyLabel, Tensor,
+    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, LegacyColor, LegacyLabel, Tensor,
     TensorDataMeaning,
 };
 use rerun::{MsgSender, RecordingStreamBuilder};
@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             info: AnnotationInfo {
                 id: 1,
                 label: Some(LegacyLabel("red".to_owned())),
-                color: Some(ColorRGBA::from_rgb(255, 0, 0)),
+                color: Some(LegacyColor::from_rgb(255, 0, 0)),
             },
             ..Default::default()
         },
@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             info: AnnotationInfo {
                 id: 2,
                 label: Some(LegacyLabel("green".to_owned())),
-                color: Some(ColorRGBA::from_rgb(0, 255, 0)),
+                color: Some(LegacyColor::from_rgb(0, 255, 0)),
             },
             ..Default::default()
         },

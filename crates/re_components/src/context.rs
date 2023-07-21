@@ -5,7 +5,7 @@ use arrow2_convert::{
     ArrowField, ArrowSerialize,
 };
 
-use crate::{ClassId, ColorRGBA, KeypointId, LegacyLabel};
+use crate::{ClassId, KeypointId, LegacyColor, LegacyLabel};
 
 /// Information about an Annotation.
 ///
@@ -16,7 +16,7 @@ pub struct AnnotationInfo {
     /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
     pub id: u16,
     pub label: Option<LegacyLabel>,
-    pub color: Option<ColorRGBA>,
+    pub color: Option<LegacyColor>,
 }
 
 /// The description of a semantic Class.
@@ -259,7 +259,7 @@ fn test_context_roundtrip() {
                 info: AnnotationInfo {
                     id: 32,
                     label: Some(LegacyLabel("hello".to_owned())),
-                    color: Some(ColorRGBA(0x123456)),
+                    color: Some(LegacyColor(0x123456)),
                 },
                 keypoint_map: vec![
                     (
@@ -275,7 +275,7 @@ fn test_context_roundtrip() {
                         AnnotationInfo {
                             id: 94,
                             label: Some(LegacyLabel("leg".to_owned())),
-                            color: Some(ColorRGBA(0x654321)),
+                            color: Some(LegacyColor(0x654321)),
                         },
                     ),
                 ]

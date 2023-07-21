@@ -1,4 +1,4 @@
-use re_components::{Box3D, ClassId, ColorRGBA, LegacyLabel, Quaternion, Vec3D};
+use re_components::{Box3D, ClassId, LegacyColor, LegacyLabel, Quaternion, Vec3D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
@@ -48,7 +48,7 @@ impl Boxes3DPart {
                        half_size: Box3D,
                        position: Option<Vec3D>,
                        rotation: Option<Quaternion>,
-                       color: Option<ColorRGBA>,
+                       color: Option<LegacyColor>,
                        radius: Option<Radius>,
                        label: Option<LegacyLabel>,
                        class_id: Option<ClassId>| {
@@ -110,7 +110,7 @@ impl ViewPartSystem for Boxes3DPart {
             InstanceKey::name(),
             Vec3D::name(),      // obb.position
             Quaternion::name(), // obb.rotation
-            ColorRGBA::name(),
+            LegacyColor::name(),
             Radius::name(), // stroke_width
             LegacyLabel::name(),
             ClassId::name(),

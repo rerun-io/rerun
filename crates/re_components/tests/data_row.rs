@@ -1,4 +1,4 @@
-use re_components::{ColorRGBA, LegacyLabel};
+use re_components::{LegacyColor, LegacyLabel};
 use re_log_types::{DataRow, DataRowError, EntityPath, RowId, TimePoint};
 use re_types::{components::Point2D, Loggable as _};
 
@@ -9,7 +9,7 @@ fn data_row_error_num_instances() {
 
     let num_instances = 2;
     let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-    let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
+    let colors: &[_] = &[LegacyColor::from_rgb(128, 128, 128)];
     let labels: &[LegacyLabel] = &[];
 
     // 0 = clear: legal
