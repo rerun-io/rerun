@@ -1,6 +1,6 @@
-"""Logs a `Transform3D` archetype for roundtrip checks."""
-
 #!/usr/bin/env python3
+
+"""Logs a `Transform3D` archetype for roundtrip checks."""
 
 from __future__ import annotations
 
