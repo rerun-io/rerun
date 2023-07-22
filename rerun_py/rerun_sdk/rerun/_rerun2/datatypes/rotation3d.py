@@ -21,7 +21,7 @@ __all__ = ["Rotation3D", "Rotation3DArray", "Rotation3DArrayLike", "Rotation3DLi
 class Rotation3D:
     """A 3D rotation."""
 
-    inner: Union[datatypes.Quaternion, datatypes.RotationAxisAngle] = field(converter=rotation3d_inner_converter)
+    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(converter=rotation3d_inner_converter)
     """
     Quaternion (datatypes.Quaternion):
         Rotation defined by a quaternion.
