@@ -1,3 +1,4 @@
+use std::fmt;
 use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
@@ -833,6 +834,29 @@ impl RecordingStream {
     /// See [`Self::set_sink`] for more information.
     pub fn disconnect(&self) {
         self.set_sink(Box::new(crate::sink::BufferedSink::new()));
+    }
+}
+
+impl fmt::Debug for RecordingStream {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &*self.inner {
+            Some(RecordingStreamInner {
+                // This pattern match prevents _accidentally_ omitting data from the debug output
+                // when new fields are added.
+                info,
+                tick,
+                cmds_tx: _,
+                batcher: _,
+                batcher_to_sink_handle: _,
+                pid_at_creation,
+            }) => f
+                .debug_struct("RecordingStream")
+                .field("info", &info)
+                .field("tick", &tick)
+                .field("pid_at_creation", &pid_at_creation)
+                .finish_non_exhaustive(),
+            None => write!(f, "RecordingStream {{ disabled }}"),
+        }
     }
 }
 
