@@ -1,3 +1,4 @@
+use std::fmt;
 use std::{path::PathBuf, sync::mpsc::Sender};
 
 use parking_lot::Mutex;
@@ -73,5 +74,12 @@ impl FileSink {
 
     pub fn send(&self, log_msg: LogMsg) {
         self.tx.lock().send(Some(log_msg)).ok();
+    }
+}
+
+impl fmt::Debug for FileSink {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // It would be useful to print the path, but that information is not remembered.
+        f.debug_struct("FileSink").finish_non_exhaustive()
     }
 }
