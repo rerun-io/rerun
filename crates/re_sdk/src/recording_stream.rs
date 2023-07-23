@@ -44,6 +44,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 /// let rec_stream = RecordingStreamBuilder::new("my_app").save("my_recording.rrd")?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
+#[derive(Debug)]
 pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
     store_kind: StoreKind,
