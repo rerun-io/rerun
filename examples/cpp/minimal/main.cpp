@@ -6,15 +6,19 @@
 arrow::Result<std::shared_ptr<arrow::Table>> points2(size_t num_points, const float* xy) {
     arrow::MemoryPool* pool = arrow::default_memory_pool();
 
-
     ARROW_ASSIGN_OR_RAISE(auto builder, rr::components::Point2D::new_arrow_array_builder(pool));
-    rr::components::Point2D::fill_arrow_array_builder(builder.get(), (rr::components::Point2D*)xy, num_points);
+    ARROW_RETURN_NOT_OK(rr::components::Point2D::fill_arrow_array_builder(
+        builder.get(),
+        (rr::components::Point2D*)xy,
+        num_points
+    ));
 
     std::shared_ptr<arrow::Array> array;
     ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
     auto name = "points"; // Unused, but should be the name of the field in the archetype
-    auto schema = arrow::schema({arrow::field(name, rr::components::Point2D::to_arrow_datatype(), false)});
+    auto schema =
+        arrow::schema({arrow::field(name, rr::components::Point2D::to_arrow_datatype(), false)});
 
     return arrow::Table::Make(schema, {array});
 }

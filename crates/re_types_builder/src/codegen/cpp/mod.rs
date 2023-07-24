@@ -424,6 +424,12 @@ impl QuotedObject {
         let datatype = arrow_registry.get(&obj.fqname);
         methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
         methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
+        methods.push(fill_arrow_array_builder_method(
+            &datatype,
+            obj,
+            &pascal_case_ident,
+            &mut cpp_includes,
+        ));
 
         let destructor = if obj.has_default_destructor(objects) {
             // No destructor needed
@@ -715,7 +721,6 @@ fn quote_fill_arrow_array_builder(
             }
         }
         DataType::FixedSizeList(_field, ..) | DataType::List(_field) => {
-            let todo = quote_comment("TODO: fill value builder");
             quote! {
                 auto value_builder = #builder->value_builder();
                 #NEWLINE_TOKEN
@@ -723,7 +728,9 @@ fn quote_fill_arrow_array_builder(
                 ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto& element = elements[elem_idx];
-                    #todo
+                    return arrow::Status::NotImplemented(
+                        "TODO(andreas): fill value builder"
+                    );
                     ARROW_RETURN_NOT_OK(builder->Append());
                 }
             }
@@ -777,21 +784,20 @@ fn quote_fill_arrow_array_builder(
             }
         }
         DataType::Union(_, _, _) => {
-            let todo = quote_comment("TODO: fill field builders");
             quote! {
                 #NEWLINE_TOKEN
                 #loop_todo
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto& element = elements[elem_idx];
-                    #todo
                 }
+                return arrow::Status::NotImplemented(
+                    "TODO(andreas): unions are not yet implemented"
+                );
             }
         }
         DataType::Extension(fqname, datatype, _) => {
             assert_eq!(fields.len(), 1);
-            if let DataType::Union(..) = datatype.as_ref() {
-                quote!(return arrow::Status::NotImplemented("TODO(andreas): Implement fill_arrow_array_builder for unions");)
-            } else if fields[0].is_nullable {
+            if fields[0].is_nullable {
                 // Idea: pass in a tagged union for both optional and non-optional arrays to all fill_arrow_array_builder methods?
                 quote!(return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));)
             } else {
