@@ -215,7 +215,6 @@ def log_points(
 
     if positions.any():
         if positions.shape[1] == 2:
-            # TODO: cannot _not_ specify points anymore!
             points2d = Points2D(
                 points=positions,
                 radii=radii,
