@@ -1,9 +1,9 @@
-use re_components::{LegacyColor, LegacyLabel, Rect2D};
+use re_components::{LegacyColor, Rect2D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_types::{
-    components::{ClassId, InstanceKey, Radius},
+    components::{ClassId, InstanceKey, Label, Radius},
     Loggable as _,
 };
 use re_viewer_context::{
@@ -50,7 +50,7 @@ impl Boxes2DPart {
              rect,
              color: Option<LegacyColor>,
              radius: Option<Radius>,
-             label: Option<LegacyLabel>,
+             label: Option<Label>,
              class_id: Option<ClassId>| {
                 let instance_hash =
                     re_data_store::InstancePathHash::instance(ent_path, instance_key);
@@ -115,7 +115,7 @@ impl ViewPartSystem for Boxes2DPart {
             InstanceKey::name(),
             LegacyColor::name(),
             Radius::name(),
-            LegacyLabel::name(),
+            Label::name(),
             ClassId::name(),
         ]
     }

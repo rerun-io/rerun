@@ -769,7 +769,7 @@ impl From<AnnotationInfoTuple> for AnnotationInfo {
         let AnnotationInfoTuple(id, label, color) = tuple;
         Self {
             id,
-            label: label.map(LegacyLabel),
+            label: label.map(Into::into),
             color: color
                 .as_ref()
                 .map(|color| convert_color(color.clone()).unwrap())

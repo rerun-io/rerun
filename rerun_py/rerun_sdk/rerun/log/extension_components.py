@@ -119,6 +119,8 @@ def log_extension_components(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     identifiers_np = np.array((), dtype="uint64")
@@ -133,7 +135,7 @@ def log_extension_components(
     splats: dict[str, Any] = {}
 
     if len(identifiers_np):
-        instanced["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
+        instanced["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
 
     _add_extension_components(instanced, splats, ext, identifiers_np)
 

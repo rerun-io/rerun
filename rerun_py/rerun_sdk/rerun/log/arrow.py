@@ -7,9 +7,6 @@ import numpy.typing as npt
 
 from rerun import bindings
 from rerun.components.arrow import Arrow3DArray
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
-from rerun.components.label import LabelArray
 from rerun.log import Color, _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
@@ -66,6 +63,7 @@ def log_arrow(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
 
     instanced: dict[str, Any] = {}
     splats: dict[str, Any] = {}
@@ -82,10 +80,9 @@ def log_arrow(
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if label:
-        instanced["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
 
     if width_scale:
-        from rerun.experimental import cmp as rrc
         radii = _normalize_radii([width_scale / 2])
         instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 

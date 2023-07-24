@@ -82,6 +82,8 @@ def log_text_entry_internal(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     instanced: dict[str, Any] = {}

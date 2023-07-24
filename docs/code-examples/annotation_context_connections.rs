@@ -1,7 +1,7 @@
 //! Log some very simple points.
 use rerun::components::{
-    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, KeypointId, LegacyColor,
-    LegacyLabel, Point3D,
+    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, KeypointId, Label, LegacyColor,
+    Point3D,
 };
 use rerun::{MsgSender, RecordingStreamBuilder};
 
@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         KeypointId(0),
         AnnotationInfo {
             id: 0,
-            label: Some(LegacyLabel("zero".to_owned())),
+            label: Some(Label("zero".into()).into()),
             color: Some(LegacyColor::from_rgb(255, 0, 0)),
         },
     );
@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         KeypointId(1),
         AnnotationInfo {
             id: 1,
-            label: Some(LegacyLabel("one".to_owned())),
+            label: Some(Label("one".into()).into()),
             color: Some(LegacyColor::from_rgb(0, 255, 0)),
         },
     );
@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         KeypointId(2),
         AnnotationInfo {
             id: 2,
-            label: Some(LegacyLabel("two".to_owned())),
+            label: Some(Label("two".into()).into()),
             color: Some(LegacyColor::from_rgb(0, 0, 255)),
         },
     );
@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         KeypointId(3),
         AnnotationInfo {
             id: 3,
-            label: Some(LegacyLabel("three".to_owned())),
+            label: Some(Label("three".into()).into()),
             color: Some(LegacyColor::from_rgb(255, 255, 0)),
         },
     );

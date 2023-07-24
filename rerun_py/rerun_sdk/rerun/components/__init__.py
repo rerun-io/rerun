@@ -13,7 +13,6 @@ all = [
     "color",
     "draw_order",
     "experimental",
-    "label",
     "pinhole",
     "quaternion",
     "rect2d",

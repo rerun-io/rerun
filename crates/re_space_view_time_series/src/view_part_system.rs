@@ -104,7 +104,7 @@ impl TimeSeriesSystem {
             re_components::ScalarPlotProps::name(),
             re_components::LegacyColor::name(),
             re_types::components::Radius::name(),
-            re_components::LegacyLabel::name(),
+            re_types::components::Label::name(),
         ]
     }
 
@@ -138,7 +138,7 @@ impl TimeSeriesSystem {
                      props: Option<re_components::ScalarPlotProps>,
                      color: Option<re_components::LegacyColor>,
                      radius: Option<re_types::components::Radius>,
-                     label: Option<re_components::LegacyLabel>| {
+                     label: Option<re_types::components::Label>| {
                         // TODO(andreas): Support entity path
                         let color = annotation_info
                             .color(color.map(|c| c.to_array()).as_ref(), default_color);

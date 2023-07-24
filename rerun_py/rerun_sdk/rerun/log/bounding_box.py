@@ -8,9 +8,6 @@ import numpy.typing as npt
 from rerun import bindings
 from rerun.components import splat
 from rerun.components.box import Box3DArray
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
-from rerun.components.label import LabelArray
 from rerun.components.quaternion import QuaternionArray
 from rerun.components.vec import Vec3DArray
 from rerun.log import (
@@ -84,6 +81,8 @@ def log_obb(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     instanced: dict[str, Any] = {}
@@ -119,12 +118,11 @@ def log_obb(
 
     # We store the stroke_width in radius
     if stroke_width:
-        from rerun.experimental import cmp as rrc
         radii = _normalize_radii([stroke_width / 2])
         instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if label:
-        instanced["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
 
     if class_id:
         class_ids = _normalize_ids([class_id])
@@ -200,6 +198,8 @@ def log_obbs(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     colors = _normalize_colors(colors)
@@ -242,13 +242,12 @@ def log_obbs(
         comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if len(radii):
-        from rerun.experimental import cmp as rrc
         is_splat = len(radii) == 1
         comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if len(labels):
         is_splat = len(labels) == 1
-        comps[is_splat]["rerun.label"] = LabelArray.new(labels)
+        comps[is_splat]["rerun.label"] = rrc.LabelArray.from_similar(labels)
 
     if len(class_ids):
         is_splat = len(class_ids) == 1

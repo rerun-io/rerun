@@ -52,7 +52,7 @@ pub mod datagen;
 // TODO(emilk): split into modules, like we do in re_sdk/src/lib.rs
 
 // TODO: stuff we keep for annotation context
-pub(crate) use self::{class_id::LegacyClassId, keypoint_id::LegacyKeypointId};
+pub(crate) use self::{class_id::LegacyClassId, keypoint_id::LegacyKeypointId, label::LegacyLabel};
 
 pub use self::{
     arrow::Arrow3D,
@@ -61,7 +61,6 @@ pub use self::{
     context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
     disconnected_space::DisconnectedSpace,
-    label::LegacyLabel,
     linestrip::{LineStrip2D, LineStrip3D},
     mat::Mat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},

@@ -22,6 +22,12 @@ impl From<LegacyLabel> for re_types::components::Label {
     }
 }
 
+impl From<re_types::components::Label> for LegacyLabel {
+    fn from(value: re_types::components::Label) -> Self {
+        Self(value.0)
+    }
+}
+
 impl LegacyLabel {
     #[inline]
     pub fn as_str(&self) -> &str {
@@ -33,6 +39,13 @@ impl re_log_types::LegacyComponent for LegacyLabel {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.label".into()
+    }
+}
+
+impl From<&str> for LegacyLabel {
+    #[inline]
+    fn from(value: &str) -> Self {
+        Self(value.into())
     }
 }
 

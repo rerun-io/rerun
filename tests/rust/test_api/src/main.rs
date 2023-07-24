@@ -18,8 +18,8 @@ use itertools::Itertools;
 use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, DrawOrder, Label,
-        LegacyColor, LegacyLabel, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D,
-        Tensor, TensorDataMeaning, TextEntry, Vec2D, Vec3D, ViewCoordinates,
+        LegacyColor, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D, Tensor,
+        TensorDataMeaning, TextEntry, Vec2D, Vec3D, ViewCoordinates,
     },
     coordinates::SignedAxis3,
     external::{
@@ -446,7 +446,7 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             ClassDescription {
                 info: AnnotationInfo {
                     id,
-                    label: label.map(|label| LegacyLabel(label.into())),
+                    label: label.map(Into::into),
                     color: color.map(|c| LegacyColor::from_rgb(c[0], c[1], c[2])),
                 },
                 ..Default::default()

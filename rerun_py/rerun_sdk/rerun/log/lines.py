@@ -91,6 +91,8 @@ def log_line_strip(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     if positions is not None:
@@ -113,7 +115,6 @@ def log_line_strip(
 
     # We store the stroke_width in radius
     if stroke_width:
-        from rerun.experimental import cmp as rrc
         radii = _normalize_radii([stroke_width / 2])
         instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
@@ -187,6 +188,8 @@ def log_line_strips_2d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     colors = _normalize_colors(colors)
@@ -213,7 +216,7 @@ def log_line_strips_2d(
         comps[0]["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays(line_strip_arrs)
 
     if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
+        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
 
     if len(colors):
         is_splat = len(colors.shape) == 1
@@ -223,7 +226,6 @@ def log_line_strips_2d(
 
     # We store the stroke_width in radius
     if len(radii):
-        from rerun.experimental import cmp as rrc
         is_splat = len(radii) == 1
         comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
@@ -296,6 +298,8 @@ def log_line_strips_3d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     colors = _normalize_colors(colors)
@@ -322,7 +326,7 @@ def log_line_strips_3d(
         comps[0]["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays(line_strip_arrs)
 
     if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
+        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
 
     if len(colors):
         is_splat = len(colors.shape) == 1
@@ -332,7 +336,6 @@ def log_line_strips_3d(
 
     # We store the stroke_width in radius
     if len(radii):
-        from rerun.experimental import cmp as rrc
         is_splat = len(radii) == 1
         comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
@@ -398,6 +401,8 @@ def log_line_segments(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     if positions is None:
@@ -432,7 +437,6 @@ def log_line_segments(
 
     # We store the stroke_width in radius
     if stroke_width:
-        from rerun.experimental import cmp as rrc
         radii = _normalize_radii([stroke_width / 2])
         splats["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
