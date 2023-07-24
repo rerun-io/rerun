@@ -18,7 +18,10 @@ pub trait LegacyComponent: ArrowField {
     }
 }
 
-// TODO: explain
+// NOTE: We have a ton of legacy tests that rely on the old APIs and `Point2D`.
+// Since the new `Point2D` is binary compatible with the old we can easily drop the old one, but
+// for that we need the new one to implement the `LegacyComponent` trait.
+// TODO(cmc): remove once the migration is over
 impl LegacyComponent for re_types::components::Point2D {
     fn legacy_name() -> ComponentName {
         use re_types::Loggable as _;

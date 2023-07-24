@@ -1,7 +1,5 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-// TODO: explain why we keep that one (needed for annotation context)
-
 /// A 16-bit ID representing a type of semantic class.
 ///
 /// Used to look up a [`crate::context::ClassDescription`] within the [`crate::context::AnnotationContext`].

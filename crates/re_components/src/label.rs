@@ -1,7 +1,5 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-// TODO: explain why we keep that one (needed for annotation context)
-
 /// A String label component
 ///
 /// ```

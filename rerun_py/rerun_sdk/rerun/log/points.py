@@ -96,7 +96,7 @@ def log_point(
 
     if position is not None:
         if position.size == 2:
-            p = Points2D(
+            points2d = Points2D(
                 points=position,
                 radii=radius,
                 colors=color,
@@ -105,9 +105,9 @@ def log_point(
                 class_ids=class_id,
                 keypoint_ids=keypoint_id,
             )
-            return log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
+            return log_any(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
         elif position.size == 3:
-            p = Points3D(
+            points3d = Points3D(
                 points=position,
                 radii=radius,
                 colors=color,
@@ -116,7 +116,7 @@ def log_point(
                 class_ids=class_id,
                 keypoint_ids=keypoint_id,
             )
-            return log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
+            return log_any(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
         else:
             raise TypeError("Position must have a total size of 2 or 3")
 
@@ -213,8 +213,8 @@ def log_points(
 
     if positions.any():
         if positions.shape[1] == 2:
-            # TODO: but then we probably don't support empty positions anymore...
-            p = Points2D(
+            # TODO: cannot _not_ specify points anymore!
+            points2d = Points2D(
                 points=positions,
                 radii=radii,
                 colors=colors,
@@ -224,9 +224,9 @@ def log_points(
                 keypoint_ids=keypoint_ids,
                 instance_keys=identifiers_np,
             )
-            return log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
+            return log_any(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
         elif positions.shape[1] == 3:
-            p = Points3D(
+            points3d = Points3D(
                 points=positions,
                 radii=radii,
                 colors=colors,
@@ -236,6 +236,6 @@ def log_points(
                 keypoint_ids=keypoint_ids,
                 instance_keys=identifiers_np,
             )
-            return log_any(entity_path, p, ext=ext, timeless=timeless, recording=recording)
+            return log_any(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
         else:
             raise TypeError("Positions should be Nx2 or Nx3")

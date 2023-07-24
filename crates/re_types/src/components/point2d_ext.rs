@@ -60,7 +60,11 @@ impl From<Point2D> for glam::Vec3 {
     }
 }
 
-// TODO: explain
+// NOTE: We have a ton of legacy tests that rely on the old APIs and `Point2D`.
+// Since the new `Point2D` is binary compatible with the old we can easily drop the old one, but
+// for that we need the new one to implement the `LegacyComponent` trait, which means implementing
+// `ArrowField` to begin with!
+// TODO(cmc): remove once the migration is over
 impl arrow2_convert::field::ArrowField for Point2D {
     type Type = Self;
 

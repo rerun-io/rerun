@@ -1,5 +1,3 @@
-// TODO: explain why we keep that one (needed for annotation context)
-
 /// An RGBA color tuple with unmultiplied/separate alpha,
 /// in sRGB gamma space with linear alpha.
 ///

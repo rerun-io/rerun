@@ -8,7 +8,7 @@ namespace rerun.components;
 
 // ---
 
-// TODO: serde should be cfg_attr gated here
+// TODO(#2801): serde should be cfg_attr gated here
 
 /// A 16-bit ID representing a type of semantic class.
 ///

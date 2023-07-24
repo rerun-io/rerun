@@ -51,11 +51,12 @@ pub mod datagen;
 // ----------------------------------------------------------------------------
 // TODO(emilk): split into modules, like we do in re_sdk/src/lib.rs
 
-// TODO: stuff we keep for annotation context
-pub(crate) use self::{class_id::LegacyClassId, keypoint_id::LegacyKeypointId, label::LegacyLabel};
-
-// TODO: has to be fully public cause we have something weird
-pub use self::color::LegacyColor;
+// NOTE: We keep these legacy types around because they are used by the legacy `AnnotationContext`,
+// which needs them to implement `arrow2-convert`'s' traits.
+// TODO(#2794): get rid of this once `AnnotationContext` has been migrated.
+pub(crate) use self::{
+    class_id::LegacyClassId, color::LegacyColor, keypoint_id::LegacyKeypointId, label::LegacyLabel,
+};
 
 pub use self::{
     arrow::Arrow3D,
