@@ -53,7 +53,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_components::Rect2D>(&mut registry);
     // add::<re_components::Scalar>(&mut registry);
     // add::<re_components::ScalarPlotProps>(&mut registry);
-    // add::<re_components::Size3D>(&mut registry);
     add::<re_components::Tensor>(&mut registry);
     add::<re_components::TextEntry>(&mut registry);
     add::<re_components::Transform3D>(&mut registry);
