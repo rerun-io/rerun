@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, thread::JoinHandle};
+use std::{fmt, net::SocketAddr, thread::JoinHandle};
 
 use crossbeam::channel::{select, Receiver, Sender};
 
@@ -47,6 +47,9 @@ pub struct Client {
     encode_join: Option<JoinHandle<()>>,
     send_join: Option<JoinHandle<()>>,
     drop_join: Option<JoinHandle<()>>,
+
+    /// Only used for diagnostics, not for communication after `new()`.
+    addr: SocketAddr,
 }
 
 impl Client {
@@ -105,6 +108,7 @@ impl Client {
             encode_join: Some(encode_join),
             send_join: Some(send_join),
             drop_join: Some(drop_join),
+            addr,
         }
     }
 
@@ -161,6 +165,15 @@ impl Drop for Client {
         self.send_join.take().map(|j| j.join().ok());
         self.drop_join.take().map(|j| j.join().ok());
         re_log::debug!("TCP client has shut down.");
+    }
+}
+
+impl fmt::Debug for Client {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // The other fields are all channels and join handles, so they are not usefully printable.
+        f.debug_struct("Client")
+            .field("addr", &self.addr)
+            .finish_non_exhaustive()
     }
 }
 

@@ -55,14 +55,17 @@ impl FileSink {
 
         let join_handle = std::thread::Builder::new()
             .name("file_writer".into())
-            .spawn(move || {
-                while let Ok(Some(log_msg)) = rx.recv() {
-                    if let Err(err) = encoder.append(&log_msg) {
-                        re_log::error!("Failed to save log stream to {path:?}: {err}");
-                        return;
+            .spawn({
+                let path = path.clone();
+                move || {
+                    while let Ok(Some(log_msg)) = rx.recv() {
+                        if let Err(err) = encoder.append(&log_msg) {
+                            re_log::error!("Failed to save log stream to {path:?}: {err}");
+                            return;
+                        }
                     }
+                    re_log::debug!("Log stream saved to {path:?}");
                 }
-                re_log::debug!("Log stream saved to {path:?}");
             })
             .map_err(FileSinkError::SpawnThread)?;
 

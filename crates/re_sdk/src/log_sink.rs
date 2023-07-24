@@ -184,9 +184,8 @@ impl MemorySinkStorage {
 // ----------------------------------------------------------------------------
 
 /// Stream log messages to a Rerun TCP server.
+#[derive(Debug)]
 pub struct TcpSink {
-    // used for Debug only
-    addr: std::net::SocketAddr,
     client: re_sdk_comms::Client,
 }
 
@@ -196,7 +195,6 @@ impl TcpSink {
     #[inline]
     pub fn new(addr: std::net::SocketAddr) -> Self {
         Self {
-            addr,
             client: re_sdk_comms::Client::new(addr),
         }
     }
@@ -216,14 +214,5 @@ impl LogSink for TcpSink {
     #[inline]
     fn drop_if_disconnected(&self) {
         self.client.drop_if_disconnected();
-    }
-}
-
-impl fmt::Debug for TcpSink {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // The `client` field has no printable state
-        f.debug_struct("TcpSink")
-            .field("addr", &self.addr)
-            .finish_non_exhaustive()
     }
 }
