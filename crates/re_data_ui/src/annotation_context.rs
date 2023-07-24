@@ -48,7 +48,7 @@ impl crate::EntityDataUi for ClassId {
     }
 }
 
-impl crate::EntityDataUi for re_components::KeypointId {
+impl crate::EntityDataUi for re_types::components::KeypointId {
     fn entity_data_ui(
         &self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
@@ -76,7 +76,7 @@ fn annotation_info(
     ctx: &mut re_viewer_context::ViewerContext<'_>,
     entity_path: &re_log_types::EntityPath,
     query: &re_arrow_store::LatestAtQuery,
-    keypoint_id: &re_components::KeypointId,
+    keypoint_id: &re_types::components::KeypointId,
 ) -> Option<re_components::AnnotationInfo> {
     let class_id = ctx
         .store_db

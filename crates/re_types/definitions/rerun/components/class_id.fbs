@@ -8,6 +8,8 @@ namespace rerun.components;
 
 // ---
 
+// TODO: serde should be cfg_attr gated here
+
 /// A 16-bit ID representing a type of semantic class.
 ///
 /// \rs Used to look up a `crate::components::ClassDescription` within the `crate::components::AnnotationContext`.

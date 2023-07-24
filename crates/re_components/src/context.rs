@@ -4,9 +4,9 @@ use arrow2_convert::{
     deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize, ArrowDeserialize,
     ArrowField, ArrowSerialize,
 };
-use re_types::components::ClassId;
+use re_types::components::{ClassId, KeypointId};
 
-use crate::{KeypointId, LegacyClassId, LegacyColor, LegacyLabel};
+use crate::{LegacyClassId, LegacyColor, LegacyKeypointId, LegacyLabel};
 
 /// Information about an Annotation.
 ///
@@ -50,8 +50,8 @@ pub struct ClassDescription {
 /// Helper struct for converting `ClassDescription` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 struct KeypointPairArrow {
-    keypoint0: KeypointId,
-    keypoint1: KeypointId,
+    keypoint0: LegacyKeypointId,
+    keypoint1: LegacyKeypointId,
 }
 
 /// Helper struct for converting `ClassDescription` to arrow
@@ -71,8 +71,8 @@ impl From<&ClassDescription> for ClassDescriptionArrow {
                 .keypoint_connections
                 .iter()
                 .map(|(k0, k1)| KeypointPairArrow {
-                    keypoint0: *k0,
-                    keypoint1: *k1,
+                    keypoint0: (*k0).into(),
+                    keypoint1: (*k1).into(),
                 })
                 .collect(),
         }
@@ -91,7 +91,7 @@ impl From<ClassDescriptionArrow> for ClassDescription {
             keypoint_connections: v
                 .keypoint_connections
                 .into_iter()
-                .map(|elem| (elem.keypoint0, elem.keypoint1))
+                .map(|elem| (elem.keypoint0.into(), elem.keypoint1.into()))
                 .collect(),
         }
     }

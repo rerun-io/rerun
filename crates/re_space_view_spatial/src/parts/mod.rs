@@ -26,9 +26,8 @@ pub use transform3d_arrows::add_axis_arrows;
 use ahash::HashMap;
 use std::sync::Arc;
 
-use re_components::KeypointId;
 use re_data_store::{EntityPath, InstancePathHash};
-use re_types::components::ClassId;
+use re_types::components::{ClassId, KeypointId};
 use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
     auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewSystemRegistry,
@@ -185,8 +184,8 @@ where
             keypoints
                 .entry((class_id, query.latest_at.as_i64()))
                 .or_insert_with(Default::default)
-                .insert(keypoint_id.into(), position.into());
-            class_description.annotation_info_with_keypoint(keypoint_id.into())
+                .insert(keypoint_id, position.into());
+            class_description.annotation_info_with_keypoint(keypoint_id)
         } else {
             class_description.annotation_info()
         }

@@ -8,6 +8,8 @@ namespace rerun.components;
 
 // ---
 
+// TODO: serde should be cfg_attr gated here
+
 /// A 16-bit ID representing a type of semantic keypoint within a class.
 ///
 /// \py `KeypointId`s are only meaningful within the context of a [`rerun.components.ClassDescription`][].
@@ -22,7 +24,7 @@ struct KeypointId (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]",
   "attr.rerun.legacy_fqname": "rerun.keypoint_id",
-  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, ::serde::Serialize, ::serde::Deserialize",
   order: 200
 ) {
   id: ushort (order: 100);
