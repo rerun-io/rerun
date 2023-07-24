@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.components.annotation import ClassIdArray
+from rerun.components import splat
 from rerun.components.box import Box3DArray
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
@@ -128,7 +128,7 @@ def log_obb(
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        instanced["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)
@@ -252,7 +252,7 @@ def log_obbs(
 
     if len(class_ids):
         is_splat = len(class_ids) == 1
-        comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        comps[is_splat]["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
 
     if ext:
         _add_extension_components(comps[0], comps[1], ext, None)

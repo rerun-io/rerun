@@ -1,3 +1,5 @@
+// TODO: explain why we keep that one (needed for annotation context)
+
 /// An RGBA color tuple with unmultiplied/separate alpha,
 /// in sRGB gamma space with linear alpha.
 ///
@@ -24,6 +26,12 @@
 #[arrow_field(transparent)]
 #[repr(transparent)]
 pub struct LegacyColor(pub u32);
+
+impl From<LegacyColor> for re_types::components::Color {
+    fn from(val: LegacyColor) -> Self {
+        re_types::components::Color(val.0)
+    }
+}
 
 impl LegacyColor {
     #[inline]

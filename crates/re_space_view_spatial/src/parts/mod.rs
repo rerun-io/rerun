@@ -26,8 +26,9 @@ pub use transform3d_arrows::add_axis_arrows;
 use ahash::HashMap;
 use std::sync::Arc;
 
-use re_components::{ClassId, KeypointId};
+use re_components::KeypointId;
 use re_data_store::{EntityPath, InstancePathHash};
+use re_types::components::ClassId;
 use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
     auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewSystemRegistry,
@@ -178,11 +179,11 @@ where
         arch_view.iter_optional_component::<re_types::components::ClassId>()?,
     )
     .map(|(position, keypoint_id, class_id)| {
-        let class_description = annotations.class_description(class_id.map(|c| c.into()));
+        let class_description = annotations.class_description(class_id);
 
         if let (Some(keypoint_id), Some(class_id), position) = (keypoint_id, class_id, position) {
             keypoints
-                .entry((class_id.into(), query.latest_at.as_i64()))
+                .entry((class_id, query.latest_at.as_i64()))
                 .or_insert_with(Default::default)
                 .insert(keypoint_id.into(), position.into());
             class_description.annotation_info_with_keypoint(keypoint_id.into())

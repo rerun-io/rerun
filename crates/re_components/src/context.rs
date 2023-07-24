@@ -4,8 +4,9 @@ use arrow2_convert::{
     deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize, ArrowDeserialize,
     ArrowField, ArrowSerialize,
 };
+use re_types::components::ClassId;
 
-use crate::{ClassId, KeypointId, LegacyColor, LegacyLabel};
+use crate::{KeypointId, LegacyClassId, LegacyColor, LegacyLabel};
 
 /// Information about an Annotation.
 ///
@@ -177,7 +178,7 @@ impl re_log_types::LegacyComponent for AnnotationContext {
 /// Helper struct for converting `AnnotationContext` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ClassMapElemArrow {
-    class_id: ClassId,
+    class_id: LegacyClassId,
     class_description: ClassDescriptionArrow,
 }
 
@@ -189,7 +190,7 @@ impl From<&AnnotationContext> for AnnotationContextArrow {
         v.class_map
             .iter()
             .map(|(class_id, class_description)| ClassMapElemArrow {
-                class_id: *class_id,
+                class_id: (*class_id).into(),
                 class_description: class_description.into(),
             })
             .collect()
@@ -202,7 +203,7 @@ impl From<Vec<ClassMapElemArrow>> for AnnotationContext {
         AnnotationContext {
             class_map: v
                 .into_iter()
-                .map(|elem| (elem.class_id, elem.class_description.into()))
+                .map(|elem| (elem.class_id.into(), elem.class_description.into()))
                 .collect(),
         }
     }

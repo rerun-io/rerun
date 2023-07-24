@@ -1,9 +1,9 @@
-use re_components::{ClassId, LegacyColor, LegacyLabel, Rect2D};
+use re_components::{LegacyColor, LegacyLabel, Rect2D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_types::{
-    components::{InstanceKey, Radius},
+    components::{ClassId, InstanceKey, Radius},
     Loggable as _,
 };
 use re_viewer_context::{

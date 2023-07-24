@@ -51,10 +51,12 @@ pub mod datagen;
 // ----------------------------------------------------------------------------
 // TODO(emilk): split into modules, like we do in re_sdk/src/lib.rs
 
+// TODO: stuff we keep for annotation context
+pub(crate) use self::class_id::LegacyClassId;
+
 pub use self::{
     arrow::Arrow3D,
     bbox::Box3D,
-    class_id::ClassId,
     color::LegacyColor,
     context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
@@ -101,7 +103,7 @@ pub mod external {
 
 // ----------------------------------------------------------------------------
 
-use re_types::components::{Color, DrawOrder, Label, Point2D, Point3D, Radius};
+use re_types::components::{ClassId, Color, DrawOrder, Label, Point2D, Point3D, Radius};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
@@ -109,7 +111,6 @@ lazy_static! {
         <AnnotationContext as LegacyComponent>::field(),
         <Arrow3D as LegacyComponent>::field(),
         <Box3D as LegacyComponent>::field(),
-        <ClassId as LegacyComponent>::field(),
         <DisconnectedSpace as LegacyComponent>::field(),
         <KeypointId as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),
@@ -128,6 +129,7 @@ lazy_static! {
         <Vec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
         <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
+        Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),
         Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),
         Field::new(DrawOrder::name().as_str(), DrawOrder::to_arrow_datatype(), false),
         Field::new(Label::name().as_str(), Label::to_arrow_datatype(), false),

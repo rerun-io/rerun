@@ -1,5 +1,7 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
+// TODO: explain why we keep that one (needed for annotation context)
+
 /// A String label component
 ///
 /// ```
@@ -13,6 +15,12 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
 pub struct LegacyLabel(pub String);
+
+impl From<LegacyLabel> for re_types::components::Label {
+    fn from(val: LegacyLabel) -> Self {
+        re_types::components::Label(val.0)
+    }
+}
 
 impl LegacyLabel {
     #[inline]

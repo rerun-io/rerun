@@ -80,7 +80,7 @@ pub mod components {
         TensorDimension, TensorId, TextEntry, Transform3D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
     };
     pub use re_types::components::{
-        Color, DrawOrder, InstanceKey, Label, Point2D, Point3D, Radius,
+        ClassId, Color, DrawOrder, InstanceKey, Label, Point2D, Point3D, Radius,
     };
 }
 

@@ -6,8 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.components.annotation import ClassIdArray
-from rerun.components.color import ColorRGBAArray
+from rerun.components import splat
 from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
@@ -94,7 +93,7 @@ def log_rect(
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        instanced["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -223,7 +222,7 @@ def log_rects(
 
     if len(class_ids):
         is_splat = len(class_ids) == 1
-        comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        comps[is_splat]["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
 
     if draw_order is not None:
         comps[True]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)

@@ -1,8 +1,9 @@
 use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
-use re_components::{ClassId, DecodedTensor, Tensor, TensorDataMeaning, TensorElement};
+use re_components::{DecodedTensor, Tensor, TensorDataMeaning, TensorElement};
 use re_renderer::renderer::ColormappedTexture;
+use re_types::components::ClassId;
 use re_ui::ReUi;
 use re_viewer_context::{
     gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiVerbosity,
