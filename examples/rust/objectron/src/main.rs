@@ -113,7 +113,7 @@ fn log_baseline_objects(
     rec_stream: &RecordingStream,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
-    use rerun::components::{Box3D, Label, Color, Transform3D};
+    use rerun::components::{Box3D, Color, Label, Transform3D};
     use rerun::transform::TranslationAndMat3;
 
     let boxes = objects.iter().filter_map(|object| {
@@ -214,7 +214,7 @@ fn log_feature_points(
     timepoint: TimePoint,
     points: &objectron::ArPointCloud,
 ) -> anyhow::Result<()> {
-    use rerun::components::{InstanceKey, Color, Point3D};
+    use rerun::components::{Color, InstanceKey, Point3D};
 
     let ids = points.identifier.iter();
     let points = points.point.iter();
@@ -247,7 +247,7 @@ fn log_frame_annotations(
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
-    use rerun::components::{InstanceKey, Color, LineStrip2D, Point2D};
+    use rerun::components::{Color, InstanceKey, LineStrip2D, Point2D};
 
     for ann in &annotations.annotations {
         // TODO(cmc): we shouldn't be using those preprojected 2D points to begin with, Rerun is

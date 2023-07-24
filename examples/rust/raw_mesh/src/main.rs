@@ -12,9 +12,7 @@ use std::path::PathBuf;
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use rerun::components::{
-    Color, Mesh3D, MeshId, RawMesh3D, Transform3D, Vec4D, ViewCoordinates,
-};
+use rerun::components::{Color, Mesh3D, MeshId, RawMesh3D, Transform3D, Vec4D, ViewCoordinates};
 use rerun::transform::TranslationRotationScale3D;
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
