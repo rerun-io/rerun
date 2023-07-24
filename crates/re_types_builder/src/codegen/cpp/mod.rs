@@ -13,12 +13,13 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::codegen::common::write_file;
+use crate::Object;
 use crate::{
     codegen::AUTOGEN_WARNING, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
     Type,
 };
 
-use self::forward_decl::{ForwardDecl, ForwardDecls};
+use self::forward_decl::ForwardDecls;
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
 
@@ -35,11 +36,11 @@ const SYS_INCLUDE_PATH_PREFIX_TOKEN: &str = "SYS_INCLUDE_PATH_PREFIX_TOKEN";
 const SYS_INCLUDE_PATH_SUFFIX_TOKEN: &str = "SYS_INCLUDE_PATH_SUFFIX_TOKEN";
 const TODO_TOKEN: &str = "TODO_TOKEN";
 
-fn comment(text: &str) -> TokenStream {
+fn quote_comment(text: &str) -> TokenStream {
     quote! { #NORMAL_COMMENT_PREFIX_TOKEN #text #NORMAL_COMMENT_SUFFIX_TOKEN }
 }
 
-fn doc_comment(text: &str) -> TokenStream {
+fn quote_doc_comment(text: &str) -> TokenStream {
     quote! { #DOC_COMMENT_PREFIX_TOKEN #text #DOC_COMMENT_SUFFIX_TOKEN }
 }
 
@@ -165,7 +166,7 @@ impl crate::CodeGenerator for CppCodeGenerator {
 fn generate_hpp_cpp(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
-    obj: &crate::Object,
+    obj: &Object,
 ) -> (TokenStream, TokenStream) {
     let QuotedObject { hpp, cpp } = QuotedObject::new(arrow_registry, objects, obj);
     let snake_case_name = obj.snake_case_name();
@@ -198,7 +199,7 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
-    pub fn new(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &crate::Object) -> Self {
+    pub fn new(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> Self {
         match obj.specifics {
             crate::ObjectSpecifics::Struct => Self::from_struct(arrow_registry, objects, obj),
             crate::ObjectSpecifics::Union { .. } => Self::from_union(arrow_registry, objects, obj),
@@ -208,7 +209,7 @@ impl QuotedObject {
     fn from_struct(
         arrow_registry: &ArrowRegistry,
         _objects: &Objects,
-        obj: &crate::Object,
+        obj: &Object,
     ) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
         let pascal_case_name = &obj.name;
@@ -217,8 +218,9 @@ impl QuotedObject {
 
         let mut hpp_includes = Includes::default();
         hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
+        hpp_includes.system.insert("arrow/type_fwd.h".to_owned()); // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
         let mut cpp_includes = Includes::default();
-        let mut hpp_declarations = ForwardDecls::default();
+        //let mut hpp_declarations = ForwardDecls::default();
 
         let field_declarations = obj
             .fields
@@ -264,19 +266,13 @@ impl QuotedObject {
 
         match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
-                methods.push(arrow_data_type_method(
+                methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
+                methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
+                methods.push(fill_arrow_array_builder_method(
                     &datatype,
-                    &mut hpp_includes,
-                    &mut cpp_includes,
-                    &mut hpp_declarations,
-                ));
-
-                methods.push(to_arrow_method(
-                    &datatype,
+                    obj,
                     &pascal_case_ident,
-                    &mut hpp_includes,
                     &mut cpp_includes,
-                    &mut hpp_declarations,
                 ));
             }
             ObjectKind::Archetype => {
@@ -295,7 +291,6 @@ impl QuotedObject {
         };
         let hpp = quote! {
             #hpp_includes
-            #hpp_declarations
 
             namespace rr {
                 namespace #namespace_ident {
@@ -322,11 +317,7 @@ impl QuotedObject {
         Self { hpp, cpp }
     }
 
-    fn from_union(
-        arrow_registry: &ArrowRegistry,
-        objects: &Objects,
-        obj: &crate::Object,
-    ) -> QuotedObject {
+    fn from_union(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> QuotedObject {
         // We implement sum-types as tagged unions;
         // Putting non-POD types in a union requires C++11.
         //
@@ -355,7 +346,7 @@ impl QuotedObject {
         let data_typename = format_ident!("{pascal_case_name}Data");
 
         let tag_fields = std::iter::once({
-            let comment = doc_comment(
+            let comment = quote_doc_comment(
                 "Having a special empty state makes it possible to implement move-semantics. \
                 We need to be able to leave the object in a state which we can run the destructor on.");
             let tag_name = format_ident!("NONE");
@@ -377,7 +368,9 @@ impl QuotedObject {
         hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
         hpp_includes.system.insert("utility".to_owned()); // std::move
         hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
+        hpp_includes.system.insert("arrow/type_fwd.h".to_owned()); // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
         let mut cpp_includes = Includes::default();
+        #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
         let enum_data_declarations = obj
@@ -428,19 +421,16 @@ impl QuotedObject {
             // `enum Angle { Radians(f32), Degrees(f32) };`
         };
 
-        methods.push(arrow_data_type_method(
-            &arrow_registry.get(&obj.fqname),
-            &mut hpp_includes,
-            &mut cpp_includes,
-            &mut hpp_declarations,
-        ));
+        let datatype = arrow_registry.get(&obj.fqname);
+        methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
+        methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
 
         let destructor = if obj.has_default_destructor(objects) {
             // No destructor needed
             quote! {}
         } else {
             let destructor_match_arms = std::iter::once({
-                let comment = comment("Nothing to destroy");
+                let comment = quote_comment("Nothing to destroy");
                 quote! {
                     case detail::#tag_typename::NONE: {
                         break; #comment
@@ -452,7 +442,7 @@ impl QuotedObject {
                 let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
 
                 if obj_field.typ.has_default_destructor(objects) {
-                    let comment = comment("has a trivial destructor");
+                    let comment = quote_comment("has a trivial destructor");
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
                             break; #comment
@@ -498,7 +488,7 @@ impl QuotedObject {
             }
         };
 
-        let swap_comment = comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
+        let swap_comment = quote_comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
 
         let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
         let hpp = quote! {
@@ -586,14 +576,7 @@ impl QuotedObject {
     }
 }
 
-fn arrow_data_type_method(
-    datatype: &DataType,
-    hpp_includes: &mut Includes,
-    cpp_includes: &mut Includes,
-    hpp_declarations: &mut ForwardDecls,
-) -> Method {
-    hpp_declarations.insert("arrow", ForwardDecl::Class("DataType".to_owned()));
-    hpp_includes.system.insert("memory".to_owned()); // std::shared_ptr
+fn arrow_data_type_method(datatype: &DataType, cpp_includes: &mut Includes) -> Method {
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
     let quoted_datatype = quote_arrow_data_type(datatype, cpp_includes, true);
@@ -610,186 +593,63 @@ fn arrow_data_type_method(
     }
 }
 
-fn quote_fill_arrow_builder(
-    datatype: &DataType,
-    extension_type_ident: Option<&Ident>,
-    builder_name: &Ident,
-    pool: &Ident,
-    cpp_includes: &mut Includes,
-) -> TokenStream {
-    // TODO: shorter code here for trivial ones?
-    match datatype {
-        DataType::Boolean => {
-            quote!(auto #builder_name = std::make_shared<arrow::BooleanBuilder>(#pool);)
-        }
-        DataType::Int8 => quote!(auto #builder_name = std::make_shared<arrow::Int8Builder>(#pool);),
-        DataType::Int16 => {
-            quote!(auto #builder_name = std::make_shared<arrow::Int16Builder>(#pool);)
-        }
-        DataType::Int32 => {
-            quote!(auto #builder_name = std::make_shared<arrow::Int32Builder>(#pool);)
-        }
-        DataType::Int64 => {
-            quote!(auto #builder_name = std::make_shared<arrow::Int64Builder>(#pool);)
-        }
-        DataType::UInt8 => {
-            quote!(auto #builder_name = std::make_shared<arrow::UInt8Builder>(#pool);)
-        }
-        DataType::UInt16 => {
-            quote!(auto #builder_name = std::make_shared<arrow::UInt16Builder>(#pool);)
-        }
-        DataType::UInt32 => {
-            quote!(auto #builder_name = std::make_shared<arrow::UInt32Builder>(#pool);)
-        }
-        DataType::UInt64 => {
-            quote!(auto #builder_name = std::make_shared<arrow::UInt64Builder>(#pool);)
-        }
-        DataType::Float16 => {
-            quote!(auto #builder_name = std::make_shared<arrow::HalfFloatBuilder>(#pool);)
-        }
-        DataType::Float32 => {
-            quote!(auto #builder_name = std::make_shared<arrow::FloatBuilder>(#pool);)
-        }
-        DataType::Float64 => {
-            quote!(auto #builder_name = std::make_shared<arrow::DoubleBuilder>(#pool);)
-        }
-        DataType::Binary => {
-            quote!(auto #builder_name = std::make_shared<arrow::BinaryBuilder>(#pool);)
-        }
-        DataType::LargeBinary => {
-            quote!(auto #builder_name = std::make_shared<arrow::LargeBinaryBuilder>(#pool);)
-        }
-        DataType::Utf8 => {
-            quote!(auto #builder_name = std::make_shared<arrow::StringBuilder>(#pool);)
-        }
-        DataType::LargeUtf8 => {
-            quote!(auto #builder_name = std::make_shared<arrow::LargeStringBuilder>(#pool);)
-        }
-        DataType::List(field) => {
-            // TODO(andreas): Nesting list of lists might require adjusting the name.
-            let child_builder_name = format_ident!("child_builder");
-            let child_builder_impl = quote_fill_arrow_builder(
-                &field.as_ref().data_type,
-                None,
-                &child_builder_name,
-                pool,
-                cpp_includes,
-            );
-            quote! {
-                #child_builder_impl
-                auto #builder_name = std::make_shared<arrow::ListBuilder>(#pool, #child_builder_name);
-            }
-        }
-        DataType::FixedSizeList(field, length) => {
-            // TODO(andreas): Nesting list of lists might require adjusting the name.
-            let child_builder_name = format_ident!("child_builder");
-            let child_builder_impl = quote_fill_arrow_builder(
-                &field.as_ref().data_type,
-                None,
-                &child_builder_name,
-                pool,
-                cpp_includes,
-            );
-            let quoted_length = quote_integer(length);
-            quote! {
-                #child_builder_impl
-                auto #builder_name = std::make_shared<arrow::FixedSizeListBuilder>(#pool, #child_builder_name, #quoted_length);
-            }
-        }
-        DataType::Struct(fields) => {
-            let datatype_ident = extension_type_ident
-                .context("Structs that aren't wrapped in extension types aren't supported.
-                        This should only happen when using a struct that wasn't generated by the codegenerator itself.")
-                .unwrap();
-            quote! {
-                auto datatype = #datatype_ident::to_arrow_datatype();
-                auto builder = std::make_shared<arrow::FixedSizeBinaryBuilder>(
-                    datatype,
-                    #pool
-                );
-            }
-        }
-        DataType::Union(_, _, mode) => {
-            let builder_type = match mode {
-                arrow2::datatypes::UnionMode::Dense => "DenseUnionBuilder",
-                arrow2::datatypes::UnionMode::Sparse => "SparseUnionBuilder",
-            };
-            let builder_type = format_ident!("{builder_type}");
+fn new_arrow_array_builder_method(datatype: &DataType, cpp_includes: &mut Includes) -> Method {
+    let arrow_builder_type = arrow_array_builder_type(datatype);
 
-            let datatype_ident = extension_type_ident
-                .context("Structs that aren't wrapped in extension types aren't supported.
-                        This should only happen when using a struct that wasn't generated by the codegenerator itself.")
-                .unwrap();
-            quote! {
-                datatype = #datatype_ident::to_arrow_datatype();
-                auto builder = std::make_shared<arrow::#builder_type>(
-                    datatype,
-                    #pool,
-                    {} #TODO_TOKEN
-                );
-            }
-        }
-        DataType::Extension(fqname, datatype, _metadata) => {
-            if let DataType::Union(..) = datatype.as_ref() {
-                // TODO: not yet implemented
-                return quote! {
-                    #TODO_TOKEN
-                    auto #builder_name = std::make_shared<arrow::DoubleBuilder>();
-                };
-            }
+    cpp_includes.system.insert("arrow/api.h".to_owned());
 
-            let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
-            quote! {
-                ARROW_ASSIGN_OR_RAISE(
-                    auto #builder_name,
-                    #quoted_fqname::to_arrow(#pool, reinterpret_cast<const #quoted_fqname*>(elements), num_elements)
-                );
+    let arrow_builder_type = format_ident!("{arrow_builder_type}");
+    let builder_instantiation =
+        quote_arrow_array_builder_type_instantiation(datatype, cpp_includes, true);
+
+    Method {
+        docs: "Creates a new array builder with an array of this type.".into(),
+        declaration: MethodDeclaration {
+            is_static: true,
+            return_type: quote! { arrow::Result<std::shared_ptr<arrow::#arrow_builder_type>> },
+            name_and_parameters: quote!(new_arrow_array_builder(arrow::MemoryPool * memory_pool)),
+        },
+        definition_body: quote! {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
             }
-        }
-        _ => unimplemented!("Arrow serialization for type: {:?}", datatype),
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            return arrow::Result(#builder_instantiation);
+        },
+        inline: false,
     }
 }
 
-fn to_arrow_method(
+fn fill_arrow_array_builder_method(
     datatype: &DataType,
+    obj: &Object,
     pascal_case_ident: &Ident,
-    hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
-    hpp_declarations: &mut ForwardDecls,
 ) -> Method {
-    hpp_declarations.insert("arrow", ForwardDecl::Class("ArrayBuilder".to_owned()));
-    hpp_declarations.insert("arrow", ForwardDecl::Class("MemoryPool".to_owned()));
-    hpp_includes.system.insert("arrow/result.h".to_owned());
-    hpp_includes.system.insert("memory".to_owned()); // std::shared_ptr
-    cpp_includes.system.insert("arrow/api.h".to_owned());
-
     let DataType::Extension(_fqname, logical_datatype, _metadata) = datatype else {
         panic!("Can only generate arrow serialization code for extension types.");
     };
 
-    let pool = format_ident!("memory_pool");
     let builder = format_ident!("builder");
 
-    let builder_initialization = quote_fill_arrow_builder(
-        logical_datatype,
-        Some(pascal_case_ident),
-        &builder,
-        &pool,
-        cpp_includes,
-    );
+    let fill_builder =
+        quote_fill_arrow_array_builder(logical_datatype, &obj.fields, &builder, cpp_includes)
+            .context(format!("Generating serialization for {}", obj.fqname))
+            .unwrap();
 
     Method {
-        docs: "Fills out an arrow array builder with an array of this type.".into(),
+        docs: "Fills an arrow array builder with an array of this type.".into(),
         declaration: MethodDeclaration {
             is_static: true,
             return_type: quote! { arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> },
             // TODO(andreas): Pass in validity map.
             name_and_parameters: quote! {
-                to_arrow(arrow::MemoryPool* #pool, const #pascal_case_ident* elements, size_t num_elements)
+                fill_arrow_array_builder(arrow::MemoryPool* memory_pool, const #pascal_case_ident* elements, size_t num_elements)
             },
         },
         definition_body: quote! {
-            if (!#pool) {
+            if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
             }
             if (!elements) {
@@ -797,11 +657,238 @@ fn to_arrow_method(
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            #builder_initialization
+            ARROW_ASSIGN_OR_RAISE(auto #builder, new_arrow_array_builder(memory_pool));
+            ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+            #fill_builder
             #NEWLINE_TOKEN
             return #builder;
         },
         inline: false,
+    }
+}
+
+fn quote_fill_arrow_array_builder(
+    datatype: &DataType,
+    fields: &[ObjectField],
+    builder: &Ident,
+    _cpp_includes: &mut Includes,
+) -> anyhow::Result<TokenStream> {
+    let loop_todo =
+        quote_comment("TODO(andreas): Optimize loops to use batch appends when possible.");
+
+    let tokens = match datatype.to_logical_type() {
+        DataType::Boolean
+        | DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64
+        | DataType::Float16
+        | DataType::Float32
+        | DataType::Float64
+        | DataType::Binary
+        | DataType::LargeBinary
+        | DataType::Utf8
+        | DataType::LargeUtf8 => {
+            anyhow::ensure!(
+                fields.len() == 1,
+                "Expected exactly one field for primitive type {:?}",
+                datatype
+            );
+            let field: &ObjectField = &fields[0];
+            let field_name = format_ident!("{}", field.name);
+
+            let append_single = if field.is_nullable {
+                quote! {
+                    if (elements[i].#field_name.has_value()) {
+                        ARROW_RETURN_NOT_OK(#builder->Append(elements[i].#field_name.value()));
+                    } else {
+                        ARROW_RETURN_NOT_OK(#builder->AppendNull());
+                    }
+                }
+            } else {
+                quote! {
+                    ARROW_RETURN_NOT_OK(#builder->Append(elements[i].#field_name));
+                }
+            };
+
+            quote! {
+                #NEWLINE_TOKEN
+                #loop_todo
+                for (size_t i = 0; i < num_elements; i += 1) {
+                    #append_single
+                }
+            }
+        }
+        DataType::FixedSizeList(_field, ..) | DataType::List(_field) => {
+            let todo = quote_comment("TODO: fill value builder");
+            quote! {
+                auto value_builder = #builder->value_builder();
+                #NEWLINE_TOKEN
+                #loop_todo
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    #todo
+                    ARROW_RETURN_NOT_OK(builder->Append());
+                }
+            }
+        }
+        DataType::Struct(_fields) => {
+            let todo = quote_comment("TODO: fill field builders");
+            quote! {
+                #NEWLINE_TOKEN
+                #loop_todo
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    #todo
+                    ARROW_RETURN_NOT_OK(builder->Append());
+                }
+            }
+        }
+        DataType::Union(_, _, _) => {
+            let todo = quote_comment("TODO: fill field builders");
+            quote! {
+                #NEWLINE_TOKEN
+                #loop_todo
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    #todo
+                }
+            }
+        }
+        DataType::Extension(..) => {
+            unreachable!("Logical type can't be an extension type.")
+        }
+        _ => anyhow::bail!(
+            "Arrow serialization for type {:?} not implemented",
+            datatype
+        ),
+    };
+
+    Ok(tokens)
+}
+
+fn arrow_array_builder_type(datatype: &DataType) -> &'static str {
+    match datatype.to_logical_type() {
+        DataType::Boolean => "BooleanBuilder",
+        DataType::Int8 => "Int8Builder",
+        DataType::Int16 => "Int16Builder",
+        DataType::Int32 => "Int32Builder",
+        DataType::Int64 => "Int64Builder",
+        DataType::UInt8 => "UInt8Builder",
+        DataType::UInt16 => "UInt16Builder",
+        DataType::UInt32 => "UInt32Builder",
+        DataType::UInt64 => "UInt64Builder",
+        DataType::Float16 => "HalfFloatBuilder",
+        DataType::Float32 => "FloatBuilder",
+        DataType::Float64 => "DoubleBuilder",
+        DataType::Binary => "BinaryBuilder",
+        DataType::LargeBinary => "LargeBinaryBuilder",
+        DataType::Utf8 => "StringBuilder",
+        DataType::LargeUtf8 => "LargeStringBuilder",
+        DataType::FixedSizeList(..) => "FixedSizeListBuilder",
+        DataType::List(..) => "ListBuilder",
+        DataType::Struct(..) => "StructBuilder",
+        DataType::Null => "NullBuilder",
+        DataType::Union(_, _, mode) => match mode {
+            arrow2::datatypes::UnionMode::Dense => "DenseUnionBuilder",
+            arrow2::datatypes::UnionMode::Sparse => "SparseUnionBuilder",
+        },
+        DataType::Extension(_, _, _metadata) => {
+            unreachable!("Logical type can't be an extension type.")
+        }
+        _ => unimplemented!(
+            "Arrow serialization for type {:?} not implemented",
+            datatype
+        ),
+    }
+}
+
+fn quote_arrow_array_builder_type_instantiation(
+    datatype: &DataType,
+    cpp_includes: &mut Includes,
+    is_top_level_type: bool,
+) -> TokenStream {
+    let builder_type = arrow_array_builder_type(datatype);
+    let builder_type = format_ident!("{builder_type}");
+
+    match datatype {
+        DataType::Boolean
+        | DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64
+        | DataType::Float16
+        | DataType::Float32
+        | DataType::Float64
+        | DataType::Binary
+        | DataType::LargeBinary
+        | DataType::Utf8
+        | DataType::LargeUtf8
+        | DataType::Null => {
+            quote!(std::make_shared<arrow::#builder_type>(memory_pool))
+        }
+        DataType::List(field) => {
+            let element_builder = quote_arrow_array_builder_type_instantiation(
+                field.data_type(),
+                cpp_includes,
+                false,
+            );
+            quote!(std::make_shared<arrow::#builder_type>(memory_pool, #element_builder))
+        }
+        DataType::FixedSizeList(field, length) => {
+            let quoted_length = quote_integer(length);
+            let element_builder = quote_arrow_array_builder_type_instantiation(
+                field.data_type(),
+                cpp_includes,
+                false,
+            );
+            quote!(std::make_shared<arrow::#builder_type>(memory_pool, #element_builder, #quoted_length))
+        }
+        DataType::Struct(fields) => {
+            let field_builders = fields.iter().map(|field| {
+                quote_arrow_array_builder_type_instantiation(field.data_type(), cpp_includes, false)
+            });
+            quote! {
+                std::make_shared<arrow::#builder_type>(
+                    to_arrow_datatype(),
+                    memory_pool,
+                    std::vector<std::shared_ptr<arrow::ArrayBuilder>>({ #(#field_builders,)* })
+                )
+            }
+        }
+        DataType::Union(fields, _, _) => {
+            let field_builders = fields.iter().map(|field| {
+                quote_arrow_array_builder_type_instantiation(field.data_type(), cpp_includes, false)
+            });
+            quote! {
+                std::make_shared<arrow::#builder_type>(
+                    memory_pool,
+                    std::vector<std::shared_ptr<arrow::ArrayBuilder>>({ #(#field_builders,)* }),
+                    to_arrow_datatype()
+                )
+            }
+        }
+        DataType::Extension(fqname, datatype, _metadata) => {
+            if is_top_level_type {
+                quote_arrow_array_builder_type_instantiation(datatype.as_ref(), cpp_includes, false)
+            } else {
+                // Propagating error here is hard since we're in a nested context.
+                // But also not that important since we *know* that this only fails for null pools and we already checked that now.
+                let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
+                quote! {
+                    #quoted_fqname::new_arrow_array_builder(memory_pool).ValueOrDie()
+                }
+            }
+        }
+        _ => unimplemented!(
+            "Arrow serialization for type {:?} not implemented",
+            datatype
+        ),
     }
 }
 
@@ -1033,7 +1120,7 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
 
 fn quote_docstrings(docs: &Docs) -> TokenStream {
     let lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
-    let quoted_lines = lines.iter().map(|docstring| doc_comment(docstring));
+    let quoted_lines = lines.iter().map(|docstring| quote_doc_comment(docstring));
     quote! {
         #NEWLINE_TOKEN
         #(#quoted_lines)*
