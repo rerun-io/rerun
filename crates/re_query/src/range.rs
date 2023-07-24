@@ -173,7 +173,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     // TODO(jleibs) this shim is super gross
     let components: [ComponentName; N] = A::all_components().try_into().unwrap();
 
-    let primary: ComponentName = A::recommended_components()[0];
+    let primary: ComponentName = A::required_components()[0];
     let cluster_key = store.cluster_key();
 
     // TODO(cmc): Ideally, we'd want to simply add the cluster and primary key to the `components`
