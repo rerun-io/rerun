@@ -40,8 +40,6 @@ impl<'a> From<&'a RotationAxisAngle> for ::std::borrow::Cow<'a, RotationAxisAngl
     }
 }
 
-impl RotationAxisAngle {}
-
 impl crate::Loggable for RotationAxisAngle {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;

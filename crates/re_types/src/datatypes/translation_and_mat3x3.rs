@@ -42,8 +42,6 @@ impl<'a> From<&'a TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAn
     }
 }
 
-impl TranslationAndMat3x3 {}
-
 impl crate::Loggable for TranslationAndMat3x3 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;

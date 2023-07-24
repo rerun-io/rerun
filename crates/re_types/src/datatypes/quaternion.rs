@@ -30,8 +30,6 @@ impl<'a> From<&'a Quaternion> for ::std::borrow::Cow<'a, Quaternion> {
     }
 }
 
-impl Quaternion {}
-
 impl crate::Loggable for Quaternion {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;

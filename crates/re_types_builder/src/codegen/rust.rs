@@ -693,9 +693,6 @@ fn quote_trait_impls_from_obj(
             quote! {
                 #into_cow
 
-                impl #name {
-                }
-
                 impl crate::Loggable for #name {
                     type Name = crate::#kind_name;
                     type Item<'a> = Option<Self>;

@@ -36,8 +36,6 @@ impl<'a> From<&'a Point2D> for ::std::borrow::Cow<'a, Point2D> {
     }
 }
 
-impl Point2D {}
-
 impl crate::Loggable for Point2D {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;

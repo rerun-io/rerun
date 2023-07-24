@@ -32,8 +32,6 @@ impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
     }
 }
 
-impl ClassId {}
-
 impl crate::Loggable for ClassId {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;

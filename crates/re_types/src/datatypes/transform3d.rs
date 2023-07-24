@@ -36,8 +36,6 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
     }
 }
 
-impl Transform3D {}
-
 impl crate::Loggable for Transform3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;

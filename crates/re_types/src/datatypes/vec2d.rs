@@ -30,8 +30,6 @@ impl<'a> From<&'a Vec2D> for ::std::borrow::Cow<'a, Vec2D> {
     }
 }
 
-impl Vec2D {}
-
 impl crate::Loggable for Vec2D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;

@@ -37,8 +37,6 @@ impl<'a> From<&'a DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
     }
 }
 
-impl DrawOrder {}
-
 impl crate::Loggable for DrawOrder {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;

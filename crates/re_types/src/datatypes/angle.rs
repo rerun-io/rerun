@@ -33,8 +33,6 @@ impl<'a> From<&'a Angle> for ::std::borrow::Cow<'a, Angle> {
     }
 }
 
-impl Angle {}
-
 impl crate::Loggable for Angle {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;

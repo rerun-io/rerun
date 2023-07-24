@@ -42,8 +42,6 @@ impl<'a> From<&'a Color> for ::std::borrow::Cow<'a, Color> {
     }
 }
 
-impl Color {}
-
 impl crate::Loggable for Color {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;

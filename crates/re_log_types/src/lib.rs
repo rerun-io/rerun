@@ -419,7 +419,6 @@ macro_rules! profile_scope {
 #[macro_export]
 macro_rules! component_legacy_shim {
     ($entity:ident) => {
-        impl $entity {}
 
         impl re_types::Loggable for $entity {
             type Name = re_types::ComponentName;

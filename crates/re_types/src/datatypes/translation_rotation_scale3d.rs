@@ -45,8 +45,6 @@ impl<'a> From<&'a TranslationRotationScale3D>
     }
 }
 
-impl TranslationRotationScale3D {}
-
 impl crate::Loggable for TranslationRotationScale3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;

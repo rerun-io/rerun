@@ -35,8 +35,6 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
     }
 }
 
-impl AffixFuzzer1 {}
-
 impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -228,8 +226,6 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
         std::borrow::Cow::Borrowed(value)
     }
 }
-
-impl AffixFuzzer2 {}
 
 impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::ComponentName;
@@ -423,8 +419,6 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
     }
 }
 
-impl AffixFuzzer3 {}
-
 impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -617,8 +611,6 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
     }
 }
 
-impl AffixFuzzer4 {}
-
 impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -808,8 +800,6 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
         std::borrow::Cow::Borrowed(value)
     }
 }
-
-impl AffixFuzzer5 {}
 
 impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::ComponentName;
@@ -1001,8 +991,6 @@ impl<'a> From<&'a AffixFuzzer6> for ::std::borrow::Cow<'a, AffixFuzzer6> {
     }
 }
 
-impl AffixFuzzer6 {}
-
 impl crate::Loggable for AffixFuzzer6 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -1192,8 +1180,6 @@ impl<'a> From<&'a AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
         std::borrow::Cow::Borrowed(value)
     }
 }
-
-impl AffixFuzzer7 {}
 
 impl crate::Loggable for AffixFuzzer7 {
     type Name = crate::ComponentName;
@@ -1394,8 +1380,6 @@ impl<'a> From<&'a AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
     }
 }
 
-impl AffixFuzzer8 {}
-
 impl crate::Loggable for AffixFuzzer8 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -1516,8 +1500,6 @@ impl<'a> From<&'a AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
         std::borrow::Cow::Borrowed(value)
     }
 }
-
-impl AffixFuzzer9 {}
 
 impl crate::Loggable for AffixFuzzer9 {
     type Name = crate::ComponentName;
@@ -1657,8 +1639,6 @@ impl<'a> From<&'a AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
     }
 }
 
-impl AffixFuzzer10 {}
-
 impl crate::Loggable for AffixFuzzer10 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -1794,8 +1774,6 @@ impl<'a> From<&'a AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
         std::borrow::Cow::Borrowed(value)
     }
 }
-
-impl AffixFuzzer11 {}
 
 impl crate::Loggable for AffixFuzzer11 {
     type Name = crate::ComponentName;
@@ -2005,8 +1983,6 @@ impl<'a> From<&'a AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
         std::borrow::Cow::Borrowed(value)
     }
 }
-
-impl AffixFuzzer12 {}
 
 impl crate::Loggable for AffixFuzzer12 {
     type Name = crate::ComponentName;
@@ -2233,8 +2209,6 @@ impl<'a> From<&'a AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
         std::borrow::Cow::Borrowed(value)
     }
 }
-
-impl AffixFuzzer13 {}
 
 impl crate::Loggable for AffixFuzzer13 {
     type Name = crate::ComponentName;
@@ -2466,8 +2440,6 @@ impl<'a> From<&'a AffixFuzzer14> for ::std::borrow::Cow<'a, AffixFuzzer14> {
     }
 }
 
-impl AffixFuzzer14 {}
-
 impl crate::Loggable for AffixFuzzer14 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -2638,8 +2610,6 @@ impl<'a> From<&'a AffixFuzzer15> for ::std::borrow::Cow<'a, AffixFuzzer15> {
     }
 }
 
-impl AffixFuzzer15 {}
-
 impl crate::Loggable for AffixFuzzer15 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -2807,8 +2777,6 @@ impl<'a> From<&'a AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
         std::borrow::Cow::Borrowed(value)
     }
 }
-
-impl AffixFuzzer16 {}
 
 impl crate::Loggable for AffixFuzzer16 {
     type Name = crate::ComponentName;
@@ -3018,8 +2986,6 @@ impl<'a> From<&'a AffixFuzzer17> for ::std::borrow::Cow<'a, AffixFuzzer17> {
     }
 }
 
-impl AffixFuzzer17 {}
-
 impl crate::Loggable for AffixFuzzer17 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -3226,8 +3192,6 @@ impl<'a> From<&'a AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
     }
 }
 
-impl AffixFuzzer18 {}
-
 impl crate::Loggable for AffixFuzzer18 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
@@ -3433,8 +3397,6 @@ impl<'a> From<&'a AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
         std::borrow::Cow::Borrowed(value)
     }
 }
-
-impl AffixFuzzer19 {}
 
 impl crate::Loggable for AffixFuzzer19 {
     type Name = crate::ComponentName;

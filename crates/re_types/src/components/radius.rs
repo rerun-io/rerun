@@ -30,8 +30,6 @@ impl<'a> From<&'a Radius> for ::std::borrow::Cow<'a, Radius> {
     }
 }
 
-impl Radius {}
-
 impl crate::Loggable for Radius {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;

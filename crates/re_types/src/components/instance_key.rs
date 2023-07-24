@@ -30,8 +30,6 @@ impl<'a> From<&'a InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
     }
 }
 
-impl InstanceKey {}
-
 impl crate::Loggable for InstanceKey {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
