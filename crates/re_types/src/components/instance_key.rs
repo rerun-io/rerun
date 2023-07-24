@@ -133,5 +133,3 @@ impl crate::Loggable for InstanceKey {
         item
     }
 }
-
-impl crate::Component for InstanceKey {}

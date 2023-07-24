@@ -225,5 +225,3 @@ impl crate::Loggable for Quaternion {
         item
     }
 }
-
-impl crate::Datatype for Quaternion {}

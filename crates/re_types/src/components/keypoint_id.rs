@@ -137,5 +137,3 @@ impl crate::Loggable for KeypointId {
         item
     }
 }
-
-impl crate::Component for KeypointId {}

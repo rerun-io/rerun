@@ -257,5 +257,3 @@ impl crate::Loggable for Point2D {
         item
     }
 }
-
-impl crate::Datatype for Point2D {}

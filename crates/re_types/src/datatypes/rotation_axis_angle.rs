@@ -313,5 +313,3 @@ impl crate::Loggable for RotationAxisAngle {
         item
     }
 }
-
-impl crate::Datatype for RotationAxisAngle {}

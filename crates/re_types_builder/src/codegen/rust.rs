@@ -750,8 +750,6 @@ fn quote_trait_impls_from_obj(
                         item
                     }
                 }
-
-                impl crate::#kind for #name {}
             }
         }
 

@@ -482,8 +482,6 @@ macro_rules! component_legacy_shim {
             }
         }
 
-        impl re_types::Component for $entity {}
-
         impl<'a> From<$entity> for ::std::borrow::Cow<'a, $entity> {
             #[inline]
             fn from(value: $entity) -> Self {

@@ -133,5 +133,3 @@ impl crate::Loggable for Radius {
         item
     }
 }
-
-impl crate::Component for Radius {}

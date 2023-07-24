@@ -225,5 +225,3 @@ impl crate::Loggable for Mat4x4 {
         item
     }
 }
-
-impl crate::Datatype for Mat4x4 {}

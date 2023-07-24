@@ -361,5 +361,3 @@ impl crate::Loggable for Scale3D {
         item
     }
 }
-
-impl crate::Datatype for Scale3D {}

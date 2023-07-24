@@ -145,5 +145,3 @@ impl crate::Loggable for Color {
         item
     }
 }
-
-impl crate::Component for Color {}

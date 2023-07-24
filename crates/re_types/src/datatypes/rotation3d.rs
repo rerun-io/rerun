@@ -366,5 +366,3 @@ impl crate::Loggable for Rotation3D {
         item
     }
 }
-
-impl crate::Datatype for Rotation3D {}

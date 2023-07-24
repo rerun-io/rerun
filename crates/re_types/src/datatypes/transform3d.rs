@@ -298,5 +298,3 @@ impl crate::Loggable for Transform3D {
         item
     }
 }
-
-impl crate::Datatype for Transform3D {}

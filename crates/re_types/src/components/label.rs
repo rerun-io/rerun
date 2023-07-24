@@ -149,5 +149,3 @@ impl crate::Loggable for Label {
         item
     }
 }
-
-impl crate::Component for Label {}

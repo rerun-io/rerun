@@ -412,5 +412,3 @@ impl crate::Loggable for TranslationAndMat3x3 {
         item
     }
 }
-
-impl crate::Datatype for TranslationAndMat3x3 {}

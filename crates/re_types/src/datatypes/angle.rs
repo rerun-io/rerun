@@ -311,5 +311,3 @@ impl crate::Loggable for Angle {
         item
     }
 }
-
-impl crate::Datatype for Angle {}

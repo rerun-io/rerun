@@ -225,5 +225,3 @@ impl crate::Loggable for Mat3x3 {
         item
     }
 }
-
-impl crate::Datatype for Mat3x3 {}

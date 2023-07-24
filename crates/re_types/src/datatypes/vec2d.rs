@@ -225,5 +225,3 @@ impl crate::Loggable for Vec2D {
         item
     }
 }
-
-impl crate::Datatype for Vec2D {}

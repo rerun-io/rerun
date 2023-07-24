@@ -158,5 +158,3 @@ impl crate::Loggable for Transform3D {
         item
     }
 }
-
-impl crate::Component for Transform3D {}

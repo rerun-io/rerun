@@ -140,5 +140,3 @@ impl crate::Loggable for DrawOrder {
         item
     }
 }
-
-impl crate::Component for DrawOrder {}

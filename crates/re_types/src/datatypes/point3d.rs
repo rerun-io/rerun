@@ -307,5 +307,3 @@ impl crate::Loggable for Point3D {
         item
     }
 }
-
-impl crate::Datatype for Point3D {}

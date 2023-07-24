@@ -135,5 +135,3 @@ impl crate::Loggable for ClassId {
         item
     }
 }
-
-impl crate::Component for ClassId {}

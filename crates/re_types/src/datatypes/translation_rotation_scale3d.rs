@@ -384,5 +384,3 @@ impl crate::Loggable for TranslationRotationScale3D {
         item
     }
 }
-
-impl crate::Datatype for TranslationRotationScale3D {}

@@ -204,8 +204,6 @@ impl crate::Loggable for FlattenedScalar {
     }
 }
 
-impl crate::Datatype for FlattenedScalar {}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
@@ -1022,8 +1020,6 @@ impl crate::Loggable for AffixFuzzer1 {
     }
 }
 
-impl crate::Datatype for AffixFuzzer1 {}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer2(pub Option<f32>);
 
@@ -1142,8 +1138,6 @@ impl crate::Loggable for AffixFuzzer2 {
         item
     }
 }
-
-impl crate::Datatype for AffixFuzzer2 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer3 {
@@ -1639,8 +1633,6 @@ impl crate::Loggable for AffixFuzzer3 {
     }
 }
 
-impl crate::Datatype for AffixFuzzer3 {}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer4 {
     SingleRequired(crate::datatypes::AffixFuzzer3),
@@ -2074,8 +2066,6 @@ impl crate::Loggable for AffixFuzzer4 {
     }
 }
 
-impl crate::Datatype for AffixFuzzer4 {}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::datatypes::AffixFuzzer4>,
@@ -2273,5 +2263,3 @@ impl crate::Loggable for AffixFuzzer5 {
         item
     }
 }
-
-impl crate::Datatype for AffixFuzzer5 {}

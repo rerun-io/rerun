@@ -145,5 +145,3 @@ impl crate::Loggable for Point2D {
         item
     }
 }
-
-impl crate::Component for Point2D {}

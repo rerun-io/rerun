@@ -151,5 +151,3 @@ impl crate::Loggable for Point3D {
         item
     }
 }
-
-impl crate::Component for Point3D {}
