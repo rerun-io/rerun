@@ -235,7 +235,7 @@ pub trait Loggable: Sized {
 
     /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
     ///
-    /// This is intended to be used with [`Loggable::try_from_arrow_iter_item`]
+    /// This is intended to be used with [`Loggable::try_iter_from_arrow`]
     fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self>;
 }
 
