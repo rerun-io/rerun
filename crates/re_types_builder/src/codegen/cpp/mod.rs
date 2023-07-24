@@ -595,9 +595,6 @@ fn arrow_data_type_method(datatype: &DataType, cpp_includes: &mut Includes) -> M
 
 fn new_arrow_array_builder_method(datatype: &DataType, cpp_includes: &mut Includes) -> Method {
     let arrow_builder_type = arrow_array_builder_type(datatype);
-
-    cpp_includes.system.insert("arrow/api.h".to_owned());
-
     let arrow_builder_type = format_ident!("{arrow_builder_type}");
     let builder_instantiation =
         quote_arrow_array_builder_type_instantiation(datatype, cpp_includes, true);
@@ -632,51 +629,58 @@ fn fill_arrow_array_builder_method(
     };
 
     let builder = format_ident!("builder");
+    let arrow_builder_type = arrow_array_builder_type(datatype);
+    let arrow_builder_type = format_ident!("{arrow_builder_type}");
 
-    let fill_builder =
-        quote_fill_arrow_array_builder(logical_datatype, &obj.fields, &builder, cpp_includes)
-            .context(format!("Generating serialization for {}", obj.fqname))
-            .unwrap();
+    let fill_builder = quote_fill_arrow_array_builder(
+        pascal_case_ident,
+        logical_datatype,
+        &obj.fields,
+        &builder,
+        cpp_includes,
+    )
+    .context(format!("Generating serialization for {}", obj.fqname))
+    .unwrap();
 
     Method {
         docs: "Fills an arrow array builder with an array of this type.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> },
+            return_type: quote! { arrow::Status },
             // TODO(andreas): Pass in validity map.
             name_and_parameters: quote! {
-                fill_arrow_array_builder(arrow::MemoryPool* memory_pool, const #pascal_case_ident* elements, size_t num_elements)
+                fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #pascal_case_ident* elements, size_t num_elements)
             },
         },
         definition_body: quote! {
-            if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
             }
             if (!elements) {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            ARROW_ASSIGN_OR_RAISE(auto #builder, new_arrow_array_builder(memory_pool));
-            ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
             #fill_builder
             #NEWLINE_TOKEN
-            return #builder;
+            #NEWLINE_TOKEN
+            return arrow::Status::OK();
         },
         inline: false,
     }
 }
 
 fn quote_fill_arrow_array_builder(
+    pascal_case_ident: &Ident,
     datatype: &DataType,
     fields: &[ObjectField],
     builder: &Ident,
-    _cpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
 ) -> anyhow::Result<TokenStream> {
     let loop_todo =
         quote_comment("TODO(andreas): Optimize loops to use batch appends when possible.");
 
-    let tokens = match datatype.to_logical_type() {
+    let tokens = match datatype {
         DataType::Boolean
         | DataType::Int8
         | DataType::Int16
@@ -698,27 +702,14 @@ fn quote_fill_arrow_array_builder(
                 "Expected exactly one field for primitive type {:?}",
                 datatype
             );
-            let field: &ObjectField = &fields[0];
-            let field_name = format_ident!("{}", field.name);
-
-            let append_single = if field.is_nullable {
-                quote! {
-                    if (elements[i].#field_name.has_value()) {
-                        ARROW_RETURN_NOT_OK(#builder->Append(elements[i].#field_name.value()));
-                    } else {
-                        ARROW_RETURN_NOT_OK(#builder->AppendNull());
-                    }
-                }
-            } else {
-                quote! {
-                    ARROW_RETURN_NOT_OK(#builder->Append(elements[i].#field_name));
-                }
-            };
+            let append_single = quote_append_field_to_builder(&fields[0], builder);
 
             quote! {
                 #NEWLINE_TOKEN
                 #loop_todo
-                for (size_t i = 0; i < num_elements; i += 1) {
+                ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto& element = elements[elem_idx];
                     #append_single
                 }
             }
@@ -729,19 +720,58 @@ fn quote_fill_arrow_array_builder(
                 auto value_builder = #builder->value_builder();
                 #NEWLINE_TOKEN
                 #loop_todo
+                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto& element = elements[elem_idx];
                     #todo
                     ARROW_RETURN_NOT_OK(builder->Append());
                 }
             }
         }
-        DataType::Struct(_fields) => {
-            let todo = quote_comment("TODO: fill field builders");
+        DataType::Struct(field_datatypes) => {
+            let fill_fields = fields.iter().zip(field_datatypes).enumerate().map(
+                |(i, (field, arrow_field))| {
+                    let builder_index = quote_integer(i);
+                    match arrow_field.data_type() {
+                        DataType::FixedSizeList(..) | DataType::List(..) => {
+                            quote!(
+                                return arrow::Status::NotImplemented(
+                                    "TODO(andreas): lists in structs are not yet supported"
+                                );
+                            )
+                        }
+                        DataType::Extension(_fqname, _, _) => {
+                            quote!(
+                                return arrow::Status::NotImplemented(
+                                    "TODO(andreas): extensions in structs are not yet supported"
+                                );
+                            )
+                        }
+                        _ => {
+                            let element_builder = format_ident!("element_builder");
+                            let element_builder_type = arrow_array_builder_type(arrow_field.data_type());
+                            let element_builder_type = format_ident!("{element_builder_type}");
+                            let field_append = quote_append_field_to_builder(field, &element_builder);
+                            quote! {
+                                {
+                                    auto #element_builder = static_cast<arrow::#element_builder_type*>(builder->field_builder(#builder_index));
+                                    for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                                        const auto& element = elements[elem_idx];
+                                        #field_append
+                                    }
+                                    #NEWLINE_TOKEN
+                                }
+                            }
+                        }
+                    }
+                },
+            );
+
             quote! {
+                #(#fill_fields)*
                 #NEWLINE_TOKEN
                 #loop_todo
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    #todo
                     ARROW_RETURN_NOT_OK(builder->Append());
                 }
             }
@@ -752,12 +782,28 @@ fn quote_fill_arrow_array_builder(
                 #NEWLINE_TOKEN
                 #loop_todo
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto& element = elements[elem_idx];
                     #todo
                 }
             }
         }
-        DataType::Extension(..) => {
-            unreachable!("Logical type can't be an extension type.")
+        DataType::Extension(fqname, datatype, _) => {
+            assert_eq!(fields.len(), 1);
+            if let DataType::Union(..) = datatype.as_ref() {
+                quote!(return arrow::Status::NotImplemented("TODO(andreas): Implement fill_arrow_array_builder for unions");)
+            } else if fields[0].is_nullable {
+                // Idea: pass in a tagged union for both optional and non-optional arrays to all fill_arrow_array_builder methods?
+                quote!(return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));)
+            } else {
+                let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
+                // TODO: add a static assertion on size.
+                quote! {
+                    static_assert(sizeof(#quoted_fqname) == sizeof(#pascal_case_ident));
+                    ARROW_RETURN_NOT_OK(#quoted_fqname::fill_arrow_array_builder(
+                        builder, reinterpret_cast<const #quoted_fqname*>(elements), num_elements
+                    ));
+                }
+            }
         }
         _ => anyhow::bail!(
             "Arrow serialization for type {:?} not implemented",
@@ -766,6 +812,24 @@ fn quote_fill_arrow_array_builder(
     };
 
     Ok(tokens)
+}
+
+fn quote_append_field_to_builder(field: &ObjectField, builder: &Ident) -> TokenStream {
+    // TODO: Deal with lists, structs, unions, etc.?
+    let field_name = format_ident!("{}", field.name);
+    if field.is_nullable {
+        quote! {
+            if (element.#field_name.has_value()) {
+                ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name.value()));
+            } else {
+                ARROW_RETURN_NOT_OK(#builder->AppendNull());
+            }
+        }
+    } else {
+        quote! {
+            ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name));
+        }
+    }
 }
 
 fn arrow_array_builder_type(datatype: &DataType) -> &'static str {
