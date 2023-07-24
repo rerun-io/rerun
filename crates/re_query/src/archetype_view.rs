@@ -286,7 +286,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Iterate over the values of a required [`Component`].
     #[inline]
-    pub fn iter_required_component<'a, C: Component + Clone + 'a>(
+    pub fn iter_required_component<'a, C: Component + Default + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
         debug_assert!(A::required_components()

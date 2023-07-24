@@ -4143,6 +4143,7 @@ dependencies = [
  "anyhow",
  "arrow2",
  "arrow2_convert",
+ "backtrace",
  "crossbeam",
  "document-features",
  "fixed",

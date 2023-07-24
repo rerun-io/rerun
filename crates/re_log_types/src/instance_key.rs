@@ -19,7 +19,17 @@ use crate::LegacyComponent;
 /// assert_eq!(LegacyInstanceKey::data_type(), DataType::UInt64);
 /// ```
 #[derive(
-    Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, ArrowField, ArrowSerialize, ArrowDeserialize,
+    Copy,
+    Clone,
+    Default,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    ArrowField,
+    ArrowSerialize,
+    ArrowDeserialize,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
