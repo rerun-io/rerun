@@ -362,7 +362,7 @@ impl DataCell {
     pub fn try_to_native<'a, C: Component + Default + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = C> + '_> {
-        Ok(C::try_from_arrow_iter_item(self.inner.values.as_ref())?
+        Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?
             .map(C::convert_item_to_self)
             .map(|v| {
                 // TODO(#2523): This unwrap and the `Default` bounds should go away once we move to fallible iterators
@@ -381,7 +381,7 @@ impl DataCell {
     #[inline]
     pub fn try_to_native_mono<'a, C: Component + 'a>(&'a self) -> DataCellResult<Option<C>> {
         let mut iter =
-            C::try_from_arrow_iter_item(self.inner.values.as_ref())?.map(C::convert_item_to_self);
+            C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self);
 
         let result = match iter.next() {
             // It's ok to have no result from the iteration: this is what we should see for an unlogged/cleared component.
@@ -417,7 +417,7 @@ impl DataCell {
     pub fn try_to_native_opt<'a, C: Component + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_> {
-        Ok(C::try_from_arrow_iter_item(self.inner.values.as_ref())?.map(C::convert_item_to_self))
+        Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self))
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.

@@ -2,75 +2,55 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
+from typing import Any, Sequence, Tuple, Union
 
-from attrs import define, field
-import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
 from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
     BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
-)
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
+    BaseExtensionType,
 )
 from ._overrides import point2d_as_array, point2d_native_to_pa_array  # noqa: F401
-__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
 
+__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
 
 
 @define
 class Point2D:
-    """
-    A point in 2D space.
-    """
+    """A point in 2D space."""
 
     x: float = field(converter=float)
     y: float = field(converter=float)
-    def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
+
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return point2d_as_array(self, dtype=dtype)
 
 
-Point2DLike = Union[
-    Point2D,
-    Sequence[float]
-]
+Point2DLike = Union[Point2D, Sequence[float]]
 
 Point2DArrayLike = Union[
     Point2D,
     Sequence[Point2DLike],
-    npt.NDArray[Any], Sequence[npt.NDArray[Any]], Sequence[Tuple[float, float]], Sequence[float]
+    npt.NDArray[Any],
+    Sequence[npt.NDArray[Any]],
+    Sequence[Tuple[float, float]],
+    Sequence[float],
 ]
 
 
 # --- Arrow support ---
 
+
 class Point2DType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.struct([pa.field("x", pa.float32(), False, {}), pa.field("y", pa.float32(), False, {})]), "rerun.datatypes.Point2D"
+            self,
+            pa.struct([pa.field("x", pa.float32(), False, {}), pa.field("y", pa.float32(), False, {})]),
+            "rerun.datatypes.Point2D",
         )
+
 
 class Point2DArray(BaseExtensionArray[Point2DArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.Point2D"
@@ -80,9 +60,8 @@ class Point2DArray(BaseExtensionArray[Point2DArrayLike]):
     def _native_to_pa_array(data: Point2DArrayLike, data_type: pa.DataType) -> pa.Array:
         return point2d_native_to_pa_array(data, data_type)
 
+
 Point2DType._ARRAY_TYPE = Point2DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Point2DType())
-
-

@@ -465,7 +465,7 @@ macro_rules! component_legacy_shim {
 
 
             #[inline]
-            fn try_from_arrow_iter_item(
+            fn try_iter_from_arrow(
                 data: &dyn arrow2::array::Array,
             ) -> re_types::DeserializationResult<Self::IterItem<'_>>
             where

@@ -189,7 +189,7 @@ impl crate::Loggable for FlattenedScalar {
     }
 
     #[inline]
-    fn try_from_arrow_iter_item(
+    fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
@@ -1007,7 +1007,7 @@ impl crate::Loggable for AffixFuzzer1 {
     }
 
     #[inline]
-    fn try_from_arrow_iter_item(
+    fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
@@ -1128,7 +1128,7 @@ impl crate::Loggable for AffixFuzzer2 {
     }
 
     #[inline]
-    fn try_from_arrow_iter_item(
+    fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
@@ -1624,7 +1624,7 @@ impl crate::Loggable for AffixFuzzer3 {
     }
 
     #[inline]
-    fn try_from_arrow_iter_item(
+    fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
@@ -2059,7 +2059,7 @@ impl crate::Loggable for AffixFuzzer4 {
     }
 
     #[inline]
-    fn try_from_arrow_iter_item(
+    fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where
@@ -2259,7 +2259,7 @@ impl crate::Loggable for AffixFuzzer5 {
     }
 
     #[inline]
-    fn try_from_arrow_iter_item(
+    fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where

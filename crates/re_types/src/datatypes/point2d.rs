@@ -243,7 +243,7 @@ impl crate::Loggable for Point2D {
     }
 
     #[inline]
-    fn try_from_arrow_iter_item(
+    fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::IterItem<'_>>
     where

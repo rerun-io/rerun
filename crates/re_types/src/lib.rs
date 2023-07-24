@@ -163,7 +163,7 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::try_from_arrow`].
     #[inline]
     fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
-        Self::try_from_arrow_iter_item(data)
+        Self::try_iter_from_arrow(data)
             .detailed_unwrap()
             .map(Self::convert_item_to_self)
             .map(|v| {
@@ -182,7 +182,7 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
-        Self::try_from_arrow_iter_item(data)?
+        Self::try_iter_from_arrow(data)?
             .map(Self::convert_item_to_self)
             .map(|v| {
                 v.ok_or_else(|| DeserializationError::MissingData {
@@ -211,7 +211,7 @@ pub trait Loggable: Sized {
     fn try_from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
-        Ok(Self::try_from_arrow_iter_item(data)?
+        Ok(Self::try_iter_from_arrow(data)?
             .map(Self::convert_item_to_self)
             .collect())
     }
@@ -229,7 +229,7 @@ pub trait Loggable: Sized {
     ///
     /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
     /// [`Loggable::to_arrow_datatype`].
-    fn try_from_arrow_iter_item(
+    fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Self::IterItem<'_>>;
 

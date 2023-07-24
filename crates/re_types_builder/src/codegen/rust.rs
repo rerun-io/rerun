@@ -736,7 +736,7 @@ fn quote_trait_impls_from_obj(
 
 
                     #[inline]
-                    fn try_from_arrow_iter_item(
+                    fn try_iter_from_arrow(
                         data: &dyn ::arrow2::array::Array,
                     ) -> crate::DeserializationResult<Self::IterItem<'_>>
                     where
