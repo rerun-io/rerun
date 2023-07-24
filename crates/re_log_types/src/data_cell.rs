@@ -384,9 +384,12 @@ impl DataCell {
             C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self);
 
         let result = match iter.next() {
-            // It's ok to have no result from the iteration: this is what we should see for an unlogged/cleared component.
+            // It's ok to have no result from the iteration: this is what we
+            // should see for a cleared component (logged as an empty set).
             None => Ok(None),
-            // It's not ok to log a null mono-component.
+            // It's not ok to have a null in a mono-component array. It should
+            // have been logged as an empty set, so we consider this to be missing
+            // data.
             Some(component) => Ok(Some(component.ok_or_else(|| {
                 DeserializationError::MissingData {
                     backtrace: backtrace::Backtrace::new_unresolved(),
