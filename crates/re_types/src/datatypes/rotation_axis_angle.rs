@@ -43,7 +43,7 @@ impl<'a> From<&'a RotationAxisAngle> for ::std::borrow::Cow<'a, RotationAxisAngl
 impl crate::Loggable for RotationAxisAngle {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.RotationAxisAngle".into()
@@ -301,7 +301,7 @@ impl crate::Loggable for RotationAxisAngle {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -313,3 +313,5 @@ impl crate::Loggable for RotationAxisAngle {
         item
     }
 }
+
+impl crate::Datatype for RotationAxisAngle {}

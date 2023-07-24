@@ -39,7 +39,7 @@ impl<'a> From<&'a Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
 impl crate::Loggable for Rotation3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Rotation3D".into()
@@ -354,7 +354,7 @@ impl crate::Loggable for Rotation3D {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -366,3 +366,5 @@ impl crate::Loggable for Rotation3D {
         item
     }
 }
+
+impl crate::Datatype for Rotation3D {}

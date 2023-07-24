@@ -33,7 +33,7 @@ impl<'a> From<&'a Quaternion> for ::std::borrow::Cow<'a, Quaternion> {
 impl crate::Loggable for Quaternion {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Quaternion".into()
@@ -213,7 +213,7 @@ impl crate::Loggable for Quaternion {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -225,3 +225,5 @@ impl crate::Loggable for Quaternion {
         item
     }
 }
+
+impl crate::Datatype for Quaternion {}

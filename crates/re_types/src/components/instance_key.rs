@@ -33,7 +33,7 @@ impl<'a> From<&'a InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
 impl crate::Loggable for InstanceKey {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.instance_key".into()
@@ -121,7 +121,7 @@ impl crate::Loggable for InstanceKey {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -133,3 +133,5 @@ impl crate::Loggable for InstanceKey {
         item
     }
 }
+
+impl crate::Component for InstanceKey {}

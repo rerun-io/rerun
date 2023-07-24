@@ -77,7 +77,7 @@
 pub trait Loggable: Sized {
     type Name;
     type Item<'a>;
-    type IterItem<'a>: Iterator<Item = Self::Item<'a>>;
+    type Iter<'a>: Iterator<Item = Self::Item<'a>>;
 
     /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.
     fn name() -> Self::Name;
@@ -231,7 +231,7 @@ pub trait Loggable: Sized {
     /// [`Loggable::to_arrow_datatype`].
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> DeserializationResult<Self::IterItem<'_>>;
+    ) -> DeserializationResult<Self::Iter<'_>>;
 
     /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
     ///

@@ -423,7 +423,7 @@ macro_rules! component_legacy_shim {
         impl re_types::Loggable for $entity {
             type Name = re_types::ComponentName;
             type Item<'a> = <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::Item;
-            type IterItem<'a> =
+            type Iter<'a> =
                 <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter;
 
             #[inline]
@@ -467,7 +467,7 @@ macro_rules! component_legacy_shim {
             #[inline]
             fn try_iter_from_arrow(
                 data: &dyn arrow2::array::Array,
-            ) -> re_types::DeserializationResult<Self::IterItem<'_>>
+            ) -> re_types::DeserializationResult<Self::Iter<'_>>
             where
                 Self: Sized,
             {
@@ -481,6 +481,8 @@ macro_rules! component_legacy_shim {
                 <Self as arrow2_convert::deserialize::ArrowDeserialize>::arrow_deserialize(item)
             }
         }
+
+        impl re_types::Component for $entity {}
 
         impl<'a> From<$entity> for ::std::borrow::Cow<'a, $entity> {
             #[inline]
@@ -496,4 +498,6 @@ macro_rules! component_legacy_shim {
             }
         }
     };
+
+
 }

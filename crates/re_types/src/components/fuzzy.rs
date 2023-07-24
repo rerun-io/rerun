@@ -38,7 +38,7 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
 impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer1".into()
@@ -189,7 +189,7 @@ impl crate::Loggable for AffixFuzzer1 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -201,6 +201,8 @@ impl crate::Loggable for AffixFuzzer1 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer1 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer2(pub crate::datatypes::AffixFuzzer1);
@@ -228,7 +230,7 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
 impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer2".into()
@@ -379,7 +381,7 @@ impl crate::Loggable for AffixFuzzer2 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -391,6 +393,8 @@ impl crate::Loggable for AffixFuzzer2 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer2 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer3(pub crate::datatypes::AffixFuzzer1);
@@ -418,7 +422,7 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
 impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer3".into()
@@ -569,7 +573,7 @@ impl crate::Loggable for AffixFuzzer3 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -581,6 +585,8 @@ impl crate::Loggable for AffixFuzzer3 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer3 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer4(pub Option<crate::datatypes::AffixFuzzer1>);
@@ -608,7 +614,7 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
 impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer4".into()
@@ -757,7 +763,7 @@ impl crate::Loggable for AffixFuzzer4 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -769,6 +775,8 @@ impl crate::Loggable for AffixFuzzer4 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer4 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer5(pub Option<crate::datatypes::AffixFuzzer1>);
@@ -796,7 +804,7 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
 impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer5".into()
@@ -945,7 +953,7 @@ impl crate::Loggable for AffixFuzzer5 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -957,6 +965,8 @@ impl crate::Loggable for AffixFuzzer5 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer5 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer6(pub Option<crate::datatypes::AffixFuzzer1>);
@@ -984,7 +994,7 @@ impl<'a> From<&'a AffixFuzzer6> for ::std::borrow::Cow<'a, AffixFuzzer6> {
 impl crate::Loggable for AffixFuzzer6 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer6".into()
@@ -1133,7 +1143,7 @@ impl crate::Loggable for AffixFuzzer6 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -1145,6 +1155,8 @@ impl crate::Loggable for AffixFuzzer6 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer6 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer7(pub Option<Vec<crate::datatypes::AffixFuzzer1>>);
@@ -1172,7 +1184,7 @@ impl<'a> From<&'a AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
 impl crate::Loggable for AffixFuzzer7 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer7".into()
@@ -1336,7 +1348,7 @@ impl crate::Loggable for AffixFuzzer7 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -1348,6 +1360,8 @@ impl crate::Loggable for AffixFuzzer7 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer7 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer8(pub Option<f32>);
@@ -1369,7 +1383,7 @@ impl<'a> From<&'a AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
 impl crate::Loggable for AffixFuzzer8 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer8".into()
@@ -1455,7 +1469,7 @@ impl crate::Loggable for AffixFuzzer8 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -1467,6 +1481,8 @@ impl crate::Loggable for AffixFuzzer8 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer8 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AffixFuzzer9(pub String);
@@ -1488,7 +1504,7 @@ impl<'a> From<&'a AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
 impl crate::Loggable for AffixFuzzer9 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer9".into()
@@ -1591,7 +1607,7 @@ impl crate::Loggable for AffixFuzzer9 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -1603,6 +1619,8 @@ impl crate::Loggable for AffixFuzzer9 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer9 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AffixFuzzer10(pub Option<String>);
@@ -1624,7 +1642,7 @@ impl<'a> From<&'a AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
 impl crate::Loggable for AffixFuzzer10 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer10".into()
@@ -1725,7 +1743,7 @@ impl crate::Loggable for AffixFuzzer10 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -1737,6 +1755,8 @@ impl crate::Loggable for AffixFuzzer10 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer10 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer11(pub Option<Vec<f32>>);
@@ -1758,7 +1778,7 @@ impl<'a> From<&'a AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
 impl crate::Loggable for AffixFuzzer11 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer11".into()
@@ -1932,7 +1952,7 @@ impl crate::Loggable for AffixFuzzer11 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -1944,6 +1964,8 @@ impl crate::Loggable for AffixFuzzer11 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer11 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AffixFuzzer12(pub Vec<String>);
@@ -1965,7 +1987,7 @@ impl<'a> From<&'a AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
 impl crate::Loggable for AffixFuzzer12 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer12".into()
@@ -2156,7 +2178,7 @@ impl crate::Loggable for AffixFuzzer12 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -2168,6 +2190,8 @@ impl crate::Loggable for AffixFuzzer12 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer12 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AffixFuzzer13(pub Option<Vec<String>>);
@@ -2189,7 +2213,7 @@ impl<'a> From<&'a AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
 impl crate::Loggable for AffixFuzzer13 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer13".into()
@@ -2378,7 +2402,7 @@ impl crate::Loggable for AffixFuzzer13 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -2390,6 +2414,8 @@ impl crate::Loggable for AffixFuzzer13 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer13 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer14(pub crate::datatypes::AffixFuzzer3);
@@ -2417,7 +2443,7 @@ impl<'a> From<&'a AffixFuzzer14> for ::std::borrow::Cow<'a, AffixFuzzer14> {
 impl crate::Loggable for AffixFuzzer14 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer14".into()
@@ -2546,7 +2572,7 @@ impl crate::Loggable for AffixFuzzer14 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -2558,6 +2584,8 @@ impl crate::Loggable for AffixFuzzer14 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer14 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer15(pub Option<crate::datatypes::AffixFuzzer3>);
@@ -2585,7 +2613,7 @@ impl<'a> From<&'a AffixFuzzer15> for ::std::borrow::Cow<'a, AffixFuzzer15> {
 impl crate::Loggable for AffixFuzzer15 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer15".into()
@@ -2712,7 +2740,7 @@ impl crate::Loggable for AffixFuzzer15 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -2724,6 +2752,8 @@ impl crate::Loggable for AffixFuzzer15 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer15 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer16(pub Vec<crate::datatypes::AffixFuzzer3>);
@@ -2751,7 +2781,7 @@ impl<'a> From<&'a AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
 impl crate::Loggable for AffixFuzzer16 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer16".into()
@@ -2918,7 +2948,7 @@ impl crate::Loggable for AffixFuzzer16 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -2930,6 +2960,8 @@ impl crate::Loggable for AffixFuzzer16 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer16 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer17(pub Option<Vec<crate::datatypes::AffixFuzzer3>>);
@@ -2957,7 +2989,7 @@ impl<'a> From<&'a AffixFuzzer17> for ::std::borrow::Cow<'a, AffixFuzzer17> {
 impl crate::Loggable for AffixFuzzer17 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer17".into()
@@ -3122,7 +3154,7 @@ impl crate::Loggable for AffixFuzzer17 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -3134,6 +3166,8 @@ impl crate::Loggable for AffixFuzzer17 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer17 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer18(pub Option<Vec<crate::datatypes::AffixFuzzer4>>);
@@ -3161,7 +3195,7 @@ impl<'a> From<&'a AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
 impl crate::Loggable for AffixFuzzer18 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer18".into()
@@ -3326,7 +3360,7 @@ impl crate::Loggable for AffixFuzzer18 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -3338,6 +3372,8 @@ impl crate::Loggable for AffixFuzzer18 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer18 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer19(pub crate::datatypes::AffixFuzzer5);
@@ -3365,7 +3401,7 @@ impl<'a> From<&'a AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
 impl crate::Loggable for AffixFuzzer19 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer19".into()
@@ -3453,7 +3489,7 @@ impl crate::Loggable for AffixFuzzer19 {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -3465,3 +3501,5 @@ impl crate::Loggable for AffixFuzzer19 {
         item
     }
 }
+
+impl crate::Component for AffixFuzzer19 {}

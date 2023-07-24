@@ -40,7 +40,7 @@ impl<'a> From<&'a DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
 impl crate::Loggable for DrawOrder {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.draw_order".into()
@@ -128,7 +128,7 @@ impl crate::Loggable for DrawOrder {
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
     {
@@ -140,3 +140,5 @@ impl crate::Loggable for DrawOrder {
         item
     }
 }
+
+impl crate::Component for DrawOrder {}

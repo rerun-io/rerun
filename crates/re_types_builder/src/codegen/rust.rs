@@ -696,7 +696,7 @@ fn quote_trait_impls_from_obj(
                 impl crate::Loggable for #name {
                     type Name = crate::#kind_name;
                     type Item<'a> = Option<Self>;
-                    type IterItem<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+                    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
 
                     #[inline]
                     fn name() -> Self::Name {
@@ -738,7 +738,7 @@ fn quote_trait_impls_from_obj(
                     #[inline]
                     fn try_iter_from_arrow(
                         data: &dyn ::arrow2::array::Array,
-                    ) -> crate::DeserializationResult<Self::IterItem<'_>>
+                    ) -> crate::DeserializationResult<Self::Iter<'_>>
                     where
                         Self: Sized,
                     {
@@ -750,6 +750,8 @@ fn quote_trait_impls_from_obj(
                         item
                     }
                 }
+
+                impl crate::#kind for #name {}
             }
         }
 
