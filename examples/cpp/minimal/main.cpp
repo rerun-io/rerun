@@ -6,31 +6,18 @@
 arrow::Result<std::shared_ptr<arrow::Table>> points2(size_t num_points, const float* xy) {
     arrow::MemoryPool* pool = arrow::default_memory_pool();
 
-    auto x_builder = std::make_shared<arrow::FloatBuilder>(pool);
-    auto y_builder = std::make_shared<arrow::FloatBuilder>(pool);
 
-    auto nullable = false;
-
-    auto data_type = rr::components::Point2D::to_arrow_datatype();
-    auto struct_builder =
-        arrow::StructBuilder(data_type, pool, {x_builder, y_builder});
-
-    for (size_t i = 0; i < num_points; ++i) {
-        ARROW_RETURN_NOT_OK(struct_builder.Append());
-        ARROW_RETURN_NOT_OK(x_builder->Append(xy[2 * i + 0]));
-        ARROW_RETURN_NOT_OK(y_builder->Append(xy[2 * i + 1]));
-}
+    ARROW_ASSIGN_OR_RAISE(auto builder, rr::components::Point2D::new_arrow_array_builder(pool));
+    rr::components::Point2D::fill_arrow_array_builder(builder.get(), (rr::components::Point2D*)xy, num_points);
 
     std::shared_ptr<arrow::Array> array;
-    ARROW_RETURN_NOT_OK(struct_builder.Finish(&array));
+    ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
     auto name = "points"; // Unused, but should be the name of the field in the archetype
-    auto schema = arrow::schema({arrow::field(name, data_type, nullable)});
+    auto schema = arrow::schema({arrow::field(name, rr::components::Point2D::to_arrow_datatype(), false)});
 
     return arrow::Table::Make(schema, {array});
 }
-
-
 
 int main(int argc, char** argv) {
     loguru::g_preamble_uptime = false;
