@@ -26,6 +26,9 @@ pub struct FileSink {
     // None = quit
     tx: Mutex<Sender<Option<LogMsg>>>,
     join_handle: Option<std::thread::JoinHandle<()>>,
+
+    /// Only used for diagnostics, not for access after `new()`.
+    path: PathBuf,
 }
 
 impl Drop for FileSink {
@@ -72,6 +75,7 @@ impl FileSink {
         Ok(Self {
             tx: tx.into(),
             join_handle: Some(join_handle),
+            path,
         })
     }
 
@@ -82,7 +86,8 @@ impl FileSink {
 
 impl fmt::Debug for FileSink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // It would be useful to print the path, but that information is not remembered.
-        f.debug_struct("FileSink").finish_non_exhaustive()
+        f.debug_struct("FileSink")
+            .field("path", &self.path)
+            .finish_non_exhaustive()
     }
 }
