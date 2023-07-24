@@ -218,9 +218,13 @@ impl QuotedObject {
 
         let mut hpp_includes = Includes::default();
         hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
-        hpp_includes.system.insert("arrow/type_fwd.h".to_owned()); // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
+
+        // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
+        // TODO(andreas): This drags in arrow headers into the public api though. We probably should try harder with forward declarations.
+        hpp_includes.system.insert("arrow/type_fwd.h".to_owned());
         let mut cpp_includes = Includes::default();
-        //let mut hpp_declarations = ForwardDecls::default();
+        #[allow(unused)]
+        let mut hpp_declarations = ForwardDecls::default();
 
         let field_declarations = obj
             .fields
@@ -291,6 +295,8 @@ impl QuotedObject {
         };
         let hpp = quote! {
             #hpp_includes
+
+            #hpp_declarations
 
             namespace rr {
                 namespace #namespace_ident {
@@ -368,7 +374,11 @@ impl QuotedObject {
         hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
         hpp_includes.system.insert("utility".to_owned()); // std::move
         hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
-        hpp_includes.system.insert("arrow/type_fwd.h".to_owned()); // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
+
+        // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
+        // TODO(andreas): This drags in arrow headers into the public api though. We probably should try harder with f
+        hpp_includes.system.insert("arrow/type_fwd.h".to_owned());
+
         let mut cpp_includes = Includes::default();
         #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
