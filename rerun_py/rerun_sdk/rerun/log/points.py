@@ -24,7 +24,7 @@ __all__ = [
 @log_decorator
 def log_point(
     entity_path: str,
-    position: npt.ArrayLike | None = None,
+    position: npt.ArrayLike,
     *,
     radius: float | None = None,
     color: Color | None = None,
@@ -93,6 +93,8 @@ def log_point(
         class_id = 0
     if position is not None:
         position = np.require(position, dtype="float32")
+    else:
+        raise ValueError("`position` argument must be set")
 
     if position is not None:
         if position.size == 2:
@@ -124,7 +126,7 @@ def log_point(
 @log_decorator
 def log_points(
     entity_path: str,
-    positions: npt.ArrayLike | None = None,
+    positions: npt.ArrayLike,
     *,
     identifiers: npt.ArrayLike | None = None,
     colors: Color | Colors | None = None,
@@ -200,7 +202,7 @@ def log_points(
     if keypoint_ids is not None and class_ids is None:
         class_ids = 0
     if positions is None:
-        positions = np.require([], dtype="float32")
+        raise ValueError("`positions` argument must be set")
     else:
         positions = np.require(positions, dtype="float32")
 
