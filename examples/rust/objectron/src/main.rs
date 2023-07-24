@@ -113,7 +113,7 @@ fn log_baseline_objects(
     rec_stream: &RecordingStream,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
-    use rerun::components::{Box3D, Label, LegacyColor, Transform3D};
+    use rerun::components::{Box3D, Label, Color, Transform3D};
     use rerun::transform::TranslationAndMat3;
 
     let boxes = objects.iter().filter_map(|object| {
@@ -142,7 +142,7 @@ fn log_baseline_objects(
             .with_component(&[bbox])?
             .with_component(&[transform])?
             .with_component(&[label])?
-            .with_splat(LegacyColor::from_rgb(160, 230, 130))?
+            .with_splat(Color::from_rgb(160, 230, 130))?
             .send(rec_stream)?;
     }
 
@@ -214,7 +214,7 @@ fn log_feature_points(
     timepoint: TimePoint,
     points: &objectron::ArPointCloud,
 ) -> anyhow::Result<()> {
-    use rerun::components::{InstanceKey, LegacyColor, Point3D};
+    use rerun::components::{InstanceKey, Color, Point3D};
 
     let ids = points.identifier.iter();
     let points = points.point.iter();
@@ -236,7 +236,7 @@ fn log_feature_points(
         .with_timepoint(timepoint)
         .with_component(&points)?
         .with_component(&ids)?
-        .with_splat(LegacyColor::from_rgb(255, 255, 255))?
+        .with_splat(Color::from_rgb(255, 255, 255))?
         .send(rec_stream)?;
 
     Ok(())
@@ -247,7 +247,7 @@ fn log_frame_annotations(
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
-    use rerun::components::{InstanceKey, LegacyColor, LineStrip2D, Point2D};
+    use rerun::components::{InstanceKey, Color, LineStrip2D, Point2D};
 
     for ann in &annotations.annotations {
         // TODO(cmc): we shouldn't be using those preprojected 2D points to begin with, Rerun is
@@ -264,7 +264,7 @@ fn log_frame_annotations(
 
         let mut msg = MsgSender::new(format!("world/camera/estimates/box-{}", ann.object_id))
             .with_timepoint(timepoint.clone())
-            .with_splat(LegacyColor::from_rgb(130, 160, 250))?;
+            .with_splat(Color::from_rgb(130, 160, 250))?;
 
         if points.len() == 9 {
             // Build the preprojected bounding box out of 2D line segments.

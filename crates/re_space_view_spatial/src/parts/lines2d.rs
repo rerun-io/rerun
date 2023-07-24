@@ -1,9 +1,9 @@
-use re_components::{LegacyColor, LineStrip2D};
+use re_components::LineStrip2D;
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_types::{
-    components::{InstanceKey, Radius},
+    components::{Color, InstanceKey, Radius},
     Loggable as _,
 };
 use re_viewer_context::{
@@ -47,7 +47,7 @@ impl Lines2DPart {
 
         let visitor = |instance_key: InstanceKey,
                        strip: LineStrip2D,
-                       color: Option<LegacyColor>,
+                       color: Option<Color>,
                        radius: Option<Radius>| {
             // TODO(andreas): support class ids for lines
             let annotation_info = ent_context
@@ -90,7 +90,7 @@ impl ViewPartSystem for Lines2DPart {
         vec1::vec1![
             LineStrip2D::name(),
             InstanceKey::name(),
-            LegacyColor::name(),
+            Color::name(),
             Radius::name(),
         ]
     }

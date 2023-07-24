@@ -1,7 +1,6 @@
 use itertools::Itertools;
-use re_components::LegacyColor;
 use re_query::{ComponentWithInstances, EntityView};
-use re_types::components::{InstanceKey, Point2D};
+use re_types::components::{Color, InstanceKey, Point2D};
 
 #[test]
 fn basic_single_iter() {
@@ -35,9 +34,9 @@ fn implicit_joined_iter() {
     ];
 
     let colors = [
-        LegacyColor(0), //
-        LegacyColor(1),
-        LegacyColor(2),
+        Color(0), //
+        Color(1),
+        Color(2),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -46,14 +45,14 @@ fn implicit_joined_iter() {
     );
 
     let expected_colors = [
-        Some(LegacyColor(0)), //
-        Some(LegacyColor(1)),
-        Some(LegacyColor(2)),
+        Some(Color(0)), //
+        Some(Color(1)),
+        Some(Color(2)),
     ];
 
     let results = itertools::izip!(
         expected_colors.iter(),
-        entity_view.iter_component::<LegacyColor>().unwrap()
+        entity_view.iter_component::<Color>().unwrap()
     )
     .collect_vec();
 
@@ -77,8 +76,8 @@ fn implicit_primary_joined_iter() {
     ];
 
     let colors = [
-        LegacyColor(1), //
-        LegacyColor(2),
+        Color(1), //
+        Color(2),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -88,13 +87,13 @@ fn implicit_primary_joined_iter() {
 
     let expected_colors = vec![
         None, //
-        Some(LegacyColor(1)),
-        Some(LegacyColor(2)),
+        Some(Color(1)),
+        Some(Color(2)),
     ];
 
     let results = itertools::izip!(
         expected_colors.iter(),
-        entity_view.iter_component::<LegacyColor>().unwrap()
+        entity_view.iter_component::<Color>().unwrap()
     )
     .collect_vec();
 
@@ -119,11 +118,11 @@ fn implicit_component_joined_iter() {
     let color_ids = InstanceKey::from_iter(0..5);
 
     let colors = [
-        LegacyColor(0), //
-        LegacyColor(1),
-        LegacyColor(2),
-        LegacyColor(3),
-        LegacyColor(4),
+        Color(0), //
+        Color(1),
+        Color(2),
+        Color(3),
+        Color(4),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -132,14 +131,14 @@ fn implicit_component_joined_iter() {
     );
 
     let expected_colors = vec![
-        Some(LegacyColor(0)), //
-        Some(LegacyColor(2)),
-        Some(LegacyColor(4)),
+        Some(Color(0)), //
+        Some(Color(2)),
+        Some(Color(4)),
     ];
 
     let results = itertools::izip!(
         expected_colors.iter(),
-        entity_view.iter_component::<LegacyColor>().unwrap()
+        entity_view.iter_component::<Color>().unwrap()
     )
     .collect_vec();
 
@@ -172,11 +171,11 @@ fn complex_joined_iter() {
     ];
 
     let colors = vec![
-        LegacyColor(17), //
-        LegacyColor(19),
-        LegacyColor(44),
-        LegacyColor(96),
-        LegacyColor(254),
+        Color(17), //
+        Color(19),
+        Color(44),
+        Color(96),
+        Color(254),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -186,14 +185,14 @@ fn complex_joined_iter() {
 
     let expected_colors = vec![
         None,
-        Some(LegacyColor(17)), //
+        Some(Color(17)), //
         None,
-        Some(LegacyColor(96)),
+        Some(Color(96)),
     ];
 
     let results = itertools::izip!(
         expected_colors.iter(),
-        entity_view.iter_component::<LegacyColor>().unwrap()
+        entity_view.iter_component::<Color>().unwrap()
     )
     .collect_vec();
 
@@ -241,8 +240,8 @@ fn joint_visit() {
     let point_ids = InstanceKey::from_iter(0..5);
 
     let colors = vec![
-        LegacyColor(0xff000000), //
-        LegacyColor(0x00ff0000),
+        Color(0xff000000), //
+        Color(0x00ff0000),
     ];
 
     let color_ids = vec![
@@ -256,24 +255,22 @@ fn joint_visit() {
     );
 
     let mut points_out = Vec::<Point2D>::new();
-    let mut colors_out = Vec::<Option<LegacyColor>>::new();
+    let mut colors_out = Vec::<Option<Color>>::new();
 
     entity_view
-        .visit2(
-            |_: InstanceKey, point: Point2D, color: Option<LegacyColor>| {
-                points_out.push(point);
-                colors_out.push(color);
-            },
-        )
+        .visit2(|_: InstanceKey, point: Point2D, color: Option<Color>| {
+            points_out.push(point);
+            colors_out.push(color);
+        })
         .ok()
         .unwrap();
 
     let expected_colors = vec![
         None,
         None,
-        Some(LegacyColor(0xff000000)),
+        Some(Color(0xff000000)),
         None,
-        Some(LegacyColor(0x00ff0000)),
+        Some(Color(0x00ff0000)),
     ];
 
     assert_eq!(points, points_out);

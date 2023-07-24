@@ -241,8 +241,8 @@ pub fn query_archetype<A: Archetype>(
 
 /// Helper used to create an example store we can use for querying in doctests
 pub fn __populate_example_store() -> DataStore {
-    use re_components::{datagen::build_frame_nr, LegacyColor};
-    use re_types::components::Point2D;
+    use re_components::datagen::build_frame_nr;
+    use re_types::components::{Color, Point2D};
 
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
@@ -262,7 +262,7 @@ pub fn __populate_example_store() -> DataStore {
     store.insert_row(&row).unwrap();
 
     let instances = vec![InstanceKey(96)];
-    let colors = vec![LegacyColor(0xff000000)];
+    let colors = vec![Color(0xff000000)];
 
     let row = DataRow::from_cells2_sized(
         RowId::random(),
@@ -313,7 +313,6 @@ fn simple_get_component() {
 #[test]
 fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
-    use re_components::LegacyColor;
     use re_log_types::Timeline;
     use re_types::components::{Color, Point2D};
 
@@ -322,17 +321,13 @@ fn simple_query_entity() {
     let ent_path = "point";
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
-    let entity_view = query_entity_with_primary::<Point2D>(
-        &store,
-        &query,
-        &ent_path.into(),
-        &[LegacyColor::name()],
-    )
-    .unwrap();
+    let entity_view =
+        query_entity_with_primary::<Point2D>(&store, &query, &ent_path.into(), &[Color::name()])
+            .unwrap();
 
     #[cfg(feature = "polars")]
     {
-        let df = entity_view.as_df2::<LegacyColor>().unwrap();
+        let df = entity_view.as_df2::<Color>().unwrap();
         eprintln!("{df:?}");
 
         let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];

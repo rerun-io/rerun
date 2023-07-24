@@ -85,8 +85,10 @@ def log_rect(
     instanced["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
 
     if color is not None:
+        from rerun.experimental import cmp as rrc
+
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if label:
         instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
@@ -213,10 +215,12 @@ def log_rects(
         comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
 
     if len(colors):
+        from rerun.experimental import cmp as rrc
+
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if len(labels):
         is_splat = len(labels) == 1

@@ -10,7 +10,6 @@ from rerun import bindings
 all = [
     "arrow",
     "box",
-    "color",
     "draw_order",
     "experimental",
     "pinhole",

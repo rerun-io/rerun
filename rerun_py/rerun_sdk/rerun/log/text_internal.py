@@ -5,8 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from rerun import bindings
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
+from rerun.components import splat
 from rerun.components.text_entry import TextEntryArray
 from rerun.log import Color, _normalize_colors
 from rerun.recording_stream import RecordingStream
@@ -95,8 +94,10 @@ def log_text_entry_internal(
         logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
 
     if color is not None:
+        from rerun.experimental import cmp as rrc
+
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()

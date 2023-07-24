@@ -102,7 +102,7 @@ impl TimeSeriesSystem {
             InstanceKey::name(),
             re_components::Scalar::name(),
             re_components::ScalarPlotProps::name(),
-            re_components::LegacyColor::name(),
+            re_types::components::Color::name(),
             re_types::components::Radius::name(),
             re_types::components::Label::name(),
         ]
@@ -136,7 +136,7 @@ impl TimeSeriesSystem {
                     |_instance,
                      scalar: re_components::Scalar,
                      props: Option<re_components::ScalarPlotProps>,
-                     color: Option<re_components::LegacyColor>,
+                     color: Option<re_types::components::Color>,
                      radius: Option<re_types::components::Radius>,
                      label: Option<re_types::components::Label>| {
                         // TODO(andreas): Support entity path

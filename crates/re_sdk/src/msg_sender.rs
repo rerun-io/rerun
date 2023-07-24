@@ -424,7 +424,7 @@ mod tests {
             re_types::components::Label("label2".into()),
         ];
         let transform = vec![components::Transform3D::IDENTITY];
-        let color = components::LegacyColor::from_rgb(255, 0, 255);
+        let color = components::Color::from_rgb(255, 0, 255);
 
         let [standard, splats] = MsgSender::new("some/path")
             .with_component(&labels)?
@@ -448,7 +448,7 @@ mod tests {
             let cell = &splats.cells[idx];
             assert!(cell.num_instances() == 1);
 
-            let idx = splats.find_cell(&components::LegacyColor::name()).unwrap();
+            let idx = splats.find_cell(&components::Color::name()).unwrap();
             let cell = &splats.cells[idx];
             assert!(cell.num_instances() == 1);
         }
@@ -514,7 +514,7 @@ mod tests {
         {
             MsgSender::new("some/path")
                 .with_component([re_types::components::Label("label1".into())].as_slice())?
-                .with_component([components::LegacyColor::from_rgb(1, 1, 1)].as_slice())?;
+                .with_component([components::Color::from_rgb(1, 1, 1)].as_slice())?;
         }
 
         // 3 for 1 -- fine, implicit splat
@@ -528,7 +528,7 @@ mod tests {
                     ]
                     .as_slice(),
                 )?
-                .with_component([components::LegacyColor::from_rgb(1, 1, 1)].as_slice())?;
+                .with_component([components::Color::from_rgb(1, 1, 1)].as_slice())?;
         }
 
         // 3 for 2 -- nope, makes no sense
@@ -544,8 +544,8 @@ mod tests {
                 )?
                 .with_component(
                     [
-                        components::LegacyColor::from_rgb(1, 1, 1),
-                        components::LegacyColor::from_rgb(1, 1, 1),
+                        components::Color::from_rgb(1, 1, 1),
+                        components::Color::from_rgb(1, 1, 1),
                     ]
                     .as_slice(),
                 );

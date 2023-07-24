@@ -5,7 +5,7 @@ use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_arrow_store::LatestAtQuery;
-use re_components::{DecodedTensor, LegacyColor, Pinhole, Tensor, TensorDataMeaning};
+use re_components::{DecodedTensor, Pinhole, Tensor, TensorDataMeaning};
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{ComponentName, EntityPathHash, TimeInt, Timeline};
 use re_query::{EntityView, QueryError};
@@ -14,7 +14,7 @@ use re_renderer::{
     Colormap,
 };
 use re_types::{
-    components::{DrawOrder, InstanceKey},
+    components::{Color, DrawOrder, InstanceKey},
     Loggable as _,
 };
 use re_viewer_context::ViewContextCollection;
@@ -205,7 +205,7 @@ impl ImagesPart {
         // Instance ids of tensors refer to entries inside the tensor.
         for (tensor, color, draw_order) in itertools::izip!(
             ent_view.iter_primary()?,
-            ent_view.iter_component::<LegacyColor>()?,
+            ent_view.iter_component::<Color>()?,
             ent_view.iter_component::<DrawOrder>()?
         ) {
             re_tracing::profile_scope!("loop_iter");
@@ -385,7 +385,7 @@ impl ViewPartSystem for ImagesPart {
         vec1::vec1![
             Tensor::name(),
             InstanceKey::name(),
-            LegacyColor::name(),
+            Color::name(),
             DrawOrder::name(),
         ]
     }

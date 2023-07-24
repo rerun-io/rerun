@@ -130,8 +130,10 @@ def log_scalar(
         instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
 
     if color is not None:
+        from rerun.experimental import cmp as rrc
+
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if radius:
         instanced["rerun.radius"] = rrc.RadiusArray.from_similar(np.array([radius]))

@@ -4,7 +4,7 @@
 /// in sRGB gamma space with linear alpha.
 ///
 /// ```
-/// use re_components::ColorRGBA;
+/// use re_types::components::ColorRGBA;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
@@ -30,6 +30,12 @@ pub struct LegacyColor(pub u32);
 impl From<LegacyColor> for re_types::components::Color {
     fn from(val: LegacyColor) -> Self {
         re_types::components::Color(val.0)
+    }
+}
+
+impl From<re_types::components::Color> for LegacyColor {
+    fn from(val: re_types::components::Color) -> Self {
+        LegacyColor(val.0)
     }
 }
 

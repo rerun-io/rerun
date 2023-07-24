@@ -113,8 +113,10 @@ def log_obb(
             raise TypeError("rotation should be 1x4")
 
     if color is not None:
+        from rerun.experimental import cmp as rrc
+
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     # We store the stroke_width in radius
     if stroke_width:
@@ -236,10 +238,12 @@ def log_obbs(
             raise TypeError("rotation should be 1x4")
 
     if len(colors):
+        from rerun.experimental import cmp as rrc
+
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if len(radii):
         is_splat = len(radii) == 1

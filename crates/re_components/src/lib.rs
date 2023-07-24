@@ -54,10 +54,12 @@ pub mod datagen;
 // TODO: stuff we keep for annotation context
 pub(crate) use self::{class_id::LegacyClassId, keypoint_id::LegacyKeypointId, label::LegacyLabel};
 
+// TODO: has to be fully public cause we have something weird
+pub use self::color::LegacyColor;
+
 pub use self::{
     arrow::Arrow3D,
     bbox::Box3D,
-    color::LegacyColor,
     context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
     disconnected_space::DisconnectedSpace,
