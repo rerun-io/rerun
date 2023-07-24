@@ -50,6 +50,8 @@ thiserror.workspace = true
 
 
 [dev-dependencies]
+re_components = { workspace = true, features = ["arrow_datagen"] }
+
 arrow2_convert.workspace = true
 ndarray.workspace = true
 ndarray-rand = "0.14"
