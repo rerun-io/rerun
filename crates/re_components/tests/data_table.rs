@@ -78,7 +78,10 @@ fn data_table_sizes_basics() {
         3_090_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(re_components::LegacyLabel::name(), cell.to_arrow().sliced(1, 1)),
+        DataCell::from_arrow(
+            re_components::LegacyLabel::name(),
+            cell.to_arrow().sliced(1, 1),
+        ),
         10_000,    // num_rows
         2_950_064, // expected_num_bytes
     );

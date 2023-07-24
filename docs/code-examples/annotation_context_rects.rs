@@ -1,6 +1,7 @@
 //! Log rectangles with different colors and labels.
 use rerun::components::{
-    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, LegacyColor, LegacyLabel, Rect2D, Vec4D,
+    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, LegacyColor, LegacyLabel, Rect2D,
+    Vec4D,
 };
 use rerun::{MsgSender, RecordingStreamBuilder};
 

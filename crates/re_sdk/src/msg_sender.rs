@@ -434,7 +434,9 @@ mod tests {
 
         {
             let standard = standard.unwrap();
-            let idx = standard.find_cell(&components::LegacyLabel::name()).unwrap();
+            let idx = standard
+                .find_cell(&components::LegacyLabel::name())
+                .unwrap();
             let cell = &standard.cells[idx];
             assert!(cell.num_instances() == 2);
         }

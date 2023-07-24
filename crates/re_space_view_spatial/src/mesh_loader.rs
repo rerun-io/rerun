@@ -1,4 +1,4 @@
-use re_components::{LegacyColor, EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
+use re_components::{EncodedMesh3D, LegacyColor, Mesh3D, MeshFormat, RawMesh3D};
 use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
 
 pub struct LoadedMesh {
