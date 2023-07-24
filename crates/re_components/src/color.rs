@@ -1,13 +1,5 @@
 /// An RGBA color tuple with unmultiplied/separate alpha,
 /// in sRGB gamma space with linear alpha.
-///
-/// ```
-/// use re_types::components::ColorRGBA;
-/// use arrow2_convert::field::ArrowField;
-/// use arrow2::datatypes::{DataType, Field};
-///
-/// assert_eq!(ColorRGBA::data_type(), DataType::UInt32);
-/// ```
 #[derive(
     Clone,
     Copy,

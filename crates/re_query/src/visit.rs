@@ -7,8 +7,7 @@
 //! # Usage
 //! ```
 //! # use re_query::EntityView;
-//! # use re_components::{ColorRGBA, Point2D};
-//! # use re_types::components::InstanceKey;
+//! # use re_types::components::{Color, Point2D, InstanceKey};
 //!
 //! let instances = InstanceKey::from_iter(0..3);
 //!
@@ -19,9 +18,9 @@
 //! ];
 //!
 //! let colors = [
-//!     ColorRGBA(0),
-//!     ColorRGBA(1),
-//!     ColorRGBA(2),
+//!     Color(0),
+//!     Color(1),
+//!     Color(2),
 //! ];
 //!
 //! let entity_view = EntityView::from_native2(
@@ -30,10 +29,10 @@
 //! );
 //!
 //! let mut points_out = Vec::<Point2D>::new();
-//! let mut colors_out = Vec::<ColorRGBA>::new();
+//! let mut colors_out = Vec::<Color>::new();
 //!
 //! entity_view
-//!     .visit2(|_: InstanceKey, point: Point2D, color: Option<ColorRGBA>| {
+//!     .visit2(|_: InstanceKey, point: Point2D, color: Option<Color>| {
 //!         points_out.push(point);
 //!         colors_out.push(color.unwrap());
 //!     })

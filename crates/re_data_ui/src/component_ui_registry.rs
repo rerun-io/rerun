@@ -39,7 +39,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_types::components::ClassId>(&mut registry);
     add::<re_types::components::Color>(&mut registry);
     add::<re_types::components::KeypointId>(&mut registry);
-    // add::<re_components::Label>(&mut registry);
+    // add::<re_types::components::Label>(&mut registry);
     add::<re_components::LineStrip2D>(&mut registry);
     add::<re_components::LineStrip3D>(&mut registry);
     add::<re_components::Mesh3D>(&mut registry);
