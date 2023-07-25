@@ -376,7 +376,7 @@ impl QuotedObject {
         hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
 
         // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
-        // TODO(andreas): This drags in arrow headers into the public api though. We probably should try harder with f
+        // TODO(andreas): This drags in arrow headers into the public api though. We probably should try harder with forward declarations.
         hpp_includes.system.insert("arrow/type_fwd.h".to_owned());
 
         let mut cpp_includes = Includes::default();
