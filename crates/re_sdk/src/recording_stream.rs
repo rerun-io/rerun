@@ -218,7 +218,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec_stream = re_sdk::RecordingStreamBuilder::new("my_app")
-    ///     .connect(re_sdk::default_server_addr())?;
+    ///     .connect(re_sdk::default_server_addr(), re_sdk::sink::TcpSink::DEFAULT_TIMEOUT)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect(
