@@ -54,7 +54,11 @@ pub struct Client {
 
 impl Client {
     /// Connect via TCP to this log server.
-    pub fn new(addr: SocketAddr) -> Self {
+    ///
+    /// `disconnected_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    pub fn new(addr: SocketAddr, disconnected_timeout: Option<std::time::Duration>) -> Self {
         re_log::debug!("Connecting to remote {addr}…");
 
         // TODO(emilk): keep track of how much memory is in each pipe
@@ -88,7 +92,13 @@ impl Client {
         let send_join = std::thread::Builder::new()
             .name("tcp_sender".into())
             .spawn(move || {
-                tcp_sender(addr, &packet_rx, &send_quit_rx, &flushed_tx);
+                tcp_sender(
+                    addr,
+                    disconnected_timeout,
+                    &packet_rx,
+                    &send_quit_rx,
+                    &flushed_tx,
+                );
             })
             .expect("Failed to spawn thread");
 
@@ -250,11 +260,12 @@ fn msg_encode(
 
 fn tcp_sender(
     addr: SocketAddr,
+    disconnected_timeout: Option<std::time::Duration>,
     packet_rx: &Receiver<PacketMsg>,
     quit_rx: &Receiver<InterruptMsg>,
     flushed_tx: &Sender<FlushedMsg>,
 ) {
-    let mut tcp_client = crate::tcp_client::TcpClient::new(addr);
+    let mut tcp_client = crate::tcp_client::TcpClient::new(addr, disconnected_timeout);
     // Once this flag has been set, we will drop all messages if the tcp_client is
     // no longer connected.
     let mut drop_if_disconnected = false;

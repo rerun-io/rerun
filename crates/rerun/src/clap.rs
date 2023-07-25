@@ -106,7 +106,10 @@ impl RerunArgs {
         }
 
         let sink: Box<dyn re_sdk::sink::LogSink> = match self.to_behavior()? {
-            RerunBehavior::Connect(addr) => Box::new(crate::sink::TcpSink::new(addr)),
+            RerunBehavior::Connect(addr) => Box::new(crate::sink::TcpSink::new(
+                addr,
+                crate::sink::TcpSink::DEFAULT_TIMEOUT,
+            )),
 
             RerunBehavior::Save(path) => Box::new(crate::sink::FileSink::new(path)?),
 

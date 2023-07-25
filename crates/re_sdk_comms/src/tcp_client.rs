@@ -61,21 +61,15 @@ impl TcpStreamState {
 pub struct TcpClient {
     addr: SocketAddr,
     stream_state: TcpStreamState,
-    timeout: Duration,
-}
-
-impl Default for TcpClient {
-    fn default() -> Self {
-        Self::new(crate::default_server_addr())
-    }
+    disconnected_timeout: Option<Duration>,
 }
 
 impl TcpClient {
-    pub fn new(addr: SocketAddr) -> Self {
+    pub fn new(addr: SocketAddr, disconnected_timeout: Option<Duration>) -> Self {
         Self {
             addr,
             stream_state: TcpStreamState::reset(),
-            timeout: Duration::from_nanos(1_000_000_000),
+            disconnected_timeout,
         }
     }
 
@@ -170,7 +164,10 @@ impl TcpClient {
     pub fn has_timed_out(&self) -> bool {
         match self.stream_state {
             TcpStreamState::Pending(since, tries) => {
-                Instant::now().duration_since(since) > self.timeout && tries > 0
+                // If a timeout wasn't provided, never timeout
+                self.disconnected_timeout.map_or(false, |timeout| {
+                    Instant::now().duration_since(since) > timeout && tries > 0
+                })
             }
             TcpStreamState::Connected(_) => false,
         }
