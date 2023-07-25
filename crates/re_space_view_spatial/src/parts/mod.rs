@@ -124,6 +124,7 @@ where
 }
 
 /// Process [`Color`] components using annotations and default colors.
+#[allow(dead_code)]
 pub fn process_colors_arch<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &'a EntityPath,
@@ -171,6 +172,7 @@ where
 }
 
 /// Process [`Radius`] components to [`re_renderer::Size`] using auto size where no radius is specified.
+#[allow(dead_code)]
 pub fn process_radii_arch<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &EntityPath,
@@ -247,6 +249,7 @@ where
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
+#[allow(dead_code)]
 fn process_annotations_and_keypoints_arch<Primary, A: Archetype>(
     query: &ViewQuery<'_>,
     arch_view: &re_query::ArchetypeView<A>,
