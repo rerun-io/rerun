@@ -95,10 +95,17 @@ impl AppEnvironment {
             StoreSource::CSdk => Self::CSdk,
             StoreSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
             StoreSource::RustSdk {
-                rustc_version: rust_version,
+                rustc_version,
                 llvm_version,
             } => Self::RustSdk {
-                rustc_version: rust_version.clone(),
+                rustc_version: rustc_version.clone(),
+                llvm_version: llvm_version.clone(),
+            },
+            StoreSource::FileFromCLI {
+                rustc_version,
+                llvm_version,
+            } => Self::RerunCli {
+                rustc_version: rustc_version.clone(),
                 llvm_version: llvm_version.clone(),
             },
             StoreSource::Unknown | StoreSource::Other(_) => Self::RustSdk {

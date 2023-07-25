@@ -327,6 +327,12 @@ pub enum StoreSource {
         llvm_version: String,
     },
 
+    /// Loading a file directly from disk via the CLI.
+    FileFromCLI {
+        rustc_version: String,
+        llvm_version: String,
+    },
+
     /// Perhaps from some manual data ingestion?
     Other(String),
 }
@@ -338,9 +344,13 @@ impl std::fmt::Display for StoreSource {
             Self::CSdk => "C SDK".fmt(f),
             Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
             Self::RustSdk {
-                rustc_version: rust_version,
+                rustc_version,
                 llvm_version: _,
-            } => write!(f, "Rust {rust_version} SDK"),
+            } => write!(f, "Rust {rustc_version} SDK"),
+            Self::FileFromCLI {
+                rustc_version,
+                llvm_version: _,
+            } => write!(f, "File via CLI {rustc_version} "),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }
