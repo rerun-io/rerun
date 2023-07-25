@@ -214,7 +214,7 @@ def log_obbs(
     if half_sizes is not None:
         half_sizes = np.require(half_sizes, dtype="float32")
 
-        if half_sizes.shape[1] == 3:
+        if len(half_sizes) == 0 or half_sizes.shape[1] == 3:
             comps[0]["rerun.box3d"] = Box3DArray.from_numpy(half_sizes)
         else:
             raise TypeError("half_size should be Nx3")
@@ -222,7 +222,7 @@ def log_obbs(
     if positions is not None:
         positions = np.require(positions, dtype="float32")
 
-        if positions.shape[1] == 3:
+        if len(positions) == 0 or positions.shape[1] == 3:
             comps[0]["rerun.vec3d"] = Vec3DArray.from_numpy(positions)
         else:
             raise TypeError("position should be 1x3")
@@ -230,7 +230,7 @@ def log_obbs(
     if rotations_q is not None:
         rotations_q = np.require(rotations_q, dtype="float32")
 
-        if rotations_q.shape[1] == 4:
+        if len(rotations_q) == 0 or rotations_q.shape[1] == 4:
             comps[0]["rerun.quaternion"] = QuaternionArray.from_numpy(rotations_q)
         else:
             raise TypeError("rotation should be 1x4")
