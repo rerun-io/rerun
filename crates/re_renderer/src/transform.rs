@@ -80,7 +80,7 @@ impl RectTransform {
     }
 
     pub fn scale(&self) -> glam::Vec2 {
-        self.region.extent / self.region_of_interest.extent
+        self.region_of_interest.extent / self.region.extent
     }
 }
 
@@ -122,6 +122,7 @@ mod tests {
                 scale,
                 glam::Mat4::from_scale(1.0 / scale_factor.extend(1.0))
             );
+            assert_eq!(rect_transform.scale(), scale_factor);
         }
 
         // Translation
@@ -142,6 +143,7 @@ mod tests {
                     glam::vec3(-translation_vec.x, translation_vec.y, 0.0) * 2.0
                 )
             );
+            assert_eq!(rect_transform.scale(), glam::Vec2::ONE);
         }
 
         // Scale + translation
@@ -166,6 +168,7 @@ mod tests {
                         glam::vec3(-translation_vec.x, translation_vec.y, 0.0) * 2.0
                     )
             );
+            assert_eq!(rect_transform.scale(), scale_factor);
         }
     }
 }
