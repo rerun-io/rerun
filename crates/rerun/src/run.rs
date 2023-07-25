@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use itertools::Itertools;
-use re_log_types::{LogMsg, PythonVersion, SetStoreInfo};
+use re_log_types::{LogMsg, PythonVersion};
 use re_smart_channel::{Receiver, SmartMessagePayload};
 
 use anyhow::Context as _;
@@ -872,6 +872,7 @@ fn load_file_to_channel_at(
     } else {
         #[cfg(feature = "sdk")]
         {
+            use re_log_types::SetStoreInfo;
             // First, set a store info since this is the first thing the application expects.
             tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: re_log_types::RowId::random(),
