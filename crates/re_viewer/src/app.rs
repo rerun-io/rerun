@@ -477,7 +477,6 @@ impl App {
     /// Top-level ui function.
     ///
     /// Shows the viewer ui.
-    #[allow(clippy::too_many_arguments)]
     fn ui(
         &mut self,
         egui_ctx: &egui::Context,

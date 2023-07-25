@@ -872,8 +872,30 @@ fn load_file_to_channel_at(
     } else {
         #[cfg(feature = "sdk")]
         {
-            let log_msg = re_sdk::MsgSender::from_file_path(path)?.into_log_msg(store_id)?;
-            tx.send(log_msg).ok(); // .ok(): we may be running in a background thread, so who knows if the receiver is still open
+            use re_log_types::SetStoreInfo;
+            // First, set a store info since this is the first thing the application expects.
+            tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: re_log_types::RowId::random(),
+                info: re_log_types::StoreInfo {
+                    application_id: re_log_types::ApplicationId(
+                        path.to_str().unwrap_or("file").to_owned(),
+                    ),
+                    store_id: store_id.clone(),
+                    is_official_example: false,
+                    started: re_log_types::Time::now(),
+                    store_source: re_log_types::StoreSource::FileFromCli {
+                        rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                        llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+                    },
+                    store_kind: re_log_types::StoreKind::Recording,
+                },
+            }))
+            .ok(); // .ok(): we may be running in a background thread, so who knows if the receiver is still open
+
+            // Send actual file.
+            tx.send(re_sdk::MsgSender::from_file_path(path)?.into_log_msg(store_id)?)
+                .ok();
+
             tx.quit(None).ok();
             Ok(())
         }
