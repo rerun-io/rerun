@@ -1330,7 +1330,15 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
     // TODO(emilk): are there any security concerns with leaking authkey?
     //
     // https://docs.python.org/3/library/multiprocessing.html#multiprocessing.Process.authkey
-    let seed = authkey(py);
+    let seed = match authkey(py) {
+        Ok(seed) => seed,
+        Err(err) => {
+            re_log::error_once!("Failed to retrieve python authkey: {err}\nMultiprocessing will result in split recordings.");
+            // If authkey failed, just generate a random 8-byte authkey
+            let bytes = rand::Rng::gen::<[u8; 8]>(&mut rand::thread_rng());
+            bytes.to_vec()
+        }
+    };
     let salt: u64 = 0xab12_cd34_ef56_0178;
 
     let mut hasher = std::collections::hash_map::DefaultHasher::default();
@@ -1349,8 +1357,9 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
     StoreId::from_uuid(variant, uuid)
 }
 
-fn authkey(py: Python<'_>) -> Vec<u8> {
+fn authkey(py: Python<'_>) -> PyResult<Vec<u8>> {
     let locals = PyDict::new(py);
+
     py.run(
         r#"
 import multiprocessing
@@ -1360,10 +1369,17 @@ authkey = multiprocessing.current_process().authkey
         None,
         Some(locals),
     )
-    .unwrap();
-    let authkey = locals.get_item("authkey").unwrap();
-    let authkey: &PyBytes = authkey.downcast().unwrap();
-    authkey.as_bytes().to_vec()
+    .and_then(|()| {
+        locals
+            .get_item("authkey")
+            .ok_or_else(|| PyRuntimeError::new_err("authkey missing from expected locals"))
+    })
+    .and_then(|authkey| {
+        authkey
+            .downcast()
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    })
+    .map(|authkey: &PyBytes| authkey.as_bytes().to_vec())
 }
 
 fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
