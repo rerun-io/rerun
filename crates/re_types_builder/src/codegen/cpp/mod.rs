@@ -770,9 +770,7 @@ fn quote_fill_arrow_array_builder(
             quote! {
                 #(#fill_fields)*
                 #NEWLINE_TOKEN
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(builder->Append());
-                }
+                ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
             }
         }
         DataType::Union(_, _, _) => {
