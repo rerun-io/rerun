@@ -100,6 +100,7 @@ where
 ///
 /// The callback passed in gets passed a long an [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
+#[allow(dead_code)]
 pub fn process_archetype_views<'a, A, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &ViewQuery<'_>,
