@@ -50,7 +50,7 @@ Use [`rr.serve`](https://ref.rerun.io/docs/python/latest/package/rerun/__init__/
 
 #### `Rust`
 
-[TODO(#2232)](https://github.com/rerun-io/rerun/issues/2232): This is not available for the time being.
+[`RecordingStream::serve`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve)
 
 ## Save
 
