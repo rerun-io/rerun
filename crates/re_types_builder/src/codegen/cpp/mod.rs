@@ -718,19 +718,66 @@ fn quote_fill_arrow_array_builder(
             let field = &fields[0];
             quote_append_elements_to_builder(field, builder, true)
         }
-        DataType::FixedSizeList(_field, ..) | DataType::List(_field) => {
-            quote! {
-                auto value_builder = #builder->value_builder();
-                #NEWLINE_TOKEN
-                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto& element = elements[elem_idx];
-                    return arrow::Status::NotImplemented(
-                        "TODO(andreas): fill value builder"
-                    );
-                    ARROW_RETURN_NOT_OK(builder->Append());
+        DataType::FixedSizeList(field, length) => {
+            anyhow::ensure!(
+                fields.len() == 1,
+                "Expected exactly one field for list type {:?}",
+                datatype
+            );
+            match field.data_type() {
+                DataType::Boolean
+                | DataType::Int8
+                | DataType::Int16
+                | DataType::Int32
+                | DataType::Int64
+                | DataType::UInt8
+                | DataType::UInt16
+                | DataType::UInt32
+                | DataType::UInt64
+                | DataType::Float16
+                | DataType::Float32
+                | DataType::Float64 => {}
+                _ => anyhow::bail!("Unimplemented field type for fixed size list: {:?}", field),
+            };
+
+            let value_builder_type = arrow_array_builder_type(field.data_type());
+            let value_builder_type = format_ident!("{value_builder_type}");
+            let field_name = format_ident!("{}", &fields[0].name);
+            let length = quote_integer(length);
+
+            if field.is_nullable {
+                quote! {
+                    auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
+                    ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements * #length));
+                    ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * #length));
+                    #NEWLINE_TOKEN #NEWLINE_TOKEN
+                    for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                        const auto& element = elements[elem_idx];
+                        if (element.#field_name.has_value()) {
+                            value_builder->AppendValues(element.#field_name.value(), #length, nullptr);
+                            ARROW_RETURN_NOT_OK(#builder->Append());
+                        } else {
+                            ARROW_RETURN_NOT_OK(#builder->AppendNull());
+                        }
+                    }
+                }
+            } else {
+                // TODO(andreas): Optimize for fully transparent types to do a single AppendValues call on value_builder.
+                quote! {
+                    auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
+                    #NEWLINE_TOKEN #NEWLINE_TOKEN
+                    static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(elements[0].#field_name, num_elements * #length, nullptr));
+                    ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
                 }
             }
+        }
+        DataType::List(_field) => {
+            quote!(
+                return arrow::Status::NotImplemented(
+                    "TODO(andreas): dynamically sized lists are not yet supported"
+                );
+            )
         }
         DataType::Struct(field_datatypes) => {
             let fill_fields = fields.iter().zip(field_datatypes).enumerate().map(
@@ -817,7 +864,7 @@ fn quote_append_elements_to_builder(
     if field.is_nullable {
         quote! {
             ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.#field_name.has_value()) {
                     ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name.value()));
