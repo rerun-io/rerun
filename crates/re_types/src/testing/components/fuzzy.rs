@@ -13,10 +13,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer1(pub crate::datatypes::AffixFuzzer1);
+pub struct AffixFuzzer1(pub crate::testing::datatypes::AffixFuzzer1);
 
-impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer1 {
-    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+impl From<crate::testing::datatypes::AffixFuzzer1> for AffixFuzzer1 {
+    fn from(v: crate::testing::datatypes::AffixFuzzer1) -> Self {
         Self(v)
     }
 }
@@ -108,7 +108,7 @@ impl crate::Loggable for AffixFuzzer1 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -150,7 +150,7 @@ impl crate::Loggable for AffixFuzzer1 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer1"),
                 )?
@@ -167,23 +167,25 @@ impl crate::Loggable for AffixFuzzer1 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+        Ok(
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
                 })
-            })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
-                source: Box::new(err),
-            })?)
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
+                    source: Box::new(err),
+                })?,
+        )
     }
 
     #[inline]
@@ -205,10 +207,10 @@ impl crate::Loggable for AffixFuzzer1 {
 impl crate::Component for AffixFuzzer1 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer2(pub crate::datatypes::AffixFuzzer1);
+pub struct AffixFuzzer2(pub crate::testing::datatypes::AffixFuzzer1);
 
-impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer2 {
-    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+impl From<crate::testing::datatypes::AffixFuzzer1> for AffixFuzzer2 {
+    fn from(v: crate::testing::datatypes::AffixFuzzer1) -> Self {
         Self(v)
     }
 }
@@ -300,7 +302,7 @@ impl crate::Loggable for AffixFuzzer2 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -342,7 +344,7 @@ impl crate::Loggable for AffixFuzzer2 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer2"),
                 )?
@@ -359,23 +361,25 @@ impl crate::Loggable for AffixFuzzer2 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+        Ok(
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
                 })
-            })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
-                source: Box::new(err),
-            })?)
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
+                    source: Box::new(err),
+                })?,
+        )
     }
 
     #[inline]
@@ -397,10 +401,10 @@ impl crate::Loggable for AffixFuzzer2 {
 impl crate::Component for AffixFuzzer2 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer3(pub crate::datatypes::AffixFuzzer1);
+pub struct AffixFuzzer3(pub crate::testing::datatypes::AffixFuzzer1);
 
-impl From<crate::datatypes::AffixFuzzer1> for AffixFuzzer3 {
-    fn from(v: crate::datatypes::AffixFuzzer1) -> Self {
+impl From<crate::testing::datatypes::AffixFuzzer1> for AffixFuzzer3 {
+    fn from(v: crate::testing::datatypes::AffixFuzzer1) -> Self {
         Self(v)
     }
 }
@@ -492,7 +496,7 @@ impl crate::Loggable for AffixFuzzer3 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -534,7 +538,7 @@ impl crate::Loggable for AffixFuzzer3 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer3"),
                 )?
@@ -551,23 +555,25 @@ impl crate::Loggable for AffixFuzzer3 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+        Ok(
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
                 })
-            })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
-                source: Box::new(err),
-            })?)
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
+                    source: Box::new(err),
+                })?,
+        )
     }
 
     #[inline]
@@ -589,10 +595,10 @@ impl crate::Loggable for AffixFuzzer3 {
 impl crate::Component for AffixFuzzer3 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer4(pub Option<crate::datatypes::AffixFuzzer1>);
+pub struct AffixFuzzer4(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 
-impl From<Option<crate::datatypes::AffixFuzzer1>> for AffixFuzzer4 {
-    fn from(v: Option<crate::datatypes::AffixFuzzer1>) -> Self {
+impl From<Option<crate::testing::datatypes::AffixFuzzer1>> for AffixFuzzer4 {
+    fn from(v: Option<crate::testing::datatypes::AffixFuzzer1>) -> Self {
         Self(v)
     }
 }
@@ -684,7 +690,7 @@ impl crate::Loggable for AffixFuzzer4 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -728,7 +734,7 @@ impl crate::Loggable for AffixFuzzer4 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer4"),
                 )?
@@ -745,19 +751,21 @@ impl crate::Loggable for AffixFuzzer4 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(Ok)
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
-                source: Box::new(err),
-            })?)
+        Ok(
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(Ok)
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
+                    source: Box::new(err),
+                })?,
+        )
     }
 
     #[inline]
@@ -779,10 +787,10 @@ impl crate::Loggable for AffixFuzzer4 {
 impl crate::Component for AffixFuzzer4 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer5(pub Option<crate::datatypes::AffixFuzzer1>);
+pub struct AffixFuzzer5(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 
-impl From<Option<crate::datatypes::AffixFuzzer1>> for AffixFuzzer5 {
-    fn from(v: Option<crate::datatypes::AffixFuzzer1>) -> Self {
+impl From<Option<crate::testing::datatypes::AffixFuzzer1>> for AffixFuzzer5 {
+    fn from(v: Option<crate::testing::datatypes::AffixFuzzer1>) -> Self {
         Self(v)
     }
 }
@@ -874,7 +882,7 @@ impl crate::Loggable for AffixFuzzer5 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -918,7 +926,7 @@ impl crate::Loggable for AffixFuzzer5 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer5"),
                 )?
@@ -935,19 +943,21 @@ impl crate::Loggable for AffixFuzzer5 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(Ok)
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
-                source: Box::new(err),
-            })?)
+        Ok(
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(Ok)
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
+                    source: Box::new(err),
+                })?,
+        )
     }
 
     #[inline]
@@ -969,10 +979,10 @@ impl crate::Loggable for AffixFuzzer5 {
 impl crate::Component for AffixFuzzer5 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer6(pub Option<crate::datatypes::AffixFuzzer1>);
+pub struct AffixFuzzer6(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 
-impl From<Option<crate::datatypes::AffixFuzzer1>> for AffixFuzzer6 {
-    fn from(v: Option<crate::datatypes::AffixFuzzer1>) -> Self {
+impl From<Option<crate::testing::datatypes::AffixFuzzer1>> for AffixFuzzer6 {
+    fn from(v: Option<crate::testing::datatypes::AffixFuzzer1>) -> Self {
         Self(v)
     }
 }
@@ -1064,7 +1074,7 @@ impl crate::Loggable for AffixFuzzer6 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -1108,7 +1118,7 @@ impl crate::Loggable for AffixFuzzer6 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer6"),
                 )?
@@ -1125,19 +1135,21 @@ impl crate::Loggable for AffixFuzzer6 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(Ok)
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
-                source: Box::new(err),
-            })?)
+        Ok(
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(Ok)
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
+                    source: Box::new(err),
+                })?,
+        )
     }
 
     #[inline]
@@ -1159,10 +1171,10 @@ impl crate::Loggable for AffixFuzzer6 {
 impl crate::Component for AffixFuzzer6 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer7(pub Option<Vec<crate::datatypes::AffixFuzzer1>>);
+pub struct AffixFuzzer7(pub Option<Vec<crate::testing::datatypes::AffixFuzzer1>>);
 
-impl From<Option<Vec<crate::datatypes::AffixFuzzer1>>> for AffixFuzzer7 {
-    fn from(v: Option<Vec<crate::datatypes::AffixFuzzer1>>) -> Self {
+impl From<Option<Vec<crate::testing::datatypes::AffixFuzzer1>>> for AffixFuzzer7 {
+    fn from(v: Option<Vec<crate::testing::datatypes::AffixFuzzer1>>) -> Self {
         Self(v)
     }
 }
@@ -1196,7 +1208,7 @@ impl crate::Loggable for AffixFuzzer7 {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }))
@@ -1254,7 +1266,8 @@ impl crate::Loggable for AffixFuzzer7 {
                             "rerun.testing.components.AffixFuzzer7".to_owned(),
                             Box::new(DataType::List(Box::new(Field {
                                 name: "item".to_owned(),
-                                data_type: <crate::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                                data_type:
+                                    <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             }))),
@@ -1267,7 +1280,7 @@ impl crate::Loggable for AffixFuzzer7 {
                     {
                         _ = data0_inner_bitmap;
                         _ = extension_wrapper;
-                        crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                        crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
                             data0_inner_data,
                             Some("rerun.testing.components.AffixFuzzer7"),
                         )?
@@ -1302,7 +1315,7 @@ impl crate::Loggable for AffixFuzzer7 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = crate::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                let data = crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
                         source: Box::new(err),
@@ -2418,10 +2431,10 @@ impl crate::Loggable for AffixFuzzer13 {
 impl crate::Component for AffixFuzzer13 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer14(pub crate::datatypes::AffixFuzzer3);
+pub struct AffixFuzzer14(pub crate::testing::datatypes::AffixFuzzer3);
 
-impl From<crate::datatypes::AffixFuzzer3> for AffixFuzzer14 {
-    fn from(v: crate::datatypes::AffixFuzzer3) -> Self {
+impl From<crate::testing::datatypes::AffixFuzzer3> for AffixFuzzer14 {
+    fn from(v: crate::testing::datatypes::AffixFuzzer3) -> Self {
         Self(v)
     }
 }
@@ -2477,7 +2490,7 @@ impl crate::Loggable for AffixFuzzer14 {
                     name: "craziness".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -2533,7 +2546,7 @@ impl crate::Loggable for AffixFuzzer14 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer3::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer14"),
                 )?
@@ -2550,23 +2563,25 @@ impl crate::Loggable for AffixFuzzer14 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+        Ok(
+            crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
                 })
-            })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
-                source: Box::new(err),
-            })?)
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
+                    source: Box::new(err),
+                })?,
+        )
     }
 
     #[inline]
@@ -2588,10 +2603,10 @@ impl crate::Loggable for AffixFuzzer14 {
 impl crate::Component for AffixFuzzer14 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer15(pub Option<crate::datatypes::AffixFuzzer3>);
+pub struct AffixFuzzer15(pub Option<crate::testing::datatypes::AffixFuzzer3>);
 
-impl From<Option<crate::datatypes::AffixFuzzer3>> for AffixFuzzer15 {
-    fn from(v: Option<crate::datatypes::AffixFuzzer3>) -> Self {
+impl From<Option<crate::testing::datatypes::AffixFuzzer3>> for AffixFuzzer15 {
+    fn from(v: Option<crate::testing::datatypes::AffixFuzzer3>) -> Self {
         Self(v)
     }
 }
@@ -2647,7 +2662,7 @@ impl crate::Loggable for AffixFuzzer15 {
                     name: "craziness".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -2705,7 +2720,7 @@ impl crate::Loggable for AffixFuzzer15 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer3::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer15"),
                 )?
@@ -2722,19 +2737,21 @@ impl crate::Loggable for AffixFuzzer15 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(Ok)
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
-                source: Box::new(err),
-            })?)
+        Ok(
+            crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(Ok)
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
+                    source: Box::new(err),
+                })?,
+        )
     }
 
     #[inline]
@@ -2756,10 +2773,10 @@ impl crate::Loggable for AffixFuzzer15 {
 impl crate::Component for AffixFuzzer15 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer16(pub Vec<crate::datatypes::AffixFuzzer3>);
+pub struct AffixFuzzer16(pub Vec<crate::testing::datatypes::AffixFuzzer3>);
 
-impl From<Vec<crate::datatypes::AffixFuzzer3>> for AffixFuzzer16 {
-    fn from(v: Vec<crate::datatypes::AffixFuzzer3>) -> Self {
+impl From<Vec<crate::testing::datatypes::AffixFuzzer3>> for AffixFuzzer16 {
+    fn from(v: Vec<crate::testing::datatypes::AffixFuzzer3>) -> Self {
         Self(v)
     }
 }
@@ -2793,7 +2810,7 @@ impl crate::Loggable for AffixFuzzer16 {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
             is_nullable: false,
             metadata: [].into(),
         }))
@@ -2849,7 +2866,8 @@ impl crate::Loggable for AffixFuzzer16 {
                             "rerun.testing.components.AffixFuzzer16".to_owned(),
                             Box::new(DataType::List(Box::new(Field {
                                 name: "item".to_owned(),
-                                data_type: <crate::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                                data_type:
+                                    <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
                             }))),
@@ -2862,7 +2880,7 @@ impl crate::Loggable for AffixFuzzer16 {
                     {
                         _ = data0_inner_bitmap;
                         _ = extension_wrapper;
-                        crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
+                        crate::testing::datatypes::AffixFuzzer3::try_to_arrow_opt(
                             data0_inner_data,
                             Some("rerun.testing.components.AffixFuzzer16"),
                         )?
@@ -2897,7 +2915,7 @@ impl crate::Loggable for AffixFuzzer16 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.components.AffixFuzzer16#many_required_unions"
                             .into(),
@@ -2964,10 +2982,10 @@ impl crate::Loggable for AffixFuzzer16 {
 impl crate::Component for AffixFuzzer16 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer17(pub Option<Vec<crate::datatypes::AffixFuzzer3>>);
+pub struct AffixFuzzer17(pub Option<Vec<crate::testing::datatypes::AffixFuzzer3>>);
 
-impl From<Option<Vec<crate::datatypes::AffixFuzzer3>>> for AffixFuzzer17 {
-    fn from(v: Option<Vec<crate::datatypes::AffixFuzzer3>>) -> Self {
+impl From<Option<Vec<crate::testing::datatypes::AffixFuzzer3>>> for AffixFuzzer17 {
+    fn from(v: Option<Vec<crate::testing::datatypes::AffixFuzzer3>>) -> Self {
         Self(v)
     }
 }
@@ -3001,7 +3019,7 @@ impl crate::Loggable for AffixFuzzer17 {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }))
@@ -3059,7 +3077,8 @@ impl crate::Loggable for AffixFuzzer17 {
                             "rerun.testing.components.AffixFuzzer17".to_owned(),
                             Box::new(DataType::List(Box::new(Field {
                                 name: "item".to_owned(),
-                                data_type: <crate::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                                data_type:
+                                    <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             }))),
@@ -3072,7 +3091,7 @@ impl crate::Loggable for AffixFuzzer17 {
                     {
                         _ = data0_inner_bitmap;
                         _ = extension_wrapper;
-                        crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
+                        crate::testing::datatypes::AffixFuzzer3::try_to_arrow_opt(
                             data0_inner_data,
                             Some("rerun.testing.components.AffixFuzzer17"),
                         )?
@@ -3107,7 +3126,7 @@ impl crate::Loggable for AffixFuzzer17 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.components.AffixFuzzer17#many_optional_unions"
                             .into(),
@@ -3170,10 +3189,10 @@ impl crate::Loggable for AffixFuzzer17 {
 impl crate::Component for AffixFuzzer17 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer18(pub Option<Vec<crate::datatypes::AffixFuzzer4>>);
+pub struct AffixFuzzer18(pub Option<Vec<crate::testing::datatypes::AffixFuzzer4>>);
 
-impl From<Option<Vec<crate::datatypes::AffixFuzzer4>>> for AffixFuzzer18 {
-    fn from(v: Option<Vec<crate::datatypes::AffixFuzzer4>>) -> Self {
+impl From<Option<Vec<crate::testing::datatypes::AffixFuzzer4>>> for AffixFuzzer18 {
+    fn from(v: Option<Vec<crate::testing::datatypes::AffixFuzzer4>>) -> Self {
         Self(v)
     }
 }
@@ -3207,7 +3226,7 @@ impl crate::Loggable for AffixFuzzer18 {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }))
@@ -3265,7 +3284,8 @@ impl crate::Loggable for AffixFuzzer18 {
                             "rerun.testing.components.AffixFuzzer18".to_owned(),
                             Box::new(DataType::List(Box::new(Field {
                                 name: "item".to_owned(),
-                                data_type: <crate::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+                                data_type:
+                                    <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             }))),
@@ -3278,7 +3298,7 @@ impl crate::Loggable for AffixFuzzer18 {
                     {
                         _ = data0_inner_bitmap;
                         _ = extension_wrapper;
-                        crate::datatypes::AffixFuzzer4::try_to_arrow_opt(
+                        crate::testing::datatypes::AffixFuzzer4::try_to_arrow_opt(
                             data0_inner_data,
                             Some("rerun.testing.components.AffixFuzzer18"),
                         )?
@@ -3313,7 +3333,7 @@ impl crate::Loggable for AffixFuzzer18 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = crate::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
+                let data = crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.components.AffixFuzzer18#many_optional_unions"
                             .into(),
@@ -3376,10 +3396,10 @@ impl crate::Loggable for AffixFuzzer18 {
 impl crate::Component for AffixFuzzer18 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer19(pub crate::datatypes::AffixFuzzer5);
+pub struct AffixFuzzer19(pub crate::testing::datatypes::AffixFuzzer5);
 
-impl From<crate::datatypes::AffixFuzzer5> for AffixFuzzer19 {
-    fn from(v: crate::datatypes::AffixFuzzer5) -> Self {
+impl From<crate::testing::datatypes::AffixFuzzer5> for AffixFuzzer19 {
+    fn from(v: crate::testing::datatypes::AffixFuzzer5) -> Self {
         Self(v)
     }
 }
@@ -3413,7 +3433,7 @@ impl crate::Loggable for AffixFuzzer19 {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "single_optional_union".to_owned(),
-            data_type: <crate::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }])
@@ -3448,7 +3468,7 @@ impl crate::Loggable for AffixFuzzer19 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::AffixFuzzer5::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer5::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer19"),
                 )?
@@ -3465,25 +3485,27 @@ impl crate::Loggable for AffixFuzzer19 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::AffixFuzzer5::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
-                    .into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+        Ok(
+            crate::testing::datatypes::AffixFuzzer5::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
+                        .into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
                 })
-            })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
-                    .into(),
-                source: Box::new(err),
-            })?)
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
+                        .into(),
+                    source: Box::new(err),
+                })?,
+        )
     }
 
     #[inline]

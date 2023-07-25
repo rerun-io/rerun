@@ -78,11 +78,11 @@ impl crate::Loggable for FlattenedScalar {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::FlattenedScalar>::to_arrow_datatype()),
+                        Box::new(<crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::FlattenedScalar>::to_arrow_datatype()
+                    <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -215,7 +215,7 @@ pub struct AffixFuzzer1 {
     pub many_strings_required: Vec<String>,
     pub many_strings_optional: Option<Vec<String>>,
     pub flattened_scalar: f32,
-    pub almost_flattened_scalar: crate::datatypes::FlattenedScalar,
+    pub almost_flattened_scalar: crate::testing::datatypes::FlattenedScalar,
     pub from_parent: Option<bool>,
 }
 
@@ -306,7 +306,7 @@ impl crate::Loggable for AffixFuzzer1 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -345,11 +345,11 @@ impl crate::Loggable for AffixFuzzer1 {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::AffixFuzzer1>::to_arrow_datatype()),
+                        Box::new(<crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::AffixFuzzer1>::to_arrow_datatype()
+                    <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -779,7 +779,7 @@ impl crate::Loggable for AffixFuzzer1 {
                         {
                             _ = almost_flattened_scalar_bitmap;
                             _ = extension_wrapper;
-                            crate::datatypes::FlattenedScalar::try_to_arrow_opt(
+                            crate::testing::datatypes::FlattenedScalar::try_to_arrow_opt(
                                 almost_flattened_scalar,
                                 None::<&str>,
                             )?
@@ -964,7 +964,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let almost_flattened_scalar = {
                     let data = &**arrays_by_name["almost_flattened_scalar"];
 
-                    crate::datatypes::FlattenedScalar::try_from_arrow_opt(data)
+                    crate::testing::datatypes::FlattenedScalar::try_from_arrow_opt(data)
                         .map_err(|err| crate::DeserializationError::Context {
                             location:
                                 "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar"
@@ -1149,7 +1149,7 @@ impl crate::Datatype for AffixFuzzer2 {}
 pub enum AffixFuzzer3 {
     Degrees(f32),
     Radians(Option<f32>),
-    Craziness(Vec<crate::datatypes::AffixFuzzer1>),
+    Craziness(Vec<crate::testing::datatypes::AffixFuzzer1>),
     FixedSizeShenanigans([f32; 3usize]),
 }
 
@@ -1204,7 +1204,7 @@ impl crate::Loggable for AffixFuzzer3 {
                     name: "craziness".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -1249,257 +1249,83 @@ impl crate::Loggable for AffixFuzzer3 {
                     datum
                 })
                 .collect();
-            UnionArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::AffixFuzzer3>::to_arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::AffixFuzzer3>::to_arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(AffixFuzzer3::Degrees(_)) => 1i8,
-                        Some(AffixFuzzer3::Radians(_)) => 2i8,
-                        Some(AffixFuzzer3::Craziness(_)) => 3i8,
-                        Some(AffixFuzzer3::FixedSizeShenanigans(_)) => 4i8,
-                    })
-                    .collect(),
-                vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
-                    {
-                        let (somes, degrees): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer3::Degrees(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer3::Degrees(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let degrees_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
-                            degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            degrees_bitmap,
-                        )
-                        .boxed()
-                    },
-                    {
-                        let (somes, radians): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer3::Radians(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer3::Radians(v)) => Some(v.clone()),
-                                    _ => None,
-                                }
-                                .flatten();
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let radians_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
-                            radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            radians_bitmap,
-                        )
-                        .boxed()
-                    },
-                    {
-                        let (somes, craziness): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer3::Craziness(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer3::Craziness(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let craziness_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let craziness_inner_data: Vec<_> = craziness
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
-                            let craziness_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                craziness.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AffixFuzzer1>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                {
-                                    _ = craziness_inner_bitmap;
-                                    _ = extension_wrapper;
-                                    crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
-                                        craziness_inner_data,
-                                        None::<&str>,
-                                    )?
-                                },
-                                craziness_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, fixed_size_shenanigans): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(
-                                    datum.as_deref(),
-                                    Some(AffixFuzzer3::FixedSizeShenanigans(_))
-                                )
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer3::FixedSizeShenanigans(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let fixed_size_shenanigans_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let fixed_size_shenanigans_inner_data: Vec<_> = fixed_size_shenanigans
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
-                            let fixed_size_shenanigans_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
-                            > = None;
-                            FixedSizeListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    )
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
-                                    fixed_size_shenanigans_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
-                                    fixed_size_shenanigans_inner_bitmap,
-                                )
-                                .boxed(),
-                                fixed_size_shenanigans_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                ],
-                Some({
-                    let mut degrees_offset = 0;
-                    let mut radians_offset = 0;
-                    let mut craziness_offset = 0;
-                    let mut fixed_size_shenanigans_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
+            UnionArray :: new ((if let Some (ext) = extension_wrapper { DataType :: Extension (ext . to_owned () , Box :: new (< crate :: testing :: datatypes :: AffixFuzzer3 > :: to_arrow_datatype ()) , None) }
 
-                            Some(AffixFuzzer3::Degrees(_)) => {
-                                let offset = degrees_offset;
-                                degrees_offset += 1;
-                                offset
-                            }
+ else { < crate :: testing :: datatypes :: AffixFuzzer3 > :: to_arrow_datatype () }
 
-                            Some(AffixFuzzer3::Radians(_)) => {
-                                let offset = radians_offset;
-                                radians_offset += 1;
-                                offset
-                            }
+) . to_logical_type () . clone () , data . iter () . map (| a | match a . as_deref () { None => 0 , Some (AffixFuzzer3 :: Degrees (_)) => 1i8 , Some (AffixFuzzer3 :: Radians (_)) => 2i8 , Some (AffixFuzzer3 :: Craziness (_)) => 3i8 , Some (AffixFuzzer3 :: FixedSizeShenanigans (_)) => 4i8 , }
 
-                            Some(AffixFuzzer3::Craziness(_)) => {
-                                let offset = craziness_offset;
-                                craziness_offset += 1;
-                                offset
-                            }
+) . collect () , vec ! [NullArray :: new (DataType :: Null , data . iter () . filter (| v | v . is_none ()) . count () ,) . boxed () , { let (somes , degrees) : (Vec < _ > , Vec < _ >) = data . iter () . filter (| datum | matches ! (datum . as_deref () , Some (AffixFuzzer3 :: Degrees (_)))) . map (| datum | { let datum = match datum . as_deref () { Some (AffixFuzzer3 :: Degrees (v)) => Some (v . clone ()) , _ => None , }
 
-                            Some(AffixFuzzer3::FixedSizeShenanigans(_)) => {
-                                let offset = fixed_size_shenanigans_offset;
-                                fixed_size_shenanigans_offset += 1;
-                                offset
-                            }
-                        })
-                        .collect()
-                }),
-            )
-            .boxed()
+ ; (datum . is_some () , datum) }
+
+) . unzip () ; let degrees_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; PrimitiveArray :: new ({ _ = extension_wrapper ; DataType :: Float32 . to_logical_type () . clone () }
+
+ , degrees . into_iter () . map (| v | v . unwrap_or_default ()) . collect () , degrees_bitmap ,) . boxed () }
+
+ , { let (somes , radians) : (Vec < _ > , Vec < _ >) = data . iter () . filter (| datum | matches ! (datum . as_deref () , Some (AffixFuzzer3 :: Radians (_)))) . map (| datum | { let datum = match datum . as_deref () { Some (AffixFuzzer3 :: Radians (v)) => Some (v . clone ()) , _ => None , }
+
+ . flatten () ; (datum . is_some () , datum) }
+
+) . unzip () ; let radians_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; PrimitiveArray :: new ({ _ = extension_wrapper ; DataType :: Float32 . to_logical_type () . clone () }
+
+ , radians . into_iter () . map (| v | v . unwrap_or_default ()) . collect () , radians_bitmap ,) . boxed () }
+
+ , { let (somes , craziness) : (Vec < _ > , Vec < _ >) = data . iter () . filter (| datum | matches ! (datum . as_deref () , Some (AffixFuzzer3 :: Craziness (_)))) . map (| datum | { let datum = match datum . as_deref () { Some (AffixFuzzer3 :: Craziness (v)) => Some (v . clone ()) , _ => None , }
+
+ ; (datum . is_some () , datum) }
+
+) . unzip () ; let craziness_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; { use arrow2 :: { buffer :: Buffer , offset :: OffsetsBuffer }
+
+ ; let craziness_inner_data : Vec < _ > = craziness . iter () . flatten () . flatten () . cloned () . map (Some) . collect () ; let craziness_inner_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = None ; let offsets = :: arrow2 :: offset :: Offsets :: < i32 > :: try_from_lengths (craziness . iter () . map (| opt | opt . as_ref () . map (| datum | datum . len ()) . unwrap_or_default ())) . unwrap () . into () ; ListArray :: new ({ _ = extension_wrapper ; DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: testing :: datatypes :: AffixFuzzer1 > :: to_arrow_datatype () , is_nullable : false , metadata : [] . into () , }
+
+)) . to_logical_type () . clone () }
+
+ , offsets , { _ = craziness_inner_bitmap ; _ = extension_wrapper ; crate :: testing :: datatypes :: AffixFuzzer1 :: try_to_arrow_opt (craziness_inner_data , None :: < & str >) ? }
+
+ , craziness_bitmap ,) . boxed () }
+
+ }
+
+ , { let (somes , fixed_size_shenanigans) : (Vec < _ > , Vec < _ >) = data . iter () . filter (| datum | matches ! (datum . as_deref () , Some (AffixFuzzer3 :: FixedSizeShenanigans (_)))) . map (| datum | { let datum = match datum . as_deref () { Some (AffixFuzzer3 :: FixedSizeShenanigans (v)) => Some (v . clone ()) , _ => None , }
+
+ ; (datum . is_some () , datum) }
+
+) . unzip () ; let fixed_size_shenanigans_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; { use arrow2 :: { buffer :: Buffer , offset :: OffsetsBuffer }
+
+ ; let fixed_size_shenanigans_inner_data : Vec < _ > = fixed_size_shenanigans . iter () . flatten () . flatten () . cloned () . map (Some) . collect () ; let fixed_size_shenanigans_inner_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = None ; FixedSizeListArray :: new ({ _ = extension_wrapper ; DataType :: FixedSizeList (Box :: new (Field { name : "item" . to_owned () , data_type : DataType :: Float32 , is_nullable : false , metadata : [] . into () , }
+
+) , 3usize) . to_logical_type () . clone () }
+
+ , PrimitiveArray :: new ({ _ = extension_wrapper ; DataType :: Float32 . to_logical_type () . clone () }
+
+ , fixed_size_shenanigans_inner_data . into_iter () . map (| v | v . unwrap_or_default ()) . collect () , fixed_size_shenanigans_inner_bitmap ,) . boxed () , fixed_size_shenanigans_bitmap ,) . boxed () }
+
+ }
+
+ ,] , Some ({ let mut degrees_offset = 0 ; let mut radians_offset = 0 ; let mut craziness_offset = 0 ; let mut fixed_size_shenanigans_offset = 0 ; let mut nulls_offset = 0 ; data . iter () . map (| v | match v . as_deref () { None => { let offset = nulls_offset ; nulls_offset += 1 ; offset }
+
+ Some (AffixFuzzer3 :: Degrees (_)) => { let offset = degrees_offset ; degrees_offset += 1 ; offset }
+
+ , Some (AffixFuzzer3 :: Radians (_)) => { let offset = radians_offset ; radians_offset += 1 ; offset }
+
+ , Some (AffixFuzzer3 :: Craziness (_)) => { let offset = craziness_offset ; craziness_offset += 1 ; offset }
+
+ , Some (AffixFuzzer3 :: FixedSizeShenanigans (_)) => { let offset = fixed_size_shenanigans_offset ; fixed_size_shenanigans_offset += 1 ; offset }
+
+ , }
+
+) . collect () }
+
+) ,) . boxed ()
         })
     }
 
@@ -1557,7 +1383,7 @@ impl crate::Loggable for AffixFuzzer3 {
 
  else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
 
- ; let data = & * * data . values () ; let data = crate :: datatypes :: AffixFuzzer1 :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
+ ; let data = & * * data . values () ; let data = crate :: testing :: datatypes :: AffixFuzzer1 :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
 
 ) ? . into_iter () . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -1643,9 +1469,9 @@ impl crate::Datatype for AffixFuzzer3 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer4 {
-    SingleRequired(crate::datatypes::AffixFuzzer3),
-    ManyRequired(Vec<crate::datatypes::AffixFuzzer3>),
-    ManyOptional(Option<Vec<crate::datatypes::AffixFuzzer3>>),
+    SingleRequired(crate::testing::datatypes::AffixFuzzer3),
+    ManyRequired(Vec<crate::testing::datatypes::AffixFuzzer3>),
+    ManyOptional(Option<Vec<crate::testing::datatypes::AffixFuzzer3>>),
 }
 
 impl<'a> From<AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
@@ -1685,7 +1511,7 @@ impl crate::Loggable for AffixFuzzer4 {
                 },
                 Field {
                     name: "single_required".to_owned(),
-                    data_type: <crate::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                    data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },
@@ -1693,7 +1519,7 @@ impl crate::Loggable for AffixFuzzer4 {
                     name: "many_required".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -1704,7 +1530,7 @@ impl crate::Loggable for AffixFuzzer4 {
                     name: "many_optional".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
                         is_nullable: true,
                         metadata: [].into(),
                     })),
@@ -1735,217 +1561,71 @@ impl crate::Loggable for AffixFuzzer4 {
                     datum
                 })
                 .collect();
-            UnionArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::AffixFuzzer4>::to_arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::AffixFuzzer4>::to_arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(AffixFuzzer4::SingleRequired(_)) => 1i8,
-                        Some(AffixFuzzer4::ManyRequired(_)) => 2i8,
-                        Some(AffixFuzzer4::ManyOptional(_)) => 3i8,
-                    })
-                    .collect(),
-                vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
-                    {
-                        let (somes, single_required): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer4::SingleRequired(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer4::SingleRequired(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let single_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = single_required_bitmap;
-                            _ = extension_wrapper;
-                            crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
-                                single_required,
-                                None::<&str>,
-                            )?
-                        }
-                    },
-                    {
-                        let (somes, many_required): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer4::ManyRequired(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer4::ManyRequired(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let many_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_required_inner_data: Vec<_> = many_required
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
-                            let many_required_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AffixFuzzer3>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                {
-                                    _ = many_required_inner_bitmap;
-                                    _ = extension_wrapper;
-                                    crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
-                                        many_required_inner_data,
-                                        None::<&str>,
-                                    )?
-                                },
-                                many_required_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, many_optional): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer4::ManyOptional(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer4::ManyOptional(v)) => Some(v.clone()),
-                                    _ => None,
-                                }
-                                .flatten();
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let many_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_optional_inner_data: Vec<_> = many_optional
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
-                            let many_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AffixFuzzer3>::to_arrow_datatype(),
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                {
-                                    _ = many_optional_inner_bitmap;
-                                    _ = extension_wrapper;
-                                    crate::datatypes::AffixFuzzer3::try_to_arrow_opt(
-                                        many_optional_inner_data,
-                                        None::<&str>,
-                                    )?
-                                },
-                                many_optional_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                ],
-                Some({
-                    let mut single_required_offset = 0;
-                    let mut many_required_offset = 0;
-                    let mut many_optional_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
+            UnionArray :: new ((if let Some (ext) = extension_wrapper { DataType :: Extension (ext . to_owned () , Box :: new (< crate :: testing :: datatypes :: AffixFuzzer4 > :: to_arrow_datatype ()) , None) }
 
-                            Some(AffixFuzzer4::SingleRequired(_)) => {
-                                let offset = single_required_offset;
-                                single_required_offset += 1;
-                                offset
-                            }
+ else { < crate :: testing :: datatypes :: AffixFuzzer4 > :: to_arrow_datatype () }
 
-                            Some(AffixFuzzer4::ManyRequired(_)) => {
-                                let offset = many_required_offset;
-                                many_required_offset += 1;
-                                offset
-                            }
+) . to_logical_type () . clone () , data . iter () . map (| a | match a . as_deref () { None => 0 , Some (AffixFuzzer4 :: SingleRequired (_)) => 1i8 , Some (AffixFuzzer4 :: ManyRequired (_)) => 2i8 , Some (AffixFuzzer4 :: ManyOptional (_)) => 3i8 , }
 
-                            Some(AffixFuzzer4::ManyOptional(_)) => {
-                                let offset = many_optional_offset;
-                                many_optional_offset += 1;
-                                offset
-                            }
-                        })
-                        .collect()
-                }),
-            )
-            .boxed()
+) . collect () , vec ! [NullArray :: new (DataType :: Null , data . iter () . filter (| v | v . is_none ()) . count () ,) . boxed () , { let (somes , single_required) : (Vec < _ > , Vec < _ >) = data . iter () . filter (| datum | matches ! (datum . as_deref () , Some (AffixFuzzer4 :: SingleRequired (_)))) . map (| datum | { let datum = match datum . as_deref () { Some (AffixFuzzer4 :: SingleRequired (v)) => Some (v . clone ()) , _ => None , }
+
+ ; (datum . is_some () , datum) }
+
+) . unzip () ; let single_required_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; { _ = single_required_bitmap ; _ = extension_wrapper ; crate :: testing :: datatypes :: AffixFuzzer3 :: try_to_arrow_opt (single_required , None :: < & str >) ? }
+
+ }
+
+ , { let (somes , many_required) : (Vec < _ > , Vec < _ >) = data . iter () . filter (| datum | matches ! (datum . as_deref () , Some (AffixFuzzer4 :: ManyRequired (_)))) . map (| datum | { let datum = match datum . as_deref () { Some (AffixFuzzer4 :: ManyRequired (v)) => Some (v . clone ()) , _ => None , }
+
+ ; (datum . is_some () , datum) }
+
+) . unzip () ; let many_required_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; { use arrow2 :: { buffer :: Buffer , offset :: OffsetsBuffer }
+
+ ; let many_required_inner_data : Vec < _ > = many_required . iter () . flatten () . flatten () . cloned () . map (Some) . collect () ; let many_required_inner_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = None ; let offsets = :: arrow2 :: offset :: Offsets :: < i32 > :: try_from_lengths (many_required . iter () . map (| opt | opt . as_ref () . map (| datum | datum . len ()) . unwrap_or_default ())) . unwrap () . into () ; ListArray :: new ({ _ = extension_wrapper ; DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: testing :: datatypes :: AffixFuzzer3 > :: to_arrow_datatype () , is_nullable : false , metadata : [] . into () , }
+
+)) . to_logical_type () . clone () }
+
+ , offsets , { _ = many_required_inner_bitmap ; _ = extension_wrapper ; crate :: testing :: datatypes :: AffixFuzzer3 :: try_to_arrow_opt (many_required_inner_data , None :: < & str >) ? }
+
+ , many_required_bitmap ,) . boxed () }
+
+ }
+
+ , { let (somes , many_optional) : (Vec < _ > , Vec < _ >) = data . iter () . filter (| datum | matches ! (datum . as_deref () , Some (AffixFuzzer4 :: ManyOptional (_)))) . map (| datum | { let datum = match datum . as_deref () { Some (AffixFuzzer4 :: ManyOptional (v)) => Some (v . clone ()) , _ => None , }
+
+ . flatten () ; (datum . is_some () , datum) }
+
+) . unzip () ; let many_optional_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; { use arrow2 :: { buffer :: Buffer , offset :: OffsetsBuffer }
+
+ ; let many_optional_inner_data : Vec < _ > = many_optional . iter () . flatten () . flatten () . cloned () . map (Some) . collect () ; let many_optional_inner_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = None ; let offsets = :: arrow2 :: offset :: Offsets :: < i32 > :: try_from_lengths (many_optional . iter () . map (| opt | opt . as_ref () . map (| datum | datum . len ()) . unwrap_or_default ())) . unwrap () . into () ; ListArray :: new ({ _ = extension_wrapper ; DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: testing :: datatypes :: AffixFuzzer3 > :: to_arrow_datatype () , is_nullable : true , metadata : [] . into () , }
+
+)) . to_logical_type () . clone () }
+
+ , offsets , { _ = many_optional_inner_bitmap ; _ = extension_wrapper ; crate :: testing :: datatypes :: AffixFuzzer3 :: try_to_arrow_opt (many_optional_inner_data , None :: < & str >) ? }
+
+ , many_optional_bitmap ,) . boxed () }
+
+ }
+
+ ,] , Some ({ let mut single_required_offset = 0 ; let mut many_required_offset = 0 ; let mut many_optional_offset = 0 ; let mut nulls_offset = 0 ; data . iter () . map (| v | match v . as_deref () { None => { let offset = nulls_offset ; nulls_offset += 1 ; offset }
+
+ Some (AffixFuzzer4 :: SingleRequired (_)) => { let offset = single_required_offset ; single_required_offset += 1 ; offset }
+
+ , Some (AffixFuzzer4 :: ManyRequired (_)) => { let offset = many_required_offset ; many_required_offset += 1 ; offset }
+
+ , Some (AffixFuzzer4 :: ManyOptional (_)) => { let offset = many_optional_offset ; many_optional_offset += 1 ; offset }
+
+ , }
+
+) . collect () }
+
+) ,) . boxed ()
         })
     }
 
@@ -1979,7 +1659,7 @@ impl crate::Loggable for AffixFuzzer4 {
                 let single_required = {
                     let data = &*data_arrays[1usize];
 
-                    crate::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                    crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
                         .map_err(|err| crate::DeserializationError::Context {
                             location: "rerun.testing.datatypes.AffixFuzzer4#single_required".into(),
                             source: Box::new(err),
@@ -1994,7 +1674,7 @@ impl crate::Loggable for AffixFuzzer4 {
 
  else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
 
- ; let data = & * * data . values () ; let data = crate :: datatypes :: AffixFuzzer3 :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_required" . into () , source : Box :: new (err) , }
+ ; let data = & * * data . values () ; let data = crate :: testing :: datatypes :: AffixFuzzer3 :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_required" . into () , source : Box :: new (err) , }
 
 ) ? . into_iter () . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -2015,7 +1695,7 @@ impl crate::Loggable for AffixFuzzer4 {
 
  else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
 
- ; let data = & * * data . values () ; let data = crate :: datatypes :: AffixFuzzer3 :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_optional" . into () , source : Box :: new (err) , }
+ ; let data = & * * data . values () ; let data = crate :: testing :: datatypes :: AffixFuzzer3 :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_optional" . into () , source : Box :: new (err) , }
 
 ) ? . into_iter () . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -2078,11 +1758,11 @@ impl crate::Datatype for AffixFuzzer4 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer5 {
-    pub single_optional_union: Option<crate::datatypes::AffixFuzzer4>,
+    pub single_optional_union: Option<crate::testing::datatypes::AffixFuzzer4>,
 }
 
-impl From<Option<crate::datatypes::AffixFuzzer4>> for AffixFuzzer5 {
-    fn from(v: Option<crate::datatypes::AffixFuzzer4>) -> Self {
+impl From<Option<crate::testing::datatypes::AffixFuzzer4>> for AffixFuzzer5 {
+    fn from(v: Option<crate::testing::datatypes::AffixFuzzer4>) -> Self {
         Self {
             single_optional_union: v,
         }
@@ -2118,7 +1798,7 @@ impl crate::Loggable for AffixFuzzer5 {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "single_optional_union".to_owned(),
-            data_type: <crate::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }])
@@ -2150,11 +1830,11 @@ impl crate::Loggable for AffixFuzzer5 {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::AffixFuzzer5>::to_arrow_datatype()),
+                        Box::new(<crate::testing::datatypes::AffixFuzzer5>::to_arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::AffixFuzzer5>::to_arrow_datatype()
+                    <crate::testing::datatypes::AffixFuzzer5>::to_arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -2182,7 +1862,7 @@ impl crate::Loggable for AffixFuzzer5 {
                     {
                         _ = single_optional_union_bitmap;
                         _ = extension_wrapper;
-                        crate::datatypes::AffixFuzzer4::try_to_arrow_opt(
+                        crate::testing::datatypes::AffixFuzzer4::try_to_arrow_opt(
                             single_optional_union,
                             None::<&str>,
                         )?
@@ -2230,7 +1910,7 @@ impl crate::Loggable for AffixFuzzer5 {
                 let single_optional_union = {
                     let data = &**arrays_by_name["single_optional_union"];
 
-                    crate::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
+                    crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
                         .map_err(|err| crate::DeserializationError::Context {
                             location: "rerun.testing.datatypes.AffixFuzzer5#single_optional_union"
                                 .into(),

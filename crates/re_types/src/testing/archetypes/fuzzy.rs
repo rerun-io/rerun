@@ -14,79 +14,79 @@
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer1 {
-    pub fuzz1001: crate::components::AffixFuzzer1,
-    pub fuzz1002: crate::components::AffixFuzzer2,
-    pub fuzz1003: crate::components::AffixFuzzer3,
-    pub fuzz1004: crate::components::AffixFuzzer4,
-    pub fuzz1005: crate::components::AffixFuzzer5,
-    pub fuzz1006: crate::components::AffixFuzzer6,
-    pub fuzz1007: crate::components::AffixFuzzer7,
-    pub fuzz1008: crate::components::AffixFuzzer8,
-    pub fuzz1009: crate::components::AffixFuzzer9,
-    pub fuzz1010: crate::components::AffixFuzzer10,
-    pub fuzz1011: crate::components::AffixFuzzer11,
-    pub fuzz1012: crate::components::AffixFuzzer12,
-    pub fuzz1013: crate::components::AffixFuzzer13,
-    pub fuzz1014: crate::components::AffixFuzzer14,
-    pub fuzz1015: crate::components::AffixFuzzer15,
-    pub fuzz1016: crate::components::AffixFuzzer16,
-    pub fuzz1017: crate::components::AffixFuzzer17,
-    pub fuzz1018: crate::components::AffixFuzzer18,
-    pub fuzz1019: crate::components::AffixFuzzer19,
-    pub fuzz1101: Vec<crate::components::AffixFuzzer1>,
-    pub fuzz1102: Vec<crate::components::AffixFuzzer2>,
-    pub fuzz1103: Vec<crate::components::AffixFuzzer3>,
-    pub fuzz1104: Vec<crate::components::AffixFuzzer4>,
-    pub fuzz1105: Vec<crate::components::AffixFuzzer5>,
-    pub fuzz1106: Vec<crate::components::AffixFuzzer6>,
-    pub fuzz1107: Vec<crate::components::AffixFuzzer7>,
-    pub fuzz1108: Vec<crate::components::AffixFuzzer8>,
-    pub fuzz1109: Vec<crate::components::AffixFuzzer9>,
-    pub fuzz1110: Vec<crate::components::AffixFuzzer10>,
-    pub fuzz1111: Vec<crate::components::AffixFuzzer11>,
-    pub fuzz1112: Vec<crate::components::AffixFuzzer12>,
-    pub fuzz1113: Vec<crate::components::AffixFuzzer13>,
-    pub fuzz1114: Vec<crate::components::AffixFuzzer14>,
-    pub fuzz1115: Vec<crate::components::AffixFuzzer15>,
-    pub fuzz1116: Vec<crate::components::AffixFuzzer16>,
-    pub fuzz1117: Vec<crate::components::AffixFuzzer17>,
-    pub fuzz1118: Vec<crate::components::AffixFuzzer18>,
-    pub fuzz2001: Option<crate::components::AffixFuzzer1>,
-    pub fuzz2002: Option<crate::components::AffixFuzzer2>,
-    pub fuzz2003: Option<crate::components::AffixFuzzer3>,
-    pub fuzz2004: Option<crate::components::AffixFuzzer4>,
-    pub fuzz2005: Option<crate::components::AffixFuzzer5>,
-    pub fuzz2006: Option<crate::components::AffixFuzzer6>,
-    pub fuzz2007: Option<crate::components::AffixFuzzer7>,
-    pub fuzz2008: Option<crate::components::AffixFuzzer8>,
-    pub fuzz2009: Option<crate::components::AffixFuzzer9>,
-    pub fuzz2010: Option<crate::components::AffixFuzzer10>,
-    pub fuzz2011: Option<crate::components::AffixFuzzer11>,
-    pub fuzz2012: Option<crate::components::AffixFuzzer12>,
-    pub fuzz2013: Option<crate::components::AffixFuzzer13>,
-    pub fuzz2014: Option<crate::components::AffixFuzzer14>,
-    pub fuzz2015: Option<crate::components::AffixFuzzer15>,
-    pub fuzz2016: Option<crate::components::AffixFuzzer16>,
-    pub fuzz2017: Option<crate::components::AffixFuzzer17>,
-    pub fuzz2018: Option<crate::components::AffixFuzzer18>,
-    pub fuzz2101: Option<Vec<crate::components::AffixFuzzer1>>,
-    pub fuzz2102: Option<Vec<crate::components::AffixFuzzer2>>,
-    pub fuzz2103: Option<Vec<crate::components::AffixFuzzer3>>,
-    pub fuzz2104: Option<Vec<crate::components::AffixFuzzer4>>,
-    pub fuzz2105: Option<Vec<crate::components::AffixFuzzer5>>,
-    pub fuzz2106: Option<Vec<crate::components::AffixFuzzer6>>,
-    pub fuzz2107: Option<Vec<crate::components::AffixFuzzer7>>,
-    pub fuzz2108: Option<Vec<crate::components::AffixFuzzer8>>,
-    pub fuzz2109: Option<Vec<crate::components::AffixFuzzer9>>,
-    pub fuzz2110: Option<Vec<crate::components::AffixFuzzer10>>,
-    pub fuzz2111: Option<Vec<crate::components::AffixFuzzer11>>,
-    pub fuzz2112: Option<Vec<crate::components::AffixFuzzer12>>,
-    pub fuzz2113: Option<Vec<crate::components::AffixFuzzer13>>,
-    pub fuzz2114: Option<Vec<crate::components::AffixFuzzer14>>,
-    pub fuzz2115: Option<Vec<crate::components::AffixFuzzer15>>,
-    pub fuzz2116: Option<Vec<crate::components::AffixFuzzer16>>,
-    pub fuzz2117: Option<Vec<crate::components::AffixFuzzer17>>,
-    pub fuzz2118: Option<Vec<crate::components::AffixFuzzer18>>,
+    pub fuzz1001: crate::testing::components::AffixFuzzer1,
+    pub fuzz1002: crate::testing::components::AffixFuzzer2,
+    pub fuzz1003: crate::testing::components::AffixFuzzer3,
+    pub fuzz1004: crate::testing::components::AffixFuzzer4,
+    pub fuzz1005: crate::testing::components::AffixFuzzer5,
+    pub fuzz1006: crate::testing::components::AffixFuzzer6,
+    pub fuzz1007: crate::testing::components::AffixFuzzer7,
+    pub fuzz1008: crate::testing::components::AffixFuzzer8,
+    pub fuzz1009: crate::testing::components::AffixFuzzer9,
+    pub fuzz1010: crate::testing::components::AffixFuzzer10,
+    pub fuzz1011: crate::testing::components::AffixFuzzer11,
+    pub fuzz1012: crate::testing::components::AffixFuzzer12,
+    pub fuzz1013: crate::testing::components::AffixFuzzer13,
+    pub fuzz1014: crate::testing::components::AffixFuzzer14,
+    pub fuzz1015: crate::testing::components::AffixFuzzer15,
+    pub fuzz1016: crate::testing::components::AffixFuzzer16,
+    pub fuzz1017: crate::testing::components::AffixFuzzer17,
+    pub fuzz1018: crate::testing::components::AffixFuzzer18,
+    pub fuzz1019: crate::testing::components::AffixFuzzer19,
+    pub fuzz1101: Vec<crate::testing::components::AffixFuzzer1>,
+    pub fuzz1102: Vec<crate::testing::components::AffixFuzzer2>,
+    pub fuzz1103: Vec<crate::testing::components::AffixFuzzer3>,
+    pub fuzz1104: Vec<crate::testing::components::AffixFuzzer4>,
+    pub fuzz1105: Vec<crate::testing::components::AffixFuzzer5>,
+    pub fuzz1106: Vec<crate::testing::components::AffixFuzzer6>,
+    pub fuzz1107: Vec<crate::testing::components::AffixFuzzer7>,
+    pub fuzz1108: Vec<crate::testing::components::AffixFuzzer8>,
+    pub fuzz1109: Vec<crate::testing::components::AffixFuzzer9>,
+    pub fuzz1110: Vec<crate::testing::components::AffixFuzzer10>,
+    pub fuzz1111: Vec<crate::testing::components::AffixFuzzer11>,
+    pub fuzz1112: Vec<crate::testing::components::AffixFuzzer12>,
+    pub fuzz1113: Vec<crate::testing::components::AffixFuzzer13>,
+    pub fuzz1114: Vec<crate::testing::components::AffixFuzzer14>,
+    pub fuzz1115: Vec<crate::testing::components::AffixFuzzer15>,
+    pub fuzz1116: Vec<crate::testing::components::AffixFuzzer16>,
+    pub fuzz1117: Vec<crate::testing::components::AffixFuzzer17>,
+    pub fuzz1118: Vec<crate::testing::components::AffixFuzzer18>,
+    pub fuzz2001: Option<crate::testing::components::AffixFuzzer1>,
+    pub fuzz2002: Option<crate::testing::components::AffixFuzzer2>,
+    pub fuzz2003: Option<crate::testing::components::AffixFuzzer3>,
+    pub fuzz2004: Option<crate::testing::components::AffixFuzzer4>,
+    pub fuzz2005: Option<crate::testing::components::AffixFuzzer5>,
+    pub fuzz2006: Option<crate::testing::components::AffixFuzzer6>,
+    pub fuzz2007: Option<crate::testing::components::AffixFuzzer7>,
+    pub fuzz2008: Option<crate::testing::components::AffixFuzzer8>,
+    pub fuzz2009: Option<crate::testing::components::AffixFuzzer9>,
+    pub fuzz2010: Option<crate::testing::components::AffixFuzzer10>,
+    pub fuzz2011: Option<crate::testing::components::AffixFuzzer11>,
+    pub fuzz2012: Option<crate::testing::components::AffixFuzzer12>,
+    pub fuzz2013: Option<crate::testing::components::AffixFuzzer13>,
+    pub fuzz2014: Option<crate::testing::components::AffixFuzzer14>,
+    pub fuzz2015: Option<crate::testing::components::AffixFuzzer15>,
+    pub fuzz2016: Option<crate::testing::components::AffixFuzzer16>,
+    pub fuzz2017: Option<crate::testing::components::AffixFuzzer17>,
+    pub fuzz2018: Option<crate::testing::components::AffixFuzzer18>,
+    pub fuzz2101: Option<Vec<crate::testing::components::AffixFuzzer1>>,
+    pub fuzz2102: Option<Vec<crate::testing::components::AffixFuzzer2>>,
+    pub fuzz2103: Option<Vec<crate::testing::components::AffixFuzzer3>>,
+    pub fuzz2104: Option<Vec<crate::testing::components::AffixFuzzer4>>,
+    pub fuzz2105: Option<Vec<crate::testing::components::AffixFuzzer5>>,
+    pub fuzz2106: Option<Vec<crate::testing::components::AffixFuzzer6>>,
+    pub fuzz2107: Option<Vec<crate::testing::components::AffixFuzzer7>>,
+    pub fuzz2108: Option<Vec<crate::testing::components::AffixFuzzer8>>,
+    pub fuzz2109: Option<Vec<crate::testing::components::AffixFuzzer9>>,
+    pub fuzz2110: Option<Vec<crate::testing::components::AffixFuzzer10>>,
+    pub fuzz2111: Option<Vec<crate::testing::components::AffixFuzzer11>>,
+    pub fuzz2112: Option<Vec<crate::testing::components::AffixFuzzer12>>,
+    pub fuzz2113: Option<Vec<crate::testing::components::AffixFuzzer13>>,
+    pub fuzz2114: Option<Vec<crate::testing::components::AffixFuzzer14>>,
+    pub fuzz2115: Option<Vec<crate::testing::components::AffixFuzzer15>>,
+    pub fuzz2116: Option<Vec<crate::testing::components::AffixFuzzer16>>,
+    pub fuzz2117: Option<Vec<crate::testing::components::AffixFuzzer17>>,
+    pub fuzz2118: Option<Vec<crate::testing::components::AffixFuzzer18>>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 37usize]> =
@@ -293,8 +293,10 @@ impl crate::Archetype for AffixFuzzer1 {
         Ok([
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer1>::try_to_arrow([&self.fuzz1001], None);
+                    let array = <crate::testing::components::AffixFuzzer1>::try_to_arrow(
+                        [&self.fuzz1001],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer1".into(),
@@ -315,8 +317,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer2>::try_to_arrow([&self.fuzz1002], None);
+                    let array = <crate::testing::components::AffixFuzzer2>::try_to_arrow(
+                        [&self.fuzz1002],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer2".into(),
@@ -337,8 +341,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer3>::try_to_arrow([&self.fuzz1003], None);
+                    let array = <crate::testing::components::AffixFuzzer3>::try_to_arrow(
+                        [&self.fuzz1003],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer3".into(),
@@ -359,8 +365,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer4>::try_to_arrow([&self.fuzz1004], None);
+                    let array = <crate::testing::components::AffixFuzzer4>::try_to_arrow(
+                        [&self.fuzz1004],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer4".into(),
@@ -381,8 +389,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer5>::try_to_arrow([&self.fuzz1005], None);
+                    let array = <crate::testing::components::AffixFuzzer5>::try_to_arrow(
+                        [&self.fuzz1005],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer5".into(),
@@ -403,8 +413,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer6>::try_to_arrow([&self.fuzz1006], None);
+                    let array = <crate::testing::components::AffixFuzzer6>::try_to_arrow(
+                        [&self.fuzz1006],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer6".into(),
@@ -425,8 +437,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer7>::try_to_arrow([&self.fuzz1007], None);
+                    let array = <crate::testing::components::AffixFuzzer7>::try_to_arrow(
+                        [&self.fuzz1007],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer7".into(),
@@ -447,8 +461,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer8>::try_to_arrow([&self.fuzz1008], None);
+                    let array = <crate::testing::components::AffixFuzzer8>::try_to_arrow(
+                        [&self.fuzz1008],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer8".into(),
@@ -469,8 +485,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer9>::try_to_arrow([&self.fuzz1009], None);
+                    let array = <crate::testing::components::AffixFuzzer9>::try_to_arrow(
+                        [&self.fuzz1009],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer9".into(),
@@ -491,8 +509,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer10>::try_to_arrow([&self.fuzz1010], None);
+                    let array = <crate::testing::components::AffixFuzzer10>::try_to_arrow(
+                        [&self.fuzz1010],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer10".into(),
@@ -513,8 +533,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer11>::try_to_arrow([&self.fuzz1011], None);
+                    let array = <crate::testing::components::AffixFuzzer11>::try_to_arrow(
+                        [&self.fuzz1011],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer11".into(),
@@ -535,8 +557,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer12>::try_to_arrow([&self.fuzz1012], None);
+                    let array = <crate::testing::components::AffixFuzzer12>::try_to_arrow(
+                        [&self.fuzz1012],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer12".into(),
@@ -557,8 +581,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer13>::try_to_arrow([&self.fuzz1013], None);
+                    let array = <crate::testing::components::AffixFuzzer13>::try_to_arrow(
+                        [&self.fuzz1013],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer13".into(),
@@ -579,8 +605,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer14>::try_to_arrow([&self.fuzz1014], None);
+                    let array = <crate::testing::components::AffixFuzzer14>::try_to_arrow(
+                        [&self.fuzz1014],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer14".into(),
@@ -601,8 +629,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer15>::try_to_arrow([&self.fuzz1015], None);
+                    let array = <crate::testing::components::AffixFuzzer15>::try_to_arrow(
+                        [&self.fuzz1015],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer15".into(),
@@ -623,8 +653,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer16>::try_to_arrow([&self.fuzz1016], None);
+                    let array = <crate::testing::components::AffixFuzzer16>::try_to_arrow(
+                        [&self.fuzz1016],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer16".into(),
@@ -645,8 +677,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer17>::try_to_arrow([&self.fuzz1017], None);
+                    let array = <crate::testing::components::AffixFuzzer17>::try_to_arrow(
+                        [&self.fuzz1017],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer17".into(),
@@ -667,8 +701,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer18>::try_to_arrow([&self.fuzz1018], None);
+                    let array = <crate::testing::components::AffixFuzzer18>::try_to_arrow(
+                        [&self.fuzz1018],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer18".into(),
@@ -689,8 +725,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer19>::try_to_arrow([&self.fuzz1019], None);
+                    let array = <crate::testing::components::AffixFuzzer19>::try_to_arrow(
+                        [&self.fuzz1019],
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer19".into(),
@@ -711,8 +749,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer1>::try_to_arrow(self.fuzz1101.iter(), None);
+                    let array = <crate::testing::components::AffixFuzzer1>::try_to_arrow(
+                        self.fuzz1101.iter(),
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer1".into(),
@@ -733,8 +773,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer2>::try_to_arrow(self.fuzz1102.iter(), None);
+                    let array = <crate::testing::components::AffixFuzzer2>::try_to_arrow(
+                        self.fuzz1102.iter(),
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer2".into(),
@@ -755,8 +797,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer3>::try_to_arrow(self.fuzz1103.iter(), None);
+                    let array = <crate::testing::components::AffixFuzzer3>::try_to_arrow(
+                        self.fuzz1103.iter(),
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer3".into(),
@@ -777,8 +821,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer4>::try_to_arrow(self.fuzz1104.iter(), None);
+                    let array = <crate::testing::components::AffixFuzzer4>::try_to_arrow(
+                        self.fuzz1104.iter(),
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer4".into(),
@@ -799,8 +845,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer5>::try_to_arrow(self.fuzz1105.iter(), None);
+                    let array = <crate::testing::components::AffixFuzzer5>::try_to_arrow(
+                        self.fuzz1105.iter(),
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer5".into(),
@@ -821,8 +869,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer6>::try_to_arrow(self.fuzz1106.iter(), None);
+                    let array = <crate::testing::components::AffixFuzzer6>::try_to_arrow(
+                        self.fuzz1106.iter(),
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer6".into(),
@@ -843,8 +893,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer7>::try_to_arrow(self.fuzz1107.iter(), None);
+                    let array = <crate::testing::components::AffixFuzzer7>::try_to_arrow(
+                        self.fuzz1107.iter(),
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer7".into(),
@@ -865,8 +917,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer8>::try_to_arrow(self.fuzz1108.iter(), None);
+                    let array = <crate::testing::components::AffixFuzzer8>::try_to_arrow(
+                        self.fuzz1108.iter(),
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer8".into(),
@@ -887,8 +941,10 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array =
-                        <crate::components::AffixFuzzer9>::try_to_arrow(self.fuzz1109.iter(), None);
+                    let array = <crate::testing::components::AffixFuzzer9>::try_to_arrow(
+                        self.fuzz1109.iter(),
+                        None,
+                    );
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer9".into(),
@@ -909,7 +965,7 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array = <crate::components::AffixFuzzer10>::try_to_arrow(
+                    let array = <crate::testing::components::AffixFuzzer10>::try_to_arrow(
                         self.fuzz1110.iter(),
                         None,
                     );
@@ -933,7 +989,7 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array = <crate::components::AffixFuzzer11>::try_to_arrow(
+                    let array = <crate::testing::components::AffixFuzzer11>::try_to_arrow(
                         self.fuzz1111.iter(),
                         None,
                     );
@@ -957,7 +1013,7 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array = <crate::components::AffixFuzzer12>::try_to_arrow(
+                    let array = <crate::testing::components::AffixFuzzer12>::try_to_arrow(
                         self.fuzz1112.iter(),
                         None,
                     );
@@ -981,7 +1037,7 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array = <crate::components::AffixFuzzer13>::try_to_arrow(
+                    let array = <crate::testing::components::AffixFuzzer13>::try_to_arrow(
                         self.fuzz1113.iter(),
                         None,
                     );
@@ -1005,7 +1061,7 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array = <crate::components::AffixFuzzer14>::try_to_arrow(
+                    let array = <crate::testing::components::AffixFuzzer14>::try_to_arrow(
                         self.fuzz1114.iter(),
                         None,
                     );
@@ -1029,7 +1085,7 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array = <crate::components::AffixFuzzer15>::try_to_arrow(
+                    let array = <crate::testing::components::AffixFuzzer15>::try_to_arrow(
                         self.fuzz1115.iter(),
                         None,
                     );
@@ -1053,7 +1109,7 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array = <crate::components::AffixFuzzer16>::try_to_arrow(
+                    let array = <crate::testing::components::AffixFuzzer16>::try_to_arrow(
                         self.fuzz1116.iter(),
                         None,
                     );
@@ -1077,7 +1133,7 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array = <crate::components::AffixFuzzer17>::try_to_arrow(
+                    let array = <crate::testing::components::AffixFuzzer17>::try_to_arrow(
                         self.fuzz1117.iter(),
                         None,
                     );
@@ -1101,7 +1157,7 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 Some({
-                    let array = <crate::components::AffixFuzzer18>::try_to_arrow(
+                    let array = <crate::testing::components::AffixFuzzer18>::try_to_arrow(
                         self.fuzz1118.iter(),
                         None,
                     );
@@ -1127,7 +1183,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2001
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::AffixFuzzer1>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer1>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer1".into(),
@@ -1150,7 +1209,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2002
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::AffixFuzzer2>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer2>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer2".into(),
@@ -1173,7 +1235,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2003
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::AffixFuzzer3>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer3>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer3".into(),
@@ -1196,7 +1261,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2004
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::AffixFuzzer4>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer4>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer4".into(),
@@ -1219,7 +1287,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2005
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::AffixFuzzer5>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer5>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer5".into(),
@@ -1242,7 +1313,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2006
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::AffixFuzzer6>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer6>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer6".into(),
@@ -1265,7 +1339,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2007
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::AffixFuzzer7>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer7>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer7".into(),
@@ -1288,7 +1365,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2008
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::AffixFuzzer8>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer8>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer8".into(),
@@ -1311,7 +1391,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2009
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::AffixFuzzer9>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer9>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer9".into(),
@@ -1334,8 +1417,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2010
                     .as_ref()
                     .map(|single| {
-                        let array =
-                            <crate::components::AffixFuzzer10>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer10>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer10".into(),
@@ -1358,8 +1443,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2011
                     .as_ref()
                     .map(|single| {
-                        let array =
-                            <crate::components::AffixFuzzer11>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer11>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer11".into(),
@@ -1382,8 +1469,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2012
                     .as_ref()
                     .map(|single| {
-                        let array =
-                            <crate::components::AffixFuzzer12>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer12>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer12".into(),
@@ -1406,8 +1495,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2013
                     .as_ref()
                     .map(|single| {
-                        let array =
-                            <crate::components::AffixFuzzer13>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer13>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer13".into(),
@@ -1430,8 +1521,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2014
                     .as_ref()
                     .map(|single| {
-                        let array =
-                            <crate::components::AffixFuzzer14>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer14>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer14".into(),
@@ -1454,8 +1547,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2015
                     .as_ref()
                     .map(|single| {
-                        let array =
-                            <crate::components::AffixFuzzer15>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer15>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer15".into(),
@@ -1478,8 +1573,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2016
                     .as_ref()
                     .map(|single| {
-                        let array =
-                            <crate::components::AffixFuzzer16>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer16>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer16".into(),
@@ -1502,8 +1599,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2017
                     .as_ref()
                     .map(|single| {
-                        let array =
-                            <crate::components::AffixFuzzer17>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer17>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer17".into(),
@@ -1526,8 +1625,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2018
                     .as_ref()
                     .map(|single| {
-                        let array =
-                            <crate::components::AffixFuzzer18>::try_to_arrow([single], None);
+                        let array = <crate::testing::components::AffixFuzzer18>::try_to_arrow(
+                            [single],
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer18".into(),
@@ -1550,8 +1651,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2101
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer1>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer1>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer1".into(),
@@ -1574,8 +1677,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2102
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer2>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer2>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer2".into(),
@@ -1598,8 +1703,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2103
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer3>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer3>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer3".into(),
@@ -1622,8 +1729,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2104
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer4>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer4>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer4".into(),
@@ -1646,8 +1755,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2105
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer5>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer5>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer5".into(),
@@ -1670,8 +1781,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2106
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer6>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer6>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer6".into(),
@@ -1694,8 +1807,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2107
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer7>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer7>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer7".into(),
@@ -1718,8 +1833,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2108
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer8>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer8>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer8".into(),
@@ -1742,8 +1859,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2109
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer9>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer9>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer9".into(),
@@ -1766,8 +1885,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2110
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer10>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer10>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer10".into(),
@@ -1790,8 +1911,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2111
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer11>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer11>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer11".into(),
@@ -1814,8 +1937,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2112
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer12>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer12>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer12".into(),
@@ -1838,8 +1963,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2113
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer13>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer13>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer13".into(),
@@ -1862,8 +1989,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2114
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer14>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer14>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer14".into(),
@@ -1886,8 +2015,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2115
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer15>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer15>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer15".into(),
@@ -1910,8 +2041,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2116
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer16>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer16>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer16".into(),
@@ -1934,8 +2067,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2117
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer17>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer17>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer17".into(),
@@ -1958,8 +2093,10 @@ impl crate::Archetype for AffixFuzzer1 {
                 self.fuzz2118
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::AffixFuzzer18>::try_to_arrow(many.iter(), None);
+                        let array = <crate::testing::components::AffixFuzzer18>::try_to_arrow(
+                            many.iter(),
+                            None,
+                        );
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer18".into(),
@@ -2003,7 +2140,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1001".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1001".into(),
                     source: Box::new(err),
@@ -2029,7 +2166,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1002".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1002".into(),
                     source: Box::new(err),
@@ -2055,7 +2192,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1003".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1003".into(),
                     source: Box::new(err),
@@ -2081,7 +2218,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1004".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1004".into(),
                     source: Box::new(err),
@@ -2107,7 +2244,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1005".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1005".into(),
                     source: Box::new(err),
@@ -2133,7 +2270,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1006".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1006".into(),
                     source: Box::new(err),
@@ -2159,7 +2296,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1007".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1007".into(),
                     source: Box::new(err),
@@ -2185,7 +2322,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1008".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1008".into(),
                     source: Box::new(err),
@@ -2211,7 +2348,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1009".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1009".into(),
                     source: Box::new(err),
@@ -2237,7 +2374,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1010".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1010".into(),
                     source: Box::new(err),
@@ -2263,7 +2400,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1011".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1011".into(),
                     source: Box::new(err),
@@ -2289,7 +2426,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1012".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1012".into(),
                     source: Box::new(err),
@@ -2315,7 +2452,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1013".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1013".into(),
                     source: Box::new(err),
@@ -2341,7 +2478,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1014".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1014".into(),
                     source: Box::new(err),
@@ -2367,7 +2504,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1015".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1015".into(),
                     source: Box::new(err),
@@ -2393,7 +2530,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1016".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1016".into(),
                     source: Box::new(err),
@@ -2419,7 +2556,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1017".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1017".into(),
                     source: Box::new(err),
@@ -2445,7 +2582,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1018".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1018".into(),
                     source: Box::new(err),
@@ -2471,7 +2608,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1019".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer19>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer19>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1019".into(),
                     source: Box::new(err),
@@ -2497,7 +2634,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1101".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1101".into(),
                     source: Box::new(err),
@@ -2524,7 +2661,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1102".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1102".into(),
                     source: Box::new(err),
@@ -2551,7 +2688,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1103".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1103".into(),
                     source: Box::new(err),
@@ -2578,7 +2715,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1104".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1104".into(),
                     source: Box::new(err),
@@ -2605,7 +2742,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1105".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1105".into(),
                     source: Box::new(err),
@@ -2632,7 +2769,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1106".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1106".into(),
                     source: Box::new(err),
@@ -2659,7 +2796,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1107".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1107".into(),
                     source: Box::new(err),
@@ -2686,7 +2823,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1108".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1108".into(),
                     source: Box::new(err),
@@ -2713,7 +2850,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1109".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1109".into(),
                     source: Box::new(err),
@@ -2740,7 +2877,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1110".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1110".into(),
                     source: Box::new(err),
@@ -2767,7 +2904,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1111".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1111".into(),
                     source: Box::new(err),
@@ -2794,7 +2931,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1112".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1112".into(),
                     source: Box::new(err),
@@ -2821,7 +2958,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1113".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1113".into(),
                     source: Box::new(err),
@@ -2848,7 +2985,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1114".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1114".into(),
                     source: Box::new(err),
@@ -2875,7 +3012,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1115".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1115".into(),
                     source: Box::new(err),
@@ -2902,7 +3039,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1116".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1116".into(),
                     source: Box::new(err),
@@ -2929,7 +3066,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1117".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1117".into(),
                     source: Box::new(err),
@@ -2956,7 +3093,7 @@ impl crate::Archetype for AffixFuzzer1 {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1118".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1118".into(),
                     source: Box::new(err),
@@ -2975,7 +3112,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2001 = if let Some(array) = arrays_by_name.get("fuzz2001") {
             Some(
-                <crate::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2001".into(),
                         source: Box::new(err),
@@ -2996,7 +3133,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2002 = if let Some(array) = arrays_by_name.get("fuzz2002") {
             Some(
-                <crate::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2002".into(),
                         source: Box::new(err),
@@ -3017,7 +3154,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2003 = if let Some(array) = arrays_by_name.get("fuzz2003") {
             Some(
-                <crate::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2003".into(),
                         source: Box::new(err),
@@ -3038,7 +3175,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2004 = if let Some(array) = arrays_by_name.get("fuzz2004") {
             Some(
-                <crate::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2004".into(),
                         source: Box::new(err),
@@ -3059,7 +3196,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2005 = if let Some(array) = arrays_by_name.get("fuzz2005") {
             Some(
-                <crate::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2005".into(),
                         source: Box::new(err),
@@ -3080,7 +3217,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2006 = if let Some(array) = arrays_by_name.get("fuzz2006") {
             Some(
-                <crate::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2006".into(),
                         source: Box::new(err),
@@ -3101,7 +3238,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2007 = if let Some(array) = arrays_by_name.get("fuzz2007") {
             Some(
-                <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2007".into(),
                         source: Box::new(err),
@@ -3122,7 +3259,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2008 = if let Some(array) = arrays_by_name.get("fuzz2008") {
             Some(
-                <crate::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2008".into(),
                         source: Box::new(err),
@@ -3143,7 +3280,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2009 = if let Some(array) = arrays_by_name.get("fuzz2009") {
             Some(
-                <crate::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2009".into(),
                         source: Box::new(err),
@@ -3164,7 +3301,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2010 = if let Some(array) = arrays_by_name.get("fuzz2010") {
             Some(
-                <crate::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2010".into(),
                         source: Box::new(err),
@@ -3185,7 +3322,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2011 = if let Some(array) = arrays_by_name.get("fuzz2011") {
             Some(
-                <crate::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2011".into(),
                         source: Box::new(err),
@@ -3206,7 +3343,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2012 = if let Some(array) = arrays_by_name.get("fuzz2012") {
             Some(
-                <crate::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2012".into(),
                         source: Box::new(err),
@@ -3227,7 +3364,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2013 = if let Some(array) = arrays_by_name.get("fuzz2013") {
             Some(
-                <crate::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2013".into(),
                         source: Box::new(err),
@@ -3248,7 +3385,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2014 = if let Some(array) = arrays_by_name.get("fuzz2014") {
             Some(
-                <crate::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2014".into(),
                         source: Box::new(err),
@@ -3269,7 +3406,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2015 = if let Some(array) = arrays_by_name.get("fuzz2015") {
             Some(
-                <crate::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2015".into(),
                         source: Box::new(err),
@@ -3290,7 +3427,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2016 = if let Some(array) = arrays_by_name.get("fuzz2016") {
             Some(
-                <crate::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2016".into(),
                         source: Box::new(err),
@@ -3311,7 +3448,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2017 = if let Some(array) = arrays_by_name.get("fuzz2017") {
             Some(
-                <crate::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2017".into(),
                         source: Box::new(err),
@@ -3332,7 +3469,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2018 = if let Some(array) = arrays_by_name.get("fuzz2018") {
             Some(
-                <crate::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2018".into(),
                         source: Box::new(err),
@@ -3353,7 +3490,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2101 = if let Some(array) = arrays_by_name.get("fuzz2101") {
             Some(
-                <crate::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2101".into(),
                         source: Box::new(err),
@@ -3375,7 +3512,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2102 = if let Some(array) = arrays_by_name.get("fuzz2102") {
             Some(
-                <crate::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2102".into(),
                         source: Box::new(err),
@@ -3397,7 +3534,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2103 = if let Some(array) = arrays_by_name.get("fuzz2103") {
             Some(
-                <crate::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2103".into(),
                         source: Box::new(err),
@@ -3419,7 +3556,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2104 = if let Some(array) = arrays_by_name.get("fuzz2104") {
             Some(
-                <crate::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2104".into(),
                         source: Box::new(err),
@@ -3441,7 +3578,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2105 = if let Some(array) = arrays_by_name.get("fuzz2105") {
             Some(
-                <crate::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2105".into(),
                         source: Box::new(err),
@@ -3463,7 +3600,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2106 = if let Some(array) = arrays_by_name.get("fuzz2106") {
             Some(
-                <crate::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2106".into(),
                         source: Box::new(err),
@@ -3485,7 +3622,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2107 = if let Some(array) = arrays_by_name.get("fuzz2107") {
             Some(
-                <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2107".into(),
                         source: Box::new(err),
@@ -3507,7 +3644,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2108 = if let Some(array) = arrays_by_name.get("fuzz2108") {
             Some(
-                <crate::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2108".into(),
                         source: Box::new(err),
@@ -3529,7 +3666,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2109 = if let Some(array) = arrays_by_name.get("fuzz2109") {
             Some(
-                <crate::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2109".into(),
                         source: Box::new(err),
@@ -3551,7 +3688,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2110 = if let Some(array) = arrays_by_name.get("fuzz2110") {
             Some(
-                <crate::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2110".into(),
                         source: Box::new(err),
@@ -3573,7 +3710,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2111 = if let Some(array) = arrays_by_name.get("fuzz2111") {
             Some(
-                <crate::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2111".into(),
                         source: Box::new(err),
@@ -3595,7 +3732,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2112 = if let Some(array) = arrays_by_name.get("fuzz2112") {
             Some(
-                <crate::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2112".into(),
                         source: Box::new(err),
@@ -3617,7 +3754,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2113 = if let Some(array) = arrays_by_name.get("fuzz2113") {
             Some(
-                <crate::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2113".into(),
                         source: Box::new(err),
@@ -3639,7 +3776,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2114 = if let Some(array) = arrays_by_name.get("fuzz2114") {
             Some(
-                <crate::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2114".into(),
                         source: Box::new(err),
@@ -3661,7 +3798,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2115 = if let Some(array) = arrays_by_name.get("fuzz2115") {
             Some(
-                <crate::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2115".into(),
                         source: Box::new(err),
@@ -3683,7 +3820,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2116 = if let Some(array) = arrays_by_name.get("fuzz2116") {
             Some(
-                <crate::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2116".into(),
                         source: Box::new(err),
@@ -3705,7 +3842,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2117 = if let Some(array) = arrays_by_name.get("fuzz2117") {
             Some(
-                <crate::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2117".into(),
                         source: Box::new(err),
@@ -3727,7 +3864,7 @@ impl crate::Archetype for AffixFuzzer1 {
         };
         let fuzz2118 = if let Some(array) = arrays_by_name.get("fuzz2118") {
             Some(
-                <crate::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.archetypes.AffixFuzzer1#fuzz2118".into(),
                         source: Box::new(err),
@@ -3827,43 +3964,43 @@ impl crate::Archetype for AffixFuzzer1 {
 
 impl AffixFuzzer1 {
     pub fn new(
-        fuzz1001: impl Into<crate::components::AffixFuzzer1>,
-        fuzz1002: impl Into<crate::components::AffixFuzzer2>,
-        fuzz1003: impl Into<crate::components::AffixFuzzer3>,
-        fuzz1004: impl Into<crate::components::AffixFuzzer4>,
-        fuzz1005: impl Into<crate::components::AffixFuzzer5>,
-        fuzz1006: impl Into<crate::components::AffixFuzzer6>,
-        fuzz1007: impl Into<crate::components::AffixFuzzer7>,
-        fuzz1008: impl Into<crate::components::AffixFuzzer8>,
-        fuzz1009: impl Into<crate::components::AffixFuzzer9>,
-        fuzz1010: impl Into<crate::components::AffixFuzzer10>,
-        fuzz1011: impl Into<crate::components::AffixFuzzer11>,
-        fuzz1012: impl Into<crate::components::AffixFuzzer12>,
-        fuzz1013: impl Into<crate::components::AffixFuzzer13>,
-        fuzz1014: impl Into<crate::components::AffixFuzzer14>,
-        fuzz1015: impl Into<crate::components::AffixFuzzer15>,
-        fuzz1016: impl Into<crate::components::AffixFuzzer16>,
-        fuzz1017: impl Into<crate::components::AffixFuzzer17>,
-        fuzz1018: impl Into<crate::components::AffixFuzzer18>,
-        fuzz1019: impl Into<crate::components::AffixFuzzer19>,
-        fuzz1101: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer1>>,
-        fuzz1102: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer2>>,
-        fuzz1103: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer3>>,
-        fuzz1104: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer4>>,
-        fuzz1105: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer5>>,
-        fuzz1106: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer6>>,
-        fuzz1107: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer7>>,
-        fuzz1108: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer8>>,
-        fuzz1109: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer9>>,
-        fuzz1110: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer10>>,
-        fuzz1111: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer11>>,
-        fuzz1112: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer12>>,
-        fuzz1113: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer13>>,
-        fuzz1114: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer14>>,
-        fuzz1115: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer15>>,
-        fuzz1116: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer16>>,
-        fuzz1117: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer17>>,
-        fuzz1118: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer18>>,
+        fuzz1001: impl Into<crate::testing::components::AffixFuzzer1>,
+        fuzz1002: impl Into<crate::testing::components::AffixFuzzer2>,
+        fuzz1003: impl Into<crate::testing::components::AffixFuzzer3>,
+        fuzz1004: impl Into<crate::testing::components::AffixFuzzer4>,
+        fuzz1005: impl Into<crate::testing::components::AffixFuzzer5>,
+        fuzz1006: impl Into<crate::testing::components::AffixFuzzer6>,
+        fuzz1007: impl Into<crate::testing::components::AffixFuzzer7>,
+        fuzz1008: impl Into<crate::testing::components::AffixFuzzer8>,
+        fuzz1009: impl Into<crate::testing::components::AffixFuzzer9>,
+        fuzz1010: impl Into<crate::testing::components::AffixFuzzer10>,
+        fuzz1011: impl Into<crate::testing::components::AffixFuzzer11>,
+        fuzz1012: impl Into<crate::testing::components::AffixFuzzer12>,
+        fuzz1013: impl Into<crate::testing::components::AffixFuzzer13>,
+        fuzz1014: impl Into<crate::testing::components::AffixFuzzer14>,
+        fuzz1015: impl Into<crate::testing::components::AffixFuzzer15>,
+        fuzz1016: impl Into<crate::testing::components::AffixFuzzer16>,
+        fuzz1017: impl Into<crate::testing::components::AffixFuzzer17>,
+        fuzz1018: impl Into<crate::testing::components::AffixFuzzer18>,
+        fuzz1019: impl Into<crate::testing::components::AffixFuzzer19>,
+        fuzz1101: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer1>>,
+        fuzz1102: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer2>>,
+        fuzz1103: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer3>>,
+        fuzz1104: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer4>>,
+        fuzz1105: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer5>>,
+        fuzz1106: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer6>>,
+        fuzz1107: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer7>>,
+        fuzz1108: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer8>>,
+        fuzz1109: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer9>>,
+        fuzz1110: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer10>>,
+        fuzz1111: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer11>>,
+        fuzz1112: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer12>>,
+        fuzz1113: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer13>>,
+        fuzz1114: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer14>>,
+        fuzz1115: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer15>>,
+        fuzz1116: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer16>>,
+        fuzz1117: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer17>>,
+        fuzz1118: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer18>>,
     ) -> Self {
         Self {
             fuzz1001: fuzz1001.into(),
@@ -3942,99 +4079,153 @@ impl AffixFuzzer1 {
         }
     }
 
-    pub fn with_fuzz2001(mut self, fuzz2001: impl Into<crate::components::AffixFuzzer1>) -> Self {
+    pub fn with_fuzz2001(
+        mut self,
+        fuzz2001: impl Into<crate::testing::components::AffixFuzzer1>,
+    ) -> Self {
         self.fuzz2001 = Some(fuzz2001.into());
         self
     }
 
-    pub fn with_fuzz2002(mut self, fuzz2002: impl Into<crate::components::AffixFuzzer2>) -> Self {
+    pub fn with_fuzz2002(
+        mut self,
+        fuzz2002: impl Into<crate::testing::components::AffixFuzzer2>,
+    ) -> Self {
         self.fuzz2002 = Some(fuzz2002.into());
         self
     }
 
-    pub fn with_fuzz2003(mut self, fuzz2003: impl Into<crate::components::AffixFuzzer3>) -> Self {
+    pub fn with_fuzz2003(
+        mut self,
+        fuzz2003: impl Into<crate::testing::components::AffixFuzzer3>,
+    ) -> Self {
         self.fuzz2003 = Some(fuzz2003.into());
         self
     }
 
-    pub fn with_fuzz2004(mut self, fuzz2004: impl Into<crate::components::AffixFuzzer4>) -> Self {
+    pub fn with_fuzz2004(
+        mut self,
+        fuzz2004: impl Into<crate::testing::components::AffixFuzzer4>,
+    ) -> Self {
         self.fuzz2004 = Some(fuzz2004.into());
         self
     }
 
-    pub fn with_fuzz2005(mut self, fuzz2005: impl Into<crate::components::AffixFuzzer5>) -> Self {
+    pub fn with_fuzz2005(
+        mut self,
+        fuzz2005: impl Into<crate::testing::components::AffixFuzzer5>,
+    ) -> Self {
         self.fuzz2005 = Some(fuzz2005.into());
         self
     }
 
-    pub fn with_fuzz2006(mut self, fuzz2006: impl Into<crate::components::AffixFuzzer6>) -> Self {
+    pub fn with_fuzz2006(
+        mut self,
+        fuzz2006: impl Into<crate::testing::components::AffixFuzzer6>,
+    ) -> Self {
         self.fuzz2006 = Some(fuzz2006.into());
         self
     }
 
-    pub fn with_fuzz2007(mut self, fuzz2007: impl Into<crate::components::AffixFuzzer7>) -> Self {
+    pub fn with_fuzz2007(
+        mut self,
+        fuzz2007: impl Into<crate::testing::components::AffixFuzzer7>,
+    ) -> Self {
         self.fuzz2007 = Some(fuzz2007.into());
         self
     }
 
-    pub fn with_fuzz2008(mut self, fuzz2008: impl Into<crate::components::AffixFuzzer8>) -> Self {
+    pub fn with_fuzz2008(
+        mut self,
+        fuzz2008: impl Into<crate::testing::components::AffixFuzzer8>,
+    ) -> Self {
         self.fuzz2008 = Some(fuzz2008.into());
         self
     }
 
-    pub fn with_fuzz2009(mut self, fuzz2009: impl Into<crate::components::AffixFuzzer9>) -> Self {
+    pub fn with_fuzz2009(
+        mut self,
+        fuzz2009: impl Into<crate::testing::components::AffixFuzzer9>,
+    ) -> Self {
         self.fuzz2009 = Some(fuzz2009.into());
         self
     }
 
-    pub fn with_fuzz2010(mut self, fuzz2010: impl Into<crate::components::AffixFuzzer10>) -> Self {
+    pub fn with_fuzz2010(
+        mut self,
+        fuzz2010: impl Into<crate::testing::components::AffixFuzzer10>,
+    ) -> Self {
         self.fuzz2010 = Some(fuzz2010.into());
         self
     }
 
-    pub fn with_fuzz2011(mut self, fuzz2011: impl Into<crate::components::AffixFuzzer11>) -> Self {
+    pub fn with_fuzz2011(
+        mut self,
+        fuzz2011: impl Into<crate::testing::components::AffixFuzzer11>,
+    ) -> Self {
         self.fuzz2011 = Some(fuzz2011.into());
         self
     }
 
-    pub fn with_fuzz2012(mut self, fuzz2012: impl Into<crate::components::AffixFuzzer12>) -> Self {
+    pub fn with_fuzz2012(
+        mut self,
+        fuzz2012: impl Into<crate::testing::components::AffixFuzzer12>,
+    ) -> Self {
         self.fuzz2012 = Some(fuzz2012.into());
         self
     }
 
-    pub fn with_fuzz2013(mut self, fuzz2013: impl Into<crate::components::AffixFuzzer13>) -> Self {
+    pub fn with_fuzz2013(
+        mut self,
+        fuzz2013: impl Into<crate::testing::components::AffixFuzzer13>,
+    ) -> Self {
         self.fuzz2013 = Some(fuzz2013.into());
         self
     }
 
-    pub fn with_fuzz2014(mut self, fuzz2014: impl Into<crate::components::AffixFuzzer14>) -> Self {
+    pub fn with_fuzz2014(
+        mut self,
+        fuzz2014: impl Into<crate::testing::components::AffixFuzzer14>,
+    ) -> Self {
         self.fuzz2014 = Some(fuzz2014.into());
         self
     }
 
-    pub fn with_fuzz2015(mut self, fuzz2015: impl Into<crate::components::AffixFuzzer15>) -> Self {
+    pub fn with_fuzz2015(
+        mut self,
+        fuzz2015: impl Into<crate::testing::components::AffixFuzzer15>,
+    ) -> Self {
         self.fuzz2015 = Some(fuzz2015.into());
         self
     }
 
-    pub fn with_fuzz2016(mut self, fuzz2016: impl Into<crate::components::AffixFuzzer16>) -> Self {
+    pub fn with_fuzz2016(
+        mut self,
+        fuzz2016: impl Into<crate::testing::components::AffixFuzzer16>,
+    ) -> Self {
         self.fuzz2016 = Some(fuzz2016.into());
         self
     }
 
-    pub fn with_fuzz2017(mut self, fuzz2017: impl Into<crate::components::AffixFuzzer17>) -> Self {
+    pub fn with_fuzz2017(
+        mut self,
+        fuzz2017: impl Into<crate::testing::components::AffixFuzzer17>,
+    ) -> Self {
         self.fuzz2017 = Some(fuzz2017.into());
         self
     }
 
-    pub fn with_fuzz2018(mut self, fuzz2018: impl Into<crate::components::AffixFuzzer18>) -> Self {
+    pub fn with_fuzz2018(
+        mut self,
+        fuzz2018: impl Into<crate::testing::components::AffixFuzzer18>,
+    ) -> Self {
         self.fuzz2018 = Some(fuzz2018.into());
         self
     }
 
     pub fn with_fuzz2101(
         mut self,
-        fuzz2101: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer1>>,
+        fuzz2101: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer1>>,
     ) -> Self {
         self.fuzz2101 = Some(fuzz2101.into_iter().map(Into::into).collect());
         self
@@ -4042,7 +4233,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2102(
         mut self,
-        fuzz2102: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer2>>,
+        fuzz2102: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer2>>,
     ) -> Self {
         self.fuzz2102 = Some(fuzz2102.into_iter().map(Into::into).collect());
         self
@@ -4050,7 +4241,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2103(
         mut self,
-        fuzz2103: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer3>>,
+        fuzz2103: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer3>>,
     ) -> Self {
         self.fuzz2103 = Some(fuzz2103.into_iter().map(Into::into).collect());
         self
@@ -4058,7 +4249,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2104(
         mut self,
-        fuzz2104: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer4>>,
+        fuzz2104: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer4>>,
     ) -> Self {
         self.fuzz2104 = Some(fuzz2104.into_iter().map(Into::into).collect());
         self
@@ -4066,7 +4257,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2105(
         mut self,
-        fuzz2105: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer5>>,
+        fuzz2105: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer5>>,
     ) -> Self {
         self.fuzz2105 = Some(fuzz2105.into_iter().map(Into::into).collect());
         self
@@ -4074,7 +4265,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2106(
         mut self,
-        fuzz2106: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer6>>,
+        fuzz2106: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer6>>,
     ) -> Self {
         self.fuzz2106 = Some(fuzz2106.into_iter().map(Into::into).collect());
         self
@@ -4082,7 +4273,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2107(
         mut self,
-        fuzz2107: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer7>>,
+        fuzz2107: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer7>>,
     ) -> Self {
         self.fuzz2107 = Some(fuzz2107.into_iter().map(Into::into).collect());
         self
@@ -4090,7 +4281,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2108(
         mut self,
-        fuzz2108: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer8>>,
+        fuzz2108: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer8>>,
     ) -> Self {
         self.fuzz2108 = Some(fuzz2108.into_iter().map(Into::into).collect());
         self
@@ -4098,7 +4289,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2109(
         mut self,
-        fuzz2109: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer9>>,
+        fuzz2109: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer9>>,
     ) -> Self {
         self.fuzz2109 = Some(fuzz2109.into_iter().map(Into::into).collect());
         self
@@ -4106,7 +4297,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2110(
         mut self,
-        fuzz2110: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer10>>,
+        fuzz2110: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer10>>,
     ) -> Self {
         self.fuzz2110 = Some(fuzz2110.into_iter().map(Into::into).collect());
         self
@@ -4114,7 +4305,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2111(
         mut self,
-        fuzz2111: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer11>>,
+        fuzz2111: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer11>>,
     ) -> Self {
         self.fuzz2111 = Some(fuzz2111.into_iter().map(Into::into).collect());
         self
@@ -4122,7 +4313,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2112(
         mut self,
-        fuzz2112: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer12>>,
+        fuzz2112: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer12>>,
     ) -> Self {
         self.fuzz2112 = Some(fuzz2112.into_iter().map(Into::into).collect());
         self
@@ -4130,7 +4321,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2113(
         mut self,
-        fuzz2113: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer13>>,
+        fuzz2113: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer13>>,
     ) -> Self {
         self.fuzz2113 = Some(fuzz2113.into_iter().map(Into::into).collect());
         self
@@ -4138,7 +4329,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2114(
         mut self,
-        fuzz2114: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer14>>,
+        fuzz2114: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer14>>,
     ) -> Self {
         self.fuzz2114 = Some(fuzz2114.into_iter().map(Into::into).collect());
         self
@@ -4146,7 +4337,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2115(
         mut self,
-        fuzz2115: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer15>>,
+        fuzz2115: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer15>>,
     ) -> Self {
         self.fuzz2115 = Some(fuzz2115.into_iter().map(Into::into).collect());
         self
@@ -4154,7 +4345,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2116(
         mut self,
-        fuzz2116: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer16>>,
+        fuzz2116: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer16>>,
     ) -> Self {
         self.fuzz2116 = Some(fuzz2116.into_iter().map(Into::into).collect());
         self
@@ -4162,7 +4353,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2117(
         mut self,
-        fuzz2117: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer17>>,
+        fuzz2117: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer17>>,
     ) -> Self {
         self.fuzz2117 = Some(fuzz2117.into_iter().map(Into::into).collect());
         self
@@ -4170,7 +4361,7 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2118(
         mut self,
-        fuzz2118: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer18>>,
+        fuzz2118: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer18>>,
     ) -> Self {
         self.fuzz2118 = Some(fuzz2118.into_iter().map(Into::into).collect());
         self
