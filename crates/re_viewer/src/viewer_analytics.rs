@@ -160,7 +160,7 @@ impl ViewerAnalytics {
                 StoreSource::CSdk => "c_sdk".to_owned(),
                 StoreSource::PythonSdk(_version) => "python_sdk".to_owned(),
                 StoreSource::RustSdk { .. } => "rust_sdk".to_owned(),
-                StoreSource::FileFromCLI { .. } => "file_cli".to_owned(),
+                StoreSource::FileFromCli { .. } => "file_cli".to_owned(),
                 StoreSource::Other(other) => other.clone(),
             };
 
@@ -171,7 +171,7 @@ impl ViewerAnalytics {
             // environment, _not_ the environment in which the viewer is running!
             #[allow(clippy::match_same_arms)]
             match &store_info.store_source {
-                StoreSource::FileFromCLI {
+                StoreSource::FileFromCli {
                     rustc_version,
                     llvm_version,
                 }

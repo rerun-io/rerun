@@ -328,7 +328,7 @@ pub enum StoreSource {
     },
 
     /// Loading a file directly from disk via the CLI.
-    FileFromCLI {
+    FileFromCli {
         rustc_version: String,
         llvm_version: String,
     },
@@ -347,7 +347,7 @@ impl std::fmt::Display for StoreSource {
                 rustc_version,
                 llvm_version: _,
             } => write!(f, "Rust {rustc_version} SDK"),
-            Self::FileFromCLI {
+            Self::FileFromCli {
                 rustc_version,
                 llvm_version: _,
             } => write!(f, "File via CLI {rustc_version} "),

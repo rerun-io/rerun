@@ -882,7 +882,7 @@ fn load_file_to_channel_at(
                     store_id: store_id.clone(),
                     is_official_example: false,
                     started: re_log_types::Time::now(),
-                    store_source: re_log_types::StoreSource::FileFromCLI {
+                    store_source: re_log_types::StoreSource::FileFromCli {
                         rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
                         llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
                     },

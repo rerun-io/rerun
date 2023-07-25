@@ -101,7 +101,7 @@ impl AppEnvironment {
                 rustc_version: rustc_version.clone(),
                 llvm_version: llvm_version.clone(),
             },
-            StoreSource::FileFromCLI {
+            StoreSource::FileFromCli {
                 rustc_version,
                 llvm_version,
             } => Self::RerunCli {
