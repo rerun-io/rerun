@@ -19,7 +19,17 @@ use crate::LegacyComponent;
 /// assert_eq!(LegacyInstanceKey::data_type(), DataType::UInt64);
 /// ```
 #[derive(
-    Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, ArrowField, ArrowSerialize, ArrowDeserialize,
+    Copy,
+    Clone,
+    Default,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    ArrowField,
+    ArrowSerialize,
+    ArrowDeserialize,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
@@ -106,12 +116,14 @@ impl LegacyComponent for LegacyInstanceKey {
 }
 
 impl From<re_types::components::InstanceKey> for LegacyInstanceKey {
+    #[inline]
     fn from(other: re_types::components::InstanceKey) -> Self {
         Self(other.0)
     }
 }
 
 impl From<LegacyInstanceKey> for re_types::components::InstanceKey {
+    #[inline]
     fn from(other: LegacyInstanceKey) -> Self {
         Self(other.0)
     }

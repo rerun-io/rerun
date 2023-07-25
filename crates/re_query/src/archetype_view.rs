@@ -4,7 +4,8 @@ use arrow2::array::{Array, PrimitiveArray};
 use re_format::arrow;
 use re_log_types::{DataCell, RowId};
 use re_types::{
-    components::InstanceKey, Archetype, Component, ComponentName, DeserializationResult, Loggable,
+    components::InstanceKey, Archetype, Component, ComponentName, DeserializationError,
+    DeserializationResult, Loggable,
 };
 
 use crate::QueryError;
@@ -39,14 +40,21 @@ impl ComponentWithInstances {
 
     /// Iterate over the [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
-        InstanceKey::from_arrow(self.instance_keys.as_arrow_ref()).into_iter()
+    pub fn iter_instance_keys(
+        &self,
+    ) -> impl Iterator<Item = re_types::components::InstanceKey> + '_ {
+        // TODO(jleibs): It's important that we still iterate over these keys
+        // via the legacy interface to avoid a performance hit from the new
+        // code-generated instance_keys.
+        self.instance_keys
+            .to_native::<re_log_types::LegacyInstanceKey>()
+            .map(|k| k.into())
     }
 
     /// Iterate over the values and convert them to a native [`Component`]
     #[inline]
     pub fn iter_values<'a, C: Component + 'a>(
-        &self,
+        &'a self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + 'a> {
         if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
@@ -55,7 +63,7 @@ impl ComponentWithInstances {
             });
         }
 
-        Ok(C::try_from_arrow_opt(self.values.as_arrow_ref())?.into_iter())
+        Ok(self.values.try_to_native_opt::<'a, C>()?)
     }
 
     /// Look up the value that corresponds to a given [`InstanceKey`] and convert to [`Component`]
@@ -255,6 +263,7 @@ impl<A: Archetype> ArchetypeView<A> {
 }
 
 impl<A: Archetype> ArchetypeView<A> {
+    #[inline]
     fn required_comp(&self) -> &ComponentWithInstances {
         // TODO(jleibs): Do all archetypes always have at least 1 required components?
         let first_required = A::required_components()[0];
@@ -276,7 +285,8 @@ impl<A: Archetype> ArchetypeView<A> {
     }
 
     /// Iterate over the values of a required [`Component`].
-    pub fn iter_required_component<'a, C: Component + Clone + 'a>(
+    #[inline]
+    pub fn iter_required_component<'a, C: Component + Default + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
         debug_assert!(A::required_components()
@@ -285,8 +295,10 @@ impl<A: Archetype> ArchetypeView<A> {
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            let component_value_iter =
-                C::try_from_arrow(component.values.as_arrow_ref())?.into_iter();
+            let component_value_iter = component
+                .values
+                .try_to_native()
+                .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
 
             Ok(component_value_iter)
         } else {
@@ -300,6 +312,7 @@ impl<A: Archetype> ArchetypeView<A> {
     ///
     /// Always produces an iterator that matches the length of a primary
     /// component by joining on the `InstanceKey` values.
+    #[inline]
     pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = Option<C>> + '_> {

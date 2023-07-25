@@ -138,7 +138,7 @@ impl Points3DPart {
                     // TODO(andreas/jeremy): We can do this much more efficiently
                     let highlighted_point_index = ent_view
                         .iter_instance_keys()
-                        .position(|key| key == *highlighted_key);
+                        .position(|key| *highlighted_key == key);
                     if let Some(highlighted_point_index) = highlighted_point_index {
                         point_range_builder = point_range_builder
                             .push_additional_outline_mask_ids_for_range(

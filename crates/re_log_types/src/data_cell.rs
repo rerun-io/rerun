@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow2::datatypes::DataType;
-use re_types::{Component, ComponentName};
+use re_types::{Component, ComponentName, DeserializationError};
 
 use crate::SizeBytes;
 
@@ -359,10 +359,49 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
-    pub fn try_to_native<'a, C: Component + 'a>(
+    pub fn try_to_native<'a, C: Component + Default + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = C> + '_> {
-        Ok(C::try_from_arrow(self.inner.values.as_ref())?.into_iter())
+        Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?
+            .map(C::convert_item_to_self)
+            .map(|v| {
+                // TODO(#2523): This unwrap and the `Default` bounds should go away once we move to fallible iterators
+                v.unwrap_or_else(|| {
+                    re_log::warn_once!(
+                        "Unexpected missing data when iterating non-optional data-cell. Falling back on Default value."
+                    );
+                    C::default()
+                })
+            }))
+    }
+
+    /// Returns the contents of an expected mono-component as an `Option<C>`.
+    ///
+    /// Fails if the underlying arrow data cannot be deserialized into `C`.
+    #[inline]
+    pub fn try_to_native_mono<'a, C: Component + 'a>(&'a self) -> DataCellResult<Option<C>> {
+        let mut iter =
+            C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self);
+
+        let result = match iter.next() {
+            // It's ok to have no result from the iteration: this is what we
+            // should see for a cleared component (logged as an empty set).
+            None => Ok(None),
+            // It's not ok to have a null in a mono-component array. It should
+            // have been logged as an empty set, so we consider this to be missing
+            // data.
+            Some(component) => Ok(Some(component.ok_or_else(|| {
+                DeserializationError::MissingData {
+                    backtrace: backtrace::Backtrace::new_unresolved(),
+                }
+            })?)),
+        };
+
+        if iter.next().is_some() {
+            re_log::warn_once!("Unexpected batch for {}", C::name());
+        }
+
+        result
     }
 
     /// Returns the contents of the cell as an iterator of native components.
@@ -370,7 +409,7 @@ impl DataCell {
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native`] for a fallible alternative.
     #[inline]
-    pub fn to_native<'a, C: Component + 'a>(&'a self) -> impl Iterator<Item = C> + '_ {
+    pub fn to_native<'a, C: Component + Default + 'a>(&'a self) -> impl Iterator<Item = C> + '_ {
         self.try_to_native().unwrap()
     }
 
@@ -381,7 +420,7 @@ impl DataCell {
     pub fn try_to_native_opt<'a, C: Component + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_> {
-        Ok(C::try_from_arrow_opt(self.inner.values.as_ref())?.into_iter())
+        Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self))
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.

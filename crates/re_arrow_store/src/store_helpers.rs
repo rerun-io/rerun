@@ -25,23 +25,14 @@ impl DataStore {
         let (_, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
         let cell = cells.get(0)?.as_ref()?;
 
-        let mut iter = cell
-            .try_to_native::<C>()
+        cell.try_to_native_mono::<C>()
             .map_err(|err| {
                 re_log::error_once!(
                     "Couldn't deserialize component at {entity_path}.{}: {err}",
                     C::name()
                 );
             })
-            .ok()?;
-
-        let component = iter.next();
-
-        if iter.next().is_some() {
-            re_log::warn_once!("Unexpected batch for {} at: {}", C::name(), entity_path);
-        }
-
-        component
+            .ok()?
     }
 
     /// Call `query_latest_component` at the given path, walking up the hierarchy until an instance is found.

@@ -32,6 +32,8 @@ impl<'a> From<&'a Vec3D> for ::std::borrow::Cow<'a, Vec3D> {
 
 impl crate::Loggable for Vec3D {
     type Name = crate::DatatypeName;
+    type Item<'a> = Option<Self>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Vec3D".into()
@@ -206,6 +208,21 @@ impl crate::Loggable for Vec3D {
             location: "rerun.datatypes.Vec3D#xyz".into(),
             source: Box::new(err),
         })?)
+    }
+
+    #[inline]
+    fn try_iter_from_arrow(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
+    where
+        Self: Sized,
+    {
+        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 
