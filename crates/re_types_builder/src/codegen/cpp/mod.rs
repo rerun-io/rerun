@@ -693,9 +693,6 @@ fn quote_fill_arrow_array_builder(
     builder: &Ident,
     cpp_includes: &mut Includes,
 ) -> anyhow::Result<TokenStream> {
-    let loop_todo =
-        quote_comment("TODO(andreas): Optimize loops to use batch appends when possible.");
-
     let tokens = match datatype {
         DataType::Boolean
         | DataType::Int8
@@ -718,23 +715,13 @@ fn quote_fill_arrow_array_builder(
                 "Expected exactly one field for primitive type {:?}",
                 datatype
             );
-            let append_single = quote_append_field_to_builder(&fields[0], builder);
-
-            quote! {
-                #NEWLINE_TOKEN
-                #loop_todo
-                ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto& element = elements[elem_idx];
-                    #append_single
-                }
-            }
+            let field = &fields[0];
+            quote_append_elements_to_builder(field, builder, true)
         }
         DataType::FixedSizeList(_field, ..) | DataType::List(_field) => {
             quote! {
                 auto value_builder = #builder->value_builder();
                 #NEWLINE_TOKEN
-                #loop_todo
                 ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto& element = elements[elem_idx];
@@ -768,15 +755,11 @@ fn quote_fill_arrow_array_builder(
                             let element_builder = format_ident!("element_builder");
                             let element_builder_type = arrow_array_builder_type(arrow_field.data_type());
                             let element_builder_type = format_ident!("{element_builder_type}");
-                            let field_append = quote_append_field_to_builder(field, &element_builder);
+                            let field_append = quote_append_elements_to_builder(field, &element_builder, false);
                             quote! {
                                 {
                                     auto #element_builder = static_cast<arrow::#element_builder_type*>(builder->field_builder(#builder_index));
-                                    for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                                        const auto& element = elements[elem_idx];
-                                        #field_append
-                                    }
-                                    #NEWLINE_TOKEN
+                                    #field_append
                                 }
                             }
                         }
@@ -787,7 +770,6 @@ fn quote_fill_arrow_array_builder(
             quote! {
                 #(#fill_fields)*
                 #NEWLINE_TOKEN
-                #loop_todo
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(builder->Append());
                 }
@@ -796,7 +778,6 @@ fn quote_fill_arrow_array_builder(
         DataType::Union(_, _, _) => {
             quote! {
                 #NEWLINE_TOKEN
-                #loop_todo
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto& element = elements[elem_idx];
                 }
@@ -805,14 +786,13 @@ fn quote_fill_arrow_array_builder(
                 );
             }
         }
-        DataType::Extension(fqname, datatype, _) => {
+        DataType::Extension(fqname, _datatype, _) => {
             assert_eq!(fields.len(), 1);
             if fields[0].is_nullable {
                 // Idea: pass in a tagged union for both optional and non-optional arrays to all fill_arrow_array_builder methods?
                 quote!(return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));)
             } else {
                 let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
-                // TODO: add a static assertion on size.
                 quote! {
                     static_assert(sizeof(#quoted_fqname) == sizeof(#pascal_case_ident));
                     ARROW_RETURN_NOT_OK(#quoted_fqname::fill_arrow_array_builder(
@@ -830,20 +810,42 @@ fn quote_fill_arrow_array_builder(
     Ok(tokens)
 }
 
-fn quote_append_field_to_builder(field: &ObjectField, builder: &Ident) -> TokenStream {
-    // TODO: Deal with lists, structs, unions, etc.?
+fn quote_append_elements_to_builder(
+    field: &ObjectField,
+    builder: &Ident,
+    is_transparent: bool,
+) -> TokenStream {
     let field_name = format_ident!("{}", field.name);
     if field.is_nullable {
         quote! {
-            if (element.#field_name.has_value()) {
-                ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name.value()));
-            } else {
-                ARROW_RETURN_NOT_OK(#builder->AppendNull());
+            ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto& element = elements[elem_idx];
+                if (element.#field_name.has_value()) {
+                    ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name.value()));
+                } else {
+                    ARROW_RETURN_NOT_OK(#builder->AppendNull());
+                }
             }
+        }
+    } else if is_transparent
+        && !matches!(
+            &field.typ,
+            Type::String | Type::Vector { .. } | Type::Object(..) | Type::Array { .. }
+        )
+    {
+        // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
+        // we can just pass the whole array as-is!
+        quote! {
+            static_assert(sizeof(*elements) == sizeof(elements->#field_name));
+            ARROW_RETURN_NOT_OK(#builder->AppendValues(&elements->#field_name, num_elements));
         }
     } else {
         quote! {
-            ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name));
+            ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(#builder->Append(elements[elem_idx].#field_name));
+            }
         }
     }
 }
@@ -1279,7 +1281,7 @@ fn quote_arrow_data_type(
                 // In the future we'll add the extension type here to the schema.
                 quote_arrow_data_type(datatype, includes, false)
             } else {
-                // TODO: remove unnecessary namespacing.
+                // TODO(andreas): remove unnecessary namespacing.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
                 quote! { #quoted_fqname::to_arrow_datatype() }
             }
