@@ -177,8 +177,7 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn as_df1<'a, C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a>(
         &self,
     ) -> crate::Result<DataFrame> {
-        let array0 =
-            re_types::components::InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
+        let array0 = InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
         let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
 
         let series0 = Series::try_from((
@@ -197,8 +196,7 @@ impl<A: Archetype> ArchetypeView<A> {
     >(
         &self,
     ) -> crate::Result<DataFrame> {
-        let array0 =
-            re_types::components::InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
+        let array0 = InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
         let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
         let array2 = C2::try_to_arrow_opt(self.iter_optional_component::<C2>()?, None)?;
 

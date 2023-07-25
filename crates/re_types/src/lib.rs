@@ -74,8 +74,10 @@
 // ---
 
 /// Anything that can be serialized to and deserialized from Arrow data.
-pub trait Loggable {
+pub trait Loggable: Sized {
     type Name;
+    type Item<'a>;
+    type Iter<'a>: Iterator<Item = Self::Item<'a>>;
 
     /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.
     fn name() -> Self::Name;
@@ -160,12 +162,10 @@ pub trait Loggable {
     /// Panics if the data schema doesn't match, or if optional entries were missing at runtime.
     /// For the non-fallible version, see [`Loggable::try_from_arrow`].
     #[inline]
-    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self>
-    where
-        Self: Sized,
-    {
-        Self::from_arrow_opt(data)
-            .into_iter()
+    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
+        Self::try_iter_from_arrow(data)
+            .detailed_unwrap()
+            .map(Self::convert_item_to_self)
             .map(|v| {
                 v.ok_or_else(|| DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -175,18 +175,15 @@ pub trait Loggable {
             .collect()
     }
 
-    /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
+    /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
     ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::to_arrow_datatype`].
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
-    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        Self::try_from_arrow_opt(data)?
-            .into_iter()
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
+        Self::try_iter_from_arrow(data)?
+            .map(Self::convert_item_to_self)
             .map(|v| {
                 v.ok_or_else(|| DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -197,27 +194,49 @@ pub trait Loggable {
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
     ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::to_arrow_datatype`].
     /// For the fallible version, see [`Loggable::try_from_arrow_opt`].
     #[inline]
-    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>>
-    where
-        Self: Sized,
-    {
+    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>> {
         Self::try_from_arrow_opt(data).detailed_unwrap()
     }
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
     ///
-    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::to_arrow_datatype`].
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
+    #[inline]
     fn try_from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>>
-    where
-        Self: Sized;
+    ) -> DeserializationResult<Vec<Option<Self>>> {
+        Ok(Self::try_iter_from_arrow(data)?
+            .map(Self::convert_item_to_self)
+            .collect())
+    }
+
+    /// Given an Arrow array, deserializes it into a iterator of [`Loggable::Item`]s.
+    ///
+    /// Note: mostly for reasons related to typing of trait implementations, the implementor
+    /// of [`Loggable`] may choose an arbitrary iterable [`Loggable::Item`] that  differs from
+    /// the [`Loggable`] itself.
+    ///
+    /// These items can be be converted to an optional [`Loggable`] using [`Loggable::convert_item_to_self`].
+    ///
+    /// This is the base deserialization mechanism that all [`Loggable`] implementors must provide. All other
+    /// conversions above can be generated from this primitive.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Loggable::to_arrow_datatype`].
+    fn try_iter_from_arrow(
+        data: &dyn ::arrow2::array::Array,
+    ) -> DeserializationResult<Self::Iter<'_>>;
+
+    /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
+    ///
+    /// This is intended to be used with [`Loggable::try_iter_from_arrow`]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self>;
 }
 
 /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
@@ -369,6 +388,9 @@ pub enum DeserializationError {
 
     #[error("arrow2-convert deserialization Failed: {0}")]
     ArrowConvertFailure(String),
+
+    #[error("Datacell deserialization Failed: {0}")]
+    DataCellError(String),
 }
 
 pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;
@@ -419,7 +441,8 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
                 | DeserializationError::OffsetsMismatch { backtrace, .. }
                 | DeserializationError::ArrayLengthMismatch { backtrace, .. }
                 | DeserializationError::MonoMismatch { backtrace, .. } => Some(backtrace.clone()),
-                DeserializationError::ArrowConvertFailure(_) => None,
+                DeserializationError::ArrowConvertFailure(_)
+                | DeserializationError::DataCellError(_) => None,
             }
         }
 

@@ -72,9 +72,6 @@ py-build *ARGS:
 py-format:
     #!/usr/bin/env bash
     set -euo pipefail
-    # Note: proto.py relies on old-style annotation to work, and pyupgrade is too opinionated to be disabled from comments
-    # See https://github.com/rerun-io/rerun/pull/2559 for details
-    pyupgrade --py38-plus `find {{py_folders}} -name "*.py" -type f ! -path "examples/python/objectron/proto/objectron/proto.py"`
     # The order below is important and sadly we need to call black twice. Ruff does not yet
     # fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
     #

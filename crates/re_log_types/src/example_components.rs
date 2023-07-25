@@ -6,7 +6,7 @@ use crate::{ComponentName, LegacyComponent};
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
+#[derive(Clone, Debug, Default, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
 pub struct MyPoint {
     pub x: f32,
     pub y: f32,

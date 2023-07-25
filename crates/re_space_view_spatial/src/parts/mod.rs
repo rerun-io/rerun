@@ -253,7 +253,7 @@ fn process_annotations_and_keypoints_arch<Primary, A: Archetype>(
     annotations: &Arc<Annotations>,
 ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), re_query::QueryError>
 where
-    Primary: re_types::Component + Clone,
+    Primary: re_types::Component + Clone + Default,
     glam::Vec3: std::convert::From<Primary>,
 {
     re_tracing::profile_function!();

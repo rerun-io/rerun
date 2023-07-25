@@ -32,6 +32,8 @@ impl<'a> From<&'a Mat3x3> for ::std::borrow::Cow<'a, Mat3x3> {
 
 impl crate::Loggable for Mat3x3 {
     type Name = crate::DatatypeName;
+    type Item<'a> = Option<Self>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Mat3x3".into()
@@ -206,6 +208,21 @@ impl crate::Loggable for Mat3x3 {
             location: "rerun.datatypes.Mat3x3#coeffs".into(),
             source: Box::new(err),
         })?)
+    }
+
+    #[inline]
+    fn try_iter_from_arrow(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
+    where
+        Self: Sized,
+    {
+        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+        item
     }
 }
 

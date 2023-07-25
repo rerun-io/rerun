@@ -37,7 +37,6 @@ mod quaternion;
 mod radius;
 mod rect;
 mod scalar;
-mod size;
 mod tensor;
 mod tensor_data;
 mod text_box;
@@ -74,7 +73,6 @@ pub use self::{
     radius::Radius,
     rect::Rect2D,
     scalar::{Scalar, ScalarPlotProps},
-    size::Size3D,
     tensor::{
         DecodedTensor, Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension,
         TensorId,
@@ -113,7 +111,7 @@ pub mod external {
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 29] = [
+    static ref FIELDS: [Field; 28] = [
         <AnnotationContext as LegacyComponent>::field(),
         <Arrow3D as LegacyComponent>::field(),
         <Box3D as LegacyComponent>::field(),
@@ -135,7 +133,6 @@ lazy_static! {
         <Rect2D as LegacyComponent>::field(),
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
-        <Size3D as LegacyComponent>::field(),
         <Tensor as LegacyComponent>::field(),
         <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),

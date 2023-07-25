@@ -76,9 +76,8 @@ pub mod components {
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
         DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
         LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion,
-        Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData,
-        TensorDataMeaning, TensorDimension, TensorId, TextEntry, Transform3D, Vec2D, Vec3D, Vec4D,
-        ViewCoordinates,
+        Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDataMeaning,
+        TensorDimension, TensorId, TextEntry, Transform3D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
     };
 }
 
