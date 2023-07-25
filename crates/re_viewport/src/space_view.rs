@@ -109,8 +109,6 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
     ) {
-        self.data_blueprint.on_frame_start();
-
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
             let queries_entities =
@@ -195,6 +193,9 @@ impl SpaceViewBlueprint {
             &self.data_blueprint.entity_paths().clone(), // Clone to work around borrow checker.
             self.data_blueprint.data_blueprints_individual(),
         );
+
+        // Propagate any changes that may have been made to blueprints right away.
+        self.data_blueprint.propagate_individual_to_tree();
 
         let query = re_viewer_context::ViewQuery {
             space_view_id: self.id,
