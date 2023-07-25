@@ -103,6 +103,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
         if let Some(space_view_id) = blueprint.maximized {
             if !blueprint.space_views.contains_key(&space_view_id) {
                 blueprint.maximized = None; // protect against bad deserialized data
+            } else if let Some(tile_id) = blueprint.tree.tiles.find_pane(&space_view_id) {
+                if !blueprint.tree.tiles.is_visible(tile_id) {
+                    blueprint.maximized = None; // Automatically de-maximize views that aren't visible anymore.
+                }
             }
         }
 
