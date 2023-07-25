@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use re_data_store::InstancePath;
 use re_data_ui::item_ui;
 use re_space_view::DataBlueprintGroup;
 use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
@@ -104,6 +105,7 @@ impl ViewportBlueprint<'_> {
                 ui,
                 true,
                 visible,
+                false,
                 |ui| ui.label(format!("{:?}", container.kind())),
                 |re_ui, ui| {
                     visibility_changed =
@@ -144,6 +146,8 @@ impl ViewportBlueprint<'_> {
         let mut visibility_changed = false;
         let mut action = TreeAction::Keep;
         let mut visible = self.tree.is_visible(tile_id);
+        let item = Item::SpaceView(space_view.id);
+        let is_selected = ctx.selection().contains(&item);
 
         let root_group = space_view.data_blueprint.root_group();
         let default_open = Self::default_open_for_group(root_group);
@@ -159,6 +163,7 @@ impl ViewportBlueprint<'_> {
                 ui,
                 true,
                 visible,
+                is_selected,
                 |ui| {
                     let response = crate::item_ui::space_view_button(ctx, ui, space_view);
                     if response.clicked() {
@@ -224,6 +229,11 @@ impl ViewportBlueprint<'_> {
                 continue;
             }
 
+            let is_selected = ctx.selection().contains(&Item::InstancePath(
+                Some(space_view.id),
+                InstancePath::entity_splat(entity_path.clone()),
+            ));
+
             ui.horizontal(|ui| {
                 let mut properties = space_view
                     .data_blueprint
@@ -234,6 +244,7 @@ impl ViewportBlueprint<'_> {
                     ui,
                     group_is_visible,
                     properties.visible,
+                    is_selected,
                     |ui| {
                         let name = entity_path.iter().last().unwrap().to_string();
                         let label = format!("🔹 {name}");
@@ -278,6 +289,11 @@ impl ViewportBlueprint<'_> {
                     continue;
                 };
 
+            let is_selected = ctx.selection().contains(&Item::DataBlueprintGroup(
+                space_view.id,
+                *child_group_handle,
+            ));
+
             let mut remove_group = false;
             let default_open = Self::default_open_for_group(child_group);
             egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -291,6 +307,7 @@ impl ViewportBlueprint<'_> {
                     ui,
                     group_is_visible,
                     child_group.properties_individual.visible,
+                    is_selected,
                     |ui| {
                         item_ui::data_blueprint_group_button_to(
                             ctx,
@@ -388,15 +405,22 @@ fn focus_tab(tree: &mut egui_tiles::Tree<SpaceViewId>, tab: &SpaceViewId) {
 /// and show a visibility button if the row is hovered.
 ///
 /// Returns true if visibility changed.
+#[allow(clippy::fn_params_excessive_bools)]
 fn blueprint_row_with_buttons(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     enabled: bool,
     visible: bool,
+    selected: bool,
     add_content: impl FnOnce(&mut egui::Ui) -> egui::Response,
     add_on_hover_buttons: impl FnOnce(&re_ui::ReUi, &mut egui::Ui),
 ) {
     let where_to_add_hover_rect = ui.painter().add(egui::Shape::Noop);
+
+    ui.visuals_mut().widgets.hovered.expansion = 2.0;
+    ui.visuals_mut().widgets.active.expansion = 2.0;
+    ui.visuals_mut().widgets.open.expansion = 2.0;
+    ui.visuals_mut().widgets.inactive.expansion = 2.0;
 
     // Make the main button span the whole width to make it easier to click:
     let main_button_response = ui
@@ -459,13 +483,19 @@ fn blueprint_row_with_buttons(
 
     // The main button might have been highlighted because what it was referring
     // to was hovered somewhere else, and then we also want it highlighted here.
-    if button_hovered || main_button_response.highlighted() {
+    if button_hovered || main_button_response.highlighted() || selected {
         // Highlight the row:
         let visuals = ui.visuals().widgets.hovered;
+
+        let bg_fill = if selected {
+            ui.style().visuals.selection.bg_fill
+        } else {
+            visuals.bg_fill
+        };
         let hover_rect = main_button_rect.expand(visuals.expansion);
         ui.painter().set(
             where_to_add_hover_rect,
-            egui::Shape::rect_filled(hover_rect, visuals.rounding, visuals.bg_fill),
+            egui::Shape::rect_filled(hover_rect, visuals.rounding, bg_fill),
         );
     }
 }
