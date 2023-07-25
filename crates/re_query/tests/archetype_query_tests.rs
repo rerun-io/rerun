@@ -68,7 +68,7 @@ fn simple_query() {
     #[cfg(not(feature = "polars"))]
     {
         //TODO(jleibs): non-polars test validation
-        let _used = entity_view;
+        let _used = arch_view;
     }
 }
 
@@ -125,7 +125,7 @@ fn timeless_query() {
     #[cfg(not(feature = "polars"))]
     {
         //TODO(jleibs): non-polars test validation
-        let _used = entity_view;
+        let _used = arch_view;
     }
 }
 
@@ -183,7 +183,7 @@ fn no_instance_join_query() {
     #[cfg(not(feature = "polars"))]
     {
         //TODO(jleibs): non-polars test validation
-        let _used = entity_view;
+        let _used = arch_view;
     }
 }
 
@@ -232,7 +232,7 @@ fn missing_column_join_query() {
     #[cfg(not(feature = "polars"))]
     {
         //TODO(jleibs): non-polars test validation
-        let _used = entity_view;
+        let _used = arch_view;
     }
 }
 
@@ -297,6 +297,6 @@ fn splatted_query() {
     #[cfg(not(feature = "polars"))]
     {
         //TODO(jleibs): non-polars test validation
-        let _used = entity_view;
+        let _used = arch_view;
     }
 }
