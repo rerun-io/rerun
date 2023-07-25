@@ -1,3 +1,4 @@
+use std::fmt;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
@@ -69,6 +70,12 @@ impl LogSink for BufferedSink {
     fn flush_blocking(&self) {}
 }
 
+impl fmt::Debug for BufferedSink {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BufferedSink {{ {} messages }}", self.0.lock().len())
+    }
+}
+
 /// Store log messages directly in memory.
 ///
 /// Although very similar to `BufferedSink` this sink is a real-endpoint. When creating
@@ -100,6 +107,16 @@ impl LogSink for MemorySink {
 
     #[inline]
     fn flush_blocking(&self) {}
+}
+
+impl fmt::Debug for MemorySink {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "MemorySink {{ {} messages }}",
+            self.buffer().read().len()
+        )
+    }
 }
 
 /// The storage used by [`MemorySink`].
@@ -167,6 +184,7 @@ impl MemorySinkStorage {
 // ----------------------------------------------------------------------------
 
 /// Stream log messages to a Rerun TCP server.
+#[derive(Debug)]
 pub struct TcpSink {
     client: re_sdk_comms::Client,
 }
