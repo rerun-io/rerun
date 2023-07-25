@@ -471,10 +471,14 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
 pub const DISPLAY_PRECISION: usize = 3;
 
 pub mod archetypes;
-mod component_name;
 pub mod components;
 pub mod datatypes;
+
+mod component_name;
 mod size_bytes;
 
 pub use component_name::ComponentName;
 pub use size_bytes::SizeBytes;
+
+#[cfg(feature = "testing")]
+pub mod testing;

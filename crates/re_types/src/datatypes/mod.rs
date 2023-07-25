@@ -2,7 +2,6 @@
 
 mod angle;
 mod angle_ext;
-mod fuzzy;
 mod mat3x3;
 mod mat3x3_ext;
 mod mat4x4;
@@ -31,9 +30,6 @@ mod vec3d_ext;
 mod vec4d;
 
 pub use self::angle::Angle;
-pub use self::fuzzy::{
-    AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4, AffixFuzzer5, FlattenedScalar,
-};
 pub use self::mat3x3::Mat3x3;
 pub use self::mat4x4::Mat4x4;
 pub use self::point2d::Point2D;

@@ -44,24 +44,30 @@ impl CodeGenerator for RustCodeGenerator {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         let datatypes_path = self.crate_path.join("src/datatypes");
+        let datatypes_testing_path = self.crate_path.join("src/testing/datatypes");
         files_to_write.extend(create_files(
             datatypes_path,
+            datatypes_testing_path,
             arrow_registry,
             objects,
             &objects.ordered_objects(ObjectKind::Datatype.into()),
         ));
 
         let components_path = self.crate_path.join("src/components");
+        let components_testing_path = self.crate_path.join("src/testing/components");
         files_to_write.extend(create_files(
             components_path,
+            components_testing_path,
             arrow_registry,
             objects,
             &objects.ordered_objects(ObjectKind::Component.into()),
         ));
 
         let archetypes_path = self.crate_path.join("src/archetypes");
+        let archetypes_testing_path = self.crate_path.join("src/testing/archetypes");
         files_to_write.extend(create_files(
             archetypes_path,
+            archetypes_testing_path,
             arrow_registry,
             objects,
             &objects.ordered_objects(ObjectKind::Archetype.into()),
@@ -84,37 +90,63 @@ impl CodeGenerator for RustCodeGenerator {
 
 fn create_files(
     out_path: impl AsRef<Utf8Path>,
+    out_testing_path: impl AsRef<Utf8Path>,
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     objs: &[&Object],
 ) -> BTreeMap<Utf8PathBuf, String> {
     let out_path = out_path.as_ref();
+    let out_testing_path = out_testing_path.as_ref();
 
     let mut files_to_write = BTreeMap::new();
 
     let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
-        let obj = if obj.is_struct() {
+        let quoted_obj = if obj.is_struct() {
             QuotedObject::from_struct(arrow_registry, objects, obj)
         } else {
             QuotedObject::from_union(arrow_registry, objects, obj)
         };
 
-        let filepath = out_path.join(obj.filepath.file_name().unwrap());
-        files.entry(filepath.clone()).or_default().push(obj);
+        let filepath = if quoted_obj.is_testing {
+            out_testing_path.join(quoted_obj.filepath.file_name().unwrap())
+        } else {
+            out_path.join(quoted_obj.filepath.file_name().unwrap())
+        };
+        files.entry(filepath.clone()).or_default().push(quoted_obj);
     }
 
     // (module_name, [object_name])
     let mut mods = HashMap::<String, Vec<String>>::new();
+    let mut mods_testing = HashMap::<String, Vec<String>>::new();
 
-    // src/{datatypes|components|archetypes}/{xxx}.rs
+    // src/testing?/{datatypes|components|archetypes}/{xxx}.rs
     for (filepath, objs) in files {
         // NOTE: Isolating the file stem only works because we're handling datatypes, components
         // and archetypes separately (and even then it's a bit shady, eh).
-        let names = objs.iter().map(|obj| obj.name.clone()).collect::<Vec<_>>();
-        mods.entry(filepath.file_stem().unwrap().to_owned())
-            .or_default()
-            .extend(names);
+
+        let names = objs
+            .iter()
+            .filter(|obj| !obj.is_testing)
+            .map(|obj| obj.name.clone())
+            .collect::<Vec<_>>();
+        if !names.is_empty() {
+            mods.entry(filepath.file_stem().unwrap().to_owned())
+                .or_default()
+                .extend(names);
+        }
+
+        let names_testing = objs
+            .iter()
+            .filter(|obj| obj.is_testing)
+            .map(|obj| obj.name.clone())
+            .collect::<Vec<_>>();
+        if !names_testing.is_empty() {
+            mods_testing
+                .entry(filepath.file_stem().unwrap().to_owned())
+                .or_default()
+                .extend(names_testing);
+        }
 
         let mut code = String::new();
         #[rustfmt::skip]
@@ -179,8 +211,7 @@ fn create_files(
         files_to_write.insert(filepath, code);
     }
 
-    // src/{datatypes|components|archetypes}/mod.rs
-    {
+    let mut generate_mod_files = |out_path: &Utf8Path, mods: &HashMap<String, Vec<String>>| {
         let path = out_path.join("mod.rs");
 
         let mut code = String::new();
@@ -201,13 +232,19 @@ fn create_files(
 
         code += "\n\n";
 
-        for (module, names) in &mods {
+        for (module, names) in mods {
             let names = names.join(", ");
             code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
         }
 
         files_to_write.insert(path, code);
-    }
+    };
+
+    // src/{datatypes|components|archetypes}/mod.rs
+    generate_mod_files(out_path, &mods);
+
+    // src/testing/{datatypes|components|archetypes}/mod.rs
+    generate_mod_files(out_testing_path, &mods_testing);
 
     files_to_write
 }
@@ -316,6 +353,7 @@ fn unescape_string_into(input: &str, output: &mut String) {
 struct QuotedObject {
     filepath: Utf8PathBuf,
     name: String,
+    is_testing: bool,
     tokens: TokenStream,
 }
 
@@ -383,6 +421,7 @@ impl QuotedObject {
                 filepath
             },
             name: obj.name.clone(),
+            is_testing: obj.fqname.contains("rerun.testing"),
             tokens,
         }
     }
@@ -465,6 +504,7 @@ impl QuotedObject {
                 filepath
             },
             name: obj.name.clone(),
+            is_testing: obj.fqname.contains("rerun.testing"),
             tokens,
         }
     }
@@ -798,9 +838,7 @@ fn quote_trait_impls_from_obj(
                     let is_nullable = obj_field.is_nullable;
 
                     // NOTE: unwrapping is safe since the field must point to a component.
-                    let component = obj_field.typ.fqname().unwrap();
-                    let component = format_ident!("{}", component.rsplit_once('.').unwrap().1);
-                    let component = quote!(crate::components::#component);
+                    let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
 
                     let fqname = obj_field.typ.fqname().unwrap();
                     let legacy_fqname = objects[fqname]
@@ -884,9 +922,7 @@ fn quote_trait_impls_from_obj(
                     let is_nullable = obj_field.is_nullable;
 
                     // NOTE: unwrapping is safe since the field must point to a component.
-                    let component = obj_field.typ.fqname().unwrap();
-                    let component = format_ident!("{}", component.rsplit_once('.').unwrap().1);
-                    let component = quote!(crate::components::#component);
+                    let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
 
                     let quoted_collection = if is_plural {
                         quote! {
@@ -1295,11 +1331,7 @@ impl quote::ToTokens for StrStrMapTokenizer<'_> {
 }
 
 fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
-    let fqname = fqname
-        .as_ref()
-        .replace(".testing", "")
-        .replace('.', "::")
-        .replace("rerun", "crate");
+    let fqname = fqname.as_ref().replace('.', "::").replace("rerun", "crate");
     let expr: syn::TypePath = syn::parse_str(&fqname).unwrap();
     quote!(#expr)
 }
