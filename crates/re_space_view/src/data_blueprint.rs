@@ -218,7 +218,7 @@ impl DataBlueprintTree {
     /// Should be called on frame start.
     ///
     /// Propagates any data blueprint changes along the tree.
-    pub fn on_frame_start(&mut self) {
+    pub fn propagate_individual_to_tree(&mut self) {
         re_tracing::profile_function!();
 
         // NOTE: We could do this projection only when the entity properties changes
