@@ -4,8 +4,81 @@ from __future__ import annotations
 import functools
 from typing import Any, Callable, TypeVar, cast
 
-# NOTE: The imports determine what is public API. Avoid importing globally anything that is not public API. Use
-# (private) function and local import if needed.
+# =====================================
+# API RE-EXPORTS
+
+__all__ = [
+    "AnnotationInfo",
+    "ClassDescription",
+    "ImageFormat",
+    "LogLevel",
+    "LoggingHandler",
+    "MeshFormat",
+    "Quaternion",
+    "RecordingStream",
+    "RectFormat",
+    "Rigid3D",
+    "RotationAxisAngle",
+    "Scale3D",
+    "Transform3D",
+    "Transform3DArray",
+    "Transform3DType",
+    "Translation3D",
+    "TranslationAndMat3",
+    "TranslationRotationScale3D",
+    "bindings",
+    "connect",
+    "disconnect",
+    "experimental",
+    "get_application_id",
+    "get_data_recording",
+    "get_global_data_recording",
+    "get_recording_id",
+    "get_thread_local_data_recording",
+    "is_enabled",
+    "log_annotation_context",
+    "log_arrow",
+    "log_cleared",
+    "log_depth_image",
+    "log_disconnected_space",
+    "log_extension_components",
+    "log_image",
+    "log_image_file",
+    "log_line_segments",
+    "log_line_strip",
+    "log_mesh",
+    "log_mesh_file",
+    "log_meshes",
+    "log_obb",
+    "log_path",
+    "log_pinhole",
+    "log_point",
+    "log_points",
+    "log_rect",
+    "log_rects",
+    "log_rigid3",
+    "log_scalar",
+    "log_segmentation_image",
+    "log_tensor",
+    "log_text_entry",
+    "log_transform3d",
+    "log_unknown_transform",
+    "log_view_coordinates",
+    "memory_recording",
+    "reset_time",
+    "save",
+    "script_add_args",
+    "script_setup",
+    "script_teardown",
+    "serve",
+    "set_global_data_recording",
+    "set_thread_local_data_recording",
+    "set_time_nanos",
+    "set_time_seconds",
+    "set_time_sequence",
+    "spawn",
+]
+
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from .components.transform3d import (
@@ -61,6 +134,23 @@ from .time import reset_time, set_time_nanos, set_time_seconds, set_time_sequenc
 from . import experimental  # isort: skip
 
 
+# =====================================
+# UTILITIES
+
+__all__ += [
+    "init",
+    "new_recording",
+    "version",
+    "rerun_shutdown",
+    "unregister_shutdown",
+    "cleanup_if_forked_child",
+    "shutdown_at_exit",
+    "strict_mode",
+    "set_strict_mode",
+    "start_web_viewer_server",
+]
+
+
 def _init_recording_stream() -> None:
     # Inject all relevant methods into the `RecordingStream` class.
     # We need to do this from here to avoid circular import issues.
@@ -83,9 +173,6 @@ _init_recording_stream()
 # If `True`, we raise exceptions on use error (wrong parameter types, etc.).
 # If `False` we catch all errors and log a warning instead.
 _strict_mode = False
-
-
-# --- Init ---
 
 
 def init(
