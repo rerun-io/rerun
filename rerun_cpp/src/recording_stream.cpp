@@ -40,8 +40,10 @@ namespace rr {
         return s_global;
     }
 
-    void RecordingStream::log_data_row(const char* entity_path, uint32_t num_instances,
-                                       size_t num_data_cells, const DataCell* data_cells) {
+    void RecordingStream::log_data_row(
+        const char* entity_path, uint32_t num_instances, size_t num_data_cells,
+        const DataCell* data_cells
+    ) {
         // Map to C API:
         std::vector<rr_data_cell> c_data_cells;
         c_data_cells.reserve(num_data_cells);
