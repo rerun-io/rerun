@@ -715,69 +715,96 @@ fn quote_fill_arrow_array_builder(
                 "Expected exactly one field for primitive type {:?}",
                 datatype
             );
-            let field = &fields[0];
-            quote_append_elements_to_builder(field, builder, true)
+            let object_field = &fields[0];
+            quote_append_elements_to_builder(object_field, datatype, builder, true)
         }
-        DataType::FixedSizeList(field, length) => {
+        DataType::List(field) | DataType::FixedSizeList(field, _) => {
             anyhow::ensure!(
                 fields.len() == 1,
                 "Expected exactly one field for list type {:?}",
                 datatype
             );
-            match field.data_type() {
-                DataType::Boolean
-                | DataType::Int8
-                | DataType::Int16
-                | DataType::Int32
-                | DataType::Int64
-                | DataType::UInt8
-                | DataType::UInt16
-                | DataType::UInt32
-                | DataType::UInt64
-                | DataType::Float16
-                | DataType::Float32
-                | DataType::Float64 => {}
-                _ => anyhow::bail!("Unimplemented field type for fixed size list: {:?}", field),
-            };
+            let object_field = &fields[0];
+
+            if matches!(field.data_type(), DataType::Extension { .. }) {
+                return Ok(quote!(return arrow::Status::NotImplemented(
+                    "TODO(andreas): custom data types in lists/fixedsizelist are not yet implemented"
+                );));
+            }
 
             let value_builder_type = arrow_array_builder_type(field.data_type());
             let value_builder_type = format_ident!("{value_builder_type}");
-            let field_name = format_ident!("{}", &fields[0].name);
-            let length = quote_integer(length);
+            let field_name = format_ident!("{}", &object_field.name);
+            let (num_items_per_element, reserve_factor) = match datatype {
+                DataType::List(..) => {
+                    if field.is_nullable {
+                        (quote!(element.#field_name.value().size()), quote_integer(1))
+                    } else {
+                        (quote!(element.#field_name.size()), quote_integer(2))
+                    }
+                }
+                DataType::FixedSizeList(_, length) => {
+                    let length = quote_integer(length);
+                    (length.clone(), length)
+                }
+                _ => unreachable!(),
+            };
+
+            let setup = quote! {
+                auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
+                ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * #reserve_factor));
+                #NEWLINE_TOKEN #NEWLINE_TOKEN
+            };
 
             if field.is_nullable {
+                let item_append = if trivial_batch_append(field.data_type()) {
+                    // `&expression[0]` is not pretty but works on both arrays and vectors!
+                    quote! {
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(&element.#field_name.value()[0], #num_items_per_element, nullptr));
+                    }
+                } else {
+                    quote! {
+                        for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
+                            value_builder->Append(element.#field_name.value()[item_idx]);
+                        }
+                    }
+                };
                 quote! {
-                    auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
-                    ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements * #length));
-                    ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * #length));
-                    #NEWLINE_TOKEN #NEWLINE_TOKEN
+                    #setup
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
                         if (element.#field_name.has_value()) {
-                            value_builder->AppendValues(element.#field_name.value(), #length, nullptr);
+                            #item_append
                             ARROW_RETURN_NOT_OK(#builder->Append());
                         } else {
                             ARROW_RETURN_NOT_OK(#builder->AppendNull());
                         }
                     }
                 }
-            } else {
-                // TODO(andreas): Optimize for fully transparent types to do a single AppendValues call on value_builder.
+            } else if matches!(datatype, DataType::FixedSizeList(..))
+                && trivial_batch_append(field.data_type())
+            {
+                // Optimize common case: Trivial batch of transparent fixed size elements.
                 quote! {
                     auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                     #NEWLINE_TOKEN #NEWLINE_TOKEN
                     static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
-                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(elements[0].#field_name, num_elements * #length, nullptr));
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(elements[0].#field_name, num_elements * #num_items_per_element, nullptr));
                     ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
                 }
+            } else {
+                quote! {
+                    #setup
+                    for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                        const auto& element = elements[elem_idx];
+                        for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
+                            value_builder->Append(element.#field_name[item_idx]);
+                        }
+                        ARROW_RETURN_NOT_OK(#builder->Append());
+                    }
+                }
             }
-        }
-        DataType::List(_field) => {
-            quote!(
-                return arrow::Status::NotImplemented(
-                    "TODO(andreas): dynamically sized lists are not yet supported"
-                );
-            )
         }
         DataType::Struct(field_datatypes) => {
             let fill_fields = fields.iter().zip(field_datatypes).enumerate().map(
@@ -802,7 +829,7 @@ fn quote_fill_arrow_array_builder(
                             let element_builder = format_ident!("element_builder");
                             let element_builder_type = arrow_array_builder_type(arrow_field.data_type());
                             let element_builder_type = format_ident!("{element_builder_type}");
-                            let field_append = quote_append_elements_to_builder(field, &element_builder, false);
+                            let field_append = quote_append_elements_to_builder(field, datatype, &element_builder, false);
                             quote! {
                                 {
                                     auto #element_builder = static_cast<arrow::#element_builder_type*>(builder->field_builder(#builder_index));
@@ -855,8 +882,28 @@ fn quote_fill_arrow_array_builder(
     Ok(tokens)
 }
 
+fn trivial_batch_append(datatype: &DataType) -> bool {
+    match datatype {
+        DataType::Null
+        | DataType::Boolean
+        | DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64
+        | DataType::Float16
+        | DataType::Float32
+        | DataType::Float64 => true,
+        _ => false,
+    }
+}
+
 fn quote_append_elements_to_builder(
     field: &ObjectField,
+    datatype: &DataType,
     builder: &Ident,
     is_transparent: bool,
 ) -> TokenStream {
@@ -873,12 +920,7 @@ fn quote_append_elements_to_builder(
                 }
             }
         }
-    } else if is_transparent
-        && !matches!(
-            &field.typ,
-            Type::String | Type::Vector { .. } | Type::Object(..) | Type::Array { .. }
-        )
-    {
+    } else if is_transparent && trivial_batch_append(datatype) {
         // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
         // we can just pass the whole array as-is!
         quote! {
