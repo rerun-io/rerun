@@ -1,6 +1,7 @@
 use std::{
     io::Write,
     net::{SocketAddr, TcpStream},
+    time::{Duration, Instant},
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -29,12 +30,15 @@ pub enum ClientError {
 enum TcpStreamState {
     /// The [`TcpStream`] is yet to be connected.
     ///
+    /// Tracks the duration and connection attempts since the last time the client
+    /// was `Connected.`
+    ///
     /// Behavior: Try to connect on next [`TcpClient::connect`] or [`TcpClient::send`].
     ///
     /// Transitions:
     ///  - Pending -> Connected on successful connection.
-    ///  - Pending -> Disconnected on failed connection.
-    Pending,
+    ///  - Pending -> Pending on failed connection.
+    Pending(Instant, usize),
 
     /// A healthy [`TcpStream`] ready to send packets
     ///
@@ -43,14 +47,12 @@ enum TcpStreamState {
     /// Transitions:
     ///  - Connected -> Disconnected on send error
     Connected(TcpStream),
+}
 
-    /// A broken [`TcpStream`] which experienced a failure to connect or send.
-    ///
-    /// Behavior: Try to re-connect on next [`TcpClient::connect`] or [`TcpClient::send`]
-    ///
-    /// Transitions:
-    ///  - Disconnected -> Connected on successful connection.
-    Disconnected,
+impl TcpStreamState {
+    fn reset() -> Self {
+        Self::Pending(Instant::now(), 0)
+    }
 }
 
 /// Connect to a rerun server and send log messages.
@@ -59,6 +61,7 @@ enum TcpStreamState {
 pub struct TcpClient {
     addr: SocketAddr,
     stream_state: TcpStreamState,
+    timeout: Duration,
 }
 
 impl Default for TcpClient {
@@ -71,7 +74,8 @@ impl TcpClient {
     pub fn new(addr: SocketAddr) -> Self {
         Self {
             addr,
-            stream_state: TcpStreamState::Pending,
+            stream_state: TcpStreamState::reset(),
+            timeout: Duration::from_nanos(1_000_000_000),
         }
     }
 
@@ -79,31 +83,32 @@ impl TcpClient {
     ///
     /// [`Self::send`] will call this.
     pub fn connect(&mut self) -> Result<(), ClientError> {
-        if let TcpStreamState::Connected(_) = self.stream_state {
-            Ok(())
-        } else {
-            re_log::debug!("Connecting to {:?}…", self.addr);
-            let timeout = std::time::Duration::from_secs(5);
-            match TcpStream::connect_timeout(&self.addr, timeout) {
-                Ok(mut stream) => {
-                    re_log::debug!("Connected to {:?}.", self.addr);
-                    if let Err(err) = stream.write(&crate::PROTOCOL_VERSION.to_le_bytes()) {
-                        self.stream_state = TcpStreamState::Disconnected;
-                        Err(ClientError::Send {
+        match self.stream_state {
+            TcpStreamState::Connected(_) => Ok(()),
+            TcpStreamState::Pending(since, tries) => {
+                re_log::debug!("Connecting to {:?}…", self.addr);
+                let timeout = std::time::Duration::from_secs(5);
+                match TcpStream::connect_timeout(&self.addr, timeout) {
+                    Ok(mut stream) => {
+                        re_log::debug!("Connected to {:?}.", self.addr);
+                        if let Err(err) = stream.write(&crate::PROTOCOL_VERSION.to_le_bytes()) {
+                            self.stream_state = TcpStreamState::Pending(since, tries + 1);
+                            Err(ClientError::Send {
+                                addr: self.addr,
+                                err,
+                            })
+                        } else {
+                            self.stream_state = TcpStreamState::Connected(stream);
+                            Ok(())
+                        }
+                    }
+                    Err(err) => {
+                        self.stream_state = TcpStreamState::Pending(since, tries + 1);
+                        Err(ClientError::Connect {
                             addr: self.addr,
                             err,
                         })
-                    } else {
-                        self.stream_state = TcpStreamState::Connected(stream);
-                        Ok(())
                     }
-                }
-                Err(err) => {
-                    self.stream_state = TcpStreamState::Disconnected;
-                    Err(ClientError::Connect {
-                        addr: self.addr,
-                        err,
-                    })
                 }
             }
         }
@@ -118,7 +123,7 @@ impl TcpClient {
         if let TcpStreamState::Connected(stream) = &mut self.stream_state {
             re_log::trace!("Sending a packet of size {}…", packet.len());
             if let Err(err) = stream.write(&(packet.len() as u32).to_le_bytes()) {
-                self.stream_state = TcpStreamState::Disconnected;
+                self.stream_state = TcpStreamState::reset();
                 return Err(ClientError::Send {
                     addr: self.addr,
                     err,
@@ -126,7 +131,7 @@ impl TcpClient {
             }
 
             if let Err(err) = stream.write(packet) {
-                self.stream_state = TcpStreamState::Disconnected;
+                self.stream_state = TcpStreamState::reset();
                 return Err(ClientError::Send {
                     addr: self.addr,
                     err,
@@ -141,23 +146,33 @@ impl TcpClient {
 
     /// Wait until all logged data have been sent.
     pub fn flush(&mut self) {
-        re_log::trace!("Flushing TCP stream…");
-        if let TcpStreamState::Connected(stream) = &mut self.stream_state {
-            if let Err(err) = stream.flush() {
-                re_log::warn!("Failed to flush: {err}");
-                self.stream_state = TcpStreamState::Disconnected;
+        re_log::debug!("Flushing TCP stream…");
+        match &mut self.stream_state {
+            TcpStreamState::Pending(_, _) => {
+                re_log::warn_once!(
+                    "Tried to flush while TCP stream was still Pending. Data was possibly dropped."
+                );
+            }
+            TcpStreamState::Connected(stream) => {
+                if let Err(err) = stream.flush() {
+                    re_log::warn!("Failed to flush: {err}");
+                    self.stream_state = TcpStreamState::reset();
+                }
             }
         }
-        re_log::trace!("TCP stream flushed.");
+        re_log::debug!("TCP stream flushed.");
     }
 
-    /// Check if the underlying [`TcpStream`] has entered the [`TcpStreamState::Disconnected`] state
+    /// Check if the underlying [`TcpStream`] is in the [`TcpStreamState::Pending`] state
+    /// and has reached the timeout threshold.
     ///
     /// Note that this only occurs after a failure to connect or a failure to send.
-    pub fn has_disconnected(&self) -> bool {
+    pub fn has_timed_out(&self) -> bool {
         match self.stream_state {
-            TcpStreamState::Pending | TcpStreamState::Connected(_) => false,
-            TcpStreamState::Disconnected => true,
+            TcpStreamState::Pending(since, tries) => {
+                Instant::now().duration_since(since) > self.timeout && tries > 0
+            }
+            TcpStreamState::Connected(_) => false,
         }
     }
 }

@@ -311,14 +311,14 @@ fn send_until_success(
     quit_rx: &Receiver<InterruptMsg>,
 ) -> Option<InterruptMsg> {
     // Early exit if tcp_client is disconnected
-    if drop_if_disconnected && tcp_client.has_disconnected() {
-        re_log::debug_once!("Dropping messages because we're disconnected.");
+    if drop_if_disconnected && tcp_client.has_timed_out() {
+        re_log::warn_once!("Dropping messages because tcp client has timed out.");
         return None;
     }
 
     if let Err(err) = tcp_client.send(packet) {
-        if drop_if_disconnected {
-            re_log::debug_once!("Dropping messages because we're disconnected.");
+        if drop_if_disconnected && tcp_client.has_timed_out() {
+            re_log::warn_once!("Dropping messages because tcp client has timed out.");
             return None;
         }
         // If this is the first time we fail to send the message, produce a warning.
@@ -329,11 +329,17 @@ fn send_until_success(
         loop {
             select! {
                 recv(quit_rx) -> _quit_msg => {
-                    re_log::debug_once!("Dropping messages because we're disconnected or quitting.");
+                    re_log::warn_once!("Dropping messages because tcp client has timed out or quitting.");
                     return Some(_quit_msg.unwrap_or(InterruptMsg::Quit));
                 }
                 default(std::time::Duration::from_millis(sleep_ms)) => {
                     if let Err(new_err) = tcp_client.send(packet) {
+
+                        if drop_if_disconnected && tcp_client.has_timed_out() {
+                            re_log::warn_once!("Dropping messages because tcp client has timed out.");
+                            return None;
+                        }
+
                         const MAX_SLEEP_MS : u64 = 3000;
 
                         sleep_ms = (sleep_ms * 2).min(MAX_SLEEP_MS);
