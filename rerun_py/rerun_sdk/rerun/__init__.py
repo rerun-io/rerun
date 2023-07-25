@@ -50,6 +50,7 @@ __all__ = [
     "log_mesh_file",
     "log_meshes",
     "log_obb",
+    "log_obbs",
     "log_path",
     "log_pinhole",
     "log_point",
