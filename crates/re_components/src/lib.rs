@@ -105,7 +105,7 @@ pub mod external {
 // ----------------------------------------------------------------------------
 
 use re_types::components::{
-    ClassId, Color, DrawOrder, KeypointId, Label, Point2D, Point3D, Radius,
+    ClassId, Color, DrawOrder, InstanceKey, KeypointId, Label, Point2D, Point3D, Radius,
 };
 
 lazy_static! {
@@ -130,10 +130,10 @@ lazy_static! {
         <Vec2D as LegacyComponent>::field(),
         <Vec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
-        <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
         Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),
         Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),
         Field::new(DrawOrder::name().as_str(), DrawOrder::to_arrow_datatype(), false),
+        Field::new(InstanceKey::name().as_str(), InstanceKey::to_arrow_datatype(), false),
         Field::new(KeypointId::name().as_str(), KeypointId::to_arrow_datatype(), false),
         Field::new(Label::name().as_str(), Label::to_arrow_datatype(), false),
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),

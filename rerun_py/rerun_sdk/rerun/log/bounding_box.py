@@ -134,7 +134,7 @@ def log_obb(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = InstanceArray.splat()
+        splats["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(
             entity_path,
             components=splats,
@@ -261,7 +261,7 @@ def log_obbs(
         _add_extension_components(comps[0], comps[1], ext, None)
 
     if comps[1]:
-        comps[1]["rerun.instance_key"] = InstanceArray.splat()
+        comps[1]["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

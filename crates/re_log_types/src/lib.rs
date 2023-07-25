@@ -25,7 +25,6 @@ mod data_table;
 pub mod example_components;
 pub mod hash;
 mod index;
-mod instance_key;
 pub mod path;
 mod time;
 pub mod time_point;
@@ -51,7 +50,6 @@ pub use self::data_table::{
     METADATA_KIND_CONTROL, METADATA_KIND_DATA,
 };
 pub use self::index::*;
-pub use self::instance_key::LegacyInstanceKey;
 pub use self::path::*;
 pub use self::time::{Duration, Time};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};

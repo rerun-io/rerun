@@ -43,12 +43,7 @@ impl ComponentWithInstances {
     pub fn iter_instance_keys(
         &self,
     ) -> impl Iterator<Item = re_types::components::InstanceKey> + '_ {
-        // TODO(jleibs): It's important that we still iterate over these keys
-        // via the legacy interface to avoid a performance hit from the new
-        // code-generated instance_keys.
-        self.instance_keys
-            .to_native::<re_log_types::LegacyInstanceKey>()
-            .map(|k| k.into())
+        self.instance_keys.to_native::<InstanceKey>()
     }
 
     /// Iterate over the values and convert them to a native [`Component`]

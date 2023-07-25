@@ -28,7 +28,7 @@ use rerun::{
 
 pub use rerun::{
     components::{
-        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
+        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, Color,
         DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
         LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion,
         Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDimension,
