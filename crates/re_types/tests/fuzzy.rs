@@ -2,11 +2,14 @@
 
 use std::{collections::HashMap, f32::consts::PI};
 
-use re_types::{archetypes::AffixFuzzer1, Archetype as _};
+use re_types::{
+    testing::{archetypes::AffixFuzzer1, components, datatypes},
+    Archetype as _,
+};
 
 #[test]
 fn roundtrip() {
-    let fuzzy1 = re_types::components::AffixFuzzer1(re_types::datatypes::AffixFuzzer1 {
+    let fuzzy1 = components::AffixFuzzer1(datatypes::AffixFuzzer1 {
         single_float_optional: Some(1.0),
         single_string_required: "a".into(),
         single_string_optional: Some("a".into()),
@@ -14,11 +17,11 @@ fn roundtrip() {
         many_strings_required: vec!["1".into(), "2".into()],
         many_strings_optional: Some(vec!["10".into(), "20".into()]),
         flattened_scalar: 42.0,
-        almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 42.0 },
+        almost_flattened_scalar: datatypes::FlattenedScalar { value: 42.0 },
         from_parent: Some(true),
     });
 
-    let fuzzy2 = re_types::components::AffixFuzzer2(re_types::datatypes::AffixFuzzer1 {
+    let fuzzy2 = components::AffixFuzzer2(datatypes::AffixFuzzer1 {
         single_float_optional: None,
         single_string_required: "b".into(),
         single_string_optional: None,
@@ -26,11 +29,11 @@ fn roundtrip() {
         many_strings_required: vec!["3".into(), "4".into()],
         many_strings_optional: None,
         flattened_scalar: 43.0,
-        almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 43.0 },
+        almost_flattened_scalar: datatypes::FlattenedScalar { value: 43.0 },
         from_parent: Some(false),
     });
 
-    let fuzzy3 = re_types::components::AffixFuzzer3(re_types::datatypes::AffixFuzzer1 {
+    let fuzzy3 = components::AffixFuzzer3(datatypes::AffixFuzzer1 {
         single_float_optional: Some(3.0),
         single_string_required: "c".into(),
         single_string_optional: Some("c".into()),
@@ -38,11 +41,11 @@ fn roundtrip() {
         many_strings_required: vec!["5".into(), "6".into()],
         many_strings_optional: Some(vec!["50".into(), "60".into()]),
         flattened_scalar: 44.0,
-        almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 44.0 },
+        almost_flattened_scalar: datatypes::FlattenedScalar { value: 44.0 },
         from_parent: None,
     });
 
-    let fuzzy4 = re_types::components::AffixFuzzer4(Some(re_types::datatypes::AffixFuzzer1 {
+    let fuzzy4 = components::AffixFuzzer4(Some(datatypes::AffixFuzzer1 {
         single_float_optional: None,
         single_string_required: "d".into(),
         single_string_optional: None,
@@ -50,12 +53,12 @@ fn roundtrip() {
         many_strings_required: vec!["7".into(), "8".into()],
         many_strings_optional: None,
         flattened_scalar: 45.0,
-        almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 45.0 },
+        almost_flattened_scalar: datatypes::FlattenedScalar { value: 45.0 },
         from_parent: None,
     }));
 
-    let fuzzy5 = re_types::components::AffixFuzzer5(None);
-    // let fuzzy5 = re_types::components::AffixFuzzer5(Some(re_types::datatypes::AffixFuzzer1 {
+    let fuzzy5 = components::AffixFuzzer5(None);
+    // let fuzzy5 = components::AffixFuzzer5(Some(datatypes::AffixFuzzer1 {
     //     single_float_optional: None,
     //     single_string_required: "d".into(),
     //     single_string_optional: None,
@@ -64,9 +67,9 @@ fn roundtrip() {
     //     many_strings_optional: None,
     // }));
 
-    let fuzzy6 = re_types::components::AffixFuzzer6(None);
-    // let fuzzy6 = re_types::components::AffixFuzzer6 {
-    //     single_optional: Some(re_types::datatypes::AffixFuzzer1 {
+    let fuzzy6 = components::AffixFuzzer6(None);
+    // let fuzzy6 = components::AffixFuzzer6 {
+    //     single_optional: Some(datatypes::AffixFuzzer1 {
     //         // single_float_optional: None,
     //         single_string_required: "d".into(),
     //         // single_string_optional: None,
@@ -76,78 +79,72 @@ fn roundtrip() {
     //     }),
     // };
 
-    let fuzzy7_1 = re_types::components::AffixFuzzer7(None);
-    let fuzzy7_2 =
-        re_types::components::AffixFuzzer7(Some(vec![re_types::datatypes::AffixFuzzer1 {
-            single_float_optional: None,
-            single_string_required: "d".into(),
-            single_string_optional: None,
-            many_floats_optional: Some(vec![4.0, 40.0, 400.0]),
-            many_strings_required: vec!["7".into(), "8".into()],
-            many_strings_optional: None,
-            flattened_scalar: 46.0,
-            almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 46.0 },
-            from_parent: Some(false),
-        }]));
+    let fuzzy7_1 = components::AffixFuzzer7(None);
+    let fuzzy7_2 = components::AffixFuzzer7(Some(vec![datatypes::AffixFuzzer1 {
+        single_float_optional: None,
+        single_string_required: "d".into(),
+        single_string_optional: None,
+        many_floats_optional: Some(vec![4.0, 40.0, 400.0]),
+        many_strings_required: vec!["7".into(), "8".into()],
+        many_strings_optional: None,
+        flattened_scalar: 46.0,
+        almost_flattened_scalar: datatypes::FlattenedScalar { value: 46.0 },
+        from_parent: Some(false),
+    }]));
 
-    let fuzzy8_1 = re_types::components::AffixFuzzer8(None);
-    let fuzzy8_2 = re_types::components::AffixFuzzer8(Some(1.0));
+    let fuzzy8_1 = components::AffixFuzzer8(None);
+    let fuzzy8_2 = components::AffixFuzzer8(Some(1.0));
 
-    let fuzzy9_1 = re_types::components::AffixFuzzer9("b".into());
-    let fuzzy9_2 = re_types::components::AffixFuzzer9("a".into());
+    let fuzzy9_1 = components::AffixFuzzer9("b".into());
+    let fuzzy9_2 = components::AffixFuzzer9("a".into());
 
-    let fuzzy10_1 = re_types::components::AffixFuzzer10(None);
-    let fuzzy10_2 = re_types::components::AffixFuzzer10(Some("a".into()));
+    let fuzzy10_1 = components::AffixFuzzer10(None);
+    let fuzzy10_2 = components::AffixFuzzer10(Some("a".into()));
 
-    let fuzzy11_1 = re_types::components::AffixFuzzer11(Some(vec![1.0, 10.0]));
-    let fuzzy11_2 = re_types::components::AffixFuzzer11(Some(vec![2.0, 20.0, 200.0]));
+    let fuzzy11_1 = components::AffixFuzzer11(Some(vec![1.0, 10.0]));
+    let fuzzy11_2 = components::AffixFuzzer11(Some(vec![2.0, 20.0, 200.0]));
 
-    let fuzzy12_1 = re_types::components::AffixFuzzer12(vec!["1".into(), "10".into()]);
-    let fuzzy12_2 =
-        re_types::components::AffixFuzzer12(vec!["20".into(), "200".into(), "2000".into()]);
+    let fuzzy12_1 = components::AffixFuzzer12(vec!["1".into(), "10".into()]);
+    let fuzzy12_2 = components::AffixFuzzer12(vec!["20".into(), "200".into(), "2000".into()]);
 
-    let fuzzy13_1 = re_types::components::AffixFuzzer13(None);
-    let fuzzy13_2 = re_types::components::AffixFuzzer13(Some(vec![
+    let fuzzy13_1 = components::AffixFuzzer13(None);
+    let fuzzy13_2 = components::AffixFuzzer13(Some(vec![
         "30".into(),
         "300".into(),
         "3000".into(),
         "30000".into(),
     ]));
 
-    let fuzzy14_1 =
-        re_types::components::AffixFuzzer14(re_types::datatypes::AffixFuzzer3::Degrees(90.0));
-    let fuzzy14_2 =
-        re_types::components::AffixFuzzer14(re_types::datatypes::AffixFuzzer3::Radians(Some(PI)));
-    let fuzzy14_3 =
-        re_types::components::AffixFuzzer14(re_types::datatypes::AffixFuzzer3::Radians(None));
+    let fuzzy14_1 = components::AffixFuzzer14(datatypes::AffixFuzzer3::Degrees(90.0));
+    let fuzzy14_2 = components::AffixFuzzer14(datatypes::AffixFuzzer3::Radians(Some(PI)));
+    let fuzzy14_3 = components::AffixFuzzer14(datatypes::AffixFuzzer3::Radians(None));
 
-    let fuzzy15_1 = re_types::components::AffixFuzzer15(None);
-    let fuzzy15_2 = re_types::components::AffixFuzzer15(Some(
-        re_types::datatypes::AffixFuzzer3::Radians(Some(PI / 4.0)),
-    ));
+    let fuzzy15_1 = components::AffixFuzzer15(None);
+    let fuzzy15_2 =
+        components::AffixFuzzer15(Some(datatypes::AffixFuzzer3::Radians(Some(PI / 4.0))));
 
-    let fuzzy16_1 = re_types::components::AffixFuzzer16(vec![
-        re_types::datatypes::AffixFuzzer3::Radians(None), //
-        re_types::datatypes::AffixFuzzer3::Degrees(45.0), //
-        re_types::datatypes::AffixFuzzer3::Radians(Some(PI * 2.0)), //
+    let fuzzy16_1 = components::AffixFuzzer16(vec![
+        datatypes::AffixFuzzer3::Radians(None),           //
+        datatypes::AffixFuzzer3::Degrees(45.0),           //
+        datatypes::AffixFuzzer3::Radians(Some(PI * 2.0)), //
     ]);
-    let fuzzy16_2 = re_types::components::AffixFuzzer16(vec![
-        re_types::datatypes::AffixFuzzer3::Degrees(20.0), //
-        re_types::datatypes::AffixFuzzer3::Degrees(30.0), //
-        re_types::datatypes::AffixFuzzer3::Radians(Some(0.424242)), //
+    let fuzzy16_2 = components::AffixFuzzer16(vec![
+        datatypes::AffixFuzzer3::Degrees(20.0),           //
+        datatypes::AffixFuzzer3::Degrees(30.0),           //
+        datatypes::AffixFuzzer3::Radians(Some(0.424242)), //
     ]);
 
-    let fuzzy17_1 = re_types::components::AffixFuzzer17(None);
-    let fuzzy17_2 = re_types::components::AffixFuzzer17(Some(vec![
-        re_types::datatypes::AffixFuzzer3::Degrees(20.0), //
-        re_types::datatypes::AffixFuzzer3::Degrees(30.0), //
-        re_types::datatypes::AffixFuzzer3::Radians(None), //
+    let fuzzy17_1 = components::AffixFuzzer17(None);
+    let fuzzy17_2 = components::AffixFuzzer17(Some(vec![
+        datatypes::AffixFuzzer3::Degrees(20.0), //
+        datatypes::AffixFuzzer3::Degrees(30.0), //
+        datatypes::AffixFuzzer3::Radians(None), //
     ]));
 
-    let fuzzy18_1 = re_types::components::AffixFuzzer18(None);
-    let fuzzy18_2 = re_types::components::AffixFuzzer18(Some(vec![
-        re_types::datatypes::AffixFuzzer4::SingleRequired(
-            re_types::datatypes::AffixFuzzer3::Craziness(vec![re_types::datatypes::AffixFuzzer1 {
+    let fuzzy18_1 = components::AffixFuzzer18(None);
+    let fuzzy18_2 = components::AffixFuzzer18(Some(vec![
+        datatypes::AffixFuzzer4::SingleRequired(datatypes::AffixFuzzer3::Craziness(vec![
+            datatypes::AffixFuzzer1 {
                 single_float_optional: None,
                 single_string_required: "d".into(),
                 single_string_optional: None,
@@ -155,23 +152,19 @@ fn roundtrip() {
                 many_strings_required: vec!["7".into(), "8".into()],
                 many_strings_optional: None,
                 flattened_scalar: 46.0,
-                almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 46.0 },
+                almost_flattened_scalar: datatypes::FlattenedScalar { value: 46.0 },
                 from_parent: Some(true),
-            }]),
-        ), //
-        re_types::datatypes::AffixFuzzer4::SingleRequired(
-            re_types::datatypes::AffixFuzzer3::Degrees(30.0),
-        ), //
-        re_types::datatypes::AffixFuzzer4::SingleRequired(
-            re_types::datatypes::AffixFuzzer3::Radians(None),
-        ), //
+            },
+        ])), //
+        datatypes::AffixFuzzer4::SingleRequired(datatypes::AffixFuzzer3::Degrees(30.0)), //
+        datatypes::AffixFuzzer4::SingleRequired(datatypes::AffixFuzzer3::Radians(None)), //
     ]));
-    let fuzzy18_3 = re_types::components::AffixFuzzer18(Some(vec![
-        re_types::datatypes::AffixFuzzer4::ManyRequired(vec![
-            re_types::datatypes::AffixFuzzer3::Radians(None), //
-            re_types::datatypes::AffixFuzzer3::Degrees(45.0), //
-            re_types::datatypes::AffixFuzzer3::Radians(Some(PI * 2.0)), //
-            re_types::datatypes::AffixFuzzer3::Craziness(vec![re_types::datatypes::AffixFuzzer1 {
+    let fuzzy18_3 = components::AffixFuzzer18(Some(vec![
+        datatypes::AffixFuzzer4::ManyRequired(vec![
+            datatypes::AffixFuzzer3::Radians(None),           //
+            datatypes::AffixFuzzer3::Degrees(45.0),           //
+            datatypes::AffixFuzzer3::Radians(Some(PI * 2.0)), //
+            datatypes::AffixFuzzer3::Craziness(vec![datatypes::AffixFuzzer1 {
                 single_float_optional: Some(3.0),
                 single_string_required: "c".into(),
                 single_string_optional: Some("c".into()),
@@ -179,22 +172,20 @@ fn roundtrip() {
                 many_strings_required: vec!["5".into(), "6".into()],
                 many_strings_optional: Some(vec!["50".into(), "60".into()]),
                 flattened_scalar: 44.0,
-                almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 44.0 },
+                almost_flattened_scalar: datatypes::FlattenedScalar { value: 44.0 },
                 from_parent: None,
             }]),
         ]), //
-        re_types::datatypes::AffixFuzzer4::ManyOptional(Some(vec![
-            re_types::datatypes::AffixFuzzer3::Radians(None),
-        ])), //
-        re_types::datatypes::AffixFuzzer4::ManyOptional(None), //
+        datatypes::AffixFuzzer4::ManyOptional(Some(vec![datatypes::AffixFuzzer3::Radians(None)])), //
+        datatypes::AffixFuzzer4::ManyOptional(None), //
     ]));
 
-    let fuzzy19_1 = re_types::components::AffixFuzzer19(re_types::datatypes::AffixFuzzer5 {
-        single_optional_union: Some(re_types::datatypes::AffixFuzzer4::ManyRequired(vec![
-            re_types::datatypes::AffixFuzzer3::Radians(None), //
-            re_types::datatypes::AffixFuzzer3::Degrees(45.0), //
-            re_types::datatypes::AffixFuzzer3::Radians(Some(PI * 2.0)), //
-            re_types::datatypes::AffixFuzzer3::Craziness(vec![re_types::datatypes::AffixFuzzer1 {
+    let fuzzy19_1 = components::AffixFuzzer19(datatypes::AffixFuzzer5 {
+        single_optional_union: Some(datatypes::AffixFuzzer4::ManyRequired(vec![
+            datatypes::AffixFuzzer3::Radians(None),           //
+            datatypes::AffixFuzzer3::Degrees(45.0),           //
+            datatypes::AffixFuzzer3::Radians(Some(PI * 2.0)), //
+            datatypes::AffixFuzzer3::Craziness(vec![datatypes::AffixFuzzer1 {
                 single_float_optional: Some(3.0),
                 single_string_required: "c".into(),
                 single_string_optional: Some("c".into()),
@@ -202,7 +193,7 @@ fn roundtrip() {
                 many_strings_required: vec!["5".into(), "6".into()],
                 many_strings_optional: Some(vec!["50".into(), "60".into()]),
                 flattened_scalar: 44.0,
-                almost_flattened_scalar: re_types::datatypes::FlattenedScalar { value: 44.0 },
+                almost_flattened_scalar: datatypes::FlattenedScalar { value: 44.0 },
                 from_parent: None,
             }]),
         ])), //
