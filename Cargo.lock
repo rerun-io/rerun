@@ -2839,6 +2839,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "minimal_serve"
+version = "0.8.0-alpha.7"
+dependencies = [
+ "rerun",
+ "tokio",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4272,6 +4280,7 @@ name = "re_sdk"
 version = "0.8.0-alpha.7"
 dependencies = [
  "ahash 0.8.3",
+ "anyhow",
  "arrow2_convert",
  "crossbeam",
  "document-features",
@@ -4288,9 +4297,13 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_sdk_comms",
+ "re_smart_channel",
  "re_types",
+ "re_web_viewer_server",
+ "re_ws_comms",
  "similar-asserts",
  "thiserror",
+ "webbrowser",
 ]
 
 [[package]]
@@ -4852,7 +4865,6 @@ dependencies = [
  "re_web_viewer_server",
  "re_ws_comms",
  "tokio",
- "webbrowser",
 ]
 
 [[package]]
