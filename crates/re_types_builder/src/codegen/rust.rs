@@ -211,8 +211,7 @@ fn create_files(
         files_to_write.insert(filepath, code);
     }
 
-    // src/{datatypes|components|archetypes}/mod.rs
-    {
+    let mut generate_mod_files = |out_path: &Utf8Path, mods: &HashMap<String, Vec<String>>| {
         let path = out_path.join("mod.rs");
 
         let mut code = String::new();
@@ -233,43 +232,19 @@ fn create_files(
 
         code += "\n\n";
 
-        for (module, names) in &mods {
+        for (module, names) in mods {
             let names = names.join(", ");
             code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
         }
 
         files_to_write.insert(path, code);
-    }
+    };
+
+    // src/{datatypes|components|archetypes}/mod.rs
+    generate_mod_files(out_path, &mods);
 
     // src/testing/{datatypes|components|archetypes}/mod.rs
-    {
-        let path = out_testing_path.join("mod.rs");
-
-        let mut code = String::new();
-
-        code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
-
-        for module in mods_testing.keys() {
-            code.push_text(format!("mod {module};"), 1, 0);
-
-            // Detect if someone manually created an extension file, and automatically
-            // import it if so.
-            let mut ext_path = out_testing_path.join(format!("{module}_ext"));
-            ext_path.set_extension("rs");
-            if ext_path.exists() {
-                code.push_text(format!("mod {module}_ext;"), 1, 0);
-            }
-        }
-
-        code += "\n\n";
-
-        for (module, names) in &mods_testing {
-            let names = names.join(", ");
-            code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
-        }
-
-        files_to_write.insert(path, code);
-    }
+    generate_mod_files(out_testing_path, &mods_testing);
 
     files_to_write
 }
