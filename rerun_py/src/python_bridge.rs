@@ -489,10 +489,10 @@ fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
 }
 
 #[pyfunction]
-#[pyo3(signature = (addr = None, disconnected_timeout_sec=rerun::sink::TcpSink::DEFAULT_TIMEOUT.unwrap().as_secs_f32(), recording = None))]
+#[pyo3(signature = (addr = None, flush_timeout_sec=rerun::default_flush_timeout().unwrap().as_secs_f32(), recording = None))]
 fn connect(
     addr: Option<String>,
-    disconnected_timeout_sec: Option<f32>,
+    flush_timeout_sec: Option<f32>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let addr = if let Some(addr) = addr {
@@ -501,18 +501,18 @@ fn connect(
         rerun::default_server_addr()
     };
 
-    let disconnected_timeout = disconnected_timeout_sec.map(std::time::Duration::from_secs_f32);
+    let flush_timeout = flush_timeout_sec.map(std::time::Duration::from_secs_f32);
 
     if let Some(recording) = recording {
         // If the user passed in a recording, use it
-        recording.connect(addr, disconnected_timeout);
+        recording.connect(addr, flush_timeout);
     } else {
         // Otherwise, connect both global defaults
         if let Some(recording) = get_data_recording(None) {
-            recording.connect(addr, disconnected_timeout);
+            recording.connect(addr, flush_timeout);
         };
         if let Some(blueprint) = get_blueprint_recording(None) {
-            blueprint.connect(addr, disconnected_timeout);
+            blueprint.connect(addr, flush_timeout);
         };
     }
 

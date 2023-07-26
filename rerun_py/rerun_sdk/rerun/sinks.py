@@ -11,7 +11,7 @@ from rerun.recording_stream import RecordingStream
 
 
 def connect(
-    addr: str | None = None, disconnected_timeout_sec: float | None = 2.0, recording: RecordingStream | None = None
+    addr: str | None = None, flush_timeout_sec: float | None = 2.0, recording: RecordingStream | None = None
 ) -> None:
     """
     Connect to a remote Rerun Viewer on the given ip:port.
@@ -24,10 +24,10 @@ def connect(
     ----------
     addr
         The ip:port to connect to
-    disconnected_timeout_sec: float
+    flush_timeout_sec: float
         The minimum time the SDK will wait during a flush before potentially
-        dropping data. Passing `None` indicates no timeout, and can cause a call to
-        `flush` to block indefinitely.
+        dropping data if progress is not being made. Passing `None` indicates no timeout,
+        and can cause a call to `flush` to block indefinitely.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -35,7 +35,7 @@ def connect(
 
     """
     recording = RecordingStream.to_native(recording)
-    bindings.connect(addr=addr, disconnected_timeout_sec=disconnected_timeout_sec, recording=recording)
+    bindings.connect(addr=addr, flush_timeout_sec=flush_timeout_sec, recording=recording)
 
 
 _connect = connect  # we need this because Python scoping is horrible

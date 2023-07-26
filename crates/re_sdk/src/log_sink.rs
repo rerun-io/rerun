@@ -190,23 +190,16 @@ pub struct TcpSink {
 }
 
 impl TcpSink {
-    /// Default timeout to use for the `disconnected_timeout` of [`TcpSink::new`]
-    pub const DEFAULT_TIMEOUT: Option<std::time::Duration> =
-        Some(std::time::Duration::from_secs(2));
-
     /// Connect to the given address in a background thread.
     /// Retries until successful.
     ///
-    /// `disconnected_timeout` is the minimum time the [`TcpSink`] will wait during a flush
+    /// `flush_timeout` is the minimum time the [`TcpSink`] will wait during a flush
     /// before potentially dropping data.  Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     #[inline]
-    pub fn new(
-        addr: std::net::SocketAddr,
-        disconnected_timeout: Option<std::time::Duration>,
-    ) -> Self {
+    pub fn new(addr: std::net::SocketAddr, flush_timeout: Option<std::time::Duration>) -> Self {
         Self {
-            client: re_sdk_comms::Client::new(addr, disconnected_timeout),
+            client: re_sdk_comms::Client::new(addr, flush_timeout),
         }
     }
 }

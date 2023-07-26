@@ -65,15 +65,15 @@ impl TcpStreamState {
 pub struct TcpClient {
     addr: SocketAddr,
     stream_state: TcpStreamState,
-    disconnected_timeout: Option<Duration>,
+    flush_timeout: Option<Duration>,
 }
 
 impl TcpClient {
-    pub fn new(addr: SocketAddr, disconnected_timeout: Option<Duration>) -> Self {
+    pub fn new(addr: SocketAddr, flush_timeout: Option<Duration>) -> Self {
         Self {
             addr,
             stream_state: TcpStreamState::reset(),
-            disconnected_timeout,
+            flush_timeout,
         }
     }
 
@@ -172,17 +172,17 @@ impl TcpClient {
     }
 
     /// Check if the underlying [`TcpStream`] is in the [`TcpStreamState::Pending`] state
-    /// and has reached the timeout threshold.
+    /// and has reached the flush timeout threshold.
     ///
     /// Note that this only occurs after a failure to connect or a failure to send.
-    pub fn has_timed_out(&self) -> bool {
+    pub fn has_timed_out_for_flush(&self) -> bool {
         match self.stream_state {
             TcpStreamState::Pending {
                 start_time,
                 num_attempts,
             } => {
                 // If a timeout wasn't provided, never timeout
-                self.disconnected_timeout.map_or(false, |timeout| {
+                self.flush_timeout.map_or(false, |timeout| {
                     Instant::now().duration_since(start_time) > timeout && num_attempts > 0
                 })
             }
