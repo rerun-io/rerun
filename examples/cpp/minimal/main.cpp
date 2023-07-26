@@ -9,7 +9,8 @@ arrow::Result<std::shared_ptr<arrow::Table>> points2(size_t num_points, const fl
     ARROW_ASSIGN_OR_RAISE(auto builder, rr::components::Point2D::new_arrow_array_builder(pool));
     ARROW_RETURN_NOT_OK(rr::components::Point2D::fill_arrow_array_builder(
         builder.get(),
-        (const rr::components::Point2D*)xy, // TODO(andreas): Hack to get Points2D C-style array in an easy fashion
+        (const rr::components::Point2D*)
+            xy, // TODO(andreas): Hack to get Points2D C-style array in an easy fashion
         num_points
     ));
 
