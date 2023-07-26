@@ -40,6 +40,8 @@ env:
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
 
+  RUSTC_WRAPPER: "sccache"
+
 permissions:
   contents: "read"
   id-token: "write"
