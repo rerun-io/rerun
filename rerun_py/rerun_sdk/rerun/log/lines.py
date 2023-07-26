@@ -190,8 +190,8 @@ def log_line_strips_2d(
     recording = RecordingStream.to_native(recording)
 
     colors = _normalize_colors(colors)
-    radii = _normalize_radii(stroke_widths)
-    radii = radii / 2.0
+    stroke_widths = _normalize_radii(stroke_widths)
+    radii = stroke_widths / 2.0
 
     identifiers_np = np.array((), dtype="uint64")
     if identifiers is not None:
@@ -298,8 +298,8 @@ def log_line_strips_3d(
     recording = RecordingStream.to_native(recording)
 
     colors = _normalize_colors(colors)
-    radii = _normalize_radii(stroke_widths)
-    radii = radii / 2.0
+    stroke_widths = _normalize_radii(stroke_widths)
+    radii = stroke_widths / 2.0
 
     identifiers_np = np.array((), dtype="uint64")
     if identifiers is not None:
