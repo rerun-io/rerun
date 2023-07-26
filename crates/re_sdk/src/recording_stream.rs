@@ -271,7 +271,7 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// web-based Rerun viewer via WebSockets.
     ///
-    /// This method needs to be called in a context where a Tokion runtime is already running (see
+    /// This method needs to be called in a context where a Tokio runtime is already running (see
     /// example below).
     ///
     /// If the `open_browser` argument is `true`, your default browser will be opened with a
