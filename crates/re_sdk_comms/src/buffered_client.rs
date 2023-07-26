@@ -333,8 +333,9 @@ fn send_until_success(
             return None;
         }
         // If this is the first time we fail to send the message, produce a warning.
-        re_log::warn!("Failed to send message: {err}");
+        re_log::debug!("Failed to send message: {err}");
 
+        let mut attempts = 1;
         let mut sleep_ms = 100;
 
         loop {
@@ -345,6 +346,10 @@ fn send_until_success(
                 }
                 default(std::time::Duration::from_millis(sleep_ms)) => {
                     if let Err(new_err) = tcp_client.send(packet) {
+                        attempts += 1;
+                        if attempts == 3 {
+                            re_log::warn!("Failed to send message after {attempts} attempts: {err}");
+                        }
 
                         if drop_if_disconnected && tcp_client.has_timed_out() {
                             re_log::warn_once!("Dropping messages because tcp client has timed out.");
@@ -357,7 +362,7 @@ fn send_until_success(
 
                         // Only produce subsequent warnings once we've saturated the back-off
                         if sleep_ms == MAX_SLEEP_MS && new_err.to_string() != err.to_string() {
-                            re_log::warn!("Still failing to send message: {err}");
+                            re_log::warn!("Still failing to send message after {attempts} attempts: {err}");
                         }
                     } else {
                         return None;

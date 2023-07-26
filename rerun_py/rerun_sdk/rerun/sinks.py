@@ -25,7 +25,7 @@ def connect(
     addr
         The ip:port to connect to
     disconnected_timeout_sec: float
-        The minimum time the `TcpSink` will wait during a flush before potentially
+        The minimum time the SDK will wait during a flush before potentially
         dropping data. Passing `None` indicates no timeout, and can cause a call to
         `flush` to block indefinitely.
     recording:
