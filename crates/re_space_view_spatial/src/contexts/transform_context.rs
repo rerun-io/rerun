@@ -335,7 +335,7 @@ fn transform_at(
         ))
     } else if store
         .query_latest_component::<DisconnectedSpace>(entity_path, query)
-        .is_some()
+        .map_or(false, |dp| dp.0)
     {
         Err(UnreachableTransformReason::DisconnectedSpace)
     } else {

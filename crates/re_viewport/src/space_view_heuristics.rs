@@ -128,7 +128,7 @@ fn is_interesting_space_view_not_at_root(
             .is_some()
             || store
                 .query_latest_component::<DisconnectedSpace>(&candidate.space_origin, query)
-                .is_some())
+                .map_or(false, |dp| dp.0))
     {
         return true;
     }

@@ -133,7 +133,7 @@ impl SpaceInfoCollection {
                 })
             } else if store
                 .query_latest_component::<DisconnectedSpace>(&tree.path, query)
-                .is_some()
+                .map_or(false, |dp| dp.0)
             {
                 Some(SpaceInfoConnection::Disconnected)
             } else {
