@@ -11,5 +11,11 @@ attribute "attr.rust.tuple_struct";
 /// E.g. "attr.rust.derive": "Copy"`.
 attribute "attr.rust.derive";
 
+/// Apply to any object to generate an arbitrary clause.
+///
+/// The value of the attribute will be trimmed out but otherwise left as-is.
+/// E.g. "attr.rust.custom_clause": "cfg_attr(feature = "serde", derive(::serde::Serialize))"`.
+attribute "attr.rust.custom_clause";
+
 /// Apply to any object to generate a #repr clause with the specified value.
 attribute "attr.rust.repr";
