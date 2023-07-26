@@ -208,7 +208,7 @@ impl QuotedObject {
 
     fn from_struct(
         arrow_registry: &ArrowRegistry,
-        _objects: &Objects,
+        objects: &Objects,
         obj: &Object,
     ) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
@@ -230,7 +230,7 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let declaration = quote_declaration_with_docstring(
+                let declaration = quote_variable_with_docstring(
                     &mut hpp_includes,
                     obj_field,
                     &format_ident!("{}", obj_field.name),
@@ -244,32 +244,34 @@ impl QuotedObject {
 
         let mut methods = Vec::new();
 
-        if obj.fields.len() == 1 {
-            // Single-field struct - it is a newtype wrapper.
-            // Create a implicit constructor from its own field-type.
-            let obj_field = &obj.fields[0];
-            if let Type::Array { .. } = &obj_field.typ {
-                // TODO(emilk): implicit constructor for arrays
-            } else {
-                hpp_includes.system.insert("utility".to_owned()); // std::move
-
-                let field_ident = format_ident!("{}", obj_field.name);
-                let parameter_declaration =
-                    quote_declaration(&mut hpp_includes, obj_field, &field_ident);
-
-                methods.push(Method {
-                    declaration: MethodDeclaration::constructor(quote! {
-                        #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
-                    }),
-                    ..Method::default()
-                });
-            }
-        };
-
         let datatype = arrow_registry.get(&obj.fqname);
 
         match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
+                if obj.fields.len() == 1 {
+                    // Single-field struct - it is a newtype wrapper.
+                    // Create a implicit constructor from its own field-type - do so by copy, and if meaningful by rvalue reference.
+                    let obj_field = &obj.fields[0];
+                    if let Type::Array { .. } = &obj_field.typ {
+                        // TODO(emilk): implicit constructor for arrays
+                    } else {
+                        // Pass by value:
+                        // If it was a temporary it gets moved into the value and then moved again into the field.
+                        // If it was a lvalue it gets copied into the value and then moved into the field.
+                        let field_ident = format_ident!("{}", obj_field.name);
+                        let parameter_declaration =
+                            quote_variable(&mut hpp_includes, obj_field, &field_ident);
+                        hpp_includes.system.insert("utility".to_owned()); // std::move
+                        methods.push(Method {
+                                declaration: MethodDeclaration::constructor(quote! {
+                                    #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
+                                }),
+                                ..Method::default()
+                            });
+                    }
+                };
+
+                // Arrow serialization methods.
                 methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
                 methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
                 methods.push(fill_arrow_array_builder_method(
@@ -387,7 +389,7 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let declaration = quote_declaration_with_docstring(
+                let declaration = quote_variable_with_docstring(
                     &mut hpp_includes,
                     obj_field,
                     &format_ident!("{}", crate::to_snake_case(&obj_field.name)),
@@ -417,7 +419,7 @@ impl QuotedObject {
             for obj_field in &obj.fields {
                 let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
                 let param_declaration =
-                    quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident);
+                    quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
 
                 methods.push(Method {
                     docs: obj_field.docs.clone().into(),
@@ -478,11 +480,8 @@ impl QuotedObject {
                         }
                     }
                 } else {
-                    let typedef_declaration = quote_declaration(
-                        &mut hpp_includes,
-                        obj_field,
-                        &format_ident!("TypeAlias"),
-                    );
+                    let typedef_declaration =
+                        quote_variable(&mut hpp_includes, obj_field, &format_ident!("TypeAlias"));
                     hpp_includes.system.insert("utility".to_owned()); // std::move
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
@@ -501,6 +500,43 @@ impl QuotedObject {
                         #(#destructor_match_arms)*
                     }
                 }
+            }
+        };
+
+        let copy_constructor = {
+            let copy_match_arms = obj
+                .fields
+                .iter()
+                .filter_map(|obj_field| {
+                    // Inferring from trivial destructability that we don't need to call the copy constructor is a little bit wonky,
+                    // but is typically the reason why we need to do this in the first place - if we'd always memcpy we'd get double-free errors.
+                    // (As with swap, we generously assume that objects are rellocatable)
+                    (!obj_field.typ.has_default_destructor(objects)).then(|| {
+                        let tag_ident = format_ident!("{}", obj_field.name);
+                        let field_ident =
+                            format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                        Some(quote! {
+                            case detail::#tag_typename::#tag_ident: {
+                                _data.#field_ident = other._data.#field_ident;
+                                break;
+                            }
+                        })
+                    })
+                })
+                .collect_vec();
+            if copy_match_arms.is_empty() {
+                quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
+                    memcpy(&this->_data, &other._data, sizeof(detail::#data_typename));
+                })
+            } else {
+                quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
+                    switch (other._tag) {
+                        #(#copy_match_arms)*
+                        default:
+                            memcpy(&this->_data, &other._data, sizeof(detail::#data_typename));
+                            break;
+                    }
+                })
             }
         };
 
@@ -525,6 +561,8 @@ impl QuotedObject {
                             #data_typename() { } // Required by static constructors
                             ~#data_typename() { }
 
+                            // Note that this type is *not* copyable unless all enum fields are trivially destructable.
+
                             void swap(#data_typename& other) noexcept {
                                 #NEWLINE_TOKEN
                                 #swap_comment
@@ -547,6 +585,15 @@ impl QuotedObject {
                         #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
 
                       public:
+                        #copy_constructor
+
+                        // Copy-assignment
+                        #pascal_case_ident& operator=(const #pascal_case_ident& other) noexcept {
+                            #pascal_case_ident tmp(other);
+                            this->swap(tmp);
+                            return *this;
+                        }
+
                         // Move-constructor:
                         #pascal_case_ident(#pascal_case_ident&& other) noexcept : _tag(detail::#tag_typename::NONE) {
                             this->swap(other);
@@ -560,9 +607,7 @@ impl QuotedObject {
 
                         #destructor
 
-                        #(#hpp_methods)*
-
-                        // This is useful for easily implementing the move constructor and move assignment operator:
+                        // This is useful for easily implementing the move constructor and assignment operators:
                         void swap(#pascal_case_ident& other) noexcept {
                             // Swap tags:
                             auto tag_temp = this->_tag;
@@ -572,6 +617,8 @@ impl QuotedObject {
                             // Swap data:
                             this->_data.swap(other._data);
                         }
+
+                        #(#hpp_methods)*
                     };
                 }
             }
@@ -1073,7 +1120,7 @@ fn static_constructor_for_enum_type(
     let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
     let docs = obj_field.docs.clone().into();
 
-    let param_declaration = quote_declaration(hpp_includes, obj_field, &snake_case_ident);
+    let param_declaration = quote_variable(hpp_includes, obj_field, &snake_case_ident);
     let declaration = MethodDeclaration {
         is_static: true,
         return_type: quote!(#pascal_case_ident),
@@ -1130,7 +1177,7 @@ fn static_constructor_for_enum_type(
         // We need to use placement-new since the union is in an uninitialized state here:
         hpp_includes.system.insert("new".to_owned()); // placement-new
         let typedef_declaration =
-            quote_declaration(hpp_includes, obj_field, &format_ident!("TypeAlias"));
+            quote_variable(hpp_includes, obj_field, &format_ident!("TypeAlias"));
         Method {
             docs,
             declaration,
@@ -1151,12 +1198,12 @@ fn are_types_disjoint(fields: &[ObjectField]) -> bool {
     type_set.len() == fields.len()
 }
 
-fn quote_declaration_with_docstring(
+fn quote_variable_with_docstring(
     includes: &mut Includes,
     obj_field: &ObjectField,
     name: &syn::Ident,
 ) -> TokenStream {
-    let quoted = quote_declaration(includes, obj_field, name);
+    let quoted = quote_variable(includes, obj_field, name);
 
     let docstring = quote_docstrings(&obj_field.docs);
 
@@ -1168,7 +1215,7 @@ fn quote_declaration_with_docstring(
     quoted
 }
 
-fn quote_declaration(
+fn quote_variable(
     includes: &mut Includes,
     obj_field: &ObjectField,
     name: &syn::Ident,
