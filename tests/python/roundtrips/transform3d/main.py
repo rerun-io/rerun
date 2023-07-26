@@ -19,29 +19,29 @@ def main() -> None:
 
     rr.script_setup(args, "roundtrip_transform3d")
 
-    rr2.log_any("translation_and_mat3x3/identity", rr2.Transform3D(rrd.TranslationAndMat3x3()))
+    rr2.log("translation_and_mat3x3/identity", rr2.Transform3D(rrd.TranslationAndMat3x3()))
 
-    rr2.log_any(
+    rr2.log(
         "translation_and_mat3x3/translation",
         rr2.Transform3D(rrd.TranslationAndMat3x3(translation=[1, 2, 3], from_parent=True)),
     )
 
-    rr2.log_any(
+    rr2.log(
         "translation_and_mat3x3/rotation",
         rr2.Transform3D(rrd.TranslationAndMat3x3(matrix=[1, 2, 3, 4, 5, 6, 7, 8, 9])),
     )
 
-    rr2.log_any(
+    rr2.log(
         "translation_rotation_scale/identity",
         rr2.Transform3D(rrd.TranslationRotationScale3D()),
     )
 
-    rr2.log_any(
+    rr2.log(
         "translation_rotation_scale/translation_scale",
         rr2.Transform3D(rrd.TranslationRotationScale3D(translation=[1, 2, 3], scale=42, from_parent=True)),
     )
 
-    rr2.log_any(
+    rr2.log(
         "translation_rotation_scale/rigid",
         rr2.Transform3D(
             rrd.TranslationRotationScale3D(
@@ -51,7 +51,7 @@ def main() -> None:
         ),
     )
 
-    rr2.log_any(
+    rr2.log(
         "translation_rotation_scale/affine",
         rr2.Transform3D(
             rrd.TranslationRotationScale3D(

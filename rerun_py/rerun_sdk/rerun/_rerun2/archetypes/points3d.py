@@ -21,11 +21,11 @@ class Points3D(Archetype):
     -------
     ```python
     import rerun as rr
-    import rerun.experimental as rr_exp
+    import rerun.experimental as rr2
 
     rr.init("points", spawn=True)
 
-    rr_exp.log_any("simple", rr_exp.Points3D([[0, 0, 0], [1, 1, 1]]))
+    rr2.log("simple", rr2.Points3D([[0, 0, 0], [1, 1, 1]]))
     ```
     """
 

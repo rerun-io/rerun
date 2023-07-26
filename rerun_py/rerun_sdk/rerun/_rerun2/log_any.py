@@ -14,7 +14,7 @@ from . import components as cmp
 from . import datatypes as dt
 from ._baseclasses import Archetype, NamedExtensionArray
 
-__all__ = ["log_any"]
+__all__ = ["log"]
 
 
 EXT_PREFIX = "ext."
@@ -84,7 +84,7 @@ def _splat() -> cmp.InstanceKeyArray:
 
 
 Loggable = Union[Archetype, dt.Transform3DLike]
-"""All the things that `rr.log_any()` can accept and log."""
+"""All the things that `rr.log()` can accept and log."""
 
 
 _UPCASTING_RULES: dict[type[Loggable], Callable[[Any], Archetype]] = {
@@ -107,7 +107,7 @@ def _upcast_entity(entity: Loggable) -> Archetype:
     return cast(Archetype, entity)
 
 
-def log_any(
+def log(
     entity_path: str,
     entity: Loggable,
     ext: dict[str, Any] | None = None,
