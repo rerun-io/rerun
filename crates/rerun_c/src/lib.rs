@@ -141,7 +141,7 @@ pub unsafe extern "C" fn rr_recording_stream_new(
         .expect("invalid tcp_addr string")
         .parse()
         .expect("invalid tcp_addr");
-    let sink = Box::new(TcpSink::new(tcp_addr, rerun_sdk::default_flush_timeout()));
+    let sink = Box::new(TcpSink::new(tcp_addr, re_sdk::default_flush_timeout()));
 
     let rec_stream = RecordingStream::new(store_info, batcher_config, sink).unwrap();
 
