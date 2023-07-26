@@ -25,7 +25,7 @@ class Points3D(Archetype):
 
     rr.init("points", spawn=True)
 
-    rr2.log_any("simple", rr2.Points3D([[0, 0, 0], [1, 1, 1]]))
+    rr2.log("simple", rr2.Points3D([[0, 0, 0], [1, 1, 1]]))
     ```
     """
 
