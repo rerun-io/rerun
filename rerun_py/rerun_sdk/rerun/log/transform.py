@@ -11,7 +11,6 @@ import numpy.typing as npt
 from deprecated import deprecated
 
 from rerun import bindings
-from rerun.components.disconnected_space import DisconnectedSpaceArray
 from rerun.components.quaternion import Quaternion
 from rerun.components.transform3d import (
     Rigid3D,
@@ -158,11 +157,11 @@ def log_unknown_transform(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
+    from rerun.experimental import DisconnectedSpace, log_any
+
     recording = RecordingStream.to_native(recording)
 
-    instanced: dict[str, Any] = {}
-    instanced["rerun.disconnected_space"] = DisconnectedSpaceArray.single()
-    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+    log_any(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -190,11 +189,11 @@ def log_disconnected_space(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
+    from rerun.experimental import DisconnectedSpace, log_any
+
     recording = RecordingStream.to_native(recording)
 
-    instanced: dict[str, Any] = {}
-    instanced["rerun.disconnected_space"] = DisconnectedSpaceArray.single()
-    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+    log_any(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
 
 
 @log_decorator
