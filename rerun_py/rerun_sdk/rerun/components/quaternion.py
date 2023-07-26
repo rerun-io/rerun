@@ -29,7 +29,7 @@ class Quaternion:
 class QuaternionArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.float32]) -> QuaternionArray:
         """Build a `QuaternionArray` from an Nx4 numpy array."""
-        assert array.shape[1] == 4
+        assert len(array) == 0 or array.shape[1] == 4
         storage = pa.FixedSizeListArray.from_arrays(array.flatten(), type=QuaternionType.storage_type)
         # TODO(john) enable extension type wrapper
         # return cast(QuaternionArray, pa.ExtensionArray.from_storage(QuaternionType(), storage))

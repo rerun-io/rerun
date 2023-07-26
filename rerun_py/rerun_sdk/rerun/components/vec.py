@@ -17,7 +17,7 @@ __all__ = [
 class Vec2DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.float32]) -> Vec2DArray:
         """Build a `Vec2DArray` from an Nx2 numpy array."""
-        assert array.shape[1] == 2
+        assert len(array) == 0 or array.shape[1] == 2
         storage = pa.FixedSizeListArray.from_arrays(array.flatten(), type=Vec2DType.storage_type)
         # TODO(john) enable extension type wrapper
         # return cast(Vec2DArray, pa.ExtensionArray.from_storage(Vec2DType(), storage))
@@ -32,7 +32,7 @@ pa.register_extension_type(Vec2DType())
 class Vec3DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.float32]) -> Vec3DArray:
         """Build a `Vec3DArray` from an Nx3 numpy array."""
-        assert array.shape[1] == 3
+        assert len(array) == 0 or array.shape[1] == 3
         storage = pa.FixedSizeListArray.from_arrays(array.flatten(), type=Vec3DType.storage_type)
         # TODO(john) enable extension type wrapper
         # return cast(Vec3DArray, pa.ExtensionArray.from_storage(Vec3DType(), storage))

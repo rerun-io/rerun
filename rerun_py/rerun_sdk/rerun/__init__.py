@@ -52,6 +52,7 @@ __all__ = [
     "log_mesh_file",
     "log_meshes",
     "log_obb",
+    "log_obbs",
     "log_path",
     "log_pinhole",
     "log_point",
@@ -97,7 +98,7 @@ from .components.transform3d import (
 )
 from .log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log.arrow import log_arrow
-from .log.bounding_box import log_obb
+from .log.bounding_box import log_obb, log_obbs
 from .log.camera import log_pinhole
 from .log.clear import log_cleared
 from .log.extension_components import log_extension_components

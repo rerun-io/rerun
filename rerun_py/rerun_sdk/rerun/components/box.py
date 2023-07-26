@@ -15,7 +15,7 @@ __all__ = [
 class Box3DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.float32]) -> Box3DArray:
         """Build a `Box3DArray` from an Nx3 numpy array."""
-        assert array.shape[1] == 3
+        assert len(array) == 0 or array.shape[1] == 3
         storage = pa.FixedSizeListArray.from_arrays(array.flatten(), type=Box3DType.storage_type)
         # TODO(john) enable extension type wrapper
         # return cast(Box3DArray, pa.ExtensionArray.from_storage(Box3DType(), storage))
