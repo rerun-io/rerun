@@ -10,23 +10,25 @@ from rerun.log.experimental.blueprint import add_space_view, new_blueprint, set_
 from rerun.log.experimental.text import log_text_box
 
 __all__ = [
-    "log_text_box",
-    "add_space_view",
-    "set_panels",
-    "set_auto_space_views",
-    "new_blueprint",
-    "arch",
-    "cmp",
-    "dt",
+    "DisconnectedSpace",
     "Points2D",
     "Points3D",
     "Transform3D",
     "log",
+    "add_space_view",
+    "arch",
+    "cmp",
+    "dt",
+    "log",
+    "log_text_box",
+    "new_blueprint",
+    "set_auto_space_views",
+    "set_panels",
 ]
 
 # Next-gen API imports
 from ._rerun2 import archetypes as arch
 from ._rerun2 import components as cmp
 from ._rerun2 import datatypes as dt
-from ._rerun2.archetypes import Points2D, Points3D, Transform3D
+from ._rerun2.archetypes import DisconnectedSpace, Points2D, Points3D, Transform3D
 from ._rerun2.log import log

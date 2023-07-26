@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
 from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
+from .disconnected_space import (
+    DisconnectedSpace,
+    DisconnectedSpaceArray,
+    DisconnectedSpaceArrayLike,
+    DisconnectedSpaceLike,
+    DisconnectedSpaceType,
+)
 from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType
 from .fuzzy import (
     AffixFuzzer1Array,
@@ -162,6 +169,11 @@ __all__ = [
     "ColorArrayLike",
     "ColorLike",
     "ColorType",
+    "DisconnectedSpace",
+    "DisconnectedSpaceArray",
+    "DisconnectedSpaceArrayLike",
+    "DisconnectedSpaceLike",
+    "DisconnectedSpaceType",
     "DrawOrder",
     "DrawOrderArray",
     "DrawOrderArrayLike",

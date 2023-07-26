@@ -4,6 +4,8 @@ mod class_id;
 mod class_id_ext;
 mod color;
 mod color_ext;
+mod disconnected_space;
+mod disconnected_space_ext;
 mod draw_order;
 mod draw_order_ext;
 mod instance_key;
@@ -23,6 +25,7 @@ mod transform3d_ext;
 
 pub use self::class_id::ClassId;
 pub use self::color::Color;
+pub use self::disconnected_space::DisconnectedSpace;
 pub use self::draw_order::DrawOrder;
 pub use self::instance_key::InstanceKey;
 pub use self::keypoint_id::KeypointId;
