@@ -280,7 +280,7 @@ impl QuotedObject {
                 ));
             }
             ObjectKind::Archetype => {
-                // TODO(andreas): Should also be convertable to arrow?
+                // TODO(andreas): Should also be convertible to arrow?
             }
         };
 
