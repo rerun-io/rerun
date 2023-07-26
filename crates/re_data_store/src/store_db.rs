@@ -187,7 +187,11 @@ fn check_known_component_schemas(msg: &ArrowMsg) {
     for actual in &msg.schema.fields {
         if let Some(expected) = known_fields.get(actual.name.as_str()) {
             if let arrow2::datatypes::DataType::List(actual_field) = &actual.data_type {
-                if actual_field.data_type != expected.data_type {
+                // NOTE: Don't care about extensions until the migration is over (arrow2-convert
+                // issues).
+                let actual_datatype = actual_field.data_type.to_logical_type();
+                let expected_datatype = expected.data_type.to_logical_type();
+                if actual_datatype != expected_datatype {
                     re_log::warn_once!(
                         "The incoming component {:?} had the type:\n{:#?}\nExpected type:\n{:#?}",
                         actual.name,
