@@ -54,7 +54,12 @@ pub struct Client {
 
 impl Client {
     /// Connect via TCP to this log server.
-    pub fn new(addr: SocketAddr) -> Self {
+    ///
+    /// `flush_timeout` is the minimum time the `TcpClient` will wait during a
+    /// flush before potentially dropping data.  Note: Passing `None` here can
+    /// cause a call to `flush` to block indefinitely if a connection cannot be
+    /// established.
+    pub fn new(addr: SocketAddr, flush_timeout: Option<std::time::Duration>) -> Self {
         re_log::debug!("Connecting to remote {addr}…");
 
         // TODO(emilk): keep track of how much memory is in each pipe
@@ -88,7 +93,7 @@ impl Client {
         let send_join = std::thread::Builder::new()
             .name("tcp_sender".into())
             .spawn(move || {
-                tcp_sender(addr, &packet_rx, &send_quit_rx, &flushed_tx);
+                tcp_sender(addr, flush_timeout, &packet_rx, &send_quit_rx, &flushed_tx);
             })
             .expect("Failed to spawn thread");
 
@@ -250,11 +255,12 @@ fn msg_encode(
 
 fn tcp_sender(
     addr: SocketAddr,
+    flush_timeout: Option<std::time::Duration>,
     packet_rx: &Receiver<PacketMsg>,
     quit_rx: &Receiver<InterruptMsg>,
     flushed_tx: &Sender<FlushedMsg>,
 ) {
-    let mut tcp_client = crate::tcp_client::TcpClient::new(addr);
+    let mut tcp_client = crate::tcp_client::TcpClient::new(addr, flush_timeout);
     // Once this flag has been set, we will drop all messages if the tcp_client is
     // no longer connected.
     let mut drop_if_disconnected = false;
@@ -311,36 +317,47 @@ fn send_until_success(
     quit_rx: &Receiver<InterruptMsg>,
 ) -> Option<InterruptMsg> {
     // Early exit if tcp_client is disconnected
-    if drop_if_disconnected && tcp_client.has_disconnected() {
-        re_log::debug_once!("Dropping messages because we're disconnected.");
+    if drop_if_disconnected && tcp_client.has_timed_out_for_flush() {
+        re_log::warn_once!("Dropping messages because tcp client has timed out.");
         return None;
     }
 
     if let Err(err) = tcp_client.send(packet) {
-        if drop_if_disconnected {
-            re_log::debug_once!("Dropping messages because we're disconnected.");
+        if drop_if_disconnected && tcp_client.has_timed_out_for_flush() {
+            re_log::warn_once!("Dropping messages because tcp client has timed out.");
             return None;
         }
         // If this is the first time we fail to send the message, produce a warning.
-        re_log::warn!("Failed to send message: {err}");
+        re_log::debug!("Failed to send message: {err}");
 
+        let mut attempts = 1;
         let mut sleep_ms = 100;
 
         loop {
             select! {
                 recv(quit_rx) -> _quit_msg => {
-                    re_log::debug_once!("Dropping messages because we're disconnected or quitting.");
+                    re_log::warn_once!("Dropping messages because tcp client has timed out or quitting.");
                     return Some(_quit_msg.unwrap_or(InterruptMsg::Quit));
                 }
                 default(std::time::Duration::from_millis(sleep_ms)) => {
                     if let Err(new_err) = tcp_client.send(packet) {
+                        attempts += 1;
+                        if attempts == 3 {
+                            re_log::warn!("Failed to send message after {attempts} attempts: {err}");
+                        }
+
+                        if drop_if_disconnected && tcp_client.has_timed_out_for_flush() {
+                            re_log::warn_once!("Dropping messages because tcp client has timed out.");
+                            return None;
+                        }
+
                         const MAX_SLEEP_MS : u64 = 3000;
 
                         sleep_ms = (sleep_ms * 2).min(MAX_SLEEP_MS);
 
                         // Only produce subsequent warnings once we've saturated the back-off
                         if sleep_ms == MAX_SLEEP_MS && new_err.to_string() != err.to_string() {
-                            re_log::warn!("Still failing to send message: {err}");
+                            re_log::warn!("Still failing to send message after {attempts} attempts: {err}");
                         }
                     } else {
                         return None;

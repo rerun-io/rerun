@@ -61,7 +61,8 @@
 //! Then do this:
 //!
 //! ```no_run
-//! let rec_stream = rerun::RecordingStreamBuilder::new("my_app").connect(rerun::default_server_addr());
+//! let rec_stream = rerun::RecordingStreamBuilder::new("my_app")
+//!     .connect(rerun::default_server_addr(), rerun::default_flush_timeout());
 //! ```
 //!
 //! #### Buffering
