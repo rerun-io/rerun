@@ -30,3 +30,15 @@ code-example: box3d_simple
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/d8df3a0a665b4f5b034883684d73d767fcde6eef_box3d_simple_1200w.png">
   <img src="https://static.rerun.io/d6a3f38d2e3360fbacac52bb43e44762635be9c8_box3d_simple_full.png" alt="">
 </picture>
+
+## Batch Example
+
+code-example: box3d_batch
+
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/d23f26b1ee5419c5747047554ec2cba07500dc89_box3d_batch_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/2ecf462a80d0fd453dcccb713b984593b4353ed7_box3d_batch_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/fb0be5b18c91362ceafbaec0888c101115d7c03b_box3d_batch_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/9ff4183ff03ddbacfb6c8ceb7e789284d2ffc1d7_box3d_batch_1200w.png">
+  <img src="https://static.rerun.io/8baa1b8c36e05f6b3930fb85cf0046e76b98d0b5_box3d_batch_full.png" alt="">
+</picture>
