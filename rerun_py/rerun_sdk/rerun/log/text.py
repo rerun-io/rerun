@@ -118,8 +118,6 @@ def log_text_entry(
         logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
 
     if color is not None:
-        from rerun.experimental import cmp as rrc
-
         colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 

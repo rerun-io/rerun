@@ -109,8 +109,6 @@ def log_line_strip(
             raise TypeError("Positions should be either Nx2 or Nx3")
 
     if color is not None:
-        from rerun.experimental import cmp as rrc
-
         colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
@@ -437,8 +435,6 @@ def log_line_segments(
     # The current API splats both color and stroke-width, though the data-model doesn't
     # require that we do so.
     if color is not None:
-        from rerun.experimental import cmp as rrc
-
         colors = _normalize_colors(color)
         splats["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 

@@ -85,8 +85,6 @@ def log_rect(
     instanced["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
 
     if color is not None:
-        from rerun.experimental import cmp as rrc
-
         colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 

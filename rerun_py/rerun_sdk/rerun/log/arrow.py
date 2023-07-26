@@ -77,8 +77,6 @@ def log_arrow(
         instanced["rerun.arrow3d"] = Arrow3DArray.from_numpy(origin.reshape(1, 3), vector.reshape(1, 3))
 
     if color is not None:
-        from rerun.experimental import cmp as rrc
-
         colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
