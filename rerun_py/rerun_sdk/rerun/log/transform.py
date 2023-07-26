@@ -161,7 +161,7 @@ def log_unknown_transform(
     recording = RecordingStream.to_native(recording)
 
     instanced: dict[str, Any] = {}
-    instanced["rerun.disconnected_transform"] = DisconnectedSpaceArray.single()
+    instanced["rerun.disconnected_space"] = DisconnectedSpaceArray.single()
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
 
@@ -193,7 +193,7 @@ def log_disconnected_space(
     recording = RecordingStream.to_native(recording)
 
     instanced: dict[str, Any] = {}
-    instanced["rerun.disconnected_transform"] = DisconnectedSpaceArray.single()
+    instanced["rerun.disconnected_space"] = DisconnectedSpaceArray.single()
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
 

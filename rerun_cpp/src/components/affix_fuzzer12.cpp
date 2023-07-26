@@ -10,5 +10,44 @@ namespace rr {
         std::shared_ptr<arrow::DataType> AffixFuzzer12::to_arrow_datatype() {
             return arrow::list(arrow::field("item", arrow::utf8(), false, nullptr));
         }
+
+        arrow::Result<std::shared_ptr<arrow::ListBuilder>> AffixFuzzer12::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::ListBuilder>(
+                memory_pool,
+                std::make_shared<arrow::StringBuilder>(memory_pool)
+            ));
+        }
+
+        arrow::Status AffixFuzzer12::fill_arrow_array_builder(
+            arrow::ListBuilder *builder, const AffixFuzzer12 *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            auto value_builder = static_cast<arrow::StringBuilder *>(builder->value_builder());
+            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 2));
+
+            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto &element = elements[elem_idx];
+                for (auto item_idx = 0; item_idx < element.many_strings_required.size();
+                     item_idx += 1) {
+                    value_builder->Append(element.many_strings_required[item_idx]);
+                }
+                ARROW_RETURN_NOT_OK(builder->Append());
+            }
+
+            return arrow::Status::OK();
+        }
     } // namespace components
 } // namespace rr

@@ -11,11 +11,47 @@ namespace rr {
     namespace datatypes {
         std::shared_ptr<arrow::DataType> AffixFuzzer5::to_arrow_datatype() {
             return arrow::struct_({
-                arrow::field("single_optional_union",
-                             rr::datatypes::AffixFuzzer4::to_arrow_datatype(),
-                             true,
-                             nullptr),
+                arrow::field(
+                    "single_optional_union",
+                    rr::datatypes::AffixFuzzer4::to_arrow_datatype(),
+                    true,
+                    nullptr
+                ),
             });
+        }
+
+        arrow::Result<std::shared_ptr<arrow::StructBuilder>> AffixFuzzer5::new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        ) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::StructBuilder>(
+                to_arrow_datatype(),
+                memory_pool,
+                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
+                    rr::datatypes::AffixFuzzer4::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                })
+            ));
+        }
+
+        arrow::Status AffixFuzzer5::fill_arrow_array_builder(
+            arrow::StructBuilder* builder, const AffixFuzzer5* elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            return arrow::Status::NotImplemented(
+                "TODO(andreas): extensions in structs are not yet supported"
+            );
+            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+
+            return arrow::Status::OK();
         }
     } // namespace datatypes
 } // namespace rr

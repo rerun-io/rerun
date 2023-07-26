@@ -10,5 +10,38 @@ namespace rr {
         std::shared_ptr<arrow::DataType> AffixFuzzer2::to_arrow_datatype() {
             return arrow::float32();
         }
+
+        arrow::Result<std::shared_ptr<arrow::FloatBuilder>> AffixFuzzer2::new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        ) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
+        }
+
+        arrow::Status AffixFuzzer2::fill_arrow_array_builder(
+            arrow::FloatBuilder* builder, const AffixFuzzer2* elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
+            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto& element = elements[elem_idx];
+                if (element.single_float_optional.has_value()) {
+                    ARROW_RETURN_NOT_OK(builder->Append(element.single_float_optional.value()));
+                } else {
+                    ARROW_RETURN_NOT_OK(builder->AppendNull());
+                }
+            }
+
+            return arrow::Status::OK();
+        }
     } // namespace datatypes
 } // namespace rr

@@ -99,6 +99,10 @@ pub mod experimental {
     pub use re_types::{archetypes, components, datatypes, Archetype, Component, Datatype};
 }
 
+/// Methods for spawning the web viewer and streaming the SDK log stream to it.
+#[cfg(feature = "web_viewer")]
+pub mod web_viewer;
+
 /// Re-exports of other crates.
 pub mod external {
     pub use re_log;

@@ -12,6 +12,7 @@
 #include "../components/point3d.hpp"
 #include "../components/radius.hpp"
 
+#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <vector>

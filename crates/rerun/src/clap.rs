@@ -3,10 +3,6 @@
 use std::{net::SocketAddr, path::PathBuf};
 
 use re_sdk::RecordingStream;
-#[cfg(feature = "web_viewer")]
-use re_web_viewer_server::WebViewerServerPort;
-#[cfg(feature = "web_viewer")]
-use re_ws_comms::RerunServerPort;
 
 // ---
 
@@ -113,11 +109,11 @@ impl RerunArgs {
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
                 let open_browser = true;
-                crate::web_viewer::new_sink(
+                re_sdk::web_viewer::new_sink(
                     open_browser,
                     &self.bind,
-                    WebViewerServerPort::default(),
-                    RerunServerPort::default(),
+                    Default::default(),
+                    Default::default(),
                 )?
             }
 

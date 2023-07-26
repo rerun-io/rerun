@@ -3,7 +3,7 @@ use quote::quote;
 
 use crate::Docs;
 
-use super::{doc_comment, quote_docstrings, NEWLINE_TOKEN};
+use super::{quote_doc_comment, quote_docstrings, NEWLINE_TOKEN};
 
 #[derive(Default)]
 pub struct MethodDeclaration {
@@ -82,7 +82,7 @@ impl quote::ToTokens for MethodDocumentation {
         match self {
             Self::None => {}
             Self::String(s) => {
-                tokens.extend(doc_comment(s));
+                tokens.extend(quote_doc_comment(s));
             }
             Self::Docs(docs) => tokens.extend(quote_docstrings(docs)),
         }
@@ -125,12 +125,14 @@ impl Method {
                 #declaration {
                     #definition_body
                 }
+                #NEWLINE_TOKEN
             }
         } else {
             quote! {
                 #NEWLINE_TOKEN
                 #docs
                 #declaration;
+                #NEWLINE_TOKEN
             }
         }
     }

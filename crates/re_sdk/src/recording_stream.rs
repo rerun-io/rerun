@@ -10,6 +10,11 @@ use re_log_types::{
     TimePoint, TimeType, Timeline, TimelineName,
 };
 
+#[cfg(feature = "web_viewer")]
+use re_web_viewer_server::WebViewerServerPort;
+#[cfg(feature = "web_viewer")]
+use re_ws_comms::RerunServerPort;
+
 use crate::sink::{LogSink, MemorySinkStorage};
 
 // ---
@@ -31,6 +36,10 @@ pub enum RecordingStreamError {
         name: &'static str,
         err: Box<dyn std::error::Error + Send + Sync>,
     },
+
+    #[cfg(feature = "web_viewer")]
+    #[error(transparent)]
+    WebSink(anyhow::Error),
 }
 
 pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
@@ -255,6 +264,53 @@ impl RecordingStreamBuilder {
             )
         } else {
             re_log::debug!("Rerun disabled - call to save() ignored");
+            Ok(RecordingStream::disabled())
+        }
+    }
+
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// web-based Rerun viewer via WebSockets.
+    ///
+    /// This method needs to be called in a context where a Tokio runtime is already running (see
+    /// example below).
+    ///
+    /// If the `open_browser` argument is `true`, your default browser will be opened with a
+    /// connected web-viewer.
+    ///
+    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun-cli`).
+    ///
+    /// ## Example
+    ///
+    /// ```ignore
+    /// // Ensure we have a running tokio runtime.
+    /// let mut tokio_runtime = None;
+    /// let tokio_runtime_handle = if let Ok(handle) = tokio::runtime::Handle::try_current() {
+    ///     handle
+    /// } else {
+    ///     let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+    ///     tokio_runtime.get_or_insert(rt).handle().clone()
+    /// };
+    /// let _tokio_runtime_guard = tokio_runtime_handle.enter();
+    ///
+    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("my_app")
+    ///     .serve("0.0.0.0", Default::default(), Default::default(), true)?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[cfg(feature = "web_viewer")]
+    pub fn serve(
+        self,
+        bind_ip: &str,
+        web_port: WebViewerServerPort,
+        ws_port: RerunServerPort,
+        open_browser: bool,
+    ) -> RecordingStreamResult<RecordingStream> {
+        let (enabled, store_info, batcher_config) = self.into_args();
+        if enabled {
+            let sink = crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)
+                .map_err(RecordingStreamError::WebSink)?;
+            RecordingStream::new(store_info, batcher_config, sink)
+        } else {
+            re_log::debug!("Rerun disabled - call to serve() ignored");
             Ok(RecordingStream::disabled())
         }
     }

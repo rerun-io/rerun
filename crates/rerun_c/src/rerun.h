@@ -82,8 +82,9 @@ extern const char* rr_version_string(void);
 /// Usually you only have one recording stream, so you can call
 /// `rr_recording_stream_new` once, ignore its return value, and use
 /// `RERUN_REC_STREAM_DEFAULT` everywhere in your code.
-extern rr_recording_stream rr_recording_stream_new(const struct rr_store_info* store_info,
-                                                   const char* tcp_addr);
+extern rr_recording_stream rr_recording_stream_new(
+    const struct rr_store_info* store_info, const char* tcp_addr
+);
 
 /// Free the given recording stream. The handle will be invalid after this.
 extern void rr_recording_stream_free(rr_recording_stream stream);
