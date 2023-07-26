@@ -36,6 +36,10 @@ name = "depth_image_simple"
 path = "depth_image_simple.rs"
 
 [[bin]]
+name = "disconnected_space_v2"
+path = "disconnected_space_v2.rs"
+
+[[bin]]
 name = "image_simple"
 path = "image_simple.rs"
 
