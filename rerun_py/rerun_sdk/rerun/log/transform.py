@@ -26,7 +26,6 @@ from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "log_view_coordinates",
-    "log_unknown_transform",
     "log_disconnected_space",
     "log_rigid3",
     "log_transform3d",
@@ -130,36 +129,6 @@ def log_view_coordinates(
             timeless,
             recording=recording,
         )
-
-
-@deprecated(version="0.7.0", reason="Use log_disconnected_space instead.")
-@log_decorator
-def log_unknown_transform(
-    entity_path: str,
-    timeless: bool = False,
-    recording: RecordingStream | None = None,
-) -> None:
-    """
-    Log that this entity is NOT in the same space as the parent, but you do not (yet) know how they relate.
-
-    Parameters
-    ----------
-    entity_path:
-        The path of the affected entity.
-
-    timeless:
-        Log the data as timeless.
-
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-    """
-    from rerun.experimental import DisconnectedSpace, log
-
-    recording = RecordingStream.to_native(recording)
-
-    log(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
 
 
 @log_decorator
