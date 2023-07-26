@@ -641,7 +641,7 @@ fn fill_arrow_array_builder_method(
     cpp_includes: &mut Includes,
 ) -> Method {
     let DataType::Extension(_fqname, logical_datatype, _metadata) = datatype else {
-        panic!("Can only generate arrow serialization code for extension types.");
+        panic!("Can only generate arrow serialization code for extension types. {}", obj.fqname);
     };
 
     let builder = format_ident!("builder");
@@ -883,22 +883,22 @@ fn quote_fill_arrow_array_builder(
 }
 
 fn trivial_batch_append(datatype: &DataType) -> bool {
-    match datatype {
+    matches!(
+        datatype,
         DataType::Null
-        | DataType::Boolean
-        | DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Float16
-        | DataType::Float32
-        | DataType::Float64 => true,
-        _ => false,
-    }
+            | DataType::Boolean
+            | DataType::Int8
+            | DataType::Int16
+            | DataType::Int32
+            | DataType::Int64
+            | DataType::UInt8
+            | DataType::UInt16
+            | DataType::UInt32
+            | DataType::UInt64
+            | DataType::Float16
+            | DataType::Float32
+            | DataType::Float64
+    )
 }
 
 fn quote_append_elements_to_builder(
