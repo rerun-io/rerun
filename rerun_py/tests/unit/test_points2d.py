@@ -5,7 +5,7 @@ from typing import Optional, cast
 
 import numpy as np
 import pytest
-import rerun.experimental as rr_exp
+import rerun.experimental as rr2
 from rerun.experimental import cmp as rr_cmp
 from rerun.experimental import dt as rr_dt
 
@@ -242,7 +242,7 @@ def test_points2d() -> None:
         instance_keys = cast(Optional[rr_cmp.InstanceKeyArrayLike], instance_keys)
 
         print(
-            f"rr_exp.Points2D(\n"
+            f"rr2.Points2D(\n"
             f"    {points}\n"
             f"    radii={radii}\n"
             f"    colors={colors}\n"
@@ -253,7 +253,7 @@ def test_points2d() -> None:
             f"    instance_keys={instance_keys}\n"
             f")"
         )
-        arch = rr_exp.Points2D(
+        arch = rr2.Points2D(
             points,
             radii=radii,
             colors=colors,
@@ -292,7 +292,7 @@ def non_empty(v: object) -> bool:
     ],
 )
 def test_point2d_single_color(data: rr_cmp.ColorArrayLike) -> None:
-    pts = rr_exp.Points2D(points=np.zeros((5, 2)), colors=data)
+    pts = rr2.Points2D(points=np.zeros((5, 2)), colors=data)
 
     assert pts.colors == rr_cmp.ColorArray.from_similar(rr_cmp.Color([0, 128, 0, 255]))
 
@@ -318,7 +318,7 @@ def test_point2d_single_color(data: rr_cmp.ColorArrayLike) -> None:
     ],
 )
 def test_point2d_multiple_colors(data: rr_cmp.ColorArrayLike) -> None:
-    pts = rr_exp.Points2D(points=np.zeros((5, 2)), colors=data)
+    pts = rr2.Points2D(points=np.zeros((5, 2)), colors=data)
 
     assert pts.colors == rr_cmp.ColorArray.from_similar(
         [

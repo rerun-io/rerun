@@ -10,11 +10,11 @@ base_vector = [0, 1, 0]
 
 rr.log_arrow("base", origin=origin, vector=base_vector)
 
-rr2.log_any("base/translated", rr2.Transform3D(rrd.TranslationRotationScale3D(translation=[1, 0, 0])))
+rr2.log("base/translated", rr2.Transform3D(rrd.TranslationRotationScale3D(translation=[1, 0, 0])))
 
 rr.log_arrow("base/translated", origin=origin, vector=base_vector)
 
-rr2.log_any(
+rr2.log(
     "base/rotated_scaled",
     rrd.TranslationRotationScale3D(
         rotation=rrd.RotationAxisAngle(axis=[0, 0, 1], radians=3.14 / 4), scale=rrd.Scale3D(2)

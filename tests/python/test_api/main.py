@@ -34,19 +34,19 @@ def run_segmentation(experimental_api: bool) -> None:
 
     # Log a bunch of classified 2D points
     if experimental_api:
-        import rerun.experimental as rr_exp
+        import rerun.experimental as rr2
 
         # Note: this uses the new, WIP object-oriented API
-        rr_exp.log_any("seg_test/single_point", rr_exp.Points2D([64, 64], class_ids=13))
-        rr_exp.log_any("seg_test/single_point_labeled", rr_exp.Points2D([90, 50], class_ids=13, labels="labeled point"))
-        rr_exp.log_any("seg_test/several_points0", rr_exp.Points2D([[20, 50], [100, 70], [60, 30]], class_ids=42))
-        rr_exp.log_any(
+        rr2.log("seg_test/single_point", rr2.Points2D([64, 64], class_ids=13))
+        rr2.log("seg_test/single_point_labeled", rr2.Points2D([90, 50], class_ids=13, labels="labeled point"))
+        rr2.log("seg_test/several_points0", rr2.Points2D([[20, 50], [100, 70], [60, 30]], class_ids=42))
+        rr2.log(
             "seg_test/several_points1",
-            rr_exp.Points2D([[40, 50], [120, 70], [80, 30]], class_ids=np.array([13, 42, 99], dtype=np.uint8)),
+            rr2.Points2D([[40, 50], [120, 70], [80, 30]], class_ids=np.array([13, 42, 99], dtype=np.uint8)),
         )
-        rr_exp.log_any(
+        rr2.log(
             "seg_test/many points",
-            rr_exp.Points2D(
+            rr2.Points2D(
                 [[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)],
                 class_ids=np.array([42], dtype=np.uint8),
             ),
@@ -148,36 +148,36 @@ def transform_test(experimental_api: bool) -> None:
     rr.log_disconnected_space("transform_test/disconnected")
 
     if experimental_api:
-        import rerun.experimental as rr_exp
+        import rerun.experimental as rr2
         from rerun.experimental import dt as rrd
 
         # Log scale along the x axis only.
-        rr_exp.log_any("transform_test/x_scaled", rrd.TranslationRotationScale3D(scale=(3, 1, 1)))
+        rr2.log("transform_test/x_scaled", rrd.TranslationRotationScale3D(scale=(3, 1, 1)))
 
         # Log a rotation around the z axis.
-        rr_exp.log_any(
+        rr2.log(
             "transform_test/z_rotated_object",
             rrd.TranslationRotationScale3D(rotation=rrd.RotationAxisAngle(axis=(1, 0, 0), angle=rrd.Angle(deg=45))),
         )
 
         # Log a transform from parent to child with a translation and skew along y and x.
-        rr_exp.log_any(
+        rr2.log(
             "transform_test/child_from_parent_translation",
             rrd.TranslationRotationScale3D(translation=(-1, 0, 0), from_parent=True),
         )
 
         # Log translation only.
-        rr_exp.log_any("transform_test/translation", rrd.TranslationRotationScale3D(translation=(2, 0, 0)))
-        rr_exp.log_any("transform_test/translation2", rrd.TranslationAndMat3x3(translation=(3, 0, 0)))
+        rr2.log("transform_test/translation", rrd.TranslationRotationScale3D(translation=(2, 0, 0)))
+        rr2.log("transform_test/translation2", rrd.TranslationAndMat3x3(translation=(3, 0, 0)))
 
         # Log uniform scale followed by translation along the Y-axis.
-        rr_exp.log_any(
+        rr2.log(
             "transform_test/scaled_and_translated_object",
             rrd.TranslationRotationScale3D(translation=[0, 0, 1], scale=3),
         )
 
         # Log translation + rotation, also called a rigid transform.
-        rr_exp.log_any(
+        rr2.log(
             "transform_test/rigid3",
             rrd.TranslationRotationScale3D(
                 translation=[1, 0, 1], rotation=rrd.RotationAxisAngle(axis=(0, 1, 0), angle=rrd.Angle(rad=1.57))
@@ -185,7 +185,7 @@ def transform_test(experimental_api: bool) -> None:
         )
 
         # Log translation, rotation & scale all at once.
-        rr_exp.log_any(
+        rr2.log(
             "transform_test/transformed",
             rrd.TranslationRotationScale3D(
                 translation=[2, 0, 1],
@@ -195,7 +195,7 @@ def transform_test(experimental_api: bool) -> None:
         )
 
         # Log a transform with translation and shear along x.
-        rr_exp.log_any(
+        rr2.log(
             "transform_test/shear",
             rrd.TranslationAndMat3x3(translation=(3, 0, 1), matrix=np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
         )
@@ -380,10 +380,10 @@ def transforms_rigid_3d(experimental_api: bool) -> None:
         rr.set_time_seconds("sim_time", time)
 
         if experimental_api:
-            import rerun.experimental as rr_exp
+            import rerun.experimental as rr2
             from rerun.experimental import dt as rrd
 
-            rr_exp.log_any(
+            rr2.log(
                 "transforms3d/sun/planet",
                 rrd.TranslationRotationScale3D(
                     translation=[
@@ -394,7 +394,7 @@ def transforms_rigid_3d(experimental_api: bool) -> None:
                     rotation=rrd.RotationAxisAngle(axis=(1, 0, 0), angle=rrd.Angle(deg=20)),
                 ),
             )
-            rr_exp.log_any(
+            rr2.log(
                 "transforms3d/sun/planet/moon",
                 rrd.TranslationRotationScale3D(
                     translation=[

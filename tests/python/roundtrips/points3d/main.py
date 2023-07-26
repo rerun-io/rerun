@@ -8,7 +8,7 @@ import argparse
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr_exp
+import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -27,7 +27,7 @@ def main() -> None:
     keypoint_ids = np.array([2, 3], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
-    points3d = rr_exp.Points3D(
+    points3d = rr2.Points3D(
         points,
         radii=radii,
         colors=colors,
@@ -44,7 +44,7 @@ def main() -> None:
 
     rr.script_setup(args, "roundtrip_points3d")
 
-    rr_exp.log_any("points3d", points3d)
+    rr2.log("points3d", points3d)
 
     rr.script_teardown(args)
 
