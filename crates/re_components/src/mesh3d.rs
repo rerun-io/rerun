@@ -146,7 +146,7 @@ pub struct RawMesh3D {
     pub vertex_positions: Buffer<f32>,
 
     /// Per-vertex albedo colors.
-    /// This is actually an encoded [`super::ColorRGBA`]
+    /// This is actually an encoded [`super::Color`]
     pub vertex_colors: Option<Buffer<u32>>,
 
     /// Optionally, the flattened normals array for this mesh.
