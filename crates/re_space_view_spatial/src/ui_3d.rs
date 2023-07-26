@@ -36,6 +36,7 @@ use super::eye::{Eye, OrbitEye};
 #[derive(Clone)]
 pub struct View3DState {
     pub orbit_eye: Option<OrbitEye>,
+    pub did_interact_with_eye: bool,
 
     /// Currently tracked camera.
     pub tracked_camera: Option<EntityPath>,
@@ -58,6 +59,7 @@ impl Default for View3DState {
     fn default() -> Self {
         Self {
             orbit_eye: Default::default(),
+            did_interact_with_eye: false,
             tracked_camera: None,
             camera_before_tracked_camera: None,
             eye_interpolation: Default::default(),
@@ -92,6 +94,24 @@ impl View3DState {
         space_cameras: &[SpaceCamera3D],
         view_coordinates: Option<ViewCoordinates>,
     ) -> &mut OrbitEye {
+        if !self.did_interact_with_eye {
+            let target = default_eye(scene_bbox_accum, &view_coordinates);
+            // Inlined interpolate_to_orbit_eye since we can't borrow self as mut another time
+            if let Some(start) = self.orbit_eye {
+                let target_time = EyeInterpolation::target_time(&start.to_eye(), &target.to_eye());
+                self.spin = false; // the user wants to move the camera somewhere, so stop spinning
+                self.eye_interpolation = Some(EyeInterpolation {
+                    elapsed_time: 0.0,
+                    target_time,
+                    start,
+                    target_orbit: Some(target),
+                    target_eye: None,
+                });
+            } else {
+                self.orbit_eye = Some(target);
+            }
+        }
+
         let orbit_camera = self
             .orbit_eye
             .get_or_insert_with(|| default_eye(scene_bbox_accum, &view_coordinates));
@@ -313,6 +333,7 @@ pub fn view_3d(
     let eye = orbit_eye.to_eye();
 
     if did_interact_with_eye {
+        state.state_3d.did_interact_with_eye = true;
         state.state_3d.eye_interpolation = None;
         state.state_3d.tracked_camera = None;
         state.state_3d.camera_before_tracked_camera = None;
