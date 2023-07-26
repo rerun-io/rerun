@@ -44,3 +44,15 @@ code-example: line_segments3d_simple
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/aeed681be95d6c974446f89a6fa26b7d3077adce_line_segment3d_simple_1200w.png">
   <img src="https://static.rerun.io/aa800b2a6e6a7b8e32e762b42861bae36f5014bb_line_segment3d_simple_full.png" alt="">
 </picture>
+
+## Batch Examples
+
+code-example: line_strip3d_batch
+
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/447c7d3d0a75447aa9bad9cfb2c6d68fbe082935_line_strip3d_batch_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/d7a16841654a524521f0d26b81771d4e5a740108_line_strip3d_batch_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/2848a42a715b410f433a9b78ddbe599dea2b66f9_line_strip3d_batch_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/a5ccbe907ea07baeb5117b17dfde41ce11477bf1_line_strip3d_batch_1200w.png">
+  <img src="https://static.rerun.io/102e5ec5271475657fbc76b469267e4ec8e84337_line_strip3d_batch_full.png" alt="">
+</picture>

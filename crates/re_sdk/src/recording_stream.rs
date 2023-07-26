@@ -219,20 +219,28 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
     /// ## Example
     ///
     /// ```no_run
     /// let rec_stream = re_sdk::RecordingStreamBuilder::new("my_app")
-    ///     .connect(re_sdk::default_server_addr())?;
+    ///     .connect(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn connect(self, addr: std::net::SocketAddr) -> RecordingStreamResult<RecordingStream> {
+    pub fn connect(
+        self,
+        addr: std::net::SocketAddr,
+        flush_timeout: Option<std::time::Duration>,
+    ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
             RecordingStream::new(
                 store_info,
                 batcher_config,
-                Box::new(crate::log_sink::TcpSink::new(addr)),
+                Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout)),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -850,11 +858,15 @@ impl RecordingStream {
     /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
     /// the specified address.
     ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn connect(&self, addr: std::net::SocketAddr) {
-        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr)));
+    pub fn connect(&self, addr: std::net::SocketAddr, flush_timeout: Option<std::time::Duration>) {
+        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout)));
     }
 
     /// Swaps the underlying sink for a [`crate::sink::MemorySink`] sink and returns the associated

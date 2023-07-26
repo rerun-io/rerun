@@ -140,7 +140,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             callback_group=self.callback_group,
         )
 
-    def log_tf_as_rigid3(self, path: str, time: Time) -> None:
+    def log_tf_as_transform3d(self, path: str, time: Time) -> None:
         """
         Helper to look up a transform with tf and log using `log_transform3d`.
 
@@ -189,7 +189,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.log_scalar("odometry/ang_vel", odom.twist.twist.angular.z)
 
         # Update the robot pose itself via TF
-        self.log_tf_as_rigid3("map/robot", time)
+        self.log_tf_as_transform3d("map/robot", time)
 
     def image_callback(self, img: Image) -> None:
         """Log an `Image` with `log_image` using `cv_bridge`."""
@@ -197,7 +197,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.set_time_nanos("ros_time", time.nanoseconds)
 
         rr.log_image("map/robot/camera/img", self.cv_bridge.imgmsg_to_cv2(img))
-        self.log_tf_as_rigid3("map/robot/camera", time)
+        self.log_tf_as_transform3d("map/robot/camera", time)
 
     def points_callback(self, points: PointCloud2) -> None:
         """Log a `PointCloud2` with `log_points`."""
@@ -223,7 +223,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         # Log points once rigidly under robot/camera/points. This is a robot-centric
         # view of the world.
         rr.log_points("map/robot/camera/points", positions=pts, colors=colors)
-        self.log_tf_as_rigid3("map/robot/camera/points", time)
+        self.log_tf_as_transform3d("map/robot/camera/points", time)
 
         # Log points a second time after transforming to the map frame. This is a map-centric
         # view of the world.
@@ -231,7 +231,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         # Once Rerun supports fixed-frame aware transforms [#1522](https://github.com/rerun-io/rerun/issues/1522)
         # this will no longer be necessary.
         rr.log_points("map/points", positions=pts, colors=colors)
-        self.log_tf_as_rigid3("map/points", time)
+        self.log_tf_as_transform3d("map/points", time)
 
     def scan_callback(self, scan: LaserScan) -> None:
         """
@@ -254,7 +254,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         segs = np.hstack([origin, pts]).reshape(pts.shape[0] * 2, 3)
 
         rr.log_line_segments("map/robot/scan", segs, stroke_width=0.005)
-        self.log_tf_as_rigid3("map/robot/scan", time)
+        self.log_tf_as_transform3d("map/robot/scan", time)
 
     def urdf_callback(self, urdf_msg: String) -> None:
         """Log a URDF using `log_scene` from `rerun_urdf`."""

@@ -27,3 +27,9 @@ pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub fn default_server_addr() -> std::net::SocketAddr {
     std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
 }
+
+/// The default amount of time to wait for the TCP connection to resume during a flush
+#[allow(clippy::unnecessary_wraps)]
+pub fn default_flush_timeout() -> Option<std::time::Duration> {
+    Some(std::time::Duration::from_secs(2))
+}

@@ -122,7 +122,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "log_unknown_transform",
             "log_disconnected_space",
             "log_view_coordinates",
-            "log_rigid3",
+            # "log_rigid3", Intentionally removed from the docs - deprecated since 0.7.
         ],
         class_list=[],
     ),

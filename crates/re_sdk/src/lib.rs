@@ -20,7 +20,7 @@ mod recording_stream;
 pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 
-pub use re_sdk_comms::default_server_addr;
+pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
 
 pub use re_log_types::{ApplicationId, EntityPath, LegacyComponent, StoreId, StoreKind};
 pub use re_types::ComponentName;
