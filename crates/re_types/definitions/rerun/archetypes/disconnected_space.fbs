@@ -1,0 +1,29 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+/// Specifies that the entity path at which this is logged is disconnected from its parent.
+///
+/// This is useful for specifying that a subgraph is independent of the rest of the scene.
+///
+/// \py Example
+/// \py -------
+/// \py
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/disconnected_space_v2.py
+/// \py ```
+///
+/// \rs ## Example
+/// \rs
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/disconnected_space_v2.rs
+/// \rs ```
+table DisconnectedSpace (
+  "attr.rust.derive": "Copy, PartialEq, Eq",
+  order: 100
+) {
+  disconnected_space: rerun.components.DisconnectedSpace ("attr.rerun.component_required", required, order: 1000);
+}
