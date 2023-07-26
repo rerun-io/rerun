@@ -116,10 +116,9 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     }
 
     {
-        // Turn off any expansion in the UI (see https://github.com/rerun-io/rerun/issues/2727)
-        egui_style.visuals.widgets.hovered.expansion = 0.0;
-        egui_style.visuals.widgets.active.expansion = 0.0;
-        egui_style.visuals.widgets.open.expansion = 0.0;
+        egui_style.visuals.widgets.hovered.expansion = 2.0;
+        egui_style.visuals.widgets.active.expansion = 2.0;
+        egui_style.visuals.widgets.open.expansion = 2.0;
     }
 
     egui_style.visuals.selection.bg_fill =
