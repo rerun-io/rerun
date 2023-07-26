@@ -3,15 +3,8 @@
 
 #pragma once
 
-#include <arrow/result.h>
+#include <arrow/type_fwd.h>
 #include <cstdint>
-#include <memory>
-
-namespace arrow {
-    class ArrayBuilder;
-    class DataType;
-    class MemoryPool;
-} // namespace arrow
 
 namespace rr {
     namespace datatypes {
@@ -25,9 +18,15 @@ namespace rr {
             /// Returns the arrow data type this type corresponds to.
             static std::shared_ptr<arrow::DataType> to_arrow_datatype();
 
-            /// Fills out an arrow array builder with an array of this type.
-            static arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> to_arrow(
-                arrow::MemoryPool* memory_pool, const Point2D* elements, size_t num_elements);
+            /// Creates a new array builder with an array of this type.
+            static arrow::Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
+                arrow::MemoryPool* memory_pool
+            );
+
+            /// Fills an arrow array builder with an array of this type.
+            static arrow::Status fill_arrow_array_builder(
+                arrow::StructBuilder* builder, const Point2D* elements, size_t num_elements
+            );
         };
     } // namespace datatypes
 } // namespace rr

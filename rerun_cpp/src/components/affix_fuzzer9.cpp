@@ -11,17 +11,32 @@ namespace rr {
             return arrow::utf8();
         }
 
-        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> AffixFuzzer9::to_arrow(
-            arrow::MemoryPool* memory_pool, const AffixFuzzer9* elements, size_t num_elements) {
+        arrow::Result<std::shared_ptr<arrow::StringBuilder>> AffixFuzzer9::new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::StringBuilder>(memory_pool));
+        }
+
+        arrow::Status AffixFuzzer9::fill_arrow_array_builder(
+            arrow::StringBuilder* builder, const AffixFuzzer9* elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
             }
             if (!elements) {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            auto builder = std::make_shared<arrow::StringBuilder>(memory_pool);
-            return builder;
+            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(builder->Append(elements[elem_idx].single_string_required));
+            }
+
+            return arrow::Status::OK();
         }
     } // namespace components
 } // namespace rr

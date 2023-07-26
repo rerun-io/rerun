@@ -13,22 +13,36 @@ namespace rr {
             return rr::datatypes::Point2D::to_arrow_datatype();
         }
 
-        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> Point2D::to_arrow(
-            arrow::MemoryPool *memory_pool, const Point2D *elements, size_t num_elements) {
+        arrow::Result<std::shared_ptr<arrow::StructBuilder>> Point2D::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(
+                rr::datatypes::Point2D::new_arrow_array_builder(memory_pool).ValueOrDie()
+            );
+        }
+
+        arrow::Status Point2D::fill_arrow_array_builder(
+            arrow::StructBuilder *builder, const Point2D *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
             }
             if (!elements) {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(Point2D) == sizeof(rr::datatypes::Point2D),
-                          "Expected fully transparent type.");
-            auto builder = rr::datatypes::Point2D::to_arrow(
-                memory_pool,
+            static_assert(sizeof(rr::datatypes::Point2D) == sizeof(Point2D));
+            ARROW_RETURN_NOT_OK(rr::datatypes::Point2D::fill_arrow_array_builder(
+                builder,
                 reinterpret_cast<const rr::datatypes::Point2D *>(elements),
-                num_elements);
-            return builder;
+                num_elements
+            ));
+
+            return arrow::Status::OK();
         }
     } // namespace components
 } // namespace rr

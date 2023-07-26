@@ -13,22 +13,36 @@ namespace rr {
             return rr::datatypes::AffixFuzzer1::to_arrow_datatype();
         }
 
-        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> AffixFuzzer3::to_arrow(
-            arrow::MemoryPool *memory_pool, const AffixFuzzer3 *elements, size_t num_elements) {
+        arrow::Result<std::shared_ptr<arrow::StructBuilder>> AffixFuzzer3::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(
+                rr::datatypes::AffixFuzzer1::new_arrow_array_builder(memory_pool).ValueOrDie()
+            );
+        }
+
+        arrow::Status AffixFuzzer3::fill_arrow_array_builder(
+            arrow::StructBuilder *builder, const AffixFuzzer3 *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
             }
             if (!elements) {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(AffixFuzzer3) == sizeof(rr::datatypes::AffixFuzzer1),
-                          "Expected fully transparent type.");
-            auto builder = rr::datatypes::AffixFuzzer1::to_arrow(
-                memory_pool,
+            static_assert(sizeof(rr::datatypes::AffixFuzzer1) == sizeof(AffixFuzzer3));
+            ARROW_RETURN_NOT_OK(rr::datatypes::AffixFuzzer1::fill_arrow_array_builder(
+                builder,
                 reinterpret_cast<const rr::datatypes::AffixFuzzer1 *>(elements),
-                num_elements);
-            return builder;
+                num_elements
+            ));
+
+            return arrow::Status::OK();
         }
     } // namespace components
 } // namespace rr

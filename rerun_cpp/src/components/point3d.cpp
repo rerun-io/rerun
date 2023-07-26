@@ -13,22 +13,36 @@ namespace rr {
             return rr::datatypes::Point3D::to_arrow_datatype();
         }
 
-        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> Point3D::to_arrow(
-            arrow::MemoryPool *memory_pool, const Point3D *elements, size_t num_elements) {
+        arrow::Result<std::shared_ptr<arrow::StructBuilder>> Point3D::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(
+                rr::datatypes::Point3D::new_arrow_array_builder(memory_pool).ValueOrDie()
+            );
+        }
+
+        arrow::Status Point3D::fill_arrow_array_builder(
+            arrow::StructBuilder *builder, const Point3D *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
             }
             if (!elements) {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(Point3D) == sizeof(rr::datatypes::Point3D),
-                          "Expected fully transparent type.");
-            auto builder = rr::datatypes::Point3D::to_arrow(
-                memory_pool,
+            static_assert(sizeof(rr::datatypes::Point3D) == sizeof(Point3D));
+            ARROW_RETURN_NOT_OK(rr::datatypes::Point3D::fill_arrow_array_builder(
+                builder,
                 reinterpret_cast<const rr::datatypes::Point3D *>(elements),
-                num_elements);
-            return builder;
+                num_elements
+            ));
+
+            return arrow::Status::OK();
         }
     } // namespace components
 } // namespace rr

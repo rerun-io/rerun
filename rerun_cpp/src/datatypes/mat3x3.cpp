@@ -8,21 +8,45 @@
 namespace rr {
     namespace datatypes {
         std::shared_ptr<arrow::DataType> Mat3x3::to_arrow_datatype() {
-            return arrow::fixed_size_list(arrow::field("item", arrow::float32(), false, nullptr),
-                                          9);
+            return arrow::fixed_size_list(
+                arrow::field("item", arrow::float32(), false, nullptr),
+                9
+            );
         }
 
-        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> Mat3x3::to_arrow(
-            arrow::MemoryPool* memory_pool, const Mat3x3* elements, size_t num_elements) {
+        arrow::Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Mat3x3::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::FixedSizeListBuilder>(
+                memory_pool,
+                std::make_shared<arrow::FloatBuilder>(memory_pool),
+                9
+            ));
+        }
+
+        arrow::Status Mat3x3::fill_arrow_array_builder(
+            arrow::FixedSizeListBuilder *builder, const Mat3x3 *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
             }
             if (!elements) {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            auto builder = std::make_shared<arrow::FixedSizeListBuilder>(memory_pool);
-            return builder;
+            auto value_builder = static_cast<arrow::FloatBuilder *>(builder->value_builder());
+
+            static_assert(sizeof(elements[0].coeffs) == sizeof(elements[0]));
+            ARROW_RETURN_NOT_OK(
+                value_builder->AppendValues(elements[0].coeffs, num_elements * 9, nullptr)
+            );
+            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements));
+
+            return arrow::Status::OK();
         }
     } // namespace datatypes
 } // namespace rr

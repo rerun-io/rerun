@@ -11,17 +11,30 @@ namespace rr {
             return arrow::uint32();
         }
 
-        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> Color::to_arrow(
-            arrow::MemoryPool* memory_pool, const Color* elements, size_t num_elements) {
+        arrow::Result<std::shared_ptr<arrow::UInt32Builder>> Color::new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::UInt32Builder>(memory_pool));
+        }
+
+        arrow::Status Color::fill_arrow_array_builder(
+            arrow::UInt32Builder* builder, const Color* elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
             }
             if (!elements) {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            auto builder = std::make_shared<arrow::UInt32Builder>(memory_pool);
-            return builder;
+            static_assert(sizeof(*elements) == sizeof(elements->rgba));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(&elements->rgba, num_elements));
+
+            return arrow::Status::OK();
         }
     } // namespace components
 } // namespace rr

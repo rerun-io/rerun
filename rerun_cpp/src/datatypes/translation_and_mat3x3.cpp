@@ -13,28 +13,60 @@ namespace rr {
         std::shared_ptr<arrow::DataType> TranslationAndMat3x3::to_arrow_datatype() {
             return arrow::struct_({
                 arrow::field(
-                    "translation", rr::datatypes::Vec3D::to_arrow_datatype(), true, nullptr),
+                    "translation",
+                    rr::datatypes::Vec3D::to_arrow_datatype(),
+                    true,
+                    nullptr
+                ),
                 arrow::field("matrix", rr::datatypes::Mat3x3::to_arrow_datatype(), true, nullptr),
                 arrow::field("from_parent", arrow::boolean(), false, nullptr),
             });
         }
 
-        arrow::Result<std::shared_ptr<arrow::ArrayBuilder>> TranslationAndMat3x3::to_arrow(
-            arrow::MemoryPool* memory_pool, const TranslationAndMat3x3* elements,
-            size_t num_elements) {
+        arrow::Result<std::shared_ptr<arrow::StructBuilder>>
+            TranslationAndMat3x3::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::StructBuilder>(
+                to_arrow_datatype(),
+                memory_pool,
+                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
+                    rr::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rr::datatypes::Mat3x3::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    std::make_shared<arrow::BooleanBuilder>(memory_pool),
+                })
+            ));
+        }
+
+        arrow::Status TranslationAndMat3x3::fill_arrow_array_builder(
+            arrow::StructBuilder *builder, const TranslationAndMat3x3 *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
             }
             if (!elements) {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            auto datatype = TranslationAndMat3x3::to_arrow_datatype();
-            let builder =
-                std::make_shared<arrow::FixedSizeBinaryBuilder>(datatype, memory_pool, {},
-                                                                // TODO(#2647): code-gen for C++
-                );
-            return builder;
+            return arrow::Status::NotImplemented(
+                "TODO(andreas): extensions in structs are not yet supported"
+            );
+            return arrow::Status::NotImplemented(
+                "TODO(andreas): extensions in structs are not yet supported"
+            );
+            {
+                auto element_builder =
+                    static_cast<arrow::BooleanBuilder *>(builder->field_builder(2));
+                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(element_builder->Append(elements[elem_idx].from_parent));
+                }
+            }
+            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+
+            return arrow::Status::OK();
         }
     } // namespace datatypes
 } // namespace rr

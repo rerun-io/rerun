@@ -5,9 +5,9 @@
 
 #include "../datatypes/affix_fuzzer3.hpp"
 
+#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <cstring>
-#include <memory>
 #include <new>
 #include <optional>
 #include <utility>
@@ -96,8 +96,8 @@ namespace rr {
                 return std::move(self);
             }
 
-            static AffixFuzzer4 many_required(
-                std::vector<rr::datatypes::AffixFuzzer3> many_required) {
+            static AffixFuzzer4 many_required(std::vector<rr::datatypes::AffixFuzzer3> many_required
+            ) {
                 typedef std::vector<rr::datatypes::AffixFuzzer3> TypeAlias;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_required;
@@ -106,7 +106,8 @@ namespace rr {
             }
 
             static AffixFuzzer4 many_optional(
-                std::optional<std::vector<rr::datatypes::AffixFuzzer3>> many_optional) {
+                std::optional<std::vector<rr::datatypes::AffixFuzzer3>> many_optional
+            ) {
                 typedef std::optional<std::vector<rr::datatypes::AffixFuzzer3>> TypeAlias;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_optional;
@@ -116,6 +117,16 @@ namespace rr {
 
             /// Returns the arrow data type this type corresponds to.
             static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+
+            /// Creates a new array builder with an array of this type.
+            static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
+                arrow::MemoryPool* memory_pool
+            );
+
+            /// Fills an arrow array builder with an array of this type.
+            static arrow::Status fill_arrow_array_builder(
+                arrow::DenseUnionBuilder* builder, const AffixFuzzer4* elements, size_t num_elements
+            );
 
             void swap(AffixFuzzer4& other) noexcept {
                 auto tag_temp = this->_tag;
