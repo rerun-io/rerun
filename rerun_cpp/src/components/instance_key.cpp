@@ -10,5 +10,31 @@ namespace rr {
         std::shared_ptr<arrow::DataType> InstanceKey::to_arrow_datatype() {
             return arrow::uint64();
         }
+
+        arrow::Result<std::shared_ptr<arrow::UInt64Builder>> InstanceKey::new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        ) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::UInt64Builder>(memory_pool));
+        }
+
+        arrow::Status InstanceKey::fill_arrow_array_builder(
+            arrow::UInt64Builder* builder, const InstanceKey* elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            static_assert(sizeof(*elements) == sizeof(elements->value));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(&elements->value, num_elements));
+
+            return arrow::Status::OK();
+        }
     } // namespace components
 } // namespace rr

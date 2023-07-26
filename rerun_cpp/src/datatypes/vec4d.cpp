@@ -8,8 +8,45 @@
 namespace rr {
     namespace datatypes {
         std::shared_ptr<arrow::DataType> Vec4D::to_arrow_datatype() {
-            return arrow::fixed_size_list(arrow::field("item", arrow::float32(), false, nullptr),
-                                          4);
+            return arrow::fixed_size_list(
+                arrow::field("item", arrow::float32(), false, nullptr),
+                4
+            );
+        }
+
+        arrow::Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Vec4D::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::FixedSizeListBuilder>(
+                memory_pool,
+                std::make_shared<arrow::FloatBuilder>(memory_pool),
+                4
+            ));
+        }
+
+        arrow::Status Vec4D::fill_arrow_array_builder(
+            arrow::FixedSizeListBuilder *builder, const Vec4D *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            auto value_builder = static_cast<arrow::FloatBuilder *>(builder->value_builder());
+
+            static_assert(sizeof(elements[0].xyzw) == sizeof(elements[0]));
+            ARROW_RETURN_NOT_OK(
+                value_builder->AppendValues(elements[0].xyzw, num_elements * 4, nullptr)
+            );
+            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements));
+
+            return arrow::Status::OK();
         }
     } // namespace datatypes
 } // namespace rr

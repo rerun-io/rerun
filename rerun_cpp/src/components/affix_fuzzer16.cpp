@@ -11,7 +11,41 @@ namespace rr {
     namespace components {
         std::shared_ptr<arrow::DataType> AffixFuzzer16::to_arrow_datatype() {
             return arrow::list(arrow::field(
-                "item", rr::datatypes::AffixFuzzer3::to_arrow_datatype(), false, nullptr));
+                "item",
+                rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                false,
+                nullptr
+            ));
+        }
+
+        arrow::Result<std::shared_ptr<arrow::ListBuilder>> AffixFuzzer16::new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        ) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::ListBuilder>(
+                memory_pool,
+                rr::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).ValueOrDie()
+            ));
+        }
+
+        arrow::Status AffixFuzzer16::fill_arrow_array_builder(
+            arrow::ListBuilder* builder, const AffixFuzzer16* elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            return arrow::Status::NotImplemented(
+                "TODO(andreas): custom data types in lists/fixedsizelist are not yet implemented"
+            );
+
+            return arrow::Status::OK();
         }
     } // namespace components
 } // namespace rr

@@ -100,10 +100,6 @@ pub mod clap;
 #[cfg(all(feature = "sdk", feature = "native_viewer"))]
 pub mod native_viewer;
 
-/// Methods for spawning the web viewer and streaming the SDK log stream to it.
-#[cfg(all(feature = "sdk", feature = "web_viewer"))]
-pub mod web_viewer;
-
 pub use run::{run, CallSource};
 
 // NOTE: Have a look at `re_sdk/src/lib.rs` for an accurate listing of all these symbols.

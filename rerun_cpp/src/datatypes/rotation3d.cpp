@@ -14,12 +14,54 @@ namespace rr {
             return arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field(
-                    "Quaternion", rr::datatypes::Quaternion::to_arrow_datatype(), false, nullptr),
-                arrow::field("AxisAngle",
-                             rr::datatypes::RotationAxisAngle::to_arrow_datatype(),
-                             false,
-                             nullptr),
+                    "Quaternion",
+                    rr::datatypes::Quaternion::to_arrow_datatype(),
+                    false,
+                    nullptr
+                ),
+                arrow::field(
+                    "AxisAngle",
+                    rr::datatypes::RotationAxisAngle::to_arrow_datatype(),
+                    false,
+                    nullptr
+                ),
             });
+        }
+
+        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>>
+            Rotation3D::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::DenseUnionBuilder>(
+                memory_pool,
+                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
+                    std::make_shared<arrow::NullBuilder>(memory_pool),
+                    rr::datatypes::Quaternion::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rr::datatypes::RotationAxisAngle::new_arrow_array_builder(memory_pool)
+                        .ValueOrDie(),
+                }),
+                to_arrow_datatype()
+            ));
+        }
+
+        arrow::Status Rotation3D::fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const Rotation3D* elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto& element = elements[elem_idx];
+            }
+            return arrow::Status::NotImplemented("TODO(andreas): unions are not yet implemented");
+
+            return arrow::Status::OK();
         }
     } // namespace datatypes
 } // namespace rr

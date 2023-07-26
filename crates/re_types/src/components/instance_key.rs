@@ -14,6 +14,7 @@
 
 /// A unique numeric identifier for each individual instance within a batch.
 #[derive(Clone, Debug, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct InstanceKey(pub u64);
 
 impl<'a> From<InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {

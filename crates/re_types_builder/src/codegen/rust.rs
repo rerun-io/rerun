@@ -14,8 +14,8 @@ use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LEGACY_FQNAME, ATTR_RUST_DERIVE, ATTR_RUST_REPR,
-    ATTR_RUST_TUPLE_STRUCT,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LEGACY_FQNAME, ATTR_RUST_CUSTOM_CLAUSE,
+    ATTR_RUST_DERIVE, ATTR_RUST_REPR, ATTR_RUST_TUPLE_STRUCT,
 };
 
 // TODO(cmc): it'd be nice to be able to generate vanilla comments (as opposed to doc-comments)
@@ -382,6 +382,7 @@ impl QuotedObject {
         let quoted_derive_clone_debug = quote_derive_clone_debug();
         let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
+        let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
         let quoted_fields = fields
             .iter()
@@ -405,6 +406,7 @@ impl QuotedObject {
             #quoted_derive_clone_debug
             #quoted_derive_clause
             #quoted_repr_clause
+            #quoted_custom_clause
             #quoted_struct
 
             #quoted_from_impl
@@ -450,6 +452,7 @@ impl QuotedObject {
         let quoted_derive_clone_debug = quote_derive_clone_debug();
         let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
+        let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
         let quoted_fields = fields.iter().map(|obj_field| {
             let ObjectField {
@@ -490,6 +493,7 @@ impl QuotedObject {
             #quoted_derive_clone_debug
             #quoted_derive_clause
             #quoted_repr_clause
+            #quoted_custom_clause
             pub enum #name {
                 #(#quoted_fields,)*
             }
@@ -658,10 +662,16 @@ fn quote_derive_clone_debug() -> TokenStream {
 fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenStream {
     let quoted = obj
         .try_get_attr::<String>(attr)
-        .map(|what| {
-            syn::parse_str::<syn::MetaList>(&format!("{clause}({what})"))
-                .with_context(|| format!("illegal meta clause: {what:?}"))
-                .unwrap()
+        .map(|contents| {
+            if clause.is_empty() {
+                syn::parse_str::<syn::Meta>(contents.as_str())
+                    .with_context(|| format!("illegal meta clause: {clause:?}"))
+                    .unwrap()
+            } else {
+                syn::parse_str::<syn::Meta>(&format!("{clause}({contents})"))
+                    .with_context(|| format!("illegal meta clause: {clause}({contents})"))
+                    .unwrap()
+            }
         })
         .map(|clause| quote!(#[#clause]));
     quote!(#quoted)

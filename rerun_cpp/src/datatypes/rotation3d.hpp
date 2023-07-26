@@ -6,9 +6,9 @@
 #include "../datatypes/quaternion.hpp"
 #include "../datatypes/rotation_axis_angle.hpp"
 
+#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <cstring>
-#include <memory>
 #include <utility>
 
 namespace rr {
@@ -91,6 +91,16 @@ namespace rr {
 
             /// Returns the arrow data type this type corresponds to.
             static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+
+            /// Creates a new array builder with an array of this type.
+            static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
+                arrow::MemoryPool* memory_pool
+            );
+
+            /// Fills an arrow array builder with an array of this type.
+            static arrow::Status fill_arrow_array_builder(
+                arrow::DenseUnionBuilder* builder, const Rotation3D* elements, size_t num_elements
+            );
 
             void swap(Rotation3D& other) noexcept {
                 auto tag_temp = this->_tag;

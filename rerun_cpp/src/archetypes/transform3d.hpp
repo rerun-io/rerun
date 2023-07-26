@@ -5,6 +5,7 @@
 
 #include "../components/transform3d.hpp"
 
+#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <utility>
 

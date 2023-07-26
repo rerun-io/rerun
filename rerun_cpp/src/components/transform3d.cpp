@@ -12,5 +12,36 @@ namespace rr {
         std::shared_ptr<arrow::DataType> Transform3D::to_arrow_datatype() {
             return rr::datatypes::Transform3D::to_arrow_datatype();
         }
+
+        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>>
+            Transform3D::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(
+                rr::datatypes::Transform3D::new_arrow_array_builder(memory_pool).ValueOrDie()
+            );
+        }
+
+        arrow::Status Transform3D::fill_arrow_array_builder(
+            arrow::DenseUnionBuilder *builder, const Transform3D *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            static_assert(sizeof(rr::datatypes::Transform3D) == sizeof(Transform3D));
+            ARROW_RETURN_NOT_OK(rr::datatypes::Transform3D::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rr::datatypes::Transform3D *>(elements),
+                num_elements
+            ));
+
+            return arrow::Status::OK();
+        }
     } // namespace components
 } // namespace rr

@@ -12,5 +12,36 @@ namespace rr {
         std::shared_ptr<arrow::DataType> AffixFuzzer14::to_arrow_datatype() {
             return rr::datatypes::AffixFuzzer3::to_arrow_datatype();
         }
+
+        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>>
+            AffixFuzzer14::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(
+                rr::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).ValueOrDie()
+            );
+        }
+
+        arrow::Status AffixFuzzer14::fill_arrow_array_builder(
+            arrow::DenseUnionBuilder *builder, const AffixFuzzer14 *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            static_assert(sizeof(rr::datatypes::AffixFuzzer3) == sizeof(AffixFuzzer14));
+            ARROW_RETURN_NOT_OK(rr::datatypes::AffixFuzzer3::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rr::datatypes::AffixFuzzer3 *>(elements),
+                num_elements
+            ));
+
+            return arrow::Status::OK();
+        }
     } // namespace components
 } // namespace rr

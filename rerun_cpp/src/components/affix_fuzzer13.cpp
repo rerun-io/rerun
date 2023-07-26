@@ -10,5 +10,48 @@ namespace rr {
         std::shared_ptr<arrow::DataType> AffixFuzzer13::to_arrow_datatype() {
             return arrow::list(arrow::field("item", arrow::utf8(), true, nullptr));
         }
+
+        arrow::Result<std::shared_ptr<arrow::ListBuilder>> AffixFuzzer13::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::ListBuilder>(
+                memory_pool,
+                std::make_shared<arrow::StringBuilder>(memory_pool)
+            ));
+        }
+
+        arrow::Status AffixFuzzer13::fill_arrow_array_builder(
+            arrow::ListBuilder *builder, const AffixFuzzer13 *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            auto value_builder = static_cast<arrow::StringBuilder *>(builder->value_builder());
+            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 1));
+
+            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto &element = elements[elem_idx];
+                if (element.many_strings_optional.has_value()) {
+                    for (auto item_idx = 0; item_idx < element.many_strings_optional.value().size();
+                         item_idx += 1) {
+                        value_builder->Append(element.many_strings_optional.value()[item_idx]);
+                    }
+                    ARROW_RETURN_NOT_OK(builder->Append());
+                } else {
+                    ARROW_RETURN_NOT_OK(builder->AppendNull());
+                }
+            }
+
+            return arrow::Status::OK();
+        }
     } // namespace components
 } // namespace rr
