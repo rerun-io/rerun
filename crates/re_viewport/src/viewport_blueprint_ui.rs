@@ -417,11 +417,6 @@ fn blueprint_row_with_buttons(
 ) {
     let where_to_add_hover_rect = ui.painter().add(egui::Shape::Noop);
 
-    ui.visuals_mut().widgets.hovered.expansion = 2.0;
-    ui.visuals_mut().widgets.active.expansion = 2.0;
-    ui.visuals_mut().widgets.open.expansion = 2.0;
-    ui.visuals_mut().widgets.inactive.expansion = 2.0;
-
     // Make the main button span the whole width to make it easier to click:
     let main_button_response = ui
         .with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
