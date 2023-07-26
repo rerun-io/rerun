@@ -39,7 +39,7 @@ pub enum RecordingStreamError {
 
     #[cfg(feature = "web_viewer")]
     #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    WebSink(anyhow::Error),
 }
 
 pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
@@ -306,7 +306,8 @@ impl RecordingStreamBuilder {
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
-            let sink = crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)?;
+            let sink = crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)
+                .map_err(RecordingStreamError::WebSink)?;
             RecordingStream::new(store_info, batcher_config, sink)
         } else {
             re_log::debug!("Rerun disabled - call to serve() ignored");
