@@ -1,4 +1,4 @@
-"""Log a batch of line strips."""
+"""Log a batch of 3d line strips."""
 import rerun as rr
 
 rr.init("linestrip3d", spawn=True)
