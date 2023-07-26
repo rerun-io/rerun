@@ -6,9 +6,9 @@
 #include "../datatypes/translation_and_mat3x3.hpp"
 #include "../datatypes/translation_rotation_scale3d.hpp"
 
+#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <cstring>
-#include <memory>
 #include <utility>
 
 namespace rr {
@@ -62,7 +62,8 @@ namespace rr {
             }
 
             static Transform3D translation_and_mat3x3(
-                rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3) {
+                rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3
+            ) {
                 Transform3D self;
                 self._tag = detail::Transform3DTag::TranslationAndMat3x3;
                 self._data.translation_and_mat3x3 = std::move(translation_and_mat3x3);
@@ -70,7 +71,8 @@ namespace rr {
             }
 
             static Transform3D translation_rotation_scale(
-                rr::datatypes::TranslationRotationScale3D translation_rotation_scale) {
+                rr::datatypes::TranslationRotationScale3D translation_rotation_scale
+            ) {
                 Transform3D self;
                 self._tag = detail::Transform3DTag::TranslationRotationScale;
                 self._data.translation_rotation_scale = std::move(translation_rotation_scale);
@@ -88,6 +90,16 @@ namespace rr {
 
             /// Returns the arrow data type this type corresponds to.
             static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+
+            /// Creates a new array builder with an array of this type.
+            static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
+                arrow::MemoryPool* memory_pool
+            );
+
+            /// Fills an arrow array builder with an array of this type.
+            static arrow::Status fill_arrow_array_builder(
+                arrow::DenseUnionBuilder* builder, const Transform3D* elements, size_t num_elements
+            );
 
             void swap(Transform3D& other) noexcept {
                 auto tag_temp = this->_tag;

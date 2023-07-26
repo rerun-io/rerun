@@ -23,6 +23,7 @@
 #include "../components/affix_fuzzer8.hpp"
 #include "../components/affix_fuzzer9.hpp"
 
+#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <vector>

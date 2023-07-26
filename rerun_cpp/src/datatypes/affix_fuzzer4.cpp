@@ -12,23 +12,79 @@ namespace rr {
         std::shared_ptr<arrow::DataType> AffixFuzzer4::to_arrow_datatype() {
             return arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field("single_required",
-                             rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
-                             false,
-                             nullptr),
+                arrow::field(
+                    "single_required",
+                    rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                    false,
+                    nullptr
+                ),
                 arrow::field(
                     "many_required",
                     arrow::list(arrow::field(
-                        "item", rr::datatypes::AffixFuzzer3::to_arrow_datatype(), false, nullptr)),
+                        "item",
+                        rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                        false,
+                        nullptr
+                    )),
                     false,
-                    nullptr),
+                    nullptr
+                ),
                 arrow::field(
                     "many_optional",
                     arrow::list(arrow::field(
-                        "item", rr::datatypes::AffixFuzzer3::to_arrow_datatype(), true, nullptr)),
+                        "item",
+                        rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                        true,
+                        nullptr
+                    )),
                     false,
-                    nullptr),
+                    nullptr
+                ),
             });
+        }
+
+        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>>
+            AffixFuzzer4::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::DenseUnionBuilder>(
+                memory_pool,
+                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
+                    std::make_shared<arrow::NullBuilder>(memory_pool),
+                    rr::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    std::make_shared<arrow::ListBuilder>(
+                        memory_pool,
+                        rr::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
+                            .ValueOrDie()
+                    ),
+                    std::make_shared<arrow::ListBuilder>(
+                        memory_pool,
+                        rr::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
+                            .ValueOrDie()
+                    ),
+                }),
+                to_arrow_datatype()
+            ));
+        }
+
+        arrow::Status AffixFuzzer4::fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const AffixFuzzer4* elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto& element = elements[elem_idx];
+            }
+            return arrow::Status::NotImplemented("TODO(andreas): unions are not yet implemented");
+
+            return arrow::Status::OK();
         }
     } // namespace datatypes
 } // namespace rr

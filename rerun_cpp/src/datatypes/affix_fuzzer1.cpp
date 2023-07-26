@@ -14,25 +14,156 @@ namespace rr {
                 arrow::field("single_float_optional", arrow::float32(), true, nullptr),
                 arrow::field("single_string_required", arrow::utf8(), false, nullptr),
                 arrow::field("single_string_optional", arrow::utf8(), true, nullptr),
-                arrow::field("many_floats_optional",
-                             arrow::list(arrow::field("item", arrow::float32(), true, nullptr)),
-                             true,
-                             nullptr),
-                arrow::field("many_strings_required",
-                             arrow::list(arrow::field("item", arrow::utf8(), false, nullptr)),
-                             false,
-                             nullptr),
-                arrow::field("many_strings_optional",
-                             arrow::list(arrow::field("item", arrow::utf8(), true, nullptr)),
-                             true,
-                             nullptr),
+                arrow::field(
+                    "many_floats_optional",
+                    arrow::list(arrow::field("item", arrow::float32(), true, nullptr)),
+                    true,
+                    nullptr
+                ),
+                arrow::field(
+                    "many_strings_required",
+                    arrow::list(arrow::field("item", arrow::utf8(), false, nullptr)),
+                    false,
+                    nullptr
+                ),
+                arrow::field(
+                    "many_strings_optional",
+                    arrow::list(arrow::field("item", arrow::utf8(), true, nullptr)),
+                    true,
+                    nullptr
+                ),
                 arrow::field("flattened_scalar", arrow::float32(), false, nullptr),
-                arrow::field("almost_flattened_scalar",
-                             rr::datatypes::FlattenedScalar::to_arrow_datatype(),
-                             false,
-                             nullptr),
+                arrow::field(
+                    "almost_flattened_scalar",
+                    rr::datatypes::FlattenedScalar::to_arrow_datatype(),
+                    false,
+                    nullptr
+                ),
                 arrow::field("from_parent", arrow::boolean(), true, nullptr),
             });
+        }
+
+        arrow::Result<std::shared_ptr<arrow::StructBuilder>> AffixFuzzer1::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
+            if (!memory_pool) {
+                return arrow::Status::Invalid("Memory pool is null.");
+            }
+
+            return arrow::Result(std::make_shared<arrow::StructBuilder>(
+                to_arrow_datatype(),
+                memory_pool,
+                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
+                    std::make_shared<arrow::FloatBuilder>(memory_pool),
+                    std::make_shared<arrow::StringBuilder>(memory_pool),
+                    std::make_shared<arrow::StringBuilder>(memory_pool),
+                    std::make_shared<arrow::ListBuilder>(
+                        memory_pool,
+                        std::make_shared<arrow::FloatBuilder>(memory_pool)
+                    ),
+                    std::make_shared<arrow::ListBuilder>(
+                        memory_pool,
+                        std::make_shared<arrow::StringBuilder>(memory_pool)
+                    ),
+                    std::make_shared<arrow::ListBuilder>(
+                        memory_pool,
+                        std::make_shared<arrow::StringBuilder>(memory_pool)
+                    ),
+                    std::make_shared<arrow::FloatBuilder>(memory_pool),
+                    rr::datatypes::FlattenedScalar::new_arrow_array_builder(memory_pool)
+                        .ValueOrDie(),
+                    std::make_shared<arrow::BooleanBuilder>(memory_pool),
+                })
+            ));
+        }
+
+        arrow::Status AffixFuzzer1::fill_arrow_array_builder(
+            arrow::StructBuilder *builder, const AffixFuzzer1 *elements, size_t num_elements
+        ) {
+            if (!builder) {
+                return arrow::Status::Invalid("Passed array builder is null.");
+            }
+            if (!elements) {
+                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+            }
+
+            {
+                auto element_builder =
+                    static_cast<arrow::FloatBuilder *>(builder->field_builder(0));
+                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto &element = elements[elem_idx];
+                    if (element.single_float_optional.has_value()) {
+                        ARROW_RETURN_NOT_OK(
+                            element_builder->Append(element.single_float_optional.value())
+                        );
+                    } else {
+                        ARROW_RETURN_NOT_OK(element_builder->AppendNull());
+                    }
+                }
+            }
+            {
+                auto element_builder =
+                    static_cast<arrow::StringBuilder *>(builder->field_builder(1));
+                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(
+                        element_builder->Append(elements[elem_idx].single_string_required)
+                    );
+                }
+            }
+            {
+                auto element_builder =
+                    static_cast<arrow::StringBuilder *>(builder->field_builder(2));
+                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto &element = elements[elem_idx];
+                    if (element.single_string_optional.has_value()) {
+                        ARROW_RETURN_NOT_OK(
+                            element_builder->Append(element.single_string_optional.value())
+                        );
+                    } else {
+                        ARROW_RETURN_NOT_OK(element_builder->AppendNull());
+                    }
+                }
+            }
+            return arrow::Status::NotImplemented(
+                "TODO(andreas): lists in structs are not yet supported"
+            );
+            return arrow::Status::NotImplemented(
+                "TODO(andreas): lists in structs are not yet supported"
+            );
+            return arrow::Status::NotImplemented(
+                "TODO(andreas): lists in structs are not yet supported"
+            );
+            {
+                auto element_builder =
+                    static_cast<arrow::FloatBuilder *>(builder->field_builder(6));
+                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(element_builder->Append(elements[elem_idx].flattened_scalar)
+                    );
+                }
+            }
+            return arrow::Status::NotImplemented(
+                "TODO(andreas): extensions in structs are not yet supported"
+            );
+            {
+                auto element_builder =
+                    static_cast<arrow::BooleanBuilder *>(builder->field_builder(8));
+                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto &element = elements[elem_idx];
+                    if (element.from_parent.has_value()) {
+                        ARROW_RETURN_NOT_OK(element_builder->Append(element.from_parent.value()));
+                    } else {
+                        ARROW_RETURN_NOT_OK(element_builder->AppendNull());
+                    }
+                }
+            }
+            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+
+            return arrow::Status::OK();
         }
     } // namespace datatypes
 } // namespace rr
