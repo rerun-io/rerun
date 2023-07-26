@@ -203,8 +203,8 @@ def log_obbs(
     recording = RecordingStream.to_native(recording)
 
     colors = _normalize_colors(colors)
-    radii = _normalize_radii(stroke_widths)
-    radii / 2
+    stroke_widths = _normalize_radii(stroke_widths)
+    radii = stroke_widths / 2
     labels = _normalize_labels(labels)
     class_ids = _normalize_ids(class_ids)
 
