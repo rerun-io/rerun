@@ -23,8 +23,12 @@ class LineStrip2DArray(pa.ExtensionArray):  # type: ignore[misc]
         for line in array:
             assert line.shape[1] == 2
 
-        offsets = itertools.chain([0], itertools.accumulate(len(line) for line in array))
-        values = np.concatenate(array)  # type: ignore[call-overload]
+        offsets = list(itertools.chain([0], itertools.accumulate(len(line) for line in array)))
+        if len(offsets) > 1:
+            values = np.concatenate(array)  # type: ignore[call-overload]
+        else:
+            values = np.array([], dtype=np.float32)
+
         fixed = pa.FixedSizeListArray.from_arrays(values.flatten(), type=LineStrip2DType.storage_type.value_type)
         storage = pa.ListArray.from_arrays(offsets, fixed, type=LineStrip2DType.storage_type)
 
@@ -46,8 +50,12 @@ class LineStrip3DArray(pa.ExtensionArray):  # type: ignore[misc]
         for line in array:
             assert line.shape[1] == 3
 
-        offsets = itertools.chain([0], itertools.accumulate(len(line) for line in array))
-        values = np.concatenate(array)  # type: ignore[call-overload]
+        offsets = list(itertools.chain([0], itertools.accumulate(len(line) for line in array)))
+        if len(offsets) > 1:
+            values = np.concatenate(array)  # type: ignore[call-overload]
+        else:
+            values = np.array([], dtype=np.float32)
+
         fixed = pa.FixedSizeListArray.from_arrays(values.flatten(), type=LineStrip3DType.storage_type.value_type)
         storage = pa.ListArray.from_arrays(offsets, fixed, type=LineStrip3DType.storage_type)
 
