@@ -4666,6 +4666,7 @@ dependencies = [
  "re_viewport",
  "re_ws_comms",
  "rfd",
+ "ron",
  "serde",
  "time",
  "wasm-bindgen-futures",
