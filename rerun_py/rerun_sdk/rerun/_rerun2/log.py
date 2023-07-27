@@ -147,8 +147,14 @@ def log(
             instanced[comp.extension_name] = comp.storage
         elif len(comp) == 1 and archetype_length > 1:
             splats[comp.extension_name] = comp.storage
-        elif len(comp) > 1:
+        elif len(comp) >= 1:
             instanced[comp.extension_name] = comp.storage
+        # TODO(#2825): For now we just don't log anything for unspecified components, to match the
+        # historical behavior.
+        # From the PoV of the high-level API, this is incorrect though: logging an archetype should
+        # give the user the guarantee that past state cannot leak into their data.
+        # else: # len == 0
+        #     instanced[comp.extension_name] = comp.storage
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)

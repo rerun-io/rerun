@@ -29,4 +29,4 @@ from ._rerun2 import archetypes as arch
 from ._rerun2 import components as cmp
 from ._rerun2 import datatypes as dt
 from ._rerun2.archetypes import Points2D, Points3D, Transform3D
-from ._rerun2.log_any import log
+from ._rerun2.log import log
