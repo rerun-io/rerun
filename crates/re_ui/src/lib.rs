@@ -378,8 +378,8 @@ impl ReUi {
             ui.visuals_mut().widgets.active.expansion = 0.0;
             ui.visuals_mut().widgets.open.expansion = 0.0;
 
-            // note: fully qualified syntax to dodge script/lint.py
-            egui::Ui::checkbox(ui, selected, text)
+            // NOLINT
+            ui.checkbox(selected, text)
         })
         .inner
     }

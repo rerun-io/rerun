@@ -375,15 +375,16 @@ def test_lint_workspace_deps() -> None:
 
 # -----------------------------------------------------------------------------
 # We may not use egui's widgets for which we have a custom version in re_ui.
-#
-# Note: this lint may be bypassed by using the fully qualified name, e.g. `egui::Ui::checkbox(ui, ...)`.
 
-re_checkbox = re.compile(r"(?<!\w)ui\s*.\s*checkbox(?!\w)", re.MULTILINE)
+# Note: this really is best-effort detection, it will only catch the most common code layout cases. If this gets any
+# more complicated, a syn-based linter in Rust would certainly be better approach.
+
+re_checkbox = re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*checkbox(?!\w)", re.MULTILINE)
 
 
-def lint_forbidden_widgets(content: str) -> Iterator[tuple[str, int]]:
+def lint_forbidden_widgets(content: str) -> Iterator[tuple[str, int, int]]:
     for match in re_checkbox.finditer(content):
-        yield "ui.checkbox is forbidden", match.start(0)
+        yield "ui.checkbox is forbidden", match.start(0), match.end(0)
 
 
 def test_lint_forbidden_widgets() -> None:
@@ -391,6 +392,7 @@ def test_lint_forbidden_widgets() -> None:
     assert re_checkbox.search("  ui.\n\t\t   checkbox  ")
     assert re_checkbox.search("  ui.\n\t\t   checkbox()")
     assert re_checkbox.search("  ui\n\t\t   .checkbox()")
+    assert re_checkbox.search("  ui //bla\n\t\t   .checkbox()")
     assert not re_checkbox.search("re_ui.checkbox")
     assert not re_checkbox.search("ui.checkbox_re")
 
@@ -399,7 +401,7 @@ def test_lint_forbidden_widgets() -> None:
         re_ui.checkbox()
         ui.checkbox_re()
         
-        ui
+        ui  // hello!
             .checkbox()
             .bla()    
     """
@@ -426,16 +428,44 @@ class SourceFile:
         self.ext = path.split(".")[-1]
         with open(path, "r") as f:
             self.lines = f.readlines()
+        self._update_content()
+
+    def _update_content(self) -> None:
+        """Sync everything with `self.lines`"""
         self.content = "".join(self.lines)
+
+        # gather lines with a `NOLINT` marker
+        self.no_lints = {i for i, line in enumerate(self.lines) if "NOLINT" in line}
 
     def rewrite(self, new_lines: list[str]) -> None:
         """Rewrite the contents of the file."""
         if new_lines != self.lines:
             self.lines = new_lines
-            self.content = "".join(new_lines)
             with open(self.path, "w") as f:
                 f.writelines(new_lines)
+            self._update_content()
             print(f"{self.path} fixed.")
+
+    def should_ignore(self, from_line: int, to_line: int | None = None) -> bool:
+        """Should we ignore a violation?
+
+        NOLINT might be on the same line(s) as the violation or the previous line.
+
+        Args:
+            from_line: 0-based line number of the violation
+            to_line: if the violation spans multiple lines, the last line of the violation (inclusive)
+        """
+
+        if to_line is None:
+            to_line = from_line
+        return any(i in self.no_lints for i in range(from_line - 1, to_line + 1))
+
+    def should_ignore_index(self, start_idx: int, end_idx: int | None = None) -> bool:
+        """Same as `should_ignore` but takes 0-based indices instead of line numbers."""
+        return self.should_ignore(
+            _index_to_line_nr(self.content, start_idx),
+            _index_to_line_nr(self.content, end_idx) if end_idx is not None else None,
+        )
 
     def error(self, message: str, *, line_nr: int | None = None, index: int | None = None) -> str:
         """Construct an error message. If either `line_nr` or `index` is passed, it's used to indicate a line number."""
@@ -462,9 +492,10 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error(error, line_nr=line_nr))
 
     if filepath.endswith(".rs"):
-        for error, index in lint_forbidden_widgets(source.content):
-            print(source.error(error, index=index))
-            num_errors += 1
+        for error, start_idx, end_idx in lint_forbidden_widgets(source.content):
+            if not source.should_ignore_index(start_idx, end_idx):
+                print(source.error(error, index=start_idx))
+                num_errors += 1
 
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
