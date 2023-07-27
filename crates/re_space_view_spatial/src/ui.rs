@@ -202,6 +202,7 @@ impl SpatialSpaceViewState {
                     });
                     ui.checkbox(&mut self.state_3d.show_axes, "Show origin axes").on_hover_text("Show X-Y-Z axes");
                     ui.checkbox(&mut self.state_3d.show_bbox, "Show bounding box").on_hover_text("Show the current scene bounding box");
+                    ui.checkbox(&mut self.state_3d.show_accumulated_bbox, "Show accumulated bounding box").on_hover_text("Show bounding box accumulated over all rendered frames");
                 });
                 ui.end_row();
             }

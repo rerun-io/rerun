@@ -63,7 +63,7 @@ impl Boxes3DPart {
                 glam::Affine3A::from_scale_rotation_translation(half_size * 2.0, rot, tran);
 
             let box_lines = line_batch
-                .add_box_outline(transform)
+                .add_box_outline_from_transform(transform)
                 .radius(radius)
                 .color(color)
                 .picking_instance_id(picking_id_from_instance_key(instance_key));

@@ -299,11 +299,13 @@ impl framework::Example for RenderDepthClouds {
             let mut builder = LineStripSeriesBuilder::new(re_ctx);
             {
                 let mut line_batch = builder.batch("frame").world_from_obj(world_from_model);
-                line_batch.add_box_outline(glam::Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::new(1.0, 1.0, 0.0),
-                    Default::default(),
-                    glam::Vec3::ONE * 0.5,
-                ));
+                line_batch.add_box_outline_from_transform(
+                    glam::Affine3A::from_scale_rotation_translation(
+                        glam::Vec3::new(1.0, 1.0, 0.0),
+                        Default::default(),
+                        glam::Vec3::ONE * 0.5,
+                    ),
+                );
             }
             builder.into_draw_data(re_ctx).unwrap()
         };
