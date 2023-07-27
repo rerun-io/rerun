@@ -108,6 +108,7 @@ impl SpaceViewBlueprint {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
+        view_state: &mut dyn SpaceViewState,
     ) {
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
@@ -126,6 +127,18 @@ impl SpaceViewBlueprint {
         )
         .is_some()
         {}
+
+        // Do ui preparation as it may affect heuristics.
+        // (we want them up-to-date for everything that happens in this frame!)
+        self.class(ctx.space_view_class_registry).prepare_ui(
+            ctx,
+            view_state,
+            &self.data_blueprint.entity_paths().clone(), // Clone to work around borrow checker.
+            self.data_blueprint.data_blueprints_individual(),
+        );
+
+        // Propagate any changes that may have been made to blueprints right away.
+        self.data_blueprint.propagate_individual_to_tree();
     }
 
     fn handle_pending_screenshots(&self, data: &[u8], extent: glam::UVec2, mode: ScreenshotMode) {
@@ -186,17 +199,6 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
         let system_registry = self.class_system_registry(ctx.space_view_class_registry);
-
-        class.prepare_ui(
-            ctx,
-            view_state,
-            &self.data_blueprint.entity_paths().clone(), // Clone to work around borrow checker.
-            self.data_blueprint.data_blueprints_individual(),
-        );
-
-        // Propagate any changes that may have been made to blueprints right away.
-        self.data_blueprint.propagate_individual_to_tree();
-
         let query = re_viewer_context::ViewQuery {
             space_view_id: self.id,
             space_origin: &self.space_origin,

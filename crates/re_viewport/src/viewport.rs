@@ -150,7 +150,12 @@ impl<'a, 'b> Viewport<'a, 'b> {
         re_tracing::profile_function!();
 
         for space_view in self.blueprint.space_views.values_mut() {
-            space_view.on_frame_start(ctx, spaces_info);
+            let space_view_state = self.state.space_view_state_mut(
+                ctx.space_view_class_registry,
+                space_view.id,
+                space_view.class_name(),
+            );
+            space_view.on_frame_start(ctx, spaces_info, space_view_state);
         }
 
         if self.blueprint.auto_space_views {
