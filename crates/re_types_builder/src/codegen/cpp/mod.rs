@@ -208,7 +208,7 @@ impl QuotedObject {
 
     fn from_struct(
         arrow_registry: &ArrowRegistry,
-        objects: &Objects,
+        _objects: &Objects,
         obj: &Object,
     ) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
@@ -282,7 +282,56 @@ impl QuotedObject {
                 ));
             }
             ObjectKind::Archetype => {
-                // TODO(andreas): Should also be convertible to arrow?
+                hpp_includes.system.insert("utility".to_owned()); // std::move
+
+                // Constructor with all required components.
+                {
+                    let (arguments, assignments): (Vec<_>, Vec<_>) = obj
+                        .fields
+                        .iter()
+                        .filter(|field| !field.is_nullable)
+                        .map(|obj_field| {
+                            let field_ident = format_ident!("{}", obj_field.name);
+                            (
+                                quote_variable(&mut hpp_includes, obj_field, &field_ident),
+                                quote! { #field_ident(std::move(#field_ident)) },
+                            )
+                        })
+                        .unzip();
+
+                    methods.push(Method {
+                        declaration: MethodDeclaration::constructor(quote! {
+                            #pascal_case_ident(#(#arguments),*) : #(#assignments),*
+                        }),
+                        ..Method::default()
+                    });
+                }
+                // Builder methods for all optional components.
+                for obj_field in obj.fields.iter().filter(|field| field.is_nullable) {
+                    let field_ident = format_ident!("{}", obj_field.name);
+                    let method_ident = format_ident!("with_{}", obj_field.name);
+                    let non_nullable = ObjectField {
+                        is_nullable: false,
+                        ..obj_field.clone()
+                    };
+                    let parameter_declaration =
+                        quote_variable(&mut hpp_includes, &non_nullable, &field_ident);
+                    methods.push(Method {
+                        docs: obj_field.docs.clone().into(),
+                        declaration: MethodDeclaration {
+                            is_static: false,
+                            return_type: quote!(#pascal_case_ident&),
+                            name_and_parameters: quote! {
+                                #method_ident(#parameter_declaration)
+                            },
+                        },
+                        definition_body: quote! {
+                            this->#field_ident = std::move(#field_ident);
+                            return *this;
+                        },
+                        inline: true,
+                    });
+                }
             }
         };
 
@@ -345,7 +394,12 @@ impl QuotedObject {
         //     Rotation3DData _data;
         // };
 
-        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
+        assert!(
+            obj.kind != ObjectKind::Archetype,
+            "Union archetypes are not supported {}",
+            obj.fqname
+        );
+        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes` or `components`
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
