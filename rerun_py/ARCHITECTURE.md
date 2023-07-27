@@ -17,9 +17,9 @@ We call an `Archetype` a well-define collection of component that represent a gi
 
 Some complex components are build using combination of another type of object called "datatype". These objects have well-defined memory layout but typically lack semantics. For example, the `Vec3D` datatype is a size 3 array of `float32`, and can be used by various components (for example, the `Point3D` component use the `Vec3D` datatype).
 
-The purpose of the Python SDK is to make it easy to build archetype-conforming data structures and log them for subsequent display and inspection using the Rerun viewer, through an easy-to-learn, Pythonic API. To that end, it exposes an API over the supported archetypes, as well as all the components and datatypes needed to build them. In addition, the SDK provides the `rr.log_any()` function to log any archetype-conforming object, and several support function for initialisation, recording session management, etc.
+The purpose of the Python SDK is to make it easy to build archetype-conforming data structures and log them for subsequent display and inspection using the Rerun viewer, through an easy-to-learn, Pythonic API. To that end, it exposes an API over the supported archetypes, as well as all the components and datatypes needed to build them. In addition, the SDK provides the `rr.log()` function to log any archetype-conforming object, and several support function for initialisation, recording session management, etc.
 
-The present document focuses on the construction of archetype-conforming objects and the `rr.log_any()` function.
+The present document focuses on the construction of archetype-conforming objects and the `rr.log()` function.
 
 
 ## Object types
@@ -105,7 +105,7 @@ This hook is the primary means of providing serialisation to Arrow data, which i
 
 ## Design notes on code generation
 
-### Logging with `rr.log_any`
+### Logging with `rr.log`
 
 TODO(ab): auto upcasting
 
