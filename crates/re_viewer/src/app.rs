@@ -76,7 +76,7 @@ pub struct App {
     build_info: re_build_info::BuildInfo,
     startup_options: StartupOptions,
     ram_limit_warner: re_memory::RamLimitWarner,
-    re_ui: re_ui::ReUi,
+    pub(crate) re_ui: re_ui::ReUi,
     screenshotter: crate::screenshotter::Screenshotter,
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -480,6 +480,7 @@ impl App {
             .show_animated_inside(ui, self.memory_panel_open, |ui| {
                 self.memory_panel.ui(
                     ui,
+                    self.re_ui(),
                     &self.startup_options.memory_limit,
                     gpu_resource_stats,
                     store_stats,

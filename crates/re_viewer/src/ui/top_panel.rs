@@ -71,7 +71,7 @@ fn top_bar_ui(
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    crate::ui::rerun_menu_button_ui(store_context, ui, frame, app);
+    app.rerun_menu_button_ui(store_context, ui, frame);
 
     ui.add_space(12.0);
     website_link_ui(ui, app);

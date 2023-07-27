@@ -366,6 +366,24 @@ impl ReUi {
         response
     }
 
+    #[allow(clippy::unused_self)]
+    pub fn checkbox(
+        &self,
+        ui: &mut egui::Ui,
+        selected: &mut bool,
+        text: impl Into<egui::WidgetText>,
+    ) -> egui::Response {
+        ui.scope(|ui| {
+            ui.visuals_mut().widgets.hovered.expansion = 0.0;
+            ui.visuals_mut().widgets.active.expansion = 0.0;
+            ui.visuals_mut().widgets.open.expansion = 0.0;
+
+            // note: fully qualified syntax to dodge script/lint.py
+            egui::Ui::checkbox(ui, selected, text)
+        })
+        .inner
+    }
+
     pub fn large_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
         self.large_button_impl(ui, icon, None, None)
     }

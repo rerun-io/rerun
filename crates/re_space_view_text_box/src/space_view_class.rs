@@ -75,7 +75,7 @@ impl SpaceViewClass for TextBoxSpaceView {
             ui.vertical(|ui| {
                 ui.radio_value(&mut state.monospace, false, "Proportional");
                 ui.radio_value(&mut state.monospace, true, "Monospace");
-                ui.checkbox(&mut state.word_wrap, "Word Wrap");
+                ctx.re_ui.checkbox(ui, &mut state.word_wrap, "Word Wrap");
             });
             ui.end_row();
         });

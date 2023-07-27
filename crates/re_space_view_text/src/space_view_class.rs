@@ -97,21 +97,23 @@ impl SpaceViewClass for TextSpaceView {
             row_log_levels,
         } = &mut state.filters;
 
+        let re_ui = ctx.re_ui;
+
         ctx.re_ui.selection_grid(ui, "log_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Columns");
             ui.vertical(|ui| {
                 for (timeline, visible) in col_timelines {
-                    ui.checkbox(visible, timeline.name().to_string());
+                    re_ui.checkbox(ui, visible, timeline.name().to_string());
                 }
-                ui.checkbox(col_entity_path, "Entity path");
-                ui.checkbox(col_log_level, "Log level");
+                re_ui.checkbox(ui, col_entity_path, "Entity path");
+                re_ui.checkbox(ui, col_log_level, "Log level");
             });
             ui.end_row();
 
             ctx.re_ui.grid_left_hand_label(ui, "Level Filter");
             ui.vertical(|ui| {
                 for (log_level, visible) in row_log_levels {
-                    ui.checkbox(visible, level_to_rich_text(ui, log_level));
+                    re_ui.checkbox(ui, visible, level_to_rich_text(ui, log_level));
                 }
             });
             ui.end_row();
