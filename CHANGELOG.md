@@ -37,6 +37,7 @@ docs](https://www.rerun.io/docs/reference/sdk-micro-batching) for more informati
 behavior.
  - The web viewer now incremental loads `.rrd` files when streaming over HTTP. [#2412](https://github.com/rerun-io/rerun/pull/2412)
 
+![Open Photogrammetry Preview](https://static.rerun.io/9fa26e73a197690e0403cd35f29e31c2941dea36_release_080_photogrammetry_full.png)
 
 ### Ongoing Refactors
  - There have been a number of significant internal changes going on during this release with little visible impact.
