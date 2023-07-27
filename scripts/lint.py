@@ -400,10 +400,10 @@ def test_lint_forbidden_widgets() -> None:
         ui.checkbox()
         re_ui.checkbox()
         ui.checkbox_re()
-        
+
         ui  // hello!
             .checkbox()
-            .bla()    
+            .bla()
     """
 
     res = list(lint_forbidden_widgets(should_fail_two_times))
@@ -426,12 +426,12 @@ class SourceFile:
     def __init__(self, path: str):
         self.path = os.path.abspath(path)
         self.ext = path.split(".")[-1]
-        with open(path, "r") as f:
+        with open(path) as f:
             self.lines = f.readlines()
         self._update_content()
 
     def _update_content(self) -> None:
-        """Sync everything with `self.lines`"""
+        """Sync everything with `self.lines`."""
         self.content = "".join(self.lines)
 
         # gather lines with a `NOLINT` marker
@@ -447,13 +447,10 @@ class SourceFile:
             print(f"{self.path} fixed.")
 
     def should_ignore(self, from_line: int, to_line: int | None = None) -> bool:
-        """Should we ignore a violation?
+        """
+        Determines if we should ignore a violation.
 
         NOLINT might be on the same line(s) as the violation or the previous line.
-
-        Args:
-            from_line: 0-based line number of the violation
-            to_line: if the violation spans multiple lines, the last line of the violation (inclusive)
         """
 
         if to_line is None:
