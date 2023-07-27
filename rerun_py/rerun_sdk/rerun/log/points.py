@@ -85,7 +85,7 @@ def log_point(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
-    from rerun.experimental import Points2D, Points3D, log_any
+    from rerun.experimental import Points2D, Points3D, log
 
     recording = RecordingStream.to_native(recording)
 
@@ -107,7 +107,7 @@ def log_point(
                 class_ids=class_id,
                 keypoint_ids=keypoint_id,
             )
-            return log_any(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
+            return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
         elif position.size == 3:
             points3d = Points3D(
                 points=position,
@@ -118,7 +118,7 @@ def log_point(
                 class_ids=class_id,
                 keypoint_ids=keypoint_id,
             )
-            return log_any(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
+            return log(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
         else:
             raise TypeError("Position must have a total size of 2 or 3")
 
@@ -195,7 +195,7 @@ def log_points(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import Points2D, Points3D, log_any
+    from rerun.experimental import Points2D, Points3D, log
 
     recording = RecordingStream.to_native(recording)
 
@@ -225,7 +225,7 @@ def log_points(
                 keypoint_ids=keypoint_ids,
                 instance_keys=identifiers_np,
             )
-            return log_any(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
+            return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
         elif positions.shape[1] == 3:
             points3d = Points3D(
                 points=positions,
@@ -237,6 +237,6 @@ def log_points(
                 keypoint_ids=keypoint_ids,
                 instance_keys=identifiers_np,
             )
-            return log_any(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
+            return log(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
         else:
             raise TypeError("Positions should be Nx2 or Nx3")
