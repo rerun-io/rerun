@@ -379,15 +379,26 @@ def test_lint_workspace_deps() -> None:
 # Note: this really is best-effort detection, it will only catch the most common code layout cases. If this gets any
 # more complicated, a syn-based linter in Rust would certainly be better approach.
 
-re_checkbox = re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*checkbox(?!\w)", re.MULTILINE)
+re_forbidden_widgets = [
+    (
+        re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*checkbox(?!\w)", re.MULTILINE),
+        "ui.checkbox() is forbidden (use re_ui.checkbox() instead)",
+    ),
+    (
+        re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*radio_value(?!\w)", re.MULTILINE),
+        "ui.radio_value() is forbidden (use re_ui.radio_value() instead)",
+    ),
+]
 
 
 def lint_forbidden_widgets(content: str) -> Iterator[tuple[str, int, int]]:
-    for match in re_checkbox.finditer(content):
-        yield "ui.checkbox is forbidden", match.start(0), match.end(0)
+    for re_widget, error in re_forbidden_widgets:
+        for match in re_widget.finditer(content):
+            yield error, match.start(0), match.end(0)
 
 
 def test_lint_forbidden_widgets() -> None:
+    re_checkbox = re_forbidden_widgets[0][0]
     assert re_checkbox.search("ui.checkbox")
     assert re_checkbox.search("  ui.\n\t\t   checkbox  ")
     assert re_checkbox.search("  ui.\n\t\t   checkbox()")

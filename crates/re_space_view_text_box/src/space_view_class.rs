@@ -73,8 +73,10 @@ impl SpaceViewClass for TextBoxSpaceView {
         ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
             ui.vertical(|ui| {
-                ui.radio_value(&mut state.monospace, false, "Proportional");
-                ui.radio_value(&mut state.monospace, true, "Monospace");
+                ctx.re_ui
+                    .radio_value(ui, &mut state.monospace, false, "Proportional");
+                ctx.re_ui
+                    .radio_value(ui, &mut state.monospace, true, "Monospace");
                 ctx.re_ui.checkbox(ui, &mut state.word_wrap, "Word Wrap");
             });
             ui.end_row();

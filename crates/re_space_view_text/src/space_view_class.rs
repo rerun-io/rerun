@@ -120,8 +120,10 @@ impl SpaceViewClass for TextSpaceView {
 
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
             ui.vertical(|ui| {
-                ui.radio_value(&mut state.monospace, false, "Proportional");
-                ui.radio_value(&mut state.monospace, true, "Monospace");
+                ctx.re_ui
+                    .radio_value(ui, &mut state.monospace, false, "Proportional");
+                ctx.re_ui
+                    .radio_value(ui, &mut state.monospace, true, "Monospace");
             });
             ui.end_row();
         });
