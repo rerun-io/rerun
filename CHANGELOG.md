@@ -32,9 +32,8 @@
    - This can be used as an alternative to the the previous `MsgSender::with_time` APIs.
  - The Rerun SDK now defaults to 8ms long microbatches instead of 50ms. This makes the default behavior more suitable
 for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/rerun/pull/2220)
-   - Check out [the microbatching
-docs](https://www.rerun.io/docs/reference/sdk-micro-batching) for more information on fine-tuning the micro-batching
-behavior.
+   - Check out [the microbatching docs](https://www.rerun.io/docs/reference/sdk-micro-batching) for more information
+   on fine-tuning the micro-batching behavior.
  - The web viewer now incremental loads `.rrd` files when streaming over HTTP. [#2412](https://github.com/rerun-io/rerun/pull/2412)
 
 ![Open Photogrammetry Preview](https://static.rerun.io/9fa26e73a197690e0403cd35f29e31c2941dea36_release_080_photogrammetry_full.png)
