@@ -94,22 +94,11 @@ impl View3DState {
         space_cameras: &[SpaceCamera3D],
         view_coordinates: Option<ViewCoordinates>,
     ) -> &mut OrbitEye {
+        // If the user has not interacted with the eye-camera yet, continue to
+        // interpolate to the new default eye. This gives much better robustness
+        // with scenes that grow over time.
         if !self.did_interact_with_eye {
-            let target = default_eye(scene_bbox_accum, &view_coordinates);
-            // Inlined interpolate_to_orbit_eye since we can't borrow self as mut another time
-            if let Some(start) = self.orbit_eye {
-                let target_time = EyeInterpolation::target_time(&start.to_eye(), &target.to_eye());
-                self.spin = false; // the user wants to move the camera somewhere, so stop spinning
-                self.eye_interpolation = Some(EyeInterpolation {
-                    elapsed_time: 0.0,
-                    target_time,
-                    start,
-                    target_orbit: Some(target),
-                    target_eye: None,
-                });
-            } else {
-                self.orbit_eye = Some(target);
-            }
+            self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &view_coordinates));
         }
 
         let orbit_camera = self
