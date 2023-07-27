@@ -65,6 +65,20 @@ pub trait SpaceViewClass: std::marker::Sized {
         None
     }
 
+    /// Executed for all active space views on frame start (before any ui is drawn),
+    /// can be use for heuristic & state updates before populating the scene.
+    ///
+    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
+    /// Passed entity properties are individual properties without propagated values.
+    fn on_frame_start(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        _state: &Self::State,
+        _ent_paths: &IntSet<EntityPath>,
+        _entity_properties: &mut re_data_store::EntityPropertyMap,
+    ) {
+    }
+
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
@@ -76,19 +90,6 @@ pub trait SpaceViewClass: std::marker::Sized {
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     );
-
-    /// Executed before the ui method is called, can be use for heuristic & state updates before populating the scene.
-    ///
-    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
-    /// Passed entity properties are individual properties without propagated values.
-    fn prepare_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        _state: &Self::State,
-        _ent_paths: &IntSet<EntityPath>,
-        _entity_properties: &mut re_data_store::EntityPropertyMap,
-    ) {
-    }
 
     /// Draws the ui for this space view class and handles ui events.
     ///
@@ -166,7 +167,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         self.blueprint_archetype()
     }
 
-    fn prepare_ui(
+    fn on_frame_start(
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
@@ -174,7 +175,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         entity_properties: &mut EntityPropertyMap,
     ) {
         typed_state_wrapper_mut(state, |state| {
-            self.prepare_ui(ctx, state, ent_paths, entity_properties);
+            self.on_frame_start(ctx, state, ent_paths, entity_properties);
         });
     }
 

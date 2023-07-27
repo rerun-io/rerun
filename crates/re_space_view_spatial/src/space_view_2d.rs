@@ -50,7 +50,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         re_viewer_context::SpaceViewClassLayoutPriority::High
     }
 
-    fn prepare_ui(
+    fn on_frame_start(
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &Self::State,

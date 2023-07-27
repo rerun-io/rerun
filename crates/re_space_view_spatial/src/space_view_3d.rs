@@ -86,7 +86,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         }
     }
 
-    fn prepare_ui(
+    fn on_frame_start(
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &Self::State,

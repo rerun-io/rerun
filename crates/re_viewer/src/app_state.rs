@@ -123,6 +123,12 @@ impl AppState {
             command_sender,
         };
 
+        // First update the viewport and thus all active space views.
+        // This may update their heuristics, so that all panels that are shown in this frame,
+        // have the latest information.
+        let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
+        viewport.on_frame_start(&mut ctx, &spaces_info);
+
         time_panel.show_panel(&mut ctx, ui, app_blueprint.time_panel_expanded);
         selection_panel.show_panel(
             &mut ctx,
@@ -140,10 +146,6 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show_inside(ui, |ui| {
-                let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
-
-                viewport.on_frame_start(&mut ctx, &spaces_info);
-
                 blueprint_panel_ui(
                     &mut viewport.blueprint,
                     &mut ctx,

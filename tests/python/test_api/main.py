@@ -141,44 +141,44 @@ def run_2d_layering(experimental_api: bool) -> None:
     )
 
 
-def transform_test(experimental_api: bool) -> None:
-    rr.log_view_coordinates("transform_test", up="+Y")
+def transforms(experimental_api: bool) -> None:
+    rr.log_view_coordinates("transforms", up="+Y")
 
     # Log a disconnected space (this doesn't do anything here, but can be used to force a new space)
-    rr.log_disconnected_space("transform_test/disconnected")
+    rr.log_disconnected_space("transforms/disconnected")
 
     if experimental_api:
         import rerun.experimental as rr2
         from rerun.experimental import dt as rrd
 
         # Log scale along the x axis only.
-        rr2.log("transform_test/x_scaled", rrd.TranslationRotationScale3D(scale=(3, 1, 1)))
+        rr2.log("transforms/x_scaled", rrd.TranslationRotationScale3D(scale=(3, 1, 1)))
 
         # Log a rotation around the z axis.
         rr2.log(
-            "transform_test/z_rotated_object",
+            "transforms/z_rotated_object",
             rrd.TranslationRotationScale3D(rotation=rrd.RotationAxisAngle(axis=(1, 0, 0), angle=rrd.Angle(deg=45))),
         )
 
         # Log a transform from parent to child with a translation and skew along y and x.
         rr2.log(
-            "transform_test/child_from_parent_translation",
+            "transforms/child_from_parent_translation",
             rrd.TranslationRotationScale3D(translation=(-1, 0, 0), from_parent=True),
         )
 
         # Log translation only.
-        rr2.log("transform_test/translation", rrd.TranslationRotationScale3D(translation=(2, 0, 0)))
-        rr2.log("transform_test/translation2", rrd.TranslationAndMat3x3(translation=(3, 0, 0)))
+        rr2.log("transforms/translation", rrd.TranslationRotationScale3D(translation=(2, 0, 0)))
+        rr2.log("transforms/translation2", rrd.TranslationAndMat3x3(translation=(3, 0, 0)))
 
         # Log uniform scale followed by translation along the Y-axis.
         rr2.log(
-            "transform_test/scaled_and_translated_object",
+            "transforms/scaled_and_translated_object",
             rrd.TranslationRotationScale3D(translation=[0, 0, 1], scale=3),
         )
 
         # Log translation + rotation, also called a rigid transform.
         rr2.log(
-            "transform_test/rigid3",
+            "transforms/rigid3",
             rrd.TranslationRotationScale3D(
                 translation=[1, 0, 1], rotation=rrd.RotationAxisAngle(axis=(0, 1, 0), angle=rrd.Angle(rad=1.57))
             ),
@@ -186,7 +186,7 @@ def transform_test(experimental_api: bool) -> None:
 
         # Log translation, rotation & scale all at once.
         rr2.log(
-            "transform_test/transformed",
+            "transforms/transformed",
             rrd.TranslationRotationScale3D(
                 translation=[2, 0, 1],
                 rotation=rrd.RotationAxisAngle(axis=(0, 0, 1), angle=rrd.Angle(deg=20)),
@@ -196,40 +196,36 @@ def transform_test(experimental_api: bool) -> None:
 
         # Log a transform with translation and shear along x.
         rr2.log(
-            "transform_test/shear",
+            "transforms/shear",
             rrd.TranslationAndMat3x3(translation=(3, 0, 1), matrix=np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
         )
     else:
         # Log scale along the x axis only.
-        rr.log_transform3d("transform_test/x_scaled", rr.Scale3D((3, 1, 1)))
+        rr.log_transform3d("transforms/x_scaled", rr.Scale3D((3, 1, 1)))
 
         # Log a rotation around the z axis.
-        rr.log_transform3d("transform_test/z_rotated_object", rr.RotationAxisAngle((1, 0, 0), degrees=45))
+        rr.log_transform3d("transforms/z_rotated_object", rr.RotationAxisAngle((1, 0, 0), degrees=45))
 
         # Log a transform from parent to child with a translation and skew along y and x.
         rr.log_transform3d(
-            "transform_test/child_from_parent_translation",
+            "transforms/child_from_parent_translation",
             rr.Translation3D((-1, 0, 0)),
             from_parent=True,
         )
 
         # Log translation only.
-        rr.log_transform3d("transform_test/translation", rr.Translation3D((2, 0, 0)))
-        rr.log_transform3d("transform_test/translation2", rr.TranslationAndMat3((3, 0, 0)))
+        rr.log_transform3d("transforms/translation", rr.Translation3D((2, 0, 0)))
+        rr.log_transform3d("transforms/translation2", rr.TranslationAndMat3((3, 0, 0)))
 
         # Log uniform scale followed by translation along the Y-axis.
-        rr.log_transform3d(
-            "transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0, 0, 1], scale=3)
-        )
+        rr.log_transform3d("transforms/scaled_and_translated_object", rr.TranslationRotationScale3D([0, 0, 1], scale=3))
 
         # Log translation + rotation, also called a rigid transform.
-        rr.log_transform3d(
-            "transform_test/rigid3", rr.Rigid3D([1, 0, 1], rr.RotationAxisAngle((0, 1, 0), radians=1.57))
-        )
+        rr.log_transform3d("transforms/rigid3", rr.Rigid3D([1, 0, 1], rr.RotationAxisAngle((0, 1, 0), radians=1.57)))
 
         # Log translation, rotation & scale all at once.
         rr.log_transform3d(
-            "transform_test/transformed",
+            "transforms/transformed",
             rr.TranslationRotationScale3D(
                 translation=[2, 0, 1],
                 rotation=rr.RotationAxisAngle((0, 0, 1), degrees=20),
@@ -239,7 +235,7 @@ def transform_test(experimental_api: bool) -> None:
 
         # Log a transform with translation and shear along x.
         rr.log_transform3d(
-            "transform_test/shear",
+            "transforms/shear",
             rr.TranslationAndMat3((3, 0, 1), np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
         )
 
@@ -527,7 +523,7 @@ def main() -> None:
         "segmentation": run_segmentation,
         "small_image": small_image,
         "text": run_text_logs,
-        "transform_test": transform_test,
+        "transforms": transforms,
         "transforms_rigid_3d": transforms_rigid_3d,
     }
 
@@ -566,7 +562,7 @@ def main() -> None:
         threads = []
         for name, test in tests.items():
             # Some tests are just a bit… too much
-            if args.test == "most" and name in ["image_tensors", "transform_test"]:
+            if args.test == "most" and name in ["image_tensors", "transforms"]:
                 continue
 
             if args.split_recordings:
