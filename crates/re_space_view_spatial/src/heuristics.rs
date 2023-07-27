@@ -65,6 +65,7 @@ pub fn update_object_property_heuristics(
     re_tracing::profile_function!();
 
     for entity_path in ent_paths {
+        // Do pinhole properties before, since they may be used in transform3d heuristics.
         update_pinhole_property_heuristics(ctx, entity_path, entity_properties, scene_bbox_accum);
         update_depth_cloud_property_heuristics(ctx, entity_path, entity_properties, spatial_kind);
         update_transform3d_lines_heuristics(ctx, entity_path, entity_properties, scene_bbox_accum);
@@ -176,34 +177,35 @@ fn update_transform3d_lines_heuristics(
         return;
     }
 
-    let mut properties = entity_properties.get(ent_path);
-    if properties.transform_3d_visible.is_auto() {
-        fn path_or_child_has_pinhole(
-            store: &re_arrow_store::DataStore,
-            ent_path: &EntityPath,
-            ctx: &ViewerContext<'_>,
-        ) -> bool {
-            if store
-                .query_latest_component::<Pinhole>(ent_path, &ctx.current_query())
-                .is_some()
-            {
-                return true;
-            } else {
-                // Any direct child has a pinhole camera?
-                if let Some(child_tree) = ctx.store_db.entity_db.tree.subtree(ent_path) {
-                    for child in child_tree.children.values() {
-                        if store
-                            .query_latest_component::<Pinhole>(&child.path, &ctx.current_query())
-                            .is_some()
-                        {
-                            return true;
-                        }
+    fn is_pinhole_extrinsics_of<'a>(
+        store: &re_arrow_store::DataStore,
+        ent_path: &'a EntityPath,
+        ctx: &'a ViewerContext<'_>,
+    ) -> Option<&'a EntityPath> {
+        if store
+            .query_latest_component::<Pinhole>(ent_path, &ctx.current_query())
+            .is_some()
+        {
+            return Some(ent_path);
+        } else {
+            // Any direct child has a pinhole camera?
+            if let Some(child_tree) = ctx.store_db.entity_db.tree.subtree(ent_path) {
+                for child in child_tree.children.values() {
+                    if store
+                        .query_latest_component::<Pinhole>(&child.path, &ctx.current_query())
+                        .is_some()
+                    {
+                        return Some(&child.path);
                     }
                 }
             }
-
-            false
         }
+
+        None
+    }
+
+    let mut properties = entity_properties.get(ent_path);
+    if properties.transform_3d_visible.is_auto() {
         // By default show the transform if it is a camera extrinsic or if it's the only component on this entity path.
         let single_component = ctx
             .store_db
@@ -211,14 +213,23 @@ fn update_transform3d_lines_heuristics(
             .all_components(&ctx.current_query().timeline, ent_path)
             .map_or(false, |c| c.len() == 1);
         properties.transform_3d_visible = EditableAutoValue::Auto(
-            single_component || path_or_child_has_pinhole(ctx.store_db.store(), ent_path, ctx),
+            single_component
+                || is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx).is_some(),
         );
     }
 
     if properties.transform_3d_size.is_auto() {
-        // Size should be proportional to the scene extent, here covered by its diagonal
-        let diagonal_length = (scene_bbox_accum.max - scene_bbox_accum.min).length();
-        properties.transform_3d_size = EditableAutoValue::Auto(diagonal_length * 0.01);
+        if let Some(pinhole_path) = is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx) {
+            // If there's a pinhole, we orient ourselves on its image plane distance
+            let pinhole_path_props = entity_properties.get(pinhole_path);
+            properties.transform_3d_size = EditableAutoValue::Auto(
+                pinhole_path_props.pinhole_image_plane_distance.get() * 0.25,
+            );
+        } else {
+            // Size should be proportional to the scene extent, here covered by its diagonal
+            let diagonal_length = (scene_bbox_accum.max - scene_bbox_accum.min).length();
+            properties.transform_3d_size = EditableAutoValue::Auto(diagonal_length * 0.05);
+        }
     }
 
     entity_properties.set(ent_path.clone(), properties);
