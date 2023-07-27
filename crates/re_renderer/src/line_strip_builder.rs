@@ -256,7 +256,10 @@ impl<'a> LineBatchBuilder<'a> {
     /// Internally adds 12 line segments with rounded line heads.
     /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
     #[inline]
-    pub fn add_box_outline(&mut self, transform: glam::Affine3A) -> LineStripBuilder<'_> {
+    pub fn add_box_outline_from_transform(
+        &mut self,
+        transform: glam::Affine3A,
+    ) -> LineStripBuilder<'_> {
         let corners = [
             transform.transform_point3(glam::vec3(-0.5, -0.5, -0.5)),
             transform.transform_point3(glam::vec3(-0.5, -0.5, 0.5)),
@@ -288,6 +291,44 @@ impl<'a> LineBatchBuilder<'a> {
             .into_iter(),
         )
         .flags(LineStripSeriesBuilder::default_box_flags())
+    }
+
+    /// Add box outlines.
+    ///
+    /// Internally adds 12 line segments with rounded line heads.
+    /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
+    ///
+    /// Returns None for empty and non-finite boxes.
+    #[inline]
+    pub fn add_box_outline(&mut self, bbox: &macaw::BoundingBox) -> Option<LineStripBuilder<'_>> {
+        if !bbox.is_something() || !bbox.is_finite() {
+            return None;
+        }
+
+        let corners = bbox.corners();
+        Some(
+            self.add_segments(
+                [
+                    // bottom:
+                    (corners[0b000], corners[0b001]),
+                    (corners[0b000], corners[0b010]),
+                    (corners[0b011], corners[0b001]),
+                    (corners[0b011], corners[0b010]),
+                    // top:
+                    (corners[0b100], corners[0b101]),
+                    (corners[0b100], corners[0b110]),
+                    (corners[0b111], corners[0b101]),
+                    (corners[0b111], corners[0b110]),
+                    // sides:
+                    (corners[0b000], corners[0b100]),
+                    (corners[0b001], corners[0b101]),
+                    (corners[0b010], corners[0b110]),
+                    (corners[0b011], corners[0b111]),
+                ]
+                .into_iter(),
+            )
+            .flags(LineStripSeriesBuilder::default_box_flags()),
+        )
     }
 
     /// Add rectangle outlines.

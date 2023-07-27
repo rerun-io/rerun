@@ -49,6 +49,7 @@ pub struct View3DState {
     pub spin: bool,
     pub show_axes: bool,
     pub show_bbox: bool,
+    pub show_accumulated_bbox: bool,
 
     eye_interact_fade_in: bool,
     eye_interact_fade_change_time: f64,
@@ -64,6 +65,7 @@ impl Default for View3DState {
             spin: false,
             show_axes: false,
             show_bbox: false,
+            show_accumulated_bbox: false,
             eye_interact_fade_in: false,
             eye_interact_fade_change_time: f64::NEG_INFINITY,
         }
@@ -459,21 +461,21 @@ pub fn view_3d(
         &state.scene_bbox_accum,
     );
 
-    if state.state_3d.show_bbox {
-        let bbox = state.scene_bbox_accum;
-        if bbox.is_something() && bbox.is_finite() {
-            let scale = bbox.size();
-            let translation = bbox.center();
-            let bbox_from_unit_cube = glam::Affine3A::from_scale_rotation_translation(
-                scale,
-                Default::default(),
-                translation,
-            );
-            line_builder
-                .batch("scene_bbox")
-                .add_box_outline(bbox_from_unit_cube)
-                .radius(Size::AUTO)
-                .color(egui::Color32::WHITE);
+    {
+        let mut box_batch = line_builder.batch("scene_bbox");
+        if state.state_3d.show_bbox {
+            box_batch
+                .add_box_outline(&state.scene_bbox)
+                .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
+        }
+        if state.state_3d.show_accumulated_bbox {
+            box_batch
+                .add_box_outline(&state.scene_bbox_accum)
+                .map(|lines| {
+                    lines
+                        .radius(Size::AUTO)
+                        .color(egui::Color32::from_gray(170))
+                });
         }
     }
 
@@ -679,7 +681,7 @@ fn default_eye(
         center = Vec3::ZERO;
     }
 
-    let mut radius = 2.0 * scene_bbox.half_size().length();
+    let mut radius = 1.5 * scene_bbox.half_size().length();
     if !radius.is_finite() || radius == 0.0 {
         radius = 1.0;
     }
