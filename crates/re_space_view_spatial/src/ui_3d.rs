@@ -36,6 +36,7 @@ use super::eye::{Eye, OrbitEye};
 #[derive(Clone)]
 pub struct View3DState {
     pub orbit_eye: Option<OrbitEye>,
+    pub did_interact_with_eye: bool,
 
     /// Currently tracked camera.
     pub tracked_camera: Option<EntityPath>,
@@ -59,6 +60,7 @@ impl Default for View3DState {
     fn default() -> Self {
         Self {
             orbit_eye: Default::default(),
+            did_interact_with_eye: false,
             tracked_camera: None,
             camera_before_tracked_camera: None,
             eye_interpolation: Default::default(),
@@ -94,6 +96,13 @@ impl View3DState {
         space_cameras: &[SpaceCamera3D],
         view_coordinates: Option<ViewCoordinates>,
     ) -> &mut OrbitEye {
+        // If the user has not interacted with the eye-camera yet, continue to
+        // interpolate to the new default eye. This gives much better robustness
+        // with scenes that grow over time.
+        if !self.did_interact_with_eye {
+            self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &view_coordinates));
+        }
+
         let orbit_camera = self
             .orbit_eye
             .get_or_insert_with(|| default_eye(scene_bbox_accum, &view_coordinates));
@@ -315,6 +324,7 @@ pub fn view_3d(
     let eye = orbit_eye.to_eye();
 
     if did_interact_with_eye {
+        state.state_3d.did_interact_with_eye = true;
         state.state_3d.eye_interpolation = None;
         state.state_3d.tracked_camera = None;
         state.state_3d.camera_before_tracked_camera = None;
