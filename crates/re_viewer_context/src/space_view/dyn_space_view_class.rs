@@ -91,6 +91,19 @@ pub trait DynSpaceViewClass {
         ent_paths: &IntSet<EntityPath>,
     ) -> AutoSpawnHeuristic;
 
+    /// Executed for all active space views on frame start (before any ui is drawn),
+    /// can be use for heuristic & state updates before populating the scene.
+    ///
+    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
+    /// Passed entity properties are individual properties without propagated values.
+    fn on_frame_start(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        state: &mut dyn SpaceViewState,
+        ent_paths: &IntSet<EntityPath>,
+        entity_properties: &mut EntityPropertyMap,
+    );
+
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
@@ -101,18 +114,6 @@ pub trait DynSpaceViewClass {
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-    );
-
-    /// Executed before the ui method is called, can be use for heuristic & state updates before populating the scene.
-    ///
-    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
-    /// Passed entity properties are individual properties without propagated values.
-    fn prepare_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        state: &mut dyn SpaceViewState,
-        ent_paths: &IntSet<EntityPath>,
-        entity_properties: &mut EntityPropertyMap,
     );
 
     /// Draws the ui for this space view type and handles ui events.

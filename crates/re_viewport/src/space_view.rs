@@ -128,16 +128,14 @@ impl SpaceViewBlueprint {
         .is_some()
         {}
 
-        // Do ui preparation as it may affect heuristics.
-        // (we want them up-to-date for everything that happens in this frame!)
-        self.class(ctx.space_view_class_registry).prepare_ui(
+        self.class(ctx.space_view_class_registry).on_frame_start(
             ctx,
             view_state,
             &self.data_blueprint.entity_paths().clone(), // Clone to work around borrow checker.
             self.data_blueprint.data_blueprints_individual(),
         );
 
-        // Propagate any changes that may have been made to blueprints right away.
+        // Propagate any heuristic changes that may have been in `on_frame_start` made to blueprints right away.
         self.data_blueprint.propagate_individual_to_tree();
     }
 
