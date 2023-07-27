@@ -208,7 +208,7 @@ impl QuotedObject {
 
     fn from_struct(
         arrow_registry: &ArrowRegistry,
-        _objects: &Objects,
+        objects: &Objects,
         obj: &Object,
     ) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
@@ -242,6 +242,8 @@ impl QuotedObject {
             })
             .collect_vec();
 
+        let (constants_hpp, constants_cpp) =
+            quote_constants_header_and_cpp(obj, objects, &pascal_case_ident);
         let mut methods = Vec::new();
 
         let datatype = arrow_registry.get(&obj.fqname);
@@ -338,10 +340,10 @@ impl QuotedObject {
         let hpp_method_section = if methods.is_empty() {
             quote! {}
         } else {
-            let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
+            let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
             quote! {
                 public:
-                    #(#hpp_methods)*
+                    #(#methods_hpp)*
             }
         };
         let hpp = quote! {
@@ -354,19 +356,24 @@ impl QuotedObject {
                     #quoted_docs
                     struct #pascal_case_ident {
                         #(#field_declarations;)*
+
+                        #(#constants_hpp;)*
+
                         #hpp_method_section
                     };
                 }
             }
         };
 
-        let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
+        let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
         let cpp = quote! {
             #cpp_includes
 
             namespace rr {
                 namespace #namespace_ident {
-                    #(#cpp_methods)*
+                    #(#constants_cpp;)*
+
+                    #(#methods_cpp)*
                 }
             }
         };
@@ -455,6 +462,8 @@ impl QuotedObject {
             })
             .collect_vec();
 
+        let (constants_hpp, constants_cpp) =
+            quote_constants_header_and_cpp(obj, objects, &pascal_case_ident);
         let mut methods = Vec::new();
 
         // Add one static constructor for every field.
@@ -596,7 +605,7 @@ impl QuotedObject {
 
         let swap_comment = quote_comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
 
-        let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
         let hpp = quote! {
             #hpp_includes
 
@@ -631,14 +640,8 @@ impl QuotedObject {
 
                     #quoted_docs
                     struct #pascal_case_ident {
-                      private:
-                        detail::#tag_typename _tag;
-                        detail::#data_typename _data;
+                        #(#constants_hpp;)*
 
-                        // Empty state required by static constructors:
-                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
-
-                      public:
                         #copy_constructor
 
                         // Copy-assignment
@@ -672,7 +675,15 @@ impl QuotedObject {
                             this->_data.swap(other._data);
                         }
 
-                        #(#hpp_methods)*
+                        #(#methods_hpp)*
+
+                    private:
+                        detail::#tag_typename _tag;
+                        detail::#data_typename _data;
+
+                        // Empty state required by static constructors:
+                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
+                        public:
                     };
                 }
             }
@@ -681,6 +692,8 @@ impl QuotedObject {
         let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
         let cpp = quote! {
             #cpp_includes
+
+            #(#constants_cpp;)*
 
             namespace rr {
                 namespace #namespace_ident {
@@ -1248,6 +1261,34 @@ fn static_constructor_for_enum_type(
             inline: true,
         }
     }
+}
+
+fn quote_constants_header_and_cpp(
+    obj: &Object,
+    objects: &Objects,
+    obj_type_ident: &Ident,
+) -> (Vec<TokenStream>, Vec<TokenStream>) {
+    let mut hpp = Vec::new();
+    let mut cpp = Vec::new();
+    match &obj.kind {
+        ObjectKind::Component => {
+            let legacy_fqname = objects[&obj.fqname]
+                .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
+                .unwrap_or_else(|| obj.fqname.clone());
+
+            let comment = quote_doc_comment("Name of the component, used for serialization.");
+            hpp.push(quote! {
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
+                #comment
+                static const char* NAME
+            });
+            cpp.push(quote!(const char* #obj_type_ident::NAME = #legacy_fqname));
+        }
+        ObjectKind::Archetype | ObjectKind::Datatype => {}
+    }
+
+    (hpp, cpp)
 }
 
 fn are_types_disjoint(fields: &[ObjectField]) -> bool {
