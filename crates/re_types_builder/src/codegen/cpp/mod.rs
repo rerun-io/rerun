@@ -648,10 +648,13 @@ fn arrow_data_type_method(datatype: &DataType, cpp_includes: &mut Includes) -> M
         docs: "Returns the arrow data type this type corresponds to.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { std::shared_ptr<arrow::DataType> },
+            return_type: quote! { const std::shared_ptr<arrow::DataType>& },
             name_and_parameters: quote! { to_arrow_datatype() },
         },
-        definition_body: quote! { return #quoted_datatype; },
+        definition_body: quote! {
+            static const auto datatype = #quoted_datatype;
+            return datatype;
+        },
         inline: false,
     }
 }
