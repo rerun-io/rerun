@@ -14,8 +14,6 @@ from rerun.components.transform3d import (
     Rigid3D,
     RotationAxisAngle,
     Scale3D,
-    Transform3D,
-    Transform3DArray,
     Translation3D,
     TranslationAndMat3,
     TranslationRotationScale3D,
@@ -244,18 +242,67 @@ def log_transform3d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    # Convert additionally supported types to TranslationRotationScale3D
-    if isinstance(transform, RotationAxisAngle) or isinstance(transform, Quaternion):
-        transform = TranslationRotationScale3D(rotation=transform)
-    elif isinstance(transform, Translation3D):
-        transform = TranslationRotationScale3D(translation=transform)
-    elif isinstance(transform, Scale3D):
-        transform = TranslationRotationScale3D(scale=transform)
-    elif isinstance(transform, Rigid3D):
-        transform = TranslationRotationScale3D(rotation=transform.rotation, translation=transform.translation)
+    import numpy as np
 
-    instanced = {"rerun.transform3d": Transform3DArray.from_transform(Transform3D(transform, from_parent))}
-    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+    from rerun.experimental import Transform3D, log
+    from rerun.experimental import dt as rrd
+
+    if isinstance(transform, RotationAxisAngle):
+        axis = transform.axis
+        angle = rrd.Angle(rad=transform.radians) if transform.radians is not None else rrd.Angle(deg=transform.degrees)
+        new_transform = rrd.TranslationRotationScale3D(rotation=rrd.RotationAxisAngle(axis=np.array(axis), angle=angle))
+    elif isinstance(transform, Quaternion):
+        quat = rrd.Quaternion(transform.xyzw)
+        new_transform = rrd.TranslationRotationScale3D(rotation=quat)
+    elif isinstance(transform, Translation3D):
+        translation = transform.translation
+        new_transform = rrd.TranslationRotationScale3D(translation=translation)
+    elif isinstance(transform, Scale3D):
+        scale = transform.scale
+        new_transform = rrd.TranslationRotationScale3D(scale=scale)
+    elif isinstance(transform, Rigid3D):
+        return log_transform3d(
+            entity_path,
+            TranslationRotationScale3D(transform.translation, transform.rotation, None),
+            from_parent=from_parent,
+            timeless=timeless,
+            recording=recording,
+        )
+    elif isinstance(transform, TranslationRotationScale3D):
+        translation = None
+        if isinstance(transform.translation, Translation3D):
+            translation = transform.translation.translation
+
+        rotation = None
+        if isinstance(transform.rotation, Quaternion):
+            rotation = rrd.Rotation3D(rrd.Quaternion(transform.rotation.xyzw))
+        elif isinstance(transform.rotation, RotationAxisAngle):
+            axis = transform.rotation.axis
+            angle = (
+                rrd.Angle(rad=transform.rotation.radians)
+                if transform.rotation.radians is not None
+                else rrd.Angle(deg=transform.rotation.degrees)
+            )
+            rotation = rrd.Rotation3D(rrd.RotationAxisAngle(axis=np.array(axis), angle=angle))
+
+        scale = None
+        if isinstance(transform.scale, Scale3D):
+            scale = transform.scale.scale
+
+        new_transform = rrd.TranslationRotationScale3D(translation, rotation, scale)
+    elif isinstance(transform, TranslationAndMat3):
+        translation = None
+        if isinstance(transform.translation, Translation3D):
+            translation = transform.translation.translation
+
+        return log(
+            entity_path,
+            Transform3D(rrd.TranslationAndMat3x3(translation, transform.matrix)),
+            timeless=timeless,
+            recording=recording,
+        )
+
+    log(entity_path, Transform3D(new_transform), timeless=timeless, recording=recording)
 
 
 @deprecated(version="0.7.0", reason="Use log_transform3d instead and, if xyz was set, use log_view_coordinates.")

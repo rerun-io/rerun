@@ -56,7 +56,7 @@ impl From<GltfTransform> for Transform3D {
     fn from(transform: GltfTransform) -> Self {
         Transform3D::new(TranslationRotationScale3D::affine(
             transform.t,
-            rerun::components::Quaternion::from_xyzw(transform.r),
+            rerun::datatypes::Quaternion::from_xyzw(transform.r),
             transform.s,
         ))
     }

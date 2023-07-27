@@ -3,9 +3,9 @@ use re_space_view::UnreachableTransformReason;
 use std::collections::BTreeMap;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
-use re_components::{Pinhole, Transform3D};
+use re_components::Pinhole;
 use re_data_store::{store_db::EntityDb, EntityPath, EntityTree};
-use re_types::components::DisconnectedSpace;
+use re_types::components::{DisconnectedSpace, Transform3D};
 
 /// Transform connecting two space paths.
 #[derive(Clone, Debug)]

@@ -1,4 +1,10 @@
 # This is a sha256 hash for all direct and indirect dependencies of this crate's build script.
 # It can be safely removed at anytime to force the build script to run again.
 # Check out build.rs to see how it's computed.
+<<<<<<< HEAD
 c758c4eefef6edd9fbe3a53a0d505133fb9397be259433d2792242cfa024fd31
+||||||| parent of 47f6dd6f9 (annihilate legacy Transform3D (as much as humanly possible))
+2c4fccd1e76e2d5ba3e2a92342d7b2692e2aa200b1617d47dd29850f682212c6
+=======
+ead55c17f1667e21bd1e8905ce50f3962a65e964e1217b3b8d0c69f064ebddbb
+>>>>>>> 47f6dd6f9 (annihilate legacy Transform3D (as much as humanly possible))

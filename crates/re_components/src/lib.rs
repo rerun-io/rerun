@@ -38,7 +38,6 @@ mod tensor;
 mod tensor_data;
 mod text_box;
 mod text_entry;
-mod transform3d;
 mod vec;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -76,10 +75,6 @@ pub use self::{
     tensor_data::{TensorDataType, TensorDataTypeTrait, TensorElement},
     text_box::TextBox,
     text_entry::TextEntry,
-    transform3d::{
-        Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr,
-        TranslationAndMat3, TranslationRotationScale3D,
-    },
     vec::{Vec2D, Vec3D, Vec4D},
 };
 
@@ -104,7 +99,7 @@ pub mod external {
 
 use re_types::components::{
     ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label, Point2D, Point3D,
-    Radius,
+    Radius, Transform3D,
 };
 
 lazy_static! {
@@ -124,7 +119,6 @@ lazy_static! {
         <Tensor as LegacyComponent>::field(),
         <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
-        <Transform3D as LegacyComponent>::field(),
         <Vec2D as LegacyComponent>::field(),
         <Vec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
@@ -138,6 +132,7 @@ lazy_static! {
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
         Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),
         Field::new(Radius::name().as_str(), Radius::to_arrow_datatype(), false),
+        Field::new(Transform3D::name().as_str(), Transform3D::to_arrow_datatype(), false),
     ];
 }
 

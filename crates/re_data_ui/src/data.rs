@@ -98,6 +98,33 @@ impl DataUi for Mat3x3 {
     }
 }
 
+impl DataUi for re_types::datatypes::Mat3x3 {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
+            ui.monospace(self[0].to_string());
+            ui.monospace(self[3].to_string());
+            ui.monospace(self[6].to_string());
+            ui.end_row();
+
+            ui.monospace(self[1].to_string());
+            ui.monospace(self[4].to_string());
+            ui.monospace(self[7].to_string());
+            ui.end_row();
+
+            ui.monospace(self[2].to_string());
+            ui.monospace(self[5].to_string());
+            ui.monospace(self[8].to_string());
+            ui.end_row();
+        });
+    }
+}
+
 impl DataUi for Vec2D {
     fn data_ui(
         &self,
@@ -110,7 +137,33 @@ impl DataUi for Vec2D {
     }
 }
 
+// TODO: annihilate legacy
+impl DataUi for re_types::datatypes::Vec2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
 impl DataUi for Vec3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+// TODO: annihilate legacy
+impl DataUi for re_types::datatypes::Vec3D {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
