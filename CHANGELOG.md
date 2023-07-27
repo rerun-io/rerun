@@ -13,15 +13,15 @@
 
 
 ### Overview & Highlights
- - `log_pinhole` is now easier to use in simple cases and supports non-RDF camera coordinates.
+ - `log_pinhole` is now easier to use in simple cases and supports non-RDF camera coordinates. [#2614](https://github.com/rerun-io/rerun/pull/2614)
    - You only need to set focal length and optional principal point instead of setting the full 3x3 matrix.
    - There is also a new argument: `camera_xyz` for setting the coordinate system. The default is RDF (the old
    default). This affects the visible camera frustum, how rays are projected when hovering a 2D image, and how depth
    clouds are projected.
-   - See: [#2614](https://github.com/rerun-io/rerun/pull/2614) for the full details.
- - The visualizer now shows coordinate arrows for all affine transforms within the view. [#2577](https://github.com/rerun-io/rerun/pull/2577)
+ - The visualizer can now show coordinate arrows for all affine transforms within the view. [#2577](https://github.com/rerun-io/rerun/pull/2577)
  - Linestrips and oriented bounding boxes can now be logged via batch APIs in python.
    - See: `log_linestrips_2d`, `log_linestrips_3d`, [#2822](https://github.com/rerun-io/rerun/pull/2822) and `log_obbs` [#2823](https://github.com/rerun-io/rerun/pull/2823)
+ - Rust users that build their own Viewer applications can now add fully custom Space Views. Find more information [here](https://www.rerun.io/docs/howto/extend-ui#custom-space-views-classes).
  - New optional `flush_timeout` specifies how long Rerun will wait if a TCP stream is disconnected during a flush. [#2821](https://github.com/rerun-io/rerun/pull/2821)
    - In Rust, `RecordingStream::connect` now requires `flush_timeout` specified as an `Option<Duration>`.
      - To keep default behavior, this can be specified using the `rerun::default_flush_time()` helper.
@@ -31,10 +31,11 @@
      which will set the time for all subsequent logs using that stream.
    - This can be used as an alternative to the the previous `MsgSender::with_time` APIs.
  - The Rerun SDK now defaults to 8ms long microbatches instead of 50ms. This makes the default behavior more suitable
-for use-cases like real-time video feeds.
+for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/rerun/pull/2220)
    - Check out [the microbatching
 docs](https://www.rerun.io/docs/reference/sdk-micro-batching) for more information on fine-tuning the micro-batching
 behavior.
+ - The web viewer now incremental loads `.rrd` files when streaming over HTTP. [#2412](https://github.com/rerun-io/rerun/pull/2412)
 
 
 ### Ongoing Refactors
@@ -183,14 +184,14 @@ behavior.
 - Update to PyO3 0.19 [#2350](https://github.com/rerun-io/rerun/pull/2350)
 - Pin `half` to `2.2.1` [#2587](https://github.com/rerun-io/rerun/pull/2587)
 
-#### Blueprint Changes
+#### 📘 Blueprint Changes
 - Drive blueprints off of a DataStore [#2010](https://github.com/rerun-io/rerun/pull/2010)
 - Split SpaceView -> SpaceViewState + SpaceViewBlueprint [#2188](https://github.com/rerun-io/rerun/pull/2188)
 - Split the Blueprint into AppBlueprint and ViewportBlueprint [#2358](https://github.com/rerun-io/rerun/pull/2358)
 - Swap the naming of Viewport and ViewportBlueprint [#2595](https://github.com/rerun-io/rerun/pull/2595)
 - Basic persistence for blueprints [#2578](https://github.com/rerun-io/rerun/pull/2578)
 
-#### New Codegen Framework
+#### 🏭 New Codegen Framework
 - Codegen/IDL 1: add more build tools [#2362](https://github.com/rerun-io/rerun/pull/2362)
 - Codegen/IDL 2: introduce `re_types_builder` [#2363](https://github.com/rerun-io/rerun/pull/2363)
 - Codegen/IDL 3: introduce `re_types`  [#2369](https://github.com/rerun-io/rerun/pull/2369)
@@ -233,7 +234,7 @@ behavior.
 - Introduce support for querying Archetypes [#2743](https://github.com/rerun-io/rerun/pull/2743)
 - Introduce legacy shims and migrate DataCell to re_types::Component [#2752](https://github.com/rerun-io/rerun/pull/2752)
 
-#### Starting work on C++
+#### 🌊 Starting work on C++
 - Seed of C and C++ SDKs [#2594](https://github.com/rerun-io/rerun/pull/2594)
 - Move C++ SDK to own folder [#2624](https://github.com/rerun-io/rerun/pull/2624)
 - C++ codegen [#2678](https://github.com/rerun-io/rerun/pull/2678)
