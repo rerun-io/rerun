@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 
-import rerun.experimental as rr_exp
+import rerun.experimental as rr2
 from rerun.experimental import cmp as rr_cmp
 
 
@@ -19,8 +19,8 @@ def test_disconnected_space() -> None:
     )
 
     for disconnected_space in all_arrays:
-        print(f"rr_exp.DisconnectedSpace(\n" f"    disconnected_space={disconnected_space}\n" f")")
-        arch = rr_exp.DisconnectedSpace(disconnected_space)
+        print(f"rr2.DisconnectedSpace(\n" f"    disconnected_space={disconnected_space}\n" f")")
+        arch = rr2.DisconnectedSpace(disconnected_space)
         print(f"{arch}\n")
 
         assert arch.disconnected_space == rr_cmp.DisconnectedSpaceArray.from_similar([True])
