@@ -3941,6 +3941,7 @@ dependencies = [
  "polars-ops",
  "rand",
  "re_components",
+ "re_error",
  "re_format",
  "re_log",
  "re_log_types",
