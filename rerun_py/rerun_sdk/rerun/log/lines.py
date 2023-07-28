@@ -7,7 +7,7 @@ import numpy.typing as npt
 from deprecated import deprecated
 
 from rerun import bindings
-from rerun.components import splat
+from rerun.components import instance_key_splat
 from rerun.components.draw_order import DrawOrderArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.log import Color, Colors, _normalize_colors, _normalize_radii
@@ -124,7 +124,7 @@ def log_line_strip(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = splat()
+        splats["rerun.instance_key"] = instance_key_splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
@@ -237,7 +237,7 @@ def log_line_strips_2d(
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
     if comps[1]:
-        comps[1]["rerun.instance_key"] = splat()
+        comps[1]["rerun.instance_key"] = instance_key_splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
@@ -349,7 +349,7 @@ def log_line_strips_3d(
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
     if comps[1]:
-        comps[1]["rerun.instance_key"] = splat()
+        comps[1]["rerun.instance_key"] = instance_key_splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
@@ -450,7 +450,7 @@ def log_line_segments(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = splat()
+        splats["rerun.instance_key"] = instance_key_splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

@@ -5,7 +5,7 @@ from typing import Any, Final
 
 import rerun.log.extension_components
 from rerun import bindings
-from rerun.components import splat
+from rerun.components import instance_key_splat
 from rerun.components.text_entry import TextEntryArray
 from rerun.log import Color, _normalize_colors
 from rerun.log.log_decorator import log_decorator
@@ -125,7 +125,7 @@ def log_text_entry(
         rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = splat()
+        splats["rerun.instance_key"] = instance_key_splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
