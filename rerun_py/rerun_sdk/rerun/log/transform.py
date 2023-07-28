@@ -157,11 +157,11 @@ def log_unknown_transform(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
-    from rerun.experimental import DisconnectedSpace, log_any
+    from rerun.experimental import DisconnectedSpace, log
 
     recording = RecordingStream.to_native(recording)
 
-    log_any(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
+    log(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -189,11 +189,11 @@ def log_disconnected_space(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
-    from rerun.experimental import DisconnectedSpace, log_any
+    from rerun.experimental import DisconnectedSpace, log
 
     recording = RecordingStream.to_native(recording)
 
-    log_any(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
+    log(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
 
 
 @log_decorator
