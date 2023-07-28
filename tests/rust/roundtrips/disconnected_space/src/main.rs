@@ -1,8 +1,6 @@
 //! Logs a `DisconnectedSpace` archetype for roundtrip checks.
 
-use rerun::{
-    experimental::archetypes::DisconnectedSpace, external::re_log, MsgSender, RecordingStream,
-};
+use rerun::{archetypes::DisconnectedSpace, external::re_log, MsgSender, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

@@ -25,7 +25,7 @@
 /// //! Disconnect two spaces.
 ///
 /// use rerun::{
-///    experimental::archetypes::{DisconnectedSpace, Points3D},
+///    archetypes::{DisconnectedSpace, Points3D},
 ///    MsgSender, RecordingStreamBuilder,
 /// };
 ///
