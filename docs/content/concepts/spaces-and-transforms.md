@@ -75,9 +75,9 @@ transforms that can be logged:
   [rerun.log_transform3d](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_transform3d))
 - Pinhole transforms define a 3D -> 2D camera projection. (See:
   [rerun.log_pinhole](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_pinhole))
-- Unknown transforms specify that the data cannot be transformed. In this case it will not be possible to combine the
+- A disconnected space specifies that the data cannot be transformed. In this case it will not be possible to combine the
   data into a single view, and you will need to create two separate views to explore the data. (See:
-  [rerun.log_unknown_transform](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_unknown_transform))
+  [rerun.log_disconnected_space](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_disconnected_space))
 
 In the future, Rerun will be adding support for additional types of transforms.
  - [#349: Log 2D -> 2D transformations in the transform hierarchy](https://github.com/rerun-io/rerun/issues/349)

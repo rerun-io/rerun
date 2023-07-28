@@ -65,7 +65,6 @@ __all__ = [
     "log_tensor",
     "log_text_entry",
     "log_transform3d",
-    "log_unknown_transform",
     "log_view_coordinates",
     "memory_recording",
     "reset_time",
@@ -115,7 +114,6 @@ from .log.transform import (
     log_disconnected_space,
     log_rigid3,
     log_transform3d,
-    log_unknown_transform,
     log_view_coordinates,
 )
 from .recording_stream import (

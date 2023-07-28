@@ -119,7 +119,6 @@ SECTION_TABLE: Final[list[Section]] = [
         func_list=[
             "log_transform3d",
             "log_pinhole",
-            "log_unknown_transform",
             "log_disconnected_space",
             "log_view_coordinates",
             # "log_rigid3", Intentionally removed from the docs - deprecated since 0.7.
