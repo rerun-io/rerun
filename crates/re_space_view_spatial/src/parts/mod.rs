@@ -120,7 +120,8 @@ pub fn process_colors_arch<'a, A: Archetype>(
     }))
 }
 
-/// Process [`Radius`] components to [`re_renderer::Size`] using auto size where no radius is specified.
+/// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
+/// where no radius is specified.
 pub fn process_radii_arch<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &EntityPath,
