@@ -181,7 +181,7 @@ MsgSender::new("dna/structure/scaffolding/beads")
     .send(&recording)?;
 ```
 
-Once again, although we are getting fancier and fancier with our iterator mappings, there is nothing new here: it's all about building out vectors of [`Loggable`s](https://docs.rs/re_types/latest/re_types/trait.Loggable.html) and feeding them to the Rerun API.
+Once again, although we are getting fancier and fancier with our iterator mappings, there is nothing new here: it's all about building out vectors of [`Component`s](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html) and feeding them to the Rerun API.
 
 ![logging data - beads](https://static.rerun.io/60c3c762448f68da3f5fdd7927a6e65e11f5385f_logging_data5_beads.png)
 
