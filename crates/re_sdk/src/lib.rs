@@ -23,7 +23,6 @@ pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
 
 pub use re_log_types::{ApplicationId, EntityPath, LegacyComponent, StoreId, StoreKind};
-pub use re_types::ComponentName;
 
 pub use global::cleanup_if_forked_child;
 
@@ -97,7 +96,9 @@ pub mod coordinates {
     pub use re_components::coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 }
 
-pub use re_types::{archetypes, datatypes, Archetype, Component, Datatype};
+pub use re_types::{
+    archetypes, datatypes, Archetype, Component, ComponentName, Datatype, Loggable,
+};
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
