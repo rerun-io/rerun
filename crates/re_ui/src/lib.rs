@@ -332,6 +332,11 @@ impl ReUi {
             // For big buttons we have a background color even when inactive:
             let visuals = ui.visuals_mut();
             visuals.widgets.inactive.weak_bg_fill = visuals.widgets.inactive.bg_fill;
+
+            // no expansion effect
+            visuals.widgets.hovered.expansion = 0.0;
+            visuals.widgets.active.expansion = 0.0;
+            visuals.widgets.open.expansion = 0.0;
         }
 
         let image = self.icon_image(icon);

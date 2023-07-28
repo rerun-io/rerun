@@ -18,37 +18,48 @@ impl TimeControlUi {
     ) {
         time_control.select_a_valid_timeline(times_per_timeline);
 
-        egui::ComboBox::from_id_source("timeline")
-            .selected_text(time_control.timeline().name().as_str())
-            .show_ui(ui, |ui| {
-                ui.style_mut().wrap = Some(false);
-                ui.set_min_width(64.0);
+        ui.scope(|ui| {
+            ui.spacing_mut().button_padding += egui::Vec2::new(2.0, 0.0);
+            ui.visuals_mut().widgets.active.expansion = 0.0;
+            ui.visuals_mut().widgets.hovered.expansion = 0.0;
+            ui.visuals_mut().widgets.open.expansion = 0.0;
 
-                for timeline in times_per_timeline.timelines() {
-                    if ui
-                        .selectable_label(
-                            timeline == time_control.timeline(),
-                            timeline.name().as_str(),
-                        )
-                        .clicked()
-                    {
-                        time_control.set_timeline(*timeline);
+            egui::ComboBox::from_id_source("timeline")
+                .selected_text(time_control.timeline().name().as_str())
+                .show_ui(ui, |ui| {
+                    ui.style_mut().wrap = Some(false);
+                    ui.set_min_width(64.0);
+
+                    for timeline in times_per_timeline.timelines() {
+                        if ui
+                            .selectable_label(
+                                timeline == time_control.timeline(),
+                                timeline.name().as_str(),
+                            )
+                            .clicked()
+                        {
+                            time_control.set_timeline(*timeline);
+                        }
                     }
-                }
-            });
+                });
+        });
     }
 
     #[allow(clippy::unused_self)]
     pub fn fps_ui(&mut self, time_control: &mut TimeControl, ui: &mut egui::Ui) {
         if time_control.time_type() == TimeType::Sequence {
             if let Some(mut fps) = time_control.fps() {
-                ui.add(
-                    egui::DragValue::new(&mut fps)
-                        .suffix(" FPS")
-                        .speed(1)
-                        .clamp_range(0.0..=f32::INFINITY),
-                )
-                .on_hover_text("Frames Per Second");
+                ui.scope(|ui| {
+                    ui.spacing_mut().interact_size -= egui::Vec2::new(0., 4.);
+
+                    ui.add(
+                        egui::DragValue::new(&mut fps)
+                            .suffix(" FPS")
+                            .speed(1)
+                            .clamp_range(0.0..=f32::INFINITY),
+                    )
+                    .on_hover_text("Frames Per Second");
+                });
                 time_control.set_fps(fps);
             }
         }
@@ -202,12 +213,16 @@ impl TimeControlUi {
     pub fn playback_speed_ui(&mut self, time_control: &mut TimeControl, ui: &mut egui::Ui) {
         let mut speed = time_control.speed();
         let drag_speed = (speed * 0.02).at_least(0.01);
-        ui.add(
-            egui::DragValue::new(&mut speed)
-                .speed(drag_speed)
-                .suffix("x"),
-        )
-        .on_hover_text("Playback speed.");
+        ui.scope(|ui| {
+            ui.spacing_mut().interact_size -= egui::Vec2::new(0., 4.);
+            ui.add(
+                egui::DragValue::new(&mut speed)
+                    .speed(drag_speed)
+                    .suffix("x"),
+            )
+            .on_hover_text("Playback speed.");
+        });
+
         time_control.set_speed(speed);
     }
 }
