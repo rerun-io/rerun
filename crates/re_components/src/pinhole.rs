@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use super::{mat::Mat3x3, LegacyVec2D};
+use super::{mat::LegacyMat3x3, LegacyVec2D};
 
 /// Camera perspective projection (a.k.a. intrinsics).
 ///
@@ -47,7 +47,7 @@ pub struct Pinhole {
     ///  [0.0,    1496.1, 0.0], // col 1
     ///  [980.5,  744.5,  1.0]] // col 2
     /// ```
-    pub image_from_cam: Mat3x3,
+    pub image_from_cam: LegacyMat3x3,
 
     /// Pixel resolution (usually integers) of child image space. Width and height.
     ///

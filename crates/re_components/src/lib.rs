@@ -65,7 +65,7 @@ pub use self::{
     context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
     linestrip::{LineStrip2D, LineStrip3D},
-    mat::Mat3x3,
+    mat::LegacyMat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},
     pinhole::Pinhole,
     quaternion::Quaternion,
