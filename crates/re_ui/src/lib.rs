@@ -463,6 +463,10 @@ impl ReUi {
             header_size,
             egui::Layout::left_to_right(egui::Align::Center),
             |ui| {
+                ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                ui.visuals_mut().widgets.active.expansion = 0.0;
+                ui.visuals_mut().widgets.open.expansion = 0.0;
+
                 let background_frame = ui.painter().add(egui::Shape::Noop);
 
                 let space_before_icon = 0.0;
