@@ -73,7 +73,7 @@ def log_point(
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
     draw_order:
-        An optional floating point value that specifies the 2D drawing order.
+        An optional floating point value that specifies the 2D drawing order for 2D points.
         Objects with higher values are drawn on top of those with lower values.
         The default for 2D points is 30.0.
     ext:
@@ -109,12 +109,13 @@ def log_point(
             )
             return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
         elif position.size == 3:
+            if draw_order is not None:
+                raise ValueError("`draw_order` is only supported for 3D points")
             points3d = Points3D(
                 points=position,
                 radii=radius,
                 colors=color,
                 labels=label,
-                draw_order=draw_order,
                 class_ids=class_id,
                 keypoint_ids=keypoint_id,
             )
@@ -182,7 +183,7 @@ def log_points(
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
     draw_order:
-        An optional floating point value that specifies the 2D drawing order.
+        An optional floating point value that specifies the 2D drawing order for 2D points.
         Objects with higher values are drawn on top of those with lower values.
         The default for 2D points is 30.0.
     ext:
@@ -227,12 +228,14 @@ def log_points(
             )
             return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
         elif positions.shape[1] == 3:
+            if draw_order is not None:
+                raise ValueError("`draw_order` is only supported for 3D points")
+
             points3d = Points3D(
                 points=positions,
                 radii=radii,
                 colors=colors,
                 labels=labels,
-                draw_order=draw_order,
                 class_ids=class_ids,
                 keypoint_ids=keypoint_ids,
                 instance_keys=identifiers_np,

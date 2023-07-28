@@ -67,18 +67,6 @@ class Points3D(Archetype):
     Optional text labels for the points.
     """
 
-    draw_order: components.DrawOrderArray | None = field(
-        metadata={"component": "secondary"},
-        default=None,
-        converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
-    )
-    """
-    An optional floating point value that specifies the 3D drawing order.
-    Objects with higher values are drawn on top of those with lower values.
-
-    The default for 3D points is 30.0.
-    """
-
     class_ids: components.ClassIdArray | None = field(
         metadata={"component": "secondary"},
         default=None,
