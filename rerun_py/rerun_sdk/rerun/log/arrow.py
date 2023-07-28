@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.components import splat
+from rerun.components import instance_key_splat
 from rerun.components.arrow import Arrow3DArray
 from rerun.log import Color, _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
@@ -91,7 +91,7 @@ def log_arrow(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = splat()
+        splats["rerun.instance_key"] = instance_key_splat()
         bindings.log_arrow_msg(
             entity_path,
             components=splats,

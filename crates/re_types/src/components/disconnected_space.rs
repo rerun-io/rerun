@@ -12,41 +12,42 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 16-bit ID representing a type of semantic class.
+/// Specifies that the entity path at which this is logged is disconnected from its parent.
 ///
-/// Used to look up a `crate::components::ClassDescription` within the `crate::components::AnnotationContext`.
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct ClassId(pub u16);
+/// This is useful for specifying that a subgraph is independent of the rest of the scene.
+///
+/// If a transform or pinhole is logged on the same path, this component will be ignored.
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+pub struct DisconnectedSpace(pub bool);
 
-impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'a> From<DisconnectedSpace> for ::std::borrow::Cow<'a, DisconnectedSpace> {
     #[inline]
-    fn from(value: ClassId) -> Self {
+    fn from(value: DisconnectedSpace) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'a> From<&'a DisconnectedSpace> for ::std::borrow::Cow<'a, DisconnectedSpace> {
     #[inline]
-    fn from(value: &'a ClassId) -> Self {
+    fn from(value: &'a DisconnectedSpace) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for ClassId {
+impl crate::Loggable for DisconnectedSpace {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
-        "rerun.class_id".into()
+        "rerun.disconnected_space".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt16
+        DataType::Boolean
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -75,12 +76,12 @@ impl crate::Loggable for ClassId {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            PrimitiveArray::new(
+            BooleanArray::new(
                 {
                     _ = extension_wrapper;
                     DataType::Extension(
-                        "rerun.components.ClassId".to_owned(),
-                        Box::new(DataType::UInt16),
+                        "rerun.components.DisconnectedSpace".to_owned(),
+                        Box::new(DataType::Boolean),
                         None,
                     )
                     .to_logical_type()
@@ -104,10 +105,9 @@ impl crate::Loggable for ClassId {
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
-            .downcast_ref::<UInt16Array>()
+            .downcast_ref::<BooleanArray>()
             .unwrap()
             .into_iter()
-            .map(|v| v.copied())
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -116,7 +116,7 @@ impl crate::Loggable for ClassId {
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.ClassId#id".into(),
+                location: "rerun.components.DisconnectedSpace#is_disconnected".into(),
                 source: Box::new(err),
             })?)
     }
@@ -137,4 +137,4 @@ impl crate::Loggable for ClassId {
     }
 }
 
-impl crate::Component for ClassId {}
+impl crate::Component for DisconnectedSpace {}

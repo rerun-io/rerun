@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.components import splat
+from rerun.components import instance_key_splat
 from rerun.components.draw_order import DrawOrderArray
 from rerun.components.tensor import TensorArray
 from rerun.log.error_utils import _send_warning
@@ -148,7 +148,7 @@ def _log_tensor(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = splat()
+        splats["rerun.instance_key"] = instance_key_splat()
         bindings.log_arrow_msg(
             entity_path,
             components=splats,

@@ -9,8 +9,6 @@ import rerun.experimental as rr2
 from rerun.experimental import cmp as rr_cmp
 from rerun.experimental import dt as rr_dt
 
-# TODO(cmc): roundtrips (serialize in python, deserialize in rust)
-
 U64_MAX_MINUS_1 = 2**64 - 2
 U64_MAX = 2**64 - 1
 

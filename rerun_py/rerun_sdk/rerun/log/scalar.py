@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 
 from rerun import bindings
-from rerun.components import splat
+from rerun.components import instance_key_splat
 from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
 from rerun.log import Color, _normalize_colors
 from rerun.log.extension_components import _add_extension_components
@@ -146,7 +146,7 @@ def log_scalar(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = splat()
+        splats["rerun.instance_key"] = instance_key_splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=False, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

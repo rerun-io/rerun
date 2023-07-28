@@ -1,6 +1,8 @@
 .gitattributes linguist-generated=true
 archetypes/affix_fuzzer1.cpp linguist-generated=true
 archetypes/affix_fuzzer1.hpp linguist-generated=true
+archetypes/disconnected_space.cpp linguist-generated=true
+archetypes/disconnected_space.hpp linguist-generated=true
 archetypes/points2d.cpp linguist-generated=true
 archetypes/points2d.hpp linguist-generated=true
 archetypes/points3d.cpp linguist-generated=true
@@ -50,6 +52,8 @@ components/class_id.cpp linguist-generated=true
 components/class_id.hpp linguist-generated=true
 components/color.cpp linguist-generated=true
 components/color.hpp linguist-generated=true
+components/disconnected_space.cpp linguist-generated=true
+components/disconnected_space.hpp linguist-generated=true
 components/draw_order.cpp linguist-generated=true
 components/draw_order.hpp linguist-generated=true
 components/instance_key.cpp linguist-generated=true

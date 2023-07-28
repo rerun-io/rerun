@@ -103,7 +103,7 @@ def build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: pa
 
 
 # NOTE: This has to live here for now, while we migrate to archetypes (circular experimental imports).
-def splat() -> Any:
+def instance_key_splat() -> Any:
     """Helper to generate a splat InstanceKeyArray."""
 
     from rerun.experimental import cmp as rrc
