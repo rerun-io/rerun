@@ -212,8 +212,8 @@ impl QuotedObject {
         obj: &Object,
     ) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
-        let pascal_case_name = &obj.name;
-        let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
+        let type_name = &obj.name;
+        let type_ident = format_ident!("{type_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
 
         let mut hpp_includes = Includes::default();
@@ -243,7 +243,7 @@ impl QuotedObject {
             .collect_vec();
 
         let (constants_hpp, constants_cpp) =
-            quote_constants_header_and_cpp(obj, objects, &pascal_case_ident);
+            quote_constants_header_and_cpp(obj, objects, &type_ident);
         let mut methods = Vec::new();
 
         let datatype = arrow_registry.get(&obj.fqname);
@@ -266,7 +266,7 @@ impl QuotedObject {
                         hpp_includes.system.insert("utility".to_owned()); // std::move
                         methods.push(Method {
                                 declaration: MethodDeclaration::constructor(quote! {
-                                    #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
+                                    #type_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
                                 }),
                                 ..Method::default()
                             });
@@ -274,14 +274,23 @@ impl QuotedObject {
                 };
 
                 // Arrow serialization methods.
+                // TODO(andreas): These are just utilities for to_data_cell. How do we hide them best from the public header?
                 methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
                 methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
                 methods.push(fill_arrow_array_builder_method(
                     &datatype,
                     obj,
-                    &pascal_case_ident,
+                    &type_ident,
                     &mut cpp_includes,
                 ));
+
+                if obj.kind == ObjectKind::Component {
+                    methods.push(component_to_data_cell_method(
+                        &type_ident,
+                        &mut hpp_includes,
+                        &mut cpp_includes,
+                    ));
+                }
             }
             ObjectKind::Archetype => {
                 hpp_includes.system.insert("utility".to_owned()); // std::move
@@ -303,7 +312,7 @@ impl QuotedObject {
 
                     methods.push(Method {
                         declaration: MethodDeclaration::constructor(quote! {
-                            #pascal_case_ident(#(#arguments),*) : #(#assignments),*
+                            #type_ident(#(#arguments),*) : #(#assignments),*
                         }),
                         ..Method::default()
                     });
@@ -322,7 +331,7 @@ impl QuotedObject {
                         docs: obj_field.docs.clone().into(),
                         declaration: MethodDeclaration {
                             is_static: false,
-                            return_type: quote!(#pascal_case_ident&),
+                            return_type: quote!(#type_ident&),
                             name_and_parameters: quote! {
                                 #method_ident(#parameter_declaration)
                             },
@@ -354,7 +363,7 @@ impl QuotedObject {
             namespace rr {
                 namespace #namespace_ident {
                     #quoted_docs
-                    struct #pascal_case_ident {
+                    struct #type_ident {
                         #(#field_declarations;)*
 
                         #(#constants_hpp;)*
@@ -365,7 +374,7 @@ impl QuotedObject {
             }
         };
 
-        let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
+        let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&type_ident));
         let cpp = quote! {
             #cpp_includes
 
@@ -803,6 +812,62 @@ fn fill_arrow_array_builder_method(
     }
 }
 
+fn component_to_data_cell_method(
+    type_ident: &Ident,
+    hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
+) -> Method {
+    hpp_includes.local.insert("../data_cell.hpp".to_owned());
+    cpp_includes.local.insert("../rerun.hpp".to_owned()); // ipc_from_table
+
+    let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
+
+    // TODO(andreas): Error return code?
+    Method {
+        docs: format!("Creates a Rerun DataCell from an array of {type_ident} components.").into(),
+        declaration: MethodDeclaration {
+            is_static: true,
+            return_type: quote! { arrow::Result<rr::DataCell> },
+            name_and_parameters: quote! {
+                to_data_cell(const #type_ident* components, size_t num_components)
+            },
+        },
+        definition_body: quote! {
+            #NEWLINE_TOKEN
+            #todo_pool
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            ARROW_ASSIGN_OR_RAISE(auto builder, #type_ident::new_arrow_array_builder(pool));
+            if (components && num_components > 0) {
+                ARROW_RETURN_NOT_OK(#type_ident::fill_arrow_array_builder(
+                    builder.get(),
+                    components,
+                    num_components
+                ));
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            auto schema = arrow::schema({arrow::field(
+                #type_ident::NAME, // Unused, but should be the name of the field in the archetype if any.
+                #type_ident::to_arrow_datatype(),
+                false
+            )});
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            rr::DataCell cell;
+            cell.component_name = #type_ident::NAME;
+            ARROW_ASSIGN_OR_RAISE(cell.buffer, rr::ipc_from_table(*arrow::Table::Make(schema, {array})));
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            return cell;
+        },
+        inline: false,
+    }
+}
+
 fn quote_fill_arrow_array_builder(
     pascal_case_ident: &Ident,
     datatype: &DataType,
@@ -883,7 +948,7 @@ fn quote_fill_arrow_array_builder(
                 } else {
                     quote! {
                         for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            value_builder->Append(element.#field_name.value()[item_idx]);
+                            ARROW_RETURN_NOT_OK(value_builder->Append(element.#field_name.value()[item_idx]));
                         }
                     }
                 };

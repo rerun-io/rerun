@@ -4,15 +4,11 @@
 #include <cstdint> // uint32_t etc
 
 namespace rr {
+    struct DataCell;
+
     enum StoreKind {
         Recording,
         Blueprint,
-    };
-
-    struct DataCell {
-        const char* component_name;
-        size_t num_bytes;
-        const uint8_t* bytes;
     };
 
     class RecordingStream {
@@ -29,7 +25,27 @@ namespace rr {
         /// Aborts if `init_global` has not yet been called.
         static RecordingStream global();
 
-        /// Logs raw data row to the recording stream.
+        // TODO: docs
+
+        // template <typename T>
+        // void log(const char* entity_path, const T& archetype) {
+        //     log_archetype(entity_path, archetype);
+        // }
+
+        // template <typename T>
+        // void log_archetype(const char* entity_path, const T& archetype) {
+        //     // TODO:
+        // }
+
+        // template <typename T>
+        // void log_components(
+        //     const char* entity_path, const std::vector<T>* component_arrays, size_t
+        //     num_components
+        // ) {
+        //     // TODO:
+        // }
+
+        /// Low level API that logs raw data cells to the recording stream.
         ///
         /// I.e. logs a number of components arrays (each with a same number of instances) to a
         /// single entity path.

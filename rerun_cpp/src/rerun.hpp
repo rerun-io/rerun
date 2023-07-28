@@ -20,8 +20,6 @@ namespace rr {
 #include <arrow/api.h>
 
 namespace rr {
-    arrow::Result<std::shared_ptr<arrow::Table>> points3(size_t num_points, const float* xyz);
-
     /// Encode the given arrow table in the Arrow IPC encapsulated message format.
     ///
     /// * <https://arrow.apache.org/docs/format/Columnar.html#format-ipc>
