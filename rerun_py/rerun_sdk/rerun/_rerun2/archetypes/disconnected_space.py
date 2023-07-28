@@ -19,6 +19,9 @@ class DisconnectedSpace(Archetype):
 
     This is useful for specifying that a subgraph is independent of the rest of the scene.
 
+    If a transform or pinhole is logged on the same path, this archetype's components
+    will be ignored.
+
     Example
     -------
     ```python

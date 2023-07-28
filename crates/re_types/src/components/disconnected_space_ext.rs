@@ -5,3 +5,9 @@ impl From<bool> for DisconnectedSpace {
         Self(b)
     }
 }
+
+impl Default for DisconnectedSpace {
+    fn default() -> Self {
+        Self(true)
+    }
+}
