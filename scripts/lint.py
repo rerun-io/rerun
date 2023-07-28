@@ -11,7 +11,7 @@ import argparse
 import os
 import re
 import sys
-from typing import Any
+from typing import Any, Iterator
 
 from gitignore_parser import parse_gitignore
 
@@ -374,51 +374,154 @@ def test_lint_workspace_deps() -> None:
 
 
 # -----------------------------------------------------------------------------
+# We may not use egui's widgets for which we have a custom version in re_ui.
+
+# Note: this really is best-effort detection, it will only catch the most common code layout cases. If this gets any
+# more complicated, a syn-based linter in Rust would certainly be better approach.
+
+re_forbidden_widgets = [
+    (
+        re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*checkbox(?!\w)", re.MULTILINE),
+        "ui.checkbox() is forbidden (use re_ui.checkbox() instead)",
+    ),
+    (
+        re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*radio_value(?!\w)", re.MULTILINE),
+        "ui.radio_value() is forbidden (use re_ui.radio_value() instead)",
+    ),
+]
+
+
+def lint_forbidden_widgets(content: str) -> Iterator[tuple[str, int, int]]:
+    for re_widget, error in re_forbidden_widgets:
+        for match in re_widget.finditer(content):
+            yield error, match.start(0), match.end(0)
+
+
+def test_lint_forbidden_widgets() -> None:
+    re_checkbox = re_forbidden_widgets[0][0]
+    assert re_checkbox.search("ui.checkbox")
+    assert re_checkbox.search("  ui.\n\t\t   checkbox  ")
+    assert re_checkbox.search("  ui.\n\t\t   checkbox()")
+    assert re_checkbox.search("  ui\n\t\t   .checkbox()")
+    assert re_checkbox.search("  ui //bla\n\t\t   .checkbox()")
+    assert not re_checkbox.search("re_ui.checkbox")
+    assert not re_checkbox.search("ui.checkbox_re")
+
+    should_fail_two_times = """
+        ui.checkbox()
+        re_ui.checkbox()
+        ui.checkbox_re()
+
+        ui  // hello!
+            .checkbox()
+            .bla()
+    """
+
+    res = list(lint_forbidden_widgets(should_fail_two_times))
+    assert len(res) == 2
+    assert _index_to_line_nr(should_fail_two_times, res[0][1]) == 1
+    assert _index_to_line_nr(should_fail_two_times, res[1][1]) == 5
+
+
+# -----------------------------------------------------------------------------
+
+
+def _index_to_line_nr(content: str, index: int) -> int:
+    """Converts a 0-based index into a 0-based line number."""
+    return content[:index].count("\n")
+
+
+class SourceFile:
+    """Wrapper over a source file with some utility functions."""
+
+    def __init__(self, path: str):
+        self.path = os.path.abspath(path)
+        self.ext = path.split(".")[-1]
+        with open(path) as f:
+            self.lines = f.readlines()
+        self._update_content()
+
+    def _update_content(self) -> None:
+        """Sync everything with `self.lines`."""
+        self.content = "".join(self.lines)
+
+        # gather lines with a `NOLINT` marker
+        self.no_lints = {i for i, line in enumerate(self.lines) if "NOLINT" in line}
+
+    def rewrite(self, new_lines: list[str]) -> None:
+        """Rewrite the contents of the file."""
+        if new_lines != self.lines:
+            self.lines = new_lines
+            with open(self.path, "w") as f:
+                f.writelines(new_lines)
+            self._update_content()
+            print(f"{self.path} fixed.")
+
+    def should_ignore(self, from_line: int, to_line: int | None = None) -> bool:
+        """
+        Determines if we should ignore a violation.
+
+        NOLINT might be on the same line(s) as the violation or the previous line.
+        """
+
+        if to_line is None:
+            to_line = from_line
+        return any(i in self.no_lints for i in range(from_line - 1, to_line + 1))
+
+    def should_ignore_index(self, start_idx: int, end_idx: int | None = None) -> bool:
+        """Same as `should_ignore` but takes 0-based indices instead of line numbers."""
+        return self.should_ignore(
+            _index_to_line_nr(self.content, start_idx),
+            _index_to_line_nr(self.content, end_idx) if end_idx is not None else None,
+        )
+
+    def error(self, message: str, *, line_nr: int | None = None, index: int | None = None) -> str:
+        """Construct an error message. If either `line_nr` or `index` is passed, it's used to indicate a line number."""
+        if line_nr is None and index is not None:
+            line_nr = _index_to_line_nr(self.content, index)
+        if line_nr is None:
+            return f"{self.path}: {message}"
+        else:
+            return f"{self.path}:{line_nr+1}: {message}"
 
 
 def lint_file(filepath: str, args: Any) -> int:
-    file_extension = filepath.split(".")[-1]
-
-    with open(filepath) as f:
-        lines_in = f.readlines()
-
+    source = SourceFile(filepath)
     num_errors = 0
 
-    for line_nr, line in enumerate(lines_in):
+    for line_nr, line in enumerate(source.lines):
         if line == "" or line[-1] != "\n":
             error = "Missing newline at end of file"
         else:
             line = line[:-1]
-            error = lint_line(line, file_extension)
+            error = lint_line(line, source.ext)
         if error is not None:
             num_errors += 1
-            print(f"{filepath}:{line_nr+1}: {error}")
+            print(source.error(error, line_nr=line_nr))
 
     if filepath.endswith(".rs"):
-        errors, lines_out = lint_vertical_spacing(lines_in)
+        for error, start_idx, end_idx in lint_forbidden_widgets(source.content):
+            if not source.should_ignore_index(start_idx, end_idx):
+                print(source.error(error, index=start_idx))
+                num_errors += 1
 
+        errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
-            print(f"{filepath}:{error}")
-
-        if args.fix and lines_in != lines_out:
-            with open(filepath, "w") as f:
-                f.writelines(lines_out)
-            print(f"{filepath} fixed.")
-
+            print(source.error(error))
         num_errors += len(errors)
+
+        if args.fix:
+            source.rewrite(lines_out)
 
     if filepath.startswith("./examples/rust") and filepath.endswith("Cargo.toml"):
-        errors, lines_out = lint_workspace_deps(lines_in)
+        errors, lines_out = lint_workspace_deps(source.lines)
 
         for error in errors:
-            print(f"{filepath}:{error}")
-
-        if args.fix and lines_in != lines_out:
-            with open(filepath, "w") as f:
-                f.writelines(lines_out)
-            print(f"{filepath} fixed.")
-
+            print(source.error(error))
         num_errors += len(errors)
+
+        if args.fix:
+            source.rewrite(lines_out)
 
     return num_errors
 

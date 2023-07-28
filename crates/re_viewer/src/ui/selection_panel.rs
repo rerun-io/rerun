@@ -347,8 +347,10 @@ fn entity_props_ui(
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
 ) {
-    ui.checkbox(&mut entity_props.visible, "Visible");
-    ui.checkbox(&mut entity_props.interactive, "Interactive")
+    let re_ui = ctx.re_ui;
+    re_ui.checkbox(ui, &mut entity_props.visible, "Visible");
+    re_ui
+        .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
     egui::Grid::new("entity_properties")
@@ -475,8 +477,9 @@ fn depth_props_ui(
 
     let mut backproject_depth = *entity_props.backproject_depth.get();
 
-    if ui
-        .checkbox(&mut backproject_depth, "Backproject Depth")
+    if ctx
+        .re_ui
+        .checkbox(ui, &mut backproject_depth, "Backproject Depth")
         .on_hover_text(
             "If enabled, the depth texture will be backprojected into a point cloud rather \
                 than simply displayed as an image.",
@@ -576,7 +579,7 @@ fn transform3d_visualization_ui(
 
     {
         let mut checked = *show_arrows.get();
-        let response = ui.checkbox(&mut checked, "Show transform").on_hover_text(
+        let response = ctx.re_ui.checkbox(ui, &mut checked, "Show transform").on_hover_text(
             "Enables/disables the display of three arrows to visualize the (accumulated) transform at this entity. Red/green/blue show the x/y/z axis respectively.");
         if response.changed() {
             *show_arrows = EditableAutoValue::UserEdited(checked);

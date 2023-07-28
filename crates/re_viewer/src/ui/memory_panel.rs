@@ -40,6 +40,7 @@ impl MemoryPanel {
     pub fn ui(
         &self,
         ui: &mut egui::Ui,
+        re_ui: &re_ui::ReUi,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &StoreHubStats,
@@ -54,7 +55,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(ui, limit, gpu_resource_stats, store_stats);
+                Self::left_side(ui, re_ui, limit, gpu_resource_stats, store_stats);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -65,6 +66,7 @@ impl MemoryPanel {
 
     fn left_side(
         ui: &mut egui::Ui,
+        re_ui: &re_ui::ReUi,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &StoreHubStats,
@@ -73,7 +75,7 @@ impl MemoryPanel {
 
         ui.separator();
         ui.collapsing("CPU Resources", |ui| {
-            Self::cpu_stats(ui, limit);
+            Self::cpu_stats(ui, re_ui, limit);
         });
 
         ui.separator();
@@ -100,7 +102,7 @@ impl MemoryPanel {
         });
     }
 
-    fn cpu_stats(ui: &mut egui::Ui, limit: &MemoryLimit) {
+    fn cpu_stats(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, limit: &MemoryLimit) {
         if let Some(limit) = limit.limit {
             ui.label(format!("Memory limit: {}", format_bytes(limit as _)));
         } else {
@@ -129,7 +131,12 @@ impl MemoryPanel {
         }
 
         let mut is_tracking_callstacks = re_memory::accounting_allocator::is_tracking_callstacks();
-        ui.checkbox(&mut is_tracking_callstacks, "Detailed allocation tracking")
+        re_ui
+            .checkbox(
+                ui,
+                &mut is_tracking_callstacks,
+                "Detailed allocation tracking",
+            )
             .on_hover_text("This will slow down the program.");
         re_memory::accounting_allocator::set_tracking_callstacks(is_tracking_callstacks);
 

@@ -12,6 +12,6 @@ pub use blueprint_panel::blueprint_panel_ui;
 // ----
 
 pub(crate) use {
-    self::mobile_warning_ui::mobile_warning_ui, self::rerun_menu::rerun_menu_button_ui,
-    self::top_panel::top_panel, self::wait_screen_ui::wait_screen_ui,
+    self::mobile_warning_ui::mobile_warning_ui, self::top_panel::top_panel,
+    self::wait_screen_ui::wait_screen_ui,
 };

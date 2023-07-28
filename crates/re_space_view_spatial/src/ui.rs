@@ -120,6 +120,8 @@ impl SpatialSpaceViewState {
         space_view_id: SpaceViewId,
         spatial_kind: SpatialSpaceViewKind,
     ) {
+        let re_ui = ctx.re_ui;
+
         let view_coordinates = ctx
             .store_db
             .store()
@@ -177,7 +179,7 @@ impl SpatialSpaceViewState {
                     {
                         self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
                     }
-                    ui.checkbox(&mut self.state_3d.spin, "Spin")
+                    re_ui.checkbox(ui, &mut self.state_3d.spin, "Spin")
                         .on_hover_text("Spin camera around the orbit center.");
                 }
             });
@@ -200,9 +202,9 @@ impl SpatialSpaceViewState {
                             ui.label(".");
                         });
                     });
-                    ui.checkbox(&mut self.state_3d.show_axes, "Show origin axes").on_hover_text("Show X-Y-Z axes");
-                    ui.checkbox(&mut self.state_3d.show_bbox, "Show bounding box").on_hover_text("Show the current scene bounding box");
-                    ui.checkbox(&mut self.state_3d.show_accumulated_bbox, "Show accumulated bounding box").on_hover_text("Show bounding box accumulated over all rendered frames");
+                    re_ui.checkbox(ui, &mut self.state_3d.show_axes, "Show origin axes").on_hover_text("Show X-Y-Z axes");
+                    re_ui.checkbox(ui, &mut self.state_3d.show_bbox, "Show bounding box").on_hover_text("Show the current scene bounding box");
+                    re_ui.checkbox(ui, &mut self.state_3d.show_accumulated_bbox, "Show accumulated bounding box").on_hover_text("Show bounding box accumulated over all rendered frames");
                 });
                 ui.end_row();
             }

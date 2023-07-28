@@ -366,6 +366,43 @@ impl ReUi {
         response
     }
 
+    #[allow(clippy::unused_self)]
+    pub fn checkbox(
+        &self,
+        ui: &mut egui::Ui,
+        selected: &mut bool,
+        text: impl Into<egui::WidgetText>,
+    ) -> egui::Response {
+        ui.scope(|ui| {
+            ui.visuals_mut().widgets.hovered.expansion = 0.0;
+            ui.visuals_mut().widgets.active.expansion = 0.0;
+            ui.visuals_mut().widgets.open.expansion = 0.0;
+
+            // NOLINT
+            ui.checkbox(selected, text)
+        })
+        .inner
+    }
+
+    #[allow(clippy::unused_self)]
+    pub fn radio_value<Value: PartialEq>(
+        &self,
+        ui: &mut egui::Ui,
+        current_value: &mut Value,
+        alternative: Value,
+        text: impl Into<egui::WidgetText>,
+    ) -> egui::Response {
+        ui.scope(|ui| {
+            ui.visuals_mut().widgets.hovered.expansion = 0.0;
+            ui.visuals_mut().widgets.active.expansion = 0.0;
+            ui.visuals_mut().widgets.open.expansion = 0.0;
+
+            // NOLINT
+            ui.radio_value(current_value, alternative, text)
+        })
+        .inner
+    }
+
     pub fn large_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
         self.large_button_impl(ui, icon, None, None)
     }

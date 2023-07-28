@@ -210,6 +210,7 @@ impl eframe::App for ExampleApp {
                                 .large_collapsing_header(ui, "Blueprint", true, |ui| {
                                     ui.style_mut().wrap = Some(false);
                                     ui.label("Some blueprint stuff here, that might be wide.");
+                                    self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
                                 });
                         });
                     });

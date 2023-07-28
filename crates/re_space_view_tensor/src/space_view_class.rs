@@ -536,7 +536,7 @@ impl TextureSettings {
                     selectable_value(ui, TextureScaling::Fill);
                 });
             if *scaling == TextureScaling::Fill {
-                ui.checkbox(keep_aspect_ratio, "Keep aspect ratio");
+                re_ui.checkbox(ui, keep_aspect_ratio, "Keep aspect ratio");
             }
         });
         ui.end_row();

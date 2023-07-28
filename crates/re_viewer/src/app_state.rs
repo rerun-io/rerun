@@ -17,7 +17,7 @@ const WATERMARK: bool = false; // Nice for recording media material
 #[serde(default)]
 pub struct AppState {
     /// Global options for the whole viewer.
-    app_options: AppOptions,
+    pub(crate) app_options: AppOptions,
 
     /// Things that need caching.
     #[serde(skip)]
