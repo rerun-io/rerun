@@ -14,10 +14,7 @@ use re_components::datagen::{
     build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
 };
 use re_log_types::{DataCell, Duration, EntityPath, Time, TimeType, Timeline};
-use re_types::{
-    components::{Color, InstanceKey},
-    Loggable as _,
-};
+use re_types::{components::InstanceKey, Loggable as _};
 
 // ---
 
@@ -220,7 +217,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         prelude::{DataFrame, JoinType},
         series::Series,
     };
-    use re_types::components::Point2D;
+    use re_types::components::{Color, Point2D};
 
     let ent_path = EntityPath::from("this/that");
 
