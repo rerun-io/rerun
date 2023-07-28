@@ -2,8 +2,9 @@ use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{LatestAtQuery, Timeline};
-use re_components::{DisconnectedSpace, Pinhole, Tensor};
+use re_components::{Pinhole, Tensor};
 use re_data_store::EntityPath;
+use re_types::components::DisconnectedSpace;
 use re_viewer_context::{SpaceViewClassName, ViewerContext};
 
 use re_viewer_context::{AutoSpawnHeuristic, ViewPartCollection};
