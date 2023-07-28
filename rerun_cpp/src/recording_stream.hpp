@@ -28,17 +28,21 @@ namespace rr {
         /// Aborts if `init_global` has not yet been called.
         static RecordingStream global();
 
-        // TODO: docs
-
-        // template <typename T>
-        // void log(const char* entity_path, const T& archetype) {
-        //     log_archetype(entity_path, archetype);
-        // }
-
-        // template <typename T>
-        // void log_archetype(const char* entity_path, const T& archetype) {
-        //     // TODO:
-        // }
+        /// Logs an archetype.
+        ///
+        /// Prefer this interface for ease of use over the more general `log_components` interface.
+        template <typename T>
+        void log_archetype(const char* entity_path, const T& archetype) {
+            // TODO(andreas): Handle splats.
+            // TODO(andreas): Error handling.
+            const auto data_cells = archetype.to_data_cells().ValueOrDie();
+            log_data_row(
+                entity_path,
+                archetype.num_instances(),
+                data_cells.size(),
+                data_cells.data()
+            );
+        }
 
         /// Logs a list of component arrays.
         ///
@@ -51,7 +55,6 @@ namespace rr {
         /// TODO(andreas): More documentation, examples etc.
         /// TODO(andreas): Test with different array types - vector/array seem to work but we should
         /// also support C arrays.
-        /// TODO(andreas): Error handling.
         template <typename... Ts>
         void log_components(const char* entity_path, const Ts&... component_array) {
             // TODO(andreas): Handle splats.
@@ -64,7 +67,7 @@ namespace rr {
                     using ComponentType = std::remove_pointer_t<decltype(component_array.data())>;
                     const auto cell =
                         ComponentType::to_data_cell(component_array.data(), component_array.size())
-                            .ValueOrDie();
+                            .ValueOrDie(); // TODO(andreas): Error handling.
                     data_cells.push_back(cell);
                 }(),
                 ...

@@ -295,12 +295,16 @@ impl QuotedObject {
             ObjectKind::Archetype => {
                 hpp_includes.system.insert("utility".to_owned()); // std::move
 
+                let required_component_fields = obj
+                    .fields
+                    .iter()
+                    .filter(|field| !field.is_nullable)
+                    .collect_vec();
+
                 // Constructor with all required components.
                 {
-                    let (arguments, assignments): (Vec<_>, Vec<_>) = obj
-                        .fields
+                    let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
                         .iter()
-                        .filter(|field| !field.is_nullable)
                         .map(|obj_field| {
                             let field_ident = format_ident!("{}", obj_field.name);
                             (
@@ -343,6 +347,35 @@ impl QuotedObject {
                         inline: true,
                     });
                 }
+
+                // Num instances gives the number of primary instances.
+                {
+                    let first_required_field = required_component_fields.first().unwrap();
+                    let first_required_field_name = &format_ident!("{}", first_required_field.name);
+                    let definition_body = if first_required_field.typ.is_plural() {
+                        quote!(return #first_required_field_name.size();)
+                    } else {
+                        quote!(return 1;)
+                    };
+                    methods.push(Method {
+                        docs: "Returns the number of primary instances of this archetype.".into(),
+                        declaration: MethodDeclaration {
+                            is_static: false,
+                            return_type: quote!(size_t),
+                            name_and_parameters: quote! {
+                                num_instances() const
+                            },
+                        },
+                        definition_body,
+                        inline: true,
+                    });
+                }
+
+                methods.push(archetype_to_data_cells(
+                    obj,
+                    &mut hpp_includes,
+                    &mut cpp_includes,
+                ));
             }
         };
 
@@ -736,6 +769,8 @@ fn arrow_data_type_method(datatype: &DataType, cpp_includes: &mut Includes) -> M
 }
 
 fn new_arrow_array_builder_method(datatype: &DataType, cpp_includes: &mut Includes) -> Method {
+    cpp_includes.system.insert("arrow/api.h".to_owned());
+
     let arrow_builder_type = arrow_array_builder_type(datatype);
     let arrow_builder_type = format_ident!("{arrow_builder_type}");
     let builder_instantiation =
@@ -766,6 +801,8 @@ fn fill_arrow_array_builder_method(
     pascal_case_ident: &Ident,
     cpp_includes: &mut Includes,
 ) -> Method {
+    cpp_includes.system.insert("arrow/api.h".to_owned());
+
     let DataType::Extension(_fqname, logical_datatype, _metadata) = datatype else {
         panic!("Can only generate arrow serialization code for extension types. {}", obj.fqname);
     };
@@ -819,10 +856,10 @@ fn component_to_data_cell_method(
 ) -> Method {
     hpp_includes.local.insert("../data_cell.hpp".to_owned());
     cpp_includes.local.insert("../rerun.hpp".to_owned()); // ipc_from_table
+    cpp_includes.system.insert("arrow/api.h".to_owned());
 
     let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
 
-    // TODO(andreas): Error return code?
     Method {
         docs: format!("Creates a Rerun DataCell from an array of {type_ident} components.").into(),
         declaration: MethodDeclaration {
@@ -863,6 +900,77 @@ fn component_to_data_cell_method(
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return cell;
+        },
+        inline: false,
+    }
+}
+
+fn archetype_to_data_cells(
+    obj: &Object,
+    hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
+) -> Method {
+    hpp_includes.local.insert("../data_cell.hpp".to_owned());
+    cpp_includes.system.insert("arrow/api.h".to_owned());
+
+    // TODO(andreas): Splats need to be handled separately.
+
+    let num_fields = quote_integer(obj.fields.len());
+    let push_cells = obj.fields.iter().map(|field| {
+        let field_type_fqname = match &field.typ {
+            Type::Vector { elem_type } => elem_type.fqname().unwrap(),
+            Type::Object(fqname) => fqname,
+            _ => unreachable!(
+                "Archetypes are not expected to have any fields other than objects and vectors"
+            ),
+        };
+        let field_type = quote_fqname_as_type_path(cpp_includes, field_type_fqname);
+        let field_name = format_ident!("{}", field.name);
+
+        if field.is_nullable {
+            let to_data_cell = if field.typ.is_plural() {
+                quote!(#field_type::to_data_cell(value.data(), value.size()))
+            } else {
+                quote!(#field_type::to_data_cell(&value, 1))
+            };
+            quote! {
+                if (#field_name.has_value()) {
+                    const auto& value  = #field_name.value();
+                    ARROW_ASSIGN_OR_RAISE(const auto cell, #to_data_cell);
+                    cells.push_back(cell);
+                }
+            }
+        } else {
+            let to_data_cell = if field.typ.is_plural() {
+                quote!(#field_type::to_data_cell(#field_name.data(), #field_name.size()))
+            } else {
+                quote!(#field_type::to_data_cell(&#field_name, 1))
+            };
+            quote! {
+                {
+                    ARROW_ASSIGN_OR_RAISE(const auto cell, #to_data_cell);
+                    cells.push_back(cell);
+                }
+            }
+        }
+    });
+
+    Method {
+        docs: "Creates a list of Rerun DataCell from this archetype.".into(),
+        declaration: MethodDeclaration {
+            is_static: false,
+            return_type: quote!(arrow::Result<std::vector<rr::DataCell>>),
+            name_and_parameters: quote!(to_data_cells() const),
+        },
+        definition_body: quote! {
+            std::vector<rr::DataCell> cells;
+            cells.reserve(#num_fields);
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            #(#push_cells)*
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            return cells;
         },
         inline: false,
     }
@@ -981,7 +1089,7 @@ fn quote_fill_arrow_array_builder(
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
                         for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            value_builder->Append(element.#field_name[item_idx]);
+                            ARROW_RETURN_NOT_OK(value_builder->Append(element.#field_name[item_idx]));
                         }
                         ARROW_RETURN_NOT_OK(#builder->Append());
                     }

@@ -2,7 +2,6 @@
 #include <rerun.hpp>
 
 #include <array>
-
 #include <components/point2d.hpp>
 
 int main(int argc, char** argv) {
@@ -14,14 +13,20 @@ int main(int argc, char** argv) {
 
     auto rr_stream = rr::RecordingStream{"c-example-app", "127.0.0.1:9876"};
 
-    rr_stream.log_components(
+    rr_stream.log_archetype(
         "3d/points",
-        std::vector{
-            rr::components::Point3D(rr::datatypes::Point3D{0.0, 0.0, 0.0}),
-            rr::components::Point3D(rr::datatypes::Point3D{1.0, 3.0, 3.0}),
-            rr::components::Point3D(rr::datatypes::Point3D{5.0, 5.0, 5.0}),
-        }
+        rr::archetypes::Points3D({
+                                     rr::datatypes::Point3D{1.0, 2.0, 3.0},
+                                     rr::datatypes::Point3D{4.0, 5.0, 6.0},
+                                 })
+            .with_radii({0.42, 0.43})
+            .with_colors({0xAA0000CC, 0x00BB00DD})
+            .with_labels({std::string("hello"), std::string("friend")})
+            .with_class_ids({126, 127})
+            .with_keypoint_ids({2, 3})
+            .with_instance_keys({66, 666})
     );
+
     rr_stream.log_components(
         "2d/points",
         std::vector{
