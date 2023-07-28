@@ -24,9 +24,9 @@ const DISPLAY_PRECISION: usize = 3;
 #[derive(Copy, Clone, Debug, Default, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
-pub struct Vec2D(#[arrow_field(type = "FixedSizeArrayField<f32,2>")] pub [f32; 2]);
+pub struct LegacyVec2D(#[arrow_field(type = "FixedSizeArrayField<f32,2>")] pub [f32; 2]);
 
-impl Vec2D {
+impl LegacyVec2D {
     #[inline]
     pub fn x(&self) -> f32 {
         self.0[0]
@@ -38,14 +38,14 @@ impl Vec2D {
     }
 }
 
-impl From<[f32; 2]> for Vec2D {
+impl From<[f32; 2]> for LegacyVec2D {
     #[inline]
     fn from(v: [f32; 2]) -> Self {
         Self(v)
     }
 }
 
-impl<Idx> std::ops::Index<Idx> for Vec2D
+impl<Idx> std::ops::Index<Idx> for LegacyVec2D
 where
     Idx: std::slice::SliceIndex<[f32]>,
 {
@@ -57,27 +57,27 @@ where
     }
 }
 
-impl re_log_types::LegacyComponent for Vec2D {
+impl re_log_types::LegacyComponent for LegacyVec2D {
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.vec2d".into()
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<Vec2D> for glam::Vec2 {
-    fn from(v: Vec2D) -> Self {
+impl From<LegacyVec2D> for glam::Vec2 {
+    fn from(v: LegacyVec2D) -> Self {
         Self::from_slice(&v.0)
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<glam::Vec2> for Vec2D {
+impl From<glam::Vec2> for LegacyVec2D {
     fn from(v: glam::Vec2) -> Self {
         Self(v.to_array())
     }
 }
 
-impl std::fmt::Display for Vec2D {
+impl std::fmt::Display for LegacyVec2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -89,7 +89,7 @@ impl std::fmt::Display for Vec2D {
     }
 }
 
-re_log_types::component_legacy_shim!(Vec2D);
+re_log_types::component_legacy_shim!(LegacyVec2D);
 
 // --- Vec3D ---
 

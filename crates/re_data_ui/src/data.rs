@@ -1,7 +1,7 @@
 use egui::Vec2;
 
 use re_components::{
-    LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+    LineStrip2D, LineStrip3D, Mat3x3, Rect2D, LegacyVec2D, Vec3D, Vec4D, ViewCoordinates,
 };
 use re_format::format_f32;
 use re_types::components::Color;
@@ -125,7 +125,7 @@ impl DataUi for re_types::datatypes::Mat3x3 {
     }
 }
 
-impl DataUi for Vec2D {
+impl DataUi for LegacyVec2D {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -195,13 +195,13 @@ impl DataUi for Rect2D {
             Rect2D::XCYCWH(Vec4D([center_x, center_y, width, height])) => {
                 format!(
                     "center: {}, width: {width}, height: {height}",
-                    Vec2D([*center_x, *center_y])
+                    LegacyVec2D([*center_x, *center_y])
                 )
             }
             Rect2D::XCYCW2H2(Vec4D([center_x, center_y, half_width, half_height])) => {
                 format!(
                     "center: {}, half-width: {half_width}, half-height: {half_height}",
-                    Vec2D([*center_x, *center_y])
+                    LegacyVec2D([*center_x, *center_y])
                 )
             }
         })

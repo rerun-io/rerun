@@ -41,7 +41,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_components::Rect2D>(&mut registry);
     add::<re_components::Tensor>(&mut registry);
     add::<re_components::TextEntry>(&mut registry);
-    add::<re_components::Vec2D>(&mut registry); // TODO
+    add::<re_components::LegacyVec2D>(&mut registry); // TODO
     add::<re_components::Vec3D>(&mut registry); // TODO
     add::<re_components::ViewCoordinates>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);
