@@ -1,10 +1,13 @@
 mod common;
 
 use re_arrow_store::{DataStore, TimeInt, TimeRange};
-use re_components::{datagen::build_frame_nr, ColorRGBA, Point2D};
+use re_components::datagen::build_frame_nr;
 use re_log_types::{DataRow, EntityPath, RowId};
 use re_query::range_entity_with_primary;
-use re_types::{components::InstanceKey, Loggable as _};
+use re_types::{
+    components::{Color, InstanceKey, Point2D},
+    Loggable as _,
+};
 
 #[test]
 fn simple_range() {
@@ -15,14 +18,14 @@ fn simple_range() {
     let timepoint1 = [build_frame_nr(123.into())];
     {
         // Create some points with implicit instances
-        let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
+        let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
         let row =
             DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint1, 2, points);
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
-        let colors = vec![ColorRGBA(0xff000000)];
+        let colors = vec![Color(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -37,7 +40,7 @@ fn simple_range() {
     {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
-        let colors = vec![ColorRGBA(0xff000000)];
+        let colors = vec![Color(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -51,7 +54,7 @@ fn simple_range() {
     let timepoint3 = [build_frame_nr(323.into())];
     {
         // Create some points with implicit instances
-        let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
+        let points = vec![Point2D::new(10.0, 20.0), Point2D::new(30.0, 40.0)];
         let row =
             DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, points);
         store.insert_row(&row).unwrap();
@@ -66,7 +69,7 @@ fn simple_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), Color::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -102,18 +105,15 @@ fn simple_range() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors = vec![None, Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Frame #323
 
@@ -123,17 +123,17 @@ fn simple_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
+            Some(Point2D::new(10.0, 20.0)),
+            Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(ColorRGBA(0xff000000)), None];
+        let colors = vec![Some(Color(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -150,7 +150,7 @@ fn simple_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), Color::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -186,18 +186,15 @@ fn simple_range() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors: Vec<Option<ColorRGBA>> = vec![None, None];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors: Vec<Option<Color>> = vec![None, None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Frame #323
 
@@ -207,17 +204,17 @@ fn simple_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
+            Some(Point2D::new(10.0, 20.0)),
+            Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(ColorRGBA(0xff000000)), None];
+        let colors = vec![Some(Color(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -235,7 +232,7 @@ fn timeless_range() {
     let timepoint1 = [build_frame_nr(123.into())];
     {
         // Create some points with implicit instances
-        let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
+        let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
         let mut row =
             DataRow::from_cells1(RowId::random(), ent_path.clone(), timepoint1, 2, &points);
         row.compute_all_size_bytes();
@@ -247,7 +244,7 @@ fn timeless_range() {
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
-        let colors = vec![ColorRGBA(0xff000000)];
+        let colors = vec![Color(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -272,7 +269,7 @@ fn timeless_range() {
     {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
-        let colors = vec![ColorRGBA(0xff000000)];
+        let colors = vec![Color(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -296,7 +293,7 @@ fn timeless_range() {
     let timepoint3 = [build_frame_nr(323.into())];
     {
         // Create some points with implicit instances
-        let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
+        let points = vec![Point2D::new(10.0, 20.0), Point2D::new(30.0, 40.0)];
         let row =
             DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, &points);
         store.insert_row(&row).unwrap();
@@ -335,7 +332,7 @@ fn timeless_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), Color::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -371,18 +368,15 @@ fn timeless_range() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors = vec![None, Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Frame #323
 
@@ -392,17 +386,17 @@ fn timeless_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
+            Some(Point2D::new(10.0, 20.0)),
+            Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(ColorRGBA(0xff000000)), None];
+        let colors = vec![Some(Color(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -419,7 +413,7 @@ fn timeless_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), Color::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -465,17 +459,17 @@ fn timeless_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
+            Some(Point2D::new(10.0, 20.0)),
+            Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let colors = vec![None, Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(122), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Frame #123 (partially timeless)
 
@@ -484,18 +478,15 @@ fn timeless_range() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors = vec![None, Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Frame #323
 
@@ -505,17 +496,17 @@ fn timeless_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
+            Some(Point2D::new(10.0, 20.0)),
+            Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(ColorRGBA(0xff000000)), None];
+        let colors = vec![Some(Color(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -530,7 +521,7 @@ fn timeless_range() {
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
     );
 
-    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), Color::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -583,18 +574,15 @@ fn timeless_range() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors: Vec<Option<ColorRGBA>> = vec![None, None];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors: Vec<Option<Color>> = vec![None, None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(&None, time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Timeless #2
 
@@ -603,17 +591,17 @@ fn timeless_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
+            Some(Point2D::new(10.0, 20.0)),
+            Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let colors = vec![None, Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(&None, time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Frame #123 (partially timeless)
 
@@ -622,18 +610,15 @@ fn timeless_range() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors = vec![None, Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Frame #323
 
@@ -643,17 +628,17 @@ fn timeless_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
+            Some(Point2D::new(10.0, 20.0)),
+            Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(ColorRGBA(0xff000000)), None];
+        let colors = vec![Some(Color(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -671,14 +656,14 @@ fn simple_splatted_range() {
     let timepoint1 = [build_frame_nr(123.into())];
     {
         // Create some points with implicit instances
-        let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
+        let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
         let row =
             DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint1, 2, points);
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
-        let colors = vec![ColorRGBA(0xff000000)];
+        let colors = vec![Color(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -693,7 +678,7 @@ fn simple_splatted_range() {
     {
         // Assign one of them a color with a splatted instance
         let color_instances = vec![InstanceKey::SPLAT];
-        let colors = vec![ColorRGBA(0x00ff0000)];
+        let colors = vec![Color(0x00ff0000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -707,7 +692,7 @@ fn simple_splatted_range() {
     let timepoint3 = [build_frame_nr(323.into())];
     {
         // Create some points with implicit instances
-        let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
+        let points = vec![Point2D::new(10.0, 20.0), Point2D::new(30.0, 40.0)];
         let row =
             DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, points);
         store.insert_row(&row).unwrap();
@@ -722,7 +707,7 @@ fn simple_splatted_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), Color::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -758,18 +743,15 @@ fn simple_splatted_range() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors = vec![None, Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Frame #323
 
@@ -779,17 +761,17 @@ fn simple_splatted_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
+            Some(Point2D::new(10.0, 20.0)),
+            Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(ColorRGBA(0x00ff0000)), Some(ColorRGBA(0x00ff0000))];
+        let colors = vec![Some(Color(0x00ff0000)), Some(Color(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -806,7 +788,7 @@ fn simple_splatted_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), Color::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -842,18 +824,15 @@ fn simple_splatted_range() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors: Vec<Option<ColorRGBA>> = vec![None, None];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors: Vec<Option<Color>> = vec![None, None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
 
         // Frame #323
 
@@ -863,17 +842,17 @@ fn simple_splatted_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
+            Some(Point2D::new(10.0, 20.0)),
+            Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(ColorRGBA(0x00ff0000)), Some(ColorRGBA(0x00ff0000))];
+        let colors = vec![Some(Color(0x00ff0000)), Some(Color(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {

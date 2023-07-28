@@ -33,11 +33,11 @@
 //! # use rerun::external::image;
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
 //! # fn positions() -> Vec<rerun::components::Point3D> { Default::default() }
-//! # fn colors() -> Vec<rerun::components::ColorRGBA> { Default::default() }
+//! # fn colors() -> Vec<rerun::components::Color> { Default::default() }
 //! let rec_stream = rerun::RecordingStreamBuilder::new("my_app").buffered()?;
 //!
 //! let points: Vec<rerun::components::Point3D> = positions();
-//! let colors: Vec<rerun::components::ColorRGBA> = colors();
+//! let colors: Vec<rerun::components::Color> = colors();
 //! let image: image::DynamicImage = capture_image();
 //!
 //! rerun::MsgSender::new("points")

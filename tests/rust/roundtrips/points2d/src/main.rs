@@ -1,8 +1,7 @@
 //! Logs a `Points2D` archetype for roundtrip checks.
 
 use rerun::{
-    components::Rect2D, experimental::archetypes::Points2D, external::re_log, MsgSender,
-    RecordingStream,
+    archetypes::Points2D, components::Rect2D, external::re_log, MsgSender, RecordingStream,
 };
 
 #[derive(Debug, clap::Parser)]

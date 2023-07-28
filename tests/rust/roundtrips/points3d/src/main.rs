@@ -1,6 +1,6 @@
 //! Logs a `Points3D` archetype for roundtrip checks.
 
-use rerun::{experimental::archetypes::Points3D, external::re_log, MsgSender, RecordingStream};
+use rerun::{archetypes::Points3D, external::re_log, MsgSender, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

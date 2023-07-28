@@ -5,8 +5,7 @@ from typing import Any, Final
 
 import rerun.log.extension_components
 from rerun import bindings
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
+from rerun.components import splat
 from rerun.components.text_entry import TextEntryArray
 from rerun.log import Color, _normalize_colors
 from rerun.log.log_decorator import log_decorator
@@ -106,6 +105,7 @@ def log_text_entry(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
 
     recording = RecordingStream.to_native(recording)
 
@@ -119,13 +119,13 @@ def log_text_entry(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if ext:
         rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = InstanceArray.splat()
+        splats["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

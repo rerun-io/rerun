@@ -34,7 +34,7 @@ use std::f32::consts::TAU;
 use itertools::Itertools as _;
 
 use rerun::{
-    components::{ColorRGBA, LineStrip3D, Point3D, Radius, Transform3D, Vec3D},
+    components::{Color, LineStrip3D, Point3D, Radius, Transform3D, Vec3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
     time::{Time, TimeType, Timeline},
@@ -85,13 +85,13 @@ let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
 MsgSender::new("dna/structure/left")
     .with_component(&points1.iter().copied().map(Point3D::from).collect_vec())?
-    .with_component(&colors1.iter().copied().map(ColorRGBA::from).collect_vec())?
+    .with_component(&colors1.iter().copied().map(Color::from).collect_vec())?
     .with_splat(Radius(0.08))?
     .send(&recording)?;
 
 MsgSender::new("dna/structure/right")
     .with_component(&points2.iter().copied().map(Point3D::from).collect_vec())?
-    .with_component(&colors2.iter().copied().map(ColorRGBA::from).collect_vec())?
+    .with_component(&colors2.iter().copied().map(Color::from).collect_vec())?
     .with_splat(Radius(0.08))?
     .send(&recording)?;
 ```
@@ -148,7 +148,7 @@ let scaffolding = all_points
     .collect_vec();
 MsgSender::new("dna/structure/scaffolding")
     .with_component(&scaffolding)?
-    .with_splat(ColorRGBA::from([128, 128, 128, 255]))?
+    .with_splat(Color::from([128, 128, 128, 255]))?
     .send(&recording)?;
 ```
 
@@ -170,7 +170,7 @@ let (beads, colors): (Vec<_>, Vec<_>) = points1
         let c = bounce_lerp(80.0, 230.0, offsets[n] * 2.0) as u8;
         (
             Point3D::from(bounce_lerp(p1, p2, offsets[n])),
-            ColorRGBA::from_rgb(c, c, c),
+            Color::from_rgb(c, c, c),
         )
     })
     .unzip();
@@ -220,7 +220,7 @@ for i in 0..400 {
             let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
             (
                 Point3D::from(bounce_lerp(p1, p2, times[n])),
-                ColorRGBA::from_rgb(c, c, c),
+                Color::from_rgb(c, c, c),
             )
         })
         .unzip();

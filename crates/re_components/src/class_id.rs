@@ -19,19 +19,25 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
     ArrowDeserialize,
 )]
 #[arrow_field(transparent)]
-pub struct ClassId(pub u16);
+pub struct LegacyClassId(pub u16);
 
-impl re_log_types::LegacyComponent for ClassId {
+impl From<LegacyClassId> for re_types::components::ClassId {
+    fn from(val: LegacyClassId) -> Self {
+        re_types::components::ClassId(val.0)
+    }
+}
+
+impl re_log_types::LegacyComponent for LegacyClassId {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.class_id".into()
     }
 }
 
-impl From<re_types::components::ClassId> for ClassId {
+impl From<re_types::components::ClassId> for LegacyClassId {
     fn from(other: re_types::components::ClassId) -> Self {
         Self(other.0)
     }
 }
 
-re_log_types::component_legacy_shim!(ClassId);
+re_log_types::component_legacy_shim!(LegacyClassId);

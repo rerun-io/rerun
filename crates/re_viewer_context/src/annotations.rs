@@ -6,11 +6,12 @@ use nohash_hasher::IntSet;
 use re_arrow_store::LatestAtQuery;
 use re_components::{
     context::{AnnotationInfo, ClassDescription},
-    AnnotationContext, ClassId, KeypointId,
+    AnnotationContext,
 };
 use re_data_store::EntityPath;
 use re_log_types::RowId;
 use re_query::query_entity_with_primary;
+use re_types::components::{ClassId, KeypointId};
 
 use super::{auto_color, ViewerContext};
 use crate::DefaultColor;

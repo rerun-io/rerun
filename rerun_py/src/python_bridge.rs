@@ -28,7 +28,7 @@ use rerun::{
 
 pub use rerun::{
     components::{
-        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
+        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, Color,
         DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
         LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion,
         Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDimension,
@@ -769,7 +769,7 @@ impl From<AnnotationInfoTuple> for AnnotationInfo {
         let AnnotationInfoTuple(id, label, color) = tuple;
         Self {
             id,
-            label: label.map(Label),
+            label: label.map(Into::into),
             color: color
                 .as_ref()
                 .map(|color| convert_color(color.clone()).unwrap())
@@ -900,13 +900,13 @@ fn log_meshes(
                 [_, 3] => Some(
                     slice_from_np_array(&vertex_colors)
                         .chunks_exact(3)
-                        .map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2]).0)
+                        .map(|c| Color::from_rgb(c[0], c[1], c[2]).0)
                         .collect(),
                 ),
                 [_, 4] => Some(
                     slice_from_np_array(&vertex_colors)
                         .chunks_exact(4)
-                        .map(|c| ColorRGBA::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]).0)
+                        .map(|c| Color::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]).0)
                         .collect(),
                 ),
                 shape => {

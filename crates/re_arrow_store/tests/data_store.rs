@@ -19,10 +19,13 @@ use re_components::{
         build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
         build_some_point2d, build_some_rects,
     },
-    ColorRGBA, InstanceKey, Point2D, Rect2D,
+    Rect2D,
 };
 use re_log_types::{DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
-use re_types::{ComponentName, Loggable as _};
+use re_types::{
+    components::{Color, InstanceKey, Point2D},
+    ComponentName, Loggable as _,
+};
 
 // --- LatestComponentsAt ---
 
@@ -87,16 +90,16 @@ fn all_components() {
         let cluster_key = store.cluster_key();
 
         let components_a = &[
-            ColorRGBA::name(), // added by test, timeless
-            Rect2D::name(),    // added by test
-            cluster_key,       // always here
+            Color::name(),  // added by test, timeless
+            Rect2D::name(), // added by test
+            cluster_key,    // always here
         ];
 
         let components_b = &[
-            ColorRGBA::name(), // added by test, timeless
-            Point2D::name(),   // added by test
-            Rect2D::name(),    // added by test
-            cluster_key,       // always here
+            Color::name(),   // added by test, timeless
+            Point2D::name(), // added by test
+            Rect2D::name(),  // added by test
+            cluster_key,     // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -142,16 +145,16 @@ fn all_components() {
         // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(), // added by test, timeless
-            Rect2D::name(),    // added by test
-            cluster_key,       // always here
+            Color::name(),  // added by test, timeless
+            Rect2D::name(), // added by test
+            cluster_key,    // always here
         ];
 
         let components_b = &[
-            ColorRGBA::name(), // added by test, timeless
-            Rect2D::name(),    // ⚠ inherited before the buckets got split apart!
-            Point2D::name(),   // added by test
-            cluster_key,       // always here
+            Color::name(),   // added by test, timeless
+            Rect2D::name(),  // ⚠ inherited before the buckets got split apart!
+            Point2D::name(), // added by test
+            cluster_key,     // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -203,16 +206,16 @@ fn all_components() {
         // └──────────┴────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(), // added by test, timeless
-            Rect2D::name(),    // added by test
-            cluster_key,       // always here
+            Color::name(),  // added by test, timeless
+            Rect2D::name(), // added by test
+            cluster_key,    // always here
         ];
 
         let components_b = &[
-            ColorRGBA::name(), // added by test, timeless
-            Point2D::name(),   // added by test but not contained in the second bucket
-            Rect2D::name(),    // added by test
-            cluster_key,       // always here
+            Color::name(),   // added by test, timeless
+            Point2D::name(), // added by test but not contained in the second bucket
+            Rect2D::name(),  // added by test
+            cluster_key,     // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -312,7 +315,7 @@ fn latest_at_impl(store: &mut DataStore) {
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-        let components_all = &[ColorRGBA::name(), Point2D::name()];
+        let components_all = &[Color::name(), Point2D::name()];
 
         let df = polars_util::latest_components(
             &store,
@@ -333,27 +336,18 @@ fn latest_at_impl(store: &mut DataStore) {
 
     assert_latest_components(
         frame0,
-        &[(ColorRGBA::name(), &row4), (Point2D::name(), &row3)], // timeless
+        &[(Color::name(), &row4), (Point2D::name(), &row3)], // timeless
     );
     assert_latest_components(
         frame1,
         &[
-            (ColorRGBA::name(), &row1),
+            (Color::name(), &row1),
             (Point2D::name(), &row3), // timeless
         ],
     );
-    assert_latest_components(
-        frame2,
-        &[(ColorRGBA::name(), &row1), (Point2D::name(), &row2)],
-    );
-    assert_latest_components(
-        frame3,
-        &[(ColorRGBA::name(), &row1), (Point2D::name(), &row3)],
-    );
-    assert_latest_components(
-        frame4,
-        &[(ColorRGBA::name(), &row4), (Point2D::name(), &row3)],
-    );
+    assert_latest_components(frame2, &[(Color::name(), &row1), (Point2D::name(), &row2)]);
+    assert_latest_components(frame3, &[(Color::name(), &row1), (Point2D::name(), &row3)]);
+    assert_latest_components(frame4, &[(Color::name(), &row4), (Point2D::name(), &row3)]);
 }
 
 // --- Range ---
@@ -503,20 +497,20 @@ fn range_impl(store: &mut DataStore) {
 
     // TODO(cmc): bring back some log_time scenarios
 
-    // Unit ranges (ColorRGBA's PoV)
+    // Unit ranges (Color's PoV)
 
     assert_range_components(
         TimeRange::new(frame1, frame1),
-        [ColorRGBA::name(), Point2D::name()],
+        [Color::name(), Point2D::name()],
         &[
             (
                 Some(frame0),
-                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_4)],
+                &[(Color::name(), &row4_3), (Point2D::name(), &row4_4)],
             ), // timeless
             (
                 Some(frame1),
                 &[
-                    (ColorRGBA::name(), &row1),
+                    (Color::name(), &row1),
                     (Point2D::name(), &row4_4), // timeless
                 ],
             ),
@@ -524,12 +518,12 @@ fn range_impl(store: &mut DataStore) {
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
-        [ColorRGBA::name(), Point2D::name()],
+        [Color::name(), Point2D::name()],
         &[
             (
                 Some(frame1),
                 &[
-                    (ColorRGBA::name(), &row1),
+                    (Color::name(), &row1),
                     (Point2D::name(), &row4_4), // timeless
                 ],
             ), //
@@ -537,43 +531,43 @@ fn range_impl(store: &mut DataStore) {
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
-        [ColorRGBA::name(), Point2D::name()],
+        [Color::name(), Point2D::name()],
         &[
             (
                 Some(frame2),
-                &[(ColorRGBA::name(), &row1), (Point2D::name(), &row2)],
+                &[(Color::name(), &row1), (Point2D::name(), &row2)],
             ), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
-        [ColorRGBA::name(), Point2D::name()],
+        [Color::name(), Point2D::name()],
         &[
             (
                 Some(frame3),
-                &[(ColorRGBA::name(), &row1), (Point2D::name(), &row3)],
+                &[(Color::name(), &row1), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_1), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_1), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_2), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_2), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
+                &[(Color::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame5, frame5),
-        [ColorRGBA::name(), Point2D::name()],
+        [Color::name(), Point2D::name()],
         &[
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_4)], // !!!
+                &[(Color::name(), &row4_3), (Point2D::name(), &row4_4)], // !!!
             ), //
         ],
     );
@@ -582,102 +576,102 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame1),
-        [Point2D::name(), ColorRGBA::name()],
+        [Point2D::name(), Color::name()],
         &[
             (
                 Some(frame0),
-                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
+                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
             ), // timeless
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
-        [Point2D::name(), ColorRGBA::name()],
+        [Point2D::name(), Color::name()],
         &[
             (
                 Some(frame1),
                 &[
                     (Point2D::name(), &row4_4), // timeless
-                    (ColorRGBA::name(), &row1),
+                    (Color::name(), &row1),
                 ],
             ),
             (
                 Some(frame2),
-                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
+                &[(Point2D::name(), &row2), (Color::name(), &row1)],
             ), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
-        [Point2D::name(), ColorRGBA::name()],
+        [Point2D::name(), Color::name()],
         &[
             (
                 Some(frame2),
-                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
+                &[(Point2D::name(), &row2), (Color::name(), &row1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
+                &[(Point2D::name(), &row3), (Color::name(), &row1)],
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
-        [Point2D::name(), ColorRGBA::name()],
+        [Point2D::name(), Color::name()],
         &[
             (
                 Some(frame3),
-                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
+                &[(Point2D::name(), &row3), (Color::name(), &row1)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
+                &[(Point2D::name(), &row4_25), (Color::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
+                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame5, frame5),
-        [Point2D::name(), ColorRGBA::name()],
+        [Point2D::name(), Color::name()],
         &[
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
+                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
             ), //
         ],
     );
 
-    // Full range (ColorRGBA's PoV)
+    // Full range (Color's PoV)
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
-        [ColorRGBA::name(), Point2D::name()],
+        [Color::name(), Point2D::name()],
         &[
             (
                 Some(frame0),
-                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_4)],
+                &[(Color::name(), &row4_3), (Point2D::name(), &row4_4)],
             ), // timeless
             (
                 Some(frame1),
                 &[
-                    (ColorRGBA::name(), &row1),
+                    (Color::name(), &row1),
                     (Point2D::name(), &row4_4), // timeless
                 ],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_1), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_1), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_2), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_2), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
+                &[(Color::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
         ],
     );
@@ -686,68 +680,62 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
-        [Point2D::name(), ColorRGBA::name()],
+        [Point2D::name(), Color::name()],
         &[
             (
                 Some(frame0),
-                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
+                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
             ), // timeless
             (
                 Some(frame2),
-                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
+                &[(Point2D::name(), &row2), (Color::name(), &row1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
+                &[(Point2D::name(), &row3), (Color::name(), &row1)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
+                &[(Point2D::name(), &row4_25), (Color::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
+                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
             ),
         ],
     );
 
-    // Infinite range (ColorRGBA's PoV)
+    // Infinite range (Color's PoV)
 
     assert_range_components(
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        [ColorRGBA::name(), Point2D::name()],
+        [Color::name(), Point2D::name()],
         &[
-            (None, &[(ColorRGBA::name(), &row1)]),
+            (None, &[(Color::name(), &row1)]),
+            (None, &[(Color::name(), &row4_1), (Point2D::name(), &row3)]),
+            (None, &[(Color::name(), &row4_2), (Point2D::name(), &row3)]),
             (
                 None,
-                &[(ColorRGBA::name(), &row4_1), (Point2D::name(), &row3)],
-            ),
-            (
-                None,
-                &[(ColorRGBA::name(), &row4_2), (Point2D::name(), &row3)],
-            ),
-            (
-                None,
-                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
+                &[(Color::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
             (
                 Some(frame1),
                 &[
-                    (ColorRGBA::name(), &row1),
+                    (Color::name(), &row1),
                     (Point2D::name(), &row4_4), // timeless
                 ],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_1), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_1), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_2), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_2), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
+                &[(Color::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
         ],
     );
@@ -756,39 +744,33 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        [Point2D::name(), ColorRGBA::name()],
+        [Point2D::name(), Color::name()],
         &[
+            (None, &[(Point2D::name(), &row2), (Color::name(), &row1)]),
+            (None, &[(Point2D::name(), &row3), (Color::name(), &row1)]),
             (
                 None,
-                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
+                &[(Point2D::name(), &row4_25), (Color::name(), &row4_2)],
             ),
             (
                 None,
-                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
+                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
             ),
             (
                 Some(frame2),
-                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
+                &[(Point2D::name(), &row2), (Color::name(), &row1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
+                &[(Point2D::name(), &row3), (Color::name(), &row1)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
+                &[(Point2D::name(), &row4_25), (Color::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
+                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
             ),
         ],
     );

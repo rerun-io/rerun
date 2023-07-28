@@ -4,8 +4,9 @@ use arrow2_convert::{
     deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize, ArrowDeserialize,
     ArrowField, ArrowSerialize,
 };
+use re_types::components::{ClassId, KeypointId};
 
-use crate::{ClassId, ColorRGBA, KeypointId, Label};
+use crate::{LegacyClassId, LegacyColor, LegacyKeypointId, LegacyLabel};
 
 /// Information about an Annotation.
 ///
@@ -15,8 +16,8 @@ use crate::{ClassId, ColorRGBA, KeypointId, Label};
 pub struct AnnotationInfo {
     /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
     pub id: u16,
-    pub label: Option<Label>,
-    pub color: Option<ColorRGBA>,
+    pub label: Option<LegacyLabel>,
+    pub color: Option<LegacyColor>,
 }
 
 /// The description of a semantic Class.
@@ -49,8 +50,8 @@ pub struct ClassDescription {
 /// Helper struct for converting `ClassDescription` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 struct KeypointPairArrow {
-    keypoint0: KeypointId,
-    keypoint1: KeypointId,
+    keypoint0: LegacyKeypointId,
+    keypoint1: LegacyKeypointId,
 }
 
 /// Helper struct for converting `ClassDescription` to arrow
@@ -70,8 +71,8 @@ impl From<&ClassDescription> for ClassDescriptionArrow {
                 .keypoint_connections
                 .iter()
                 .map(|(k0, k1)| KeypointPairArrow {
-                    keypoint0: *k0,
-                    keypoint1: *k1,
+                    keypoint0: (*k0).into(),
+                    keypoint1: (*k1).into(),
                 })
                 .collect(),
         }
@@ -90,7 +91,7 @@ impl From<ClassDescriptionArrow> for ClassDescription {
             keypoint_connections: v
                 .keypoint_connections
                 .into_iter()
-                .map(|elem| (elem.keypoint0, elem.keypoint1))
+                .map(|elem| (elem.keypoint0.into(), elem.keypoint1.into()))
                 .collect(),
         }
     }
@@ -177,7 +178,7 @@ impl re_log_types::LegacyComponent for AnnotationContext {
 /// Helper struct for converting `AnnotationContext` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ClassMapElemArrow {
-    class_id: ClassId,
+    class_id: LegacyClassId,
     class_description: ClassDescriptionArrow,
 }
 
@@ -189,7 +190,7 @@ impl From<&AnnotationContext> for AnnotationContextArrow {
         v.class_map
             .iter()
             .map(|(class_id, class_description)| ClassMapElemArrow {
-                class_id: *class_id,
+                class_id: (*class_id).into(),
                 class_description: class_description.into(),
             })
             .collect()
@@ -202,7 +203,7 @@ impl From<Vec<ClassMapElemArrow>> for AnnotationContext {
         AnnotationContext {
             class_map: v
                 .into_iter()
-                .map(|elem| (elem.class_id, elem.class_description.into()))
+                .map(|elem| (elem.class_id.into(), elem.class_description.into()))
                 .collect(),
         }
     }
@@ -258,15 +259,15 @@ fn test_context_roundtrip() {
             ClassDescription {
                 info: AnnotationInfo {
                     id: 32,
-                    label: Some(Label("hello".to_owned())),
-                    color: Some(ColorRGBA(0x123456)),
+                    label: Some(LegacyLabel("hello".to_owned())),
+                    color: Some(LegacyColor(0x123456)),
                 },
                 keypoint_map: vec![
                     (
                         KeypointId(43),
                         AnnotationInfo {
                             id: 43,
-                            label: Some(Label("head".to_owned())),
+                            label: Some(LegacyLabel("head".to_owned())),
                             color: None,
                         },
                     ),
@@ -274,8 +275,8 @@ fn test_context_roundtrip() {
                         KeypointId(94),
                         AnnotationInfo {
                             id: 94,
-                            label: Some(Label("leg".to_owned())),
-                            color: Some(ColorRGBA(0x654321)),
+                            label: Some(LegacyLabel("leg".to_owned())),
+                            color: Some(LegacyColor(0x654321)),
                         },
                     ),
                 ]

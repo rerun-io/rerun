@@ -5,7 +5,7 @@ use std::f32::consts::TAU;
 use itertools::Itertools as _;
 
 use rerun::{
-    components::{ColorRGBA, LineStrip3D, Point3D, Radius, Transform3D, Vec3D},
+    components::{Color, LineStrip3D, Point3D, Radius, Transform3D, Vec3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
     MsgSender, MsgSenderError, RecordingStream,
@@ -29,13 +29,13 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
 
     MsgSender::new("dna/structure/left")
         .with_component(&points1.iter().copied().map(Point3D::from).collect_vec())?
-        .with_component(&colors1.iter().copied().map(ColorRGBA::from).collect_vec())?
+        .with_component(&colors1.iter().copied().map(Color::from).collect_vec())?
         .with_splat(Radius(0.08))?
         .send(rec_stream)?;
 
     MsgSender::new("dna/structure/right")
         .with_component(&points2.iter().copied().map(Point3D::from).collect_vec())?
-        .with_component(&colors2.iter().copied().map(ColorRGBA::from).collect_vec())?
+        .with_component(&colors2.iter().copied().map(Color::from).collect_vec())?
         .with_splat(Radius(0.08))?
         .send(rec_stream)?;
 
@@ -50,7 +50,7 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
         .collect_vec();
     MsgSender::new("dna/structure/scaffolding")
         .with_component(&scaffolding)?
-        .with_splat(ColorRGBA::from([128, 128, 128, 255]))?
+        .with_splat(Color::from([128, 128, 128, 255]))?
         .send(rec_stream)?;
 
     use rand::Rng as _;
@@ -75,7 +75,7 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
                 let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
                 (
                     Point3D::from(bounce_lerp(p1, p2, times[n])),
-                    ColorRGBA::from_rgb(c, c, c),
+                    Color::from_rgb(c, c, c),
                 )
             })
             .unzip();

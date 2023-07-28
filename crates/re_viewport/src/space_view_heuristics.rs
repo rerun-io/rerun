@@ -223,7 +223,10 @@ pub fn default_created_space_views(
                 if let Some(tensor) = store.query_latest_component::<Tensor>(entity_path, &query) {
                     if let Some([height, width, _]) = tensor.image_height_width_channels() {
                         if store
-                            .query_latest_component::<re_components::DrawOrder>(entity_path, &query)
+                            .query_latest_component::<re_types::components::DrawOrder>(
+                                entity_path,
+                                &query,
+                            )
                             .is_some()
                         {
                             // Put everything in the same bucket if it has a draw order.

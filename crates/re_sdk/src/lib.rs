@@ -23,7 +23,6 @@ pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
 
 pub use re_log_types::{ApplicationId, EntityPath, LegacyComponent, StoreId, StoreKind};
-pub use re_types::ComponentName;
 
 pub use global::cleanup_if_forked_child;
 
@@ -73,11 +72,14 @@ pub mod time {
 /// and can be used in [`MsgSender::with_component`].
 pub mod components {
     pub use re_components::{
-        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
-        DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
-        LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion,
-        Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDataMeaning,
-        TensorDimension, TensorId, TextEntry, Transform3D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, DisconnectedSpace,
+        EncodedMesh3D, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole,
+        Quaternion, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData,
+        TensorDataMeaning, TensorDimension, TensorId, TextEntry, Transform3D, Vec2D, Vec3D, Vec4D,
+        ViewCoordinates,
+    };
+    pub use re_types::components::{
+        ClassId, Color, DrawOrder, InstanceKey, KeypointId, Label, Point2D, Point3D, Radius,
     };
 }
 
@@ -94,10 +96,9 @@ pub mod coordinates {
     pub use re_components::coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 }
 
-/// Experimental APIs, to try out upcoming Rerun features.
-pub mod experimental {
-    pub use re_types::{archetypes, components, datatypes, Archetype, Component, Datatype};
-}
+pub use re_types::{
+    archetypes, datatypes, Archetype, Component, ComponentName, Datatype, Loggable,
+};
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]

@@ -5,10 +5,7 @@ from typing import Any
 import numpy as np
 
 from rerun import bindings
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
-from rerun.components.label import LabelArray
-from rerun.components.radius import RadiusArray
+from rerun.components import splat
 from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
 from rerun.log import Color, _normalize_colors
 from rerun.log.extension_components import _add_extension_components
@@ -120,6 +117,8 @@ def log_scalar(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     instanced: dict[str, Any] = {}
@@ -128,14 +127,16 @@ def log_scalar(
     instanced["rerun.scalar"] = ScalarArray.from_numpy(np.array([scalar]))
 
     if label:
-        instanced["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
 
     if color is not None:
+        from rerun.experimental import cmp as rrc
+
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if radius:
-        instanced["rerun.radius"] = RadiusArray.from_numpy(np.array([radius]))
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(np.array([radius]))
 
     if scattered:
         props = [{"scattered": scattered}]
@@ -145,7 +146,7 @@ def log_scalar(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = InstanceArray.splat()
+        splats["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=False, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

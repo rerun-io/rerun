@@ -1,4 +1,5 @@
 //! Log some very simple points.
+
 use rerun::{components::Point3D, MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -53,7 +53,7 @@ impl ViewPartSystem for TextSystem {
             let components = [
                 InstanceKey::name(),
                 re_components::TextEntry::name(),
-                re_components::ColorRGBA::name(),
+                re_types::components::Color::name(),
             ];
             let ent_views = range_entity_with_primary::<re_components::TextEntry, 3>(
                 store, &query, ent_path, components,
@@ -63,7 +63,7 @@ impl ViewPartSystem for TextSystem {
                 match ent_view.visit2(
                     |_instance,
                      text_entry: re_components::TextEntry,
-                     color: Option<re_components::ColorRGBA>| {
+                     color: Option<re_types::components::Color>| {
                         let re_components::TextEntry { body, level } = text_entry;
 
                         self.text_entries.push(TextEntry {

@@ -7,11 +7,9 @@ import numpy.typing as npt
 from deprecated import deprecated
 
 from rerun import bindings
-from rerun.components.color import ColorRGBAArray
+from rerun.components import splat
 from rerun.components.draw_order import DrawOrderArray
-from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
-from rerun.components.radius import RadiusArray
 from rerun.log import Color, Colors, _normalize_colors, _normalize_radii
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
@@ -92,6 +90,8 @@ def log_line_strip(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     if positions is not None:
@@ -110,12 +110,12 @@ def log_line_strip(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     # We store the stroke_width in radius
     if stroke_width:
         radii = _normalize_radii([stroke_width / 2])
-        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -124,7 +124,7 @@ def log_line_strip(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = InstanceArray.splat()
+        splats["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
@@ -187,6 +187,8 @@ def log_line_strips_2d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     colors = _normalize_colors(colors)
@@ -213,18 +215,20 @@ def log_line_strips_2d(
         comps[0]["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays(line_strip_arrs)
 
     if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
+        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
 
     if len(colors):
+        from rerun.experimental import cmp as rrc
+
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     # We store the stroke_width in radius
     if len(radii):
         is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
+        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if draw_order is not None:
         comps[1]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -233,7 +237,7 @@ def log_line_strips_2d(
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
     if comps[1]:
-        comps[1]["rerun.instance_key"] = InstanceArray.splat()
+        comps[1]["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
@@ -295,6 +299,8 @@ def log_line_strips_3d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     colors = _normalize_colors(colors)
@@ -321,18 +327,20 @@ def log_line_strips_3d(
         comps[0]["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays(line_strip_arrs)
 
     if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
+        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
 
     if len(colors):
+        from rerun.experimental import cmp as rrc
+
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     # We store the stroke_width in radius
     if len(radii):
         is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
+        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if draw_order is not None:
         comps[1]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -341,7 +349,7 @@ def log_line_strips_3d(
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
     if comps[1]:
-        comps[1]["rerun.instance_key"] = InstanceArray.splat()
+        comps[1]["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
@@ -396,6 +404,8 @@ def log_line_segments(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     if positions is None:
@@ -426,12 +436,12 @@ def log_line_segments(
     # require that we do so.
     if color is not None:
         colors = _normalize_colors(color)
-        splats["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        splats["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     # We store the stroke_width in radius
     if stroke_width:
         radii = _normalize_radii([stroke_width / 2])
-        splats["rerun.radius"] = RadiusArray.from_numpy(radii)
+        splats["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -440,7 +450,7 @@ def log_line_segments(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = InstanceArray.splat()
+        splats["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

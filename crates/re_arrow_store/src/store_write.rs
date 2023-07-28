@@ -85,11 +85,15 @@ impl DataStore {
                 use std::collections::hash_map::Entry;
                 match self.type_registry.entry(cell.component_name()) {
                     Entry::Occupied(entry) => {
-                        if entry.get() != cell.datatype() {
+                        // NOTE: Don't care about extensions until the migration is over (arrow2-convert
+                        // issues).
+                        let expected = entry.get().to_logical_type().clone();
+                        let got = cell.datatype().to_logical_type().clone();
+                        if expected != got {
                             return Err(WriteError::TypeCheck {
                                 component: cell.component_name(),
-                                expected: entry.get().clone(),
-                                got: cell.datatype().clone(),
+                                expected,
+                                got,
                             });
                         }
                     }

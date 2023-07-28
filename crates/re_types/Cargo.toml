@@ -49,6 +49,7 @@ arrow2 = { workspace = true, features = [
   "compute_concatenate",
 ] }
 anyhow.workspace = true
+arrow2_convert.workspace = true
 backtrace = "0.3"
 bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
 document-features = "0.2"

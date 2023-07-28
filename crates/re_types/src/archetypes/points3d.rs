@@ -18,7 +18,7 @@
 ///
 /// ```ignore
 /// //! Log some very simple points.
-/// use rerun::{experimental::archetypes::Points3D, MsgSender, RecordingStreamBuilder};
+/// use rerun::{archetypes::Points3D, MsgSender, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec_stream, storage) = RecordingStreamBuilder::new("points").memory()?;

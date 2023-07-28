@@ -50,10 +50,12 @@ def track_pose(video_path: str, segment: bool) -> None:
             results = pose.process(rgb)
             h, w, _ = rgb.shape
             landmark_positions_2d = read_landmark_positions_2d(results, w, h)
-            rr.log_points("video/pose/points", landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark)
+            if landmark_positions_2d is not None:
+                rr.log_points("video/pose/points", landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark)
 
             landmark_positions_3d = read_landmark_positions_3d(results)
-            rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
+            if landmark_positions_3d is not None:
+                rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
 
             segmentation_mask = results.segmentation_mask
             if segmentation_mask is not None:

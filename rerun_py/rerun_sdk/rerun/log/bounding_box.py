@@ -6,13 +6,9 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.components.annotation import ClassIdArray
+from rerun.components import splat
 from rerun.components.box import Box3DArray
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
-from rerun.components.label import LabelArray
 from rerun.components.quaternion import QuaternionArray
-from rerun.components.radius import RadiusArray
 from rerun.components.vec import Vec3DArray
 from rerun.log import (
     Color,
@@ -85,6 +81,8 @@ def log_obb(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     instanced: dict[str, Any] = {}
@@ -116,25 +114,25 @@ def log_obb(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     # We store the stroke_width in radius
     if stroke_width:
         radii = _normalize_radii([stroke_width / 2])
-        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if label:
-        instanced["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        instanced["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = InstanceArray.splat()
+        splats["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(
             entity_path,
             components=splats,
@@ -200,6 +198,8 @@ def log_obbs(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     colors = _normalize_colors(colors)
@@ -239,25 +239,25 @@ def log_obbs(
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if len(radii):
         is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
+        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
 
     if len(labels):
         is_splat = len(labels) == 1
-        comps[is_splat]["rerun.label"] = LabelArray.new(labels)
+        comps[is_splat]["rerun.label"] = rrc.LabelArray.from_similar(labels)
 
     if len(class_ids):
         is_splat = len(class_ids) == 1
-        comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        comps[is_splat]["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
 
     if ext:
         _add_extension_components(comps[0], comps[1], ext, None)
 
     if comps[1]:
-        comps[1]["rerun.instance_key"] = InstanceArray.splat()
+        comps[1]["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

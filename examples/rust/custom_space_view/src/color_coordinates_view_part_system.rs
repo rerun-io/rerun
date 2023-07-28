@@ -1,9 +1,9 @@
 use re_viewer::external::{
-    egui, re_components,
+    egui,
     re_log_types::EntityPath,
-    re_query::query_entity_with_primary,
+    re_query::query_archetype,
     re_renderer,
-    re_types::{components::InstanceKey, Loggable as _},
+    re_types::{self, components::InstanceKey, Archetype, Loggable as _},
     re_viewer_context::{
         ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
         ViewQuery, ViewerContext,
@@ -21,13 +21,66 @@ pub struct ColorWithInstanceKey {
     pub instance_key: InstanceKey,
 }
 
+struct ColorArchetype;
+
+// TODO(#2778): The introduction of ArchetypeInfo should make this much much nicer.
+#[allow(clippy::unimplemented)]
+impl re_types::Archetype for ColorArchetype {
+    fn name() -> re_types::ArchetypeName {
+        "InstanceColor".into()
+    }
+
+    fn required_components() -> &'static [re_types::ComponentName] {
+        static COMPONENTS: once_cell::sync::Lazy<[re_types::ComponentName; 1]> =
+            once_cell::sync::Lazy::new(|| [re_types::components::Color::name()]);
+        &*COMPONENTS
+    }
+
+    fn recommended_components() -> &'static [re_types::ComponentName] {
+        &[]
+    }
+
+    fn optional_components() -> &'static [re_types::ComponentName] {
+        &[]
+    }
+
+    fn all_components() -> &'static [re_types::ComponentName] {
+        Self::required_components()
+    }
+
+    fn try_to_arrow(
+        &self,
+    ) -> re_types::SerializationResult<
+        Vec<(
+            re_viewer::external::arrow2::datatypes::Field,
+            Box<dyn re_viewer::external::arrow2::array::Array>,
+        )>,
+    > {
+        unimplemented!()
+    }
+
+    fn try_from_arrow(
+        _data: impl IntoIterator<
+            Item = (
+                re_viewer::external::arrow2::datatypes::Field,
+                Box<dyn re_viewer::external::arrow2::array::Array>,
+            ),
+        >,
+    ) -> re_viewer::external::re_types::DeserializationResult<Self>
+    where
+        Self: Sized,
+    {
+        unimplemented!()
+    }
+}
+
 impl ViewPartSystem for InstanceColorSystem {
     /// The archetype this scene part is querying from the store.
     ///
     /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries
     ///              within the `populate` method to this archetype.
     fn archetype(&self) -> ArchetypeDefinition {
-        ArchetypeDefinition::new(re_components::ColorRGBA::name())
+        ColorArchetype::all_components().try_into().unwrap()
     }
 
     /// Populates the scene part with data from the store.
@@ -44,26 +97,25 @@ impl ViewPartSystem for InstanceColorSystem {
             }
 
             // ...gather all colors and their instance ids.
-            if let Ok(ent_view) = query_entity_with_primary::<re_components::ColorRGBA>(
+            if let Ok(arch_view) = query_archetype::<ColorArchetype>(
                 &ctx.store_db.entity_db.data_store,
                 &ctx.current_query(),
                 ent_path,
-                &[re_components::ColorRGBA::name()],
             ) {
-                if let Ok(primary_iterator) = ent_view.iter_primary() {
+                if let Ok(colors) =
+                    arch_view.iter_required_component::<re_types::components::Color>()
+                {
                     self.colors.push((
                         ent_path.clone(),
-                        ent_view
+                        arch_view
                             .iter_instance_keys()
-                            .zip(primary_iterator)
-                            .filter_map(|(instance_key, color)| {
-                                color.map(|color| {
-                                    let [r, g, b, _] = color.to_array();
-                                    ColorWithInstanceKey {
-                                        color: egui::Color32::from_rgb(r, g, b),
-                                        instance_key,
-                                    }
-                                })
+                            .zip(colors)
+                            .map(|(instance_key, color)| {
+                                let [r, g, b, _] = color.to_array();
+                                ColorWithInstanceKey {
+                                    color: egui::Color32::from_rgb(r, g, b),
+                                    instance_key,
+                                }
                             })
                             .collect(),
                     ));

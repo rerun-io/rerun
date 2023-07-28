@@ -65,9 +65,9 @@ fn data_table_sizes_basics() {
     // utf8 (and more generally: dyn_binary)
     let mut cell = DataCell::from_native(
         [
-            re_components::Label("hey".into()),
-            re_components::Label("hey".into()),
-            re_components::Label("hey".into()),
+            re_types::components::Label("hey".into()),
+            re_types::components::Label("hey".into()),
+            re_types::components::Label("hey".into()),
         ]
         .as_slice(),
     );
@@ -78,7 +78,10 @@ fn data_table_sizes_basics() {
         3_090_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(re_components::Label::name(), cell.to_arrow().sliced(1, 1)),
+        DataCell::from_arrow(
+            re_types::components::Label::name(),
+            cell.to_arrow().sliced(1, 1),
+        ),
         10_000,    // num_rows
         2_950_064, // expected_num_bytes
     );
@@ -86,9 +89,9 @@ fn data_table_sizes_basics() {
     // struct
     let mut cell = DataCell::from_native(
         [
-            re_components::Point2D::new(42.0, 666.0),
-            re_components::Point2D::new(42.0, 666.0),
-            re_components::Point2D::new(42.0, 666.0),
+            re_types::components::Point2D::new(42.0, 666.0),
+            re_types::components::Point2D::new(42.0, 666.0),
+            re_types::components::Point2D::new(42.0, 666.0),
         ]
         .as_slice(),
     );
@@ -99,7 +102,10 @@ fn data_table_sizes_basics() {
         5_260_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(re_components::Point2D::name(), cell.to_arrow().sliced(1, 1)),
+        DataCell::from_arrow(
+            re_types::components::Point2D::name(),
+            cell.to_arrow().sliced(1, 1),
+        ),
         10_000,    // num_rows
         5_100_064, // expected_num_bytes
     );
@@ -120,7 +126,10 @@ fn data_table_sizes_basics() {
         4_080_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(re_components::Point2D::name(), cell.to_arrow().sliced(1, 1)),
+        DataCell::from_arrow(
+            re_types::components::Point2D::name(),
+            cell.to_arrow().sliced(1, 1),
+        ),
         10_000,    // num_rows
         3_920_064, // expected_num_bytes
     );
@@ -141,7 +150,10 @@ fn data_table_sizes_basics() {
         6_120_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(re_components::Point2D::name(), cell.to_arrow().sliced(1, 1)),
+        DataCell::from_arrow(
+            re_types::components::Point2D::name(),
+            cell.to_arrow().sliced(1, 1),
+        ),
         10_000,    // num_rows
         5_560_064, // expected_num_bytes
     );

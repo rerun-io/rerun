@@ -3,8 +3,8 @@
 use rand::distributions::Uniform;
 use rand::Rng;
 use rerun::{
-    components::{Rect2D, Vec4D},
-    experimental::{archetypes::Points2D, components::Color},
+    archetypes::Points2D,
+    components::{Color, Rect2D, Vec4D},
     MsgSender, RecordingStreamBuilder,
 };
 

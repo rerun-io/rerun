@@ -1,14 +1,15 @@
 use egui::{color_picker, Vec2};
 use itertools::Itertools;
 
-use re_components::{AnnotationContext, AnnotationInfo, ClassId};
+use re_components::{AnnotationContext, AnnotationInfo};
+use re_types::components::ClassId;
 use re_viewer_context::{auto_color, UiVerbosity, ViewerContext};
 
 use super::DataUi;
 
 const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
-impl crate::EntityDataUi for re_components::ClassId {
+impl crate::EntityDataUi for ClassId {
     fn entity_data_ui(
         &self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
@@ -47,7 +48,7 @@ impl crate::EntityDataUi for re_components::ClassId {
     }
 }
 
-impl crate::EntityDataUi for re_components::KeypointId {
+impl crate::EntityDataUi for re_types::components::KeypointId {
     fn entity_data_ui(
         &self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
@@ -75,7 +76,7 @@ fn annotation_info(
     ctx: &mut re_viewer_context::ViewerContext<'_>,
     entity_path: &re_log_types::EntityPath,
     query: &re_arrow_store::LatestAtQuery,
-    keypoint_id: &re_components::KeypointId,
+    keypoint_id: &re_types::components::KeypointId,
 ) -> Option<re_components::AnnotationInfo> {
     let class_id = ctx
         .store_db
@@ -123,11 +124,7 @@ impl DataUi for AnnotationContext {
     }
 }
 
-fn class_description_ui(
-    ui: &mut egui::Ui,
-    class: &re_components::ClassDescription,
-    id: re_components::ClassId,
-) {
+fn class_description_ui(ui: &mut egui::Ui, class: &re_components::ClassDescription, id: ClassId) {
     if class.keypoint_connections.is_empty() && class.keypoint_map.is_empty() {
         return;
     }

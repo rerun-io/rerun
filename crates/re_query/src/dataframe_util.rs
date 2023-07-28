@@ -213,21 +213,16 @@ impl<A: Archetype> ArchetypeView<A> {
 
 #[test]
 fn test_df_builder() {
-    use re_components::{ColorRGBA, Point2D};
+    use re_types::components::{Color, Point2D};
 
     let points = vec![
-        Some(Point2D { x: 1.0, y: 2.0 }),
-        Some(Point2D { x: 3.0, y: 4.0 }),
-        Some(Point2D { x: 5.0, y: 6.0 }),
-        Some(Point2D { x: 7.0, y: 8.0 }),
+        Some(Point2D::new(1.0, 2.0)),
+        Some(Point2D::new(3.0, 4.0)),
+        Some(Point2D::new(5.0, 6.0)),
+        Some(Point2D::new(7.0, 8.0)),
     ];
 
-    let colors = vec![
-        None,
-        Some(ColorRGBA(0xff000000)),
-        Some(ColorRGBA(0x00ff0000)),
-        None,
-    ];
+    let colors = vec![None, Some(Color(0xff000000)), Some(Color(0x00ff0000)), None];
 
     let df = df_builder2(&points, &colors).unwrap();
     // eprintln!("{df:?}");
@@ -267,7 +262,7 @@ fn test_df_builder() {
     let expected = df![
         "x" => &[1.0_f32, 3.0_f32, 5.0_f32, 7.0_f32],
         "y" => &[2.0_f32, 4.0_f32, 6.0_f32, 8.0_f32],
-        ColorRGBA::name().as_ref() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
+        Color::name().as_ref() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
     ]
     .unwrap();
 

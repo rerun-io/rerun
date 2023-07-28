@@ -1,6 +1,6 @@
 //! Log rectangles with different colors and labels.
 use rerun::components::{
-    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, ColorRGBA, Label, Rect2D, Vec4D,
+    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, Color, Label, Rect2D, Vec4D,
 };
 use rerun::{MsgSender, RecordingStreamBuilder};
 
@@ -14,8 +14,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ClassDescription {
             info: AnnotationInfo {
                 id: 1,
-                label: Some(Label("red".to_owned())),
-                color: Some(ColorRGBA::from_rgb(255, 0, 0)),
+                label: Some(Label("red".into()).into()),
+                color: Some(Color::from_rgb(255, 0, 0).into()),
             },
             ..Default::default()
         },
@@ -25,8 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ClassDescription {
             info: AnnotationInfo {
                 id: 2,
-                label: Some(Label("green".to_owned())),
-                color: Some(ColorRGBA::from_rgb(0, 255, 0)),
+                label: Some(Label("green".into()).into()),
+                color: Some(Color::from_rgb(0, 255, 0).into()),
             },
             ..Default::default()
         },

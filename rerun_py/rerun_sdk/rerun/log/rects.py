@@ -6,11 +6,8 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.components.annotation import ClassIdArray
-from rerun.components.color import ColorRGBAArray
+from rerun.components import splat
 from rerun.components.draw_order import DrawOrderArray
-from rerun.components.instance import InstanceArray
-from rerun.components.label import LabelArray
 from rerun.components.rect2d import Rect2DArray, RectFormat
 from rerun.log import Color, Colors, OptionalClassIds, _normalize_colors, _normalize_ids, _normalize_labels
 from rerun.log.error_utils import _send_warning
@@ -72,6 +69,8 @@ def log_rect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     if np.any(rect):  # type: ignore[arg-type]
@@ -87,14 +86,14 @@ def log_rect(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if label:
-        instanced["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        instanced["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -103,7 +102,7 @@ def log_rect(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = InstanceArray.splat()
+        splats["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(
             entity_path,
             components=splats,
@@ -183,6 +182,8 @@ def log_rects(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     # Treat None the same as []
@@ -209,21 +210,23 @@ def log_rects(
     comps[0]["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
 
     if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
+        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
 
     if len(colors):
+        from rerun.experimental import cmp as rrc
+
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
 
     if len(labels):
         is_splat = len(labels) == 1
-        comps[is_splat]["rerun.label"] = LabelArray.new(labels)
+        comps[is_splat]["rerun.label"] = rrc.LabelArray.from_similar(labels)
 
     if len(class_ids):
         is_splat = len(class_ids) == 1
-        comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        comps[is_splat]["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
 
     if draw_order is not None:
         comps[True]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -232,7 +235,7 @@ def log_rects(
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
     if comps[1]:
-        comps[1]["rerun.instance_key"] = InstanceArray.splat()
+        comps[1]["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(
             entity_path,
             components=comps[1],

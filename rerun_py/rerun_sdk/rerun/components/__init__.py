@@ -8,20 +8,16 @@ import pyarrow as pa
 from rerun import bindings
 
 all = [
-    "annotation",
     "arrow",
     "box",
-    "color",
     "draw_order",
     "experimental",
-    "label",
     "pinhole",
-    "point",
     "quaternion",
-    "radius",
     "rect2d",
     "scalar_plot_props",
     "scalar",
+    "splat",
     "tensor",
     "text_entry",
     "vec",
@@ -104,3 +100,13 @@ def build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: pa
 
     except ValueError as e:
         raise ValueError(e.args)
+
+
+# NOTE: This has to live here for now, while we migrate to archetypes (circular experimental imports).
+def splat() -> Any:
+    """Helper to generate a splat InstanceKeyArray."""
+
+    from rerun.experimental import cmp as rrc
+
+    _MAX_U64 = 2**64 - 1
+    return pa.array([_MAX_U64], type=rrc.InstanceKeyType().storage_type)  # type: ignore[no-any-return]

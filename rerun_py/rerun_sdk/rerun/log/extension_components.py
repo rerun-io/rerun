@@ -8,7 +8,7 @@ import pyarrow as pa
 
 import rerun.log.error_utils
 from rerun import bindings
-from rerun.components.instance import InstanceArray
+from rerun.components import splat
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -119,6 +119,8 @@ def log_extension_components(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import cmp as rrc
+
     recording = RecordingStream.to_native(recording)
 
     identifiers_np = np.array((), dtype="uint64")
@@ -133,12 +135,12 @@ def log_extension_components(
     splats: dict[str, Any] = {}
 
     if len(identifiers_np):
-        instanced["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
+        instanced["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
 
     _add_extension_components(instanced, splats, ext, identifiers_np)
 
     if splats:
-        splats["rerun.instance_key"] = InstanceArray.splat()
+        splats["rerun.instance_key"] = splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

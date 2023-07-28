@@ -1,8 +1,8 @@
 //! Log some very simple points.
 
 use rerun::{
+    archetypes::Points2D,
     components::{Rect2D, Vec4D},
-    experimental::archetypes::Points2D,
     MsgSender, RecordingStreamBuilder,
 };
 

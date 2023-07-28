@@ -1,12 +1,9 @@
 //! Log some transforms.
 
 use rerun::{
-    experimental::{
-        archetypes::Transform3D,
-        datatypes::{
-            Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
-            TranslationRotationScale3D,
-        },
+    archetypes::Transform3D,
+    datatypes::{
+        Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
     },
     MsgSender, RecordingStreamBuilder,
 };

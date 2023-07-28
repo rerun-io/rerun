@@ -1,10 +1,13 @@
 mod common;
 
 use re_arrow_store::DataStore;
-use re_components::{datagen::build_frame_nr, ColorRGBA, Point2D};
+use re_components::datagen::build_frame_nr;
 use re_log_types::{DataRow, RowId};
 use re_query::query_entity_with_primary;
-use re_types::{components::InstanceKey, Loggable};
+use re_types::{
+    components::{Color, InstanceKey, Point2D},
+    Loggable as _,
+};
 
 #[test]
 fn simple_query() {
@@ -14,13 +17,13 @@ fn simple_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with implicit instances
-    let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Assign one of them a color with an explicit instance
     let color_instances = vec![InstanceKey(1)];
-    let colors = vec![ColorRGBA(0xff000000)];
+    let colors = vec![Color(0xff000000)];
     let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
@@ -37,7 +40,7 @@ fn simple_query() {
         &store,
         &timeline_query,
         &ent_path.into(),
-        &[ColorRGBA::name()],
+        &[Color::name()],
     )
     .unwrap();
 
@@ -58,17 +61,14 @@ fn simple_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors = vec![None, Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &entity_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -85,13 +85,13 @@ fn timeless_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with implicit instances
-    let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Assign one of them a color with an explicit instance.. timelessly!
     let color_instances = vec![InstanceKey(1)];
-    let colors = vec![ColorRGBA(0xff000000)];
+    let colors = vec![Color(0xff000000)];
     let row =
         DataRow::from_cells2_sized(RowId::random(), ent_path, [], 1, (color_instances, colors));
     store.insert_row(&row).unwrap();
@@ -103,7 +103,7 @@ fn timeless_query() {
         &store,
         &timeline_query,
         &ent_path.into(),
-        &[ColorRGBA::name()],
+        &[Color::name()],
     )
     .unwrap();
 
@@ -124,17 +124,14 @@ fn timeless_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors = vec![None, Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &entity_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -151,12 +148,12 @@ fn no_instance_join_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with an implicit instance
-    let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Assign them colors with explicit instances
-    let colors = vec![ColorRGBA(0xff000000), ColorRGBA(0x00ff0000)];
+    let colors = vec![Color(0xff000000), Color(0x00ff0000)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, colors);
     store.insert_row(&row).unwrap();
 
@@ -167,7 +164,7 @@ fn no_instance_join_query() {
         &store,
         &timeline_query,
         &ent_path.into(),
-        &[ColorRGBA::name()],
+        &[Color::name()],
     )
     .unwrap();
 
@@ -188,17 +185,14 @@ fn no_instance_join_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0x00ff0000))];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors = vec![Some(Color(0xff000000)), Some(Color(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &entity_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -215,7 +209,7 @@ fn missing_column_join_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with an implicit instance
-    let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
@@ -226,7 +220,7 @@ fn missing_column_join_query() {
         &store,
         &timeline_query,
         &ent_path.into(),
-        &[ColorRGBA::name()],
+        &[Color::name()],
     )
     .unwrap();
 
@@ -247,10 +241,7 @@ fn missing_column_join_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
         let expected = df_builder2(&instances, &points).unwrap();
 
         //eprintln!("{df:?}");
@@ -273,13 +264,13 @@ fn splatted_query() {
     let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with implicit instances
-    let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
+    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Assign all of them a color via splat
     let color_instances = vec![InstanceKey::SPLAT];
-    let colors = vec![ColorRGBA(0xff000000)];
+    let colors = vec![Color(0xff000000)];
     let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
@@ -296,7 +287,7 @@ fn splatted_query() {
         &store,
         &timeline_query,
         &ent_path.into(),
-        &[ColorRGBA::name()],
+        &[Color::name()],
     )
     .unwrap();
 
@@ -317,17 +308,14 @@ fn splatted_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0xff000000))];
+        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let colors = vec![Some(Color(0xff000000)), Some(Color(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
+        common::compare_df(&expected, &entity_view.as_df2::<Color>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {

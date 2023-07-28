@@ -5,7 +5,7 @@
 //!  cargo run -p minimal_options -- --help
 //! ```
 
-use rerun::components::{ColorRGBA, Point3D, Radius};
+use rerun::components::{Color, Point3D, Radius};
 use rerun::{external::re_log, MsgSender, RecordingStream};
 
 use rerun::demo_util::grid;
@@ -36,7 +36,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         glam::Vec3::splat(255.0),
         args.num_points_per_axis,
     )
-    .map(|v| ColorRGBA::from_rgb(v.x as u8, v.y as u8, v.z as u8))
+    .map(|v| Color::from_rgb(v.x as u8, v.y as u8, v.z as u8))
     .collect::<Vec<_>>();
 
     rec_stream.set_time_sequence("keyframe", 0);

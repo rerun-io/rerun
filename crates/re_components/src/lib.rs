@@ -17,6 +17,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 use lazy_static::lazy_static;
+use re_types::Loggable;
 
 mod arrow;
 mod bbox;
@@ -25,16 +26,13 @@ mod color;
 pub mod context;
 pub mod coordinates;
 mod disconnected_space;
-mod draw_order;
 mod keypoint_id;
 mod label;
 mod linestrip;
 mod mat;
 mod mesh3d;
 mod pinhole;
-mod point;
 mod quaternion;
-mod radius;
 mod rect;
 mod scalar;
 mod tensor;
@@ -53,24 +51,24 @@ pub mod datagen;
 // ----------------------------------------------------------------------------
 // TODO(emilk): split into modules, like we do in re_sdk/src/lib.rs
 
+// NOTE: We keep these legacy types around because they are used by the legacy `AnnotationContext`,
+// which needs them to implement `arrow2-convert`'s' traits.
+// TODO(#2794): get rid of this once `AnnotationContext` has been migrated.
+pub(crate) use self::{
+    class_id::LegacyClassId, color::LegacyColor, keypoint_id::LegacyKeypointId, label::LegacyLabel,
+};
+
 pub use self::{
     arrow::Arrow3D,
     bbox::Box3D,
-    class_id::ClassId,
-    color::ColorRGBA,
     context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
     disconnected_space::DisconnectedSpace,
-    draw_order::DrawOrder,
-    keypoint_id::KeypointId,
-    label::Label,
     linestrip::{LineStrip2D, LineStrip3D},
     mat::Mat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},
     pinhole::Pinhole,
-    point::{Point2D, Point3D},
     quaternion::Quaternion,
-    radius::Radius,
     rect::Rect2D,
     scalar::{Scalar, ScalarPlotProps},
     tensor::{
@@ -93,9 +91,6 @@ pub use self::tensor::{TensorImageLoadError, TensorImageSaveError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_path, FromFileError};
 
-// This is a component
-pub use re_types::components::InstanceKey;
-
 // This is very convenient to re-export
 pub use re_log_types::LegacyComponent;
 
@@ -109,27 +104,22 @@ pub mod external {
 
 // ----------------------------------------------------------------------------
 
+use re_types::components::{
+    ClassId, Color, DrawOrder, InstanceKey, KeypointId, Label, Point2D, Point3D, Radius,
+};
+
 lazy_static! {
     //TODO(john): use a run-time type registry
     static ref FIELDS: [Field; 28] = [
         <AnnotationContext as LegacyComponent>::field(),
         <Arrow3D as LegacyComponent>::field(),
         <Box3D as LegacyComponent>::field(),
-        <ClassId as LegacyComponent>::field(),
-        <ColorRGBA as LegacyComponent>::field(),
-        <DrawOrder as LegacyComponent>::field(),
         <DisconnectedSpace as LegacyComponent>::field(),
-        <re_log_types::LegacyInstanceKey as LegacyComponent>::field(),
-        <KeypointId as LegacyComponent>::field(),
-        <Label as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),
         <LineStrip3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
         <Pinhole as LegacyComponent>::field(),
-        <Point2D as LegacyComponent>::field(),
-        <Point3D as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
-        <Radius as LegacyComponent>::field(),
         <Rect2D as LegacyComponent>::field(),
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
@@ -140,6 +130,15 @@ lazy_static! {
         <Vec2D as LegacyComponent>::field(),
         <Vec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
+        Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),
+        Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),
+        Field::new(DrawOrder::name().as_str(), DrawOrder::to_arrow_datatype(), false),
+        Field::new(InstanceKey::name().as_str(), InstanceKey::to_arrow_datatype(), false),
+        Field::new(KeypointId::name().as_str(), KeypointId::to_arrow_datatype(), false),
+        Field::new(Label::name().as_str(), Label::to_arrow_datatype(), false),
+        Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
+        Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),
+        Field::new(Radius::name().as_str(), Radius::to_arrow_datatype(), false),
     ];
 }
 

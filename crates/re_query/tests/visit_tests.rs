@@ -1,17 +1,16 @@
 use itertools::Itertools;
-use re_components::{ColorRGBA, Point2D};
 use re_query::{ComponentWithInstances, EntityView};
-use re_types::components::InstanceKey;
+use re_types::components::{Color, InstanceKey, Point2D};
 
 #[test]
 fn basic_single_iter() {
     let instance_keys = InstanceKey::from_iter(0..2);
     let points = [
-        Point2D { x: 1.0, y: 2.0 }, //
-        Point2D { x: 3.0, y: 4.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
     ];
 
-    let component = ComponentWithInstances::from_native(instance_keys, &points);
+    let component = ComponentWithInstances::from_native(instance_keys, points);
 
     let results = itertools::izip!(
         points.into_iter(),
@@ -29,15 +28,15 @@ fn implicit_joined_iter() {
     let instance_keys = InstanceKey::from_iter(0..3);
 
     let points = [
-        Point2D { x: 1.0, y: 2.0 }, //
-        Point2D { x: 3.0, y: 4.0 },
-        Point2D { x: 5.0, y: 6.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
     ];
 
     let colors = [
-        ColorRGBA(0), //
-        ColorRGBA(1),
-        ColorRGBA(2),
+        Color(0), //
+        Color(1),
+        Color(2),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -46,14 +45,14 @@ fn implicit_joined_iter() {
     );
 
     let expected_colors = [
-        Some(ColorRGBA(0)), //
-        Some(ColorRGBA(1)),
-        Some(ColorRGBA(2)),
+        Some(Color(0)), //
+        Some(Color(1)),
+        Some(Color(2)),
     ];
 
     let results = itertools::izip!(
         expected_colors.iter(),
-        entity_view.iter_component::<ColorRGBA>().unwrap()
+        entity_view.iter_component::<Color>().unwrap()
     )
     .collect_vec();
 
@@ -66,9 +65,9 @@ fn implicit_primary_joined_iter() {
     let point_ids = InstanceKey::from_iter(0..3);
 
     let points = [
-        Point2D { x: 1.0, y: 2.0 }, //
-        Point2D { x: 3.0, y: 4.0 },
-        Point2D { x: 5.0, y: 6.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
     ];
 
     let color_ids = [
@@ -77,8 +76,8 @@ fn implicit_primary_joined_iter() {
     ];
 
     let colors = [
-        ColorRGBA(1), //
-        ColorRGBA(2),
+        Color(1), //
+        Color(2),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -88,13 +87,13 @@ fn implicit_primary_joined_iter() {
 
     let expected_colors = vec![
         None, //
-        Some(ColorRGBA(1)),
-        Some(ColorRGBA(2)),
+        Some(Color(1)),
+        Some(Color(2)),
     ];
 
     let results = itertools::izip!(
         expected_colors.iter(),
-        entity_view.iter_component::<ColorRGBA>().unwrap()
+        entity_view.iter_component::<Color>().unwrap()
     )
     .collect_vec();
 
@@ -111,19 +110,19 @@ fn implicit_component_joined_iter() {
     ];
 
     let points = [
-        Point2D { x: 1.0, y: 2.0 }, //
-        Point2D { x: 3.0, y: 4.0 },
-        Point2D { x: 5.0, y: 6.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
     ];
 
     let color_ids = InstanceKey::from_iter(0..5);
 
     let colors = [
-        ColorRGBA(0), //
-        ColorRGBA(1),
-        ColorRGBA(2),
-        ColorRGBA(3),
-        ColorRGBA(4),
+        Color(0), //
+        Color(1),
+        Color(2),
+        Color(3),
+        Color(4),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -132,14 +131,14 @@ fn implicit_component_joined_iter() {
     );
 
     let expected_colors = vec![
-        Some(ColorRGBA(0)), //
-        Some(ColorRGBA(2)),
-        Some(ColorRGBA(4)),
+        Some(Color(0)), //
+        Some(Color(2)),
+        Some(Color(4)),
     ];
 
     let results = itertools::izip!(
         expected_colors.iter(),
-        entity_view.iter_component::<ColorRGBA>().unwrap()
+        entity_view.iter_component::<Color>().unwrap()
     )
     .collect_vec();
 
@@ -157,10 +156,10 @@ fn complex_joined_iter() {
     ];
 
     let points = vec![
-        Point2D { x: 1.0, y: 2.0 }, //
-        Point2D { x: 3.0, y: 4.0 },
-        Point2D { x: 5.0, y: 6.0 },
-        Point2D { x: 7.0, y: 8.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
+        Point2D::new(7.0, 8.0),
     ];
 
     let color_ids = vec![
@@ -172,11 +171,11 @@ fn complex_joined_iter() {
     ];
 
     let colors = vec![
-        ColorRGBA(17), //
-        ColorRGBA(19),
-        ColorRGBA(44),
-        ColorRGBA(96),
-        ColorRGBA(254),
+        Color(17), //
+        Color(19),
+        Color(44),
+        Color(96),
+        Color(254),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -186,14 +185,14 @@ fn complex_joined_iter() {
 
     let expected_colors = vec![
         None,
-        Some(ColorRGBA(17)), //
+        Some(Color(17)), //
         None,
-        Some(ColorRGBA(96)),
+        Some(Color(96)),
     ];
 
     let results = itertools::izip!(
         expected_colors.iter(),
-        entity_view.iter_component::<ColorRGBA>().unwrap()
+        entity_view.iter_component::<Color>().unwrap()
     )
     .collect_vec();
 
@@ -205,10 +204,10 @@ fn complex_joined_iter() {
 fn single_visit() {
     let instance_keys = InstanceKey::from_iter(0..4);
     let points = [
-        Point2D { x: 1.0, y: 2.0 },
-        Point2D { x: 3.0, y: 4.0 },
-        Point2D { x: 5.0, y: 6.0 },
-        Point2D { x: 7.0, y: 8.0 },
+        Point2D::new(1.0, 2.0),
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
+        Point2D::new(7.0, 8.0),
     ];
 
     let entity_view = EntityView::from_native((&instance_keys, &points));
@@ -231,18 +230,18 @@ fn single_visit() {
 #[test]
 fn joint_visit() {
     let points = vec![
-        Point2D { x: 1.0, y: 2.0 }, //
-        Point2D { x: 3.0, y: 4.0 },
-        Point2D { x: 5.0, y: 6.0 },
-        Point2D { x: 7.0, y: 8.0 },
-        Point2D { x: 9.0, y: 10.0 },
+        Point2D::new(1.0, 2.0), //
+        Point2D::new(3.0, 4.0),
+        Point2D::new(5.0, 6.0),
+        Point2D::new(7.0, 8.0),
+        Point2D::new(9.0, 10.0),
     ];
 
     let point_ids = InstanceKey::from_iter(0..5);
 
     let colors = vec![
-        ColorRGBA(0xff000000), //
-        ColorRGBA(0x00ff0000),
+        Color(0xff000000), //
+        Color(0x00ff0000),
     ];
 
     let color_ids = vec![
@@ -256,10 +255,10 @@ fn joint_visit() {
     );
 
     let mut points_out = Vec::<Point2D>::new();
-    let mut colors_out = Vec::<Option<ColorRGBA>>::new();
+    let mut colors_out = Vec::<Option<Color>>::new();
 
     entity_view
-        .visit2(|_: InstanceKey, point: Point2D, color: Option<ColorRGBA>| {
+        .visit2(|_: InstanceKey, point: Point2D, color: Option<Color>| {
             points_out.push(point);
             colors_out.push(color);
         })
@@ -269,9 +268,9 @@ fn joint_visit() {
     let expected_colors = vec![
         None,
         None,
-        Some(ColorRGBA(0xff000000)),
+        Some(Color(0xff000000)),
         None,
-        Some(ColorRGBA(0x00ff0000)),
+        Some(Color(0x00ff0000)),
     ];
 
     assert_eq!(points, points_out);

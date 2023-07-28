@@ -1,7 +1,6 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{external::arrow2, EntityPath};
 use re_query::ComponentWithInstances;
-use re_types::components::InstanceKey;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
 use super::{DataUi, EntityDataUi};
@@ -37,16 +36,15 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_components::AnnotationContext>(&mut registry);
     // add::<re_components::Arrow3D>(&mut registry);
     // add::<re_components::Box3D>(&mut registry);
-    add::<re_components::ClassId>(&mut registry);
-    add::<re_components::ColorRGBA>(&mut registry);
-    // add::<re_log_types::InstanceKey>(&mut registry);
-    add::<re_components::KeypointId>(&mut registry);
-    // add::<re_components::Label>(&mut registry);
+    add::<re_types::components::ClassId>(&mut registry);
+    add::<re_types::components::Color>(&mut registry);
+    add::<re_types::components::KeypointId>(&mut registry);
+    // add::<re_types::components::Label>(&mut registry);
     add::<re_components::LineStrip2D>(&mut registry);
     add::<re_components::LineStrip3D>(&mut registry);
     add::<re_components::Mesh3D>(&mut registry);
-    // add::<re_components::Point2D>(&mut registry);
-    // add::<re_components::Point3D>(&mut registry);
+    // add::<re_types::components::Point2D>(&mut registry);
+    // add::<re_types::components::Point3D>(&mut registry);
     add::<re_components::Pinhole>(&mut registry);
     // add::<re_components::Quaternion>(&mut registry);
     // add::<re_components::Radius>(&mut registry);
@@ -70,7 +68,7 @@ fn fallback_component_ui(
     _query: &LatestAtQuery,
     _entity_path: &EntityPath,
     component: &ComponentWithInstances,
-    instance_key: &InstanceKey,
+    instance_key: &re_types::components::InstanceKey,
 ) {
     // No special ui implementation - use a generic one:
     if let Some(value) = component.lookup_arrow(instance_key) {

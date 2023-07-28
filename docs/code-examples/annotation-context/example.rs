@@ -15,7 +15,7 @@ MsgSender::new("masks") // Applies to all entities below "masks".
                 info: AnnotationInfo {
                     id: 0,
                     label: Some(Label("Person".into())),
-                    color: Some(ColorRGBA(0xFF000000)),
+                    color: Some(Color(0xFF000000)),
                 },
                 ..Default::default()
             },
@@ -42,7 +42,7 @@ MsgSender::new("detections") // Applies to all entities below "detections".
                     .map(|i| AnnotationInfo {
                         id: i,
                         label: None,
-                        color: Some(ColorRGBA::from_rgb(0, (255 / 9 * i) as u8, 0)),
+                        color: Some(Color::from_rgb(0, (255 / 9 * i) as u8, 0)),
                     })
                     .map(|keypoint| (KeypointId(keypoint.id), keypoint))
                     .collect(),

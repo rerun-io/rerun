@@ -26,8 +26,8 @@ pub use transform3d_arrows::add_axis_arrows;
 use ahash::HashMap;
 use std::sync::Arc;
 
-use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
+use re_types::components::{ClassId, KeypointId};
 use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
     auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewSystemRegistry,
@@ -101,28 +101,6 @@ pub fn picking_id_from_instance_key(
     re_renderer::PickingLayerInstanceId(instance_key.0)
 }
 
-/// Process [`ColorRGBA`] components using annotations and default colors.
-pub fn process_colors<'a, Primary>(
-    entity_view: &'a re_query::EntityView<Primary>,
-    ent_path: &'a EntityPath,
-    annotation_infos: &'a [ResolvedAnnotationInfo],
-) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError>
-where
-    Primary: re_types::Component,
-    &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
-{
-    re_tracing::profile_function!();
-    let default_color = DefaultColor::EntityPath(ent_path);
-
-    Ok(itertools::izip!(
-        annotation_infos.iter(),
-        entity_view.iter_component::<ColorRGBA>()?,
-    )
-    .map(move |(annotation_info, color)| {
-        annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
-    }))
-}
-
 /// Process [`Color`] components using annotations and default colors.
 #[allow(dead_code)]
 pub fn process_colors_arch<'a, A: Archetype>(
@@ -142,37 +120,8 @@ pub fn process_colors_arch<'a, A: Archetype>(
     }))
 }
 
-/// Process [`Radius`] components to [`re_renderer::Size`] using auto size where no radius is specified.
-pub fn process_radii<'a, Primary>(
-    ent_path: &EntityPath,
-    entity_view: &'a re_query::EntityView<Primary>,
-) -> Result<impl Iterator<Item = re_renderer::Size> + 'a, re_query::QueryError>
-where
-    Primary: re_types::Component,
-    &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
-{
-    re_tracing::profile_function!();
-    let ent_path = ent_path.clone();
-    Ok(entity_view.iter_component::<Radius>()?.map(move |radius| {
-        radius.map_or(re_renderer::Size::AUTO, |r| {
-            if 0.0 <= r.0 && r.0.is_finite() {
-                re_renderer::Size::new_scene(r.0)
-            } else {
-                if r.0 < 0.0 {
-                    re_log::warn_once!("Found negative radius in entity {ent_path}");
-                } else if r.0.is_infinite() {
-                    re_log::warn_once!("Found infinite radius in entity {ent_path}");
-                } else {
-                    re_log::warn_once!("Found NaN radius in entity {ent_path}");
-                }
-                re_renderer::Size::AUTO
-            }
-        })
-    }))
-}
-
-/// Process [`Radius`] components to [`re_renderer::Size`] using auto size where no radius is specified.
-#[allow(dead_code)]
+/// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
+/// where no radius is specified.
 pub fn process_radii_arch<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &EntityPath,
@@ -200,56 +149,6 @@ pub fn process_radii_arch<'a, A: Archetype>(
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
-fn process_annotations_and_keypoints<'a, Primary>(
-    query: &ViewQuery<'_>,
-    entity_view: &re_query::EntityView<Primary>,
-    annotations: &Arc<Annotations>,
-) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), re_query::QueryError>
-where
-    Primary: re_types::Component + 'a,
-    &'a Primary: std::convert::Into<std::borrow::Cow<'a, Primary>>,
-    glam::Vec3: std::convert::From<Primary>,
-{
-    re_tracing::profile_function!();
-
-    let mut keypoints: Keypoints = HashMap::default();
-
-    // No need to process annotations if we don't have keypoints or class-ids
-    if !entity_view.has_component::<KeypointId>() && !entity_view.has_component::<ClassId>() {
-        let resolved_annotation = annotations.class_description(None).annotation_info();
-        return Ok((
-            vec![resolved_annotation; entity_view.num_instances()],
-            keypoints,
-        ));
-    }
-
-    let annotation_info = itertools::izip!(
-        entity_view.iter_primary()?,
-        entity_view.iter_component::<KeypointId>()?,
-        entity_view.iter_component::<ClassId>()?,
-    )
-    .map(|(position, keypoint_id, class_id)| {
-        let class_description = annotations.class_description(class_id);
-
-        if let (Some(keypoint_id), Some(class_id), Some(position)) =
-            (keypoint_id, class_id, position)
-        {
-            keypoints
-                .entry((class_id, query.latest_at.as_i64()))
-                .or_insert_with(Default::default)
-                .insert(keypoint_id, position.into());
-            class_description.annotation_info_with_keypoint(keypoint_id)
-        } else {
-            class_description.annotation_info()
-        }
-    })
-    .collect();
-
-    Ok((annotation_info, keypoints))
-}
-
-/// Resolves all annotations and keypoints for the given entity view.
-#[allow(dead_code)]
 fn process_annotations_and_keypoints_arch<Primary, A: Archetype>(
     query: &ViewQuery<'_>,
     arch_view: &re_query::ArchetypeView<A>,
@@ -280,14 +179,14 @@ where
         arch_view.iter_optional_component::<re_types::components::ClassId>()?,
     )
     .map(|(position, keypoint_id, class_id)| {
-        let class_description = annotations.class_description(class_id.map(|c| c.into()));
+        let class_description = annotations.class_description(class_id);
 
         if let (Some(keypoint_id), Some(class_id), position) = (keypoint_id, class_id, position) {
             keypoints
-                .entry((class_id.into(), query.latest_at.as_i64()))
+                .entry((class_id, query.latest_at.as_i64()))
                 .or_insert_with(Default::default)
-                .insert(keypoint_id.into(), position.into());
-            class_description.annotation_info_with_keypoint(keypoint_id.into())
+                .insert(keypoint_id, position.into());
+            class_description.annotation_info_with_keypoint(keypoint_id)
         } else {
             class_description.annotation_info()
         }
