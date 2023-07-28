@@ -135,16 +135,30 @@ def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
     from .. import Mat3x3Type
 
     if mat is None:
-        return pa.nulls(1, type=Mat3x3Type().storage_type)
+        return nulls_outer_fixed_size_list(1, type_=Mat3x3Type().storage_type)
     else:
         return pa.FixedSizeListArray.from_arrays(mat.coeffs, type=Mat3x3Type().storage_type)
+
+
+# TODO: explain...
+def nulls_outer_fixed_size_list(length: int, type_: pa.DataType) -> pa.Array:
+    if isinstance(type_, pa.FixedSizeListType) and type_.value_type == pa.float32():
+        inner_data = pa.array(np.zeros((type_.list_size,), dtype=np.float32), type=type_.value_type)
+        # NOTE(1): This is a bitmap, not a bytemap, hence we divide into bits.
+        # NOTE(2): `buffers[0]` is the validity bitmap of the validity bitmap itself; don't need it.
+        outer_validity = pa.array(np.zeros(int(length / 8 + 1), dtype=np.int8)).buffers()[1]
+        return pa.FixedSizeListArray.from_buffers(
+            type_, length, [outer_validity], null_count=length, children=[inner_data]
+        )
+    else:
+        return pa.nulls(length, type_)
 
 
 def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
     from .. import Vec3DType
 
     if translation is None:
-        return pa.nulls(1, type=Vec3DType().storage_type)
+        return nulls_outer_fixed_size_list(1, type_=Vec3DType().storage_type)
     else:
         return pa.FixedSizeListArray.from_arrays(translation.xyz, type=Vec3DType().storage_type)
 
