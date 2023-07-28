@@ -1,6 +1,8 @@
 #include <loguru.hpp>
 #include <rerun.hpp>
 
+#include <array>
+
 #include <components/point2d.hpp>
 
 int main(int argc, char** argv) {
@@ -12,27 +14,27 @@ int main(int argc, char** argv) {
 
     auto rr_stream = rr::RecordingStream{"c-example-app", "127.0.0.1:9876"};
 
-    // Points3D.
-    {
-        float xyz[9] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 5.0, 5.0, 5.0};
-        const rr::DataCell data_cells[1] = {
-            rr::components::Point3D::to_data_cell((const rr::components::Point3D*)xyz, 3)
-                .ValueOrDie()};
-
-        uint32_t num_instances = 3;
-        rr_stream.log_data_row("3d/points", num_instances, 1, data_cells);
-    }
-
-    // Points2D.
-    {
-        float xy[6] = {0.0, 0.0, 1.0, 3.0, 5.0, 5.0};
-        uint32_t num_instances = 3;
-        const rr::DataCell data_cells[1] = {
-            rr::components::Point2D::to_data_cell((const rr::components::Point2D*)xy, num_instances)
-                .ValueOrDie()};
-
-        rr_stream.log_data_row("2d/points", num_instances, 1, data_cells);
-    }
+    rr_stream.log_components(
+        "3d/points",
+        std::vector{
+            rr::components::Point3D(rr::datatypes::Point3D{0.0, 0.0, 0.0}),
+            rr::components::Point3D(rr::datatypes::Point3D{1.0, 3.0, 3.0}),
+            rr::components::Point3D(rr::datatypes::Point3D{5.0, 5.0, 5.0}),
+        }
+    );
+    rr_stream.log_components(
+        "2d/points",
+        std::vector{
+            rr::components::Point2D(rr::datatypes::Point2D{0.0, 0.0}),
+            rr::components::Point2D(rr::datatypes::Point2D{1.0, 3.0}),
+            rr::components::Point2D(rr::datatypes::Point2D{5.0, 5.0}),
+        },
+        std::array{
+            rr::components::Color(0xFF0000FF),
+            rr::components::Color(0x00FF00FF),
+            rr::components::Color(0x0000FFFF),
+        }
+    );
 
     // Test some type instantiation
     auto tls = rr::datatypes::TranslationRotationScale3D{};

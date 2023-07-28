@@ -2,6 +2,9 @@
 
 #include <cstddef> // size_t
 #include <cstdint> // uint32_t etc
+#include <vector>
+
+#include "data_cell.hpp"
 
 namespace rr {
     struct DataCell;
@@ -37,13 +40,38 @@ namespace rr {
         //     // TODO:
         // }
 
-        // template <typename T>
-        // void log_components(
-        //     const char* entity_path, const std::vector<T>* component_arrays, size_t
-        //     num_components
-        // ) {
-        //     // TODO:
-        // }
+        /// Logs a list of component arrays.
+        ///
+        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
+        /// built-in archetypes.
+        ///
+        /// Expects component arrays in continuous memory in with a std::vector/std::array like
+        /// interface, i.e. each component array needs a data & size method.
+        ///
+        /// TODO(andreas): More documentation, examples etc.
+        /// TODO(andreas): Test with different array types - vector/array seem to work but we should
+        /// also support C arrays.
+        /// TODO(andreas): Error handling.
+        template <typename... Ts>
+        void log_components(const char* entity_path, const Ts&... component_array) {
+            // TODO(andreas): Handle splats.
+            const size_t num_instances = size_of_first_collection(component_array...);
+
+            std::vector<DataCell> data_cells;
+            data_cells.reserve(sizeof...(Ts));
+            (
+                [&data_cells, &component_array] {
+                    using ComponentType = std::remove_pointer_t<decltype(component_array.data())>;
+                    const auto cell =
+                        ComponentType::to_data_cell(component_array.data(), component_array.size())
+                            .ValueOrDie();
+                    data_cells.push_back(cell);
+                }(),
+                ...
+            );
+
+            log_data_row(entity_path, num_instances, data_cells.size(), data_cells.data());
+        }
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
@@ -55,6 +83,12 @@ namespace rr {
         );
 
       private:
+        /// Returns size of the first collection of a list of collections.
+        template <typename First, typename... Ts>
+        static size_t size_of_first_collection(const First& first, const Ts&... ts) {
+            return first.size();
+        }
+
         RecordingStream() : _id{0} {}
 
         RecordingStream(uint32_t id) : _id{id} {}
