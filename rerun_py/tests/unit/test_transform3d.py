@@ -151,15 +151,19 @@ def test_translation_and_mat3x3_from_parent() -> None:
 # This should cover all acceptable input to the Transform3D archetype
 
 
-@pytest.mark.parametrize("trans", VEC_3D_INPUT)
-@pytest.mark.parametrize("mat", MAT_3X3_INPUT)
-def test_transform3d_translation_and_mat3x3(trans: rr_dt.Vec3DLike, mat: rr_dt.Mat3x3Like) -> None:
+@pytest.mark.parametrize("trans", VEC_3D_INPUT + [None])
+@pytest.mark.parametrize("mat", MAT_3X3_INPUT + [None])
+def test_transform3d_translation_and_mat3x3(trans: rr_dt.Vec3DLike | None, mat: rr_dt.Mat3x3Like | None) -> None:
+    expected_trans = rr_dt.Vec3D([1, 2, 3]) if trans is not None else None
+    expected_mat = rr_dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]) if mat is not None else None
+
     tm = rr_arch.Transform3D(rr_dt.TranslationAndMat3x3(translation=trans, matrix=mat))
 
     assert tm.transform == rr_cmp.Transform3DArray.from_similar(
         rr_dt.Transform3D(
             rr_dt.TranslationAndMat3x3(
-                translation=rr_dt.Vec3D([1, 2, 3]), matrix=rr_dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9])
+                translation=expected_trans,
+                matrix=expected_mat,
             )
         )
     )
@@ -169,8 +173,8 @@ def test_transform3d_translation_and_mat3x3(trans: rr_dt.Vec3DLike, mat: rr_dt.M
     assert tm2.transform == rr_cmp.Transform3DArray.from_similar(
         rr_dt.Transform3D(
             rr_dt.TranslationAndMat3x3(
-                translation=rr_dt.Vec3D([1, 2, 3]),
-                matrix=rr_dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+                translation=expected_trans,
+                matrix=expected_mat,
                 from_parent=True,
             )
         )
