@@ -56,6 +56,9 @@ pub(crate) use self::{
     class_id::LegacyClassId, color::LegacyColor, keypoint_id::LegacyKeypointId, label::LegacyLabel,
 };
 
+// TODO(cmc): get rid of this once every single archetypes depending on those have been migrated.
+pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};
+
 pub use self::{
     arrow::Arrow3D,
     bbox::Box3D,
@@ -75,7 +78,6 @@ pub use self::{
     tensor_data::{TensorDataType, TensorDataTypeTrait, TensorElement},
     text_box::TextBox,
     text_entry::TextEntry,
-    vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D},
 };
 
 #[cfg(feature = "image")]
@@ -104,7 +106,7 @@ use re_types::components::{
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 28] = [
+    static ref FIELDS: [Field; 27] = [
         <AnnotationContext as LegacyComponent>::field(),
         <Arrow3D as LegacyComponent>::field(),
         <Box3D as LegacyComponent>::field(),
@@ -119,7 +121,6 @@ lazy_static! {
         <Tensor as LegacyComponent>::field(),
         <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
-        <LegacyVec2D as LegacyComponent>::field(),
         <LegacyVec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
         Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),

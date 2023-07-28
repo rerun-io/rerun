@@ -75,7 +75,7 @@ pub mod components {
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, EncodedMesh3D,
         LineStrip2D, LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole, Quaternion,
         RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDataMeaning,
-        TensorDimension, TensorId, TextEntry, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+        TensorDimension, TensorId, TextEntry, ViewCoordinates,
     };
     pub use re_types::components::{
         ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label, Point2D,

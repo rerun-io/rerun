@@ -3,7 +3,8 @@
 use rerun::{
     archetypes::Transform3D,
     datatypes::{
-        Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
+        Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
+        TranslationRotationScale3D, Vec3D,
     },
     MsgSender, RecordingStreamBuilder,
 };
@@ -13,8 +14,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("transform").memory()?;
 
     let arrow = rerun::components::Arrow3D {
-        origin: rerun::components::Vec3D::from([0.0, 0.0, 0.0]),
-        vector: rerun::components::Vec3D::from([0.0, 1.0, 0.0]),
+        origin: Vec3D::from([0.0, 0.0, 0.0]).into(),
+        vector: Vec3D::from([0.0, 1.0, 0.0]).into(),
     };
 
     MsgSender::new("base")

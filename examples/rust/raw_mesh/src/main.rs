@@ -12,10 +12,11 @@ use std::path::PathBuf;
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use rerun::components::{Color, Mesh3D, MeshId, RawMesh3D, Transform3D, Vec4D, ViewCoordinates};
-use rerun::transform::TranslationRotationScale3D;
 use rerun::{
+    components::{Color, Mesh3D, MeshId, RawMesh3D, Transform3D, ViewCoordinates},
+    datatypes::Vec4D,
     external::{re_log, re_memory::AccountingAllocator},
+    transform::TranslationRotationScale3D,
     EntityPath, MsgSender, RecordingStream,
 };
 
@@ -38,7 +39,7 @@ impl From<GltfPrimitive> for Mesh3D {
 
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
-            albedo_factor: albedo_factor.map(Vec4D),
+            albedo_factor: albedo_factor.map(Vec4D).map(Into::into),
             indices: indices.map(|i| i.into()),
             vertex_positions: vertex_positions.into_iter().flatten().collect(),
             vertex_normals: vertex_normals.map(|normals| normals.into_iter().flatten().collect()),

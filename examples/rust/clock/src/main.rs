@@ -9,9 +9,12 @@
 
 use std::f32::consts::TAU;
 
-use rerun::components::{Arrow3D, Box3D, Color, Radius, Vec3D, ViewCoordinates};
-use rerun::coordinates::SignedAxis3;
-use rerun::{external::re_log, MsgSender, RecordingStream};
+use rerun::{
+    components::{Arrow3D, Box3D, Color, Point3D, Radius, ViewCoordinates},
+    coordinates::SignedAxis3,
+    external::re_log,
+    MsgSender, RecordingStream,
+};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -45,8 +48,8 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         .with_component(&[Box3D::new(LENGTH_S, LENGTH_S, 1.0)])?
         .send(rec_stream)?;
 
-    fn pos(angle: f32, length: f32) -> Vec3D {
-        Vec3D::new(length * angle.sin(), length * angle.cos(), 0.0)
+    fn pos(angle: f32, length: f32) -> [f32; 3] {
+        [length * angle.sin(), length * angle.cos(), 0.0]
     }
 
     fn color(angle: f32, blue: u8) -> Color {
@@ -63,7 +66,8 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         width: f32,
         blue: u8,
     ) -> anyhow::Result<()> {
-        let point = pos(angle * TAU, length);
+        let pos = pos(angle * TAU, length);
+        let point: Point3D = pos.into();
         let color = color(angle, blue);
 
         rec_stream.set_time_seconds("sim_time", step as f64);
@@ -75,7 +79,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         MsgSender::new(format!("world/{name}_hand"))
             .with_component(&[Arrow3D {
                 origin: glam::Vec3::ZERO.into(),
-                vector: point,
+                vector: pos.into(),
             }])?
             .with_component(&[color])?
             .with_component(&[Radius(width * 0.5)])?

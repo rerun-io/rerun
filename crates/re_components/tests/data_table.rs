@@ -113,9 +113,9 @@ fn data_table_sizes_basics() {
     // struct + fixedsizelist
     let mut cell = DataCell::from_native(
         [
-            re_components::LegacyVec2D::from([42.0, 666.0]),
-            re_components::LegacyVec2D::from([42.0, 666.0]),
-            re_components::LegacyVec2D::from([42.0, 666.0]),
+            re_types::components::Point2D::from([42.0, 666.0]),
+            re_types::components::Point2D::from([42.0, 666.0]),
+            re_types::components::Point2D::from([42.0, 666.0]),
         ]
         .as_slice(),
     );

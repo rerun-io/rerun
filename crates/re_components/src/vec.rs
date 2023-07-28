@@ -77,6 +77,12 @@ impl From<glam::Vec2> for LegacyVec2D {
     }
 }
 
+impl From<re_types::datatypes::Vec2D> for LegacyVec2D {
+    fn from(value: re_types::datatypes::Vec2D) -> Self {
+        Self(value.0)
+    }
+}
+
 impl std::fmt::Display for LegacyVec2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -178,6 +184,12 @@ impl From<glam::Vec3> for LegacyVec3D {
     }
 }
 
+impl From<re_types::datatypes::Vec3D> for LegacyVec3D {
+    fn from(value: re_types::datatypes::Vec3D) -> Self {
+        Self(value.0)
+    }
+}
+
 impl std::fmt::Display for LegacyVec3D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -247,6 +259,12 @@ impl std::fmt::Display for LegacyVec4D {
             self.w(),
             prec = DISPLAY_PRECISION
         )
+    }
+}
+
+impl From<re_types::datatypes::Vec4D> for LegacyVec4D {
+    fn from(value: re_types::datatypes::Vec4D) -> Self {
+        Self(value.0)
     }
 }
 

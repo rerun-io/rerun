@@ -237,16 +237,22 @@ fn test_clean_for_polars_nomodify() {
 mod tests {
     use arrow2::datatypes::{DataType, Field, UnionMode};
     use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-    use re_components::LegacyVec3D;
+    use re_components::FixedSizeArrayField;
     use re_log_types::DataCell;
 
     use crate::ArrayExt;
+
+    #[derive(
+        Copy, Clone, Debug, Default, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize,
+    )]
+    #[arrow_field(transparent)]
+    pub struct Vec3D(#[arrow_field(type = "FixedSizeArrayField<f32,3>")] pub [f32; 3]);
 
     #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
     #[arrow_field(type = "dense")]
     enum TestComponentWithUnionAndFixedSizeList {
         Bool(bool),
-        Vec3D(LegacyVec3D),
+        Vec3D(Vec3D),
     }
 
     re_log_types::component_legacy_shim!(TestComponentWithUnionAndFixedSizeList);
