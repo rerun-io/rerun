@@ -103,7 +103,7 @@ pub fn picking_id_from_instance_key(
 
 /// Process [`Color`] components using annotations and default colors.
 #[allow(dead_code)]
-pub fn process_colors_arch<'a, A: Archetype>(
+pub fn process_colors<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &'a EntityPath,
     annotation_infos: &'a [ResolvedAnnotationInfo],
@@ -122,7 +122,7 @@ pub fn process_colors_arch<'a, A: Archetype>(
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
-pub fn process_radii_arch<'a, A: Archetype>(
+pub fn process_radii<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &EntityPath,
 ) -> Result<impl Iterator<Item = re_renderer::Size> + 'a, re_query::QueryError> {
