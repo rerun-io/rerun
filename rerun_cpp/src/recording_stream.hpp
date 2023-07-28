@@ -49,12 +49,9 @@ namespace rr {
         /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
         /// built-in archetypes.
         ///
-        /// Expects component arrays in continuous memory in with a std::vector/std::array like
-        /// interface, i.e. each component array needs a data & size method.
+        /// Expects component arrays as std::vector, std::array or C arrays.
         ///
         /// TODO(andreas): More documentation, examples etc.
-        /// TODO(andreas): Test with different array types - vector/array seem to work but we should
-        /// also support C arrays.
         template <typename... Ts>
         void log_components(const char* entity_path, const Ts&... component_array) {
             // TODO(andreas): Handle splats.
@@ -62,16 +59,7 @@ namespace rr {
 
             std::vector<DataCell> data_cells;
             data_cells.reserve(sizeof...(Ts));
-            (
-                [&data_cells, &component_array] {
-                    using ComponentType = std::remove_pointer_t<decltype(component_array.data())>;
-                    const auto cell =
-                        ComponentType::to_data_cell(component_array.data(), component_array.size())
-                            .ValueOrDie(); // TODO(andreas): Error handling.
-                    data_cells.push_back(cell);
-                }(),
-                ...
-            );
+            push_data_cells(data_cells, component_array...);
 
             log_data_row(entity_path, num_instances, data_cells.size(), data_cells.data());
         }
@@ -86,11 +74,52 @@ namespace rr {
         );
 
       private:
-        /// Returns size of the first collection of a list of collections.
-        template <typename First, typename... Ts>
-        static size_t size_of_first_collection(const First& first, const Ts&... ts) {
+        template <typename C, typename... Ts>
+        static size_t size_of_first_collection(const std::vector<C>& first, const Ts&... ts) {
             return first.size();
         }
+
+        template <size_t N, typename C, typename... Ts>
+        static size_t size_of_first_collection(const std::array<C, N>& first, const Ts&... ts) {
+            return first.size();
+        }
+
+        template <size_t N, typename C, typename... Ts>
+        static size_t size_of_first_collection(const C (&first)[N], const Ts&... ts) {
+            return N;
+        }
+
+        template <typename C, typename... Ts>
+        static void push_data_cells(
+            std::vector<DataCell>& data_cells, const std::vector<C>& first, const Ts&... rest
+        ) {
+            // TODO(andreas): Error handling.
+            const auto cell = C::to_data_cell(first.data(), first.size()).ValueOrDie();
+            data_cells.push_back(cell);
+            push_data_cells(data_cells, rest...);
+        }
+
+        template <size_t N, typename C, typename... Ts>
+        static void push_data_cells(
+            std::vector<DataCell>& data_cells, const std::array<C, N>& first, const Ts&... rest
+        ) {
+            // TODO(andreas): Error handling.
+            const auto cell = C::to_data_cell(first.data(), N).ValueOrDie();
+            data_cells.push_back(cell);
+            push_data_cells(data_cells, rest...);
+        }
+
+        template <size_t N, typename C, typename... Ts>
+        static void push_data_cells(
+            std::vector<DataCell>& data_cells, const C (&first)[N], const Ts&... rest
+        ) {
+            // TODO(andreas): Error handling.
+            const auto cell = C::to_data_cell(first, N).ValueOrDie();
+            data_cells.push_back(cell);
+            push_data_cells(data_cells, rest...);
+        }
+
+        static void push_data_cells(std::vector<DataCell>& data_cells) {}
 
         RecordingStream() : _id{0} {}
 

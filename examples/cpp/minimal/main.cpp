@@ -27,6 +27,11 @@ int main(int argc, char** argv) {
             .with_instance_keys({66, 666})
     );
 
+    rr::components::Label c_style_array[3] = {
+        rr::components::Label("hello"),
+        rr::components::Label("friend"),
+        rr::components::Label("yo"),
+    };
     rr_stream.log_components(
         "2d/points",
         std::vector{
@@ -38,7 +43,8 @@ int main(int argc, char** argv) {
             rr::components::Color(0xFF0000FF),
             rr::components::Color(0x00FF00FF),
             rr::components::Color(0x0000FFFF),
-        }
+        },
+        c_style_array
     );
 
     // Test some type instantiation
