@@ -122,7 +122,7 @@ In particular, when using the Rust SDK, you work directly with [`components`](ht
 By logging multiple components to an Entity, one can build up Primitives that can later be visualized in the viewer.
 For more information on how the rerun data model works, refer to our section on [entities and components](../concepts/entity-component.md).
 
-Logging components is a only a matter of calling [`MsgSender::with_component`](https://docs.rs/rerun/latest/rerun/struct.MsgSender.html#method.with_component) using any type that implements the [`Component` trait](https://docs.rs/rerun/latest/rerun/trait.Component.html). We provide [a few of those](https://docs.rs/rerun/latest/rerun/trait.Component.html#implementors)).
+Logging components is a only a matter of calling [`MsgSender::with_component`](https://docs.rs/rerun/latest/rerun/struct.MsgSender.html#method.with_component) using any type that implements the [`Component` trait](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html). We provide [a few of those](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html#implementors)).
 
 #### `Batches`
 
@@ -181,7 +181,7 @@ MsgSender::new("dna/structure/scaffolding/beads")
     .send(&recording)?;
 ```
 
-Once again, although we are getting fancier and fancier with our iterator mappings, there is nothing new here: it's all about building out vectors of [`Component`s](https://docs.rs/rerun/latest/rerun/trait.Component.html) and feeding them to the Rerun API.
+Once again, although we are getting fancier and fancier with our iterator mappings, there is nothing new here: it's all about building out vectors of [`Component`s](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html) and feeding them to the Rerun API.
 
 ![logging data - beads](https://static.rerun.io/60c3c762448f68da3f5fdd7927a6e65e11f5385f_logging_data5_beads.png)
 
@@ -303,3 +303,4 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
 As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Loggable Data Types](../reference/data_types.md) section for more simple examples of how to use the main data types.
+

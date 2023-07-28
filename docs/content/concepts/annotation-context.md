@@ -54,7 +54,7 @@ The Annotation Context is defined as a list of Class Descriptions that define ho
 Annotation contexts are logged with:
 
 * Python: [`log_annotation_context`](https://ref.rerun.io/docs/python/latest/common/annotations/#rerun.log_annotation_context)
-* Rust: [`AnnotationContext`](https://docs.rs/rerun/latest/rerun/external/re_log_types/component_types/context/struct.AnnotationContext.html)
+* Rust: [`AnnotationContext`](https://docs.rs/rerun/latest/rerun/components/struct.AnnotationContext.html)
 
 code-example: annotation-context
 
@@ -79,4 +79,5 @@ you can explicitly determine the color of each class.
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/f63cb085ee392f38e6431ab7e8c79aecb1b4e6e1_segmentation_image_768w.png">
   <img src="https://static.rerun.io/716eeff1a99f51a6e77fca85c4e7dccf76b77c69_segmentation_image_full.png" alt="screenshot of a segmentation image">
 </picture>
+
 
