@@ -6,7 +6,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 
-use super::Vec3D;
+use super::LegacyVec3D;
 
 /// A 3x3 column-major Matrix made up of 3 Vecs
 ///
@@ -25,19 +25,19 @@ use super::Vec3D;
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Mat3x3([Vec3D; 3]);
+pub struct Mat3x3([LegacyVec3D; 3]);
 
 impl Mat3x3 {
     pub const IDENTITY: Mat3x3 = Mat3x3([
-        Vec3D([1.0, 0.0, 0.0]),
-        Vec3D([0.0, 1.0, 0.0]),
-        Vec3D([0.0, 0.0, 1.0]),
+        LegacyVec3D([1.0, 0.0, 0.0]),
+        LegacyVec3D([0.0, 1.0, 0.0]),
+        LegacyVec3D([0.0, 0.0, 1.0]),
     ]);
 }
 
 impl<Idx> std::ops::Index<Idx> for Mat3x3
 where
-    Idx: std::slice::SliceIndex<[Vec3D]>,
+    Idx: std::slice::SliceIndex<[LegacyVec3D]>,
 {
     type Output = Idx::Output;
 
@@ -50,7 +50,7 @@ where
 impl From<[[f32; 3]; 3]> for Mat3x3 {
     #[inline]
     fn from(v: [[f32; 3]; 3]) -> Self {
-        Self([Vec3D(v[0]), Vec3D(v[1]), Vec3D(v[2])])
+        Self([LegacyVec3D(v[0]), LegacyVec3D(v[1]), LegacyVec3D(v[2])])
     }
 }
 
@@ -113,9 +113,9 @@ impl ArrowDeserialize for Mat3x3 {
                 .values()
                 .as_slice();
             Mat3x3([
-                Vec3D(slice[0..3].try_into().unwrap()),
-                Vec3D(slice[3..6].try_into().unwrap()),
-                Vec3D(slice[6..9].try_into().unwrap()),
+                LegacyVec3D(slice[0..3].try_into().unwrap()),
+                LegacyVec3D(slice[3..6].try_into().unwrap()),
+                LegacyVec3D(slice[6..9].try_into().unwrap()),
             ])
         })
     }

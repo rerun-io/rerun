@@ -1,4 +1,4 @@
-use re_components::{Box3D, Quaternion, Vec3D};
+use re_components::{Box3D, Quaternion, LegacyVec3D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
@@ -46,7 +46,7 @@ impl Boxes3DPart {
 
         let visitor = |instance_key: InstanceKey,
                        half_size: Box3D,
-                       position: Option<Vec3D>,
+                       position: Option<LegacyVec3D>,
                        rotation: Option<Quaternion>,
                        color: Option<Color>,
                        radius: Option<Radius>,
@@ -108,7 +108,7 @@ impl ViewPartSystem for Boxes3DPart {
         vec1::vec1![
             Box3D::name(),
             InstanceKey::name(),
-            Vec3D::name(),      // obb.position
+            LegacyVec3D::name(),      // obb.position
             Quaternion::name(), // obb.rotation
             Color::name(),
             Radius::name(), // stroke_width

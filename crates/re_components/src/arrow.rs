@@ -1,4 +1,4 @@
-use super::Vec3D;
+use super::LegacyVec3D;
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 /// A 3D Arrow
@@ -31,8 +31,8 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 #[derive(Copy, Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Arrow3D {
-    pub origin: Vec3D,
-    pub vector: Vec3D,
+    pub origin: LegacyVec3D,
+    pub vector: LegacyVec3D,
 }
 
 impl re_log_types::LegacyComponent for Arrow3D {

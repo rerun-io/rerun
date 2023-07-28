@@ -75,7 +75,7 @@ pub use self::{
     tensor_data::{TensorDataType, TensorDataTypeTrait, TensorElement},
     text_box::TextBox,
     text_entry::TextEntry,
-    vec::{LegacyVec2D, Vec3D, Vec4D},
+    vec::{LegacyVec2D, LegacyVec3D, Vec4D},
 };
 
 #[cfg(feature = "image")]
@@ -120,7 +120,7 @@ lazy_static! {
         <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
         <LegacyVec2D as LegacyComponent>::field(),
-        <Vec3D as LegacyComponent>::field(),
+        <LegacyVec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
         Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),
         Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),

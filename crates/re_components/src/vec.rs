@@ -111,10 +111,10 @@ re_log_types::component_legacy_shim!(LegacyVec2D);
 #[derive(Copy, Clone, Debug, Default, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
-pub struct Vec3D(#[arrow_field(type = "FixedSizeArrayField<f32,3>")] pub [f32; 3]);
+pub struct LegacyVec3D(#[arrow_field(type = "FixedSizeArrayField<f32,3>")] pub [f32; 3]);
 
-impl Vec3D {
-    pub const ZERO: Vec3D = Vec3D([0.0; 3]);
+impl LegacyVec3D {
+    pub const ZERO: LegacyVec3D = LegacyVec3D([0.0; 3]);
 
     #[inline]
     pub fn new(x: f32, y: f32, z: f32) -> Self {
@@ -137,14 +137,14 @@ impl Vec3D {
     }
 }
 
-impl From<[f32; 3]> for Vec3D {
+impl From<[f32; 3]> for LegacyVec3D {
     #[inline]
     fn from(v: [f32; 3]) -> Self {
         Self(v)
     }
 }
 
-impl<Idx> std::ops::Index<Idx> for Vec3D
+impl<Idx> std::ops::Index<Idx> for LegacyVec3D
 where
     Idx: std::slice::SliceIndex<[f32]>,
 {
@@ -156,29 +156,29 @@ where
     }
 }
 
-impl re_log_types::LegacyComponent for Vec3D {
+impl re_log_types::LegacyComponent for LegacyVec3D {
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.vec3d".into()
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<Vec3D> for glam::Vec3 {
+impl From<LegacyVec3D> for glam::Vec3 {
     #[inline]
-    fn from(v: Vec3D) -> Self {
+    fn from(v: LegacyVec3D) -> Self {
         Self::from_slice(&v.0)
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<glam::Vec3> for Vec3D {
+impl From<glam::Vec3> for LegacyVec3D {
     #[inline]
     fn from(v: glam::Vec3) -> Self {
         Self(v.to_array())
     }
 }
 
-impl std::fmt::Display for Vec3D {
+impl std::fmt::Display for LegacyVec3D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -191,7 +191,7 @@ impl std::fmt::Display for Vec3D {
     }
 }
 
-re_log_types::component_legacy_shim!(Vec3D);
+re_log_types::component_legacy_shim!(LegacyVec3D);
 
 // --- Vec4D ---
 

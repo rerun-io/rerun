@@ -237,7 +237,7 @@ fn test_clean_for_polars_nomodify() {
 mod tests {
     use arrow2::datatypes::{DataType, Field, UnionMode};
     use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-    use re_components::Vec3D;
+    use re_components::LegacyVec3D;
     use re_log_types::DataCell;
 
     use crate::ArrayExt;
@@ -246,7 +246,7 @@ mod tests {
     #[arrow_field(type = "dense")]
     enum TestComponentWithUnionAndFixedSizeList {
         Bool(bool),
-        Vec3D(Vec3D),
+        Vec3D(LegacyVec3D),
     }
 
     re_log_types::component_legacy_shim!(TestComponentWithUnionAndFixedSizeList);
