@@ -1,7 +1,7 @@
 use egui::Vec2;
 
 use re_components::{
-    LineStrip2D, LineStrip3D, Mat3x3, Rect2D, LegacyVec2D, LegacyVec3D, Vec4D, ViewCoordinates,
+    LineStrip2D, LineStrip3D, Mat3x3, Rect2D, LegacyVec2D, LegacyVec3D, LegacyVec4D, ViewCoordinates,
 };
 use re_format::format_f32;
 use re_types::components::Color;
@@ -184,21 +184,21 @@ impl DataUi for Rect2D {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         ui.label(match self {
-            Rect2D::XYWH(Vec4D([top, left, width, height]))
-            | Rect2D::YXHW(Vec4D([left, top, height, width])) => {
+            Rect2D::XYWH(LegacyVec4D([top, left, width, height]))
+            | Rect2D::YXHW(LegacyVec4D([left, top, height, width])) => {
                 format!("top: {top}, left: {left}, width: {width}, height: {height}")
             }
-            Rect2D::XYXY(Vec4D([left, top, right, bottom]))
-            | Rect2D::YXYX(Vec4D([top, left, bottom, right])) => {
+            Rect2D::XYXY(LegacyVec4D([left, top, right, bottom]))
+            | Rect2D::YXYX(LegacyVec4D([top, left, bottom, right])) => {
                 format!("top: {top}, left: {left}, right: {right}, bottom: {bottom}")
             }
-            Rect2D::XCYCWH(Vec4D([center_x, center_y, width, height])) => {
+            Rect2D::XCYCWH(LegacyVec4D([center_x, center_y, width, height])) => {
                 format!(
                     "center: {}, width: {width}, height: {height}",
                     LegacyVec2D([*center_x, *center_y])
                 )
             }
-            Rect2D::XCYCW2H2(Vec4D([center_x, center_y, half_width, half_height])) => {
+            Rect2D::XCYCW2H2(LegacyVec4D([center_x, center_y, half_width, half_height])) => {
                 format!(
                     "center: {}, half-width: {half_width}, half-height: {half_height}",
                     LegacyVec2D([*center_x, *center_y])

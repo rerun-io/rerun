@@ -6,7 +6,7 @@ use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use super::{FieldError, Vec4D};
+use super::{FieldError, LegacyVec4D};
 
 // ----------------------------------------------------------------------------
 
@@ -163,7 +163,7 @@ pub struct RawMesh3D {
     /// Albedo factor applied to the final color of the mesh.
     ///
     /// `[1.0, 1.0, 1.0, 1.0]` if unspecified.
-    pub albedo_factor: Option<Vec4D>,
+    pub albedo_factor: Option<LegacyVec4D>,
     //
     // TODO(cmc): We need to support vertex colors and/or texturing, otherwise it's pretty
     // hard to see anything with complex enough meshes (and hovering doesn't really help
@@ -437,7 +437,7 @@ mod tests {
             vertex_normals: Some(
                 vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
             ),
-            albedo_factor: Vec4D([0.5, 0.5, 0.5, 1.0]).into(),
+            albedo_factor: LegacyVec4D([0.5, 0.5, 0.5, 1.0]).into(),
         };
         mesh.sanity_check().unwrap();
         mesh

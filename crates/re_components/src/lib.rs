@@ -75,7 +75,7 @@ pub use self::{
     tensor_data::{TensorDataType, TensorDataTypeTrait, TensorElement},
     text_box::TextBox,
     text_entry::TextEntry,
-    vec::{LegacyVec2D, LegacyVec3D, Vec4D},
+    vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D},
 };
 
 #[cfg(feature = "image")]

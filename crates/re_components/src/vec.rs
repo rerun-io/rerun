@@ -212,9 +212,9 @@ re_log_types::component_legacy_shim!(LegacyVec3D);
 #[derive(Copy, Clone, Debug, Default, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
-pub struct Vec4D(#[arrow_field(type = "FixedSizeArrayField<f32,4>")] pub [f32; 4]);
+pub struct LegacyVec4D(#[arrow_field(type = "FixedSizeArrayField<f32,4>")] pub [f32; 4]);
 
-impl Vec4D {
+impl LegacyVec4D {
     #[inline]
     pub fn x(&self) -> f32 {
         self.0[0]
@@ -236,7 +236,7 @@ impl Vec4D {
     }
 }
 
-impl std::fmt::Display for Vec4D {
+impl std::fmt::Display for LegacyVec4D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -253,8 +253,11 @@ impl std::fmt::Display for Vec4D {
 #[test]
 fn test_vec4d() {
     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
-    let data = [Vec4D([0.0, 1.0, 2.0, 3.0]), Vec4D([0.1, 1.1, 2.1, 3.1])];
+    let data = [
+        LegacyVec4D([0.0, 1.0, 2.0, 3.0]),
+        LegacyVec4D([0.1, 1.1, 2.1, 3.1]),
+    ];
     let array: Box<dyn arrow2::array::Array> = data.try_into_arrow().unwrap();
-    let ret: Vec<Vec4D> = array.try_into_collection().unwrap();
+    let ret: Vec<LegacyVec4D> = array.try_into_collection().unwrap();
     assert_eq!(&data, ret.as_slice());
 }
