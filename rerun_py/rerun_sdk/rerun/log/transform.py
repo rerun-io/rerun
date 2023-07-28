@@ -5,8 +5,6 @@ Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/s
 """
 from __future__ import annotations
 
-from typing import Any
-
 import numpy.typing as npt
 from deprecated import deprecated
 
