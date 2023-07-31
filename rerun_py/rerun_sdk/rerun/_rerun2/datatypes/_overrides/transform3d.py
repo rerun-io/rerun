@@ -140,7 +140,11 @@ def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
         return pa.FixedSizeListArray.from_arrays(mat.coeffs, type=Mat3x3Type().storage_type)
 
 
-# TODO: explain...
+# TODO(#2871): Calling `pa.nulls` on a nullable fixed size list of non-nullable
+# floats (i.e. `Vec<Option<[f32; N]>>`) actually generates a nullable fixed size list
+# of nullable floats (i.e. `Vec<Option<[Option<f32>; N]>>`), which breaks upon deserialization.
+# For now we just handle the issue here by generating the correct thing.
+# See the associated issue for a more long-term solution.
 def nulls_outer_fixed_size_list(length: int, type_: pa.DataType) -> pa.Array:
     if isinstance(type_, pa.FixedSizeListType) and type_.value_type == pa.float32():
         inner_data = pa.array(np.zeros((type_.list_size,), dtype=np.float32), type=type_.value_type)
