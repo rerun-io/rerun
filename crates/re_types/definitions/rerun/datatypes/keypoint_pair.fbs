@@ -1,0 +1,17 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+
+// Include components directly to avoid circular dependencies.
+include "rerun/components/keypoint_id.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A connection between two `Keypoints`.
+table KeypointPair (
+  order: 100
+) {
+  keypoint0: rerun.components.KeypointId (order: 100);
+  keypoint1: rerun.components.KeypointId (order: 200);
+}

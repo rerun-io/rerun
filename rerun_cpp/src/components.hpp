@@ -22,6 +22,7 @@
 #include "components/affix_fuzzer7.hpp"
 #include "components/affix_fuzzer8.hpp"
 #include "components/affix_fuzzer9.hpp"
+#include "components/annotation_context.hpp"
 #include "components/class_id.hpp"
 #include "components/color.hpp"
 #include "components/disconnected_space.hpp"

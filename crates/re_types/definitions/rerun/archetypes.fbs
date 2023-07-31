@@ -1,3 +1,4 @@
+include "./archetypes/annotation_context.fbs";
 include "./archetypes/disconnected_space.fbs";
 include "./archetypes/points2d.fbs";
 include "./archetypes/points3d.fbs";

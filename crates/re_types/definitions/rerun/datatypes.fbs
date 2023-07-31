@@ -1,6 +1,10 @@
 include "./datatypes/angle.fbs";
 include "./datatypes/mat3x3.fbs";
 include "./datatypes/mat4x4.fbs";
+include "./datatypes/annotation_info.fbs";
+include "./datatypes/class_description.fbs";
+include "./datatypes/class_description_map_elem.fbs";
+include "./datatypes/keypoint_pair.fbs";
 include "./datatypes/point2d.fbs";
 include "./datatypes/point3d.fbs";
 include "./datatypes/quaternion.fbs";
@@ -14,5 +18,6 @@ include "./datatypes/translation_rotation_scale3d.fbs";
 include "./datatypes/vec2d.fbs";
 include "./datatypes/vec3d.fbs";
 include "./datatypes/vec4d.fbs";
+
 
 namespace rerun.datatypes;

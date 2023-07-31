@@ -1,0 +1,28 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+
+// Include components directly to avoid circular dependencies.
+include "rerun/components/label.fbs";
+include "rerun/components/color.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// Annotation info annotating a class id or key-point id.
+/// Color and label will be used to annotate entities/keypoints which reference the id.
+/// The id refers either to a class or key-point id
+// TODO(jleibs): Figure out how to refer to ColorLike in this context
+//"attr.python.aliases": "Tuple[int, str], Tuple[int, str, components.ColorLike]]]",
+table AnnotationInfo (
+  "attr.python.aliases": "Tuple[int, str], Tuple[int, str, Union[int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]]",
+  order: 500
+) {
+  /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
+  // TODO(jleibs): make this typed
+  id: ushort (order: 100);
+  /// The label that will be shown in the UI.
+  label: rerun.components.Label (nullable, order: 200);
+  /// The color that will be applied to the annotated entity.
+  color: rerun.components.Color (nullable, order: 300);
+}
