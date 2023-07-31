@@ -35,6 +35,7 @@ src/datatypes/vec4d.rs linguist-generated=true
 src/testing/archetypes/fuzzy.rs linguist-generated=true
 src/testing/archetypes/mod.rs linguist-generated=true
 src/testing/components/fuzzy.rs linguist-generated=true
+src/testing/components/fuzzy_deps.rs linguist-generated=true
 src/testing/components/mod.rs linguist-generated=true
 src/testing/datatypes/fuzzy.rs linguist-generated=true
 src/testing/datatypes/mod.rs linguist-generated=true

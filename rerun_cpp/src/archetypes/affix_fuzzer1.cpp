@@ -15,6 +15,7 @@
 #include "../components/affix_fuzzer18.hpp"
 #include "../components/affix_fuzzer19.hpp"
 #include "../components/affix_fuzzer2.hpp"
+#include "../components/affix_fuzzer20.hpp"
 #include "../components/affix_fuzzer3.hpp"
 #include "../components/affix_fuzzer4.hpp"
 #include "../components/affix_fuzzer5.hpp"
@@ -29,7 +30,7 @@ namespace rr {
     namespace archetypes {
         arrow::Result<std::vector<rr::DataCell>> AffixFuzzer1::to_data_cells() const {
             std::vector<rr::DataCell> cells;
-            cells.reserve(73);
+            cells.reserve(74);
 
             {
                 ARROW_ASSIGN_OR_RAISE(
@@ -161,6 +162,13 @@ namespace rr {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
                     rr::components::AffixFuzzer19::to_data_cell(&fuzz1019, 1)
+                );
+                cells.push_back(cell);
+            }
+            {
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::AffixFuzzer20::to_data_cell(&fuzz1020, 1)
                 );
                 cells.push_back(cell);
             }

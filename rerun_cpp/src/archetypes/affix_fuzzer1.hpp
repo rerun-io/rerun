@@ -15,6 +15,7 @@
 #include "../components/affix_fuzzer18.hpp"
 #include "../components/affix_fuzzer19.hpp"
 #include "../components/affix_fuzzer2.hpp"
+#include "../components/affix_fuzzer20.hpp"
 #include "../components/affix_fuzzer3.hpp"
 #include "../components/affix_fuzzer4.hpp"
 #include "../components/affix_fuzzer5.hpp"
@@ -70,6 +71,8 @@ namespace rr {
             rr::components::AffixFuzzer18 fuzz1018;
 
             rr::components::AffixFuzzer19 fuzz1019;
+
+            rr::components::AffixFuzzer20 fuzz1020;
 
             std::vector<rr::components::AffixFuzzer1> fuzz1101;
 
@@ -190,7 +193,7 @@ namespace rr {
                 rr::components::AffixFuzzer13 fuzz1013, rr::components::AffixFuzzer14 fuzz1014,
                 rr::components::AffixFuzzer15 fuzz1015, rr::components::AffixFuzzer16 fuzz1016,
                 rr::components::AffixFuzzer17 fuzz1017, rr::components::AffixFuzzer18 fuzz1018,
-                rr::components::AffixFuzzer19 fuzz1019,
+                rr::components::AffixFuzzer19 fuzz1019, rr::components::AffixFuzzer20 fuzz1020,
                 std::vector<rr::components::AffixFuzzer1> fuzz1101,
                 std::vector<rr::components::AffixFuzzer2> fuzz1102,
                 std::vector<rr::components::AffixFuzzer3> fuzz1103,
@@ -229,6 +232,7 @@ namespace rr {
                   fuzz1017(std::move(fuzz1017)),
                   fuzz1018(std::move(fuzz1018)),
                   fuzz1019(std::move(fuzz1019)),
+                  fuzz1020(std::move(fuzz1020)),
                   fuzz1101(std::move(fuzz1101)),
                   fuzz1102(std::move(fuzz1102)),
                   fuzz1103(std::move(fuzz1103)),
