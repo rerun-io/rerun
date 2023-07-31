@@ -252,7 +252,7 @@ def log_transform3d(
         angle = rrd.Angle(rad=transform.radians) if transform.radians is not None else rrd.Angle(deg=transform.degrees)
         new_transform = rrd.TranslationRotationScale3D(rotation=rrd.RotationAxisAngle(axis=np.array(axis), angle=angle))
     elif isinstance(transform, Quaternion):
-        quat = rrd.Quaternion(transform.xyzw)
+        quat = rrd.Quaternion(xyzw=transform.xyzw)
         new_transform = rrd.TranslationRotationScale3D(rotation=quat)
     elif isinstance(transform, Translation3D):
         translation = transform.translation
@@ -275,7 +275,7 @@ def log_transform3d(
 
         rotation = None
         if isinstance(transform.rotation, Quaternion):
-            rotation = rrd.Rotation3D(rrd.Quaternion(transform.rotation.xyzw))
+            rotation = rrd.Rotation3D(rrd.Quaternion(xyzw=transform.rotation.xyzw))
         elif isinstance(transform.rotation, RotationAxisAngle):
             axis = transform.rotation.axis
             angle = (
