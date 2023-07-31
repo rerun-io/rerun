@@ -250,16 +250,18 @@ def log_transform3d(
     if isinstance(transform, RotationAxisAngle):
         axis = transform.axis
         angle = rrd.Angle(rad=transform.radians) if transform.radians is not None else rrd.Angle(deg=transform.degrees)
-        new_transform = rrd.TranslationRotationScale3D(rotation=rrd.RotationAxisAngle(axis=np.array(axis), angle=angle))
+        new_transform = rrd.TranslationRotationScale3D(
+            rotation=rrd.RotationAxisAngle(axis=np.array(axis), angle=angle), from_parent=from_parent
+        )
     elif isinstance(transform, Quaternion):
         quat = rrd.Quaternion(xyzw=transform.xyzw)
-        new_transform = rrd.TranslationRotationScale3D(rotation=quat)
+        new_transform = rrd.TranslationRotationScale3D(rotation=quat, from_parent=from_parent)
     elif isinstance(transform, Translation3D):
         translation = transform.translation
-        new_transform = rrd.TranslationRotationScale3D(translation=translation)
+        new_transform = rrd.TranslationRotationScale3D(translation=translation, from_parent=from_parent)
     elif isinstance(transform, Scale3D):
         scale = transform.scale
-        new_transform = rrd.TranslationRotationScale3D(scale=scale)
+        new_transform = rrd.TranslationRotationScale3D(scale=scale, from_parent=from_parent)
     elif isinstance(transform, Rigid3D):
         return log_transform3d(
             entity_path,
@@ -272,6 +274,8 @@ def log_transform3d(
         translation = None
         if isinstance(transform.translation, Translation3D):
             translation = transform.translation.translation
+        elif transform.translation is not None:
+            translation = transform.translation
 
         rotation = None
         if isinstance(transform.rotation, Quaternion):
@@ -288,16 +292,20 @@ def log_transform3d(
         scale = None
         if isinstance(transform.scale, Scale3D):
             scale = transform.scale.scale
+        elif transform.scale is not None:
+            scale = transform.scale
 
-        new_transform = rrd.TranslationRotationScale3D(translation, rotation, scale)
+        new_transform = rrd.TranslationRotationScale3D(translation, rotation, scale, from_parent=from_parent)
     elif isinstance(transform, TranslationAndMat3):
         translation = None
         if isinstance(transform.translation, Translation3D):
             translation = transform.translation.translation
+        elif transform.translation is not None:
+            translation = transform.translation
 
         return log(
             entity_path,
-            Transform3D(rrd.TranslationAndMat3x3(translation, transform.matrix)),
+            Transform3D(rrd.TranslationAndMat3x3(translation, transform.matrix, from_parent=from_parent)),
             timeless=timeless,
             recording=recording,
         )
