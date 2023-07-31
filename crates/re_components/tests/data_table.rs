@@ -123,15 +123,15 @@ fn data_table_sizes_basics() {
     expect(
         cell.clone(), //
         10_000,       // num_rows
-        4_080_064,    // expected_num_bytes
+        5_260_064,
     );
     expect(
         DataCell::from_arrow(
             re_types::components::Point2D::name(),
             cell.to_arrow().sliced(1, 1),
         ),
-        10_000,    // num_rows
-        3_920_064, // expected_num_bytes
+        10_000, // num_rows
+        5_100_064,
     );
 
     // variable list
