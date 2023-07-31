@@ -9,7 +9,6 @@ from rerun import bindings
 from rerun.components import instance_key_splat
 from rerun.components.box import Box3DArray
 from rerun.components.quaternion import QuaternionArray
-from rerun.components.vec import Vec3DArray
 from rerun.log import (
     Color,
     Colors,
@@ -82,6 +81,7 @@ def log_obb(
 
     """
     from rerun.experimental import cmp as rrc
+    from rerun.experimental import dt as rrd
 
     recording = RecordingStream.to_native(recording)
 
@@ -100,7 +100,7 @@ def log_obb(
         position = np.require(position, dtype="float32")
 
         if position.shape[0] == 3:
-            instanced["rerun.vec3d"] = Vec3DArray.from_numpy(position.reshape(1, 3))
+            instanced["rerun.vec3d"] = rrd.Vec3DArray.from_similar(position.reshape(1, 3))
         else:
             raise TypeError("position should be 1x3")
 
@@ -199,6 +199,7 @@ def log_obbs(
 
     """
     from rerun.experimental import cmp as rrc
+    from rerun.experimental import dt as rrd
 
     recording = RecordingStream.to_native(recording)
 
@@ -223,7 +224,7 @@ def log_obbs(
         positions = np.require(positions, dtype="float32")
 
         if len(positions) == 0 or positions.shape[1] == 3:
-            comps[0]["rerun.vec3d"] = Vec3DArray.from_numpy(positions)
+            comps[0]["rerun.vec3d"] = rrd.Vec3DArray.from_similar(positions)
         else:
             raise TypeError("position should be 1x3")
 
