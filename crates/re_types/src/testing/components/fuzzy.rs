@@ -3627,7 +3627,7 @@ impl crate::Loggable for AffixFuzzer20 {
         Ok(
             crate::testing::datatypes::AffixFuzzer20::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer20#primitive".into(),
+                    location: "rerun.testing.components.AffixFuzzer20#nested_transparent".into(),
                     source: Box::new(err),
                 })?
                 .into_iter()
@@ -3639,7 +3639,7 @@ impl crate::Loggable for AffixFuzzer20 {
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer20#primitive".into(),
+                    location: "rerun.testing.components.AffixFuzzer20#nested_transparent".into(),
                     source: Box::new(err),
                 })?,
         )

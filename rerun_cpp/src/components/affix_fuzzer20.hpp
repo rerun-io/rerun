@@ -13,14 +13,14 @@
 namespace rr {
     namespace components {
         struct AffixFuzzer20 {
-            rr::datatypes::AffixFuzzer20 primitive;
+            rr::datatypes::AffixFuzzer20 nested_transparent;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
-            AffixFuzzer20(rr::datatypes::AffixFuzzer20 primitive)
-                : primitive(std::move(primitive)) {}
+            AffixFuzzer20(rr::datatypes::AffixFuzzer20 nested_transparent)
+                : nested_transparent(std::move(nested_transparent)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
