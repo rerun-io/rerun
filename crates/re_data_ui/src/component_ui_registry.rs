@@ -30,9 +30,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
-    // The things that are out-commented are components we have, but
-    // where the default arrow-format for them looks good enough (at least for now).
-    // Basically: adding custom UI:s for these out-commented components would be nice, but is not a must.
     add::<re_components::AnnotationContext>(&mut registry);
     add::<re_components::LineStrip2D>(&mut registry);
     add::<re_components::LineStrip3D>(&mut registry);
@@ -41,13 +38,17 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_components::Rect2D>(&mut registry);
     add::<re_components::Tensor>(&mut registry);
     add::<re_components::TextEntry>(&mut registry);
-    add::<re_components::LegacyVec2D>(&mut registry); // TODO
-    add::<re_components::LegacyVec3D>(&mut registry); // TODO
+    add::<re_components::LegacyVec2D>(&mut registry); // TODO(cmc): remove post-migration
+    add::<re_components::LegacyVec3D>(&mut registry); // TODO(cmc): remove post-migration
     add::<re_components::ViewCoordinates>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);
     add::<re_types::components::Color>(&mut registry);
     add::<re_types::components::KeypointId>(&mut registry);
     add::<re_types::components::Transform3D>(&mut registry);
+    // TODO(cmc): We need to support querying for datatypes rather than components first.
+    // add::<re_types::datatypes::Vec2D>(&mut registry);
+    // add::<re_types::datatypes::Vec3D>(&mut registry);
+    // add::<re_types::datatypes::Vec4D>(&mut registry);
 
     registry
 }

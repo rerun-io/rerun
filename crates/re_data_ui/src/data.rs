@@ -138,7 +138,7 @@ impl DataUi for LegacyVec2D {
     }
 }
 
-// TODO: annihilate legacy
+// TODO(cmc): annihilate legacy
 impl DataUi for re_types::datatypes::Vec2D {
     fn data_ui(
         &self,
@@ -163,7 +163,7 @@ impl DataUi for LegacyVec3D {
     }
 }
 
-// TODO: annihilate legacy
+// TODO(cmc): annihilate legacy
 impl DataUi for re_types::datatypes::Vec3D {
     fn data_ui(
         &self,
