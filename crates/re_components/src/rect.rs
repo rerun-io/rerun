@@ -8,18 +8,18 @@ use super::LegacyVec4D;
 ///
 /// ## Example
 /// ```
-/// # use re_components::{Rect2D, Vec4D};
+/// # use re_components::{Rect2D, LegacyVec4D};
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(
 ///     Rect2D::data_type(),
 ///     DataType::Union(vec![
-///         Field::new("XYWH", Vec4D::data_type(), false),
-///         Field::new("YXHW", Vec4D::data_type(), false),
-///         Field::new("XYXY", Vec4D::data_type(), false),
-///         Field::new("YXYX", Vec4D::data_type(), false),
-///         Field::new("XCYCWH", Vec4D::data_type(), false),
-///         Field::new("XCYCW2H2", Vec4D::data_type(), false),
+///         Field::new("XYWH", LegacyVec4D::data_type(), false),
+///         Field::new("YXHW", LegacyVec4D::data_type(), false),
+///         Field::new("XYXY", LegacyVec4D::data_type(), false),
+///         Field::new("YXYX", LegacyVec4D::data_type(), false),
+///         Field::new("XCYCWH", LegacyVec4D::data_type(), false),
+///         Field::new("XCYCW2H2", LegacyVec4D::data_type(), false),
 ///     ], None, UnionMode::Dense)
 /// );
 /// ```

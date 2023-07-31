@@ -11,12 +11,12 @@ use super::LegacyVec3D;
 /// A 3x3 column-major Matrix made up of 3 Vecs
 ///
 /// ```
-/// use re_components::Mat3x3;
+/// use re_components::LegacyMat3x3;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
 /// assert_eq!(
-///     Mat3x3::data_type(),
+///     LegacyMat3x3::data_type(),
 ///     DataType::FixedSizeList(
 ///         Box::new(Field::new("item", DataType::Float32, false)),
 ///         9

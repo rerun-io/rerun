@@ -10,11 +10,11 @@ const DISPLAY_PRECISION: usize = 3;
 /// A vector in 2D space.
 ///
 /// ```
-/// # use re_components::Vec2D;
+/// # use re_components::LegacyVec2D;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
-///     Vec2D::data_type(),
+///     LegacyVec2D::data_type(),
 ///     DataType::FixedSizeList(
 ///         Box::new(Field::new("item", DataType::Float32, false)),
 ///         2
@@ -102,12 +102,12 @@ re_log_types::component_legacy_shim!(LegacyVec2D);
 /// A vector in 3D space.
 ///
 /// ```
-/// use re_components::Vec3D;
+/// use re_components::LegacyVec3D;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
 /// assert_eq!(
-///     Vec3D::data_type(),
+///     LegacyVec3D::data_type(),
 ///     DataType::FixedSizeList(
 ///         Box::new(Field::new("item", DataType::Float32, false)),
 ///         3
@@ -210,11 +210,11 @@ re_log_types::component_legacy_shim!(LegacyVec3D);
 /// A vector in 4D space.
 ///
 /// ```
-/// # use re_components::Vec4D;
+/// # use re_components::LegacyVec4D;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
-///     Vec4D::data_type(),
+///     LegacyVec4D::data_type(),
 ///     DataType::FixedSizeList(
 ///         Box::new(Field::new("item", DataType::Float32, false)),
 ///         4
