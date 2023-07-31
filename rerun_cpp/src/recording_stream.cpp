@@ -4,42 +4,65 @@
 #include "rerun.h"
 
 #include <arrow/buffer.h>
-#include <loguru.hpp>
 #include <vector>
 
 namespace rr {
-    RecordingStream RecordingStream::s_global;
-
-    RecordingStream::RecordingStream(const char* app_id, const char* addr, StoreKind store_kind) {
-        ERROR_CONTEXT("RecordingStream", "");
-
-        int32_t c_store_kind;
+    static int32_t store_kind_to_c(StoreKind store_kind) {
         switch (store_kind) {
             case StoreKind::Recording:
-                c_store_kind = RERUN_STORE_KIND_RECORDING;
-                break;
-            case StoreKind::Blueprint:
-                c_store_kind = RERUN_STORE_KIND_BLUEPRINT;
-                break;
-        }
+                return RERUN_STORE_KIND_RECORDING;
 
-        rr_store_info store_info = {
-            .application_id = app_id,
-            .store_kind = c_store_kind,
-        };
-        this->_id = rr_recording_stream_new(&store_info, addr);
+            case StoreKind::Blueprint:
+                return RERUN_STORE_KIND_BLUEPRINT;
+        }
+    }
+
+    RecordingStream::RecordingStream(const char* app_id, StoreKind store_kind)
+        : _store_kind(store_kind) {
+        rr_store_info store_info;
+        store_info.application_id = app_id;
+        store_info.store_kind = store_kind_to_c(store_kind);
+
+        this->_id = rr_recording_stream_new(&store_info);
     }
 
     RecordingStream::~RecordingStream() {
         rr_recording_stream_free(this->_id);
     }
 
-    void RecordingStream::init_global(const char* app_id, const char* addr) {
-        s_global = RecordingStream{app_id, addr};
+    void RecordingStream::set_global() {
+        rr_recording_stream_set_global(_id, store_kind_to_c(_store_kind));
     }
 
-    RecordingStream RecordingStream::global() {
-        return s_global;
+    void RecordingStream::set_thread_local() {
+        rr_recording_stream_set_thread_local(_id, store_kind_to_c(_store_kind));
+    }
+
+    RecordingStream& RecordingStream::current(StoreKind store_kind) {
+        switch (store_kind) {
+            case StoreKind::Recording: {
+                static RecordingStream current_recording(
+                    RERUN_STORE_KIND_RECORDING,
+                    StoreKind::Recording
+                );
+                return current_recording;
+            }
+            case StoreKind::Blueprint: {
+                static RecordingStream current_blueprint(
+                    RERUN_STORE_KIND_BLUEPRINT,
+                    StoreKind::Blueprint
+                );
+                return current_blueprint;
+            }
+        }
+    }
+
+    void RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
+        rr_recording_stream_connect(_id, tcp_addr, flush_timeout_sec);
+    }
+
+    void RecordingStream::save(const char* path) {
+        rr_recording_stream_save(_id, path);
     }
 
     void RecordingStream::log_data_row(
@@ -64,6 +87,6 @@ namespace rr {
             .data_cells = c_data_cells.data(),
         };
 
-        rr_log(this->_id, &c_data_row);
+        rr_log(_id, &c_data_row, true);
     }
 } // namespace rr

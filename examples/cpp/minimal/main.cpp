@@ -11,7 +11,8 @@ int main(int argc, char** argv) {
 
     LOG_F(INFO, "Rerun C++ SDK version: %s", rr::version_string());
 
-    auto rr_stream = rr::RecordingStream{"c-example-app", "127.0.0.1:9876"};
+    auto rr_stream = rr::RecordingStream("c-example-app");
+    rr_stream.connect("127.0.0.1:9876");
 
     rr_stream.log_archetype(
         "3d/points",
