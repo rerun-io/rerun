@@ -1050,8 +1050,10 @@ fn quote_fill_arrow_array_builder(
             if field.is_nullable {
                 let item_append = if trivial_batch_append(field.data_type()) {
                     // `&expression[0]` is not pretty but works on both arrays and vectors!
+                    let element_ptr_accessor =
+                        quote_batch_append_cast(datatype, quote!(&element.#field_name.value()[0]));
                     quote! {
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(&element.#field_name.value()[0], #num_items_per_element, nullptr));
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(#element_ptr_accessor, #num_items_per_element, nullptr));
                     }
                 } else {
                     quote! {
@@ -1076,11 +1078,13 @@ fn quote_fill_arrow_array_builder(
                 && trivial_batch_append(field.data_type())
             {
                 // Optimize common case: Trivial batch of transparent fixed size elements.
+                let element_ptr_accessor =
+                    quote_batch_append_cast(datatype, quote!(elements[0].#field_name));
                 quote! {
                     auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                     #NEWLINE_TOKEN #NEWLINE_TOKEN
                     static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
-                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(elements[0].#field_name, num_elements * #num_items_per_element, nullptr));
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(#element_ptr_accessor, num_elements * #num_items_per_element, nullptr));
                     ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
                 }
             } else {
@@ -1213,9 +1217,11 @@ fn quote_append_elements_to_builder(
     } else if is_transparent && trivial_batch_append(datatype) {
         // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
         // we can just pass the whole array as-is!
+        let element_ptr_accessor =
+            quote_batch_append_cast(datatype, quote!(&elements->#field_name));
         quote! {
             static_assert(sizeof(*elements) == sizeof(elements->#field_name));
-            ARROW_RETURN_NOT_OK(#builder->AppendValues(&elements->#field_name, num_elements));
+            ARROW_RETURN_NOT_OK(#builder->AppendValues(#element_ptr_accessor, num_elements));
         }
     } else {
         quote! {
@@ -1224,6 +1230,15 @@ fn quote_append_elements_to_builder(
                 ARROW_RETURN_NOT_OK(#builder->Append(elements[elem_idx].#field_name));
             }
         }
+    }
+}
+
+fn quote_batch_append_cast(datatype: &DataType, element_ptr_accessor: TokenStream) -> TokenStream {
+    if *datatype == DataType::Boolean {
+        // Bool needs a cast because it takes uint8_t.
+        quote!(reinterpret_cast<const uint8_t*>(#element_ptr_accessor))
+    } else {
+        element_ptr_accessor
     }
 }
 
