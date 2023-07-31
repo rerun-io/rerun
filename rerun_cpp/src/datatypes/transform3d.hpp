@@ -45,13 +45,16 @@ namespace rr {
 
         /// Representation of a 3D affine transform.
         struct Transform3D {
-          private:
-            detail::Transform3DTag _tag;
-            detail::Transform3DData _data;
+            Transform3D(const Transform3D& other) : _tag(other._tag) {
+                memcpy(&this->_data, &other._data, sizeof(detail::Transform3DData));
+            }
 
-            Transform3D() : _tag(detail::Transform3DTag::NONE) {}
+            Transform3D& operator=(const Transform3D& other) noexcept {
+                Transform3D tmp(other);
+                this->swap(tmp);
+                return *this;
+            }
 
-          public:
             Transform3D(Transform3D&& other) noexcept : _tag(detail::Transform3DTag::NONE) {
                 this->swap(other);
             }
@@ -59,6 +62,13 @@ namespace rr {
             Transform3D& operator=(Transform3D&& other) noexcept {
                 this->swap(other);
                 return *this;
+            }
+
+            void swap(Transform3D& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
             }
 
             static Transform3D translation_and_mat3x3(
@@ -89,7 +99,7 @@ namespace rr {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
@@ -101,12 +111,13 @@ namespace rr {
                 arrow::DenseUnionBuilder* builder, const Transform3D* elements, size_t num_elements
             );
 
-            void swap(Transform3D& other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
-                this->_data.swap(other._data);
-            }
+          private:
+            detail::Transform3DTag _tag;
+            detail::Transform3DData _data;
+
+            Transform3D() : _tag(detail::Transform3DTag::NONE) {}
+
+          public:
         };
     } // namespace datatypes
 } // namespace rr

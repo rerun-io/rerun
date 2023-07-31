@@ -4,13 +4,17 @@
 #include "point3d.hpp"
 
 #include "../datatypes/point3d.hpp"
+#include "../rerun.hpp"
 
 #include <arrow/api.h>
 
 namespace rr {
     namespace components {
-        std::shared_ptr<arrow::DataType> Point3D::to_arrow_datatype() {
-            return rr::datatypes::Point3D::to_arrow_datatype();
+        const char *Point3D::NAME = "rerun.point3d";
+
+        const std::shared_ptr<arrow::DataType> &Point3D::to_arrow_datatype() {
+            static const auto datatype = rr::datatypes::Point3D::to_arrow_datatype();
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StructBuilder>> Point3D::new_arrow_array_builder(
@@ -43,6 +47,34 @@ namespace rr {
             ));
 
             return arrow::Status::OK();
+        }
+
+        arrow::Result<rr::DataCell> Point3D::to_data_cell(
+            const Point3D *components, size_t num_components
+        ) {
+            // TODO(andreas): Allow configuring the memory pool.
+            arrow::MemoryPool *pool = arrow::default_memory_pool();
+
+            ARROW_ASSIGN_OR_RAISE(auto builder, Point3D::new_arrow_array_builder(pool));
+            if (components && num_components > 0) {
+                ARROW_RETURN_NOT_OK(
+                    Point3D::fill_arrow_array_builder(builder.get(), components, num_components)
+                );
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+            auto schema =
+                arrow::schema({arrow::field(Point3D::NAME, Point3D::to_arrow_datatype(), false)});
+
+            rr::DataCell cell;
+            cell.component_name = Point3D::NAME;
+            ARROW_ASSIGN_OR_RAISE(
+                cell.buffer,
+                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+            );
+
+            return cell;
         }
     } // namespace components
 } // namespace rr

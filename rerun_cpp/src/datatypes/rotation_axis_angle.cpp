@@ -10,11 +10,12 @@
 
 namespace rr {
     namespace datatypes {
-        std::shared_ptr<arrow::DataType> RotationAxisAngle::to_arrow_datatype() {
-            return arrow::struct_({
+        const std::shared_ptr<arrow::DataType>& RotationAxisAngle::to_arrow_datatype() {
+            static const auto datatype = arrow::struct_({
                 arrow::field("axis", rr::datatypes::Vec3D::to_arrow_datatype(), false, nullptr),
                 arrow::field("angle", rr::datatypes::Angle::to_arrow_datatype(), false, nullptr),
             });
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StructBuilder>>

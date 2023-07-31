@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../data_cell.hpp"
 #include "../datatypes/affix_fuzzer5.hpp"
 
 #include <arrow/type_fwd.h>
@@ -14,12 +15,15 @@ namespace rr {
         struct AffixFuzzer19 {
             rr::datatypes::AffixFuzzer5 just_a_table_nothing_shady;
 
+            /// Name of the component, used for serialization.
+            static const char* NAME;
+
           public:
             AffixFuzzer19(rr::datatypes::AffixFuzzer5 just_a_table_nothing_shady)
                 : just_a_table_nothing_shady(std::move(just_a_table_nothing_shady)) {}
 
             /// Returns the arrow data type this type corresponds to.
-            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static arrow::Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
@@ -29,6 +33,11 @@ namespace rr {
             /// Fills an arrow array builder with an array of this type.
             static arrow::Status fill_arrow_array_builder(
                 arrow::StructBuilder* builder, const AffixFuzzer19* elements, size_t num_elements
+            );
+
+            /// Creates a Rerun DataCell from an array of AffixFuzzer19 components.
+            static arrow::Result<rr::DataCell> to_data_cell(
+                const AffixFuzzer19* components, size_t num_components
             );
         };
     } // namespace components

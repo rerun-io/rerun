@@ -3,12 +3,18 @@
 
 #include "affix_fuzzer12.hpp"
 
+#include "../rerun.hpp"
+
 #include <arrow/api.h>
 
 namespace rr {
     namespace components {
-        std::shared_ptr<arrow::DataType> AffixFuzzer12::to_arrow_datatype() {
-            return arrow::list(arrow::field("item", arrow::utf8(), false, nullptr));
+        const char *AffixFuzzer12::NAME = "rerun.testing.components.AffixFuzzer12";
+
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer12::to_arrow_datatype() {
+            static const auto datatype =
+                arrow::list(arrow::field("item", arrow::utf8(), false, nullptr));
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::ListBuilder>> AffixFuzzer12::new_arrow_array_builder(
@@ -42,12 +48,45 @@ namespace rr {
                 const auto &element = elements[elem_idx];
                 for (auto item_idx = 0; item_idx < element.many_strings_required.size();
                      item_idx += 1) {
-                    value_builder->Append(element.many_strings_required[item_idx]);
+                    ARROW_RETURN_NOT_OK(
+                        value_builder->Append(element.many_strings_required[item_idx])
+                    );
                 }
                 ARROW_RETURN_NOT_OK(builder->Append());
             }
 
             return arrow::Status::OK();
+        }
+
+        arrow::Result<rr::DataCell> AffixFuzzer12::to_data_cell(
+            const AffixFuzzer12 *components, size_t num_components
+        ) {
+            // TODO(andreas): Allow configuring the memory pool.
+            arrow::MemoryPool *pool = arrow::default_memory_pool();
+
+            ARROW_ASSIGN_OR_RAISE(auto builder, AffixFuzzer12::new_arrow_array_builder(pool));
+            if (components && num_components > 0) {
+                ARROW_RETURN_NOT_OK(AffixFuzzer12::fill_arrow_array_builder(
+                    builder.get(),
+                    components,
+                    num_components
+                ));
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+            auto schema = arrow::schema(
+                {arrow::field(AffixFuzzer12::NAME, AffixFuzzer12::to_arrow_datatype(), false)}
+            );
+
+            rr::DataCell cell;
+            cell.component_name = AffixFuzzer12::NAME;
+            ARROW_ASSIGN_OR_RAISE(
+                cell.buffer,
+                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+            );
+
+            return cell;
         }
     } // namespace components
 } // namespace rr

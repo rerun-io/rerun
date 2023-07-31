@@ -4,18 +4,22 @@
 #include "affix_fuzzer16.hpp"
 
 #include "../datatypes/affix_fuzzer3.hpp"
+#include "../rerun.hpp"
 
 #include <arrow/api.h>
 
 namespace rr {
     namespace components {
-        std::shared_ptr<arrow::DataType> AffixFuzzer16::to_arrow_datatype() {
-            return arrow::list(arrow::field(
+        const char* AffixFuzzer16::NAME = "rerun.testing.components.AffixFuzzer16";
+
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer16::to_arrow_datatype() {
+            static const auto datatype = arrow::list(arrow::field(
                 "item",
                 rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
                 false,
                 nullptr
             ));
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::ListBuilder>> AffixFuzzer16::new_arrow_array_builder(
@@ -46,6 +50,37 @@ namespace rr {
             );
 
             return arrow::Status::OK();
+        }
+
+        arrow::Result<rr::DataCell> AffixFuzzer16::to_data_cell(
+            const AffixFuzzer16* components, size_t num_components
+        ) {
+            // TODO(andreas): Allow configuring the memory pool.
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
+
+            ARROW_ASSIGN_OR_RAISE(auto builder, AffixFuzzer16::new_arrow_array_builder(pool));
+            if (components && num_components > 0) {
+                ARROW_RETURN_NOT_OK(AffixFuzzer16::fill_arrow_array_builder(
+                    builder.get(),
+                    components,
+                    num_components
+                ));
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+            auto schema = arrow::schema(
+                {arrow::field(AffixFuzzer16::NAME, AffixFuzzer16::to_arrow_datatype(), false)}
+            );
+
+            rr::DataCell cell;
+            cell.component_name = AffixFuzzer16::NAME;
+            ARROW_ASSIGN_OR_RAISE(
+                cell.buffer,
+                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+            );
+
+            return cell;
         }
     } // namespace components
 } // namespace rr

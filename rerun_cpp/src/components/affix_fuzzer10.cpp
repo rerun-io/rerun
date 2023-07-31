@@ -3,12 +3,17 @@
 
 #include "affix_fuzzer10.hpp"
 
+#include "../rerun.hpp"
+
 #include <arrow/api.h>
 
 namespace rr {
     namespace components {
-        std::shared_ptr<arrow::DataType> AffixFuzzer10::to_arrow_datatype() {
-            return arrow::utf8();
+        const char* AffixFuzzer10::NAME = "rerun.testing.components.AffixFuzzer10";
+
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer10::to_arrow_datatype() {
+            static const auto datatype = arrow::utf8();
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StringBuilder>> AffixFuzzer10::new_arrow_array_builder(
@@ -42,6 +47,37 @@ namespace rr {
             }
 
             return arrow::Status::OK();
+        }
+
+        arrow::Result<rr::DataCell> AffixFuzzer10::to_data_cell(
+            const AffixFuzzer10* components, size_t num_components
+        ) {
+            // TODO(andreas): Allow configuring the memory pool.
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
+
+            ARROW_ASSIGN_OR_RAISE(auto builder, AffixFuzzer10::new_arrow_array_builder(pool));
+            if (components && num_components > 0) {
+                ARROW_RETURN_NOT_OK(AffixFuzzer10::fill_arrow_array_builder(
+                    builder.get(),
+                    components,
+                    num_components
+                ));
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+            auto schema = arrow::schema(
+                {arrow::field(AffixFuzzer10::NAME, AffixFuzzer10::to_arrow_datatype(), false)}
+            );
+
+            rr::DataCell cell;
+            cell.component_name = AffixFuzzer10::NAME;
+            ARROW_ASSIGN_OR_RAISE(
+                cell.buffer,
+                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+            );
+
+            return cell;
         }
     } // namespace components
 } // namespace rr

@@ -46,13 +46,16 @@ namespace rr {
 
         /// 3D scaling factor, part of a transform representation.
         struct Scale3D {
-          private:
-            detail::Scale3DTag _tag;
-            detail::Scale3DData _data;
+            Scale3D(const Scale3D& other) : _tag(other._tag) {
+                memcpy(&this->_data, &other._data, sizeof(detail::Scale3DData));
+            }
 
-            Scale3D() : _tag(detail::Scale3DTag::NONE) {}
+            Scale3D& operator=(const Scale3D& other) noexcept {
+                Scale3D tmp(other);
+                this->swap(tmp);
+                return *this;
+            }
 
-          public:
             Scale3D(Scale3D&& other) noexcept : _tag(detail::Scale3DTag::NONE) {
                 this->swap(other);
             }
@@ -60,6 +63,13 @@ namespace rr {
             Scale3D& operator=(Scale3D&& other) noexcept {
                 this->swap(other);
                 return *this;
+            }
+
+            void swap(Scale3D& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
             }
 
             /// Individual scaling factors for each axis, distorting the original object.
@@ -89,7 +99,7 @@ namespace rr {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
@@ -101,12 +111,13 @@ namespace rr {
                 arrow::DenseUnionBuilder* builder, const Scale3D* elements, size_t num_elements
             );
 
-            void swap(Scale3D& other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
-                this->_data.swap(other._data);
-            }
+          private:
+            detail::Scale3DTag _tag;
+            detail::Scale3DData _data;
+
+            Scale3D() : _tag(detail::Scale3DTag::NONE) {}
+
+          public:
         };
     } // namespace datatypes
 } // namespace rr

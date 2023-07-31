@@ -18,7 +18,7 @@ namespace rr {
                 : single_float_optional(std::move(single_float_optional)) {}
 
             /// Returns the arrow data type this type corresponds to.
-            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static arrow::Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(

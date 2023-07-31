@@ -3,6 +3,25 @@
 
 #include "transform3d.hpp"
 
+#include "../components/transform3d.hpp"
+
+#include <arrow/api.h>
+
 namespace rr {
-    namespace archetypes {}
+    namespace archetypes {
+        arrow::Result<std::vector<rr::DataCell>> Transform3D::to_data_cells() const {
+            std::vector<rr::DataCell> cells;
+            cells.reserve(1);
+
+            {
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::Transform3D::to_data_cell(&transform, 1)
+                );
+                cells.push_back(cell);
+            }
+
+            return cells;
+        }
+    } // namespace archetypes
 } // namespace rr

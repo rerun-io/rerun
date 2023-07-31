@@ -7,8 +7,9 @@
 
 namespace rr {
     namespace datatypes {
-        std::shared_ptr<arrow::DataType> AffixFuzzer2::to_arrow_datatype() {
-            return arrow::float32();
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer2::to_arrow_datatype() {
+            static const auto datatype = arrow::float32();
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::FloatBuilder>> AffixFuzzer2::new_arrow_array_builder(
