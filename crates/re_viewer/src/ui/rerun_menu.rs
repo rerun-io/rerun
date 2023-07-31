@@ -79,10 +79,17 @@ impl App {
             });
 
             ui.add_space(spacing);
-            ui.hyperlink_to(
-                "Help",
-                "https://www.rerun.io/docs/getting-started/viewer-walkthrough",
-            );
+
+            // dont use `hyperlink_to` for styling reasons
+            if ui.button("Help").clicked() {
+                ui.ctx().output_mut(|o| {
+                    o.open_url = Some(egui::output::OpenUrl {
+                        url: "https://www.rerun.io/docs/getting-started/viewer-walkthrough"
+                            .to_owned(),
+                        new_tab: true,
+                    });
+                });
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
             {
