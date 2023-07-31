@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use super::{mat::Mat3x3, Vec2D};
+use super::{mat::LegacyMat3x3, LegacyVec2D};
 
 /// Camera perspective projection (a.k.a. intrinsics).
 ///
@@ -47,7 +47,7 @@ pub struct Pinhole {
     ///  [0.0,    1496.1, 0.0], // col 1
     ///  [980.5,  744.5,  1.0]] // col 2
     /// ```
-    pub image_from_cam: Mat3x3,
+    pub image_from_cam: LegacyMat3x3,
 
     /// Pixel resolution (usually integers) of child image space. Width and height.
     ///
@@ -57,7 +57,7 @@ pub struct Pinhole {
     /// ```
     ///
     /// [`Self::image_from_cam`] project onto the space spanned by `(0,0)` and `resolution - 1`.
-    pub resolution: Option<Vec2D>,
+    pub resolution: Option<LegacyVec2D>,
 }
 
 impl re_log_types::LegacyComponent for Pinhole {
@@ -79,7 +79,7 @@ impl Pinhole {
     ///
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
     #[inline]
-    pub fn focal_length_in_pixels(&self) -> Vec2D {
+    pub fn focal_length_in_pixels(&self) -> LegacyVec2D {
         [self.image_from_cam[0][0], self.image_from_cam[1][1]].into()
     }
 

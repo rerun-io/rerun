@@ -10,7 +10,7 @@
 
 namespace rr {
     namespace components {
-        const char *Transform3D::NAME = "rerun.components.Transform3D";
+        const char *Transform3D::NAME = "rerun.transform3d";
 
         const std::shared_ptr<arrow::DataType> &Transform3D::to_arrow_datatype() {
             static const auto datatype = rr::datatypes::Transform3D::to_arrow_datatype();

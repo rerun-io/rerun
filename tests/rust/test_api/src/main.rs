@@ -19,9 +19,10 @@ use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, Color, DrawOrder,
         Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D, Tensor,
-        TensorDataMeaning, TextEntry, Vec2D, Vec3D, ViewCoordinates,
+        TensorDataMeaning, TextEntry, ViewCoordinates,
     },
     coordinates::SignedAxis3,
+    datatypes::{TranslationRotationScale3D, Vec2D, Vec3D},
     external::{
         re_log, re_log_types,
         re_log_types::external::{arrow2, arrow2_convert},
@@ -346,7 +347,7 @@ fn test_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::new("2d_layering/lines_behind_rect")
         .with_component(&[LineStrip2D(
             (0..20)
-                .map(|i| Vec2D([(i * 20) as f32, (i % 2 * 100 + 100) as f32]))
+                .map(|i| Vec2D([(i * 20) as f32, (i % 2 * 100 + 100) as f32]).into())
                 .collect(),
         )])?
         .with_component(&[DrawOrder(1.25)])?
@@ -609,7 +610,7 @@ fn test_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             (0..=100)
                 .map(|i| {
                     let angle = i as f32 * 0.01 * TAU;
-                    Vec3D::new(angle.sin() * distance, angle.cos() * distance, 0.0)
+                    Vec3D::new(angle.sin() * distance, angle.cos() * distance, 0.0).into()
                 })
                 .collect(),
         )
@@ -647,7 +648,7 @@ fn test_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         MsgSender::from_archetype(
             "transforms3d/sun/planet/moon",
             &rerun::archetypes::Transform3D::new(
-                rerun::datatypes::TranslationRotationScale3D::from(rerun::datatypes::Vec3D::new(
+                TranslationRotationScale3D::from(Vec3D::new(
                     (time * rotation_speed_moon).cos() * planet_to_moon_distance,
                     (time * rotation_speed_moon).sin() * planet_to_moon_distance,
                     0.0,

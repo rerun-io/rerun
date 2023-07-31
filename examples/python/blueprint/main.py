@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Example of using the blueprint APIs to configure Rerun."""
 from __future__ import annotations
 

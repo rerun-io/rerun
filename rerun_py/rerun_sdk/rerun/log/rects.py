@@ -86,14 +86,14 @@ def log_rect(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     if label:
-        instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
+        instanced["rerun.label"] = rrc.LabelArray.from_similar([label]).storage
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        instanced["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
+        instanced["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids).storage
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -210,7 +210,7 @@ def log_rects(
     comps[0]["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
 
     if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
+        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np).storage
 
     if len(colors):
         from rerun.experimental import cmp as rrc
@@ -218,15 +218,15 @@ def log_rects(
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     if len(labels):
         is_splat = len(labels) == 1
-        comps[is_splat]["rerun.label"] = rrc.LabelArray.from_similar(labels)
+        comps[is_splat]["rerun.label"] = rrc.LabelArray.from_similar(labels).storage
 
     if len(class_ids):
         is_splat = len(class_ids) == 1
-        comps[is_splat]["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids)
+        comps[is_splat]["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids).storage
 
     if draw_order is not None:
         comps[True]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)

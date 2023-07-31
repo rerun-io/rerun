@@ -5,7 +5,6 @@ import numpy.typing as npt
 import pyarrow as pa
 
 from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
-from rerun.components.vec import Vec3DArray
 
 __all__ = [
     "Arrow3DArray",
@@ -16,11 +15,13 @@ __all__ = [
 class Arrow3DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(origins: npt.NDArray[np.float32], vectors: npt.NDArray[np.float32]) -> Arrow3DArray:
         """Build a `Arrow3DArray` from an Nx3 numpy array."""
+        from rerun.experimental import dt as rrd
+
         assert origins.shape[1] == 3
         assert origins.shape == vectors.shape
 
-        origins = Vec3DArray.from_numpy(origins)
-        vectors = Vec3DArray.from_numpy(vectors)
+        origins = rrd.Vec3DArray.from_similar(origins).storage
+        vectors = rrd.Vec3DArray.from_similar(vectors).storage
 
         storage = pa.StructArray.from_arrays(
             arrays=[origins, vectors],

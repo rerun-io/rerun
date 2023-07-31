@@ -1,7 +1,8 @@
 use egui::Vec2;
 
 use re_components::{
-    LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+    LegacyMat3x3, LegacyVec2D, LegacyVec3D, LegacyVec4D, LineStrip2D, LineStrip3D, Rect2D,
+    ViewCoordinates,
 };
 use re_format::format_f32;
 use re_types::components::Color;
@@ -71,7 +72,7 @@ impl DataUi for ViewCoordinates {
     }
 }
 
-impl DataUi for Mat3x3 {
+impl DataUi for LegacyMat3x3 {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -98,7 +99,34 @@ impl DataUi for Mat3x3 {
     }
 }
 
-impl DataUi for Vec2D {
+impl DataUi for re_types::datatypes::Mat3x3 {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
+            ui.monospace(self[0].to_string());
+            ui.monospace(self[3].to_string());
+            ui.monospace(self[6].to_string());
+            ui.end_row();
+
+            ui.monospace(self[1].to_string());
+            ui.monospace(self[4].to_string());
+            ui.monospace(self[7].to_string());
+            ui.end_row();
+
+            ui.monospace(self[2].to_string());
+            ui.monospace(self[5].to_string());
+            ui.monospace(self[8].to_string());
+            ui.end_row();
+        });
+    }
+}
+
+impl DataUi for LegacyVec2D {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -110,7 +138,33 @@ impl DataUi for Vec2D {
     }
 }
 
-impl DataUi for Vec3D {
+// TODO(cmc): annihilate legacy
+impl DataUi for re_types::datatypes::Vec2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+impl DataUi for LegacyVec3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+// TODO(cmc): annihilate legacy
+impl DataUi for re_types::datatypes::Vec3D {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -131,24 +185,24 @@ impl DataUi for Rect2D {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         ui.label(match self {
-            Rect2D::XYWH(Vec4D([top, left, width, height]))
-            | Rect2D::YXHW(Vec4D([left, top, height, width])) => {
+            Rect2D::XYWH(LegacyVec4D([top, left, width, height]))
+            | Rect2D::YXHW(LegacyVec4D([left, top, height, width])) => {
                 format!("top: {top}, left: {left}, width: {width}, height: {height}")
             }
-            Rect2D::XYXY(Vec4D([left, top, right, bottom]))
-            | Rect2D::YXYX(Vec4D([top, left, bottom, right])) => {
+            Rect2D::XYXY(LegacyVec4D([left, top, right, bottom]))
+            | Rect2D::YXYX(LegacyVec4D([top, left, bottom, right])) => {
                 format!("top: {top}, left: {left}, right: {right}, bottom: {bottom}")
             }
-            Rect2D::XCYCWH(Vec4D([center_x, center_y, width, height])) => {
+            Rect2D::XCYCWH(LegacyVec4D([center_x, center_y, width, height])) => {
                 format!(
                     "center: {}, width: {width}, height: {height}",
-                    Vec2D([*center_x, *center_y])
+                    LegacyVec2D([*center_x, *center_y])
                 )
             }
-            Rect2D::XCYCW2H2(Vec4D([center_x, center_y, half_width, half_height])) => {
+            Rect2D::XCYCW2H2(LegacyVec4D([center_x, center_y, half_width, half_height])) => {
                 format!(
                     "center: {}, half-width: {half_width}, half-height: {half_height}",
-                    Vec2D([*center_x, *center_y])
+                    LegacyVec2D([*center_x, *center_y])
                 )
             }
         })

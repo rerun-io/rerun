@@ -22,7 +22,8 @@
 /// use rerun::{
 ///    archetypes::Transform3D,
 ///    datatypes::{
-///        Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
+///        Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
+///        TranslationRotationScale3D, Vec3D,
 ///    },
 ///    MsgSender, RecordingStreamBuilder,
 /// };
@@ -32,8 +33,8 @@
 ///    let (rec_stream, storage) = RecordingStreamBuilder::new("transform").memory()?;
 ///
 ///    let arrow = rerun::components::Arrow3D {
-///        origin: rerun::components::Vec3D::from([0.0, 0.0, 0.0]),
-///        vector: rerun::components::Vec3D::from([0.0, 1.0, 0.0]),
+///        origin: Vec3D::from([0.0, 0.0, 0.0]).into(),
+///        vector: Vec3D::from([0.0, 1.0, 0.0]).into(),
 ///    };
 ///
 ///    MsgSender::new("base")
@@ -75,13 +76,13 @@ pub struct Transform3D {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Transform3D".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.transform3d".into()]);
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Transform3D".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.transform3d".into()]);
 
 impl Transform3D {
     pub const NUM_COMPONENTS: usize = 1usize;
@@ -127,7 +128,7 @@ impl crate::Archetype for Transform3D {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.Transform3D".into(),
                         Box::new(array.data_type().clone()),
-                        Some("rerun.components.Transform3D".into()),
+                        Some("rerun.transform3d".into()),
                     );
                     (
                         ::arrow2::datatypes::Field::new("transform", datatype, false),

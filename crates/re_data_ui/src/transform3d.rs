@@ -1,12 +1,12 @@
-use re_components::{
-    Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr,
-    TranslationAndMat3, TranslationRotationScale3D,
+use re_types::datatypes::{
+    Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, TranslationAndMat3x3,
+    TranslationRotationScale3D,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use crate::DataUi;
 
-impl DataUi for Transform3D {
+impl DataUi for re_types::components::Transform3D {
     #[allow(clippy::only_used_in_recursion)]
     fn data_ui(
         &self,
@@ -24,7 +24,11 @@ impl DataUi for Transform3D {
             }
 
             UiVerbosity::All | UiVerbosity::Reduced => {
-                let dir_string = if self.from_parent {
+                let from_parent = match &self.0 {
+                    Transform3D::TranslationRotationScale(t) => t.from_parent,
+                    Transform3D::TranslationAndMat3X3(t) => t.from_parent,
+                };
+                let dir_string = if from_parent {
                     "parent ➡ child"
                 } else {
                     "child ➡ parent"
@@ -34,7 +38,7 @@ impl DataUi for Transform3D {
                     ui.label("3D transform");
                     ui.indent("transform_repr", |ui| {
                         ui.label(dir_string);
-                        self.transform.data_ui(ctx, ui, verbosity, query);
+                        self.0.data_ui(ctx, ui, verbosity, query);
                     });
                 });
             }
@@ -42,7 +46,7 @@ impl DataUi for Transform3D {
     }
 }
 
-impl DataUi for Transform3DRepr {
+impl DataUi for Transform3D {
     #[allow(clippy::only_used_in_recursion)]
     fn data_ui(
         &self,
@@ -59,10 +63,10 @@ impl DataUi for Transform3DRepr {
             }
 
             UiVerbosity::All | UiVerbosity::Reduced => match self {
-                Transform3DRepr::TranslationAndMat3(translation_matrix) => {
+                Transform3D::TranslationAndMat3X3(translation_matrix) => {
                     translation_matrix.data_ui(ctx, ui, verbosity, query);
                 }
-                Transform3DRepr::TranslationRotationScale(translation_rotation_scale) => {
+                Transform3D::TranslationRotationScale(translation_rotation_scale) => {
                     translation_rotation_scale.data_ui(ctx, ui, verbosity, query);
                 }
             },
@@ -82,6 +86,7 @@ impl DataUi for TranslationRotationScale3D {
             translation,
             rotation,
             scale,
+            from_parent: _,
         } = self;
 
         egui::Grid::new("translation_rotation_scale")
@@ -166,7 +171,7 @@ impl DataUi for Scale3D {
     }
 }
 
-impl DataUi for TranslationAndMat3 {
+impl DataUi for TranslationAndMat3x3 {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -174,9 +179,10 @@ impl DataUi for TranslationAndMat3 {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let TranslationAndMat3 {
+        let TranslationAndMat3x3 {
             translation,
             matrix,
+            from_parent: _,
         } = self;
 
         egui::Grid::new("translation_and_mat3")
@@ -188,9 +194,11 @@ impl DataUi for TranslationAndMat3 {
                     ui.end_row();
                 }
 
-                ui.label("matrix");
-                matrix.data_ui(ctx, ui, verbosity, query);
-                ui.end_row();
+                if let Some(matrix) = matrix {
+                    ui.label("matrix");
+                    matrix.data_ui(ctx, ui, verbosity, query);
+                    ui.end_row();
+                }
             });
     }
 }

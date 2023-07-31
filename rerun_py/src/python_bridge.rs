@@ -30,9 +30,9 @@ pub use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, Color,
         DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
-        LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion,
-        Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDimension,
-        TensorId, TextEntry, Transform3D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+        LineStrip3D, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius,
+        RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDimension, TensorId,
+        TextEntry, Transform3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
@@ -882,8 +882,8 @@ fn log_meshes(
         let albedo_factor =
             if let Some(v) = albedo_factor.map(|albedo_factor| albedo_factor.as_array().to_vec()) {
                 match v.len() {
-                    3 => Vec4D([v[0], v[1], v[2], 1.0]),
-                    4 => Vec4D([v[0], v[1], v[2], v[3]]),
+                    3 => re_components::LegacyVec4D([v[0], v[1], v[2], 1.0]),
+                    4 => re_components::LegacyVec4D([v[0], v[1], v[2], v[3]]),
                     _ => {
                         return Err(PyTypeError::new_err(format!(
                             "Albedo factor must be vec3 or vec4, got {v:?} instead",

@@ -47,10 +47,6 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
                 == <re_components::Rect2D as re_log_types::LegacyComponent>::legacy_name()
             {
                 field.data_type = <re_components::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            } else if name
-                == <re_components::Transform3D as re_log_types::LegacyComponent>::legacy_name()
-            {
-                field.data_type = <re_components::Transform3D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             }
         }
 

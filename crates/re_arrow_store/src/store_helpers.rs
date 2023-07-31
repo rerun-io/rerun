@@ -27,10 +27,38 @@ impl DataStore {
 
         cell.try_to_native_mono::<C>()
             .map_err(|err| {
+                if let re_log_types::DataCellError::LoggableDeserialize(err) = err {
+                    let bt = err.backtrace().map(|mut bt| {
+                        bt.resolve();
+                        bt
+                    });
+
+                    let err = Box::new(err) as Box<dyn std::error::Error>;
+                    if let Some(bt) = bt {
+                        re_log::error_once!(
+                            "Couldn't deserialize component at {entity_path}#{}: {}\n{:#?}",
+                            C::name(),
+                            re_error::format(&err),
+                            bt,
+                        );
+                    } else {
+                        re_log::error_once!(
+                            "Couldn't deserialize component at {entity_path}#{}: {}",
+                            C::name(),
+                            re_error::format(&err)
+                        );
+                    }
+                    return err;
+                }
+
+                let err = Box::new(err) as Box<dyn std::error::Error>;
                 re_log::error_once!(
-                    "Couldn't deserialize component at {entity_path}.{}: {err}",
-                    C::name()
+                    "Couldn't deserialize component at {entity_path}#{}: {}",
+                    C::name(),
+                    re_error::format(&err)
                 );
+
+                err
             })
             .ok()?
     }

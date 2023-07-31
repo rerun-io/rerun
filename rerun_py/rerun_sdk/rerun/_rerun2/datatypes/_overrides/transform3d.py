@@ -86,7 +86,9 @@ def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionTyp
     from .. import Vec3D
 
     if scale is None:
-        return pa.nulls(1, type=type_)
+        scale_discriminant = "_null_markers"
+        scale_pa_arr = pa.nulls(1, pa.null())
+        return _build_dense_union(type_, scale_discriminant, scale_pa_arr)
 
     scale_arm = scale.inner
 
@@ -106,7 +108,9 @@ def _build_union_array_from_rotation(rotation: Rotation3D | None, type_: pa.Dens
     from .. import Quaternion, RotationAxisAngle
 
     if rotation is None:
-        return pa.nulls(1, type=type_)
+        rotation_discriminant = "_null_markers"
+        rotation_pa_arr = pa.nulls(1, pa.null())
+        return _build_dense_union(type_, rotation_discriminant, rotation_pa_arr)
 
     rotation_arm = rotation.inner
 
@@ -135,16 +139,34 @@ def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
     from .. import Mat3x3Type
 
     if mat is None:
-        return pa.nulls(1, type=Mat3x3Type().storage_type)
+        return nulls_outer_fixed_size_list(1, type_=Mat3x3Type().storage_type)
     else:
         return pa.FixedSizeListArray.from_arrays(mat.coeffs, type=Mat3x3Type().storage_type)
+
+
+# TODO(#2871): Calling `pa.nulls` on a nullable fixed size list of non-nullable
+# floats (i.e. `Vec<Option<[f32; N]>>`) actually generates a nullable fixed size list
+# of nullable floats (i.e. `Vec<Option<[Option<f32>; N]>>`), which breaks upon deserialization.
+# For now we just handle the issue here by generating the correct thing.
+# See the associated issue for a more long-term solution.
+def nulls_outer_fixed_size_list(length: int, type_: pa.DataType) -> pa.Array:
+    if isinstance(type_, pa.FixedSizeListType) and type_.value_type == pa.float32():
+        inner_data = pa.array(np.zeros((type_.list_size,), dtype=np.float32), type=type_.value_type)
+        # NOTE(1): This is a bitmap, not a bytemap, hence we divide into bits.
+        # NOTE(2): `buffers[0]` is the validity bitmap of the validity bitmap itself; don't need it.
+        outer_validity = pa.array(np.zeros(int(length / 8 + 1), dtype=np.int8)).buffers()[1]
+        return pa.FixedSizeListArray.from_buffers(
+            type_, length, [outer_validity], null_count=length, children=[inner_data]
+        )
+    else:
+        return pa.nulls(length, type_)
 
 
 def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
     from .. import Vec3DType
 
     if translation is None:
-        return pa.nulls(1, type=Vec3DType().storage_type)
+        return nulls_outer_fixed_size_list(1, type_=Vec3DType().storage_type)
     else:
         return pa.FixedSizeListArray.from_arrays(translation.xyz, type=Vec3DType().storage_type)
 

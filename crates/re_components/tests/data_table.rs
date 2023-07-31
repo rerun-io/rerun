@@ -113,9 +113,9 @@ fn data_table_sizes_basics() {
     // struct + fixedsizelist
     let mut cell = DataCell::from_native(
         [
-            re_components::Vec2D::from([42.0, 666.0]),
-            re_components::Vec2D::from([42.0, 666.0]),
-            re_components::Vec2D::from([42.0, 666.0]),
+            re_types::components::Point2D::from([42.0, 666.0]),
+            re_types::components::Point2D::from([42.0, 666.0]),
+            re_types::components::Point2D::from([42.0, 666.0]),
         ]
         .as_slice(),
     );
@@ -123,15 +123,15 @@ fn data_table_sizes_basics() {
     expect(
         cell.clone(), //
         10_000,       // num_rows
-        4_080_064,    // expected_num_bytes
+        5_260_064,
     );
     expect(
         DataCell::from_arrow(
             re_types::components::Point2D::name(),
             cell.to_arrow().sliced(1, 1),
         ),
-        10_000,    // num_rows
-        3_920_064, // expected_num_bytes
+        10_000, // num_rows
+        5_100_064,
     );
 
     // variable list
@@ -192,67 +192,6 @@ fn data_table_sizes_unions() {
             "{num_bytes_min} <= {num_bytes} <= {num_bytes_max}"
         );
     }
-
-    // This test uses an artificial enum type to test the union serialization.
-    // The transform type does *not* represent our current transform representation.
-
-    // --- Dense ---
-
-    #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
-    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-    #[arrow_field(type = "dense")]
-    enum DenseTransform {
-        Unknown,
-        Transform3D(re_components::Transform3DRepr),
-        Pinhole(re_components::Pinhole),
-    }
-
-    impl re_log_types::LegacyComponent for DenseTransform {
-        #[inline]
-        fn legacy_name() -> re_log_types::ComponentName {
-            "rerun.dense_transform".into()
-        }
-    }
-
-    re_log_types::component_legacy_shim!(DenseTransform);
-
-    // dense union (uniform)
-    expect(
-        DataCell::from_native(
-            [
-                DenseTransform::Unknown,
-                DenseTransform::Unknown,
-                DenseTransform::Unknown,
-            ]
-            .as_slice(),
-        ),
-        10_000,     // num_rows
-        49_030_064, // expected_num_bytes
-    );
-
-    // dense union (varying)
-    expect(
-        DataCell::from_native(
-            [
-                DenseTransform::Unknown,
-                DenseTransform::Transform3D(
-                    re_components::TranslationAndMat3 {
-                        translation: Some([10.0, 11.0, 12.0].into()),
-                        matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
-                    }
-                    .into(),
-                ),
-                DenseTransform::Pinhole(re_components::Pinhole {
-                    image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]]
-                        .into(),
-                    resolution: Some([123.0, 456.0].into()),
-                }),
-            ]
-            .as_slice(),
-        ),
-        10_000,     // num_rows
-        49_020_064, // expected_num_bytes
-    );
 
     // --- Sparse ---
 

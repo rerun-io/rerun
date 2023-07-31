@@ -7,7 +7,7 @@ use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_components::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d, build_some_vec3d},
-    Vec3D,
+    LegacyVec3D,
 };
 use re_log_types::{entity_path, DataRow, EntityPath, Index, RowId, TimeType, Timeline};
 use re_query::query_entity_with_primary;
@@ -203,7 +203,7 @@ fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Sa
 }
 
 struct SaveVec {
-    _vec: Vec3D,
+    _vec: LegacyVec3D,
 }
 
 fn query_and_visit_vecs(store: &mut DataStore, paths: &[EntityPath]) -> Vec<SaveVec> {
@@ -213,9 +213,9 @@ fn query_and_visit_vecs(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Save
     let mut rects = Vec::with_capacity(NUM_VECS as _);
 
     for path in paths.iter() {
-        query_entity_with_primary::<Vec3D>(store, &query, path, &[])
+        query_entity_with_primary::<LegacyVec3D>(store, &query, path, &[])
             .and_then(|entity_view| {
-                entity_view.visit1(|_: InstanceKey, vec: Vec3D| {
+                entity_view.visit1(|_: InstanceKey, vec: LegacyVec3D| {
                     rects.push(SaveVec { _vec: vec });
                 })
             })

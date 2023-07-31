@@ -1,8 +1,11 @@
 use glam::vec3;
-use re_components::{Pinhole, Transform3D, ViewCoordinates};
+use re_components::{Pinhole, ViewCoordinates};
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
-use re_types::{components::InstanceKey, Loggable as _};
+use re_types::{
+    components::{InstanceKey, Transform3D},
+    Loggable as _,
+};
 use re_viewer_context::{
     ArchetypeDefinition, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
@@ -77,7 +80,7 @@ impl CamerasPart {
         // Let's add that if it exists.
         if let Some(transform_at_entity) = transform_at_entity {
             world_from_camera =
-                world_from_camera * transform_at_entity.to_parent_from_child_transform();
+                world_from_camera * transform_at_entity.into_parent_from_child_transform();
         }
 
         // If this transform is not representable an iso transform transform we can't display it yet.

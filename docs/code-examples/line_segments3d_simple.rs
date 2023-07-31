@@ -1,6 +1,5 @@
 //! Log a simple set of line segments.
-use rerun::components::LineStrip3D;
-use rerun::{MsgSender, RecordingStreamBuilder};
+use rerun::{components::LineStrip3D, MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("linestrip2d").memory()?;

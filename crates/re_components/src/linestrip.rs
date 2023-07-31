@@ -7,8 +7,8 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 
-use super::Vec2D;
-use super::Vec3D;
+use super::LegacyVec2D;
+use super::LegacyVec3D;
 
 /// A Line Strip of 2D points
 ///
@@ -28,12 +28,12 @@ use super::Vec3D;
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct LineStrip2D(pub Vec<Vec2D>);
+pub struct LineStrip2D(pub Vec<LegacyVec2D>);
 
 impl From<Vec<[f32; 2]>> for LineStrip2D {
     #[inline]
     fn from(v: Vec<[f32; 2]>) -> Self {
-        Self(v.into_iter().map(Vec2D).collect())
+        Self(v.into_iter().map(LegacyVec2D).collect())
     }
 }
 
@@ -51,7 +51,7 @@ impl ArrowField for LineStrip2D {
 
     #[inline]
     fn data_type() -> DataType {
-        <Vec<Vec2D> as ArrowField>::data_type()
+        <Vec<LegacyVec2D> as ArrowField>::data_type()
     }
 }
 
@@ -86,13 +86,13 @@ impl ArrowSerialize for LineStrip2D {
 }
 
 impl ArrowDeserialize for LineStrip2D {
-    type ArrayType = <Vec<Vec2D> as ArrowDeserialize>::ArrayType;
+    type ArrayType = <Vec<LegacyVec2D> as ArrowDeserialize>::ArrayType;
 
     #[inline]
     fn arrow_deserialize(
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
-        <Vec<Vec2D> as ArrowDeserialize>::arrow_deserialize(v).map(Self)
+        <Vec<LegacyVec2D> as ArrowDeserialize>::arrow_deserialize(v).map(Self)
     }
 }
 
@@ -116,12 +116,12 @@ re_log_types::component_legacy_shim!(LineStrip2D);
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct LineStrip3D(pub Vec<Vec3D>);
+pub struct LineStrip3D(pub Vec<LegacyVec3D>);
 
 impl From<Vec<[f32; 3]>> for LineStrip3D {
     #[inline]
     fn from(v: Vec<[f32; 3]>) -> Self {
-        Self(v.into_iter().map(Vec3D).collect())
+        Self(v.into_iter().map(LegacyVec3D).collect())
     }
 }
 
@@ -139,7 +139,7 @@ impl ArrowField for LineStrip3D {
 
     #[inline]
     fn data_type() -> DataType {
-        <Vec<Vec3D> as ArrowField>::data_type()
+        <Vec<LegacyVec3D> as ArrowField>::data_type()
     }
 }
 
@@ -174,13 +174,13 @@ impl ArrowSerialize for LineStrip3D {
 }
 
 impl ArrowDeserialize for LineStrip3D {
-    type ArrayType = <Vec<Vec3D> as ArrowDeserialize>::ArrayType;
+    type ArrayType = <Vec<LegacyVec3D> as ArrowDeserialize>::ArrayType;
 
     #[inline]
     fn arrow_deserialize(
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
-        <Vec<Vec3D> as ArrowDeserialize>::arrow_deserialize(v).map(Self)
+        <Vec<LegacyVec3D> as ArrowDeserialize>::arrow_deserialize(v).map(Self)
     }
 }
 
