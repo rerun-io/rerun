@@ -38,17 +38,11 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_components::Rect2D>(&mut registry);
     add::<re_components::Tensor>(&mut registry);
     add::<re_components::TextEntry>(&mut registry);
-    add::<re_components::LegacyVec2D>(&mut registry); // TODO(cmc): remove post-migration
-    add::<re_components::LegacyVec3D>(&mut registry); // TODO(cmc): remove post-migration
     add::<re_components::ViewCoordinates>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);
     add::<re_types::components::Color>(&mut registry);
     add::<re_types::components::KeypointId>(&mut registry);
     add::<re_types::components::Transform3D>(&mut registry);
-    // TODO(cmc): We need to support querying for datatypes rather than components first.
-    // add::<re_types::datatypes::Vec2D>(&mut registry);
-    // add::<re_types::datatypes::Vec3D>(&mut registry);
-    // add::<re_types::datatypes::Vec4D>(&mut registry);
 
     registry
 }
