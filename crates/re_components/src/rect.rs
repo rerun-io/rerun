@@ -57,7 +57,9 @@ impl Rect2D {
             Rect2D::YXHW(LegacyVec4D([y, x, _h, _w])) => [*x, *y],
             Rect2D::XYXY(LegacyVec4D([x0, y0, _x1, _y1])) => [*x0, *y0],
             Rect2D::YXYX(LegacyVec4D([y0, x0, _y1, _x1])) => [*x0, *y0],
-            Rect2D::XCYCWH(LegacyVec4D([x_cen, y_cen, w, h])) => [x_cen - (w / 2.0), y_cen - (h / 2.0)],
+            Rect2D::XCYCWH(LegacyVec4D([x_cen, y_cen, w, h])) => {
+                [x_cen - (w / 2.0), y_cen - (h / 2.0)]
+            }
             Rect2D::XCYCW2H2(LegacyVec4D([x_cen, y_cen, w_2, h_2])) => [x_cen - w_2, y_cen - h_2],
         }
     }

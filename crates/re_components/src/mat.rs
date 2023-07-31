@@ -35,6 +35,16 @@ impl LegacyMat3x3 {
     ]);
 }
 
+impl From<re_types::datatypes::Mat3x3> for LegacyMat3x3 {
+    fn from(m: re_types::datatypes::Mat3x3) -> Self {
+        Self([
+            LegacyVec3D([m[0], m[1], m[2]]),
+            LegacyVec3D([m[3], m[4], m[5]]),
+            LegacyVec3D([m[6], m[7], m[8]]),
+        ])
+    }
+}
+
 impl<Idx> std::ops::Index<Idx> for LegacyMat3x3
 where
     Idx: std::slice::SliceIndex<[LegacyVec3D]>,
