@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use re_ui::ReUi;
 
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewHighlights,
@@ -260,6 +261,95 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
 
         text
+    }
+
+    #[allow(clippy::fn_params_excessive_bools)]
+    fn tab_ui(
+        &mut self,
+        tiles: &egui_tiles::Tiles<SpaceViewId>,
+        ui: &mut egui::Ui,
+        id: egui::Id,
+        tile_id: egui_tiles::TileId,
+        active: bool,
+        is_being_dragged: bool,
+    ) -> egui::Response {
+        // custom tab UI when we have a space view
+        let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id)else {
+            return egui_tiles::Behavior::<SpaceViewId>::tab_ui(
+                self,
+                tiles,
+                ui,
+                id,
+                tile_id,
+                active,
+                is_being_dragged,
+            );
+        };
+
+        // tab icon
+        let space_view = self
+            .space_views
+            .get(space_view_id)
+            .expect("Should have been populated beforehand");
+        let icon = space_view.class(self.ctx.space_view_class_registry).icon();
+        let image = self.ctx.re_ui.icon_image(icon);
+        let texture_id = image.texture_id(ui.ctx());
+        let text_to_icon_padding = 4.0;
+        let icon_size = ReUi::small_icon_size();
+        let icon_width_plus_padding = icon_size.x + text_to_icon_padding;
+
+        // tab title
+        let text = self.tab_title_for_tile(tiles, tile_id);
+        let font_id = egui::TextStyle::Button.resolve(ui.style());
+        let galley = text.into_galley(ui, Some(false), f32::INFINITY, font_id);
+
+        let x_margin = self.tab_title_spacing(ui.visuals());
+        let (_, rect) = ui.allocate_space(egui::vec2(
+            galley.size().x + 2.0 * x_margin + icon_width_plus_padding,
+            ui.available_height(),
+        ));
+        let galley_rect = egui::Rect::from_two_pos(
+            rect.min + egui::vec2(icon_width_plus_padding, 0.0),
+            rect.max,
+        );
+        let icon_rect = egui::Rect::from_center_size(
+            egui::pos2(rect.left() + x_margin + icon_size.x / 2.0, rect.center().y),
+            icon_size,
+        );
+        let response = ui.interact(rect, id, egui::Sense::click_and_drag());
+
+        // Show a gap when dragged
+        if ui.is_rect_visible(rect) && !is_being_dragged {
+            let bg_color = self.tab_bg_color(ui.visuals(), tile_id, active);
+            let stroke = self.tab_outline_stroke(ui.visuals(), tile_id, active);
+            ui.painter().rect(rect.shrink(0.5), 0.0, bg_color, stroke);
+
+            if active {
+                // Make the tab name area connect with the tab ui area:
+                ui.painter().hline(
+                    rect.x_range(),
+                    rect.bottom(),
+                    egui::Stroke::new(stroke.width + 1.0, bg_color),
+                );
+            }
+
+            let text_color = self.tab_text_color(ui.visuals(), tile_id, active);
+
+            let icon_image = egui::widgets::Image::new(texture_id, icon_size).tint(text_color);
+            icon_image.paint_at(ui, icon_rect);
+
+            ui.painter().galley_with_color(
+                egui::Align2::CENTER_CENTER
+                    .align_size_within_rect(galley.size(), galley_rect)
+                    .min,
+                galley.galley,
+                text_color,
+            );
+        }
+
+        self.on_tab_button(tiles, tile_id, &response);
+
+        response
     }
 
     fn on_tab_button(
