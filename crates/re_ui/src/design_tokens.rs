@@ -126,11 +126,11 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     egui_style.visuals.widgets.noninteractive.bg_stroke.color = Color32::from_gray(30); // from figma. separator lines, panel lines, etc
 
-    let subudued = get_aliased_color(&json, "{Alias.Color.Text.Subdued.value}");
+    let subdued = get_aliased_color(&json, "{Alias.Color.Text.Subdued.value}");
     let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
     let strong = get_aliased_color(&json, "{Alias.Color.Text.Strong.value}");
 
-    egui_style.visuals.widgets.noninteractive.fg_stroke.color = subudued; // non-interactive text
+    egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
     egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
     egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
 
@@ -166,6 +166,9 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.spacing.scroll_bar_inner_margin = 2.0;
     egui_style.spacing.scroll_bar_width = 6.0;
     egui_style.spacing.scroll_bar_outer_margin = 2.0;
+
+    // don't color hyperlinks #2733
+    egui_style.visuals.hyperlink_color = default;
 
     ctx.set_style(egui_style);
 
