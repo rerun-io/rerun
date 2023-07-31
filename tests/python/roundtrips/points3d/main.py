@@ -22,7 +22,6 @@ def main() -> None:
         dtype=np.uint32,
     )
     labels = ["hello", "friend"]
-    draw_order = 300
     class_ids = np.array([126, 127], dtype=np.uint64)
     keypoint_ids = np.array([2, 3], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
@@ -32,7 +31,6 @@ def main() -> None:
         radii=radii,
         colors=colors,
         labels=labels,
-        draw_order=draw_order,
         class_ids=class_ids,
         keypoint_ids=keypoint_ids,
         instance_keys=instance_keys,

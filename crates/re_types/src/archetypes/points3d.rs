@@ -44,12 +44,6 @@ pub struct Points3D {
     /// Optional text labels for the points.
     pub labels: Option<Vec<crate::components::Label>>,
 
-    /// An optional floating point value that specifies the 3D drawing order.
-    /// Objects with higher values are drawn on top of those with lower values.
-    ///
-    /// The default for 3D points is 30.0.
-    pub draw_order: Option<crate::components::DrawOrder>,
-
     /// Optional class Ids for the points.
     ///
     /// The class ID provides colors and labels if not specified explicitly.
@@ -73,24 +67,22 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
     once_cell::sync::Lazy::new(|| ["rerun.point3d".into()]);
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.radius".into(), "rerun.colorrgba".into()]);
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.label".into(),
-            "rerun.draw_order".into(),
             "rerun.class_id".into(),
             "rerun.keypoint_id".into(),
             "rerun.instance_key".into(),
         ]
     });
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.point3d".into(),
             "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.label".into(),
-            "rerun.draw_order".into(),
             "rerun.class_id".into(),
             "rerun.keypoint_id".into(),
             "rerun.instance_key".into(),
@@ -98,7 +90,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
     });
 
 impl Points3D {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 impl crate::Archetype for Points3D {
@@ -223,29 +215,6 @@ impl crate::Archetype for Points3D {
                     .transpose()
                     .map_err(|err| crate::SerializationError::Context {
                         location: "rerun.archetypes.Points3D#labels".into(),
-                        source: Box::new(err),
-                    })?
-            },
-            {
-                self.draw_order
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::DrawOrder>::try_to_arrow([single], None);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.DrawOrder".into(),
-                                Box::new(array.data_type().clone()),
-                                Some("rerun.draw_order".into()),
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("draw_order", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .map_err(|err| crate::SerializationError::Context {
-                        location: "rerun.archetypes.Points3D#draw_order".into(),
                         source: Box::new(err),
                     })?
             },
@@ -428,27 +397,6 @@ impl crate::Archetype for Points3D {
         } else {
             None
         };
-        let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
-            Some(
-                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.Points3D#draw_order".into(),
-                        source: Box::new(err),
-                    })?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.Points3D#draw_order".into(),
-                        source: Box::new(err),
-                    })?,
-            )
-        } else {
-            None
-        };
         let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
             Some(
                 <crate::components::ClassId>::try_from_arrow_opt(&**array)
@@ -520,7 +468,6 @@ impl crate::Archetype for Points3D {
             radii,
             colors,
             labels,
-            draw_order,
             class_ids,
             keypoint_ids,
             instance_keys,
@@ -535,7 +482,6 @@ impl Points3D {
             radii: None,
             colors: None,
             labels: None,
-            draw_order: None,
             class_ids: None,
             keypoint_ids: None,
             instance_keys: None,
@@ -563,11 +509,6 @@ impl Points3D {
         labels: impl IntoIterator<Item = impl Into<crate::components::Label>>,
     ) -> Self {
         self.labels = Some(labels.into_iter().map(Into::into).collect());
-        self
-    }
-
-    pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
-        self.draw_order = Some(draw_order.into());
         self
     }
 

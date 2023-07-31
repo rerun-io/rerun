@@ -5,7 +5,6 @@
 
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
-#include "../components/draw_order.hpp"
 #include "../components/instance_key.hpp"
 #include "../components/keypoint_id.hpp"
 #include "../components/label.hpp"
@@ -32,12 +31,6 @@ namespace rr {
 
             /// Optional text labels for the points.
             std::optional<std::vector<rr::components::Label>> labels;
-
-            /// An optional floating point value that specifies the 3D drawing order.
-            /// Objects with higher values are drawn on top of those with lower values.
-            ///
-            /// The default for 3D points is 30.0.
-            std::optional<rr::components::DrawOrder> draw_order;
 
             /// Optional class Ids for the points.
             ///

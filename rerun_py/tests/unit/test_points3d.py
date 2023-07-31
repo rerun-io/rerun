@@ -256,7 +256,6 @@ def test_points3d() -> None:
             radii=radii,
             colors=colors,
             labels=labels,
-            draw_order=draw_order,
             class_ids=class_ids,
             keypoint_ids=keypoint_ids,
             instance_keys=instance_keys,
@@ -269,7 +268,6 @@ def test_points3d() -> None:
         assert arch.radii == rr_cmp.RadiusArray.from_similar([42, 43] if non_empty(radii) else [])
         assert arch.colors == rr_cmp.ColorArray.from_similar([0xAA0000CC, 0x00BB00DD] if non_empty(colors) else [])
         assert arch.labels == rr_cmp.LabelArray.from_similar(["hello", "friend"] if non_empty(labels) else [])
-        assert arch.draw_order == rr_cmp.DrawOrderArray.from_similar([300] if draw_order is not None else [])
         assert arch.class_ids == rr_cmp.ClassIdArray.from_similar([126, 127] if non_empty(class_ids) else [])
         assert arch.keypoint_ids == rr_cmp.KeypointIdArray.from_similar([2, 3] if non_empty(keypoint_ids) else [])
         assert arch.instance_keys == rr_cmp.InstanceKeyArray.from_similar(
