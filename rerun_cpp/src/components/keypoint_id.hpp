@@ -36,7 +36,7 @@ namespace rr {
 
             /// Creates a Rerun DataCell from an array of KeypointId components.
             static arrow::Result<rr::DataCell> to_data_cell(
-                const KeypointId* components, size_t num_components
+                const KeypointId* instances, size_t num_instances
             );
         };
     } // namespace components

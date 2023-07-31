@@ -42,7 +42,7 @@ namespace rr {
 
             /// Creates a Rerun DataCell from an array of DrawOrder components.
             static arrow::Result<rr::DataCell> to_data_cell(
-                const DrawOrder* components, size_t num_components
+                const DrawOrder* instances, size_t num_instances
             );
         };
     } // namespace components

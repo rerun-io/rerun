@@ -36,7 +36,7 @@ namespace rr {
 
             /// Creates a Rerun DataCell from an array of Radius components.
             static arrow::Result<rr::DataCell> to_data_cell(
-                const Radius* components, size_t num_components
+                const Radius* instances, size_t num_instances
             );
         };
     } // namespace components

@@ -37,7 +37,7 @@ namespace rr {
 
             /// Creates a Rerun DataCell from an array of Label components.
             static arrow::Result<rr::DataCell> to_data_cell(
-                const Label* components, size_t num_components
+                const Label* instances, size_t num_instances
             );
         };
     } // namespace components

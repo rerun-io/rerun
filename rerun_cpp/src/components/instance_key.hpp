@@ -36,7 +36,7 @@ namespace rr {
 
             /// Creates a Rerun DataCell from an array of InstanceKey components.
             static arrow::Result<rr::DataCell> to_data_cell(
-                const InstanceKey* components, size_t num_components
+                const InstanceKey* instances, size_t num_instances
             );
         };
     } // namespace components

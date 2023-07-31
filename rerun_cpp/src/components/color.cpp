@@ -43,15 +43,15 @@ namespace rr {
         }
 
         arrow::Result<rr::DataCell> Color::to_data_cell(
-            const Color* components, size_t num_components
+            const Color* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
             arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             ARROW_ASSIGN_OR_RAISE(auto builder, Color::new_arrow_array_builder(pool));
-            if (components && num_components > 0) {
+            if (instances && num_instances > 0) {
                 ARROW_RETURN_NOT_OK(
-                    Color::fill_arrow_array_builder(builder.get(), components, num_components)
+                    Color::fill_arrow_array_builder(builder.get(), instances, num_instances)
                 );
             }
             std::shared_ptr<arrow::Array> array;

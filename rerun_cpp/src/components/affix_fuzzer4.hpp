@@ -38,7 +38,7 @@ namespace rr {
 
             /// Creates a Rerun DataCell from an array of AffixFuzzer4 components.
             static arrow::Result<rr::DataCell> to_data_cell(
-                const AffixFuzzer4* components, size_t num_components
+                const AffixFuzzer4* instances, size_t num_instances
             );
         };
     } // namespace components

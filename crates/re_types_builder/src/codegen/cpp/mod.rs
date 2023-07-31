@@ -866,7 +866,7 @@ fn component_to_data_cell_method(
             is_static: true,
             return_type: quote! { arrow::Result<rr::DataCell> },
             name_and_parameters: quote! {
-                to_data_cell(const #type_ident* components, size_t num_components)
+                to_data_cell(const #type_ident* instances, size_t num_instances)
             },
         },
         definition_body: quote! {
@@ -876,11 +876,11 @@ fn component_to_data_cell_method(
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             ARROW_ASSIGN_OR_RAISE(auto builder, #type_ident::new_arrow_array_builder(pool));
-            if (components && num_components > 0) {
+            if (instances && num_instances > 0) {
                 ARROW_RETURN_NOT_OK(#type_ident::fill_arrow_array_builder(
                     builder.get(),
-                    components,
-                    num_components
+                    instances,
+                    num_instances
                 ));
             }
             std::shared_ptr<arrow::Array> array;

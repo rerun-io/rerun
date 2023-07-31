@@ -45,18 +45,16 @@ namespace rr {
         }
 
         arrow::Result<rr::DataCell> AffixFuzzer6::to_data_cell(
-            const AffixFuzzer6* components, size_t num_components
+            const AffixFuzzer6* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
             arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             ARROW_ASSIGN_OR_RAISE(auto builder, AffixFuzzer6::new_arrow_array_builder(pool));
-            if (components && num_components > 0) {
-                ARROW_RETURN_NOT_OK(AffixFuzzer6::fill_arrow_array_builder(
-                    builder.get(),
-                    components,
-                    num_components
-                ));
+            if (instances && num_instances > 0) {
+                ARROW_RETURN_NOT_OK(
+                    AffixFuzzer6::fill_arrow_array_builder(builder.get(), instances, num_instances)
+                );
             }
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));

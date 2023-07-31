@@ -37,7 +37,7 @@ namespace rr {
 
             /// Creates a Rerun DataCell from an array of Point2D components.
             static arrow::Result<rr::DataCell> to_data_cell(
-                const Point2D* components, size_t num_components
+                const Point2D* instances, size_t num_instances
             );
         };
     } // namespace components

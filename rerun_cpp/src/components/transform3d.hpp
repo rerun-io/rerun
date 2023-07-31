@@ -38,7 +38,7 @@ namespace rr {
 
             /// Creates a Rerun DataCell from an array of Transform3D components.
             static arrow::Result<rr::DataCell> to_data_cell(
-                const Transform3D* components, size_t num_components
+                const Transform3D* instances, size_t num_instances
             );
         };
     } // namespace components

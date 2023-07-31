@@ -41,7 +41,7 @@ namespace rr {
 
             /// Creates a Rerun DataCell from an array of DisconnectedSpace components.
             static arrow::Result<rr::DataCell> to_data_cell(
-                const DisconnectedSpace* components, size_t num_components
+                const DisconnectedSpace* instances, size_t num_instances
             );
         };
     } // namespace components
