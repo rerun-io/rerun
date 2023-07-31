@@ -332,7 +332,7 @@ pub trait Archetype {
 
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
 // attempt to use nightly features.
-type _Backtrace = backtrace::Backtrace;
+pub type _Backtrace = backtrace::Backtrace;
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum SerializationError {
