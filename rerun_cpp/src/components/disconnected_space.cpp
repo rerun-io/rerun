@@ -3,16 +3,21 @@
 
 #include "disconnected_space.hpp"
 
+#include "../rerun.hpp"
+
 #include <arrow/api.h>
 
 namespace rr {
     namespace components {
-        std::shared_ptr<arrow::DataType> DisconnectedSpace::to_arrow_datatype() {
-            return arrow::boolean();
+        const char *DisconnectedSpace::NAME = "rerun.disconnected_space";
+
+        const std::shared_ptr<arrow::DataType> &DisconnectedSpace::to_arrow_datatype() {
+            static const auto datatype = arrow::boolean();
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::BooleanBuilder>>
-            DisconnectedSpace::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
+            DisconnectedSpace::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
             }
@@ -21,7 +26,7 @@ namespace rr {
         }
 
         arrow::Status DisconnectedSpace::fill_arrow_array_builder(
-            arrow::BooleanBuilder* builder, const DisconnectedSpace* elements, size_t num_elements
+            arrow::BooleanBuilder *builder, const DisconnectedSpace *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -31,9 +36,45 @@ namespace rr {
             }
 
             static_assert(sizeof(*elements) == sizeof(elements->is_disconnected));
-            ARROW_RETURN_NOT_OK(builder->AppendValues(&elements->is_disconnected, num_elements));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(
+                reinterpret_cast<const uint8_t *>(&elements->is_disconnected),
+                num_elements
+            ));
 
             return arrow::Status::OK();
+        }
+
+        arrow::Result<rr::DataCell> DisconnectedSpace::to_data_cell(
+            const DisconnectedSpace *instances, size_t num_instances
+        ) {
+            // TODO(andreas): Allow configuring the memory pool.
+            arrow::MemoryPool *pool = arrow::default_memory_pool();
+
+            ARROW_ASSIGN_OR_RAISE(auto builder, DisconnectedSpace::new_arrow_array_builder(pool));
+            if (instances && num_instances > 0) {
+                ARROW_RETURN_NOT_OK(DisconnectedSpace::fill_arrow_array_builder(
+                    builder.get(),
+                    instances,
+                    num_instances
+                ));
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+            auto schema = arrow::schema({arrow::field(
+                DisconnectedSpace::NAME,
+                DisconnectedSpace::to_arrow_datatype(),
+                false
+            )});
+
+            rr::DataCell cell;
+            cell.component_name = DisconnectedSpace::NAME;
+            ARROW_ASSIGN_OR_RAISE(
+                cell.buffer,
+                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+            );
+
+            return cell;
         }
     } // namespace components
 } // namespace rr

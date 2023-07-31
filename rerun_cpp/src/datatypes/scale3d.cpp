@@ -9,12 +9,13 @@
 
 namespace rr {
     namespace datatypes {
-        std::shared_ptr<arrow::DataType> Scale3D::to_arrow_datatype() {
-            return arrow::dense_union({
+        const std::shared_ptr<arrow::DataType>& Scale3D::to_arrow_datatype() {
+            static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field("ThreeD", rr::datatypes::Vec3D::to_arrow_datatype(), false, nullptr),
                 arrow::field("Uniform", arrow::float32(), false, nullptr),
             });
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> Scale3D::new_arrow_array_builder(

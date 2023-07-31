@@ -42,13 +42,16 @@ namespace rr {
 
         /// Angle in either radians or degrees.
         struct Angle {
-          private:
-            detail::AngleTag _tag;
-            detail::AngleData _data;
+            Angle(const Angle& other) : _tag(other._tag) {
+                memcpy(&this->_data, &other._data, sizeof(detail::AngleData));
+            }
 
-            Angle() : _tag(detail::AngleTag::NONE) {}
+            Angle& operator=(const Angle& other) noexcept {
+                Angle tmp(other);
+                this->swap(tmp);
+                return *this;
+            }
 
-          public:
             Angle(Angle&& other) noexcept : _tag(detail::AngleTag::NONE) {
                 this->swap(other);
             }
@@ -56,6 +59,13 @@ namespace rr {
             Angle& operator=(Angle&& other) noexcept {
                 this->swap(other);
                 return *this;
+            }
+
+            void swap(Angle& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
             }
 
             static Angle radians(float radians) {
@@ -73,7 +83,7 @@ namespace rr {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
@@ -85,12 +95,13 @@ namespace rr {
                 arrow::DenseUnionBuilder* builder, const Angle* elements, size_t num_elements
             );
 
-            void swap(Angle& other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
-                this->_data.swap(other._data);
-            }
+          private:
+            detail::AngleTag _tag;
+            detail::AngleData _data;
+
+            Angle() : _tag(detail::AngleTag::NONE) {}
+
+          public:
         };
     } // namespace datatypes
 } // namespace rr

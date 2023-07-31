@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../components/transform3d.hpp"
+#include "../data_cell.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -18,6 +19,14 @@ namespace rr {
 
           public:
             Transform3D(rr::components::Transform3D transform) : transform(std::move(transform)) {}
+
+            /// Returns the number of primary instances of this archetype.
+            size_t num_instances() const {
+                return 1;
+            }
+
+            /// Creates a list of Rerun DataCell from this archetype.
+            arrow::Result<std::vector<rr::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
 } // namespace rr

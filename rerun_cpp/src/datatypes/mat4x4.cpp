@@ -7,11 +7,10 @@
 
 namespace rr {
     namespace datatypes {
-        std::shared_ptr<arrow::DataType> Mat4x4::to_arrow_datatype() {
-            return arrow::fixed_size_list(
-                arrow::field("item", arrow::float32(), false, nullptr),
-                16
-            );
+        const std::shared_ptr<arrow::DataType> &Mat4x4::to_arrow_datatype() {
+            static const auto datatype =
+                arrow::fixed_size_list(arrow::field("item", arrow::float32(), false, nullptr), 16);
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Mat4x4::new_arrow_array_builder(

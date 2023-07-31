@@ -1,7 +1,9 @@
 #include "recording_stream.hpp"
 
-#include <rerun.h>
+#include "data_cell.hpp"
+#include "rerun.h"
 
+#include <arrow/buffer.h>
 #include <loguru.hpp>
 #include <vector>
 
@@ -50,8 +52,8 @@ namespace rr {
         for (size_t i = 0; i < num_data_cells; ++i) {
             c_data_cells.push_back({
                 .component_name = data_cells[i].component_name,
-                .num_bytes = data_cells[i].num_bytes,
-                .bytes = data_cells[i].bytes,
+                .num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size()),
+                .bytes = data_cells[i].buffer->data(),
             });
         }
 

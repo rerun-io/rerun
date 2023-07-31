@@ -7,12 +7,13 @@
 
 namespace rr {
     namespace datatypes {
-        std::shared_ptr<arrow::DataType> Point3D::to_arrow_datatype() {
-            return arrow::struct_({
+        const std::shared_ptr<arrow::DataType> &Point3D::to_arrow_datatype() {
+            static const auto datatype = arrow::struct_({
                 arrow::field("x", arrow::float32(), false, nullptr),
                 arrow::field("y", arrow::float32(), false, nullptr),
                 arrow::field("z", arrow::float32(), false, nullptr),
             });
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StructBuilder>> Point3D::new_arrow_array_builder(

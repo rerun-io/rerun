@@ -4,18 +4,22 @@
 #include "affix_fuzzer7.hpp"
 
 #include "../datatypes/affix_fuzzer1.hpp"
+#include "../rerun.hpp"
 
 #include <arrow/api.h>
 
 namespace rr {
     namespace components {
-        std::shared_ptr<arrow::DataType> AffixFuzzer7::to_arrow_datatype() {
-            return arrow::list(arrow::field(
+        const char* AffixFuzzer7::NAME = "rerun.testing.components.AffixFuzzer7";
+
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer7::to_arrow_datatype() {
+            static const auto datatype = arrow::list(arrow::field(
                 "item",
                 rr::datatypes::AffixFuzzer1::to_arrow_datatype(),
                 true,
                 nullptr
             ));
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::ListBuilder>> AffixFuzzer7::new_arrow_array_builder(
@@ -46,6 +50,35 @@ namespace rr {
             );
 
             return arrow::Status::OK();
+        }
+
+        arrow::Result<rr::DataCell> AffixFuzzer7::to_data_cell(
+            const AffixFuzzer7* instances, size_t num_instances
+        ) {
+            // TODO(andreas): Allow configuring the memory pool.
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
+
+            ARROW_ASSIGN_OR_RAISE(auto builder, AffixFuzzer7::new_arrow_array_builder(pool));
+            if (instances && num_instances > 0) {
+                ARROW_RETURN_NOT_OK(
+                    AffixFuzzer7::fill_arrow_array_builder(builder.get(), instances, num_instances)
+                );
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+            auto schema = arrow::schema(
+                {arrow::field(AffixFuzzer7::NAME, AffixFuzzer7::to_arrow_datatype(), false)}
+            );
+
+            rr::DataCell cell;
+            cell.component_name = AffixFuzzer7::NAME;
+            ARROW_ASSIGN_OR_RAISE(
+                cell.buffer,
+                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+            );
+
+            return cell;
         }
     } // namespace components
 } // namespace rr

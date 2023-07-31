@@ -3,12 +3,17 @@
 
 #include "class_id.hpp"
 
+#include "../rerun.hpp"
+
 #include <arrow/api.h>
 
 namespace rr {
     namespace components {
-        std::shared_ptr<arrow::DataType> ClassId::to_arrow_datatype() {
-            return arrow::uint16();
+        const char* ClassId::NAME = "rerun.class_id";
+
+        const std::shared_ptr<arrow::DataType>& ClassId::to_arrow_datatype() {
+            static const auto datatype = arrow::uint16();
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::UInt16Builder>> ClassId::new_arrow_array_builder(
@@ -35,6 +40,34 @@ namespace rr {
             ARROW_RETURN_NOT_OK(builder->AppendValues(&elements->id, num_elements));
 
             return arrow::Status::OK();
+        }
+
+        arrow::Result<rr::DataCell> ClassId::to_data_cell(
+            const ClassId* instances, size_t num_instances
+        ) {
+            // TODO(andreas): Allow configuring the memory pool.
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
+
+            ARROW_ASSIGN_OR_RAISE(auto builder, ClassId::new_arrow_array_builder(pool));
+            if (instances && num_instances > 0) {
+                ARROW_RETURN_NOT_OK(
+                    ClassId::fill_arrow_array_builder(builder.get(), instances, num_instances)
+                );
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+            auto schema =
+                arrow::schema({arrow::field(ClassId::NAME, ClassId::to_arrow_datatype(), false)});
+
+            rr::DataCell cell;
+            cell.component_name = ClassId::NAME;
+            ARROW_ASSIGN_OR_RAISE(
+                cell.buffer,
+                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+            );
+
+            return cell;
         }
     } // namespace components
 } // namespace rr

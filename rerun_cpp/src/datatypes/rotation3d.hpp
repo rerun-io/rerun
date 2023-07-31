@@ -47,13 +47,16 @@ namespace rr {
 
         /// A 3D rotation.
         struct Rotation3D {
-          private:
-            detail::Rotation3DTag _tag;
-            detail::Rotation3DData _data;
+            Rotation3D(const Rotation3D& other) : _tag(other._tag) {
+                memcpy(&this->_data, &other._data, sizeof(detail::Rotation3DData));
+            }
 
-            Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
+            Rotation3D& operator=(const Rotation3D& other) noexcept {
+                Rotation3D tmp(other);
+                this->swap(tmp);
+                return *this;
+            }
 
-          public:
             Rotation3D(Rotation3D&& other) noexcept : _tag(detail::Rotation3DTag::NONE) {
                 this->swap(other);
             }
@@ -61,6 +64,13 @@ namespace rr {
             Rotation3D& operator=(Rotation3D&& other) noexcept {
                 this->swap(other);
                 return *this;
+            }
+
+            void swap(Rotation3D& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
             }
 
             /// Rotation defined by a quaternion.
@@ -90,7 +100,7 @@ namespace rr {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
@@ -102,12 +112,13 @@ namespace rr {
                 arrow::DenseUnionBuilder* builder, const Rotation3D* elements, size_t num_elements
             );
 
-            void swap(Rotation3D& other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
-                this->_data.swap(other._data);
-            }
+          private:
+            detail::Rotation3DTag _tag;
+            detail::Rotation3DData _data;
+
+            Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
+
+          public:
         };
     } // namespace datatypes
 } // namespace rr
