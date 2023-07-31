@@ -199,6 +199,11 @@ fn roundtrip() {
         ])), //
     });
 
+    let fuzzy20 = components::AffixFuzzer20(datatypes::AffixFuzzer20 {
+        p: components::PrimitiveComponent(17),
+        s: components::StringComponent("fuzz".to_owned()),
+    });
+
     let arch = AffixFuzzer1::new(
         fuzzy1.clone(), //
         fuzzy2.clone(),
@@ -219,6 +224,7 @@ fn roundtrip() {
         fuzzy17_2.clone(),
         fuzzy18_2.clone(),
         fuzzy19_1.clone(),
+        fuzzy20.clone(),
         [fuzzy1.clone(), fuzzy1.clone(), fuzzy1.clone()],
         [fuzzy2.clone(), fuzzy2.clone(), fuzzy2.clone()],
         [fuzzy3.clone(), fuzzy3.clone(), fuzzy3.clone()],
