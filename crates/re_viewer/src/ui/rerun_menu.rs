@@ -135,9 +135,6 @@ impl App {
         LLVM {llvm_version}\n\
         Built {datetime}",
         ));
-
-        ui.add_space(12.0);
-        ui.hyperlink_to("www.rerun.io", "https://www.rerun.io/");
     }
 
     fn recordings_menu(&self, ui: &mut egui::Ui, store_context: Option<&StoreContext<'_>>) {
