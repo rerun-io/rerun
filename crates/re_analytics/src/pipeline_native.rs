@@ -49,6 +49,8 @@ impl Pipeline {
 
         let data_path = config.data_dir().to_owned();
 
+        std::fs::create_dir_all(data_path.clone())?;
+
         let session_file_path = data_path.join(format!("{}.json", config.session_id));
         let session_file = OpenOptions::new()
             .write(true)
