@@ -86,7 +86,9 @@ def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionTyp
     from .. import Vec3D
 
     if scale is None:
-        return pa.nulls(1, type=type_)
+        scale_discriminant = "_null_markers"
+        scale_pa_arr = pa.nulls(1, pa.null())
+        return _build_dense_union(type_, scale_discriminant, scale_pa_arr)
 
     scale_arm = scale.inner
 
@@ -106,7 +108,9 @@ def _build_union_array_from_rotation(rotation: Rotation3D | None, type_: pa.Dens
     from .. import Quaternion, RotationAxisAngle
 
     if rotation is None:
-        return pa.nulls(1, type=type_)
+        rotation_discriminant = "_null_markers"
+        rotation_pa_arr = pa.nulls(1, pa.null())
+        return _build_dense_union(type_, rotation_discriminant, rotation_pa_arr)
 
     rotation_arm = rotation.inner
 
