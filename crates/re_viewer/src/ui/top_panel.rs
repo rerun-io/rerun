@@ -171,14 +171,6 @@ fn website_link_ui(ui: &mut egui::Ui, app: &mut App) {
         .on_hover_cursor(egui::CursorIcon::PointingHand);
     let url = "https://rerun.io/";
     if response.clicked() {
-        let modifiers = ui.ctx().input(|i| i.modifiers);
-        ui.ctx().output_mut(|o| {
-            o.open_url = Some(egui::output::OpenUrl {
-                url: url.to_owned(),
-                new_tab: modifiers.any(),
-            });
-        });
-    } else if response.middle_clicked() {
         ui.ctx().output_mut(|o| {
             o.open_url = Some(egui::output::OpenUrl {
                 url: url.to_owned(),
