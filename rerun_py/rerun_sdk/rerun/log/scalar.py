@@ -127,16 +127,16 @@ def log_scalar(
     instanced["rerun.scalar"] = ScalarArray.from_numpy(np.array([scalar]))
 
     if label:
-        instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
+        instanced["rerun.label"] = rrc.LabelArray.from_similar([label]).storage
 
     if color is not None:
         from rerun.experimental import cmp as rrc
 
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     if radius:
-        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(np.array([radius]))
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(np.array([radius])).storage
 
     if scattered:
         props = [{"scattered": scattered}]

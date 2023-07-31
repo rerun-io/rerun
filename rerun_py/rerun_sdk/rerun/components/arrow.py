@@ -20,8 +20,8 @@ class Arrow3DArray(pa.ExtensionArray):  # type: ignore[misc]
         assert origins.shape[1] == 3
         assert origins.shape == vectors.shape
 
-        origins = rrd.Vec3DArray.from_similar(origins)
-        vectors = rrd.Vec3DArray.from_similar(vectors)
+        origins = rrd.Vec3DArray.from_similar(origins).storage
+        vectors = rrd.Vec3DArray.from_similar(vectors).storage
 
         storage = pa.StructArray.from_arrays(
             arrays=[origins, vectors],

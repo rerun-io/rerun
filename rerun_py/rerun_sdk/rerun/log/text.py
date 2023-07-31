@@ -119,7 +119,7 @@ def log_text_entry(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     if ext:
         rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
