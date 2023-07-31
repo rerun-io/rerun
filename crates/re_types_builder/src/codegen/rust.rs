@@ -1668,6 +1668,13 @@ fn quote_arrow_field_serializer(
             .to_logical_type().clone()
     }};
 
+    let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+        Some(&objects[fqname])
+    } else {
+        None
+    };
+    let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+
     match datatype.to_logical_type() {
         DataType::Int8
         | DataType::Int16
@@ -1680,13 +1687,6 @@ fn quote_arrow_field_serializer(
         | DataType::Float16
         | DataType::Float32
         | DataType::Float64 => {
-            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(&objects[fqname])
-            } else {
-                None
-            };
-            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
-
             // NOTE: We need values for all slots, regardless of what the bitmap says,
             // hence `unwrap_or_default`.
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
@@ -1745,74 +1745,51 @@ fn quote_arrow_field_serializer(
         }
 
         DataType::Utf8 => {
-            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(&objects[fqname])
-            } else {
-                None
-            };
-            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
-
             // NOTE: We need values for all slots, regardless of what the bitmap says,
             // hence `unwrap_or_default`.
-            let quoted_transparent_mapping = if inner_is_arrow_transparent {
-                let inner_obj = inner_obj.as_ref().unwrap();
-                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
-                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
-                let quoted_data_dst = format_ident!(
-                    "{}",
-                    if is_tuple_struct {
-                        "data0"
+            let (quoted_transparent_mapping, quoted_transparent_length) =
+                if inner_is_arrow_transparent {
+                    let inner_obj = inner_obj.as_ref().unwrap();
+                    let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
+                    let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+                    let quoted_data_dst = format_ident!(
+                        "{}",
+                        if is_tuple_struct {
+                            "data0"
+                        } else {
+                            inner_obj.fields[0].name.as_str()
+                        }
+                    );
+                    let quoted_binding = if is_tuple_struct {
+                        quote!(#quoted_inner_obj_type(#quoted_data_dst))
                     } else {
-                        inner_obj.fields[0].name.as_str()
-                    }
-                );
-                let quoted_binding = if is_tuple_struct {
-                    quote!(#quoted_inner_obj_type(#quoted_data_dst))
+                        quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                    };
+
+                    (
+                        quote! {
+                            .flat_map(|datum| {
+                                let #quoted_binding = datum;
+                                #quoted_data_dst .bytes()
+                            })
+                        },
+                        quote! {
+                            .map(|datum| {
+                                let #quoted_binding = datum;
+                                #quoted_data_dst.len()
+                            }).unwrap_or_default()
+                        },
+                    )
                 } else {
-                    quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                    (
+                        quote! {
+                            .flat_map(|s| s.bytes())
+                        },
+                        quote! {
+                            .map(|datum| datum.len()).unwrap_or_default()
+                        },
+                    )
                 };
-
-                quote! {
-                    .flat_map(|datum| {
-                        let #quoted_binding = datum;
-                        #quoted_data_dst .bytes()
-                    })
-                }
-            } else {
-                quote! {
-                    .flat_map(|s| s.bytes())
-                }
-            };
-
-            let quoted_transparent_length = if inner_is_arrow_transparent {
-                let inner_obj = inner_obj.as_ref().unwrap();
-                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
-                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
-                let quoted_data_dst = format_ident!(
-                    "{}",
-                    if is_tuple_struct {
-                        "data0"
-                    } else {
-                        inner_obj.fields[0].name.as_str()
-                    }
-                );
-                let quoted_binding = if is_tuple_struct {
-                    quote!(#quoted_inner_obj_type(#quoted_data_dst))
-                } else {
-                    quote!(#quoted_inner_obj_type { #quoted_data_dst })
-                };
-
-                quote! {
-                    .map(|datum| {
-                        let #quoted_binding = datum;
-                        #quoted_data_dst.len()
-                    }).unwrap_or_default()
-                }
-            } else {
-                quote! {
-                    .map(|datum| datum.len()).unwrap_or_default()
-                }
-            };
 
             quote! {{
                 // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
@@ -1844,13 +1821,6 @@ fn quote_arrow_field_serializer(
                 &quoted_inner_bitmap,
                 &quoted_inner_data,
             );
-
-            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(&objects[fqname])
-            } else {
-                None
-            };
-            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
 
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
@@ -2246,6 +2216,14 @@ fn quote_arrow_field_deserializer(
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
+
+    let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+        Some(&objects[fqname])
+    } else {
+        None
+    };
+    let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+
     match datatype.to_logical_type() {
         DataType::Int8
         | DataType::Int16
@@ -2259,13 +2237,6 @@ fn quote_arrow_field_deserializer(
         | DataType::Float32
         | DataType::Float64
         | DataType::Boolean => {
-            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(&objects[fqname])
-            } else {
-                None
-            };
-            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
-
             let quoted_transparent_unmapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
                 let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
@@ -2302,13 +2273,6 @@ fn quote_arrow_field_deserializer(
         }
 
         DataType::Utf8 => {
-            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(&objects[fqname])
-            } else {
-                None
-            };
-            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
-
             let quoted_transparent_unmapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
                 let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
@@ -2349,13 +2313,6 @@ fn quote_arrow_field_deserializer(
                 obj_field_fqname,
                 data_src,
             );
-
-            let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-                Some(&objects[fqname])
-            } else {
-                None
-            };
-            let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
 
             let quoted_transparent_unmapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
