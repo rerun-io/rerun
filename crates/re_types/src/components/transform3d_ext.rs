@@ -1,9 +1,6 @@
 use super::Transform3D;
 
-use crate::datatypes::{
-    RotationAxisAngle, Transform3D as Transform3DRepr, TranslationAndMat3x3,
-    TranslationRotationScale3D,
-};
+use crate::datatypes::Transform3D as Transform3DRepr;
 
 impl Transform3D {
     /// Identity transform, i.e. parent & child are in the same space.
@@ -35,23 +32,5 @@ impl Transform3D {
         } else {
             transform.inverse()
         }
-    }
-}
-
-impl From<RotationAxisAngle> for Transform3D {
-    fn from(value: RotationAxisAngle) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<TranslationRotationScale3D> for Transform3D {
-    fn from(value: TranslationRotationScale3D) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<TranslationAndMat3x3> for Transform3D {
-    fn from(value: TranslationAndMat3x3) -> Self {
-        Self(value.into())
     }
 }
