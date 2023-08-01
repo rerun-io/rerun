@@ -2,6 +2,8 @@
 
 mod angle;
 mod angle_ext;
+mod arrow3d;
+mod arrow3d_ext;
 mod mat3x3;
 mod mat3x3_ext;
 mod mat4x4;
@@ -30,6 +32,7 @@ mod vec3d_ext;
 mod vec4d;
 
 pub use self::angle::Angle;
+pub use self::arrow3d::Arrow3D;
 pub use self::mat3x3::Mat3x3;
 pub use self::mat4x4::Mat4x4;
 pub use self::point2d::Point2D;

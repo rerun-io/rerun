@@ -5005,6 +5005,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_arrows3d"
+version = "0.9.0-alpha.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_disconnected_space"
 version = "0.9.0-alpha.1"
 dependencies = [

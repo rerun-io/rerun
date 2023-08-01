@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .angle import Angle, AngleArray, AngleArrayLike, AngleLike, AngleType
+from .arrow3d import Arrow3D, Arrow3DArray, Arrow3DArrayLike, Arrow3DLike, Arrow3DType
 from .fuzzy import (
     AffixFuzzer1,
     AffixFuzzer1Array,
@@ -109,6 +110,11 @@ __all__ = [
     "AngleArrayLike",
     "AngleLike",
     "AngleType",
+    "Arrow3D",
+    "Arrow3DArray",
+    "Arrow3DArrayLike",
+    "Arrow3DLike",
+    "Arrow3DType",
     "FlattenedScalar",
     "FlattenedScalarArray",
     "FlattenedScalarArrayLike",
