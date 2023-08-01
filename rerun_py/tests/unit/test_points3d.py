@@ -32,8 +32,8 @@ def test_points3d() -> None:
         np.array([]),
         # Point3DArrayLike: Sequence[Point3DLike]: Point3D
         [
-            rr_dt.Point3D(1, 2, 3),
-            rr_dt.Point3D(4, 5, 6),
+            rr_dt.Point3D([1, 2, 3]),
+            rr_dt.Point3D([4, 5, 6]),
         ],
         # Point3DArrayLike: Sequence[Point3DLike]: npt.NDArray[np.float32]
         [

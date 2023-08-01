@@ -34,8 +34,8 @@ def test_points2d() -> None:
         np.array([]),
         # Point2DArrayLike: Sequence[Point2DLike]: Point2D
         [
-            rrd.Point2D(1, 2),
-            rrd.Point2D(3, 4),
+            rrd.Point2D([1, 2]),
+            rrd.Point2D([3, 4]),
         ],
         # Point2DArrayLike: Sequence[Point2DLike]: npt.NDArray[np.float32]
         [
