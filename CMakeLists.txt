@@ -8,6 +8,9 @@ function(set_default_warning_settings target)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wformat=2 -Wmissing-include-dirs -Wnull-dereference -Woverloaded-virtual -Wpointer-arith -Wshadow -Wswitch-enum -Wvla -Wno-sign-compare -Wconversion -Wunused -Wold-style-cast -Wno-missing-braces)
     endif()
+
+    # Enable this to fail on warnings.
+    # set_property(TARGET ${target} PROPERTY COMPILE_WARNING_AS_ERROR ON)
 endfunction()
 
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library

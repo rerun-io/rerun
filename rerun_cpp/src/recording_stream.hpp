@@ -50,6 +50,14 @@ namespace rr {
         // application).
         RecordingStream(const RecordingStream&) = delete;
         RecordingStream(RecordingStream&&) = delete;
+        RecordingStream() = delete;
+
+        // -----------------------------------------------------------------------------------------
+        // Properties
+
+        StoreKind kind() const {
+            return _store_kind;
+        }
 
         // -----------------------------------------------------------------------------------------
         // Controlling globally available instances of RecordingStream.
@@ -145,17 +153,17 @@ namespace rr {
 
       private:
         template <typename C, typename... Ts>
-        static size_t size_of_first_collection(const std::vector<C>& first, const Ts&... ts) {
+        static size_t size_of_first_collection(const std::vector<C>& first, const Ts&...) {
             return first.size();
         }
 
         template <size_t N, typename C, typename... Ts>
-        static size_t size_of_first_collection(const std::array<C, N>& first, const Ts&... ts) {
+        static size_t size_of_first_collection(const std::array<C, N>& first, const Ts&...) {
             return first.size();
         }
 
         template <size_t N, typename C, typename... Ts>
-        static size_t size_of_first_collection(const C (&first)[N], const Ts&... ts) {
+        static size_t size_of_first_collection(const C (&)[N], const Ts&...) {
             return N;
         }
 
@@ -189,7 +197,7 @@ namespace rr {
             push_data_cells(data_cells, rest...);
         }
 
-        static void push_data_cells(std::vector<DataCell>& data_cells) {}
+        static void push_data_cells(std::vector<DataCell>&) {}
 
         RecordingStream(uint32_t id, StoreKind store_kind) : _id(id), _store_kind(store_kind) {}
 
