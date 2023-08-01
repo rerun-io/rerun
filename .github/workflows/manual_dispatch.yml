@@ -10,13 +10,19 @@ on:
         description: "Run reuseable_checks"
         type: boolean
         required: false
-        default: true
+        default: false
 
       DEPLOY_DOCS:
         description: "Run reusable_deploy_docs"
         type: boolean
         required: false
         default: false
+
+      CPP:
+        description: "Run reusable_checks_cpp.yml"
+        type: boolean
+        required: false
+        default: true
 
       BENCHES:
         description: "Run reusable_bench.yml"
@@ -60,6 +66,12 @@ on:
         default: false
 
 jobs:
+  cpp-checks:
+    name: "Run reusable_checks_cpp.yml"
+    if: ${{ github.event.inputs.CPP == 'true' }}
+    uses: ./.github/workflows/reusable_checks_cpp.yml
+    secrets: inherit
+
   checks:
     name: Run All Checks
     if: ${{ github.event.inputs.CHECKS == 'true' }}
@@ -276,4 +288,3 @@ jobs:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
       PR_NUMBER: ${{ needs.check-for-pr.outputs.PR_NUMBER }}
     secrets: inherit
-

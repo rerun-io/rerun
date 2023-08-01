@@ -1,0 +1,18 @@
+name: "C++ Checks: Lints, Tests, Docs"
+
+on:
+  workflow_call:
+
+permissions:
+  contents: "read"
+  id-token: "write"
+
+jobs:
+  cpp-lints:
+    name: C++ lints (fmt, compile, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run clang format on all relevant files
+        uses: jidicula/clang-format-action@v4.11.0
+        with:
+          clang-format-version: "16"
