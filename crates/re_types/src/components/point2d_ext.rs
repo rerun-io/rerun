@@ -13,34 +13,12 @@ impl Point2D {
 
     #[inline]
     pub fn x(&self) -> f32 {
-        self.0.x
+        self.0.x()
     }
 
     #[inline]
     pub fn y(&self) -> f32 {
-        self.0.y
-    }
-}
-
-impl From<(f32, f32)> for Point2D {
-    #[inline]
-    fn from((x, y): (f32, f32)) -> Self {
-        Self::new(x, y)
-    }
-}
-
-impl From<[f32; 2]> for Point2D {
-    #[inline]
-    fn from([x, y]: [f32; 2]) -> Self {
-        Self::new(x, y)
-    }
-}
-
-#[cfg(feature = "glam")]
-impl From<glam::Vec2> for Point2D {
-    #[inline]
-    fn from(pt: glam::Vec2) -> Self {
-        Self::new(pt.x, pt.y)
+        self.0.y()
     }
 }
 
