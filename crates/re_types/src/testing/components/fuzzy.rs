@@ -3525,3 +3525,140 @@ impl crate::Loggable for AffixFuzzer19 {
 }
 
 impl crate::Component for AffixFuzzer19 {}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AffixFuzzer20(pub crate::testing::datatypes::AffixFuzzer20);
+
+impl<T: Into<crate::testing::datatypes::AffixFuzzer20>> From<T> for AffixFuzzer20 {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl<'a> From<AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
+    #[inline]
+    fn from(value: AffixFuzzer20) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
+    #[inline]
+    fn from(value: &'a AffixFuzzer20) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Loggable for AffixFuzzer20 {
+    type Name = crate::ComponentName;
+    type Item<'a> = Option<Self>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    #[inline]
+    fn name() -> Self::Name {
+        "rerun.testing.components.AffixFuzzer20".into()
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![
+            Field {
+                name: "p".to_owned(),
+                data_type: <crate::testing::components::PrimitiveComponent>::to_arrow_datatype(),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "s".to_owned(),
+                data_type: <crate::testing::components::StringComponent>::to_arrow_datatype(),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+        ])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data0): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| {
+                        let Self(data0) = datum.into_owned();
+                        data0
+                    });
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            {
+                _ = data0_bitmap;
+                _ = extension_wrapper;
+                crate::testing::datatypes::AffixFuzzer20::try_to_arrow_opt(
+                    data0,
+                    Some("rerun.testing.components.AffixFuzzer20"),
+                )?
+            }
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        Ok(
+            crate::testing::datatypes::AffixFuzzer20::try_from_arrow_opt(data)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer20#nested_transparent".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer20#nested_transparent".into(),
+                    source: Box::new(err),
+                })?,
+        )
+    }
+
+    #[inline]
+    fn try_iter_from_arrow(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
+    where
+        Self: Sized,
+    {
+        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+        item
+    }
+}
+
+impl crate::Component for AffixFuzzer20 {}

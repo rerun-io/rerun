@@ -33,6 +33,7 @@ pub struct AffixFuzzer1 {
     pub fuzz1017: crate::testing::components::AffixFuzzer17,
     pub fuzz1018: crate::testing::components::AffixFuzzer18,
     pub fuzz1019: crate::testing::components::AffixFuzzer19,
+    pub fuzz1020: crate::testing::components::AffixFuzzer20,
     pub fuzz1101: Vec<crate::testing::components::AffixFuzzer1>,
     pub fuzz1102: Vec<crate::testing::components::AffixFuzzer2>,
     pub fuzz1103: Vec<crate::testing::components::AffixFuzzer3>,
@@ -89,7 +90,7 @@ pub struct AffixFuzzer1 {
     pub fuzz2118: Option<Vec<crate::testing::components::AffixFuzzer18>>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 37usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 38usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer1".into(),
@@ -111,6 +112,7 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 37usize
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
             "rerun.testing.components.AffixFuzzer19".into(),
+            "rerun.testing.components.AffixFuzzer20".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
@@ -174,7 +176,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 36usize
             "rerun.testing.components.AffixFuzzer18".into(),
         ]
     });
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 73usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 74usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer1".into(),
@@ -196,6 +198,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 73usize]> =
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
             "rerun.testing.components.AffixFuzzer19".into(),
+            "rerun.testing.components.AffixFuzzer20".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
@@ -254,7 +257,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 73usize]> =
     });
 
 impl AffixFuzzer1 {
-    pub const NUM_COMPONENTS: usize = 73usize;
+    pub const NUM_COMPONENTS: usize = 74usize;
 }
 
 impl crate::Archetype for AffixFuzzer1 {
@@ -744,6 +747,30 @@ impl crate::Archetype for AffixFuzzer1 {
                 .transpose()
                 .map_err(|err| crate::SerializationError::Context {
                     location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1019".into(),
+                    source: Box::new(err),
+                })?
+            },
+            {
+                Some({
+                    let array = <crate::testing::components::AffixFuzzer20>::try_to_arrow(
+                        [&self.fuzz1020],
+                        None,
+                    );
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer20".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer20".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1020", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()
+                .map_err(|err| crate::SerializationError::Context {
+                    location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1020".into(),
                     source: Box::new(err),
                 })?
             },
@@ -2624,6 +2651,32 @@ impl crate::Archetype for AffixFuzzer1 {
                     source: Box::new(err),
                 })?
         };
+        let fuzz1020 = {
+            let array = arrays_by_name
+                .get("fuzz1020")
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1020".into(),
+                    source: Box::new(err),
+                })?;
+            <crate::testing::components::AffixFuzzer20>::try_from_arrow_opt(&**array)
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1020".into(),
+                    source: Box::new(err),
+                })?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.archetypes.AffixFuzzer1#fuzz1020".into(),
+                    source: Box::new(err),
+                })?
+        };
         let fuzz1101 = {
             let array = arrays_by_name
                 .get("fuzz1101")
@@ -3904,6 +3957,7 @@ impl crate::Archetype for AffixFuzzer1 {
             fuzz1017,
             fuzz1018,
             fuzz1019,
+            fuzz1020,
             fuzz1101,
             fuzz1102,
             fuzz1103,
@@ -3983,6 +4037,7 @@ impl AffixFuzzer1 {
         fuzz1017: impl Into<crate::testing::components::AffixFuzzer17>,
         fuzz1018: impl Into<crate::testing::components::AffixFuzzer18>,
         fuzz1019: impl Into<crate::testing::components::AffixFuzzer19>,
+        fuzz1020: impl Into<crate::testing::components::AffixFuzzer20>,
         fuzz1101: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer1>>,
         fuzz1102: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer2>>,
         fuzz1103: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer3>>,
@@ -4022,6 +4077,7 @@ impl AffixFuzzer1 {
             fuzz1017: fuzz1017.into(),
             fuzz1018: fuzz1018.into(),
             fuzz1019: fuzz1019.into(),
+            fuzz1020: fuzz1020.into(),
             fuzz1101: fuzz1101.into_iter().map(Into::into).collect(),
             fuzz1102: fuzz1102.into_iter().map(Into::into).collect(),
             fuzz1103: fuzz1103.into_iter().map(Into::into).collect(),

@@ -2,6 +2,8 @@ include "arrow/attributes.fbs";
 include "fbs/attributes.fbs";
 include "rust/attributes.fbs";
 
+include "rerun/testing/components/fuzzy_deps.fbs";
+
 namespace rerun.testing.datatypes;
 
 // ---
@@ -86,4 +88,12 @@ table AffixFuzzer5 (
   order: 500
 ) {
   single_optional_union: AffixFuzzer4 (order: 100, nullable);
+}
+
+table AffixFuzzer20 (
+  "attr.rust.derive": "Eq, PartialEq",
+  order: 600
+) {
+  p: rerun.testing.components.PrimitiveComponent  (order: 100);
+  s: rerun.testing.components.StringComponent  (order: 200);
 }

@@ -1955,3 +1955,292 @@ impl crate::Loggable for AffixFuzzer5 {
 }
 
 impl crate::Datatype for AffixFuzzer5 {}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AffixFuzzer20 {
+    pub p: crate::testing::components::PrimitiveComponent,
+    pub s: crate::testing::components::StringComponent,
+}
+
+impl<'a> From<AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
+    #[inline]
+    fn from(value: AffixFuzzer20) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
+    #[inline]
+    fn from(value: &'a AffixFuzzer20) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Loggable for AffixFuzzer20 {
+    type Name = crate::DatatypeName;
+    type Item<'a> = Option<Self>;
+    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    #[inline]
+    fn name() -> Self::Name {
+        "rerun.testing.datatypes.AffixFuzzer20".into()
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![
+            Field {
+                name: "p".to_owned(),
+                data_type: <crate::testing::components::PrimitiveComponent>::to_arrow_datatype(),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "s".to_owned(),
+                data_type: <crate::testing::components::StringComponent>::to_arrow_datatype(),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+        ])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
+                (if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::testing::datatypes::AffixFuzzer20>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::testing::datatypes::AffixFuzzer20>::to_arrow_datatype()
+                })
+                .to_logical_type()
+                .clone(),
+                vec![
+                    {
+                        let (somes, p): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { p, .. } = &**datum;
+                                    p.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let p_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        PrimitiveArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::UInt32.to_logical_type().clone()
+                            },
+                            p.into_iter()
+                                .map(|datum| {
+                                    datum
+                                        .map(|datum| {
+                                            let crate::testing::components::PrimitiveComponent(
+                                                data0,
+                                            ) = datum;
+                                            data0
+                                        })
+                                        .unwrap_or_default()
+                                })
+                                .collect(),
+                            p_bitmap,
+                        )
+                        .boxed()
+                    },
+                    {
+                        let (somes, s): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { s, .. } = &**datum;
+                                    s.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let s_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            let inner_data: ::arrow2::buffer::Buffer<u8> = s
+                                .iter()
+                                .flatten()
+                                .flat_map(|datum| {
+                                    let crate::testing::components::StringComponent(data0) = datum;
+                                    data0.bytes()
+                                })
+                                .collect();
+                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                s.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| {
+                                            let crate::testing::components::StringComponent(data0) =
+                                                datum;
+                                            data0.len()
+                                        })
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            unsafe {
+                                Utf8Array::<i32>::new_unchecked(
+                                    {
+                                        _ = extension_wrapper;
+                                        DataType::Utf8.to_logical_type().clone()
+                                    },
+                                    offsets,
+                                    inner_data,
+                                    s_bitmap,
+                                )
+                            }
+                            .boxed()
+                        }
+                    },
+                ],
+                bitmap,
+            )
+            .boxed()
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                    expected: data.data_type().clone(),
+                    got: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.datatypes.AffixFuzzer20".into(),
+                    source: Box::new(err),
+                })?;
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let (data_fields, data_arrays, data_bitmap) =
+                    (data.fields(), data.values(), data.validity());
+                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(data_arrays)
+                    .collect();
+                let p = {
+                    let data = &**arrays_by_name["p"];
+
+                    data.as_any()
+                        .downcast_ref::<UInt32Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|opt| opt.map(|v| crate::testing::components::PrimitiveComponent(*v)))
+                };
+                let s = {
+                    let data = &**arrays_by_name["s"];
+
+                    data.as_any()
+                        .downcast_ref::<Utf8Array<i32>>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|opt| {
+                            opt.map(|v| crate::testing::components::StringComponent(v.to_owned()))
+                        })
+                };
+                ::itertools::izip!(p, s)
+                    .enumerate()
+                    .map(|(i, (p, s))| {
+                        is_valid(i)
+                            .then(|| {
+                                Ok(Self {
+                                    p: p.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| {
+                                        crate::DeserializationError::Context {
+                                            location: "rerun.testing.datatypes.AffixFuzzer20#p"
+                                                .into(),
+                                            source: Box::new(err),
+                                        }
+                                    })?,
+                                    s: s.ok_or_else(|| crate::DeserializationError::MissingData {
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| {
+                                        crate::DeserializationError::Context {
+                                            location: "rerun.testing.datatypes.AffixFuzzer20#s"
+                                                .into(),
+                                            source: Box::new(err),
+                                        }
+                                    })?,
+                                })
+                            })
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.testing.datatypes.AffixFuzzer20".into(),
+                        source: Box::new(err),
+                    })?
+            }
+        })
+    }
+
+    #[inline]
+    fn try_iter_from_arrow(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
+    where
+        Self: Sized,
+    {
+        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+    }
+
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+        item
+    }
+}
+
+impl crate::Datatype for AffixFuzzer20 {}
