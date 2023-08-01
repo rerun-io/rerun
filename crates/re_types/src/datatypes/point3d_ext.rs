@@ -12,20 +12,6 @@ impl Point3D {
     }
 }
 
-impl From<(f32, f32, f32)> for Point3D {
-    #[inline]
-    fn from((x, y, z): (f32, f32, f32)) -> Self {
-        Self { x, y, z }
-    }
-}
-
-impl From<[f32; 3]> for Point3D {
-    #[inline]
-    fn from([x, y, z]: [f32; 3]) -> Self {
-        Self { x, y, z }
-    }
-}
-
 #[cfg(feature = "glam")]
 impl From<glam::Vec3> for Point3D {
     #[inline]

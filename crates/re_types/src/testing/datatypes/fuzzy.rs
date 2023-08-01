@@ -1761,10 +1761,10 @@ pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::testing::datatypes::AffixFuzzer4>,
 }
 
-impl From<Option<crate::testing::datatypes::AffixFuzzer4>> for AffixFuzzer5 {
-    fn from(v: Option<crate::testing::datatypes::AffixFuzzer4>) -> Self {
+impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer4>>> From<T> for AffixFuzzer5 {
+    fn from(v: T) -> Self {
         Self {
-            single_optional_union: v,
+            single_optional_union: v.into(),
         }
     }
 }
