@@ -140,10 +140,12 @@ panic = "abort" # This leads to better optimizations and smaller binaries (and i
 [profile.bench]
 debug = true
 
-
 [patch.crates-io]
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
 # If you do patch always prefer to patch to a commit on the trunk of the upstream repo.
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+
+# Temporary patch until next egui_tiles release
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", commit = "a02d6805526df4284b129899648c7c1bed9cecd6" }
