@@ -12,6 +12,8 @@ jobs:
     name: C++ lints (fmt, compile, tests)
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+
       - name: Run clang format on all relevant files
         uses: jidicula/clang-format-action@v4.11.0
         with:

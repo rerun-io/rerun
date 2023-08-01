@@ -39,19 +39,19 @@ on:
         description: "Run reusable_build_and_test_wheels (Full build: linux,windows,macos-arm,macos-intel)"
         type: string
         required: false
-        default: "linux"
+        default: ""
 
       BUILD_WEB:
         description: "Run reusable_build_web/reusable_build_web_demo (Full build: app,demo)"
         type: string
         required: false
-        default: "app,demo"
+        default: ""
 
       RELEASE_VERSION:
         description: "Release Version Number (Must match Cargo.toml)"
         type: string
         required: false
-        default: "prerelease"
+        default: ""
 
       UPLOAD_GCLOUD:
         description: "Upload wheels and wasm to gcloud"
