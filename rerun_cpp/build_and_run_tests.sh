@@ -13,4 +13,4 @@ pushd build
     cmake --build . --config Debug --target rerun_sdk_tests -j ${num_threads}
 popd
 
-./build/rerun_cpp/rerun_sdk_tests
+./build/rerun_cpp/tests/rerun_sdk_tests

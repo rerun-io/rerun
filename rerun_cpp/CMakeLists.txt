@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
+add_subdirectory(tests)
+
 # NOTE: CMake docs strongly discourages using GLOB, and instead suggests
 # manually listing all the files, like it's 1972.
 # However, that won't work for use since we auto-generate the source tree.
@@ -10,7 +12,9 @@ file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
 )
 
 add_library(rerun_sdk ${rerun_sdk_SRC})
-set_default_warning_settings(rerun_sdk)
+
+# TODO(andreas): Fix all warnings and enable this.
+# set_default_warning_settings(rerun_sdk)
 
 # ------------------------------------------------------------------------------
 
@@ -19,7 +23,8 @@ include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../crates/rerun_c/src)
 
 # Make sure the compiler can find include files for rerun
 # when other libraries or executables link to rerun:
-target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# TODO(andreas): These should be prefixed `rerun/`.
+target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # ------------------------------------------------------------------------------
 # Loguru logging library (https://github.com/emilk/loguru):
@@ -70,31 +75,3 @@ if(ARROW_LINK_SHARED)
 else()
     target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_static)
 endif()
-
-# ------------------------------------------------------------------------------
-# Test application
-
-# Catch2:
-Include(FetchContent)
-FetchContent_Declare(
-    Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG v3.4.0
-)
-FetchContent_MakeAvailable(Catch2)
-
-# Test application:
-if(NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 17)
-endif()
-
-file(GLOB_RECURSE rerun_sdk_tests_SRC CONFIGURE_DEPENDS
-    "tests/*.hpp"
-    "tests/*.cpp"
-)
-add_executable(rerun_sdk_tests ${rerun_sdk_tests_SRC})
-
-set_default_warning_settings(rerun_sdk_tests)
-include_directories(rerun_sdk_tests SYSTEM "src") # Pretend Rerun sdk is a system library, and not local.
-
-target_link_libraries(rerun_sdk_tests PRIVATE Catch2::Catch2WithMain)

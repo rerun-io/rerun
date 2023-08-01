@@ -17,6 +17,4 @@ add_executable(rerun_example main.cpp)
 
 set_default_warning_settings(rerun_example)
 
-include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../../../rerun_cpp/src) # For rerun.hpp (Rerun C++ SDK)
-
 target_link_libraries(rerun_example PRIVATE loguru::loguru rerun_sdk)
