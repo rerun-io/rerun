@@ -7,6 +7,9 @@ function(set_default_warning_settings target)
         target_compile_options(${target} PRIVATE /W4 /WX)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wformat=2 -Wmissing-include-dirs -Wnull-dereference -Woverloaded-virtual -Wpointer-arith -Wshadow -Wswitch-enum -Wvla -Wno-sign-compare -Wconversion -Wunused -Wold-style-cast -Wno-missing-braces)
+
+        # arrow has a bunch of unused parameters in its headers.
+        target_compile_options(${target} PRIVATE -Wno-unused-parameter)
     endif()
 
     # Enable this to fail on warnings.
