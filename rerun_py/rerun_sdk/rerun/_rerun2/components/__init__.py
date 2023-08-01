@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .arrow3d import Arrow3DArray, Arrow3DType
 from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
 from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
 from .disconnected_space import (
@@ -159,6 +160,8 @@ __all__ = [
     "AffixFuzzer9ArrayLike",
     "AffixFuzzer9Like",
     "AffixFuzzer9Type",
+    "Arrow3DArray",
+    "Arrow3DType",
     "ClassId",
     "ClassIdArray",
     "ClassIdArrayLike",
