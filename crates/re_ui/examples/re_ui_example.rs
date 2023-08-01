@@ -404,6 +404,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
     fn tab_outline_stroke(
         &self,
         _visuals: &egui::Visuals,
+        _tiles: &egui_tiles::Tiles<Tab>,
         _tile_id: egui_tiles::TileId,
         _active: bool,
     ) -> egui::Stroke {
