@@ -55,14 +55,19 @@ impl Arrows3DPart {
             move |(annotation_info, arrow, label, color, labeled_instance)| {
                 let label = annotation_info.label(label.map(|l| l.0).as_ref());
                 match (arrow, label) {
-                    (arrow, Some(label)) => Some(UiLabel {
-                        text: label,
-                        color: *color,
-                        target: UiLabelTarget::Position3D(
-                            world_from_obj.transform_point3(arrow.origin().into()),
-                        ),
-                        labeled_instance: *labeled_instance,
-                    }),
+                    (arrow, Some(label)) => {
+                        let midpoint = (glam::Vec3::from(arrow.origin())
+                            + glam::Vec3::from(arrow.vector()))
+                            * 0.45; // `0.45` rather than `0.5` to account for cap and such
+                        Some(UiLabel {
+                            text: label,
+                            color: *color,
+                            target: UiLabelTarget::Position3D(
+                                world_from_obj.transform_point3(midpoint),
+                            ),
+                            labeled_instance: *labeled_instance,
+                        })
+                    }
                     _ => None,
                 }
             },
