@@ -115,6 +115,10 @@ impl ReUi {
         egui::Margin::symmetric(8.0, 2.0)
     }
 
+    pub fn text_to_icon_padding() -> f32 {
+        4.0
+    }
+
     /// Height of the top-most bar.
     pub fn top_bar_height() -> f32 {
         44.0 // from figma 2022-02-03
@@ -597,8 +601,7 @@ impl ReUi {
             .into()
             .into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
-        let text_to_icon_padding = 4.0;
-        let icon_width_plus_padding = Self::small_icon_size().x + text_to_icon_padding;
+        let icon_width_plus_padding = Self::small_icon_size().x + ReUi::text_to_icon_padding();
 
         let mut desired_size = total_extra + text.size() + egui::vec2(icon_width_plus_padding, 0.0);
         desired_size.y = desired_size
@@ -646,7 +649,7 @@ impl ReUi {
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x = image_rect.max.x + text_to_icon_padding;
+            text_rect.min.x = image_rect.max.x + ReUi::text_to_icon_padding();
             let text_pos = ui
                 .layout()
                 .align_size_within_rect(text.size(), text_rect)
