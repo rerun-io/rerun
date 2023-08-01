@@ -62,7 +62,7 @@ SCENARIO("RecordingStream can be set as global and thread local", TEST_TAG) {
                 THEN("it can be set as global") {
                     stream.set_global();
                 }
-                // TODO(#TODO:): Setting thread locals causes a crash on shutdown on macOS.
+                // TODO(#2889): Setting thread locals causes a crash on shutdown on macOS.
 #ifndef __APPLE__
                 THEN("it can be set as thread local") {
                     stream.set_thread_local();
@@ -157,6 +157,11 @@ void test_logging_to_file(const char* test_rrd, rr::RecordingStream& stream) {
         }
 
         // The file already has some header from the start.
+        //
+        // ATTENTION:
+        // Particularly on MacOS file size checks like this are often unreliable as they tend to not
+        // read the latest state on the file. I have not observed any failure yet, but if this test
+        // ever gets flaky, this is the first place to look.
         auto file_size_before = fs::file_size(test_rrd);
 
         WHEN("logging a component and then flushing") {
