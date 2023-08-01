@@ -218,10 +218,12 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         let highlights =
             highlights_for_space_view(self.ctx.selection_state(), *space_view_id, self.space_views);
-        let space_view_blueprint = self
+        let Some(space_view_blueprint) = self
             .space_views
-            .get_mut(space_view_id)
-            .expect("Should have been populated beforehand");
+            .get_mut(space_view_id) else {
+            return Default::default();
+        };
+
         let space_view_state = self.viewport_state.space_view_state_mut(
             self.ctx.space_view_class_registry,
             space_view_blueprint.id,
@@ -273,8 +275,14 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         active: bool,
         is_being_dragged: bool,
     ) -> egui::Response {
-        // custom tab UI when we have a space view
-        let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) else {
+        // make sure we have a space view to work with or else delegate to the default
+        // implementation
+        let space_view = if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
+            self.space_views.get(space_view_id)
+        } else {
+            None
+        };
+        let Some(space_view) = space_view else {
             return egui_tiles::Behavior::<SpaceViewId>::tab_ui(
                 self,
                 tiles,
@@ -285,18 +293,14 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 is_being_dragged,
             );
         };
+        let space_view_id = space_view.id;
 
         // tab icon
-        let space_view = self
-            .space_views
-            .get(space_view_id)
-            .expect("Should have been populated beforehand");
         let icon = space_view.class(self.ctx.space_view_class_registry).icon();
         let image = self.ctx.re_ui.icon_image(icon);
         let texture_id = image.texture_id(ui.ctx());
-        let text_to_icon_padding = 4.0;
         let icon_size = ReUi::small_icon_size();
-        let icon_width_plus_padding = icon_size.x + text_to_icon_padding;
+        let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
 
         // tab title
         let text = self.tab_title_for_tile(tiles, tile_id);
@@ -323,7 +327,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             let selected = self
                 .ctx
                 .selection()
-                .contains(&Item::SpaceView(*space_view_id));
+                .contains(&Item::SpaceView(space_view_id));
 
             if selected {
                 ui.painter().rect(
