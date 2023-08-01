@@ -17,9 +17,8 @@ namespace rr {
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::StructBuilder>> Point2D::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
-        ) {
+        arrow::Result<std::shared_ptr<arrow::FixedSizeListBuilder>>
+            Point2D::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
             }
@@ -30,7 +29,7 @@ namespace rr {
         }
 
         arrow::Status Point2D::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const Point2D *elements, size_t num_elements
+            arrow::FixedSizeListBuilder *builder, const Point2D *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");

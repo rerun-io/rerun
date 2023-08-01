@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Sequence, Tuple, Union
 
+import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
@@ -11,6 +12,9 @@ from attrs import define, field
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
+)
+from .._converters import (
+    to_np_float32,
 )
 from ._overrides import point3d_as_array, point3d_native_to_pa_array  # noqa: F401
 
@@ -21,9 +25,7 @@ __all__ = ["Point3D", "Point3DArray", "Point3DArrayLike", "Point3DLike", "Point3
 class Point3D:
     """A point in 3D space."""
 
-    x: float = field(converter=float)
-    y: float = field(converter=float)
-    z: float = field(converter=float)
+    point: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return point3d_as_array(self, dtype=dtype)
@@ -47,15 +49,7 @@ Point3DArrayLike = Union[
 class Point3DType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self,
-            pa.struct(
-                [
-                    pa.field("x", pa.float32(), False, {}),
-                    pa.field("y", pa.float32(), False, {}),
-                    pa.field("z", pa.float32(), False, {}),
-                ]
-            ),
-            "rerun.datatypes.Point3D",
+            self, pa.list_(pa.field("item", pa.float32(), False, {}), 3), "rerun.datatypes.Point3D"
         )
 
 

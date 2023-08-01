@@ -8,34 +8,26 @@
 namespace rr {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &Point3D::to_arrow_datatype() {
-            static const auto datatype = arrow::struct_({
-                arrow::field("x", arrow::float32(), false, nullptr),
-                arrow::field("y", arrow::float32(), false, nullptr),
-                arrow::field("z", arrow::float32(), false, nullptr),
-            });
+            static const auto datatype =
+                arrow::fixed_size_list(arrow::field("item", arrow::float32(), false, nullptr), 3);
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::StructBuilder>> Point3D::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
-        ) {
+        arrow::Result<std::shared_ptr<arrow::FixedSizeListBuilder>>
+            Point3D::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+            return arrow::Result(std::make_shared<arrow::FixedSizeListBuilder>(
                 memory_pool,
-                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    std::make_shared<arrow::FloatBuilder>(memory_pool),
-                    std::make_shared<arrow::FloatBuilder>(memory_pool),
-                    std::make_shared<arrow::FloatBuilder>(memory_pool),
-                })
+                std::make_shared<arrow::FloatBuilder>(memory_pool),
+                3
             ));
         }
 
         arrow::Status Point3D::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const Point3D *elements, size_t num_elements
+            arrow::FixedSizeListBuilder *builder, const Point3D *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -44,31 +36,13 @@ namespace rr {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            {
-                auto element_builder =
-                    static_cast<arrow::FloatBuilder *>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(element_builder->Append(elements[elem_idx].x));
-                }
-            }
-            {
-                auto element_builder =
-                    static_cast<arrow::FloatBuilder *>(builder->field_builder(1));
-                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(element_builder->Append(elements[elem_idx].y));
-                }
-            }
-            {
-                auto element_builder =
-                    static_cast<arrow::FloatBuilder *>(builder->field_builder(2));
-                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(element_builder->Append(elements[elem_idx].z));
-                }
-            }
-            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+            auto value_builder = static_cast<arrow::FloatBuilder *>(builder->value_builder());
+
+            static_assert(sizeof(elements[0].point) == sizeof(elements[0]));
+            ARROW_RETURN_NOT_OK(
+                value_builder->AppendValues(elements[0].point, num_elements * 3, nullptr)
+            );
+            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements));
 
             return arrow::Status::OK();
         }

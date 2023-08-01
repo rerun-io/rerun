@@ -14,11 +14,7 @@
 
 /// A point in 3D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
-pub struct Point3D {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-}
+pub struct Point3D(pub [f32; 3usize]);
 
 impl<'a> From<Point3D> for ::std::borrow::Cow<'a, Point3D> {
     #[inline]
@@ -47,26 +43,15 @@ impl crate::Loggable for Point3D {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Struct(vec![
-            Field {
-                name: "x".to_owned(),
+        DataType::FixedSizeList(
+            Box::new(Field {
+                name: "item".to_owned(),
                 data_type: DataType::Float32,
                 is_nullable: false,
                 metadata: [].into(),
-            },
-            Field {
-                name: "y".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "z".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-        ])
+            }),
+            3usize,
+        )
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -80,109 +65,72 @@ impl crate::Loggable for Point3D {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| {
+                        let Self(data0) = datum.into_owned();
+                        data0
+                    });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::Point3D>::to_arrow_datatype()),
-                        None,
+            {
+                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                let data0_inner_data: Vec<_> = data0
+                    .iter()
+                    .flatten()
+                    .flatten()
+                    .cloned()
+                    .map(Some)
+                    .collect();
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                FixedSizeListArray::new(
+                    {
+                        _ = extension_wrapper;
+                        DataType::Extension(
+                            "rerun.datatypes.Point3D".to_owned(),
+                            Box::new(DataType::FixedSizeList(
+                                Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }),
+                                3usize,
+                            )),
+                            None,
+                        )
+                        .to_logical_type()
+                        .clone()
+                    },
+                    PrimitiveArray::new(
+                        {
+                            _ = extension_wrapper;
+                            DataType::Extension(
+                                "rerun.datatypes.Point3D".to_owned(),
+                                Box::new(DataType::Float32),
+                                None,
+                            )
+                            .to_logical_type()
+                            .clone()
+                        },
+                        data0_inner_data
+                            .into_iter()
+                            .map(|v| v.unwrap_or_default())
+                            .collect(),
+                        data0_inner_bitmap,
                     )
-                } else {
-                    <crate::datatypes::Point3D>::to_arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
-                vec![
-                    {
-                        let (somes, x): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { x, .. } = &**datum;
-                                    x.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let x_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
-                            x.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            x_bitmap,
-                        )
-                        .boxed()
-                    },
-                    {
-                        let (somes, y): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { y, .. } = &**datum;
-                                    y.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let y_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
-                            y.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            y_bitmap,
-                        )
-                        .boxed()
-                    },
-                    {
-                        let (somes, z): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { z, .. } = &**datum;
-                                    z.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let z_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
-                            z.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            z_bitmap,
-                        )
-                        .boxed()
-                    },
-                ],
-                bitmap,
-            )
-            .boxed()
+                    .boxed(),
+                    data0_bitmap,
+                )
+                .boxed()
+            }
         })
     }
 
@@ -198,98 +146,68 @@ impl crate::Loggable for Point3D {
         Ok({
             let data = data
                 .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.Point3D".into(),
-                    source: Box::new(err),
-                })?;
+                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                .unwrap();
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
-                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
-                    .iter()
-                    .map(|field| field.name.as_str())
-                    .zip(data_arrays)
-                    .collect();
-                let x = {
-                    let data = &**arrays_by_name["x"];
-
-                    data.as_any()
-                        .downcast_ref::<Float32Array>()
-                        .unwrap()
-                        .into_iter()
-                        .map(|v| v.copied())
-                };
-                let y = {
-                    let data = &**arrays_by_name["y"];
-
-                    data.as_any()
-                        .downcast_ref::<Float32Array>()
-                        .unwrap()
-                        .into_iter()
-                        .map(|v| v.copied())
-                };
-                let z = {
-                    let data = &**arrays_by_name["z"];
-
-                    data.as_any()
-                        .downcast_ref::<Float32Array>()
-                        .unwrap()
-                        .into_iter()
-                        .map(|v| v.copied())
-                };
-                ::itertools::izip!(x, y, z)
+                let bitmap = data.validity().cloned();
+                let offsets = (0..)
+                    .step_by(3usize)
+                    .zip((3usize..).step_by(3usize).take(data.len()));
+                let data = &**data.values();
+                let data = data
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                offsets
                     .enumerate()
-                    .map(|(i, (x, y, z))| {
-                        is_valid(i)
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(Self {
-                                    x: x.ok_or_else(|| crate::DeserializationError::MissingData {
+                                data.get(start as usize..end as usize)
+                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| {
-                                        crate::DeserializationError::Context {
-                                            location: "rerun.datatypes.Point3D#x".into(),
-                                            source: Box::new(err),
+                                    })?
+                                    .to_vec()
+                                    .try_into()
+                                    .map_err(|_err| {
+                                        crate::DeserializationError::ArrayLengthMismatch {
+                                            expected: 3usize,
+                                            got: (end - start) as usize,
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
                                         }
-                                    })?,
-                                    y: y.ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
                                     })
-                                    .map_err(|err| {
-                                        crate::DeserializationError::Context {
-                                            location: "rerun.datatypes.Point3D#y".into(),
-                                            source: Box::new(err),
-                                        }
-                                    })?,
-                                    z: z.ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| {
-                                        crate::DeserializationError::Context {
-                                            location: "rerun.datatypes.Point3D#z".into(),
-                                            source: Box::new(err),
-                                        }
-                                    })?,
-                                })
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.Point3D".into(),
-                        source: Box::new(err),
-                    })?
+                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
             }
+            .into_iter()
+        }
+        .map(|v| {
+            v.ok_or_else(|| crate::DeserializationError::MissingData {
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            })
         })
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .map_err(|err| crate::DeserializationError::Context {
+            location: "rerun.datatypes.Point3D#point".into(),
+            source: Box::new(err),
+        })?)
     }
 
     #[inline]

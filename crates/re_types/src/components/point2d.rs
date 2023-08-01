@@ -49,20 +49,15 @@ impl crate::Loggable for Point2D {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Struct(vec![
-            Field {
-                name: "x".to_owned(),
+        DataType::FixedSizeList(
+            Box::new(Field {
+                name: "item".to_owned(),
                 data_type: DataType::Float32,
                 is_nullable: false,
                 metadata: [].into(),
-            },
-            Field {
-                name: "y".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-        ])
+            }),
+            2usize,
+        )
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -92,12 +87,61 @@ impl crate::Loggable for Point2D {
                 any_nones.then(|| somes.into())
             };
             {
-                _ = data0_bitmap;
-                _ = extension_wrapper;
-                crate::datatypes::Point2D::try_to_arrow_opt(
-                    data0,
-                    Some("rerun.components.Point2D"),
-                )?
+                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                let data0_inner_data: Vec<_> = data0
+                    .iter()
+                    .map(|datum| {
+                        datum
+                            .map(|datum| {
+                                let crate::datatypes::Point2D(data0) = datum;
+                                data0
+                            })
+                            .unwrap_or_default()
+                    })
+                    .flatten()
+                    .map(Some)
+                    .collect();
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                FixedSizeListArray::new(
+                    {
+                        _ = extension_wrapper;
+                        DataType::Extension(
+                            "rerun.components.Point2D".to_owned(),
+                            Box::new(DataType::FixedSizeList(
+                                Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }),
+                                2usize,
+                            )),
+                            None,
+                        )
+                        .to_logical_type()
+                        .clone()
+                    },
+                    PrimitiveArray::new(
+                        {
+                            _ = extension_wrapper;
+                            DataType::Extension(
+                                "rerun.components.Point2D".to_owned(),
+                                Box::new(DataType::Float32),
+                                None,
+                            )
+                            .to_logical_type()
+                            .clone()
+                        },
+                        data0_inner_data
+                            .into_iter()
+                            .map(|v| v.unwrap_or_default())
+                            .collect(),
+                        data0_inner_bitmap,
+                    )
+                    .boxed(),
+                    data0_bitmap,
+                )
+                .boxed()
             }
         })
     }
@@ -111,23 +155,72 @@ impl crate::Loggable for Point2D {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::Point2D::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Point2D#xy".into(),
-                source: Box::new(err),
-            })?
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                .unwrap();
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let bitmap = data.validity().cloned();
+                let offsets = (0..)
+                    .step_by(2usize)
+                    .zip((2usize..).step_by(2usize).take(data.len()));
+                let data = &**data.values();
+                let data = data
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                data.get(start as usize..end as usize)
+                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })?
+                                    .to_vec()
+                                    .try_into()
+                                    .map_err(|_err| {
+                                        crate::DeserializationError::ArrayLengthMismatch {
+                                            expected: 2usize,
+                                            got: (end - start) as usize,
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        }
+                                    })
+                            })
+                            .transpose()
+                    })
+                    .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Point2D(v))))
+                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+            }
             .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
+        }
+        .map(|v| {
+            v.ok_or_else(|| crate::DeserializationError::MissingData {
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Point2D#xy".into(),
-                source: Box::new(err),
-            })?)
+        })
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .map_err(|err| crate::DeserializationError::Context {
+            location: "rerun.components.Point2D#xy".into(),
+            source: Box::new(err),
+        })?)
     }
 
     #[inline]
