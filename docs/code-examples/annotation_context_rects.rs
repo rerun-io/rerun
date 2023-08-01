@@ -1,8 +1,11 @@
 //! Log rectangles with different colors and labels.
-use rerun::components::{
-    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, Color, Label, Rect2D, Vec4D,
+use rerun::{
+    components::{
+        AnnotationContext, AnnotationInfo, ClassDescription, ClassId, Color, Label, Rect2D,
+    },
+    datatypes::Vec4D,
+    MsgSender, RecordingStreamBuilder,
 };
-use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("annotation_context_rects").memory()?;
@@ -39,15 +42,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log a batch of 2 rectangles with different class IDs
     MsgSender::new("detections")
         .with_component(&[
-            Rect2D::XYWH(Vec4D([-2., -2., 3., 3.])),
-            Rect2D::XYWH(Vec4D([0., 0., 2., 2.])),
+            Rect2D::XYWH(Vec4D([-2., -2., 3., 3.]).into()),
+            Rect2D::XYWH(Vec4D([0., 0., 2., 2.]).into()),
         ])?
         .with_component(&[ClassId(1), ClassId(2)])?
         .send(&rec_stream)?;
 
     // Log an extra rect to set the view bounds
     MsgSender::new("bounds")
-        .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 5.0, 5.0]))])?
+        .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 5.0, 5.0]).into())])?
         .send(&rec_stream)?;
 
     rerun::native_viewer::show(storage.take())?;

@@ -78,14 +78,14 @@ def log_arrow(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     if label:
-        instanced["rerun.label"] = rrc.LabelArray.from_similar([label])
+        instanced["rerun.label"] = rrc.LabelArray.from_similar([label]).storage
 
     if width_scale:
         radii = _normalize_radii([width_scale / 2])
-        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii).storage
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)

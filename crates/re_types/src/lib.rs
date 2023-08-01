@@ -332,7 +332,7 @@ pub trait Archetype {
 
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
 // attempt to use nightly features.
-type _Backtrace = backtrace::Backtrace;
+pub type _Backtrace = backtrace::Backtrace;
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum SerializationError {
@@ -344,6 +344,17 @@ pub enum SerializationError {
 
     #[error("arrow2-convert serialization Failed: {0}")]
     ArrowConvertFailure(String),
+}
+
+impl SerializationError {
+    /// Returns the _unresolved_ backtrace associated with this error, if it exists.
+    ///
+    /// Call `resolve()` on the returned [`_Backtrace`] to resolve it (costly!).
+    pub fn backtrace(&self) -> Option<_Backtrace> {
+        match self {
+            SerializationError::Context { .. } | SerializationError::ArrowConvertFailure(_) => None,
+        }
+    }
 }
 
 pub type SerializationResult<T> = ::std::result::Result<T, SerializationError>;
@@ -393,6 +404,27 @@ pub enum DeserializationError {
     DataCellError(String),
 }
 
+impl DeserializationError {
+    /// Returns the _unresolved_ backtrace associated with this error, if it exists.
+    ///
+    /// Call `resolve()` on the returned [`_Backtrace`] to resolve it (costly!).
+    pub fn backtrace(&self) -> Option<_Backtrace> {
+        match self {
+            DeserializationError::Context {
+                location: _,
+                source,
+            } => source.backtrace(),
+            DeserializationError::MissingData { backtrace }
+            | DeserializationError::DatatypeMismatch { backtrace, .. }
+            | DeserializationError::OffsetsMismatch { backtrace, .. }
+            | DeserializationError::ArrayLengthMismatch { backtrace, .. }
+            | DeserializationError::MonoMismatch { backtrace, .. } => Some(backtrace.clone()),
+            DeserializationError::ArrowConvertFailure(_)
+            | DeserializationError::DataCellError(_) => None,
+        }
+    }
+}
+
 pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;
 
 trait ResultExt<T> {
@@ -401,18 +433,10 @@ trait ResultExt<T> {
 
 impl<T> ResultExt<T> for SerializationResult<T> {
     fn detailed_unwrap(self) -> T {
-        fn find_backtrace(err: &SerializationError) -> Option<_Backtrace> {
-            match err {
-                SerializationError::Context { .. } | SerializationError::ArrowConvertFailure(_) => {
-                    None
-                }
-            }
-        }
-
         match self {
             Ok(v) => v,
             Err(err) => {
-                let bt = find_backtrace(&err).map(|mut bt| {
+                let bt = err.backtrace().map(|mut bt| {
                     bt.resolve();
                     bt
                 });
@@ -430,26 +454,10 @@ impl<T> ResultExt<T> for SerializationResult<T> {
 
 impl<T> ResultExt<T> for DeserializationResult<T> {
     fn detailed_unwrap(self) -> T {
-        fn find_backtrace(err: &DeserializationError) -> Option<_Backtrace> {
-            match err {
-                DeserializationError::Context {
-                    location: _,
-                    source,
-                } => find_backtrace(source),
-                DeserializationError::MissingData { backtrace }
-                | DeserializationError::DatatypeMismatch { backtrace, .. }
-                | DeserializationError::OffsetsMismatch { backtrace, .. }
-                | DeserializationError::ArrayLengthMismatch { backtrace, .. }
-                | DeserializationError::MonoMismatch { backtrace, .. } => Some(backtrace.clone()),
-                DeserializationError::ArrowConvertFailure(_)
-                | DeserializationError::DataCellError(_) => None,
-            }
-        }
-
         match self {
             Ok(v) => v,
             Err(err) => {
-                let bt = find_backtrace(&err).map(|mut bt| {
+                let bt = err.backtrace().map(|mut bt| {
                     bt.resolve();
                     bt
                 });

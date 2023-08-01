@@ -110,12 +110,12 @@ def log_line_strip(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     # We store the stroke_width in radius
     if stroke_width:
         radii = _normalize_radii([stroke_width / 2])
-        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
+        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii).storage
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -215,7 +215,7 @@ def log_line_strips_2d(
         comps[0]["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays(line_strip_arrs)
 
     if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
+        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np).storage
 
     if len(colors):
         from rerun.experimental import cmp as rrc
@@ -223,12 +223,12 @@ def log_line_strips_2d(
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     # We store the stroke_width in radius
     if len(radii):
         is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
+        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii).storage
 
     if draw_order is not None:
         comps[1]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -327,7 +327,7 @@ def log_line_strips_3d(
         comps[0]["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays(line_strip_arrs)
 
     if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np)
+        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np).storage
 
     if len(colors):
         from rerun.experimental import cmp as rrc
@@ -335,12 +335,12 @@ def log_line_strips_3d(
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     # We store the stroke_width in radius
     if len(radii):
         is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
+        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii).storage
 
     if draw_order is not None:
         comps[1]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -436,12 +436,12 @@ def log_line_segments(
     # require that we do so.
     if color is not None:
         colors = _normalize_colors(color)
-        splats["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        splats["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     # We store the stroke_width in radius
     if stroke_width:
         radii = _normalize_radii([stroke_width / 2])
-        splats["rerun.radius"] = rrc.RadiusArray.from_similar(radii)
+        splats["rerun.radius"] = rrc.RadiusArray.from_similar(radii).storage
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)

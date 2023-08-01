@@ -1,10 +1,13 @@
 use nohash_hasher::IntMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_components::{Pinhole, Transform3D, ViewCoordinates};
+use re_components::{Pinhole, ViewCoordinates};
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_space_view::UnreachableTransformReason;
-use re_types::{components::DisconnectedSpace, Loggable as _};
+use re_types::{
+    components::{DisconnectedSpace, Transform3D},
+    Loggable as _,
+};
 use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};
 
 use crate::parts::image_view_coordinates;
@@ -242,7 +245,7 @@ impl TransformContext {
                 t * store
                     .query_latest_component::<Transform3D>(ent_path, query)
                     .map_or(glam::Affine3A::IDENTITY, |transform| {
-                        transform.to_parent_from_child_transform()
+                        transform.into_parent_from_child_transform()
                     })
             })
         } else {
@@ -287,7 +290,7 @@ fn transform_at(
 
     let transform3d = store
         .query_latest_component::<Transform3D>(entity_path, query)
-        .map(|transform| transform.to_parent_from_child_transform());
+        .map(|transform| transform.into_parent_from_child_transform());
 
     let pinhole = pinhole.map(|pinhole| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.

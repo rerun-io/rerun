@@ -29,7 +29,7 @@ impl DataUi for Pinhole {
                     ui.indent("pinole", |ui| {
                         ui.horizontal(|ui| {
                             ui.label("resolution:");
-                            if let Some(re_components::Vec2D([x, y])) = resolution {
+                            if let Some(re_components::LegacyVec2D([x, y])) = resolution {
                                 ui.monospace(format!("{x}x{y}"));
                             } else {
                                 ui.weak("(none)");

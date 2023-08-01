@@ -1,13 +1,16 @@
 //! Log a single arrow
-use rerun::components::{Arrow3D, Radius, Vec3D};
-use rerun::{MsgSender, RecordingStreamBuilder};
+use rerun::{
+    components::{Arrow3D, Radius},
+    datatypes::Vec3D,
+    MsgSender, RecordingStreamBuilder,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("arrow").memory()?;
 
     let arrow = Arrow3D {
-        origin: Vec3D::from([0.0, 0.0, 0.0]),
-        vector: Vec3D::from([1.0, 0.0, 1.0]),
+        origin: Vec3D::from([0.0, 0.0, 0.0]).into(),
+        vector: Vec3D::from([1.0, 0.0, 1.0]).into(),
     };
 
     MsgSender::new("arrow")

@@ -4,7 +4,8 @@ use rand::distributions::Uniform;
 use rand::Rng;
 use rerun::{
     archetypes::Points2D,
-    components::{Color, Rect2D, Vec4D},
+    components::{Color, Rect2D},
+    datatypes::Vec4D,
     MsgSender, RecordingStreamBuilder,
 };
 
@@ -24,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Log an extra rect to set the view bounds
     MsgSender::new("bounds")
-        .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 8.0, 6.0]))])?
+        .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 8.0, 6.0]).into())])?
         .send(&rec_stream)?;
 
     rerun::native_viewer::show(storage.take())?;

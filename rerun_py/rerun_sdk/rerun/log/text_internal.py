@@ -95,7 +95,7 @@ def log_text_entry_internal(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors)
+        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
 
     if splats:
         splats["rerun.instance_key"] = instance_key_splat()

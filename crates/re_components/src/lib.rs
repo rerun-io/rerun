@@ -38,7 +38,6 @@ mod tensor;
 mod tensor_data;
 mod text_box;
 mod text_entry;
-mod transform3d;
 mod vec;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -57,13 +56,16 @@ pub(crate) use self::{
     class_id::LegacyClassId, color::LegacyColor, keypoint_id::LegacyKeypointId, label::LegacyLabel,
 };
 
+// TODO(cmc): get rid of this once every single archetypes depending on those have been migrated.
+pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};
+
 pub use self::{
     arrow::Arrow3D,
     bbox::Box3D,
     context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
     linestrip::{LineStrip2D, LineStrip3D},
-    mat::Mat3x3,
+    mat::LegacyMat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},
     pinhole::Pinhole,
     quaternion::Quaternion,
@@ -76,11 +78,6 @@ pub use self::{
     tensor_data::{TensorDataType, TensorDataTypeTrait, TensorElement},
     text_box::TextBox,
     text_entry::TextEntry,
-    transform3d::{
-        Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr,
-        TranslationAndMat3, TranslationRotationScale3D,
-    },
-    vec::{Vec2D, Vec3D, Vec4D},
 };
 
 #[cfg(feature = "image")]
@@ -104,12 +101,12 @@ pub mod external {
 
 use re_types::components::{
     ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label, Point2D, Point3D,
-    Radius,
+    Radius, Transform3D,
 };
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 28] = [
+    static ref FIELDS: [Field; 27] = [
         <AnnotationContext as LegacyComponent>::field(),
         <Arrow3D as LegacyComponent>::field(),
         <Box3D as LegacyComponent>::field(),
@@ -124,9 +121,7 @@ lazy_static! {
         <Tensor as LegacyComponent>::field(),
         <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
-        <Transform3D as LegacyComponent>::field(),
-        <Vec2D as LegacyComponent>::field(),
-        <Vec3D as LegacyComponent>::field(),
+        <LegacyVec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
         Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),
         Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),
@@ -138,6 +133,7 @@ lazy_static! {
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
         Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),
         Field::new(Radius::name().as_str(), Radius::to_arrow_datatype(), false),
+        Field::new(Transform3D::name().as_str(), Transform3D::to_arrow_datatype(), false),
     ];
 }
 

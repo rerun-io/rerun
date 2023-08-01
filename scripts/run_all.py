@@ -20,7 +20,7 @@ EXTRA_ARGS = {
     "examples/python/face_tracking": ["--max-frame=30"],  # Make sure it finishes
 }
 
-HAS_NO_SAVE_ARG = {
+HAS_NO_RERUN_ARGS = {
     "examples/python/blueprint",
     "examples/python/dna",
     "examples/python/minimal",
@@ -229,6 +229,8 @@ def run_web(examples: list[str], parallel: bool) -> None:
         entries: list[tuple[str, Any, Any]] = []
         # start all examples in parallel
         for path in examples:
+            if path in HAS_NO_RERUN_ARGS:
+                continue
             # each example gets its own viewer
             viewer = Viewer(web=True).start()
             example = run_py_example(path, viewer_port=viewer.sdk_port, wait=False)
@@ -251,13 +253,15 @@ def run_web(examples: list[str], parallel: bool) -> None:
     else:
         with Viewer(close=True, web=True) as viewer:
             for path in examples:
+                if path in HAS_NO_RERUN_ARGS:
+                    continue
                 process = run_py_example(path, viewer_port=viewer.sdk_port)
                 print(f"{output_from_process(process)}\n")
 
 
 def run_save(examples: list[str]) -> None:
     for path in examples:
-        if path not in HAS_NO_SAVE_ARG:
+        if path not in HAS_NO_RERUN_ARGS:
             process = run_py_example(path, save="out.rrd")
             print(f"{output_from_process(process)}\n")
 
@@ -274,7 +278,7 @@ def run_saved_example(path: str, *, wait: bool) -> Any:
 
 
 def run_load(examples: list[str], parallel: bool, close: bool) -> None:
-    examples = [path for path in examples if path not in HAS_NO_SAVE_ARG]
+    examples = [path for path in examples if path not in HAS_NO_RERUN_ARGS]
 
     if parallel:
         entries: list[tuple[str, Any]] = []
@@ -300,6 +304,8 @@ def run_native(examples: list[str], parallel: bool, close: bool) -> None:
         # start all examples in parallel:
         cleanup: list[tuple[Any, Any]] = []
         for path in examples:
+            if path in HAS_NO_RERUN_ARGS:
+                continue
             # each example gets its own viewer
             viewer = Viewer().start()
             example = run_py_example(path, viewer.sdk_port, wait=False)
@@ -315,6 +321,8 @@ def run_native(examples: list[str], parallel: bool, close: bool) -> None:
         # run all examples sequentially in a single viewer
         with Viewer(close) as viewer:
             for path in examples:
+                if path in HAS_NO_RERUN_ARGS:
+                    continue
                 process = run_py_example(path, viewer_port=viewer.sdk_port, wait=True)
                 print(f"{output_from_process(process)}\n")
 

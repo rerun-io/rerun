@@ -19,9 +19,9 @@ pub struct Transform3D(
     pub crate::datatypes::Transform3D,
 );
 
-impl From<crate::datatypes::Transform3D> for Transform3D {
-    fn from(v: crate::datatypes::Transform3D) -> Self {
-        Self(v)
+impl<T: Into<crate::datatypes::Transform3D>> From<T> for Transform3D {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
@@ -45,7 +45,7 @@ impl crate::Loggable for Transform3D {
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
     #[inline]
     fn name() -> Self::Name {
-        "rerun.components.Transform3D".into()
+        "rerun.transform3d".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

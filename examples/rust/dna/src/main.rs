@@ -5,7 +5,8 @@ use std::f32::consts::TAU;
 use itertools::Itertools as _;
 
 use rerun::{
-    components::{Color, LineStrip3D, Point3D, Radius, Transform3D, Vec3D},
+    components::{Color, LineStrip3D, Point3D, Radius, Transform3D},
+    datatypes::Vec3D,
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
     MsgSender, MsgSenderError, RecordingStream,
@@ -44,6 +45,7 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
         .interleave(points2.iter())
         .copied()
         .map(Vec3D::from)
+        .map(Into::into)
         .chunks(2)
         .into_iter()
         .map(|positions| LineStrip3D(positions.collect_vec()))

@@ -3,6 +3,88 @@
 
 #include "points2d.hpp"
 
+#include "../components/class_id.hpp"
+#include "../components/color.hpp"
+#include "../components/draw_order.hpp"
+#include "../components/instance_key.hpp"
+#include "../components/keypoint_id.hpp"
+#include "../components/label.hpp"
+#include "../components/point2d.hpp"
+#include "../components/radius.hpp"
+
+#include <arrow/api.h>
+
 namespace rr {
-    namespace archetypes {}
+    namespace archetypes {
+        arrow::Result<std::vector<rr::DataCell>> Points2D::to_data_cells() const {
+            std::vector<rr::DataCell> cells;
+            cells.reserve(8);
+
+            {
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::Point2D::to_data_cell(points.data(), points.size())
+                );
+                cells.push_back(cell);
+            }
+            if (radii.has_value()) {
+                const auto& value = radii.value();
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::Radius::to_data_cell(value.data(), value.size())
+                );
+                cells.push_back(cell);
+            }
+            if (colors.has_value()) {
+                const auto& value = colors.value();
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::Color::to_data_cell(value.data(), value.size())
+                );
+                cells.push_back(cell);
+            }
+            if (labels.has_value()) {
+                const auto& value = labels.value();
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::Label::to_data_cell(value.data(), value.size())
+                );
+                cells.push_back(cell);
+            }
+            if (draw_order.has_value()) {
+                const auto& value = draw_order.value();
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::DrawOrder::to_data_cell(&value, 1)
+                );
+                cells.push_back(cell);
+            }
+            if (class_ids.has_value()) {
+                const auto& value = class_ids.value();
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::ClassId::to_data_cell(value.data(), value.size())
+                );
+                cells.push_back(cell);
+            }
+            if (keypoint_ids.has_value()) {
+                const auto& value = keypoint_ids.value();
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::KeypointId::to_data_cell(value.data(), value.size())
+                );
+                cells.push_back(cell);
+            }
+            if (instance_keys.has_value()) {
+                const auto& value = instance_keys.value();
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::InstanceKey::to_data_cell(value.data(), value.size())
+                );
+                cells.push_back(cell);
+            }
+
+            return cells;
+        }
+    } // namespace archetypes
 } // namespace rr

@@ -9,8 +9,8 @@
 
 namespace rr {
     namespace datatypes {
-        std::shared_ptr<arrow::DataType> AffixFuzzer3::to_arrow_datatype() {
-            return arrow::dense_union({
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer3::to_arrow_datatype() {
+            static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field("degrees", arrow::float32(), false, nullptr),
                 arrow::field("radians", arrow::float32(), false, nullptr),
@@ -35,6 +35,7 @@ namespace rr {
                     nullptr
                 ),
             });
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>>

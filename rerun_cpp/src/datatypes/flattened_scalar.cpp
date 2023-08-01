@@ -7,10 +7,11 @@
 
 namespace rr {
     namespace datatypes {
-        std::shared_ptr<arrow::DataType> FlattenedScalar::to_arrow_datatype() {
-            return arrow::struct_({
+        const std::shared_ptr<arrow::DataType> &FlattenedScalar::to_arrow_datatype() {
+            static const auto datatype = arrow::struct_({
                 arrow::field("value", arrow::float32(), false, nullptr),
             });
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StructBuilder>>

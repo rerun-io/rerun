@@ -1,9 +1,10 @@
 use egui::NumExt as _;
 use nohash_hasher::IntSet;
 
-use re_components::{Pinhole, Tensor, TensorDataMeaning, Transform3D};
+use re_components::{Pinhole, Tensor, TensorDataMeaning};
 use re_data_store::EditableAutoValue;
 use re_log_types::{EntityPath, Timeline};
+use re_types::components::Transform3D;
 use re_viewer_context::{AutoSpawnHeuristic, SpaceViewClassName, ViewerContext};
 
 use crate::{parts::SpatialViewPartData, view_kind::SpatialSpaceViewKind};

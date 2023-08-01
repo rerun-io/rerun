@@ -208,12 +208,12 @@ impl QuotedObject {
 
     fn from_struct(
         arrow_registry: &ArrowRegistry,
-        _objects: &Objects,
+        objects: &Objects,
         obj: &Object,
     ) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
-        let pascal_case_name = &obj.name;
-        let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
+        let type_name = &obj.name;
+        let type_ident = format_ident!("{type_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
 
         let mut hpp_includes = Includes::default();
@@ -230,7 +230,7 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let declaration = quote_declaration_with_docstring(
+                let declaration = quote_variable_with_docstring(
                     &mut hpp_includes,
                     obj_field,
                     &format_ident!("{}", obj_field.name),
@@ -242,55 +242,150 @@ impl QuotedObject {
             })
             .collect_vec();
 
+        let (constants_hpp, constants_cpp) =
+            quote_constants_header_and_cpp(obj, objects, &type_ident);
         let mut methods = Vec::new();
-
-        if obj.fields.len() == 1 {
-            // Single-field struct - it is a newtype wrapper.
-            // Create a implicit constructor from its own field-type.
-            let obj_field = &obj.fields[0];
-            if let Type::Array { .. } = &obj_field.typ {
-                // TODO(emilk): implicit constructor for arrays
-            } else {
-                hpp_includes.system.insert("utility".to_owned()); // std::move
-
-                let field_ident = format_ident!("{}", obj_field.name);
-                let parameter_declaration =
-                    quote_declaration(&mut hpp_includes, obj_field, &field_ident);
-
-                methods.push(Method {
-                    declaration: MethodDeclaration::constructor(quote! {
-                        #pascal_case_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
-                    }),
-                    ..Method::default()
-                });
-            }
-        };
 
         let datatype = arrow_registry.get(&obj.fqname);
 
         match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
+                if obj.fields.len() == 1 {
+                    // Single-field struct - it is a newtype wrapper.
+                    // Create a implicit constructor from its own field-type - do so by copy, and if meaningful by rvalue reference.
+                    let obj_field = &obj.fields[0];
+                    if let Type::Array { .. } = &obj_field.typ {
+                        // TODO(emilk): implicit constructor for arrays
+                    } else {
+                        // Pass by value:
+                        // If it was a temporary it gets moved into the value and then moved again into the field.
+                        // If it was a lvalue it gets copied into the value and then moved into the field.
+                        let field_ident = format_ident!("{}", obj_field.name);
+                        let parameter_declaration =
+                            quote_variable(&mut hpp_includes, obj_field, &field_ident);
+                        hpp_includes.system.insert("utility".to_owned()); // std::move
+                        methods.push(Method {
+                                declaration: MethodDeclaration::constructor(quote! {
+                                    #type_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
+                                }),
+                                ..Method::default()
+                            });
+                    }
+                };
+
+                // Arrow serialization methods.
+                // TODO(andreas): These are just utilities for to_data_cell. How do we hide them best from the public header?
                 methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
                 methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
                 methods.push(fill_arrow_array_builder_method(
                     &datatype,
                     obj,
-                    &pascal_case_ident,
+                    &type_ident,
                     &mut cpp_includes,
                 ));
+
+                if obj.kind == ObjectKind::Component {
+                    methods.push(component_to_data_cell_method(
+                        &type_ident,
+                        &mut hpp_includes,
+                        &mut cpp_includes,
+                    ));
+                }
             }
             ObjectKind::Archetype => {
-                // TODO(andreas): Should also be convertible to arrow?
+                hpp_includes.system.insert("utility".to_owned()); // std::move
+
+                let required_component_fields = obj
+                    .fields
+                    .iter()
+                    .filter(|field| !field.is_nullable)
+                    .collect_vec();
+
+                // Constructor with all required components.
+                {
+                    let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
+                        .iter()
+                        .map(|obj_field| {
+                            let field_ident = format_ident!("{}", obj_field.name);
+                            (
+                                quote_variable(&mut hpp_includes, obj_field, &field_ident),
+                                quote! { #field_ident(std::move(#field_ident)) },
+                            )
+                        })
+                        .unzip();
+
+                    methods.push(Method {
+                        declaration: MethodDeclaration::constructor(quote! {
+                            #type_ident(#(#arguments),*) : #(#assignments),*
+                        }),
+                        ..Method::default()
+                    });
+                }
+                // Builder methods for all optional components.
+                for obj_field in obj.fields.iter().filter(|field| field.is_nullable) {
+                    let field_ident = format_ident!("{}", obj_field.name);
+                    let method_ident = format_ident!("with_{}", obj_field.name);
+                    let non_nullable = ObjectField {
+                        is_nullable: false,
+                        ..obj_field.clone()
+                    };
+                    let parameter_declaration =
+                        quote_variable(&mut hpp_includes, &non_nullable, &field_ident);
+                    methods.push(Method {
+                        docs: obj_field.docs.clone().into(),
+                        declaration: MethodDeclaration {
+                            is_static: false,
+                            return_type: quote!(#type_ident&),
+                            name_and_parameters: quote! {
+                                #method_ident(#parameter_declaration)
+                            },
+                        },
+                        definition_body: quote! {
+                            this->#field_ident = std::move(#field_ident);
+                            return *this;
+                        },
+                        inline: true,
+                    });
+                }
+
+                // Num instances gives the number of primary instances.
+                {
+                    let first_required_field = required_component_fields.first().unwrap();
+                    let first_required_field_name = &format_ident!("{}", first_required_field.name);
+                    let definition_body = if first_required_field.typ.is_plural() {
+                        quote!(return #first_required_field_name.size();)
+                    } else {
+                        quote!(return 1;)
+                    };
+                    methods.push(Method {
+                        docs: "Returns the number of primary instances of this archetype.".into(),
+                        declaration: MethodDeclaration {
+                            is_static: false,
+                            return_type: quote!(size_t),
+                            name_and_parameters: quote! {
+                                num_instances() const
+                            },
+                        },
+                        definition_body,
+                        inline: true,
+                    });
+                }
+
+                methods.push(archetype_to_data_cells(
+                    obj,
+                    &mut hpp_includes,
+                    &mut cpp_includes,
+                ));
             }
         };
 
         let hpp_method_section = if methods.is_empty() {
             quote! {}
         } else {
-            let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
+            let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
             quote! {
                 public:
-                    #(#hpp_methods)*
+                    #(#methods_hpp)*
             }
         };
         let hpp = quote! {
@@ -301,21 +396,26 @@ impl QuotedObject {
             namespace rr {
                 namespace #namespace_ident {
                     #quoted_docs
-                    struct #pascal_case_ident {
+                    struct #type_ident {
                         #(#field_declarations;)*
+
+                        #(#constants_hpp;)*
+
                         #hpp_method_section
                     };
                 }
             }
         };
 
-        let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
+        let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&type_ident));
         let cpp = quote! {
             #cpp_includes
 
             namespace rr {
                 namespace #namespace_ident {
-                    #(#cpp_methods)*
+                    #(#constants_cpp;)*
+
+                    #(#methods_cpp)*
                 }
             }
         };
@@ -343,7 +443,12 @@ impl QuotedObject {
         //     Rotation3DData _data;
         // };
 
-        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
+        assert!(
+            obj.kind != ObjectKind::Archetype,
+            "Union archetypes are not supported {}",
+            obj.fqname
+        );
+        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes` or `components`
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
@@ -387,7 +492,7 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let declaration = quote_declaration_with_docstring(
+                let declaration = quote_variable_with_docstring(
                     &mut hpp_includes,
                     obj_field,
                     &format_ident!("{}", crate::to_snake_case(&obj_field.name)),
@@ -399,6 +504,8 @@ impl QuotedObject {
             })
             .collect_vec();
 
+        let (constants_hpp, constants_cpp) =
+            quote_constants_header_and_cpp(obj, objects, &pascal_case_ident);
         let mut methods = Vec::new();
 
         // Add one static constructor for every field.
@@ -417,7 +524,7 @@ impl QuotedObject {
             for obj_field in &obj.fields {
                 let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
                 let param_declaration =
-                    quote_declaration(&mut hpp_includes, obj_field, &snake_case_ident);
+                    quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
 
                 methods.push(Method {
                     docs: obj_field.docs.clone().into(),
@@ -478,11 +585,8 @@ impl QuotedObject {
                         }
                     }
                 } else {
-                    let typedef_declaration = quote_declaration(
-                        &mut hpp_includes,
-                        obj_field,
-                        &format_ident!("TypeAlias"),
-                    );
+                    let typedef_declaration =
+                        quote_variable(&mut hpp_includes, obj_field, &format_ident!("TypeAlias"));
                     hpp_includes.system.insert("utility".to_owned()); // std::move
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
@@ -504,9 +608,46 @@ impl QuotedObject {
             }
         };
 
+        let copy_constructor = {
+            let copy_match_arms = obj
+                .fields
+                .iter()
+                .filter_map(|obj_field| {
+                    // Inferring from trivial destructability that we don't need to call the copy constructor is a little bit wonky,
+                    // but is typically the reason why we need to do this in the first place - if we'd always memcpy we'd get double-free errors.
+                    // (As with swap, we generously assume that objects are rellocatable)
+                    (!obj_field.typ.has_default_destructor(objects)).then(|| {
+                        let tag_ident = format_ident!("{}", obj_field.name);
+                        let field_ident =
+                            format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                        Some(quote! {
+                            case detail::#tag_typename::#tag_ident: {
+                                _data.#field_ident = other._data.#field_ident;
+                                break;
+                            }
+                        })
+                    })
+                })
+                .collect_vec();
+            if copy_match_arms.is_empty() {
+                quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
+                    memcpy(&this->_data, &other._data, sizeof(detail::#data_typename));
+                })
+            } else {
+                quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
+                    switch (other._tag) {
+                        #(#copy_match_arms)*
+                        default:
+                            memcpy(&this->_data, &other._data, sizeof(detail::#data_typename));
+                            break;
+                    }
+                })
+            }
+        };
+
         let swap_comment = quote_comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
 
-        let hpp_methods = methods.iter().map(|m| m.to_hpp_tokens());
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
         let hpp = quote! {
             #hpp_includes
 
@@ -525,6 +666,8 @@ impl QuotedObject {
                             #data_typename() { } // Required by static constructors
                             ~#data_typename() { }
 
+                            // Note that this type is *not* copyable unless all enum fields are trivially destructable.
+
                             void swap(#data_typename& other) noexcept {
                                 #NEWLINE_TOKEN
                                 #swap_comment
@@ -539,14 +682,17 @@ impl QuotedObject {
 
                     #quoted_docs
                     struct #pascal_case_ident {
-                      private:
-                        detail::#tag_typename _tag;
-                        detail::#data_typename _data;
+                        #(#constants_hpp;)*
 
-                        // Empty state required by static constructors:
-                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
+                        #copy_constructor
 
-                      public:
+                        // Copy-assignment
+                        #pascal_case_ident& operator=(const #pascal_case_ident& other) noexcept {
+                            #pascal_case_ident tmp(other);
+                            this->swap(tmp);
+                            return *this;
+                        }
+
                         // Move-constructor:
                         #pascal_case_ident(#pascal_case_ident&& other) noexcept : _tag(detail::#tag_typename::NONE) {
                             this->swap(other);
@@ -560,9 +706,7 @@ impl QuotedObject {
 
                         #destructor
 
-                        #(#hpp_methods)*
-
-                        // This is useful for easily implementing the move constructor and move assignment operator:
+                        // This is useful for easily implementing the move constructor and assignment operators:
                         void swap(#pascal_case_ident& other) noexcept {
                             // Swap tags:
                             auto tag_temp = this->_tag;
@@ -572,6 +716,16 @@ impl QuotedObject {
                             // Swap data:
                             this->_data.swap(other._data);
                         }
+
+                        #(#methods_hpp)*
+
+                    private:
+                        detail::#tag_typename _tag;
+                        detail::#data_typename _data;
+
+                        // Empty state required by static constructors:
+                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
+                        public:
                     };
                 }
             }
@@ -580,6 +734,8 @@ impl QuotedObject {
         let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
         let cpp = quote! {
             #cpp_includes
+
+            #(#constants_cpp;)*
 
             namespace rr {
                 namespace #namespace_ident {
@@ -601,15 +757,20 @@ fn arrow_data_type_method(datatype: &DataType, cpp_includes: &mut Includes) -> M
         docs: "Returns the arrow data type this type corresponds to.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { std::shared_ptr<arrow::DataType> },
+            return_type: quote! { const std::shared_ptr<arrow::DataType>& },
             name_and_parameters: quote! { to_arrow_datatype() },
         },
-        definition_body: quote! { return #quoted_datatype; },
+        definition_body: quote! {
+            static const auto datatype = #quoted_datatype;
+            return datatype;
+        },
         inline: false,
     }
 }
 
 fn new_arrow_array_builder_method(datatype: &DataType, cpp_includes: &mut Includes) -> Method {
+    cpp_includes.system.insert("arrow/api.h".to_owned());
+
     let arrow_builder_type = arrow_array_builder_type(datatype);
     let arrow_builder_type = format_ident!("{arrow_builder_type}");
     let builder_instantiation =
@@ -640,6 +801,8 @@ fn fill_arrow_array_builder_method(
     pascal_case_ident: &Ident,
     cpp_includes: &mut Includes,
 ) -> Method {
+    cpp_includes.system.insert("arrow/api.h".to_owned());
+
     let DataType::Extension(_fqname, logical_datatype, _metadata) = datatype else {
         panic!("Can only generate arrow serialization code for extension types. {}", obj.fqname);
     };
@@ -681,6 +844,133 @@ fn fill_arrow_array_builder_method(
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return arrow::Status::OK();
+        },
+        inline: false,
+    }
+}
+
+fn component_to_data_cell_method(
+    type_ident: &Ident,
+    hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
+) -> Method {
+    hpp_includes.local.insert("../data_cell.hpp".to_owned());
+    cpp_includes.local.insert("../rerun.hpp".to_owned()); // ipc_from_table
+    cpp_includes.system.insert("arrow/api.h".to_owned());
+
+    let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
+
+    Method {
+        docs: format!("Creates a Rerun DataCell from an array of {type_ident} components.").into(),
+        declaration: MethodDeclaration {
+            is_static: true,
+            return_type: quote! { arrow::Result<rr::DataCell> },
+            name_and_parameters: quote! {
+                to_data_cell(const #type_ident* instances, size_t num_instances)
+            },
+        },
+        definition_body: quote! {
+            #NEWLINE_TOKEN
+            #todo_pool
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            ARROW_ASSIGN_OR_RAISE(auto builder, #type_ident::new_arrow_array_builder(pool));
+            if (instances && num_instances > 0) {
+                ARROW_RETURN_NOT_OK(#type_ident::fill_arrow_array_builder(
+                    builder.get(),
+                    instances,
+                    num_instances
+                ));
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            auto schema = arrow::schema({arrow::field(
+                #type_ident::NAME, // Unused, but should be the name of the field in the archetype if any.
+                #type_ident::to_arrow_datatype(),
+                false
+            )});
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            rr::DataCell cell;
+            cell.component_name = #type_ident::NAME;
+            ARROW_ASSIGN_OR_RAISE(cell.buffer, rr::ipc_from_table(*arrow::Table::Make(schema, {array})));
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            return cell;
+        },
+        inline: false,
+    }
+}
+
+fn archetype_to_data_cells(
+    obj: &Object,
+    hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
+) -> Method {
+    hpp_includes.local.insert("../data_cell.hpp".to_owned());
+    cpp_includes.system.insert("arrow/api.h".to_owned());
+
+    // TODO(andreas): Splats need to be handled separately.
+
+    let num_fields = quote_integer(obj.fields.len());
+    let push_cells = obj.fields.iter().map(|field| {
+        let field_type_fqname = match &field.typ {
+            Type::Vector { elem_type } => elem_type.fqname().unwrap(),
+            Type::Object(fqname) => fqname,
+            _ => unreachable!(
+                "Archetypes are not expected to have any fields other than objects and vectors"
+            ),
+        };
+        let field_type = quote_fqname_as_type_path(cpp_includes, field_type_fqname);
+        let field_name = format_ident!("{}", field.name);
+
+        if field.is_nullable {
+            let to_data_cell = if field.typ.is_plural() {
+                quote!(#field_type::to_data_cell(value.data(), value.size()))
+            } else {
+                quote!(#field_type::to_data_cell(&value, 1))
+            };
+            quote! {
+                if (#field_name.has_value()) {
+                    const auto& value  = #field_name.value();
+                    ARROW_ASSIGN_OR_RAISE(const auto cell, #to_data_cell);
+                    cells.push_back(cell);
+                }
+            }
+        } else {
+            let to_data_cell = if field.typ.is_plural() {
+                quote!(#field_type::to_data_cell(#field_name.data(), #field_name.size()))
+            } else {
+                quote!(#field_type::to_data_cell(&#field_name, 1))
+            };
+            quote! {
+                {
+                    ARROW_ASSIGN_OR_RAISE(const auto cell, #to_data_cell);
+                    cells.push_back(cell);
+                }
+            }
+        }
+    });
+
+    Method {
+        docs: "Creates a list of Rerun DataCell from this archetype.".into(),
+        declaration: MethodDeclaration {
+            is_static: false,
+            return_type: quote!(arrow::Result<std::vector<rr::DataCell>>),
+            name_and_parameters: quote!(to_data_cells() const),
+        },
+        definition_body: quote! {
+            std::vector<rr::DataCell> cells;
+            cells.reserve(#num_fields);
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            #(#push_cells)*
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
+            return cells;
         },
         inline: false,
     }
@@ -760,13 +1050,15 @@ fn quote_fill_arrow_array_builder(
             if field.is_nullable {
                 let item_append = if trivial_batch_append(field.data_type()) {
                     // `&expression[0]` is not pretty but works on both arrays and vectors!
+                    let element_ptr_accessor =
+                        quote_batch_append_cast(datatype, quote!(&element.#field_name.value()[0]));
                     quote! {
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(&element.#field_name.value()[0], #num_items_per_element, nullptr));
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(#element_ptr_accessor, #num_items_per_element, nullptr));
                     }
                 } else {
                     quote! {
                         for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            value_builder->Append(element.#field_name.value()[item_idx]);
+                            ARROW_RETURN_NOT_OK(value_builder->Append(element.#field_name.value()[item_idx]));
                         }
                     }
                 };
@@ -786,11 +1078,13 @@ fn quote_fill_arrow_array_builder(
                 && trivial_batch_append(field.data_type())
             {
                 // Optimize common case: Trivial batch of transparent fixed size elements.
+                let element_ptr_accessor =
+                    quote_batch_append_cast(datatype, quote!(elements[0].#field_name));
                 quote! {
                     auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                     #NEWLINE_TOKEN #NEWLINE_TOKEN
                     static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
-                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(elements[0].#field_name, num_elements * #num_items_per_element, nullptr));
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(#element_ptr_accessor, num_elements * #num_items_per_element, nullptr));
                     ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
                 }
             } else {
@@ -799,7 +1093,7 @@ fn quote_fill_arrow_array_builder(
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
                         for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            value_builder->Append(element.#field_name[item_idx]);
+                            ARROW_RETURN_NOT_OK(value_builder->Append(element.#field_name[item_idx]));
                         }
                         ARROW_RETURN_NOT_OK(#builder->Append());
                     }
@@ -923,9 +1217,11 @@ fn quote_append_elements_to_builder(
     } else if is_transparent && trivial_batch_append(datatype) {
         // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
         // we can just pass the whole array as-is!
+        let element_ptr_accessor =
+            quote_batch_append_cast(datatype, quote!(&elements->#field_name));
         quote! {
             static_assert(sizeof(*elements) == sizeof(elements->#field_name));
-            ARROW_RETURN_NOT_OK(#builder->AppendValues(&elements->#field_name, num_elements));
+            ARROW_RETURN_NOT_OK(#builder->AppendValues(#element_ptr_accessor, num_elements));
         }
     } else {
         quote! {
@@ -934,6 +1230,15 @@ fn quote_append_elements_to_builder(
                 ARROW_RETURN_NOT_OK(#builder->Append(elements[elem_idx].#field_name));
             }
         }
+    }
+}
+
+fn quote_batch_append_cast(datatype: &DataType, element_ptr_accessor: TokenStream) -> TokenStream {
+    if *datatype == DataType::Boolean {
+        // Bool needs a cast because it takes uint8_t.
+        quote!(reinterpret_cast<const uint8_t*>(#element_ptr_accessor))
+    } else {
+        element_ptr_accessor
     }
 }
 
@@ -1073,7 +1378,7 @@ fn static_constructor_for_enum_type(
     let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
     let docs = obj_field.docs.clone().into();
 
-    let param_declaration = quote_declaration(hpp_includes, obj_field, &snake_case_ident);
+    let param_declaration = quote_variable(hpp_includes, obj_field, &snake_case_ident);
     let declaration = MethodDeclaration {
         is_static: true,
         return_type: quote!(#pascal_case_ident),
@@ -1130,7 +1435,7 @@ fn static_constructor_for_enum_type(
         // We need to use placement-new since the union is in an uninitialized state here:
         hpp_includes.system.insert("new".to_owned()); // placement-new
         let typedef_declaration =
-            quote_declaration(hpp_includes, obj_field, &format_ident!("TypeAlias"));
+            quote_variable(hpp_includes, obj_field, &format_ident!("TypeAlias"));
         Method {
             docs,
             declaration,
@@ -1146,17 +1451,45 @@ fn static_constructor_for_enum_type(
     }
 }
 
+fn quote_constants_header_and_cpp(
+    obj: &Object,
+    objects: &Objects,
+    obj_type_ident: &Ident,
+) -> (Vec<TokenStream>, Vec<TokenStream>) {
+    let mut hpp = Vec::new();
+    let mut cpp = Vec::new();
+    match &obj.kind {
+        ObjectKind::Component => {
+            let legacy_fqname = objects[&obj.fqname]
+                .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
+                .unwrap_or_else(|| obj.fqname.clone());
+
+            let comment = quote_doc_comment("Name of the component, used for serialization.");
+            hpp.push(quote! {
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
+                #comment
+                static const char* NAME
+            });
+            cpp.push(quote!(const char* #obj_type_ident::NAME = #legacy_fqname));
+        }
+        ObjectKind::Archetype | ObjectKind::Datatype => {}
+    }
+
+    (hpp, cpp)
+}
+
 fn are_types_disjoint(fields: &[ObjectField]) -> bool {
     let type_set: std::collections::HashSet<&Type> = fields.iter().map(|f| &f.typ).collect();
     type_set.len() == fields.len()
 }
 
-fn quote_declaration_with_docstring(
+fn quote_variable_with_docstring(
     includes: &mut Includes,
     obj_field: &ObjectField,
     name: &syn::Ident,
 ) -> TokenStream {
-    let quoted = quote_declaration(includes, obj_field, name);
+    let quoted = quote_variable(includes, obj_field, name);
 
     let docstring = quote_docstrings(&obj_field.docs);
 
@@ -1168,7 +1501,7 @@ fn quote_declaration_with_docstring(
     quoted
 }
 
-fn quote_declaration(
+fn quote_variable(
     includes: &mut Includes,
     obj_field: &ObjectField,
     name: &syn::Ident,

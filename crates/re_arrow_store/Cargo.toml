@@ -32,6 +32,7 @@ core_benchmarks_only = []
 
 [dependencies]
 # Rerun dependencies:
+re_error.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true

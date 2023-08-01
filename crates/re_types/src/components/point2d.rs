@@ -16,9 +16,9 @@
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Point2D(pub crate::datatypes::Point2D);
 
-impl From<crate::datatypes::Point2D> for Point2D {
-    fn from(v: crate::datatypes::Point2D) -> Self {
-        Self(v)
+impl<T: Into<crate::datatypes::Point2D>> From<T> for Point2D {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 

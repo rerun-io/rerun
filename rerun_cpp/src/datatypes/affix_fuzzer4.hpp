@@ -49,13 +49,32 @@ namespace rr {
         } // namespace detail
 
         struct AffixFuzzer4 {
-          private:
-            detail::AffixFuzzer4Tag _tag;
-            detail::AffixFuzzer4Data _data;
+            AffixFuzzer4(const AffixFuzzer4& other) : _tag(other._tag) {
+                switch (other._tag) {
+                    case detail::AffixFuzzer4Tag::single_required: {
+                        _data.single_required = other._data.single_required;
+                        break;
+                    }
+                    case detail::AffixFuzzer4Tag::many_required: {
+                        _data.many_required = other._data.many_required;
+                        break;
+                    }
+                    case detail::AffixFuzzer4Tag::many_optional: {
+                        _data.many_optional = other._data.many_optional;
+                        break;
+                    }
+                    default:
+                        memcpy(&this->_data, &other._data, sizeof(detail::AffixFuzzer4Data));
+                        break;
+                }
+            }
 
-            AffixFuzzer4() : _tag(detail::AffixFuzzer4Tag::NONE) {}
+            AffixFuzzer4& operator=(const AffixFuzzer4& other) noexcept {
+                AffixFuzzer4 tmp(other);
+                this->swap(tmp);
+                return *this;
+            }
 
-          public:
             AffixFuzzer4(AffixFuzzer4&& other) noexcept : _tag(detail::AffixFuzzer4Tag::NONE) {
                 this->swap(other);
             }
@@ -88,6 +107,13 @@ namespace rr {
                 }
             }
 
+            void swap(AffixFuzzer4& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
+            }
+
             static AffixFuzzer4 single_required(rr::datatypes::AffixFuzzer3 single_required) {
                 typedef rr::datatypes::AffixFuzzer3 TypeAlias;
                 AffixFuzzer4 self;
@@ -116,7 +142,7 @@ namespace rr {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
@@ -128,12 +154,13 @@ namespace rr {
                 arrow::DenseUnionBuilder* builder, const AffixFuzzer4* elements, size_t num_elements
             );
 
-            void swap(AffixFuzzer4& other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
-                this->_data.swap(other._data);
-            }
+          private:
+            detail::AffixFuzzer4Tag _tag;
+            detail::AffixFuzzer4Data _data;
+
+            AffixFuzzer4() : _tag(detail::AffixFuzzer4Tag::NONE) {}
+
+          public:
         };
     } // namespace datatypes
 } // namespace rr

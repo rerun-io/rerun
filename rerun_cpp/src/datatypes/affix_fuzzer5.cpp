@@ -9,8 +9,8 @@
 
 namespace rr {
     namespace datatypes {
-        std::shared_ptr<arrow::DataType> AffixFuzzer5::to_arrow_datatype() {
-            return arrow::struct_({
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer5::to_arrow_datatype() {
+            static const auto datatype = arrow::struct_({
                 arrow::field(
                     "single_optional_union",
                     rr::datatypes::AffixFuzzer4::to_arrow_datatype(),
@@ -18,6 +18,7 @@ namespace rr {
                     nullptr
                 ),
             });
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StructBuilder>> AffixFuzzer5::new_arrow_array_builder(

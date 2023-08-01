@@ -4,13 +4,17 @@
 #include "point2d.hpp"
 
 #include "../datatypes/point2d.hpp"
+#include "../rerun.hpp"
 
 #include <arrow/api.h>
 
 namespace rr {
     namespace components {
-        std::shared_ptr<arrow::DataType> Point2D::to_arrow_datatype() {
-            return rr::datatypes::Point2D::to_arrow_datatype();
+        const char *Point2D::NAME = "rerun.point2d";
+
+        const std::shared_ptr<arrow::DataType> &Point2D::to_arrow_datatype() {
+            static const auto datatype = rr::datatypes::Point2D::to_arrow_datatype();
+            return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StructBuilder>> Point2D::new_arrow_array_builder(
@@ -43,6 +47,34 @@ namespace rr {
             ));
 
             return arrow::Status::OK();
+        }
+
+        arrow::Result<rr::DataCell> Point2D::to_data_cell(
+            const Point2D *instances, size_t num_instances
+        ) {
+            // TODO(andreas): Allow configuring the memory pool.
+            arrow::MemoryPool *pool = arrow::default_memory_pool();
+
+            ARROW_ASSIGN_OR_RAISE(auto builder, Point2D::new_arrow_array_builder(pool));
+            if (instances && num_instances > 0) {
+                ARROW_RETURN_NOT_OK(
+                    Point2D::fill_arrow_array_builder(builder.get(), instances, num_instances)
+                );
+            }
+            std::shared_ptr<arrow::Array> array;
+            ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+            auto schema =
+                arrow::schema({arrow::field(Point2D::NAME, Point2D::to_arrow_datatype(), false)});
+
+            rr::DataCell cell;
+            cell.component_name = Point2D::NAME;
+            ARROW_ASSIGN_OR_RAISE(
+                cell.buffer,
+                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+            );
+
+            return cell;
         }
     } // namespace components
 } // namespace rr

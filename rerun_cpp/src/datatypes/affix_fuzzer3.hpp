@@ -52,13 +52,24 @@ namespace rr {
         } // namespace detail
 
         struct AffixFuzzer3 {
-          private:
-            detail::AffixFuzzer3Tag _tag;
-            detail::AffixFuzzer3Data _data;
+            AffixFuzzer3(const AffixFuzzer3& other) : _tag(other._tag) {
+                switch (other._tag) {
+                    case detail::AffixFuzzer3Tag::craziness: {
+                        _data.craziness = other._data.craziness;
+                        break;
+                    }
+                    default:
+                        memcpy(&this->_data, &other._data, sizeof(detail::AffixFuzzer3Data));
+                        break;
+                }
+            }
 
-            AffixFuzzer3() : _tag(detail::AffixFuzzer3Tag::NONE) {}
+            AffixFuzzer3& operator=(const AffixFuzzer3& other) noexcept {
+                AffixFuzzer3 tmp(other);
+                this->swap(tmp);
+                return *this;
+            }
 
-          public:
             AffixFuzzer3(AffixFuzzer3&& other) noexcept : _tag(detail::AffixFuzzer3Tag::NONE) {
                 this->swap(other);
             }
@@ -88,6 +99,13 @@ namespace rr {
                         break; // has a trivial destructor
                     }
                 }
+            }
+
+            void swap(AffixFuzzer3& other) noexcept {
+                auto tag_temp = this->_tag;
+                this->_tag = other._tag;
+                other._tag = tag_temp;
+                this->_data.swap(other._data);
             }
 
             static AffixFuzzer3 degrees(float degrees) {
@@ -123,7 +141,7 @@ namespace rr {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static std::shared_ptr<arrow::DataType> to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
@@ -135,12 +153,13 @@ namespace rr {
                 arrow::DenseUnionBuilder* builder, const AffixFuzzer3* elements, size_t num_elements
             );
 
-            void swap(AffixFuzzer3& other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
-                this->_data.swap(other._data);
-            }
+          private:
+            detail::AffixFuzzer3Tag _tag;
+            detail::AffixFuzzer3Data _data;
+
+            AffixFuzzer3() : _tag(detail::AffixFuzzer3Tag::NONE) {}
+
+          public:
         };
     } // namespace datatypes
 } // namespace rr

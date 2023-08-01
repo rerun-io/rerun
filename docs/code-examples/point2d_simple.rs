@@ -1,6 +1,7 @@
 //! Log some very simple points.
 use rerun::{
-    components::{Point2D, Rect2D, Vec4D},
+    components::{Point2D, Rect2D},
+    datatypes::Vec4D,
     MsgSender, RecordingStreamBuilder,
 };
 
@@ -18,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Log an extra rect to set the view bounds
     MsgSender::new("bounds")
-        .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 4.0, 3.0]))])?
+        .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 4.0, 3.0]).into())])?
         .send(&rec_stream)?;
 
     rerun::native_viewer::show(storage.take())?;

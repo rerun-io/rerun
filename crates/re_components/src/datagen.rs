@@ -35,13 +35,13 @@ pub fn build_some_point2d(len: usize) -> Vec<crate::Point2D> {
 }
 
 /// Create `len` dummy `Vec3D`
-pub fn build_some_vec3d(len: usize) -> Vec<crate::Vec3D> {
+pub fn build_some_vec3d(len: usize) -> Vec<crate::LegacyVec3D> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
     (0..len)
         .map(|_| {
-            crate::Vec3D::new(
+            crate::LegacyVec3D::new(
                 rng.gen_range(0.0..10.0),
                 rng.gen_range(0.0..10.0),
                 rng.gen_range(0.0..10.0),

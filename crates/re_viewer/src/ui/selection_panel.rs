@@ -1,9 +1,10 @@
 use egui::NumExt as _;
 
-use re_components::{Pinhole, Tensor, TensorDataMeaning, Transform3D};
+use re_components::{Pinhole, Tensor, TensorDataMeaning};
 use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties};
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::TimeType;
+use re_types::components::Transform3D;
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 use re_viewport::{Viewport, ViewportBlueprint};
 

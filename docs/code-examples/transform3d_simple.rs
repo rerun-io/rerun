@@ -1,17 +1,21 @@
 //! Log different transforms between three arrows.
-use rerun::components::{Arrow3D, Mat3x3, Transform3D, Vec3D};
-use rerun::transform::{
-    Angle, Rotation3D, RotationAxisAngle, Scale3D, TranslationAndMat3, TranslationRotationScale3D,
+use rerun::{
+    components::{Arrow3D, Transform3D},
+    datatypes::{Mat3x3, Vec3D},
+    transform::{
+        Angle, Rotation3D, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
+        TranslationRotationScale3D,
+    },
+    MsgSender, RecordingStreamBuilder,
 };
-use rerun::{MsgSender, RecordingStreamBuilder};
 use std::f32::consts::PI;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("transform").memory()?;
 
     let arrow = Arrow3D {
-        origin: Vec3D::from([0.0, 0.0, 0.0]),
-        vector: Vec3D::from([0.0, 1.0, 0.0]),
+        origin: Vec3D::from([0.0, 0.0, 0.0]).into(),
+        vector: Vec3D::from([0.0, 1.0, 0.0]).into(),
     };
 
     MsgSender::new("base")
@@ -19,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send(&rec_stream)?;
 
     MsgSender::new("base/translated")
-        .with_component(&[Transform3D::new(TranslationAndMat3::new(
+        .with_component(&[Transform3D::new(TranslationAndMat3x3::new(
             Vec3D::from([1.0, 0.0, 0.0]),
             Mat3x3::IDENTITY,
         ))])?
@@ -37,6 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Angle::Radians(PI / 4.),
             ))),
             scale: Some(Scale3D::from(2.0)),
+            ..Default::default()
         })])?
         .send(&rec_stream)?;
 
