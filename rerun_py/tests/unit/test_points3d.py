@@ -162,14 +162,6 @@ def test_points3d() -> None:
         ],
     ]
 
-    draw_orders: list[rr_cmp.DrawOrderLike | None] = [
-        None,
-        # DrawOrderLike: float
-        300,
-        # DrawOrderLike: DrawOrder
-        rr_cmp.DrawOrder(300),
-    ]
-
     class_id_arrays = [
         [],
         np.array([]),
@@ -220,13 +212,12 @@ def test_points3d() -> None:
         radii_arrays,
         colors_arrays,
         labels_arrays,
-        draw_orders,
         class_id_arrays,
         keypoint_id_arrays,
         instance_key_arrays,
     )
 
-    for points, radii, colors, labels, draw_order, class_ids, keypoint_ids, instance_keys in all_arrays:
+    for points, radii, colors, labels, class_ids, keypoint_ids, instance_keys in all_arrays:
         points = points if points is not None else points_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
@@ -234,7 +225,6 @@ def test_points3d() -> None:
         radii = cast(Optional[rr_cmp.RadiusArrayLike], radii)
         colors = cast(Optional[rr_cmp.ColorArrayLike], colors)
         labels = cast(Optional[rr_cmp.LabelArrayLike], labels)
-        draw_order = cast(Optional[rr_cmp.DrawOrderArrayLike], draw_order)
         class_ids = cast(Optional[rr_cmp.ClassIdArrayLike], class_ids)
         keypoint_ids = cast(Optional[rr_cmp.KeypointIdArrayLike], keypoint_ids)
         instance_keys = cast(Optional[rr_cmp.InstanceKeyArrayLike], instance_keys)
@@ -245,7 +235,6 @@ def test_points3d() -> None:
             f"    radii={radii}\n"
             f"    colors={colors}\n"
             f"    labels={labels}\n"
-            f"    draw_order={draw_order}\n"
             f"    class_ids={class_ids}\n"
             f"    keypoint_ids={keypoint_ids}\n"
             f"    instance_keys={instance_keys}\n"
