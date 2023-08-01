@@ -70,7 +70,12 @@ def run_segmentation(experimental_api: bool) -> None:
 
     # Log an initial segmentation map with arbitrary colors
     rr.set_time_seconds("sim_time", 2)
-    rr.log_annotation_context("seg_test", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
+
+    if experimental_api:
+        rr2.log("seg_test", rr2.AnnotationContext([(13, "label1"), (42, "label2"), (99, "label3")]), timeless=False)
+    else:
+        rr.log_annotation_context("seg_test", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
+
     rr.log_text_entry(
         "logs/seg_test_log",
         "default colored rects, default colored points, " "all points except the bottom right clusters have labels",
@@ -78,20 +83,46 @@ def run_segmentation(experimental_api: bool) -> None:
 
     # Log an updated segmentation map with specific colors
     rr.set_time_seconds("sim_time", 3)
-    rr.log_annotation_context(
-        "seg_test",
-        [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))],
-        timeless=False,
-    )
+    if experimental_api:
+        rr2.log(
+            "seg_test",
+            rr2.AnnotationContext(
+                [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]
+            ),
+            timeless=False,
+        )
+    else:
+        rr.log_annotation_context(
+            "seg_test",
+            [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))],
+            timeless=False,
+        )
     rr.log_text_entry("logs/seg_test_log", "points/rects with user specified colors")
 
     # Log with a mixture of set and unset colors / labels
     rr.set_time_seconds("sim_time", 4)
-    rr.log_annotation_context(
-        "seg_test",
-        [rr.AnnotationInfo(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), rr.AnnotationInfo(99, label="label3")],
-        timeless=False,
-    )
+    if experimental_api:
+        rr2.log(
+            "seg_test",
+            rr2.AnnotationContext(
+                [
+                    rr2.dt.AnnotationInfo(13, color=(255, 0, 0)),
+                    (42, "label2", (0, 255, 0)),
+                    rr2.dt.AnnotationInfo(99, label="label3"),
+                ]
+            ),
+            timeless=False,
+        )
+    else:
+        rr.log_annotation_context(
+            "seg_test",
+            [
+                rr2.dt.AnnotationInfo(13, color=(255, 0, 0)),
+                (42, "label2", (0, 255, 0)),
+                rr2.dt.AnnotationInfo(99, label="label3"),
+            ],
+            timeless=False,
+        )
     rr.log_text_entry("logs/seg_test_log", "label1 disappears and everything with label3 is now default colored again")
 
 

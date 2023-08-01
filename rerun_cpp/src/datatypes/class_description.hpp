@@ -8,7 +8,6 @@
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
-#include <optional>
 #include <vector>
 
 namespace rr {
@@ -32,10 +31,10 @@ namespace rr {
             rr::datatypes::AnnotationInfo info;
 
             /// The `AnnotationInfo` for all of the keypoints.
-            std::optional<std::vector<rr::datatypes::AnnotationInfo>> keypoint_annotations;
+            std::vector<rr::datatypes::AnnotationInfo> keypoint_annotations;
 
             /// The connections between keypoints.
-            std::optional<std::vector<rr::datatypes::KeypointPair>> keypoint_connections;
+            std::vector<rr::datatypes::KeypointPair> keypoint_connections;
 
           public:
             /// Returns the arrow data type this type corresponds to.

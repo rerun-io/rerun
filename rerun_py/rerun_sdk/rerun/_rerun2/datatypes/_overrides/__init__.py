@@ -4,6 +4,7 @@ from .angle import angle_init
 from .annotation_context import (
     annotationinfo_native_to_pa_array,
     classdescription_info_converter,
+    classdescription_init,
     classdescription_keypoint_annotations_converter,
     classdescription_keypoint_connections_converter,
     classdescription_native_to_pa_array,

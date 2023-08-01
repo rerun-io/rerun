@@ -23,10 +23,10 @@ namespace rr {
                     arrow::list(arrow::field(
                         "item",
                         rr::datatypes::AnnotationInfo::to_arrow_datatype(),
-                        true,
+                        false,
                         nullptr
                     )),
-                    true,
+                    false,
                     nullptr
                 ),
                 arrow::field(
@@ -34,10 +34,10 @@ namespace rr {
                     arrow::list(arrow::field(
                         "item",
                         rr::datatypes::KeypointPair::to_arrow_datatype(),
-                        true,
+                        false,
                         nullptr
                     )),
-                    true,
+                    false,
                     nullptr
                 ),
             });

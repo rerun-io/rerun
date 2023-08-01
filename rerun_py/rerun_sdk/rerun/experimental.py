@@ -10,6 +10,7 @@ from rerun.log.experimental.blueprint import add_space_view, new_blueprint, set_
 from rerun.log.experimental.text import log_text_box
 
 __all__ = [
+    "AnnotationContext",
     "DisconnectedSpace",
     "Points2D",
     "Points3D",
@@ -30,5 +31,5 @@ __all__ = [
 from ._rerun2 import archetypes as arch
 from ._rerun2 import components as cmp
 from ._rerun2 import datatypes as dt
-from ._rerun2.archetypes import DisconnectedSpace, Points2D, Points3D, Transform3D
+from ._rerun2.archetypes import AnnotationContext, DisconnectedSpace, Points2D, Points3D, Transform3D
 from ._rerun2.log import log

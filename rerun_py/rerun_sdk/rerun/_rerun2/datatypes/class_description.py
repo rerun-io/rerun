@@ -15,6 +15,7 @@ from .._baseclasses import (
 )
 from ._overrides import (
     classdescription_info_converter,
+    classdescription_init,
     classdescription_keypoint_annotations_converter,
     classdescription_keypoint_connections_converter,
     classdescription_native_to_pa_array,
@@ -29,7 +30,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class ClassDescription:
     """
     The description of a semantic Class.
@@ -48,20 +49,23 @@ class ClassDescription:
     colored as described by the class's [`AnnotationInfo`].
     """
 
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        classdescription_init(self, *args, **kwargs)
+
     info: datatypes.AnnotationInfo = field(converter=classdescription_info_converter)
     """
     The `AnnotationInfo` for the class.
     """
 
-    keypoint_annotations: list[datatypes.AnnotationInfo] | None = field(
-        default=None, converter=classdescription_keypoint_annotations_converter
+    keypoint_annotations: list[datatypes.AnnotationInfo] = field(
+        converter=classdescription_keypoint_annotations_converter
     )
     """
     The `AnnotationInfo` for all of the keypoints.
     """
 
-    keypoint_connections: list[datatypes.KeypointPair] | None = field(
-        default=None, converter=classdescription_keypoint_connections_converter
+    keypoint_connections: list[datatypes.KeypointPair] = field(
+        converter=classdescription_keypoint_connections_converter
     )
     """
     The connections between keypoints.
@@ -109,11 +113,11 @@ class ClassDescriptionType(BaseExtensionType):
                                         pa.field("color", pa.uint32(), True, {}),
                                     ]
                                 ),
-                                True,
+                                False,
                                 {},
                             )
                         ),
-                        True,
+                        False,
                         {},
                     ),
                     pa.field(
@@ -127,11 +131,11 @@ class ClassDescriptionType(BaseExtensionType):
                                         pa.field("keypoint1", pa.uint16(), False, {}),
                                     ]
                                 ),
-                                True,
+                                False,
                                 {},
                             )
                         ),
-                        True,
+                        False,
                         {},
                     ),
                 ]

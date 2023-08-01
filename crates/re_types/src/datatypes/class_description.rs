@@ -32,10 +32,10 @@ pub struct ClassDescription {
     pub info: crate::datatypes::AnnotationInfo,
 
     /// The `AnnotationInfo` for all of the keypoints.
-    pub keypoint_annotations: Option<Vec<crate::datatypes::AnnotationInfo>>,
+    pub keypoint_annotations: Vec<crate::datatypes::AnnotationInfo>,
 
     /// The connections between keypoints.
-    pub keypoint_connections: Option<Vec<crate::datatypes::KeypointPair>>,
+    pub keypoint_connections: Vec<crate::datatypes::KeypointPair>,
 }
 
 impl<'a> From<ClassDescription> for ::std::borrow::Cow<'a, ClassDescription> {
@@ -77,10 +77,10 @@ impl crate::Loggable for ClassDescription {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 })),
-                is_nullable: true,
+                is_nullable: false,
                 metadata: [].into(),
             },
             Field {
@@ -88,10 +88,10 @@ impl crate::Loggable for ClassDescription {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: <crate::datatypes::KeypointPair>::to_arrow_datatype(),
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 })),
-                is_nullable: true,
+                is_nullable: false,
                 metadata: [].into(),
             },
         ])
@@ -157,16 +157,13 @@ impl crate::Loggable for ClassDescription {
                         let (somes, keypoint_annotations): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            keypoint_annotations,
-                                            ..
-                                        } = &**datum;
-                                        keypoint_annotations.clone()
-                                    })
-                                    .flatten();
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self {
+                                        keypoint_annotations,
+                                        ..
+                                    } = &**datum;
+                                    keypoint_annotations.clone()
+                                });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -200,7 +197,7 @@ impl crate::Loggable for ClassDescription {
                                         name: "item".to_owned(),
                                         data_type:
                                             <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                        is_nullable: true,
+                                        is_nullable: false,
                                         metadata: [].into(),
                                     }))
                                     .to_logical_type()
@@ -224,16 +221,13 @@ impl crate::Loggable for ClassDescription {
                         let (somes, keypoint_connections): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            keypoint_connections,
-                                            ..
-                                        } = &**datum;
-                                        keypoint_connections.clone()
-                                    })
-                                    .flatten();
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self {
+                                        keypoint_connections,
+                                        ..
+                                    } = &**datum;
+                                    keypoint_connections.clone()
+                                });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -267,7 +261,7 @@ impl crate::Loggable for ClassDescription {
                                         name: "item".to_owned(),
                                         data_type:
                                             <crate::datatypes::KeypointPair>::to_arrow_datatype(),
-                                        is_nullable: true,
+                                        is_nullable: false,
                                         metadata: [].into(),
                                     }))
                                     .to_logical_type()
@@ -387,32 +381,23 @@ impl crate::Loggable for ClassDescription {
  . into_iter ()
                     }
                 };
-                ::itertools::izip!(info, keypoint_annotations, keypoint_connections)
-                    .enumerate()
-                    .map(|(i, (info, keypoint_annotations, keypoint_connections))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    info: info
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                        .map_err(|err| crate::DeserializationError::Context {
-                                            location: "rerun.datatypes.ClassDescription#info"
-                                                .into(),
-                                            source: Box::new(err),
-                                        })?,
-                                    keypoint_annotations,
-                                    keypoint_connections,
-                                })
-                            })
-                            .transpose()
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.ClassDescription".into(),
-                        source: Box::new(err),
-                    })?
+                :: itertools :: izip ! (info , keypoint_annotations , keypoint_connections) . enumerate () . map (| (i , (info , keypoint_annotations , keypoint_connections)) | is_valid (i) . then (|| Ok (Self { info : info . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#info" . into () , source : Box :: new (err) , }
+
+) ? , keypoint_annotations : keypoint_annotations . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#keypoint_annotations" . into () , source : Box :: new (err) , }
+
+) ? , keypoint_connections : keypoint_connections . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#keypoint_connections" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription" . into () , source : Box :: new (err) , }
+
+) ?
             }
         })
     }

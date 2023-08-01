@@ -21,6 +21,21 @@ if TYPE_CHECKING:
         KeypointPairLike,
     )
 
+
+################################################################################
+# Init overrides
+################################################################################
+
+
+def classdescription_init(
+    self: ClassDescription,
+    info: AnnotationInfoLike,
+    keypoint_annotations: Sequence[AnnotationInfoLike] = [],
+    keypoint_connections: Sequence[KeypointPairLike] = [],
+) -> None:
+    self.__attrs_init__(info=info, keypoint_annotations=keypoint_annotations, keypoint_connections=keypoint_connections)
+
+
 ################################################################################
 # Internal converters
 ################################################################################
@@ -162,18 +177,28 @@ def classdescription_native_to_pa_array(data: ClassDescriptionArrayLike, data_ty
     infos_array = AnnotationInfoArray.from_similar(infos).storage
 
     annotation_offsets = list(itertools.chain([0], itertools.accumulate(len(ann) if ann else 0 for ann in annotations)))
-    annotation_null_map = pa.array([ann is None for ann in annotations], type=pa.bool_())
-    concat_annotations = list(itertools.chain.from_iterable(ann for ann in annotations if ann is not None))
+    # TODO(jleibs): Re-enable null support
+    # annotation_null_map = pa.array([ann is None for ann in annotations], type=pa.bool_())
+    # concat_annotations = list(itertools.chain.from_iterable(ann for ann in annotations if ann is not None))
+    concat_annotations = list(itertools.chain.from_iterable(annotations))
     annotation_values_array = AnnotationInfoArray.from_similar(concat_annotations).storage
-    annotations_array = pa.ListArray.from_arrays(annotation_offsets, annotation_values_array, mask=annotation_null_map)
+    # annotations_array = pa.ListArray.from_arrays(annotation_offsets, annotation_values_array, mask=annotation_null_map)
+    annotations_array = pa.ListArray.from_arrays(annotation_offsets, annotation_values_array).cast(
+        data_type.field("keypoint_annotations").type
+    )
 
     connections_offsets = list(
         itertools.chain([0], itertools.accumulate(len(con) if con else 0 for con in connections))
     )
-    connection_null_map = pa.array([con is None for con in connections], type=pa.bool_())
-    concat_connections = list(itertools.chain.from_iterable(con for con in connections if con is not None))
+    # TODO(jleibs): Re-enable null support
+    # connection_null_map = pa.array([con is None for con in connections], type=pa.bool_())
+    # concat_connections = list(itertools.chain.from_iterable(con for con in connections if con is not None))
+    concat_connections = list(itertools.chain.from_iterable(connections))
     connection_values_array = KeypointPairArray.from_similar(concat_connections).storage
-    connection_array = pa.ListArray.from_arrays(connections_offsets, connection_values_array, mask=connection_null_map)
+    # connection_array = pa.ListArray.from_arrays(connections_offsets, connection_values_array, mask=connection_null_map)
+    connection_array = pa.ListArray.from_arrays(connections_offsets, connection_values_array).cast(
+        data_type.field("keypoint_connections").type
+    )
 
     return pa.StructArray.from_arrays(
         arrays=[infos_array, annotations_array, connection_array],

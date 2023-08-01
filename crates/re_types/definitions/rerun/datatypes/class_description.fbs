@@ -29,8 +29,12 @@ table ClassDescription (
   info: rerun.datatypes.AnnotationInfo (order: 100);
 
   /// The `AnnotationInfo` for all of the keypoints.
-  keypoint_annotations: [rerun.datatypes.AnnotationInfo] (nullable, order: 200);
+  // TODO(jleibs) this could be nullable rather than forcing an empty list
+  // don't null for now so we match the legacy schema
+  keypoint_annotations: [rerun.datatypes.AnnotationInfo] (order: 200);
 
   /// The connections between keypoints.
-  keypoint_connections: [rerun.datatypes.KeypointPair] (nullable, order: 300);
+  // TODO(jleibs) this could be nullable rather than forcing an empty list
+  // don't null for now so we match the legacy schema
+  keypoint_connections: [rerun.datatypes.KeypointPair] (order: 300);
 }

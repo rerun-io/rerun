@@ -35,7 +35,7 @@ from .._converters import (
     to_np_float32,
     to_np_float64
 )
-from ._overrides import annotationcontext_native_to_pa_array, annotationcontext_class_map_converter  # noqa: F401
+from ._overrides import annotationcontext_class_map_converter, annotationcontext_native_to_pa_array  # noqa: F401
 from .. import datatypes
 __all__ = ["AnnotationContext", "AnnotationContextArray", "AnnotationContextArrayLike", "AnnotationContextLike", "AnnotationContextType"]
 
@@ -72,7 +72,7 @@ AnnotationContextArrayLike = Union[
 class AnnotationContextType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.struct([pa.field("class_id", pa.uint16(), False, {}), pa.field("class_description", pa.struct([pa.field("info", pa.struct([pa.field("id", pa.uint16(), False, {}), pa.field("label", pa.utf8(), True, {}), pa.field("color", pa.uint32(), True, {})]), False, {}), pa.field("keypoint_annotations", pa.list_(pa.field("item", pa.struct([pa.field("id", pa.uint16(), False, {}), pa.field("label", pa.utf8(), True, {}), pa.field("color", pa.uint32(), True, {})]), True, {})), True, {}), pa.field("keypoint_connections", pa.list_(pa.field("item", pa.struct([pa.field("keypoint0", pa.uint16(), False, {}), pa.field("keypoint1", pa.uint16(), False, {})]), True, {})), True, {})]), False, {})]), False, {})), "rerun.annotation_context"
+            self, pa.list_(pa.field("item", pa.struct([pa.field("class_id", pa.uint16(), False, {}), pa.field("class_description", pa.struct([pa.field("info", pa.struct([pa.field("id", pa.uint16(), False, {}), pa.field("label", pa.utf8(), True, {}), pa.field("color", pa.uint32(), True, {})]), False, {}), pa.field("keypoint_annotations", pa.list_(pa.field("item", pa.struct([pa.field("id", pa.uint16(), False, {}), pa.field("label", pa.utf8(), True, {}), pa.field("color", pa.uint32(), True, {})]), False, {})), False, {}), pa.field("keypoint_connections", pa.list_(pa.field("item", pa.struct([pa.field("keypoint0", pa.uint16(), False, {}), pa.field("keypoint1", pa.uint16(), False, {})]), False, {})), False, {})]), False, {})]), False, {})), "rerun.annotation_context"
         )
 
 class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
