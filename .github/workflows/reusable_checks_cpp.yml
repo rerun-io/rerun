@@ -20,3 +20,11 @@ jobs:
           clang-format-version: "16"
           # Only check c/cpp/h/hpp (default checks also .proto and others)
           include-regex: ^.*\.(c|cpp|h|hpp)$
+
+      - name: Build and run C++ minimal example
+        shell: bash
+        run: ./examples/cpp/minimal/build_and_run.sh
+
+      - name: Build and run rerun_cpp tests
+        shell: bash
+        run: ./rerun_cpp/build_and_run_tests.sh
