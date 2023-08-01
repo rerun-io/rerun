@@ -2,14 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
 import numpy.typing as npt
 
-from rerun import bindings
-from rerun.components import instance_key_splat
-from rerun.components.arrow import Arrow3DArray
-from rerun.log import Color, _normalize_colors, _normalize_radii
-from rerun.log.extension_components import _add_extension_components
+from rerun.log import Color
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -21,8 +16,8 @@ __all__ = [
 @log_decorator
 def log_arrow(
     entity_path: str,
-    origin: npt.ArrayLike | None,
-    vector: npt.ArrayLike | None = None,
+    origin: npt.ArrayLike,
+    vector: npt.ArrayLike,
     *,
     color: Color | None = None,
     label: str | None = None,
@@ -64,46 +59,13 @@ def log_arrow(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import cmp as rrc
+    from rerun.experimental import Arrows3D, log
+    from rerun.experimental import dt as rrd
 
-    instanced: dict[str, Any] = {}
-    splats: dict[str, Any] = {}
-
-    if origin is not None:
-        if vector is None:
-            raise TypeError("Must provide both origin and vector")
-        origin = np.require(origin, dtype="float32")
-        vector = np.require(vector, dtype="float32")
-        instanced["rerun.arrow3d"] = Arrow3DArray.from_numpy(origin.reshape(1, 3), vector.reshape(1, 3))
-
-    if color is not None:
-        colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
-
-    if label:
-        instanced["rerun.label"] = rrc.LabelArray.from_similar([label]).storage
-
-    if width_scale:
-        radii = _normalize_radii([width_scale / 2])
-        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii).storage
-
-    if ext:
-        _add_extension_components(instanced, splats, ext, None)
-
-    if splats:
-        splats["rerun.instance_key"] = instance_key_splat()
-        bindings.log_arrow_msg(
-            entity_path,
-            components=splats,
-            timeless=timeless,
-            recording=recording,
-        )
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    if instanced:
-        bindings.log_arrow_msg(
-            entity_path,
-            components=instanced,
-            timeless=timeless,
-            recording=recording,
-        )
+    arrows3d = Arrows3D(
+        arrows=rrd.Arrow3D(origin=origin, vector=vector),
+        radii=width_scale * 0.5 if width_scale is not None else None,
+        colors=color,
+        labels=label,
+    )
+    return log(entity_path, arrows3d, ext=ext, timeless=timeless, recording=recording)

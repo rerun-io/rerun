@@ -19,7 +19,6 @@ use arrow2_convert::{
 use lazy_static::lazy_static;
 use re_types::Loggable;
 
-mod arrow;
 mod bbox;
 mod class_id;
 mod color;
@@ -60,7 +59,6 @@ pub(crate) use self::{
 pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};
 
 pub use self::{
-    arrow::Arrow3D,
     bbox::Box3D,
     context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
@@ -100,15 +98,14 @@ pub mod external {
 // ----------------------------------------------------------------------------
 
 use re_types::components::{
-    ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label, Point2D, Point3D,
-    Radius, Transform3D,
+    Arrow3D, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label, Point2D,
+    Point3D, Radius, Transform3D,
 };
 
 lazy_static! {
     //TODO(john): use a run-time type registry
     static ref FIELDS: [Field; 27] = [
         <AnnotationContext as LegacyComponent>::field(),
-        <Arrow3D as LegacyComponent>::field(),
         <Box3D as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),
         <LineStrip3D as LegacyComponent>::field(),
@@ -123,6 +120,7 @@ lazy_static! {
         <TextEntry as LegacyComponent>::field(),
         <LegacyVec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
+        Field::new(Arrow3D::name().as_str(), Arrow3D::to_arrow_datatype(), false),
         Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),
         Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),
         Field::new(DisconnectedSpace::name().as_str(), DisconnectedSpace::to_arrow_datatype(), false),

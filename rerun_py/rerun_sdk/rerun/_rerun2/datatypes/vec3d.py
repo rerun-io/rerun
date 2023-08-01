@@ -31,9 +31,11 @@ class Vec3D:
         return np.asarray(self.xyz, dtype=dtype)
 
 
-Vec3DLike = Union[Vec3D, npt.NDArray[Any], Sequence[float]]
+Vec3DLike = Union[Vec3D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
 
-Vec3DArrayLike = Union[Vec3D, Sequence[Vec3DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
+Vec3DArrayLike = Union[
+    Vec3D, Sequence[Vec3DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+]
 
 
 # --- Arrow support ---

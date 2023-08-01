@@ -12,6 +12,7 @@ use std::f32::consts::TAU;
 use rerun::{
     components::{Arrow3D, Box3D, Color, Point3D, Radius, ViewCoordinates},
     coordinates::SignedAxis3,
+    datatypes::Vec3D,
     external::re_log,
     MsgSender, RecordingStream,
 };
@@ -77,10 +78,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
             .with_component(&[color])?
             .send(rec_stream)?;
         MsgSender::new(format!("world/{name}_hand"))
-            .with_component(&[Arrow3D {
-                origin: glam::Vec3::ZERO.into(),
-                vector: pos.into(),
-            }])?
+            .with_component(&[Arrow3D::new(Vec3D::ZERO, pos)])?
             .with_component(&[color])?
             .with_component(&[Radius(width * 0.5)])?
             .send(rec_stream)?;

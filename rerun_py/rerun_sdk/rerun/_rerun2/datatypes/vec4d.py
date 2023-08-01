@@ -31,9 +31,11 @@ class Vec4D:
         return np.asarray(self.xyzw, dtype=dtype)
 
 
-Vec4DLike = Union[Vec4D, npt.NDArray[Any], Sequence[float]]
+Vec4DLike = Union[Vec4D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
 
-Vec4DArrayLike = Union[Vec4D, Sequence[Vec4DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
+Vec4DArrayLike = Union[
+    Vec4D, Sequence[Vec4DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+]
 
 
 # --- Arrow support ---
