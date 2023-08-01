@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// An arrow in 3D space.
+struct Arrow3D (
+  "attr.rerun.legacy_fqname": "rerun.arrow3d",
+  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  order: 100
+) {
+  arrow: rerun.datatypes.Arrow3D (order: 100);
+}
