@@ -16,5 +16,9 @@ function(set_default_warning_settings target)
     # set_property(TARGET ${target} PROPERTY COMPILE_WARNING_AS_ERROR ON)
 endfunction()
 
+if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
+    set(CMAKE_GENERATOR "Unix Makefiles")
+endif()
+
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library
 add_subdirectory(examples/cpp/minimal)
