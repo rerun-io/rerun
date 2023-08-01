@@ -13,6 +13,7 @@ pub struct DesignTokens {
     pub bottom_bar_stroke: egui::Stroke,
     pub bottom_bar_rounding: egui::Rounding,
     pub shadow_gradient_dark_start: egui::Color32,
+    pub tab_bar_color: egui::Color32,
 }
 
 impl DesignTokens {
@@ -183,6 +184,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
             se: 0.0,
         }, // copied from figma, should be top only
         shadow_gradient_dark_start: egui::Color32::from_black_alpha(77),
+        tab_bar_color: get_global_color(&json, "{Global.Color.Grey.175}"),
     }
 }
 

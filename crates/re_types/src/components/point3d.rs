@@ -16,9 +16,9 @@
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Point3D(pub crate::datatypes::Point3D);
 
-impl From<crate::datatypes::Point3D> for Point3D {
-    fn from(v: crate::datatypes::Point3D) -> Self {
-        Self(v)
+impl<T: Into<crate::datatypes::Point3D>> From<T> for Point3D {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 

@@ -12,28 +12,6 @@ impl Point2D {
     }
 }
 
-impl From<(f32, f32)> for Point2D {
-    #[inline]
-    fn from((x, y): (f32, f32)) -> Self {
-        Self { x, y }
-    }
-}
-
-impl From<[f32; 2]> for Point2D {
-    #[inline]
-    fn from([x, y]: [f32; 2]) -> Self {
-        Self { x, y }
-    }
-}
-
-#[cfg(feature = "glam")]
-impl From<glam::Vec2> for Point2D {
-    #[inline]
-    fn from(pt: glam::Vec2) -> Self {
-        Self::new(pt.x, pt.y)
-    }
-}
-
 #[cfg(feature = "glam")]
 impl From<Point2D> for glam::Vec2 {
     #[inline]
