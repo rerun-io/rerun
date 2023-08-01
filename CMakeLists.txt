@@ -2,5 +2,13 @@ cmake_minimum_required(VERSION 3.16)
 
 project(rerun_cpp_proj LANGUAGES CXX)
 
+function(set_default_warning_settings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /WX)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wformat=2 -Wmissing-include-dirs -Wnull-dereference -Woverloaded-virtual -Wpointer-arith -Wshadow -Wswitch-enum -Wvla -Wno-sign-compare -Wconversion -Wunused -Wold-style-cast -Wno-missing-braces)
+    endif()
+endfunction()
+
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library
 add_subdirectory(examples/cpp/minimal)

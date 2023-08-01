@@ -15,11 +15,7 @@ endif()
 
 add_executable(rerun_example main.cpp)
 
-if(MSVC)
-  target_compile_options(rerun_example PRIVATE /W4 /WX)
-else()
-  target_compile_options(rerun_example PRIVATE -Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wformat=2 -Wmissing-include-dirs -Wnull-dereference -Woverloaded-virtual -Wpointer-arith -Wshadow -Wswitch-enum -Wvla -Wno-sign-compare -Wconversion -Wunused -Wold-style-cast -Wno-missing-braces)
-endif()
+set_default_warning_settings(rerun_example)
 
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../../../rerun_cpp/src) # For rerun.hpp (Rerun C++ SDK)
 

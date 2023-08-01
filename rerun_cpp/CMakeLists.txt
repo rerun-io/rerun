@@ -5,11 +5,12 @@ cmake_minimum_required(VERSION 3.16)
 # However, that won't work for use since we auto-generate the source tree.
 # See https://cmake.org/cmake/help/latest/command/file.html#glob
 file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
-    "*.hpp"
-    "*.cpp"
+    "src/*.hpp"
+    "src/*.cpp"
 )
 
 add_library(rerun_sdk ${rerun_sdk_SRC})
+set_default_warning_settings(rerun_sdk)
 
 # ------------------------------------------------------------------------------
 
@@ -69,3 +70,31 @@ if(ARROW_LINK_SHARED)
 else()
     target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_static)
 endif()
+
+# ------------------------------------------------------------------------------
+# Test application
+
+# Catch2:
+Include(FetchContent)
+FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG v3.4.0
+)
+FetchContent_MakeAvailable(Catch2)
+
+# Test application:
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+endif()
+
+file(GLOB_RECURSE rerun_sdk_tests_SRC CONFIGURE_DEPENDS
+    "tests/*.hpp"
+    "tests/*.cpp"
+)
+add_executable(rerun_sdk_tests ${rerun_sdk_tests_SRC})
+
+set_default_warning_settings(rerun_sdk_tests)
+include_directories(rerun_sdk_tests SYSTEM "src") # Pretend Rerun sdk is a system library, and not local.
+
+target_link_libraries(rerun_sdk_tests PRIVATE Catch2::Catch2WithMain)
