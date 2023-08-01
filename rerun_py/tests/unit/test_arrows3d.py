@@ -11,8 +11,6 @@ from rerun.experimental import dt as rrd
 U64_MAX_MINUS_1 = 2**64 - 2
 U64_MAX = 2**64 - 1
 
-# TODO: we really need to provide an SoA constructor for python
-
 
 def test_arrows3d() -> None:
     arrows_arrays: list[rrd.Arrow3DArrayLike] = [

@@ -2,7 +2,8 @@
 
 use std::f32::consts::TAU;
 
-use rerun::external::re_types::components::Arrow3D; // TODO
+// TODO(cmc): use `rerun::components::Arrow3D` once migration is done.
+use rerun::external::re_types::components::Arrow3D;
 use rerun::{
     archetypes::Arrows3D, components::Color, datatypes::Vec3D, MsgSender, RecordingStreamBuilder,
 };

@@ -14,6 +14,4 @@ vectors = np.column_stack([np.sin(angles) * lengths, np.zeros(100), np.cos(angle
 arrows = [rrd.Arrow3D(origin=[0, 0, 0], vector=v) for v in vectors]
 colors = [[1.0 - c, c, 0.5, 0.5] for c in angles / tau]
 
-print(lengths)
-
 rr2.log("arrows", rr2.Arrows3D(arrows, colors=colors))
