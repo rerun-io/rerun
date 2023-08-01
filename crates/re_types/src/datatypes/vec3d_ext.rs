@@ -31,6 +31,13 @@ impl From<[f32; 3]> for Vec3D {
     }
 }
 
+impl From<(f32, f32, f32)> for Vec3D {
+    #[inline]
+    fn from((x, y, z): (f32, f32, f32)) -> Self {
+        Self::new(x, y, z)
+    }
+}
+
 impl<Idx> std::ops::Index<Idx> for Vec3D
 where
     Idx: std::slice::SliceIndex<[f32]>,

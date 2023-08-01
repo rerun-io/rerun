@@ -1,8 +1,8 @@
 //! Logs a `Arrows3D` archetype for roundtrip checks.
 
-// TODO(cmc): use `rerun::components::Arrow3D` once migration is done.
-use rerun::external::re_types::components::Arrow3D;
-use rerun::{archetypes::Arrows3D, external::re_log, MsgSender, RecordingStream};
+use rerun::{
+    archetypes::Arrows3D, components::Arrow3D, external::re_log, MsgSender, RecordingStream,
+};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
