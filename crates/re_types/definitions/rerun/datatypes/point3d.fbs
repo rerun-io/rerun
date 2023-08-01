@@ -9,12 +9,12 @@ namespace rerun.datatypes;
 
 /// A point in 3D space.
 struct Point3D (
+  "attr.arrow.transparent",
   "attr.python.aliases": "Sequence[float]",
   "attr.python.array_aliases": "npt.NDArray[Any], Sequence[npt.NDArray[Any]], Sequence[Tuple[float, float]], Sequence[float]",
   "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  "attr.rust.tuple_struct",
   order: 100
 ) {
-  x: float (order: 100);
-  y: float (order: 200);
-  z: float (order: 300);
+  point: [float: 3] (order: 100);
 }

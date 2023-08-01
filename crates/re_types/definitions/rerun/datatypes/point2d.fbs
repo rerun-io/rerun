@@ -9,11 +9,12 @@ namespace rerun.datatypes;
 
 /// A point in 2D space.
 struct Point2D (
+  "attr.arrow.transparent",
   "attr.python.aliases": "Sequence[float]",
   "attr.python.array_aliases": "npt.NDArray[Any], Sequence[npt.NDArray[Any]], Sequence[Tuple[float, float]], Sequence[float]",
   "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  "attr.rust.tuple_struct",
   order: 100
 ) {
-  x: float (order: 100);
-  y: float (order: 200);
+  point: [float: 2] (order: 100);
 }
