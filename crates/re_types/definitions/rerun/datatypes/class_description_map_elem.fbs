@@ -9,6 +9,7 @@ namespace rerun.datatypes;
 // ---
 
 /// A helper type for mapping class IDs to class descriptions.
+///
 /// This is internal to the `AnnotationContext` structure.
 table ClassDescriptionMapElem (
   "attr.python.aliases": "datatypes.ClassDescriptionLike",

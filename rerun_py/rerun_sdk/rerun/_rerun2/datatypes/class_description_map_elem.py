@@ -2,43 +2,26 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
+from typing import Sequence, Union
 
-from attrs import define, field
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
+from .. import components, datatypes
 from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
     BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
-)
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
+    BaseExtensionType,
 )
 from ._overrides import classdescriptionmapelem_native_to_pa_array  # noqa: F401
-from .. import components
-from .. import datatypes
-__all__ = ["ClassDescriptionMapElem", "ClassDescriptionMapElemArray", "ClassDescriptionMapElemArrayLike", "ClassDescriptionMapElemLike", "ClassDescriptionMapElemType"]
+
+__all__ = [
+    "ClassDescriptionMapElem",
+    "ClassDescriptionMapElemArray",
+    "ClassDescriptionMapElemArrayLike",
+    "ClassDescriptionMapElemLike",
+    "ClassDescriptionMapElemType",
+]
+
 
 def _classdescriptionmapelem_class_id_converter(x: components.ClassIdLike) -> components.ClassId:
     if isinstance(x, components.ClassId):
@@ -51,6 +34,7 @@ def _classdescriptionmapelem_class_id_converter(x: components.ClassIdLike) -> co
 class ClassDescriptionMapElem:
     """
     A helper type for mapping class IDs to class descriptions.
+
     This is internal to the `AnnotationContext` structure.
     """
 
@@ -58,25 +42,87 @@ class ClassDescriptionMapElem:
     class_description: datatypes.ClassDescription = field()
 
 
-ClassDescriptionMapElemLike = Union[
-    ClassDescriptionMapElem,
-    datatypes.ClassDescriptionLike
-]
+ClassDescriptionMapElemLike = Union[ClassDescriptionMapElem, datatypes.ClassDescriptionLike]
 
 ClassDescriptionMapElemArrayLike = Union[
     ClassDescriptionMapElem,
     Sequence[ClassDescriptionMapElemLike],
-    
 ]
 
 
 # --- Arrow support ---
 
+
 class ClassDescriptionMapElemType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.struct([pa.field("class_id", pa.uint16(), False, {}), pa.field("class_description", pa.struct([pa.field("info", pa.struct([pa.field("id", pa.uint16(), False, {}), pa.field("label", pa.utf8(), True, {}), pa.field("color", pa.uint32(), True, {})]), False, {}), pa.field("keypoint_annotations", pa.list_(pa.field("item", pa.struct([pa.field("id", pa.uint16(), False, {}), pa.field("label", pa.utf8(), True, {}), pa.field("color", pa.uint32(), True, {})]), False, {})), False, {}), pa.field("keypoint_connections", pa.list_(pa.field("item", pa.struct([pa.field("keypoint0", pa.uint16(), False, {}), pa.field("keypoint1", pa.uint16(), False, {})]), False, {})), False, {})]), False, {})]), "rerun.datatypes.ClassDescriptionMapElem"
+            self,
+            pa.struct(
+                [
+                    pa.field("class_id", pa.uint16(), False, {}),
+                    pa.field(
+                        "class_description",
+                        pa.struct(
+                            [
+                                pa.field(
+                                    "info",
+                                    pa.struct(
+                                        [
+                                            pa.field("id", pa.uint16(), False, {}),
+                                            pa.field("label", pa.utf8(), True, {}),
+                                            pa.field("color", pa.uint32(), True, {}),
+                                        ]
+                                    ),
+                                    False,
+                                    {},
+                                ),
+                                pa.field(
+                                    "keypoint_annotations",
+                                    pa.list_(
+                                        pa.field(
+                                            "item",
+                                            pa.struct(
+                                                [
+                                                    pa.field("id", pa.uint16(), False, {}),
+                                                    pa.field("label", pa.utf8(), True, {}),
+                                                    pa.field("color", pa.uint32(), True, {}),
+                                                ]
+                                            ),
+                                            False,
+                                            {},
+                                        )
+                                    ),
+                                    False,
+                                    {},
+                                ),
+                                pa.field(
+                                    "keypoint_connections",
+                                    pa.list_(
+                                        pa.field(
+                                            "item",
+                                            pa.struct(
+                                                [
+                                                    pa.field("keypoint0", pa.uint16(), False, {}),
+                                                    pa.field("keypoint1", pa.uint16(), False, {}),
+                                                ]
+                                            ),
+                                            False,
+                                            {},
+                                        )
+                                    ),
+                                    False,
+                                    {},
+                                ),
+                            ]
+                        ),
+                        False,
+                        {},
+                    ),
+                ]
+            ),
+            "rerun.datatypes.ClassDescriptionMapElem",
         )
+
 
 class ClassDescriptionMapElemArray(BaseExtensionArray[ClassDescriptionMapElemArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.ClassDescriptionMapElem"
@@ -86,9 +132,8 @@ class ClassDescriptionMapElemArray(BaseExtensionArray[ClassDescriptionMapElemArr
     def _native_to_pa_array(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:
         return classdescriptionmapelem_native_to_pa_array(data, data_type)
 
+
 ClassDescriptionMapElemType._ARRAY_TYPE = ClassDescriptionMapElemArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassDescriptionMapElemType())
-
-

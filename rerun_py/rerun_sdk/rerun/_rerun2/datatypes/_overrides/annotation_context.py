@@ -182,7 +182,9 @@ def classdescription_native_to_pa_array(data: ClassDescriptionArrayLike, data_ty
     # concat_annotations = list(itertools.chain.from_iterable(ann for ann in annotations if ann is not None))
     concat_annotations = list(itertools.chain.from_iterable(annotations))
     annotation_values_array = AnnotationInfoArray.from_similar(concat_annotations).storage
-    # annotations_array = pa.ListArray.from_arrays(annotation_offsets, annotation_values_array, mask=annotation_null_map)
+    # annotations_array = pa.ListArray.from_arrays(annotation_offsets,
+    #                                              annotation_values_array,
+    #                                              mask=annotation_null_map)
     annotations_array = pa.ListArray.from_arrays(annotation_offsets, annotation_values_array).cast(
         data_type.field("keypoint_annotations").type
     )
@@ -195,7 +197,9 @@ def classdescription_native_to_pa_array(data: ClassDescriptionArrayLike, data_ty
     # concat_connections = list(itertools.chain.from_iterable(con for con in connections if con is not None))
     concat_connections = list(itertools.chain.from_iterable(connections))
     connection_values_array = KeypointPairArray.from_similar(concat_connections).storage
-    # connection_array = pa.ListArray.from_arrays(connections_offsets, connection_values_array, mask=connection_null_map)
+    # connection_array = pa.ListArray.from_arrays(connections_offsets,
+    #                                             connection_values_array,
+    #                                             mask=connection_null_map)
     connection_array = pa.ListArray.from_arrays(connections_offsets, connection_values_array).cast(
         data_type.field("keypoint_connections").type
     )

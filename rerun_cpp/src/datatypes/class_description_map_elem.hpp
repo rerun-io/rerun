@@ -12,6 +12,7 @@
 namespace rr {
     namespace datatypes {
         /// A helper type for mapping class IDs to class descriptions.
+        ///
         /// This is internal to the `AnnotationContext` structure.
         struct ClassDescriptionMapElem {
             rr::components::ClassId class_id;

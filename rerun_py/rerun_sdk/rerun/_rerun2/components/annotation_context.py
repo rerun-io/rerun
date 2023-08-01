@@ -2,48 +2,31 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
+from typing import Sequence, Union
 
-from attrs import define, field
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
+from .. import datatypes
 from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
     BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
-)
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
+    BaseExtensionType,
 )
 from ._overrides import annotationcontext_class_map_converter, annotationcontext_native_to_pa_array  # noqa: F401
-from .. import datatypes
-__all__ = ["AnnotationContext", "AnnotationContextArray", "AnnotationContextArrayLike", "AnnotationContextLike", "AnnotationContextType"]
+
+__all__ = [
+    "AnnotationContext",
+    "AnnotationContextArray",
+    "AnnotationContextArrayLike",
+    "AnnotationContextLike",
+    "AnnotationContextType",
+]
+
 
 @define
 class AnnotationContext:
     """
-    The `AnnotationContext` provides additional information on how to display
-    entities.
+    The `AnnotationContext` provides additional information on how to display entities.
 
     Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
     the labels and colors will be looked up in the appropriate
@@ -55,25 +38,94 @@ class AnnotationContext:
     class_map: list[datatypes.ClassDescriptionMapElem] = field(converter=annotationcontext_class_map_converter)
 
 
-AnnotationContextLike = Union[
-    AnnotationContext,
-    Sequence[datatypes.ClassDescriptionLike]
-]
+AnnotationContextLike = Union[AnnotationContext, Sequence[datatypes.ClassDescriptionLike]]
 
 AnnotationContextArrayLike = Union[
     AnnotationContext,
     Sequence[AnnotationContextLike],
-    
 ]
 
 
 # --- Arrow support ---
 
+
 class AnnotationContextType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.struct([pa.field("class_id", pa.uint16(), False, {}), pa.field("class_description", pa.struct([pa.field("info", pa.struct([pa.field("id", pa.uint16(), False, {}), pa.field("label", pa.utf8(), True, {}), pa.field("color", pa.uint32(), True, {})]), False, {}), pa.field("keypoint_annotations", pa.list_(pa.field("item", pa.struct([pa.field("id", pa.uint16(), False, {}), pa.field("label", pa.utf8(), True, {}), pa.field("color", pa.uint32(), True, {})]), False, {})), False, {}), pa.field("keypoint_connections", pa.list_(pa.field("item", pa.struct([pa.field("keypoint0", pa.uint16(), False, {}), pa.field("keypoint1", pa.uint16(), False, {})]), False, {})), False, {})]), False, {})]), False, {})), "rerun.annotation_context"
+            self,
+            pa.list_(
+                pa.field(
+                    "item",
+                    pa.struct(
+                        [
+                            pa.field("class_id", pa.uint16(), False, {}),
+                            pa.field(
+                                "class_description",
+                                pa.struct(
+                                    [
+                                        pa.field(
+                                            "info",
+                                            pa.struct(
+                                                [
+                                                    pa.field("id", pa.uint16(), False, {}),
+                                                    pa.field("label", pa.utf8(), True, {}),
+                                                    pa.field("color", pa.uint32(), True, {}),
+                                                ]
+                                            ),
+                                            False,
+                                            {},
+                                        ),
+                                        pa.field(
+                                            "keypoint_annotations",
+                                            pa.list_(
+                                                pa.field(
+                                                    "item",
+                                                    pa.struct(
+                                                        [
+                                                            pa.field("id", pa.uint16(), False, {}),
+                                                            pa.field("label", pa.utf8(), True, {}),
+                                                            pa.field("color", pa.uint32(), True, {}),
+                                                        ]
+                                                    ),
+                                                    False,
+                                                    {},
+                                                )
+                                            ),
+                                            False,
+                                            {},
+                                        ),
+                                        pa.field(
+                                            "keypoint_connections",
+                                            pa.list_(
+                                                pa.field(
+                                                    "item",
+                                                    pa.struct(
+                                                        [
+                                                            pa.field("keypoint0", pa.uint16(), False, {}),
+                                                            pa.field("keypoint1", pa.uint16(), False, {}),
+                                                        ]
+                                                    ),
+                                                    False,
+                                                    {},
+                                                )
+                                            ),
+                                            False,
+                                            {},
+                                        ),
+                                    ]
+                                ),
+                                False,
+                                {},
+                            ),
+                        ]
+                    ),
+                    False,
+                    {},
+                )
+            ),
+            "rerun.annotation_context",
         )
+
 
 class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
     _EXTENSION_NAME = "rerun.annotation_context"
@@ -83,9 +135,8 @@ class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
         return annotationcontext_native_to_pa_array(data, data_type)
 
+
 AnnotationContextType._ARRAY_TYPE = AnnotationContextArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AnnotationContextType())
-
-

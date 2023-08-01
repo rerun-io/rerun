@@ -13,6 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A helper type for mapping class IDs to class descriptions.
+///
 /// This is internal to the `AnnotationContext` structure.
 #[derive(Clone, Debug)]
 pub struct ClassDescriptionMapElem {

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
-import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:

@@ -13,6 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// Annotation info annotating a class id or key-point id.
+///
 /// Color and label will be used to annotate entities/keypoints which reference the id.
 /// The id refers either to a class or key-point id
 #[derive(Clone, Debug)]

@@ -12,8 +12,7 @@
 
 namespace rr {
     namespace archetypes {
-        /// The `AnnotationContext` provides additional information on how to display
-        /// entities.
+        /// The `AnnotationContext` provides additional information on how to display entities.
         ///
         /// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
         /// the labels and colors will be looked up in the appropriate
