@@ -3526,7 +3526,7 @@ impl crate::Loggable for AffixFuzzer19 {
 
 impl crate::Component for AffixFuzzer19 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AffixFuzzer20(pub crate::testing::datatypes::AffixFuzzer20);
 
 impl From<crate::testing::datatypes::AffixFuzzer20> for AffixFuzzer20 {

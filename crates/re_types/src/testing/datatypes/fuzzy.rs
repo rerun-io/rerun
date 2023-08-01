@@ -1956,7 +1956,7 @@ impl crate::Loggable for AffixFuzzer5 {
 
 impl crate::Datatype for AffixFuzzer5 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AffixFuzzer20 {
     pub p: crate::testing::components::PrimitiveComponent,
     pub s: crate::testing::components::StringComponent,

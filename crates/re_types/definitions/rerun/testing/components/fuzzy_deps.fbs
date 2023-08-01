@@ -10,7 +10,7 @@ namespace rerun.testing.components;
 // circular dependency when importing them into `datatypes/fuzzy.fbs`.
 
 struct PrimitiveComponent (
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "Eq, PartialEq",
   "attr.rust.repr": "transparent",
   order: 001
 ) {
@@ -18,7 +18,7 @@ struct PrimitiveComponent (
 }
 
 table StringComponent (
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "Eq, PartialEq",
   "attr.rust.repr": "transparent",
   order: 002
 ) {
