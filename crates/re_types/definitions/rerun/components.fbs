@@ -1,3 +1,4 @@
+include "./components/arrow3d.fbs";
 include "./components/class_id.fbs";
 include "./components/color.fbs";
 include "./components/disconnected_space.fbs";
