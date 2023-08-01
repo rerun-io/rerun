@@ -8,7 +8,6 @@
 #include "datatypes/affix_fuzzer4.hpp"
 #include "datatypes/affix_fuzzer5.hpp"
 #include "datatypes/angle.hpp"
-#include "datatypes/arrow3d.hpp"
 #include "datatypes/flattened_scalar.hpp"
 #include "datatypes/mat3x3.hpp"
 #include "datatypes/mat4x4.hpp"

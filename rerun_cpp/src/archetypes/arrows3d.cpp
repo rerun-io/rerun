@@ -3,12 +3,13 @@
 
 #include "arrows3d.hpp"
 
-#include "../components/arrow3d.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
 #include "../components/label.hpp"
+#include "../components/origin3d.hpp"
 #include "../components/radius.hpp"
+#include "../components/vector3d.hpp"
 
 #include <arrow/api.h>
 
@@ -16,12 +17,20 @@ namespace rr {
     namespace archetypes {
         arrow::Result<std::vector<rr::DataCell>> Arrows3D::to_data_cells() const {
             std::vector<rr::DataCell> cells;
-            cells.reserve(6);
+            cells.reserve(7);
 
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::Arrow3D::to_data_cell(arrows.data(), arrows.size())
+                    rr::components::Vector3D::to_data_cell(vectors.data(), vectors.size())
+                );
+                cells.push_back(cell);
+            }
+            if (origins.has_value()) {
+                const auto& value = origins.value();
+                ARROW_ASSIGN_OR_RAISE(
+                    const auto cell,
+                    rr::components::Origin3D::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }

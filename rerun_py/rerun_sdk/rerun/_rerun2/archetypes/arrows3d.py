@@ -39,12 +39,21 @@ class Arrows3D(Archetype):
     ```
     """
 
-    arrows: components.Arrow3DArray = field(
+    vectors: components.Vector3DArray = field(
         metadata={"component": "primary"},
-        converter=components.Arrow3DArray.from_similar,  # type: ignore[misc]
+        converter=components.Vector3DArray.from_similar,  # type: ignore[misc]
     )
     """
-    All the individual arrows that make up the batch.
+    All the vectors for each arrow in the batch.
+    """
+
+    origins: components.Origin3DArray | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.Origin3DArray.from_similar,  # type: ignore[misc]
+    )
+    """
+    All the origin points for each arrow in the batch.
     """
 
     radii: components.RadiusArray | None = field(
