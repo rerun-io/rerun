@@ -2,7 +2,6 @@
 #include <rerun.hpp>
 
 #include <array>
-#include <components/point2d.hpp>
 
 int main(int argc, char** argv) {
     loguru::g_preamble_uptime = false;
