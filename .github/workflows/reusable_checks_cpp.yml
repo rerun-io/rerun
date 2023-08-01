@@ -11,6 +11,10 @@ jobs:
   cpp-lints:
     name: C++ lints (fmt, compile, tests)
     runs-on: ubuntu-latest
+    container:
+      image: rerunio/ci_docker:0.7
+    env:
+      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v3
 
