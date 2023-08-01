@@ -274,7 +274,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         is_being_dragged: bool,
     ) -> egui::Response {
         // custom tab UI when we have a space view
-        let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id)else {
+        let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) else {
             return egui_tiles::Behavior::<SpaceViewId>::tab_ui(
                 self,
                 tiles,
@@ -320,16 +320,17 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         // Show a gap when dragged
         if ui.is_rect_visible(rect) && !is_being_dragged {
-            let bg_color = self.tab_bg_color(ui.visuals(), tile_id, active);
-            let stroke = self.tab_outline_stroke(ui.visuals(), tile_id, active);
-            ui.painter().rect(rect.shrink(0.5), 0.0, bg_color, stroke);
+            let selected = self
+                .ctx
+                .selection()
+                .contains(&Item::SpaceView(*space_view_id));
 
-            if active {
-                // Make the tab name area connect with the tab ui area:
-                ui.painter().hline(
-                    rect.x_range(),
-                    rect.bottom(),
-                    egui::Stroke::new(stroke.width + 1.0, bg_color),
+            if selected {
+                ui.painter().rect(
+                    rect,
+                    0.0,
+                    ui.visuals().selection.bg_fill,
+                    egui::Stroke::NONE,
                 );
             }
 
