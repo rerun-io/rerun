@@ -24,6 +24,10 @@ name = "arrow3d_simple"
 path = "arrow3d_simple.rs"
 
 [[bin]]
+name = "arrow3d_simple_v2"
+path = "arrow3d_simple_v2.rs"
+
+[[bin]]
 name = "box3d_simple"
 path = "box3d_simple.rs"
 
