@@ -6,6 +6,9 @@
 
 #include "data_cell.hpp"
 
+// TODO(#2873): Should avoid leaking arrow headers.
+#include <arrow/result.h>
+
 namespace rr {
     struct DataCell;
 
@@ -147,7 +150,7 @@ namespace rr {
         /// I.e. logs a number of components arrays (each with a same number of instances) to a
         /// single entity path.
         void log_data_row(
-            const char* entity_path, uint32_t num_instances, size_t num_data_cells,
+            const char* entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells
         );
 

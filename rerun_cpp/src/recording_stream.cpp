@@ -66,7 +66,7 @@ namespace rr {
     }
 
     void RecordingStream::log_data_row(
-        const char* entity_path, uint32_t num_instances, size_t num_data_cells,
+        const char* entity_path, size_t num_instances, size_t num_data_cells,
         const DataCell* data_cells
     ) {
         // Map to C API:
@@ -82,7 +82,7 @@ namespace rr {
 
         const rr_data_row c_data_row = {
             .entity_path = entity_path,
-            .num_instances = num_instances,
+            .num_instances = static_cast<uint32_t>(num_instances),
             .num_data_cells = static_cast<uint32_t>(num_data_cells),
             .data_cells = c_data_cells.data(),
         };
