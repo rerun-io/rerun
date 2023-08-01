@@ -117,9 +117,9 @@ def run_segmentation(experimental_api: bool) -> None:
         rr.log_annotation_context(
             "seg_test",
             [
-                rr2.dt.AnnotationInfo(13, color=(255, 0, 0)),
+                rr.AnnotationInfo(13, color=(255, 0, 0)),
                 (42, "label2", (0, 255, 0)),
-                rr2.dt.AnnotationInfo(99, label="label3"),
+                rr.AnnotationInfo(99, label="label3"),
             ],
             timeless=False,
         )
