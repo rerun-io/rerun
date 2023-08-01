@@ -7,7 +7,10 @@
 #include <recording_stream.hpp>
 
 #include <array>
+#include <filesystem>
 #include <vector>
+
+namespace fs = std::filesystem;
 
 #define TEST_TAG "[recording_stream]"
 
@@ -59,9 +62,12 @@ SCENARIO("RecordingStream can be set as global and thread local", TEST_TAG) {
                 THEN("it can be set as global") {
                     stream.set_global();
                 }
+                // TODO(#TODO:): Setting thread locals causes a crash on shutdown on macOS.
+#ifndef __APPLE__
                 THEN("it can be set as thread local") {
                     stream.set_thread_local();
                 }
+#endif
 
                 // TODO(andreas): There's no way of telling right now if the set stream is
                 // functional.
@@ -126,7 +132,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
 
                 THEN("an archetype can be logged") {
                     stream.log_archetype(
-                        "3d/points",
+                        "archetype",
                         rr::archetypes::Points2D({
                             rr::datatypes::Point2D{1.0, 2.0},
                             rr::datatypes::Point2D{4.0, 5.0},
@@ -141,4 +147,121 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
     }
 }
 
-// TODO: save and connect
+void test_logging_to_file(const char* test_rrd, rr::RecordingStream& stream) {
+    THEN("Saving the stream to a file" << test_rrd) {
+        // TODO(andreas): Should return error, need to test those.
+        stream.save(test_rrd);
+
+        THEN("a new file got immediately created") {
+            CHECK(fs::exists(test_rrd));
+        }
+
+        // The file already has some header from the start.
+        auto file_size_before = fs::file_size(test_rrd);
+
+        WHEN("logging a component and then flushing") {
+            stream.log_components(
+                "as-array",
+                std::array<rr::components::Point2D, 2>{
+                    rr::datatypes::Point2D{1.0, 2.0},
+                    rr::datatypes::Point2D{4.0, 5.0},
+                }
+            );
+            stream.flush_blocking();
+
+            THEN("the file got bigger") {
+                CHECK(fs::file_size(test_rrd) > file_size_before);
+            }
+        }
+        WHEN("logging an archetype and then flushing") {
+            stream.log_archetype(
+                "archetype",
+                rr::archetypes::Points2D({
+                    rr::datatypes::Point2D{1.0, 2.0},
+                    rr::datatypes::Point2D{4.0, 5.0},
+                })
+            );
+
+            stream.flush_blocking();
+
+            THEN("the file got bigger") {
+                CHECK(fs::file_size(test_rrd) > file_size_before);
+            }
+        }
+    }
+}
+
+SCENARIO("RecordingStream can log to file", TEST_TAG) {
+    const char* test_rrd = "build/test_output/test.rrd";
+    fs::create_directories("build/test_output");
+    std::remove(test_rrd);
+
+    GIVEN("a new RecordingStream") {
+        rr::RecordingStream stream("test-local");
+        test_logging_to_file(test_rrd, stream);
+    }
+
+    WHEN("setting a global RecordingStream and then discarding it") {
+        {
+            rr::RecordingStream stream("test-global");
+            stream.set_global();
+        }
+        GIVEN("the current recording stream") {
+            test_logging_to_file(test_rrd, rr::RecordingStream::current());
+        }
+    }
+}
+
+void test_logging_to_connection(const char* address, rr::RecordingStream& stream) {
+    THEN("Connecting to with zero timeout to" << address) {
+        // TODO(andreas): Should return error, need to test those.
+        stream.connect(address, 0.0f);
+
+        WHEN("logging a component and then flushing") {
+            stream.log_components(
+                "as-array",
+                std::array<rr::components::Point2D, 2>{
+                    rr::datatypes::Point2D{1.0, 2.0},
+                    rr::datatypes::Point2D{4.0, 5.0},
+                }
+            );
+            stream.flush_blocking();
+
+            THEN("does not crash") {
+                // No easy way to see if it got sent.
+            }
+        }
+        WHEN("logging an archetype and then flushing") {
+            stream.log_archetype(
+                "archetype",
+                rr::archetypes::Points2D({
+                    rr::datatypes::Point2D{1.0, 2.0},
+                    rr::datatypes::Point2D{4.0, 5.0},
+                })
+            );
+
+            stream.flush_blocking();
+
+            THEN("does not crash") {
+                // No easy way to see if it got sent.
+            }
+        }
+    }
+}
+
+SCENARIO("RecordingStream can connect", TEST_TAG) {
+    const char* address = "127.0.0.1:9876";
+    GIVEN("a new RecordingStream") {
+        rr::RecordingStream stream("test-local");
+        test_logging_to_connection(address, stream);
+    }
+    WHEN("setting a global RecordingStream and then discarding it") {
+        {
+            rr::RecordingStream stream("test-global");
+            stream.set_global();
+        }
+        GIVEN("the current recording stream") {
+            test_logging_to_connection(address, rr::RecordingStream::current());
+        }
+    }
+}

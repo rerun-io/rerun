@@ -177,6 +177,14 @@ pub extern "C" fn rr_recording_stream_set_thread_local(id: CRecStreamId, store_k
 
 #[allow(unsafe_code)]
 #[no_mangle]
+pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecStreamId) {
+    if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
+        stream.flush_blocking();
+    }
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
 pub unsafe extern "C" fn rr_recording_stream_connect(
     id: CRecStreamId,
     tcp_addr: *const c_char,

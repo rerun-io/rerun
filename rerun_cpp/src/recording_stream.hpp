@@ -26,7 +26,7 @@ namespace rr {
     ///   thread originally sent them in, from its point of view.
     /// - There isn't any well defined global order across multiple threads.
     ///
-    /// This means that e.g. flushing the pipeline (`Self::flush_blocking`) guarantees that all
+    /// This means that e.g. flushing the pipeline (`flush_blocking`) guarantees that all
     /// previous data sent by the calling thread has been recorded; no more, no less.
     ///
     /// ## Shutdown
@@ -99,12 +99,17 @@ namespace rr {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
-        void connect(const char* tcp_addr, float flush_timeout_sec = 2.0);
+        void connect(const char* tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0);
 
         /// Stream all log-data to a given file.
         ///
         /// This function returns immediately.
         void save(const char* path);
+
+        /// Initiates a flush the batching pipeline and waits for it to propagate.
+        ///
+        /// See `RecordingStream` docs for ordering semantics and multithreading guarantees.
+        void flush_blocking();
 
         // -----------------------------------------------------------------------------------------
         // Methods for logging.

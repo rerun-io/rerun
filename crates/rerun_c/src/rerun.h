@@ -27,8 +27,26 @@ extern "C" {
 #define RERUN_REC_STREAM_CURRENT_BLUEPRINT 0xFFFFFFFE
 
 /// A unique handle for a recording stream.
+/// A recording stream handles everything related to logging data into Rerun.
 ///
-/// The default is RERUN_REC_STREAM_CURRENT
+/// ## Multithreading and ordering
+///
+/// Internally, all operations are linearized into a pipeline:
+/// - All operations sent by a given thread will take effect in the same exact order as that
+///   thread originally sent them in, from its point of view.
+/// - There isn't any well defined global order across multiple threads.
+///
+/// This means that e.g. flushing the pipeline (`rr_recording_stream_flush_blocking`) guarantees
+/// that all previous data sent by the calling thread has been recorded; no more, no less.
+///
+/// ## Shutdown
+///
+/// The recording stream can only be shutdown by dropping all instances of it, at which point
+/// it will automatically take care of flushing any pending data that might remain in the
+/// pipeline.
+///
+/// TODO(andreas): The only way of having two instances of a `RecordingStream` is currently to
+/// set it as a the global.
 typedef int32_t rr_recording_stream;
 
 struct rr_store_info {
@@ -90,6 +108,8 @@ extern rr_recording_stream rr_recording_stream_new(const struct rr_store_info* s
 
 /// Free the given recording stream. The handle will be invalid after this.
 ///
+/// Flushes the stream before freeing it, but does *not* block.
+///
 /// Does nothing for `RERUN_REC_STREAM_CURRENT_RECORDING` and `RERUN_REC_STREAM_CURRENT_BLUEPRINT`.
 ///
 /// No-op for destroyed/non-existing streams.
@@ -123,6 +143,12 @@ extern void rr_recording_stream_connect(
 /// This function returns immediately.
 /// No-op for destroyed/non-existing streams.
 extern void rr_recording_stream_save(rr_recording_stream stream, const char* path);
+
+/// Initiates a flush the batching pipeline and waits for it to propagate.
+///
+/// See `rr_recording_stream` docs for ordering semantics and multithreading guarantees.
+/// No-op for destroyed/non-existing streams.
+extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 
 /// Log the given data to the given stream.
 ///

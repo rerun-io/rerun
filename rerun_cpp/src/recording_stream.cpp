@@ -42,14 +42,14 @@ namespace rr {
         switch (store_kind) {
             case StoreKind::Recording: {
                 static RecordingStream current_recording(
-                    RERUN_STORE_KIND_RECORDING,
+                    RERUN_REC_STREAM_CURRENT_RECORDING,
                     StoreKind::Recording
                 );
                 return current_recording;
             }
             case StoreKind::Blueprint: {
                 static RecordingStream current_blueprint(
-                    RERUN_STORE_KIND_BLUEPRINT,
+                    RERUN_REC_STREAM_CURRENT_BLUEPRINT,
                     StoreKind::Blueprint
                 );
                 return current_blueprint;
@@ -63,6 +63,10 @@ namespace rr {
 
     void RecordingStream::save(const char* path) {
         rr_recording_stream_save(_id, path);
+    }
+
+    void RecordingStream::flush_blocking() {
+        rr_recording_stream_flush_blocking(_id);
     }
 
     void RecordingStream::log_data_row(
