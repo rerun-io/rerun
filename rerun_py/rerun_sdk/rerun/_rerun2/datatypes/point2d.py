@@ -16,7 +16,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
-from ._overrides import point2d_as_array, point2d_native_to_pa_array  # noqa: F401
+from ._overrides import point2d_native_to_pa_array  # noqa: F401
 
 __all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
 
@@ -28,7 +28,7 @@ class Point2D:
     point: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        return point2d_as_array(self, dtype=dtype)
+        return np.asarray(self.point, dtype=dtype)
 
 
 Point2DLike = Union[Point2D, Sequence[float]]
