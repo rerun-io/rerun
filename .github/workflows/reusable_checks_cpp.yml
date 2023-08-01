@@ -8,8 +8,21 @@ permissions:
   id-token: "write"
 
 jobs:
+  cpp-formating:
+    name: C++ formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run clang format on all relevant files
+        uses: jidicula/clang-format-action@v4.11.0
+        with:
+          clang-format-version: "16"
+          # Only check c/cpp/h/hpp (default checks also .proto and others)
+          include-regex: ^.*\.(c|cpp|h|hpp)$
+
   cpp-lints:
-    name: C++ lints (fmt, compile, tests)
+    name: C++ tests
     runs-on: ubuntu-latest
     container:
       image: rerunio/ci_docker:0.7
