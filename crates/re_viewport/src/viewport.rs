@@ -527,29 +527,18 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         egui::Stroke::NONE
     }
 
-    //TODO(ab): finetune based on feedback.
     fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
         visuals.panel_fill.gamma_multiply(0.5)
     }
 
-    //TODO(ab): build customisability into egui_tiles.
-    //TODO(ab): finetune based on feedback.
-    fn paint_drag_preview(
-        &self,
-        _visuals: &egui::Visuals,
-        painter: &egui::Painter,
-        parent_rect: Option<egui::Rect>,
-        preview_rect: egui::Rect,
-    ) {
-        let preview_stroke = egui::Stroke::new(1.0, egui::Color32::WHITE.gamma_multiply(0.5));
-        let preview_color = egui::Color32::WHITE.gamma_multiply(0.1);
+    /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
+    fn drag_preview_stroke(&self, visuals: &egui::Visuals) -> egui::Stroke {
+        egui::Stroke::new(1.0, egui::Color32::WHITE.gamma_multiply(0.5))
+    }
 
-        if let Some(parent_rect) = parent_rect {
-            // Show which parent we will be dropped into
-            painter.rect_stroke(parent_rect, 1.0, preview_stroke);
-        }
-
-        painter.rect(preview_rect, 1.0, preview_color, preview_stroke);
+    /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
+    fn drag_preview_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        egui::Color32::WHITE.gamma_multiply(0.1)
     }
 
     /// The height of the bar holding tab titles.

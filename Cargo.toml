@@ -148,4 +148,4 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # Temporary patch until next egui_tiles release
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", commit = "a02d6805526df4284b129899648c7c1bed9cecd6" }
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "antoine/drag-preview-style" }
