@@ -2,8 +2,8 @@ include "arrow/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
-include "rerun/datatypes.fbs";
 include "rerun/attributes.fbs";
+include "rerun/datatypes.fbs";
 
 namespace rerun.components;
 
@@ -17,5 +17,5 @@ struct Point2D (
   "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
   order: 100
 ) {
-  xy: rerun.datatypes.Point2D (order: 100);
+  xy: rerun.datatypes.Vec2D (order: 100);
 }

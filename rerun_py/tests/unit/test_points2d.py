@@ -26,32 +26,15 @@ from .common_arrays import (
     radii_arrays,
     radii_expected,
 )
+from .common_arrays import (
+    vec2ds_arrays as points_arrays,
+)
+from .common_arrays import (
+    vec2ds_expected as points_expected,
+)
 
 
 def test_points2d() -> None:
-    points_arrays: list[rrd.Point2DArrayLike] = [
-        [],
-        np.array([]),
-        # Point2DArrayLike: Sequence[Point2DLike]: Point2D
-        [
-            rrd.Point2D(1, 2),
-            rrd.Point2D(3, 4),
-        ],
-        # Point2DArrayLike: Sequence[Point2DLike]: npt.NDArray[np.float32]
-        [
-            np.array([1, 2], dtype=np.float32),
-            np.array([3, 4], dtype=np.float32),
-        ],
-        # Point2DArrayLike: Sequence[Point2DLike]: Tuple[float, float]
-        [(1, 2), (3, 4)],
-        # Point2DArrayLike: Sequence[Point2DLike]: Sequence[float]
-        [1, 2, 3, 4],
-        # Point2DArrayLike: npt.NDArray[np.float32]
-        np.array([[1, 2], [3, 4]], dtype=np.float32),
-        # Point2DArrayLike: npt.NDArray[np.float32]
-        np.array([1, 2, 3, 4], dtype=np.float32),
-    ]
-
     all_arrays = itertools.zip_longest(
         points_arrays,
         radii_arrays,
@@ -67,7 +50,7 @@ def test_points2d() -> None:
         points = points if points is not None else points_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        points = cast(Optional[rrd.Point2DArrayLike], points)
+        points = cast(rrd.Vec2DArrayLike, points)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
         colors = cast(Optional[rrc.ColorArrayLike], colors)
         labels = cast(Optional[rrc.LabelArrayLike], labels)
@@ -100,7 +83,7 @@ def test_points2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.points == rrc.Point2DArray.from_similar([] if is_empty(points) else [[1.0, 2.0], [3.0, 4.0]])
+        assert arch.points == points_expected(is_empty(points), rrc.Point2DArray)
         assert arch.radii == radii_expected(is_empty(radii))
         assert arch.colors == colors_expected(is_empty(colors))
         assert arch.labels == labels_expected(is_empty(labels))

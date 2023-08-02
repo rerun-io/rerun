@@ -1,3 +1,5 @@
+use crate::datatypes::Vec3D;
+
 use super::Point3D;
 
 // ---
@@ -8,36 +10,22 @@ impl Point3D {
 
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
-        Self(crate::datatypes::Point3D::new(x, y, z))
+        Self(Vec3D::new(x, y, z))
     }
 
     #[inline]
     pub fn x(&self) -> f32 {
-        self.0.x
+        self.0.x()
     }
 
     #[inline]
     pub fn y(&self) -> f32 {
-        self.0.y
+        self.0.y()
     }
 
     #[inline]
     pub fn z(&self) -> f32 {
-        self.0.z
-    }
-}
-
-impl From<(f32, f32, f32)> for Point3D {
-    #[inline]
-    fn from((x, y, z): (f32, f32, f32)) -> Self {
-        Self::new(x, y, z)
-    }
-}
-
-impl From<[f32; 3]> for Point3D {
-    #[inline]
-    fn from([x, y, z]: [f32; 3]) -> Self {
-        Self::new(x, y, z)
+        self.0.z()
     }
 }
 

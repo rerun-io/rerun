@@ -18,11 +18,11 @@ def arrow3d_native_to_pa_array(data: Arrow3DArrayLike, data_type: pa.DataType) -
     # TODO(ab): not quite sure why i must unwrap `xyz` or face a cryptic error otherwise.
 
     if isinstance(data, Arrow3D):
-        origins = rrd.Vec3DArray.from_similar(data.origin.xyz).storage
-        vectors = rrd.Vec3DArray.from_similar(data.vector.xyz).storage
+        origins = rrd.Vec3DArray.from_similar(data.origin).storage
+        vectors = rrd.Vec3DArray.from_similar(data.vector).storage
     else:
-        origins = rrd.Vec3DArray.from_similar([d.origin.xyz for d in data]).storage
-        vectors = rrd.Vec3DArray.from_similar([d.vector.xyz for d in data]).storage
+        origins = rrd.Vec3DArray.from_similar([d.origin for d in data]).storage
+        vectors = rrd.Vec3DArray.from_similar([d.vector for d in data]).storage
 
     return pa.StructArray.from_arrays(
         arrays=[origins, vectors],

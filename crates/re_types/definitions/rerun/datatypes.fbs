@@ -6,8 +6,6 @@ include "./datatypes/annotation_info.fbs";
 include "./datatypes/class_description.fbs";
 include "./datatypes/class_description_map_elem.fbs";
 include "./datatypes/keypoint_pair.fbs";
-include "./datatypes/point2d.fbs";
-include "./datatypes/point3d.fbs";
 include "./datatypes/quaternion.fbs";
 include "./datatypes/rotation3d.fbs";
 include "./datatypes/rotation_axis_angle.fbs";

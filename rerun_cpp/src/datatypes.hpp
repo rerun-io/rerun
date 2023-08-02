@@ -17,8 +17,6 @@
 #include "datatypes/keypoint_pair.hpp"
 #include "datatypes/mat3x3.hpp"
 #include "datatypes/mat4x4.hpp"
-#include "datatypes/point2d.hpp"
-#include "datatypes/point3d.hpp"
 #include "datatypes/quaternion.hpp"
 #include "datatypes/rotation3d.hpp"
 #include "datatypes/rotation_axis_angle.hpp"

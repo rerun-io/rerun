@@ -3,7 +3,7 @@
 
 #include "point2d.hpp"
 
-#include "../datatypes/point2d.hpp"
+#include "../datatypes/vec2d.hpp"
 #include "../rerun.hpp"
 
 #include <arrow/api.h>
@@ -13,24 +13,23 @@ namespace rr {
         const char *Point2D::NAME = "rerun.point2d";
 
         const std::shared_ptr<arrow::DataType> &Point2D::to_arrow_datatype() {
-            static const auto datatype = rr::datatypes::Point2D::to_arrow_datatype();
+            static const auto datatype = rr::datatypes::Vec2D::to_arrow_datatype();
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::StructBuilder>> Point2D::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
-        ) {
+        arrow::Result<std::shared_ptr<arrow::FixedSizeListBuilder>>
+            Point2D::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
             }
 
             return arrow::Result(
-                rr::datatypes::Point2D::new_arrow_array_builder(memory_pool).ValueOrDie()
+                rr::datatypes::Vec2D::new_arrow_array_builder(memory_pool).ValueOrDie()
             );
         }
 
         arrow::Status Point2D::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const Point2D *elements, size_t num_elements
+            arrow::FixedSizeListBuilder *builder, const Point2D *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -39,10 +38,10 @@ namespace rr {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(rr::datatypes::Point2D) == sizeof(Point2D));
-            ARROW_RETURN_NOT_OK(rr::datatypes::Point2D::fill_arrow_array_builder(
+            static_assert(sizeof(rr::datatypes::Vec2D) == sizeof(Point2D));
+            ARROW_RETURN_NOT_OK(rr::datatypes::Vec2D::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rr::datatypes::Point2D *>(elements),
+                reinterpret_cast<const rr::datatypes::Vec2D *>(elements),
                 num_elements
             ));
 

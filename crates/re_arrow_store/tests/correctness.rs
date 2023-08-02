@@ -217,6 +217,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         prelude::{DataFrame, JoinType},
         series::Series,
     };
+    use re_arrow_store::ArrayExt as _;
     use re_types::components::{Color, Point2D};
 
     let ent_path = EntityPath::from("this/that");
@@ -251,7 +252,8 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 
         DataFrame::new(vec![
             Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),
-            Series::try_from((Point2D::name().as_ref(), points)).unwrap(),
+            Series::try_from((Point2D::name().as_ref(), points.as_ref().clean_for_polars()))
+                .unwrap(),
             Series::try_from((Color::name().as_ref(), colors)).unwrap(),
         ])
         .unwrap()
