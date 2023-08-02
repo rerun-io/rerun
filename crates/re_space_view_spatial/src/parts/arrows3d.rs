@@ -3,7 +3,7 @@ use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Arrows3D,
-    components::{Arrow3D, Label},
+    components::{Label, Origin3D, Vector3D},
     Archetype as _,
 };
 use re_viewer_context::{
@@ -46,19 +46,21 @@ impl Arrows3DPart {
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<Arrow3D>()?,
+            arch_view.iter_required_component::<Vector3D>()?,
+            arch_view.iter_optional_component::<Origin3D>()?,
             arch_view.iter_optional_component::<Label>()?,
             colors,
             instance_path_hashes,
         )
         .filter_map(
-            move |(annotation_info, arrow, label, color, labeled_instance)| {
+            move |(annotation_info, vector, origin, label, color, labeled_instance)| {
+                let origin = origin.unwrap_or_default();
                 let label = annotation_info.label(label.map(|l| l.0).as_ref());
-                match (arrow, label) {
-                    (arrow, Some(label)) => {
-                        let midpoint = (glam::Vec3::from(arrow.origin())
-                            + glam::Vec3::from(arrow.vector()))
-                            * 0.45; // `0.45` rather than `0.5` to account for cap and such
+                match (vector, label) {
+                    (vector, Some(label)) => {
+                        let midpoint =
+                             // `0.45` rather than `0.5` to account for cap and such
+                            (glam::Vec3::from(origin.0) + glam::Vec3::from(vector.0)) * 0.45;
                         Some(UiLabel {
                             text: label,
                             color: *color,
@@ -82,11 +84,11 @@ impl Arrows3DPart {
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let (annotation_infos, _) = process_annotations_and_keypoints::<Arrow3D, Arrows3D>(
+        let (annotation_infos, _) = process_annotations_and_keypoints::<Vector3D, Arrows3D>(
             query,
             arch_view,
             &ent_context.annotations,
-            |arrow| arrow.origin().into(),
+            |vector| vector.0.into(),
         )?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
@@ -125,15 +127,16 @@ impl Arrows3DPart {
         let pick_ids = arch_view
             .iter_instance_keys()
             .map(picking_id_from_instance_key);
-        let arrows = arch_view.iter_required_component::<Arrow3D>()?;
+        let vectors = arch_view.iter_required_component::<Vector3D>()?;
+        let origins = arch_view.iter_optional_component::<Origin3D>()?;
 
         let mut bounding_box = macaw::BoundingBox::nothing();
 
-        for (instance_key, arrow, radius, color, pick_id) in
-            itertools::izip!(instance_keys, arrows, radii, colors, pick_ids)
+        for (instance_key, vector, origin, radius, color, pick_id) in
+            itertools::izip!(instance_keys, vectors, origins, radii, colors, pick_ids)
         {
-            let origin: glam::Vec3 = arrow.origin().into();
-            let vector: glam::Vec3 = arrow.vector().into();
+            let vector: glam::Vec3 = vector.0.into();
+            let origin: glam::Vec3 = origin.unwrap_or_default().0.into();
             let end = origin + vector;
 
             let segment = line_batch

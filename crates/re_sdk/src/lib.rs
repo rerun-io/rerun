@@ -78,8 +78,8 @@ pub mod components {
         TextEntry, ViewCoordinates,
     };
     pub use re_types::components::{
-        Arrow3D, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label,
-        Point2D, Point3D, Radius, Transform3D,
+        ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label, Origin3D,
+        Point2D, Point3D, Radius, Transform3D, Vector3D,
     };
 }
 

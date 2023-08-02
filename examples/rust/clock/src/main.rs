@@ -1,4 +1,4 @@
-//! Builds an analog clock using Rerun's `Arrow3D` primitive.
+//! Builds an analog clock using Rerun's `Vector3D` primitive.
 //!
 //! This is a great benchmark for many small events.
 //!
@@ -10,9 +10,8 @@
 use std::f32::consts::TAU;
 
 use rerun::{
-    components::{Arrow3D, Box3D, Color, Point3D, Radius, ViewCoordinates},
+    components::{Box3D, Color, Point3D, Radius, Vector3D, ViewCoordinates},
     coordinates::SignedAxis3,
-    datatypes::Vec3D,
     external::re_log,
     MsgSender, RecordingStream,
 };
@@ -78,7 +77,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
             .with_component(&[color])?
             .send(rec_stream)?;
         MsgSender::new(format!("world/{name}_hand"))
-            .with_component(&[Arrow3D::new(Vec3D::ZERO, pos)])?
+            .with_component(&[Vector3D::from(pos)])?
             .with_component(&[color])?
             .with_component(&[Radius(width * 0.5)])?
             .send(rec_stream)?;

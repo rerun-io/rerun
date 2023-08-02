@@ -28,11 +28,11 @@ use rerun::{
 
 pub use rerun::{
     components::{
-        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, Color,
+        AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, Color,
         DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
-        LineStrip3D, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius,
-        RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDimension, TensorId,
-        TextEntry, Transform3D, ViewCoordinates,
+        LineStrip3D, Mesh3D, MeshFormat, MeshId, Origin3D, Pinhole, Point2D, Point3D, Quaternion,
+        Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDimension,
+        TensorId, TextEntry, Transform3D, Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
