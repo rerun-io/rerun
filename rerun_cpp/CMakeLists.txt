@@ -11,9 +11,7 @@ file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
     "src/*.cpp"
 )
 
-# STATIC seems to be the default, let's be explicit since it has
-# implications on which `target_link_libraries` need to have `PUBLIC`
-add_library(rerun_sdk STATIC ${rerun_sdk_SRC})
+add_library(rerun_sdk ${rerun_sdk_SRC})
 
 # TODO(andreas): Fix all warnings and enable this.
 # set_default_warning_settings(rerun_sdk)
@@ -63,13 +61,15 @@ endif()
 
 # ------------------------------------------------------------------------------
 if(APPLE)
-    target_link_libraries(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
+    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
     target_link_libraries(rerun_sdk PRIVATE "-framework CoreFoundation" "-framework IOKit")
-endif()
-
-if(LINUX)
-    target_link_libraries(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
+elseif(UNIX) # if(LINUX) # CMake 3.25
+    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
     target_link_libraries(rerun_sdk PRIVATE "-lm")
+elseif(WIN32)
+    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
+
+    # TODO(andreas): Untested. Almost certainly gonna encounter issues here.
 endif()
 
 # -----------------------------------------------------------------------------

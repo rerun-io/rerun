@@ -17,4 +17,4 @@ add_executable(rerun_example main.cpp)
 
 # TODO(andreas): Fix warnings and enable this.
 # set_default_warning_settings(rerun_example)
-target_link_libraries(rerun_example PRIVATE loguru::loguru rerun_sdk ${CMAKE_CURRENT_SOURCE_DIR}/../../../target/release/librerun_c.a)
+target_link_libraries(rerun_example PRIVATE loguru::loguru rerun_sdk)
