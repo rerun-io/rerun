@@ -63,8 +63,8 @@ pub struct Arrows3D {
 
     /// Optional radii for the arrows.
     ///
-    /// The shaft is rendered as a cylinder with `radius = 0.5 * radius`.
-    /// The tip is rendered as a cone with `height = 2.0 * radius` and `radius = 1.0 * radius`.
+    /// The shaft is rendered as a line with `radius = 0.5 * radius`.
+    /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
     pub radii: Option<Vec<crate::components::Radius>>,
 
     /// Optional colors for the points.

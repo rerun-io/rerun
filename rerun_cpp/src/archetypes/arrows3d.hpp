@@ -26,9 +26,8 @@ namespace rr {
 
             /// Optional radii for the arrows.
             ///
-            /// The shaft is rendered as a cylinder with `radius = 0.5 * radius`.
-            /// The tip is rendered as a cone with `height = 2.0 * radius` and `radius = 1.0 *
-            /// radius`.
+            /// The shaft is rendered as a line with `radius = 0.5 * radius`.
+            /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
             std::optional<std::vector<rr::components::Radius>> radii;
 
             /// Optional colors for the points.
@@ -50,9 +49,8 @@ namespace rr {
 
             /// Optional radii for the arrows.
             ///
-            /// The shaft is rendered as a cylinder with `radius = 0.5 * radius`.
-            /// The tip is rendered as a cone with `height = 2.0 * radius` and `radius = 1.0 *
-            /// radius`.
+            /// The shaft is rendered as a line with `radius = 0.5 * radius`.
+            /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
             Arrows3D& with_radii(std::vector<rr::components::Radius> radii) {
                 this->radii = std::move(radii);
                 return *this;

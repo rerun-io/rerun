@@ -34,14 +34,11 @@ table Arrows3D (
 
   /// Optional radii for the arrows.
   ///
-  /// The shaft is rendered as a cylinder with `radius = 0.5 * radius`.
-  /// The tip is rendered as a cone with `height = 2.0 * radius` and `radius = 1.0 * radius`.
+  /// The shaft is rendered as a line with `radius = 0.5 * radius`.
+  /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
   radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Optional colors for the points.
-  ///
-  /// \python The colors are interpreted as RGB or RGBA in sRGB gamma-space,
-  /// \python As either 0-1 floats or 0-255 integers, with separate alpha.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   // --- Optional ---

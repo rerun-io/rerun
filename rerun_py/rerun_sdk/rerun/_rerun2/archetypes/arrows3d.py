@@ -55,8 +55,8 @@ class Arrows3D(Archetype):
     """
     Optional radii for the arrows.
 
-    The shaft is rendered as a cylinder with `radius = 0.5 * radius`.
-    The tip is rendered as a cone with `height = 2.0 * radius` and `radius = 1.0 * radius`.
+    The shaft is rendered as a line with `radius = 0.5 * radius`.
+    The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
     """
 
     colors: components.ColorArray | None = field(
@@ -66,9 +66,6 @@ class Arrows3D(Archetype):
     )
     """
     Optional colors for the points.
-
-    The colors are interpreted as RGB or RGBA in sRGB gamma-space,
-    As either 0-1 floats or 0-255 integers, with separate alpha.
     """
 
     labels: components.LabelArray | None = field(
