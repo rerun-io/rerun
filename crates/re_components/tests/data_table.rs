@@ -86,31 +86,7 @@ fn data_table_sizes_basics() {
         2_950_064, // expected_num_bytes
     );
 
-    // struct
-    let mut cell = DataCell::from_native(
-        [
-            re_types::components::Point2D::new(42.0, 666.0),
-            re_types::components::Point2D::new(42.0, 666.0),
-            re_types::components::Point2D::new(42.0, 666.0),
-        ]
-        .as_slice(),
-    );
-    cell.compute_size_bytes();
-    expect(
-        cell.clone(), //
-        10_000,       // num_rows
-        5_260_064,    // expected_num_bytes
-    );
-    expect(
-        DataCell::from_arrow(
-            re_types::components::Point2D::name(),
-            cell.to_arrow().sliced(1, 1),
-        ),
-        10_000,    // num_rows
-        5_100_064, // expected_num_bytes
-    );
-
-    // struct + fixedsizelist
+    //  fixedsizelist
     let mut cell = DataCell::from_native(
         [
             re_types::components::Point2D::from([42.0, 666.0]),
@@ -123,7 +99,7 @@ fn data_table_sizes_basics() {
     expect(
         cell.clone(), //
         10_000,       // num_rows
-        5_260_064,
+        4_080_064,
     );
     expect(
         DataCell::from_arrow(
@@ -131,7 +107,7 @@ fn data_table_sizes_basics() {
             cell.to_arrow().sliced(1, 1),
         ),
         10_000, // num_rows
-        5_100_064,
+        3_920_064,
     );
 
     // variable list

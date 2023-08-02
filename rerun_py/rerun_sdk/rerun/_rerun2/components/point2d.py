@@ -13,13 +13,13 @@ __all__ = ["Point2DArray", "Point2DType"]
 
 class Point2DType(BaseDelegatingExtensionType):
     _TYPE_NAME = "rerun.point2d"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Point2DType
+    _DELEGATED_EXTENSION_TYPE = datatypes.Vec2DType
 
 
-class Point2DArray(BaseDelegatingExtensionArray[datatypes.Point2DArrayLike]):
+class Point2DArray(BaseDelegatingExtensionArray[datatypes.Vec2DArrayLike]):
     _EXTENSION_NAME = "rerun.point2d"
     _EXTENSION_TYPE = Point2DType
-    _DELEGATED_ARRAY_TYPE = datatypes.Point2DArray
+    _DELEGATED_ARRAY_TYPE = datatypes.Vec2DArray
 
 
 Point2DType._ARRAY_TYPE = Point2DArray
