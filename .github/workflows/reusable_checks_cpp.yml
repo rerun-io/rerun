@@ -31,6 +31,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-linux"
+          # Cache will be produced by `reusable_checks/rs-lints`
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
       - name: Build and run C++ minimal example
         shell: bash
         run: ./examples/cpp/minimal/build_and_run.sh
