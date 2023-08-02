@@ -52,7 +52,7 @@ class AnnotationInfo:
 
     id: int = field(converter=int)
     """
-    [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
+    `ClassId` or `KeypointId` to which this annotation info belongs.
     """
 
     label: components.Label | None = field(default=None, converter=_annotationinfo_label_converter)

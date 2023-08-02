@@ -25,7 +25,7 @@ namespace rr {
         /// Keypoint-connections are pairs of `KeypointId`s. If an edge is
         /// defined, and both keypoints exist within the instance of the class, then the
         /// keypoints should be connected with an edge. The edge should be labeled and
-        /// colored as described by the class's [`AnnotationInfo`].
+        /// colored as described by the class's `AnnotationInfo`.
         struct ClassDescription {
             /// The `AnnotationInfo` for the class.
             rr::datatypes::AnnotationInfo info;

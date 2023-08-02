@@ -15,9 +15,10 @@ namespace rerun.datatypes;
 /// The id refers either to a class or key-point id
 table AnnotationInfo (
   "attr.python.aliases": "Tuple[int, str], Tuple[int, str, components.ColorLike]",
+  "attr.rust.derive": "Default",
   order: 500
 ) {
-  /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
+  /// `ClassId` or `KeypointId` to which this annotation info belongs.
   // TODO(jleibs): make this typed
   id: ushort (order: 100);
   /// The label that will be shown in the UI.

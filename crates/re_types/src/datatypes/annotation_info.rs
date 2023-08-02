@@ -16,9 +16,9 @@
 ///
 /// Color and label will be used to annotate entities/keypoints which reference the id.
 /// The id refers either to a class or key-point id
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct AnnotationInfo {
-    /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
+    /// `ClassId` or `KeypointId` to which this annotation info belongs.
     pub id: u16,
 
     /// The label that will be shown in the UI.

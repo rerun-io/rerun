@@ -25,8 +25,8 @@
 /// Keypoint-connections are pairs of `KeypointId`s. If an edge is
 /// defined, and both keypoints exist within the instance of the class, then the
 /// keypoints should be connected with an edge. The edge should be labeled and
-/// colored as described by the class's [`AnnotationInfo`].
-#[derive(Clone, Debug)]
+/// colored as described by the class's `AnnotationInfo`.
+#[derive(Clone, Debug, Default)]
 pub struct ClassDescription {
     /// The `AnnotationInfo` for the class.
     pub info: crate::datatypes::AnnotationInfo,
