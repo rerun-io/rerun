@@ -4,6 +4,7 @@ from typing import Any
 
 import numpy as np
 from rerun.experimental import cmp as rrc
+from rerun.experimental import dt as rrd
 
 
 def is_empty(v: object) -> bool:
@@ -12,6 +13,69 @@ def is_empty(v: object) -> bool:
 
 U64_MAX_MINUS_1 = 2**64 - 2
 U64_MAX = 2**64 - 1
+
+
+vec2ds_arrays: list[rrd.Vec2DArrayLike] = [
+    [],
+    np.array([]),
+    # Vec2DArrayLike: Sequence[Point2DLike]: Point2D
+    [
+        rrd.Vec2D([1, 2]),
+        rrd.Vec2D([3, 4]),
+    ],
+    # Vec2DArrayLike: Sequence[Point2DLike]: npt.NDArray[np.float32]
+    [
+        np.array([1, 2], dtype=np.float32),
+        np.array([3, 4], dtype=np.float32),
+    ],
+    # Vec2DArrayLike: Sequence[Point2DLike]: Tuple[float, float]
+    [(1, 2), (3, 4)],
+    # Vec2DArrayLike: Sequence[Point2DLike]: Sequence[float]
+    [1, 2, 3, 4],
+    # Vec2DArrayLike: npt.NDArray[np.float32]
+    np.array([[1, 2], [3, 4]], dtype=np.float32),
+    # Vec2DArrayLike: npt.NDArray[np.float32]
+    np.array([1, 2, 3, 4], dtype=np.float32),
+]
+
+
+def vec2ds_expected(empty: bool, type_: Any | None) -> Any:
+    if type_:
+        return type_.from_similar([] if empty else [[1.0, 2.0], [3.0, 4.0]])
+    else:
+        return rrd.Vec2DArray.from_similar([] if empty else [[1.0, 2.0], [3.0, 4.0]])
+
+
+vec3ds_arrays: list[rrd.Vec3DArrayLike] = [
+    [],
+    np.array([]),
+    # Vec3DArrayLike: Sequence[Point3DLike]: Point3D
+    [
+        rrd.Vec3D([1, 2, 3]),
+        rrd.Vec3D([4, 5, 6]),
+    ],
+    # Vec3DArrayLike: Sequence[Point3DLike]: npt.NDArray[np.float32]
+    [
+        np.array([1, 2, 3], dtype=np.float32),
+        np.array([4, 5, 6], dtype=np.float32),
+    ],
+    # Vec3DArrayLike: Sequence[Point3DLike]: Tuple[float, float]
+    [(1, 2, 3), (4, 5, 6)],
+    # Vec3DArrayLike: Sequence[Point3DLike]: Sequence[float]
+    [1, 2, 3, 4, 5, 6],
+    # Vec3DArrayLike: npt.NDArray[np.float32]
+    np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32),
+    # Vec3DArrayLike: npt.NDArray[np.float32]
+    np.array([1, 2, 3, 4, 5, 6], dtype=np.float32),
+]
+
+
+def vec3ds_expected(empty: bool, type_: Any | None) -> Any:
+    if type_:
+        return type_.from_similar([] if empty else [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    else:
+        return rrd.Vec3DArray.from_similar([] if empty else [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+
 
 radii_arrays: list[rrc.RadiusArrayLike | None] = [
     None,
