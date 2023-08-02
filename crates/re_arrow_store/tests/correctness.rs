@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use rand::Rng;
 
 use re_arrow_store::{
-    test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
+    test_row, test_util::sanity_unwrap, ArrayExt as _, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionTarget, LatestAtQuery, WriteError,
 };
 use re_components::datagen::{
@@ -251,7 +251,8 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 
         DataFrame::new(vec![
             Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),
-            Series::try_from((Point2D::name().as_ref(), points)).unwrap(),
+            Series::try_from((Point2D::name().as_ref(), points.as_ref().clean_for_polars()))
+                .unwrap(),
             Series::try_from((Color::name().as_ref(), colors)).unwrap(),
         ])
         .unwrap()

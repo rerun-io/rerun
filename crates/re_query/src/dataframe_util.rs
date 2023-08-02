@@ -213,55 +213,33 @@ impl<A: Archetype> ArchetypeView<A> {
 
 #[test]
 fn test_df_builder() {
-    use re_types::components::{Color, Point2D};
+    use re_types::components::{Color, Radius};
 
     let points = vec![
-        Some(Point2D::new(1.0, 2.0)),
-        Some(Point2D::new(3.0, 4.0)),
-        Some(Point2D::new(5.0, 6.0)),
-        Some(Point2D::new(7.0, 8.0)),
+        Some(Radius::new(1.0)),
+        Some(Radius::new(3.0)),
+        Some(Radius::new(5.0)),
+        Some(Radius::new(7.0)),
     ];
 
     let colors = vec![None, Some(Color(0xff000000)), Some(Color(0x00ff0000)), None];
 
     let df = df_builder2(&points, &colors).unwrap();
-    // eprintln!("{df:?}");
+    eprintln!("{df:?}");
     //
-    // ┌───────────┬────────────┐
-    // │ point2d   ┆ colorrgba  │
-    // │ ---       ┆ ---        │
-    // │ struct[2] ┆ u32        │
-    // ╞═══════════╪════════════╡
-    // │ {1.0,2.0} ┆ null       │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ {3.0,4.0} ┆ 4278190080 │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ {5.0,6.0} ┆ 16711680   │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ {7.0,8.0} ┆ null       │
-    // └───────────┴────────────┘
-
-    // Unnesting the struct makes it easier to validate the results.
-    let df = df.unnest([Point2D::name()]).unwrap();
-    // eprintln!("{df:?}");
-    //
-    // ┌─────┬─────┬────────────┐
-    // │ x   ┆ y   ┆ colorrgba  │
-    // │ --- ┆ --- ┆ ---        │
-    // │ f32 ┆ f32 ┆ u32        │
-    // ╞═════╪═════╪════════════╡
-    // │ 1.0 ┆ 2.0 ┆ null       │
-    // ├╌╌╌╌╌┼╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 3.0 ┆ 4.0 ┆ 4278190080 │
-    // ├╌╌╌╌╌┼╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 5.0 ┆ 6.0 ┆ 16711680   │
-    // ├╌╌╌╌╌┼╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 7.0 ┆ 8.0 ┆ null       │
-    // └─────┴─────┴────────────┘
+    // ┌──────────────┬─────────────────┐
+    // │ rerun.radius ┆ rerun.colorrgba │
+    // │ ---          ┆ ---             │
+    // │ f32          ┆ u32             │
+    // ╞══════════════╪═════════════════╡
+    // │ 1.0          ┆ null            │
+    // │ 3.0          ┆ 4278190080      │
+    // │ 5.0          ┆ 16711680        │
+    // │ 7.0          ┆ null            │
+    // └──────────────┴─────────────────┘
 
     let expected = df![
-        "x" => &[1.0_f32, 3.0_f32, 5.0_f32, 7.0_f32],
-        "y" => &[2.0_f32, 4.0_f32, 6.0_f32, 8.0_f32],
+        Radius::name().as_ref() => &[1f32, 3f32,  5f32, 7f32],
         Color::name().as_ref() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
     ]
     .unwrap();

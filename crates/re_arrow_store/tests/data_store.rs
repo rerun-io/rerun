@@ -11,8 +11,8 @@ use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
 use re_arrow_store::{
-    polars_util, test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
-    GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
+    polars_util, test_row, test_util::sanity_unwrap, ArrayExt as _, DataStore, DataStoreConfig,
+    DataStoreStats, GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
 };
 use re_components::{
     datagen::{
@@ -799,8 +799,14 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
             let comp_idx = row.find_cell(component).unwrap();
             let df = DataFrame::new(vec![
                 cluster_comp,
-                Series::try_from((component.as_ref(), row.cells[comp_idx].to_arrow_monolist()))
-                    .unwrap(),
+                Series::try_from((
+                    component.as_ref(),
+                    row.cells[comp_idx]
+                        .to_arrow_monolist()
+                        .as_ref()
+                        .clean_for_polars(),
+                ))
+                .unwrap(),
             ])
             .unwrap();
 
