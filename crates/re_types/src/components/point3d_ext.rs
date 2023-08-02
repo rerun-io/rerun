@@ -1,3 +1,5 @@
+use crate::datatypes::Vec3D;
+
 use super::Point3D;
 
 // ---
@@ -8,7 +10,7 @@ impl Point3D {
 
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
-        Self(crate::datatypes::Point3D::new(x, y, z))
+        Self(Vec3D::new(x, y, z))
     }
 
     #[inline]

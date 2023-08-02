@@ -1,3 +1,5 @@
+use crate::datatypes::Vec2D;
+
 use super::Point2D;
 
 // ---
@@ -8,7 +10,7 @@ impl Point2D {
 
     #[inline]
     pub const fn new(x: f32, y: f32) -> Self {
-        Self(crate::datatypes::Point2D::new(x, y))
+        Self(Vec2D::new(x, y))
     }
 
     #[inline]
