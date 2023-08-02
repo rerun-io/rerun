@@ -149,14 +149,14 @@ pub fn process_radii<'a, A: Archetype>(
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
-fn process_annotations_and_keypoints_arch<Primary, A: Archetype>(
+fn process_annotations_and_keypoints<Primary, A: Archetype>(
     query: &ViewQuery<'_>,
     arch_view: &re_query::ArchetypeView<A>,
     annotations: &Arc<Annotations>,
+    mut primary_into_position: impl FnMut(&Primary) -> glam::Vec3,
 ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), re_query::QueryError>
 where
     Primary: re_types::Component + Clone + Default,
-    glam::Vec3: std::convert::From<Primary>,
 {
     re_tracing::profile_function!();
 
@@ -178,14 +178,14 @@ where
         arch_view.iter_optional_component::<re_types::components::KeypointId>()?,
         arch_view.iter_optional_component::<re_types::components::ClassId>()?,
     )
-    .map(|(position, keypoint_id, class_id)| {
+    .map(|(primary, keypoint_id, class_id)| {
         let class_description = annotations.class_description(class_id);
 
-        if let (Some(keypoint_id), Some(class_id), position) = (keypoint_id, class_id, position) {
+        if let (Some(keypoint_id), Some(class_id), primary) = (keypoint_id, class_id, primary) {
             keypoints
                 .entry((class_id, query.latest_at.as_i64()))
                 .or_insert_with(Default::default)
-                .insert(keypoint_id, position.into());
+                .insert(keypoint_id, primary_into_position(&primary));
             class_description.annotation_info_with_keypoint(keypoint_id)
         } else {
             class_description.annotation_info()
