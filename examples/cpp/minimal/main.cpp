@@ -2,7 +2,6 @@
 #include <rerun.hpp>
 
 #include <array>
-#include <components/point2d.hpp>
 
 int main(int argc, char** argv) {
     loguru::g_preamble_uptime = false;
@@ -11,13 +10,14 @@ int main(int argc, char** argv) {
 
     LOG_F(INFO, "Rerun C++ SDK version: %s", rr::version_string());
 
-    auto rr_stream = rr::RecordingStream{"c-example-app", "127.0.0.1:9876"};
+    auto rr_stream = rr::RecordingStream("c-example-app");
+    rr_stream.connect("127.0.0.1:9876");
 
     rr_stream.log_archetype(
         "3d/points",
         rr::archetypes::Points3D({
-                                     rr::datatypes::Point3D{1.0, 2.0, 3.0},
-                                     rr::datatypes::Point3D{4.0, 5.0, 6.0},
+                                     rr::datatypes::Vec3D{1.0, 2.0, 3.0},
+                                     rr::datatypes::Vec3D{4.0, 5.0, 6.0},
                                  })
             .with_radii({0.42, 0.43})
             .with_colors({0xAA0000CC, 0x00BB00DD})
@@ -35,9 +35,9 @@ int main(int argc, char** argv) {
     rr_stream.log_components(
         "2d/points",
         std::vector{
-            rr::components::Point2D(rr::datatypes::Point2D{0.0, 0.0}),
-            rr::components::Point2D(rr::datatypes::Point2D{1.0, 3.0}),
-            rr::components::Point2D(rr::datatypes::Point2D{5.0, 5.0}),
+            rr::components::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
+            rr::components::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
+            rr::components::Point2D(rr::datatypes::Vec2D{5.0, 5.0}),
         },
         std::array{
             rr::components::Color(0xFF0000FF),

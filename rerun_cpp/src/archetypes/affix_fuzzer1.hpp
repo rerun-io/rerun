@@ -252,183 +252,183 @@ namespace rr {
                   fuzz1117(std::move(fuzz1117)),
                   fuzz1118(std::move(fuzz1118)) {}
 
-            AffixFuzzer1& with_fuzz2001(rr::components::AffixFuzzer1 fuzz2001) {
-                this->fuzz2001 = std::move(fuzz2001);
+            AffixFuzzer1& with_fuzz2001(rr::components::AffixFuzzer1 _fuzz2001) {
+                fuzz2001 = std::move(_fuzz2001);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2002(rr::components::AffixFuzzer2 fuzz2002) {
-                this->fuzz2002 = std::move(fuzz2002);
+            AffixFuzzer1& with_fuzz2002(rr::components::AffixFuzzer2 _fuzz2002) {
+                fuzz2002 = std::move(_fuzz2002);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2003(rr::components::AffixFuzzer3 fuzz2003) {
-                this->fuzz2003 = std::move(fuzz2003);
+            AffixFuzzer1& with_fuzz2003(rr::components::AffixFuzzer3 _fuzz2003) {
+                fuzz2003 = std::move(_fuzz2003);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2004(rr::components::AffixFuzzer4 fuzz2004) {
-                this->fuzz2004 = std::move(fuzz2004);
+            AffixFuzzer1& with_fuzz2004(rr::components::AffixFuzzer4 _fuzz2004) {
+                fuzz2004 = std::move(_fuzz2004);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2005(rr::components::AffixFuzzer5 fuzz2005) {
-                this->fuzz2005 = std::move(fuzz2005);
+            AffixFuzzer1& with_fuzz2005(rr::components::AffixFuzzer5 _fuzz2005) {
+                fuzz2005 = std::move(_fuzz2005);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2006(rr::components::AffixFuzzer6 fuzz2006) {
-                this->fuzz2006 = std::move(fuzz2006);
+            AffixFuzzer1& with_fuzz2006(rr::components::AffixFuzzer6 _fuzz2006) {
+                fuzz2006 = std::move(_fuzz2006);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2007(rr::components::AffixFuzzer7 fuzz2007) {
-                this->fuzz2007 = std::move(fuzz2007);
+            AffixFuzzer1& with_fuzz2007(rr::components::AffixFuzzer7 _fuzz2007) {
+                fuzz2007 = std::move(_fuzz2007);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2008(rr::components::AffixFuzzer8 fuzz2008) {
-                this->fuzz2008 = std::move(fuzz2008);
+            AffixFuzzer1& with_fuzz2008(rr::components::AffixFuzzer8 _fuzz2008) {
+                fuzz2008 = std::move(_fuzz2008);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2009(rr::components::AffixFuzzer9 fuzz2009) {
-                this->fuzz2009 = std::move(fuzz2009);
+            AffixFuzzer1& with_fuzz2009(rr::components::AffixFuzzer9 _fuzz2009) {
+                fuzz2009 = std::move(_fuzz2009);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2010(rr::components::AffixFuzzer10 fuzz2010) {
-                this->fuzz2010 = std::move(fuzz2010);
+            AffixFuzzer1& with_fuzz2010(rr::components::AffixFuzzer10 _fuzz2010) {
+                fuzz2010 = std::move(_fuzz2010);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2011(rr::components::AffixFuzzer11 fuzz2011) {
-                this->fuzz2011 = std::move(fuzz2011);
+            AffixFuzzer1& with_fuzz2011(rr::components::AffixFuzzer11 _fuzz2011) {
+                fuzz2011 = std::move(_fuzz2011);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2012(rr::components::AffixFuzzer12 fuzz2012) {
-                this->fuzz2012 = std::move(fuzz2012);
+            AffixFuzzer1& with_fuzz2012(rr::components::AffixFuzzer12 _fuzz2012) {
+                fuzz2012 = std::move(_fuzz2012);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2013(rr::components::AffixFuzzer13 fuzz2013) {
-                this->fuzz2013 = std::move(fuzz2013);
+            AffixFuzzer1& with_fuzz2013(rr::components::AffixFuzzer13 _fuzz2013) {
+                fuzz2013 = std::move(_fuzz2013);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2014(rr::components::AffixFuzzer14 fuzz2014) {
-                this->fuzz2014 = std::move(fuzz2014);
+            AffixFuzzer1& with_fuzz2014(rr::components::AffixFuzzer14 _fuzz2014) {
+                fuzz2014 = std::move(_fuzz2014);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2015(rr::components::AffixFuzzer15 fuzz2015) {
-                this->fuzz2015 = std::move(fuzz2015);
+            AffixFuzzer1& with_fuzz2015(rr::components::AffixFuzzer15 _fuzz2015) {
+                fuzz2015 = std::move(_fuzz2015);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2016(rr::components::AffixFuzzer16 fuzz2016) {
-                this->fuzz2016 = std::move(fuzz2016);
+            AffixFuzzer1& with_fuzz2016(rr::components::AffixFuzzer16 _fuzz2016) {
+                fuzz2016 = std::move(_fuzz2016);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2017(rr::components::AffixFuzzer17 fuzz2017) {
-                this->fuzz2017 = std::move(fuzz2017);
+            AffixFuzzer1& with_fuzz2017(rr::components::AffixFuzzer17 _fuzz2017) {
+                fuzz2017 = std::move(_fuzz2017);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2018(rr::components::AffixFuzzer18 fuzz2018) {
-                this->fuzz2018 = std::move(fuzz2018);
+            AffixFuzzer1& with_fuzz2018(rr::components::AffixFuzzer18 _fuzz2018) {
+                fuzz2018 = std::move(_fuzz2018);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2101(std::vector<rr::components::AffixFuzzer1> fuzz2101) {
-                this->fuzz2101 = std::move(fuzz2101);
+            AffixFuzzer1& with_fuzz2101(std::vector<rr::components::AffixFuzzer1> _fuzz2101) {
+                fuzz2101 = std::move(_fuzz2101);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2102(std::vector<rr::components::AffixFuzzer2> fuzz2102) {
-                this->fuzz2102 = std::move(fuzz2102);
+            AffixFuzzer1& with_fuzz2102(std::vector<rr::components::AffixFuzzer2> _fuzz2102) {
+                fuzz2102 = std::move(_fuzz2102);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2103(std::vector<rr::components::AffixFuzzer3> fuzz2103) {
-                this->fuzz2103 = std::move(fuzz2103);
+            AffixFuzzer1& with_fuzz2103(std::vector<rr::components::AffixFuzzer3> _fuzz2103) {
+                fuzz2103 = std::move(_fuzz2103);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2104(std::vector<rr::components::AffixFuzzer4> fuzz2104) {
-                this->fuzz2104 = std::move(fuzz2104);
+            AffixFuzzer1& with_fuzz2104(std::vector<rr::components::AffixFuzzer4> _fuzz2104) {
+                fuzz2104 = std::move(_fuzz2104);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2105(std::vector<rr::components::AffixFuzzer5> fuzz2105) {
-                this->fuzz2105 = std::move(fuzz2105);
+            AffixFuzzer1& with_fuzz2105(std::vector<rr::components::AffixFuzzer5> _fuzz2105) {
+                fuzz2105 = std::move(_fuzz2105);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2106(std::vector<rr::components::AffixFuzzer6> fuzz2106) {
-                this->fuzz2106 = std::move(fuzz2106);
+            AffixFuzzer1& with_fuzz2106(std::vector<rr::components::AffixFuzzer6> _fuzz2106) {
+                fuzz2106 = std::move(_fuzz2106);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2107(std::vector<rr::components::AffixFuzzer7> fuzz2107) {
-                this->fuzz2107 = std::move(fuzz2107);
+            AffixFuzzer1& with_fuzz2107(std::vector<rr::components::AffixFuzzer7> _fuzz2107) {
+                fuzz2107 = std::move(_fuzz2107);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2108(std::vector<rr::components::AffixFuzzer8> fuzz2108) {
-                this->fuzz2108 = std::move(fuzz2108);
+            AffixFuzzer1& with_fuzz2108(std::vector<rr::components::AffixFuzzer8> _fuzz2108) {
+                fuzz2108 = std::move(_fuzz2108);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2109(std::vector<rr::components::AffixFuzzer9> fuzz2109) {
-                this->fuzz2109 = std::move(fuzz2109);
+            AffixFuzzer1& with_fuzz2109(std::vector<rr::components::AffixFuzzer9> _fuzz2109) {
+                fuzz2109 = std::move(_fuzz2109);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2110(std::vector<rr::components::AffixFuzzer10> fuzz2110) {
-                this->fuzz2110 = std::move(fuzz2110);
+            AffixFuzzer1& with_fuzz2110(std::vector<rr::components::AffixFuzzer10> _fuzz2110) {
+                fuzz2110 = std::move(_fuzz2110);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2111(std::vector<rr::components::AffixFuzzer11> fuzz2111) {
-                this->fuzz2111 = std::move(fuzz2111);
+            AffixFuzzer1& with_fuzz2111(std::vector<rr::components::AffixFuzzer11> _fuzz2111) {
+                fuzz2111 = std::move(_fuzz2111);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2112(std::vector<rr::components::AffixFuzzer12> fuzz2112) {
-                this->fuzz2112 = std::move(fuzz2112);
+            AffixFuzzer1& with_fuzz2112(std::vector<rr::components::AffixFuzzer12> _fuzz2112) {
+                fuzz2112 = std::move(_fuzz2112);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2113(std::vector<rr::components::AffixFuzzer13> fuzz2113) {
-                this->fuzz2113 = std::move(fuzz2113);
+            AffixFuzzer1& with_fuzz2113(std::vector<rr::components::AffixFuzzer13> _fuzz2113) {
+                fuzz2113 = std::move(_fuzz2113);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2114(std::vector<rr::components::AffixFuzzer14> fuzz2114) {
-                this->fuzz2114 = std::move(fuzz2114);
+            AffixFuzzer1& with_fuzz2114(std::vector<rr::components::AffixFuzzer14> _fuzz2114) {
+                fuzz2114 = std::move(_fuzz2114);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2115(std::vector<rr::components::AffixFuzzer15> fuzz2115) {
-                this->fuzz2115 = std::move(fuzz2115);
+            AffixFuzzer1& with_fuzz2115(std::vector<rr::components::AffixFuzzer15> _fuzz2115) {
+                fuzz2115 = std::move(_fuzz2115);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2116(std::vector<rr::components::AffixFuzzer16> fuzz2116) {
-                this->fuzz2116 = std::move(fuzz2116);
+            AffixFuzzer1& with_fuzz2116(std::vector<rr::components::AffixFuzzer16> _fuzz2116) {
+                fuzz2116 = std::move(_fuzz2116);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2117(std::vector<rr::components::AffixFuzzer17> fuzz2117) {
-                this->fuzz2117 = std::move(fuzz2117);
+            AffixFuzzer1& with_fuzz2117(std::vector<rr::components::AffixFuzzer17> _fuzz2117) {
+                fuzz2117 = std::move(_fuzz2117);
                 return *this;
             }
 
-            AffixFuzzer1& with_fuzz2118(std::vector<rr::components::AffixFuzzer18> fuzz2118) {
-                this->fuzz2118 = std::move(fuzz2118);
+            AffixFuzzer1& with_fuzz2118(std::vector<rr::components::AffixFuzzer18> _fuzz2118) {
+                fuzz2118 = std::move(_fuzz2118);
                 return *this;
             }
 

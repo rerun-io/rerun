@@ -55,28 +55,28 @@ namespace rr {
             Points3D(std::vector<rr::components::Point3D> points) : points(std::move(points)) {}
 
             /// Optional radii for the points, effectively turning them into circles.
-            Points3D& with_radii(std::vector<rr::components::Radius> radii) {
-                this->radii = std::move(radii);
+            Points3D& with_radii(std::vector<rr::components::Radius> _radii) {
+                radii = std::move(_radii);
                 return *this;
             }
 
             /// Optional colors for the points.
-            Points3D& with_colors(std::vector<rr::components::Color> colors) {
-                this->colors = std::move(colors);
+            Points3D& with_colors(std::vector<rr::components::Color> _colors) {
+                colors = std::move(_colors);
                 return *this;
             }
 
             /// Optional text labels for the points.
-            Points3D& with_labels(std::vector<rr::components::Label> labels) {
-                this->labels = std::move(labels);
+            Points3D& with_labels(std::vector<rr::components::Label> _labels) {
+                labels = std::move(_labels);
                 return *this;
             }
 
             /// Optional class Ids for the points.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            Points3D& with_class_ids(std::vector<rr::components::ClassId> class_ids) {
-                this->class_ids = std::move(class_ids);
+            Points3D& with_class_ids(std::vector<rr::components::ClassId> _class_ids) {
+                class_ids = std::move(_class_ids);
                 return *this;
             }
 
@@ -87,14 +87,14 @@ namespace rr {
             /// This is useful to identify points within a single classification (which is
             /// identified with `class_id`). E.g. the classification might be 'Person' and the
             /// keypoints refer to joints on a detected skeleton.
-            Points3D& with_keypoint_ids(std::vector<rr::components::KeypointId> keypoint_ids) {
-                this->keypoint_ids = std::move(keypoint_ids);
+            Points3D& with_keypoint_ids(std::vector<rr::components::KeypointId> _keypoint_ids) {
+                keypoint_ids = std::move(_keypoint_ids);
                 return *this;
             }
 
             /// Unique identifiers for each individual point in the batch.
-            Points3D& with_instance_keys(std::vector<rr::components::InstanceKey> instance_keys) {
-                this->instance_keys = std::move(instance_keys);
+            Points3D& with_instance_keys(std::vector<rr::components::InstanceKey> _instance_keys) {
+                instance_keys = std::move(_instance_keys);
                 return *this;
             }
 
