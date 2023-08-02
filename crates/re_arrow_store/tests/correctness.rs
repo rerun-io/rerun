@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use rand::Rng;
 
 use re_arrow_store::{
-    test_row, test_util::sanity_unwrap, ArrayExt as _, DataStore, DataStoreConfig, DataStoreStats,
+    test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionTarget, LatestAtQuery, WriteError,
 };
 use re_components::datagen::{
@@ -217,6 +217,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         prelude::{DataFrame, JoinType},
         series::Series,
     };
+    use re_arrow_store::ArrayExt as _;
     use re_types::components::{Color, Point2D};
 
     let ent_path = EntityPath::from("this/that");
