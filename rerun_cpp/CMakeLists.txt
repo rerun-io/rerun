@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
 
 add_subdirectory(tests)
 
@@ -44,8 +44,8 @@ FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 target_link_libraries(rerun_sdk PRIVATE loguru::loguru)
 
 # ------------------------------------------------------------------------------
-execute_process(COMMAND cargo build -p re_types) # Generates most of the C++ source files
-execute_process(COMMAND cargo build -p rerun_c) # We link against this, so must be up-to-date
+execute_process(COMMAND cargo build -p re_types COMMAND_ERROR_IS_FATAL ANY) # Generates most of the C++ source files
+execute_process(COMMAND cargo build -p rerun_c COMMAND_ERROR_IS_FATAL ANY) # We link against this, so must be up-to-date
 
 # ------------------------------------------------------------------------------
 if(APPLE)
