@@ -306,11 +306,42 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  cpp-lints:
-    name: C++ lints (fmt, compile, tests)
+  cpp-formating:
+    name: C++ formatting check
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+
       - name: Run clang format on all relevant files
         uses: jidicula/clang-format-action@v4.11.0
         with:
           clang-format-version: "16"
+          # Only check c/cpp/h/hpp (default checks also .proto and others)
+          include-regex: ^.*\.(c|cpp|h|hpp)$
+
+  cpp-tests:
+    name: C++ tests
+    runs-on: ubuntu-latest
+    container:
+      image: rerunio/ci_docker:0.8
+    env:
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-linux"
+          # Cache will be produced by `reusable_checks/rs-lints`
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Build and run C++ minimal example
+        shell: bash
+        run: ./examples/cpp/minimal/build_and_run.sh
+
+      - name: Build and run rerun_cpp tests
+        shell: bash
+        run: ./rerun_cpp/build_and_run_tests.sh
