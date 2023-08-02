@@ -11,7 +11,9 @@ file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
     "src/*.cpp"
 )
 
-add_library(rerun_sdk ${rerun_sdk_SRC})
+# STATIC seems to be the default, let's be explicit since it has
+# implications on which `target_link_libraries` need to have `PUBLIC`
+add_library(rerun_sdk STATIC ${rerun_sdk_SRC})
 
 # TODO(andreas): Fix all warnings and enable this.
 # set_default_warning_settings(rerun_sdk)
@@ -47,13 +49,13 @@ target_link_libraries(rerun_sdk PRIVATE loguru::loguru)
 # execute process doesn't fail if the process fails.
 # `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
 # which isn't default on Ubuntu LTS as of writing, causing unnecessary friction.
-execute_process(COMMAND cargo build -p re_types RESULT_VARIABLE ret) # Generates most of the C++ source files
+execute_process(COMMAND cargo build --release -p re_types RESULT_VARIABLE ret) # Generates most of the C++ source files
 
 if(NOT(ret EQUAL "0"))
     message(FATAL_ERROR "Failed to build re_types in order to generate C++ source files.")
 endif()
 
-execute_process(COMMAND cargo build -p rerun_c RESULT_VARIABLE ret) # We link against this, so must be up-to-date
+execute_process(COMMAND cargo build --release -p rerun_c RESULT_VARIABLE ret) # We link against this, so must be up-to-date
 
 if(NOT(ret EQUAL "0"))
     message(FATAL_ERROR "Failed to build rerun_c.")
@@ -61,12 +63,12 @@ endif()
 
 # ------------------------------------------------------------------------------
 if(APPLE)
-    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/debug/librerun_c.a)
+    target_link_libraries(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
     target_link_libraries(rerun_sdk PRIVATE "-framework CoreFoundation" "-framework IOKit")
 endif()
 
 if(LINUX)
-    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/debug/librerun_c.a)
+    target_link_libraries(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
     target_link_libraries(rerun_sdk PRIVATE "-lm")
 endif()
 
