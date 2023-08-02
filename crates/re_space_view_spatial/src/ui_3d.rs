@@ -163,16 +163,21 @@ impl View3DState {
     }
 
     fn interpolate_to_eye(&mut self, target: Eye) {
-        if let Some(start) = self.orbit_eye {
-            let target_time = EyeInterpolation::target_time(&start.to_eye(), &target);
-            self.spin = false; // the user wants to move the camera somewhere, so stop spinning
-            self.eye_interpolation = Some(EyeInterpolation {
-                elapsed_time: 0.0,
-                target_time,
-                start,
-                target_orbit: None,
-                target_eye: Some(target),
-            });
+        if let Some(start) = self.orbit_eye.as_mut() {
+            // the user wants to move the camera somewhere, so stop spinning
+            self.spin = false;
+
+            if let Some(target_time) = EyeInterpolation::target_time(&start.to_eye(), &target) {
+                self.eye_interpolation = Some(EyeInterpolation {
+                    elapsed_time: 0.0,
+                    target_time,
+                    start: *start,
+                    target_orbit: None,
+                    target_eye: Some(target),
+                });
+            } else {
+                start.copy_from_eye(&target);
+            }
         } else {
             // shouldn't really happen (`self.orbit_eye` is only `None` for the first frame).
         }
@@ -180,15 +185,22 @@ impl View3DState {
 
     fn interpolate_to_orbit_eye(&mut self, target: OrbitEye) {
         if let Some(start) = self.orbit_eye {
-            let target_time = EyeInterpolation::target_time(&start.to_eye(), &target.to_eye());
-            self.spin = false; // the user wants to move the camera somewhere, so stop spinning
-            self.eye_interpolation = Some(EyeInterpolation {
-                elapsed_time: 0.0,
-                target_time,
-                start,
-                target_orbit: Some(target),
-                target_eye: None,
-            });
+            // the user wants to move the camera somewhere, so stop spinning
+            self.spin = false;
+
+            if let Some(target_time) =
+                EyeInterpolation::target_time(&start.to_eye(), &target.to_eye())
+            {
+                self.eye_interpolation = Some(EyeInterpolation {
+                    elapsed_time: 0.0,
+                    target_time,
+                    start,
+                    target_orbit: Some(target),
+                    target_eye: None,
+                });
+            } else {
+                self.orbit_eye = Some(target);
+            }
         } else {
             self.orbit_eye = Some(target);
         }
@@ -205,14 +217,21 @@ struct EyeInterpolation {
 }
 
 impl EyeInterpolation {
-    pub fn target_time(start: &Eye, stop: &Eye) -> f32 {
+    pub fn target_time(start: &Eye, stop: &Eye) -> Option<f32> {
         // Take more time if the rotation is big:
         let angle_difference = start
             .world_from_rub_view
             .rotation()
             .angle_between(stop.world_from_rub_view.rotation());
 
-        egui::remap_clamp(angle_difference, 0.0..=std::f32::consts::PI, 0.2..=0.7)
+        let time = egui::remap_clamp(angle_difference, 0.0..=std::f32::consts::PI, 0.2..=0.7);
+
+        // Threshold to avoid doing pointless interpolations that trigger frame requests.
+        if time < 0.01 {
+            None
+        } else {
+            Some(time)
+        }
     }
 }
 
