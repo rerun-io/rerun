@@ -143,6 +143,13 @@ table AffixFuzzer19 (
   just_a_table_nothing_shady: rerun.testing.datatypes.AffixFuzzer5 (order: 119);
 }
 
+table AffixFuzzer20 (
+  "attr.rust.derive": "Eq, PartialEq",
+  order: 2000
+) {
+  nested_transparent: rerun.testing.datatypes.AffixFuzzer20 (order: 120);
+}
+
 // TODO(cmc): the ugly bug we need to take care of at some point
 // table AffixFuzzer14 (
 //   "attr.rust.derive": "PartialEq",

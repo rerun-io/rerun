@@ -9,7 +9,7 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
+from .. import components, datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
@@ -28,6 +28,11 @@ __all__ = [
     "AffixFuzzer1Like",
     "AffixFuzzer1Type",
     "AffixFuzzer2",
+    "AffixFuzzer20",
+    "AffixFuzzer20Array",
+    "AffixFuzzer20ArrayLike",
+    "AffixFuzzer20Like",
+    "AffixFuzzer20Type",
     "AffixFuzzer2Array",
     "AffixFuzzer2ArrayLike",
     "AffixFuzzer2Like",
@@ -915,3 +920,57 @@ AffixFuzzer5Type._ARRAY_TYPE = AffixFuzzer5Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer5Type())
+
+
+def _affixfuzzer20_p_converter(x: components.PrimitiveComponentLike) -> components.PrimitiveComponent:
+    if isinstance(x, components.PrimitiveComponent):
+        return x
+    else:
+        return components.PrimitiveComponent(x)
+
+
+def _affixfuzzer20_s_converter(x: components.StringComponentLike) -> components.StringComponent:
+    if isinstance(x, components.StringComponent):
+        return x
+    else:
+        return components.StringComponent(x)
+
+
+@define
+class AffixFuzzer20:
+    p: components.PrimitiveComponent = field(converter=_affixfuzzer20_p_converter)
+    s: components.StringComponent = field(converter=_affixfuzzer20_s_converter)
+
+
+AffixFuzzer20Like = AffixFuzzer20
+AffixFuzzer20ArrayLike = Union[
+    AffixFuzzer20,
+    Sequence[AffixFuzzer20Like],
+]
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer20Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.struct([pa.field("p", pa.uint32(), False, {}), pa.field("s", pa.utf8(), False, {})]),
+            "rerun.testing.datatypes.AffixFuzzer20",
+        )
+
+
+class AffixFuzzer20Array(BaseExtensionArray[AffixFuzzer20ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.datatypes.AffixFuzzer20"
+    _EXTENSION_TYPE = AffixFuzzer20Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer20ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer20Type._ARRAY_TYPE = AffixFuzzer20Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer20Type())

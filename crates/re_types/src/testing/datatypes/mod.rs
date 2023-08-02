@@ -3,5 +3,6 @@
 mod fuzzy;
 
 pub use self::fuzzy::{
-    AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4, AffixFuzzer5, FlattenedScalar,
+    AffixFuzzer1, AffixFuzzer2, AffixFuzzer20, AffixFuzzer3, AffixFuzzer4, AffixFuzzer5,
+    FlattenedScalar,
 };

@@ -1,0 +1,26 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.testing.components;
+
+// These are some simple component definitions specifically for
+// testing datatypes and components that depend on other components.
+// they can't go in `components/fuzzy.fbs` or else we would get a
+// circular dependency when importing them into `datatypes/fuzzy.fbs`.
+
+struct PrimitiveComponent (
+  "attr.rust.derive": "Eq, PartialEq",
+  "attr.rust.repr": "transparent",
+  order: 001
+) {
+  value: uint (order: 100);
+}
+
+table StringComponent (
+  "attr.rust.derive": "Eq, PartialEq",
+  "attr.rust.repr": "transparent",
+  order: 002
+) {
+  value: string (order: 100);
+}
