@@ -51,34 +51,34 @@ namespace rr {
             ///
             /// The shaft is rendered as a line with `radius = 0.5 * radius`.
             /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
-            Arrows3D& with_radii(std::vector<rr::components::Radius> radii) {
-                this->radii = std::move(radii);
+            Arrows3D& with_radii(std::vector<rr::components::Radius> _radii) {
+                radii = std::move(_radii);
                 return *this;
             }
 
             /// Optional colors for the points.
-            Arrows3D& with_colors(std::vector<rr::components::Color> colors) {
-                this->colors = std::move(colors);
+            Arrows3D& with_colors(std::vector<rr::components::Color> _colors) {
+                colors = std::move(_colors);
                 return *this;
             }
 
             /// Optional text labels for the arrows.
-            Arrows3D& with_labels(std::vector<rr::components::Label> labels) {
-                this->labels = std::move(labels);
+            Arrows3D& with_labels(std::vector<rr::components::Label> _labels) {
+                labels = std::move(_labels);
                 return *this;
             }
 
             /// Optional class Ids for the points.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            Arrows3D& with_class_ids(std::vector<rr::components::ClassId> class_ids) {
-                this->class_ids = std::move(class_ids);
+            Arrows3D& with_class_ids(std::vector<rr::components::ClassId> _class_ids) {
+                class_ids = std::move(_class_ids);
                 return *this;
             }
 
             /// Unique identifiers for each individual point in the batch.
-            Arrows3D& with_instance_keys(std::vector<rr::components::InstanceKey> instance_keys) {
-                this->instance_keys = std::move(instance_keys);
+            Arrows3D& with_instance_keys(std::vector<rr::components::InstanceKey> _instance_keys) {
+                instance_keys = std::move(_instance_keys);
                 return *this;
             }
 
