@@ -10,19 +10,13 @@ on:
         description: "Run reuseable_checks"
         type: boolean
         required: false
-        default: false
+        default: true
 
       DEPLOY_DOCS:
         description: "Run reusable_deploy_docs"
         type: boolean
         required: false
         default: false
-
-      CPP:
-        description: "Run reusable_checks_cpp.yml"
-        type: boolean
-        required: false
-        default: true
 
       BENCHES:
         description: "Run reusable_bench.yml"
@@ -39,19 +33,19 @@ on:
         description: "Run reusable_build_and_test_wheels (Full build: linux,windows,macos-arm,macos-intel)"
         type: string
         required: false
-        default: ""
+        default: "linux"
 
       BUILD_WEB:
         description: "Run reusable_build_web/reusable_build_web_demo (Full build: app,demo)"
         type: string
         required: false
-        default: ""
+        default: "app,demo"
 
       RELEASE_VERSION:
         description: "Release Version Number (Must match Cargo.toml)"
         type: string
         required: false
-        default: ""
+        default: "prerelease"
 
       UPLOAD_GCLOUD:
         description: "Upload wheels and wasm to gcloud"
@@ -66,12 +60,6 @@ on:
         default: false
 
 jobs:
-  cpp-checks:
-    name: "Run reusable_checks_cpp.yml"
-    if: ${{ github.event.inputs.CPP == 'true' }}
-    uses: ./.github/workflows/reusable_checks_cpp.yml
-    secrets: inherit
-
   checks:
     name: Run All Checks
     if: ${{ github.event.inputs.CHECKS == 'true' }}
@@ -288,3 +276,4 @@ jobs:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
       PR_NUMBER: ${{ needs.check-for-pr.outputs.PR_NUMBER }}
     secrets: inherit
+
