@@ -41,7 +41,7 @@ impl From<CStoreKind> for StoreKind {
     }
 }
 
-/// Simple C version of [`StoreInfo`]
+/// Simple C version of [`CStoreInfo`]
 #[repr(C)]
 #[derive(Debug)]
 pub struct CStoreInfo {
