@@ -146,8 +146,8 @@ impl View3DState {
 
             if let Some(target_orbit) = &cam_interpolation.target_orbit {
                 *orbit_camera = cam_interpolation.start.lerp(target_orbit, t);
-            } else if let Some(target_camera) = &cam_interpolation.target_eye {
-                let camera = cam_interpolation.start.to_eye().lerp(target_camera, t);
+            } else if let Some(target_eye) = &cam_interpolation.target_eye {
+                let camera = cam_interpolation.start.to_eye().lerp(target_eye, t);
                 orbit_camera.copy_from_eye(&camera);
             } else {
                 self.eye_interpolation = None;
@@ -224,13 +224,15 @@ impl EyeInterpolation {
             .rotation()
             .angle_between(stop.world_from_rub_view.rotation());
 
-        let time = egui::remap_clamp(angle_difference, 0.0..=std::f32::consts::PI, 0.2..=0.7);
-
         // Threshold to avoid doing pointless interpolations that trigger frame requests.
-        if time < 0.01 {
+        if angle_difference < 0.01 && start.pos_in_world().distance(stop.pos_in_world()) < 0.0001 {
             None
         } else {
-            Some(time)
+            Some(egui::remap_clamp(
+                angle_difference,
+                0.0..=std::f32::consts::PI,
+                0.2..=0.7,
+            ))
         }
     }
 }
