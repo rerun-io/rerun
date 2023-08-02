@@ -13,7 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A connection between two `Keypoints`.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct KeypointPair {
     pub keypoint0: crate::components::KeypointId,
     pub keypoint1: crate::components::KeypointId,

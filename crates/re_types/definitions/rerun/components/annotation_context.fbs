@@ -19,7 +19,7 @@ namespace rerun.components;
 table AnnotationContext (
   "attr.python.array_aliases": "Sequence[datatypes.ClassDescriptionMapElemLike]",
   "attr.rerun.legacy_fqname": "rerun.annotation_context",
-  "attr.rust.derive": "Default, PartialEq",
+  "attr.rust.derive": "Default, Eq, PartialEq",
   order: 100
 ) {
   class_map: [rerun.datatypes.ClassDescriptionMapElem] (order: 100);
