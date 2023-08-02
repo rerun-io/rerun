@@ -215,7 +215,7 @@ impl<A: Archetype> ArchetypeView<A> {
 fn test_df_builder() {
     use re_types::components::{Color, Radius};
 
-    let points = vec![
+    let radii = vec![
         Some(Radius::new(1.0)),
         Some(Radius::new(3.0)),
         Some(Radius::new(5.0)),
@@ -224,7 +224,7 @@ fn test_df_builder() {
 
     let colors = vec![None, Some(Color(0xff000000)), Some(Color(0x00ff0000)), None];
 
-    let df = df_builder2(&points, &colors).unwrap();
+    let df = df_builder2(&radii, &colors).unwrap();
     eprintln!("{df:?}");
     //
     // ┌──────────────┬─────────────────┐
