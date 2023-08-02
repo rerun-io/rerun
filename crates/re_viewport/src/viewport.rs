@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use egui_tiles::Behavior;
 use re_ui::ReUi;
 
 use re_viewer_context::{
@@ -248,21 +249,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             return "internal_error".into();
         };
 
-        let mut text =
-            egui::WidgetText::RichText(egui::RichText::new(space_view.display_name.clone()));
-
-        if self
-            .ctx
-            .selection()
-            .contains(&Item::SpaceView(*space_view_id))
-        {
-            // Show that it is selected:
-            let egui_ctx = &self.ctx.re_ui.egui_ctx;
-            let selection_bg_color = egui_ctx.style().visuals.selection.bg_fill;
-            text = text.background_color(selection_bg_color);
-        }
-
-        text
+        egui::WidgetText::RichText(egui::RichText::new(space_view.display_name.clone()))
     }
 
     #[allow(clippy::fn_params_excessive_bools)]
@@ -275,14 +262,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         active: bool,
         is_being_dragged: bool,
     ) -> egui::Response {
-        // make sure we have a space view to work with or else delegate to the default
-        // implementation
-        let space_view = if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
-            self.space_views.get(space_view_id)
-        } else {
-            None
-        };
-        let Some(space_view) = space_view else {
+        let Some(tab_widget) = TabWidget::new(self, ui, tiles, tile_id, active, 1.0) else {
             return egui_tiles::Behavior::<SpaceViewId>::tab_ui(
                 self,
                 tiles,
@@ -293,68 +273,46 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 is_being_dragged,
             );
         };
-        let space_view_id = space_view.id;
 
-        // tab icon
-        let icon = space_view.class(self.ctx.space_view_class_registry).icon();
-        let image = self.ctx.re_ui.icon_image(icon);
-        let texture_id = image.texture_id(ui.ctx());
-        let icon_size = ReUi::small_icon_size();
-        let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
-
-        // tab title
-        let text = self.tab_title_for_tile(tiles, tile_id);
-        let font_id = egui::TextStyle::Button.resolve(ui.style());
-        let galley = text.into_galley(ui, Some(false), f32::INFINITY, font_id);
-
-        let x_margin = self.tab_title_spacing(ui.visuals());
-        let (_, rect) = ui.allocate_space(egui::vec2(
-            galley.size().x + 2.0 * x_margin + icon_width_plus_padding,
-            ui.available_height(),
-        ));
-        let galley_rect = egui::Rect::from_two_pos(
-            rect.min + egui::vec2(icon_width_plus_padding, 0.0),
-            rect.max,
-        );
-        let icon_rect = egui::Rect::from_center_size(
-            egui::pos2(rect.left() + x_margin + icon_size.x / 2.0, rect.center().y),
-            icon_size,
-        );
-        let response = ui.interact(rect, id, egui::Sense::click_and_drag());
+        let response = ui.interact(tab_widget.rect, id, egui::Sense::click_and_drag());
 
         // Show a gap when dragged
-        if ui.is_rect_visible(rect) && !is_being_dragged {
-            let selected = self
-                .ctx
-                .selection()
-                .contains(&Item::SpaceView(space_view_id));
-
-            if selected {
-                ui.painter().rect(
-                    rect,
-                    0.0,
-                    ui.visuals().selection.bg_fill,
-                    egui::Stroke::NONE,
-                );
-            }
-
-            let text_color = self.tab_text_color(ui.visuals(), tile_id, active);
-
-            let icon_image = egui::widgets::Image::new(texture_id, icon_size).tint(text_color);
-            icon_image.paint_at(ui, icon_rect);
-
-            ui.painter().galley_with_color(
-                egui::Align2::CENTER_CENTER
-                    .align_size_within_rect(galley.size(), galley_rect)
-                    .min,
-                galley.galley,
-                text_color,
-            );
+        if ui.is_rect_visible(tab_widget.rect) && !is_being_dragged {
+            tab_widget.ui(ui);
         }
 
         self.on_tab_button(tiles, tile_id, &response);
 
         response
+    }
+
+    fn drag_ui(
+        &mut self,
+        tiles: &egui_tiles::Tiles<SpaceViewId>,
+        ui: &mut egui::Ui,
+        tile_id: egui_tiles::TileId,
+    ) {
+        let Some(tab_widget) = TabWidget::new(self, ui, tiles, tile_id, true, 0.5) else {
+            return egui_tiles::Behavior::<SpaceViewId>::drag_ui(
+                self,
+                tiles,
+                ui,
+                tile_id,
+            );
+        };
+
+        let frame = egui::Frame {
+            inner_margin: egui::Margin::same(0.),
+            outer_margin: egui::Margin::same(0.),
+            rounding: egui::Rounding::none(),
+            shadow: Default::default(),
+            fill: egui::Color32::TRANSPARENT,
+            stroke: egui::Stroke::NONE,
+        };
+
+        frame.show(ui, |ui| {
+            tab_widget.ui(ui);
+        });
     }
 
     fn on_tab_button(
@@ -429,22 +387,18 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         self.ctx.re_ui.design_tokens.tab_bar_color
     }
 
-    fn tab_bg_color(
-        &self,
-        _visuals: &egui::Visuals,
-        _tile_id: egui_tiles::TileId,
-        _active: bool,
-    ) -> egui::Color32 {
-        egui::Color32::TRANSPARENT
+    fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        visuals.panel_fill.gamma_multiply(0.5)
     }
 
-    fn tab_outline_stroke(
-        &self,
-        _visuals: &egui::Visuals,
-        _tile_id: egui_tiles::TileId,
-        _active: bool,
-    ) -> egui::Stroke {
-        egui::Stroke::NONE
+    /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
+    fn drag_preview_stroke(&self, _visuals: &egui::Visuals) -> egui::Stroke {
+        egui::Stroke::new(1.0, egui::Color32::WHITE.gamma_multiply(0.5))
+    }
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
+    fn drag_preview_color(&self, _visuals: &egui::Visuals) -> egui::Color32 {
+        egui::Color32::WHITE.gamma_multiply(0.1)
     }
 
     /// The height of the bar holding tab titles.
@@ -476,4 +430,108 @@ fn space_view_ui(
     };
 
     space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, space_view_highlights);
+}
+
+struct TabWidget {
+    texture_id: egui::TextureId,
+    galley: egui::widget_text::WidgetTextGalley,
+    rect: egui::Rect,
+    galley_rect: egui::Rect,
+    icon_size: egui::Vec2,
+    icon_rect: egui::Rect,
+    bg_color: egui::Color32,
+    text_color: egui::Color32,
+}
+
+impl TabWidget {
+    fn new<'a>(
+        tab_viewer: &'a mut TabViewer<'_, '_>,
+        ui: &'a mut egui::Ui,
+        tiles: &'a egui_tiles::Tiles<SpaceViewId>,
+        tile_id: egui_tiles::TileId,
+        active: bool,
+        gamma: f32,
+    ) -> Option<Self> {
+        // make sure we have a space view to work with
+        let space_view = if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
+            tab_viewer.space_views.get(space_view_id)
+        } else {
+            return None;
+        };
+        let Some(space_view) = space_view else {
+            return None
+        };
+        let space_view_id = space_view.id;
+
+        // tab icon
+        let icon = space_view
+            .class(tab_viewer.ctx.space_view_class_registry)
+            .icon();
+        let image = tab_viewer.ctx.re_ui.icon_image(icon);
+        let texture_id = image.texture_id(ui.ctx());
+
+        let icon_size = ReUi::small_icon_size();
+        let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
+
+        // tab title
+        let text = tab_viewer.tab_title_for_tile(tiles, tile_id);
+        let font_id = egui::TextStyle::Button.resolve(ui.style());
+        let galley = text.into_galley(ui, Some(false), f32::INFINITY, font_id);
+
+        let x_margin = tab_viewer.tab_title_spacing(ui.visuals());
+        let (_, rect) = ui.allocate_space(egui::vec2(
+            galley.size().x + 2.0 * x_margin + icon_width_plus_padding,
+            ReUi::title_bar_height(),
+        ));
+        let galley_rect = egui::Rect::from_two_pos(
+            rect.min + egui::vec2(icon_width_plus_padding, 0.0),
+            rect.max,
+        );
+        let icon_rect = egui::Rect::from_center_size(
+            egui::pos2(rect.left() + x_margin + icon_size.x / 2.0, rect.center().y),
+            icon_size,
+        );
+
+        let selected = tab_viewer
+            .ctx
+            .selection()
+            .contains(&Item::SpaceView(space_view_id));
+        let bg_color = if selected {
+            ui.visuals().selection.bg_fill
+        } else {
+            tab_viewer.tab_bar_color(ui.visuals())
+        };
+        let bg_color = bg_color.gamma_multiply(gamma);
+        let text_color = tab_viewer
+            .tab_text_color(ui.visuals(), tiles, tile_id, active)
+            .gamma_multiply(gamma);
+
+        Some(Self {
+            texture_id,
+            galley,
+            rect,
+            galley_rect,
+            icon_size,
+            icon_rect,
+            bg_color,
+            text_color,
+        })
+    }
+
+    fn ui(self, ui: &mut egui::Ui) {
+        ui.painter()
+            .rect(self.rect, 0.0, self.bg_color, egui::Stroke::NONE);
+
+        let icon_image =
+            egui::widgets::Image::new(self.texture_id, self.icon_size).tint(self.text_color);
+        icon_image.paint_at(ui, self.icon_rect);
+
+        ui.painter().galley_with_color(
+            egui::Align2::CENTER_CENTER
+                .align_size_within_rect(self.galley.size(), self.galley_rect)
+                .min,
+            self.galley.galley,
+            self.text_color,
+        );
+    }
 }

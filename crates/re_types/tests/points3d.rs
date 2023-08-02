@@ -49,7 +49,6 @@ fn roundtrip() {
         ("radii", vec!["rerun.components.Radius"]),
         ("colors", vec!["rerun.components.Color"]),
         ("labels", vec!["rerun.components.Label"]),
-        ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("keypoint_ids", vec!["rerun.components.KeypointId"]),
         ("instance_keys", vec!["rerun.components.InstanceKey"]),

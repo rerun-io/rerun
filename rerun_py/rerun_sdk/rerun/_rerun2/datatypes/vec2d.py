@@ -32,11 +32,13 @@ class Vec2D:
 
 
 if TYPE_CHECKING:
-    Vec2DLike = Union[Vec2D, npt.NDArray[Any], Sequence[float]]
+    Vec2DLike = Union[Vec2D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
 else:
     Vec2DLike = Any
 
-Vec2DArrayLike = Union[Vec2D, Sequence[Vec2DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
+Vec2DArrayLike = Union[
+    Vec2D, Sequence[Vec2DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+]
 
 
 # --- Arrow support ---

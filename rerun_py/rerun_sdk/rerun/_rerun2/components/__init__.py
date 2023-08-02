@@ -9,6 +9,7 @@ from .annotation_context import (
     AnnotationContextLike,
     AnnotationContextType,
 )
+from .arrow3d import Arrow3DArray, Arrow3DType
 from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
 from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
 from .disconnected_space import (
@@ -187,6 +188,8 @@ __all__ = [
     "AnnotationContextArrayLike",
     "AnnotationContextLike",
     "AnnotationContextType",
+    "Arrow3DArray",
+    "Arrow3DType",
     "ClassId",
     "ClassIdArray",
     "ClassIdArrayLike",

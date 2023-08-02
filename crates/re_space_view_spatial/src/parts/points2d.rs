@@ -14,8 +14,7 @@ use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     parts::{
         entity_iterator::process_archetype_views, load_keypoint_connections,
-        process_annotations_and_keypoints_arch, process_colors, process_radii, UiLabel,
-        UiLabelTarget,
+        process_annotations_and_keypoints, process_colors, process_radii, UiLabel, UiLabelTarget,
     },
     view_kind::SpatialSpaceViewKind,
 };
@@ -77,10 +76,12 @@ impl Points2DPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let (annotation_infos, keypoints) = process_annotations_and_keypoints_arch::<
-            Point2D,
-            Points2D,
-        >(query, arch_view, &ent_context.annotations)?;
+        let (annotation_infos, keypoints) = process_annotations_and_keypoints::<Point2D, Points2D>(
+            query,
+            arch_view,
+            &ent_context.annotations,
+            |p| (*p).into(),
+        )?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let radii = process_radii(arch_view, ent_path)?;

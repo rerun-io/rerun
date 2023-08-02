@@ -1,0 +1,56 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// A batch of 3D arrows with optional colors, radii, labels, etc.
+///
+/// \py Example
+/// \py -------
+/// \py
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/arrow3d_simple_v2.py
+/// \py ```
+///
+/// \rs ## Example
+/// \rs
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/arrow3d_simple_v2.rs
+/// \rs ```
+table Arrows3D (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  // --- Required ---
+
+  /// All the individual arrows that make up the batch.
+  arrows: [rerun.components.Arrow3D] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// Optional radii for the arrows.
+  ///
+  /// The shaft is rendered as a line with `radius = 0.5 * radius`.
+  /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
+  radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Optional colors for the points.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  // --- Optional ---
+
+  /// Optional text labels for the arrows.
+  labels: [rerun.components.Label] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optional class Ids for the points.
+  ///
+  /// The class ID provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Unique identifiers for each individual point in the batch.
+  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
+}

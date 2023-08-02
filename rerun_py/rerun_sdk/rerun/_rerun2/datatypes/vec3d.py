@@ -32,11 +32,13 @@ class Vec3D:
 
 
 if TYPE_CHECKING:
-    Vec3DLike = Union[Vec3D, npt.NDArray[Any], Sequence[float]]
+    Vec3DLike = Union[Vec3D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
 else:
     Vec3DLike = Any
 
-Vec3DArrayLike = Union[Vec3D, Sequence[Vec3DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
+Vec3DArrayLike = Union[
+    Vec3D, Sequence[Vec3DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+]
 
 
 # --- Arrow support ---

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from fractions import Fraction
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -15,7 +16,7 @@ def scale3d_inner_converter(data: Scale3DLike) -> Vec3D | float:
         return data
     elif isinstance(data, Scale3D):
         return data.inner
-    elif isinstance(data, (Sequence, np.ndarray)):
-        return Vec3D(np.array(data))
-    else:
+    elif isinstance(data, (float, int, Fraction)):
         return float(data)
+    else:
+        return Vec3D(np.array(data))

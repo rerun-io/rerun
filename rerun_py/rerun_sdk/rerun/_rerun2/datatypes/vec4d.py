@@ -32,11 +32,13 @@ class Vec4D:
 
 
 if TYPE_CHECKING:
-    Vec4DLike = Union[Vec4D, npt.NDArray[Any], Sequence[float]]
+    Vec4DLike = Union[Vec4D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
 else:
     Vec4DLike = Any
 
-Vec4DArrayLike = Union[Vec4D, Sequence[Vec4DLike], npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]]
+Vec4DArrayLike = Union[
+    Vec4D, Sequence[Vec4DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+]
 
 
 # --- Arrow support ---

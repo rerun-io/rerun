@@ -2,6 +2,8 @@
 
 mod annotation_context;
 mod annotation_context_ext;
+mod arrow3d;
+mod arrow3d_ext;
 mod class_id;
 mod class_id_ext;
 mod color;
@@ -26,6 +28,7 @@ mod transform3d;
 mod transform3d_ext;
 
 pub use self::annotation_context::AnnotationContext;
+pub use self::arrow3d::Arrow3D;
 pub use self::class_id::ClassId;
 pub use self::color::Color;
 pub use self::disconnected_space::DisconnectedSpace;

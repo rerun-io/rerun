@@ -13,10 +13,7 @@ use std::f32::consts::PI;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("transform").memory()?;
 
-    let arrow = rerun::components::Arrow3D {
-        origin: Vec3D::from([0.0, 0.0, 0.0]).into(),
-        vector: Vec3D::from([0.0, 1.0, 0.0]).into(),
-    };
+    let arrow = rerun::components::Arrow3D::new(Vec3D::ZERO, (0.0, 1.0, 0.0));
 
     MsgSender::new("base")
         .with_component(&[arrow])?

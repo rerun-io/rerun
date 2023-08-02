@@ -10,6 +10,7 @@ from .annotation_info import (
     AnnotationInfoLike,
     AnnotationInfoType,
 )
+from .arrow3d import Arrow3D, Arrow3DArray, Arrow3DArrayLike, Arrow3DLike, Arrow3DType
 from .class_description import (
     ClassDescription,
     ClassDescriptionArray,
@@ -136,6 +137,11 @@ __all__ = [
     "AnnotationInfoArrayLike",
     "AnnotationInfoLike",
     "AnnotationInfoType",
+    "Arrow3D",
+    "Arrow3DArray",
+    "Arrow3DArrayLike",
+    "Arrow3DLike",
+    "Arrow3DType",
     "ClassDescription",
     "ClassDescriptionArray",
     "ClassDescriptionArrayLike",

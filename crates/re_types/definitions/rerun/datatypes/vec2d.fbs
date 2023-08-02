@@ -10,8 +10,8 @@ namespace rerun.datatypes;
 /// A vector in 2D space.
 struct Vec2D (
   "attr.arrow.transparent",
-  "attr.python.aliases": "npt.NDArray[Any], Sequence[float]",
-  "attr.python.array_aliases": "npt.NDArray[Any], Sequence[Sequence[float]], Sequence[float]",
+  "attr.python.aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[float]",
+  "attr.python.array_aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]",
   "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
   "attr.rust.tuple_struct",
   order: 100
