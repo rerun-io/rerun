@@ -147,72 +147,63 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
     }
 }
 
-void test_logging_to_file(const char* test_rrd, rr::RecordingStream& stream) {
-    THEN("Saving the stream to a file" << test_rrd) {
-        // TODO(andreas): Should return error, need to test those.
-        stream.save(test_rrd);
-
-        THEN("a new file got immediately created") {
-            CHECK(fs::exists(test_rrd));
-        }
-
-        // The file already has some header from the start.
-        //
-        // ATTENTION:
-        // Particularly on MacOS file size checks like this are often unreliable as they tend to not
-        // read the latest state on the file. I have not observed any failure yet, but if this test
-        // ever gets flaky, this is the first place to look.
-        auto file_size_before = fs::file_size(test_rrd);
-
-        WHEN("logging a component and then flushing") {
-            stream.log_components(
-                "as-array",
-                std::array<rr::components::Point2D, 2>{
-                    rr::datatypes::Point2D{1.0, 2.0},
-                    rr::datatypes::Point2D{4.0, 5.0},
-                }
-            );
-            stream.flush_blocking();
-
-            THEN("the file got bigger") {
-                CHECK(fs::file_size(test_rrd) > file_size_before);
-            }
-        }
-        WHEN("logging an archetype and then flushing") {
-            stream.log_archetype(
-                "archetype",
-                rr::archetypes::Points2D({
-                    rr::datatypes::Point2D{1.0, 2.0},
-                    rr::datatypes::Point2D{4.0, 5.0},
-                })
-            );
-
-            stream.flush_blocking();
-
-            THEN("the file got bigger") {
-                CHECK(fs::file_size(test_rrd) > file_size_before);
-            }
-        }
-    }
-}
-
 SCENARIO("RecordingStream can log to file", TEST_TAG) {
-    const char* test_rrd = "build/test_output/test.rrd";
-    fs::create_directories("build/test_output");
-    std::remove(test_rrd);
+    const char* test_path = "build/test_output";
+    fs::create_directories(test_path);
+    static int counter = 0;
+    std::string test_rrd0 = std::string(test_path) + "test-file-0.rrd";
+    std::string test_rrd1 = std::string(test_path) + "test-file-1.rrd";
+    std::remove(test_rrd0.c_str());
+    std::remove(test_rrd1.c_str());
 
     GIVEN("a new RecordingStream") {
-        rr::RecordingStream stream("test-local");
-        test_logging_to_file(test_rrd, stream);
-    }
+        auto stream0 = std::make_unique<rr::RecordingStream>("test");
 
-    WHEN("setting a global RecordingStream and then discarding it") {
-        {
-            rr::RecordingStream stream("test-global");
-            stream.set_global();
-        }
-        GIVEN("the current recording stream") {
-            test_logging_to_file(test_rrd, rr::RecordingStream::current());
+        WHEN("calling save") {
+            stream0->save(test_rrd0.c_str());
+
+            THEN("a new file got immediately created") {
+                CHECK(fs::exists(test_rrd0));
+            }
+
+            WHEN("creating a second stream") {
+                auto stream1 = std::make_unique<rr::RecordingStream>("test2");
+
+                WHEN("saving that one to a different file") {
+                    stream1->save(test_rrd1.c_str());
+
+                    WHEN("logging a component to the second stream") {
+                        stream1->log_components(
+                            "as-array",
+                            std::array<rr::components::Point2D, 2>{
+                                rr::datatypes::Point2D{1.0, 2.0},
+                                rr::datatypes::Point2D{4.0, 5.0},
+                            }
+                        );
+
+                        THEN("after destruction, the second stream produced a bigger file") {
+                            stream0.reset();
+                            stream1.reset();
+                            CHECK(fs::file_size(test_rrd0) < fs::file_size(test_rrd1));
+                        }
+                    }
+                    WHEN("logging an archetype to the second stream") {
+                        stream1->log_archetype(
+                            "archetype",
+                            rr::archetypes::Points2D({
+                                rr::datatypes::Point2D{1.0, 2.0},
+                                rr::datatypes::Point2D{4.0, 5.0},
+                            })
+                        );
+
+                        THEN("after destruction, the second stream produced a bigger file") {
+                            stream0.reset();
+                            stream1.reset();
+                            CHECK(fs::file_size(test_rrd0) < fs::file_size(test_rrd1));
+                        }
+                    }
+                }
+            }
         }
     }
 }

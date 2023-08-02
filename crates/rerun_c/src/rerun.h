@@ -38,6 +38,7 @@ extern "C" {
 ///
 /// This means that e.g. flushing the pipeline (`rr_recording_stream_flush_blocking`) guarantees
 /// that all previous data sent by the calling thread has been recorded; no more, no less.
+/// (e.g. it does not mean that all file caches are flushed)
 ///
 /// ## Shutdown
 ///
