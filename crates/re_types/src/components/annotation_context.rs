@@ -19,7 +19,7 @@
 /// `AnnotationContext`. We use the *first* annotation context we find in the
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AnnotationContext(pub Vec<crate::datatypes::ClassDescriptionMapElem>);
 
 impl<T: Into<Vec<crate::datatypes::ClassDescriptionMapElem>>> From<T> for AnnotationContext {

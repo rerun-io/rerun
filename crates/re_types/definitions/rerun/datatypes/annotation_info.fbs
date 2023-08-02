@@ -15,7 +15,7 @@ namespace rerun.datatypes;
 /// The id refers either to a class or key-point id
 table AnnotationInfo (
   "attr.python.aliases": "Tuple[int, str], Tuple[int, str, components.ColorLike]",
-  "attr.rust.derive": "Default",
+  "attr.rust.derive": "Default, PartialEq",
   order: 500
 ) {
   /// `ClassId` or `KeypointId` to which this annotation info belongs.

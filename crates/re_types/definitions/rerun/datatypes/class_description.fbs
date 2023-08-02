@@ -23,7 +23,7 @@ namespace rerun.datatypes;
 /// colored as described by the class's `AnnotationInfo`.
 table ClassDescription (
   "attr.python.aliases": "datatypes.AnnotationInfoLike",
-  "attr.rust.derive": "Default",
+  "attr.rust.derive": "Default, PartialEq",
   order: 100
 ) {
   /// The `AnnotationInfo` for the class.

@@ -26,7 +26,7 @@
 /// defined, and both keypoints exist within the instance of the class, then the
 /// keypoints should be connected with an edge. The edge should be labeled and
 /// colored as described by the class's `AnnotationInfo`.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ClassDescription {
     /// The `AnnotationInfo` for the class.
     pub info: crate::datatypes::AnnotationInfo,

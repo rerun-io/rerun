@@ -15,7 +15,7 @@
 /// A helper type for mapping class IDs to class descriptions.
 ///
 /// This is internal to the `AnnotationContext` structure.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ClassDescriptionMapElem {
     pub class_id: crate::components::ClassId,
     pub class_description: crate::datatypes::ClassDescription,
