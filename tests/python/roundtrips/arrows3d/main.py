@@ -28,7 +28,7 @@ def main() -> None:
 
     arrows3d = rr2.Arrows3D(
         vectors,
-        origins,
+        origins=origins,
         radii=radii,
         colors=colors,
         labels=labels,
