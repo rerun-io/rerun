@@ -2,9 +2,15 @@
 # It can be safely removed at anytime to force the build script to run again.
 # Check out build.rs to see how it's computed.
 <<<<<<< HEAD
+<<<<<<< HEAD
 9bbce58524ac495c16c8498d63aae202dba785c7842001308bcf57889d399423
 ||||||| parent of 97207c639 (clean up point-related Python extensions)
 8ca63386bbde7e47fa05237502007ee3a8a45f75ccb82deac21ab1730cdb8dac
 =======
 97bf83db37e3c2536a2c54ad980d0356ec02a3753500a66fff35e49d40a202c1
 >>>>>>> 97207c639 (clean up point-related Python extensions)
+||||||| parent of 5631d914e (codegen)
+97bf83db37e3c2536a2c54ad980d0356ec02a3753500a66fff35e49d40a202c1
+=======
+3bd263b1f3ee91341ae9dbe4695b9e9fd69aac8a51ebf6a50b77cac78f032191
+>>>>>>> 5631d914e (codegen)

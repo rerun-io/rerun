@@ -3,7 +3,7 @@
 
 #include "point3d.hpp"
 
-#include "../datatypes/point3d.hpp"
+#include "../datatypes/vec3d.hpp"
 #include "../rerun.hpp"
 
 #include <arrow/api.h>
@@ -13,7 +13,7 @@ namespace rr {
         const char *Point3D::NAME = "rerun.point3d";
 
         const std::shared_ptr<arrow::DataType> &Point3D::to_arrow_datatype() {
-            static const auto datatype = rr::datatypes::Point3D::to_arrow_datatype();
+            static const auto datatype = rr::datatypes::Vec3D::to_arrow_datatype();
             return datatype;
         }
 
@@ -24,7 +24,7 @@ namespace rr {
             }
 
             return arrow::Result(
-                rr::datatypes::Point3D::new_arrow_array_builder(memory_pool).ValueOrDie()
+                rr::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie()
             );
         }
 
@@ -38,10 +38,10 @@ namespace rr {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(rr::datatypes::Point3D) == sizeof(Point3D));
-            ARROW_RETURN_NOT_OK(rr::datatypes::Point3D::fill_arrow_array_builder(
+            static_assert(sizeof(rr::datatypes::Vec3D) == sizeof(Point3D));
+            ARROW_RETURN_NOT_OK(rr::datatypes::Vec3D::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rr::datatypes::Point3D *>(elements),
+                reinterpret_cast<const rr::datatypes::Vec3D *>(elements),
                 num_elements
             ));
 

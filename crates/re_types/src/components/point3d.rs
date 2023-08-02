@@ -14,9 +14,9 @@
 
 /// A point in 3D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
-pub struct Point3D(pub crate::datatypes::Point3D);
+pub struct Point3D(pub crate::datatypes::Vec3D);
 
-impl<T: Into<crate::datatypes::Point3D>> From<T> for Point3D {
+impl<T: Into<crate::datatypes::Vec3D>> From<T> for Point3D {
     fn from(v: T) -> Self {
         Self(v.into())
     }
@@ -93,7 +93,7 @@ impl crate::Loggable for Point3D {
                     .map(|datum| {
                         datum
                             .map(|datum| {
-                                let crate::datatypes::Point3D(data0) = datum;
+                                let crate::datatypes::Vec3D(data0) = datum;
                                 data0
                             })
                             .unwrap_or_default()
@@ -205,7 +205,7 @@ impl crate::Loggable for Point3D {
                             })
                             .transpose()
                     })
-                    .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Point3D(v))))
+                    .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
                     .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()

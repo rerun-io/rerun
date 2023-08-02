@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../data_cell.hpp"
-#include "../datatypes/point3d.hpp"
+#include "../datatypes/vec3d.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -14,13 +14,13 @@ namespace rr {
     namespace components {
         /// A point in 3D space.
         struct Point3D {
-            rr::datatypes::Point3D xy;
+            rr::datatypes::Vec3D xy;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
-            Point3D(rr::datatypes::Point3D xy) : xy(std::move(xy)) {}
+            Point3D(rr::datatypes::Vec3D xy) : xy(std::move(xy)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
