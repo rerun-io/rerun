@@ -3,9 +3,13 @@
 mod angle;
 mod angle_ext;
 mod annotation_info;
+mod annotation_info_ext;
 mod class_description;
+mod class_description_ext;
 mod class_description_map_elem;
+mod class_description_map_elem_ext;
 mod keypoint_pair;
+mod keypoint_pair_ext;
 mod mat3x3;
 mod mat3x3_ext;
 mod mat4x4;
