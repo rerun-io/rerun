@@ -387,27 +387,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         self.ctx.re_ui.design_tokens.tab_bar_color
     }
 
-    //TODO(ab): currently unused, use it when egui_tiles passes `tiles` so we can retrieve state
-    fn tab_bg_color(
-        &self,
-        _visuals: &egui::Visuals,
-        _tiles: &egui_tiles::Tiles<SpaceViewId>,
-        _tile_id: egui_tiles::TileId,
-        _active: bool,
-    ) -> egui::Color32 {
-        egui::Color32::TRANSPARENT
-    }
-
-    fn tab_outline_stroke(
-        &self,
-        _visuals: &egui::Visuals,
-        _tiles: &egui_tiles::Tiles<SpaceViewId>,
-        _tile_id: egui_tiles::TileId,
-        _active: bool,
-    ) -> egui::Stroke {
-        egui::Stroke::NONE
-    }
-
     fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
         visuals.panel_fill.gamma_multiply(0.5)
     }
