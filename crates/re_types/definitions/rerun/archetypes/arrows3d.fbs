@@ -27,29 +27,32 @@ table Arrows3D (
 ) {
   // --- Required ---
 
-  /// All the individual arrows that make up the batch.
-  arrows: [rerun.components.Arrow3D] ("attr.rerun.component_required", order: 1000);
+  /// All the vectors for each arrow in the batch.
+  vectors: [rerun.components.Vector3D] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
+
+  /// All the origin points for each arrow in the batch.
+  origins: [rerun.components.Origin3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // --- Optional ---
 
   /// Optional radii for the arrows.
   ///
   /// The shaft is rendered as a line with `radius = 0.5 * radius`.
   /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
-  radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// Optional colors for the points.
-  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
-
-  // --- Optional ---
+  colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional text labels for the arrows.
-  labels: [rerun.components.Label] ("attr.rerun.component_optional", nullable, order: 3000);
+  labels: [rerun.components.Label] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Optional class Ids for the points.
   ///
   /// The class ID provides colors and labels if not specified explicitly.
-  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Unique identifiers for each individual point in the batch.
   instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);

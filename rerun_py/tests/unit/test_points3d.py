@@ -47,7 +47,7 @@ def test_points3d() -> None:
         points = points if points is not None else points_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        points = cast(Optional[rrd.Vec3DArrayLike], points)
+        points = cast(rrd.Vec3DArrayLike, points)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
         colors = cast(Optional[rrc.ColorArrayLike], colors)
         labels = cast(Optional[rrc.LabelArrayLike], labels)

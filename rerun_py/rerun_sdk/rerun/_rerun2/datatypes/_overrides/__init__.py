@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from .angle import angle_init
-from .arrow3d import arrow3d_native_to_pa_array
 from .matnxn import mat3x3_coeffs_converter, mat4x4_coeffs_converter
 from .quaternion import quaternion_init
 from .rotation3d import rotation3d_inner_converter

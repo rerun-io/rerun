@@ -1,6 +1,6 @@
 //! Log different transforms between three arrows.
 use rerun::{
-    components::{Arrow3D, Transform3D},
+    components::{Transform3D, Vector3D},
     datatypes::{Mat3x3, Vec3D},
     transform::{
         Angle, Rotation3D, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
@@ -13,10 +13,10 @@ use std::f32::consts::PI;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("transform").memory()?;
 
-    let arrow = Arrow3D::new(Vec3D::ZERO, (0.0, 1.0, 0.0));
+    let vector = Vector3D::from((0.0, 1.0, 0.0));
 
     MsgSender::new("base")
-        .with_component(&[arrow])?
+        .with_component(&[vector])?
         .send(&rec_stream)?;
 
     MsgSender::new("base/translated")
@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send(&rec_stream)?;
 
     MsgSender::new("base/translated")
-        .with_component(&[arrow])?
+        .with_component(&[vector])?
         .send(&rec_stream)?;
 
     MsgSender::new("base/rotated_scaled")
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send(&rec_stream)?;
 
     MsgSender::new("base/rotated_scaled")
-        .with_component(&[arrow])?
+        .with_component(&[vector])?
         .send(&rec_stream)?;
 
     rerun::native_viewer::show(storage.take())?;

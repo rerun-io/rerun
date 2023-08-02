@@ -1,19 +1,18 @@
 include "arrow/attributes.fbs";
 include "python/attributes.fbs";
+include "fbs/attributes.fbs";
 include "rust/attributes.fbs";
 
-include "rerun/datatypes.fbs";
-include "rerun/attributes.fbs";
+include "../datatypes/vec3d.fbs";
 
 namespace rerun.components;
 
 // ---
 
-/// An arrow in 3D space.
-struct Arrow3D (
-  "attr.rerun.legacy_fqname": "rerun.arrow3d",
+/// A vector in 3D space.
+struct Vector3D (
   "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
   order: 100
 ) {
-  arrow: rerun.datatypes.Arrow3D (order: 100);
+  vector: rerun.datatypes.Vec3D (order: 100);
 }

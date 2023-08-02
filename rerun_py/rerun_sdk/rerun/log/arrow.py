@@ -60,10 +60,10 @@ def log_arrow(
 
     """
     from rerun.experimental import Arrows3D, log
-    from rerun.experimental import dt as rrd
 
     arrows3d = Arrows3D(
-        arrows=rrd.Arrow3D(origin=origin, vector=vector),
+        vectors=vector,
+        origins=origin,
         radii=width_scale * 0.5 if width_scale is not None else None,
         colors=color,
         labels=label,
