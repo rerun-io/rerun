@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -39,7 +39,11 @@ class KeypointPair:
     keypoint1: components.KeypointId = field(converter=_keypointpair_keypoint1_converter)
 
 
-KeypointPairLike = KeypointPair
+if TYPE_CHECKING:
+    KeypointPairLike = Union[KeypointPair, Sequence[components.KeypointIdLike]]
+else:
+    KeypointPairLike = Any
+
 KeypointPairArrayLike = Union[
     KeypointPair,
     Sequence[KeypointPairLike],

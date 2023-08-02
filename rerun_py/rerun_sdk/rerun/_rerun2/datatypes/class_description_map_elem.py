@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -42,7 +42,10 @@ class ClassDescriptionMapElem:
     class_description: datatypes.ClassDescription = field()
 
 
-ClassDescriptionMapElemLike = Union[ClassDescriptionMapElem, datatypes.ClassDescriptionLike]
+if TYPE_CHECKING:
+    ClassDescriptionMapElemLike = Union[ClassDescriptionMapElem, datatypes.ClassDescriptionLike]
+else:
+    ClassDescriptionMapElemLike = Any
 
 ClassDescriptionMapElemArrayLike = Union[
     ClassDescriptionMapElem,

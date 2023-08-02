@@ -9,7 +9,7 @@ if TYPE_CHECKING:
         ClassDescriptionMapElem,
         ClassDescriptionMapElemLike,
     )
-    from .. import AnnotationContextLike
+    from .. import AnnotationContextArrayLike
 
 ################################################################################
 # Internal converters
@@ -46,12 +46,13 @@ def annotationcontext_class_map_converter(
 ################################################################################
 
 
-def annotationcontext_native_to_pa_array(data: AnnotationContextLike, data_type: pa.DataType) -> pa.Array:
+def annotationcontext_native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
     from ...datatypes import ClassDescriptionMapElemArray
     from .. import AnnotationContext
 
+    # TODO(jleibs): Sort out typing on this.
     if not isinstance(data, AnnotationContext):
-        data = AnnotationContext(class_map=data)
+        data = AnnotationContext(class_map=data)  # type: ignore[arg-type]
 
     internal_array = ClassDescriptionMapElemArray.from_similar(data.class_map).storage
 

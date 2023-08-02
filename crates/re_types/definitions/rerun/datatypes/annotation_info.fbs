@@ -13,10 +13,8 @@ namespace rerun.datatypes;
 ///
 /// Color and label will be used to annotate entities/keypoints which reference the id.
 /// The id refers either to a class or key-point id
-// TODO(jleibs): Figure out how to refer to ColorLike in this context
-//"attr.python.aliases": "Tuple[int, str], Tuple[int, str, components.ColorLike]]]",
 table AnnotationInfo (
-  "attr.python.aliases": "Tuple[int, str], Tuple[int, str, Union[int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]]",
+  "attr.python.aliases": "Tuple[int, str], Tuple[int, str, components.ColorLike]",
   order: 500
 ) {
   /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Sequence, Tuple, Union
 
 import numpy.typing as npt
 import pyarrow as pa
@@ -28,7 +28,10 @@ class Point2D:
         return point2d_as_array(self, dtype=dtype)
 
 
-Point2DLike = Union[Point2D, Sequence[float]]
+if TYPE_CHECKING:
+    Point2DLike = Union[Point2D, Sequence[float]]
+else:
+    Point2DLike = Any
 
 Point2DArrayLike = Union[
     Point2D,

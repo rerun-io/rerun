@@ -10,18 +10,13 @@ from rerun.experimental import dt as rr_dt
 ANNOTATION_INFO_INPUTS: list[rr_dt.AnnotationInfoLike] = [
     rr_dt.AnnotationInfo(1, "label", rr_cmp.Color([1, 2, 3])),
     rr_dt.AnnotationInfo(1, color=rr_cmp.Color([1, 2, 3])),
-    (1,),
     (1, "label"),
     (1, "label", [1, 2, 3]),
 ]
 
-KEYPOINT_MAP_INPUTS: list[Sequence[rr_dt.AnnotationInfo] | None] = [
+KEYPOINT_MAP_INPUTS: list[Sequence[rr_dt.AnnotationInfoLike] | None] = [
     None,
     [],
-    [
-        (1,),
-        (2,),
-    ],
     [
         (1, "label1"),
         (2, "label2"),
@@ -52,7 +47,6 @@ KEYPOINT_CONNECTIONS_INPUTS: list[Sequence[rr_dt.KeypointPairLike] | None] = [
 
 
 def assert_correct_class_description(desc: rr_dt.ClassDescription) -> None:
-    assert desc.info
     assert desc.info.id == 1
     if desc.info.label:
         assert desc.info.label == rr_cmp.Label("label")
@@ -114,7 +108,6 @@ ANNOTATION_CONTEXT_INPUTS = [
 
 
 def assert_correct_annotation_context(ctx: rr_cmp.AnnotationContext) -> None:
-    assert ctx
     assert len(ctx.class_map) == 2
     expected_classes = [
         rr_dt.ClassDescriptionMapElem(
@@ -147,7 +140,7 @@ def assert_correct_annotation_context(ctx: rr_cmp.AnnotationContext) -> None:
 
 
 @pytest.mark.parametrize("ctx", ANNOTATION_CONTEXT_INPUTS)
-def test_annotation_context_component(ctx: rr_cmp.AnnotationContextLike) -> None:
+def test_annotation_context_component(ctx: Sequence[rr_dt.ClassDescriptionMapElem]) -> None:
     assert_correct_annotation_context(rr_cmp.AnnotationContext(ctx))
 
 

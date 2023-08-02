@@ -10,6 +10,7 @@ namespace rerun.datatypes;
 
 /// A connection between two `Keypoints`.
 table KeypointPair (
+  "attr.python.aliases": "Sequence[components.KeypointIdLike]",
   order: 100
 ) {
   keypoint0: rerun.components.KeypointId (order: 100);

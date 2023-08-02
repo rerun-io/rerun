@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -72,7 +72,10 @@ class ClassDescription:
     """
 
 
-ClassDescriptionLike = Union[ClassDescription, datatypes.AnnotationInfoLike]
+if TYPE_CHECKING:
+    ClassDescriptionLike = Union[ClassDescription, datatypes.AnnotationInfoLike]
+else:
+    ClassDescriptionLike = Any
 
 ClassDescriptionArrayLike = Union[
     ClassDescription,

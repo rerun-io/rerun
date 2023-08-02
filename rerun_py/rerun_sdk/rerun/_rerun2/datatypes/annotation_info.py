@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Sequence, Tuple, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
@@ -68,11 +66,10 @@ class AnnotationInfo:
     """
 
 
-AnnotationInfoLike = Union[
-    AnnotationInfo,
-    Tuple[int, str],
-    Tuple[int, str, Union[int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]],
-]
+if TYPE_CHECKING:
+    AnnotationInfoLike = Union[AnnotationInfo, Tuple[int, str], Tuple[int, str, components.ColorLike]]
+else:
+    AnnotationInfoLike = Any
 
 AnnotationInfoArrayLike = Union[
     AnnotationInfo,
