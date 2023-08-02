@@ -45,7 +45,7 @@ impl App {
                 // On the web the browser controls the zoom
                 let zoom_factor = self.app_options().zoom_factor;
                 ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
-                    .on_hover_text("The zoom factor applied on top of the OS scaling factor.");
+                    .on_hover_text("The zoom factor applied on top of the OS scaling factor");
                 UICommand::ZoomIn.menu_button_ui(ui, &self.command_sender);
                 UICommand::ZoomOut.menu_button_ui(ui, &self.command_sender);
                 ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
@@ -180,7 +180,7 @@ impl App {
                 &mut self.state.app_options.show_metrics,
                 "Show performance metrics",
             )
-            .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar.")
+            .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar")
             .clicked()
         {
             ui.close_menu();
@@ -290,11 +290,11 @@ impl App {
                 &mut debug.show_interactive_widgets,
                 "Show interactive widgets",
             )
-            .on_hover_text("Show an overlay on all interactive widgets.")
+            .on_hover_text("Show an overlay on all interactive widgets")
             .changed();
         any_clicked |= re_ui
             .checkbox(ui, &mut debug.show_blocking_widget, "Show blocking widgets")
-            .on_hover_text("Show what widget blocks the interaction of another widget.")
+            .on_hover_text("Show what widget blocks the interaction of another widget")
             .changed();
 
         if any_clicked {

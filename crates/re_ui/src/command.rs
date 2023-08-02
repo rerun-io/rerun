@@ -87,8 +87,8 @@ impl UICommand {
             UICommand::Quit => ("Quit", "Close the Rerun Viewer"),
 
             UICommand::ResetViewer => (
-                "Reset viewer",
-                "Reset the viewer to how it looked the first time you ran it",
+                "Reset Viewer",
+                "Reset the Viewer to how it looked the first time you ran it",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -98,7 +98,7 @@ impl UICommand {
             ),
 
             UICommand::ToggleMemoryPanel => (
-                "Toggle memory panel",
+                "Toggle Memory Panel",
                 "Investigate what is using up RAM in Rerun Viewer",
             ),
             UICommand::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
@@ -123,7 +123,7 @@ impl UICommand {
             UICommand::SelectionPrevious => ("Previous selection", "Go to previous selection"),
             UICommand::SelectionNext => ("Next selection", "Go to next selection"),
             UICommand::ToggleCommandPalette => {
-                ("Command palette…", "Toggle the command palette window")
+                ("Command Palette…", "Toggle the command palette window")
             }
 
             UICommand::PlaybackTogglePlayPause => {

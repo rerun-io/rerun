@@ -10,13 +10,13 @@ use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
 #[derive(Debug, thiserror::Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum SpaceViewClassRegistryError {
-    #[error("Space view with class name {0:?} was already registered.")]
+    #[error("Space View with class name {0:?} was already registered.")]
     DuplicateClassName(SpaceViewClassName),
 
-    #[error("Context system {0:?} was already registered.")]
+    #[error("Context System {0:?} was already registered.")]
     DuplicateContextSystem(&'static str),
 
-    #[error("Part system {0:?} was already registered.")]
+    #[error("Part System {0:?} was already registered.")]
     DuplicatePartSystem(&'static str),
 }
 

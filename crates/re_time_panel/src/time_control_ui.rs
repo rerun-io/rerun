@@ -58,7 +58,7 @@ impl TimeControlUi {
                             .speed(1)
                             .clamp_range(0.0..=f32::INFINITY),
                     )
-                    .on_hover_text("Frames Per Second");
+                    .on_hover_text("Frames per second");
                 });
                 time_control.set_fps(fps);
             }
@@ -220,7 +220,7 @@ impl TimeControlUi {
                     .speed(drag_speed)
                     .suffix("x"),
             )
-            .on_hover_text("Playback speed.");
+            .on_hover_text("Playback speed");
         });
 
         time_control.set_speed(speed);

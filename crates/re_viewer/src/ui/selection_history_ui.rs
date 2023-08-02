@@ -18,7 +18,7 @@ impl SelectionHistoryUi {
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         ui.horizontal_centered(|ui| {
-            ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s).");
+            ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s)");
 
             // TODO(emilk): an egui helper for right-to-left
             ui.allocate_ui_with_layout(

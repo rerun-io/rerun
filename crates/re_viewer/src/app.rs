@@ -71,7 +71,7 @@ const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 4.0;
 
-/// The Rerun viewer as an [`eframe`] application.
+/// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     build_info: re_build_info::BuildInfo,
     startup_options: StartupOptions,

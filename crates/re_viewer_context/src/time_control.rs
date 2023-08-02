@@ -25,7 +25,7 @@ struct TimeState {
     /// The current time (play marker).
     time: TimeReal,
 
-    /// Frames Per Second, when playing sequences (they are often video recordings).
+    /// Frames per second, when playing sequences (they are often video recordings).
     fps: f32,
 
     /// Selected time range, if any.
