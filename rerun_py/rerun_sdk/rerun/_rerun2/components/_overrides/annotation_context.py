@@ -51,6 +51,9 @@ def annotationcontext_native_to_pa_array(data: AnnotationContextArrayLike, data_
     from .. import AnnotationContext
 
     # TODO(jleibs): Sort out typing on this.
+    # We really only want to support AnnotationContext or Sequence[ClassDescriptionMapElemLike]
+    # but AnnotationContextArrayLike also allows Sequence[AnnotationContextLike] which we
+    # can't really handle. I suspect we need a mono-component attribute to handle this properly.
     if not isinstance(data, AnnotationContext):
         data = AnnotationContext(class_map=data)  # type: ignore[arg-type]
 

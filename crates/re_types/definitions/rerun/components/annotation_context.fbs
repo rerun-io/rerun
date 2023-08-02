@@ -16,11 +16,8 @@ namespace rerun.components;
 /// `AnnotationContext`. We use the *first* annotation context we find in the
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
-// TODO(jleibs): This type-alias is works for a bad reason. This should be an alias
-// of Sequence[ClassDescriptionMapElemLike], but it needs to go into the `from_similar`
-// constructor. TLDR: it seems we're not doing things quite right with typing on mono-components
 table AnnotationContext (
-  "attr.python.aliases": "datatypes.ClassDescriptionMapElemLike",
+  "attr.python.array_aliases": "Sequence[datatypes.ClassDescriptionMapElemLike]",
   "attr.rerun.legacy_fqname": "rerun.annotation_context",
   "attr.rust.derive": "Default",
   order: 100

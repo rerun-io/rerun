@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -38,14 +38,9 @@ class AnnotationContext:
     class_map: list[datatypes.ClassDescriptionMapElem] = field(converter=annotationcontext_class_map_converter)
 
 
-if TYPE_CHECKING:
-    AnnotationContextLike = Union[AnnotationContext, datatypes.ClassDescriptionMapElemLike]
-else:
-    AnnotationContextLike = Any
-
+AnnotationContextLike = AnnotationContext
 AnnotationContextArrayLike = Union[
-    AnnotationContext,
-    Sequence[AnnotationContextLike],
+    AnnotationContext, Sequence[AnnotationContextLike], Sequence[datatypes.ClassDescriptionMapElemLike]
 ]
 
 
