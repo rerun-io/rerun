@@ -3,7 +3,7 @@
 // TODO(andreas): These should be namespaced `rerun/recording_stream.hpp`
 #include <archetypes/points2d.hpp>
 #include <components/point2d.hpp>
-#include <datatypes/point2d.hpp>
+#include <datatypes/vec2d.hpp>
 #include <recording_stream.hpp>
 
 #include <array>
@@ -84,8 +84,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
 
                 THEN("components as c-array can be logged") {
                     rr::components::Point2D c_style_array[2] = {
-                        rr::datatypes::Point2D{1.0, 2.0},
-                        rr::datatypes::Point2D{4.0, 5.0},
+                        rr::datatypes::Vec2D{1.0, 2.0},
+                        rr::datatypes::Vec2D{4.0, 5.0},
                     };
 
                     stream.log_components("as-carray", c_style_array);
@@ -94,8 +94,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log_components(
                         "as-array",
                         std::array<rr::components::Point2D, 2>{
-                            rr::datatypes::Point2D{1.0, 2.0},
-                            rr::datatypes::Point2D{4.0, 5.0},
+                            rr::datatypes::Vec2D{1.0, 2.0},
+                            rr::datatypes::Vec2D{4.0, 5.0},
                         }
                     );
                 }
@@ -103,8 +103,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log_components(
                         "as-vector",
                         std::vector<rr::components::Point2D>{
-                            rr::datatypes::Point2D{1.0, 2.0},
-                            rr::datatypes::Point2D{4.0, 5.0},
+                            rr::datatypes::Vec2D{1.0, 2.0},
+                            rr::datatypes::Vec2D{4.0, 5.0},
                         }
                     );
                 }
@@ -117,9 +117,9 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log_components(
                         "as-mix",
                         std::vector{
-                            rr::components::Point2D(rr::datatypes::Point2D{0.0, 0.0}),
-                            rr::components::Point2D(rr::datatypes::Point2D{1.0, 3.0}),
-                            rr::components::Point2D(rr::datatypes::Point2D{5.0, 5.0}),
+                            rr::components::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
+                            rr::components::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
+                            rr::components::Point2D(rr::datatypes::Vec2D{5.0, 5.0}),
                         },
                         std::array{
                             rr::components::Color(0xFF0000FF),
@@ -134,8 +134,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log_archetype(
                         "archetype",
                         rr::archetypes::Points2D({
-                            rr::datatypes::Point2D{1.0, 2.0},
-                            rr::datatypes::Point2D{4.0, 5.0},
+                            rr::datatypes::Vec2D{1.0, 2.0},
+                            rr::datatypes::Vec2D{4.0, 5.0},
                         })
                     );
                 }
@@ -176,8 +176,8 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                         stream1->log_components(
                             "as-array",
                             std::array<rr::components::Point2D, 2>{
-                                rr::datatypes::Point2D{1.0, 2.0},
-                                rr::datatypes::Point2D{4.0, 5.0},
+                                rr::datatypes::Vec2D{1.0, 2.0},
+                                rr::datatypes::Vec2D{4.0, 5.0},
                             }
                         );
 
@@ -191,8 +191,8 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                         stream1->log_archetype(
                             "archetype",
                             rr::archetypes::Points2D({
-                                rr::datatypes::Point2D{1.0, 2.0},
-                                rr::datatypes::Point2D{4.0, 5.0},
+                                rr::datatypes::Vec2D{1.0, 2.0},
+                                rr::datatypes::Vec2D{4.0, 5.0},
                             })
                         );
 
@@ -217,8 +217,8 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
             stream.log_components(
                 "as-array",
                 std::array<rr::components::Point2D, 2>{
-                    rr::datatypes::Point2D{1.0, 2.0},
-                    rr::datatypes::Point2D{4.0, 5.0},
+                    rr::datatypes::Vec2D{1.0, 2.0},
+                    rr::datatypes::Vec2D{4.0, 5.0},
                 }
             );
             stream.flush_blocking();
@@ -231,8 +231,8 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
             stream.log_archetype(
                 "archetype",
                 rr::archetypes::Points2D({
-                    rr::datatypes::Point2D{1.0, 2.0},
-                    rr::datatypes::Point2D{4.0, 5.0},
+                    rr::datatypes::Vec2D{1.0, 2.0},
+                    rr::datatypes::Vec2D{4.0, 5.0},
                 })
             );
 
