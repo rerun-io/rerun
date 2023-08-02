@@ -12,11 +12,9 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use re_sdk::{
-    external::re_log_types::{self, StoreInfo, StoreSource},
+    external::re_log_types::{self},
     log::{DataCell, DataRow},
-    sink::TcpSink,
-    time::Time,
-    ApplicationId, ComponentName, EntityPath, RecordingStream, StoreId, StoreKind,
+    ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind,
 };
 
 // ----------------------------------------------------------------------------
@@ -24,8 +22,8 @@ use re_sdk::{
 
 type CRecStreamId = u32;
 
-#[repr(u32)]
-#[derive(Debug)]
+#[repr(i32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CStoreKind {
     /// A recording of user-data.
     Recording = 1,
@@ -34,14 +32,23 @@ pub enum CStoreKind {
     Blueprint = 2,
 }
 
-/// Simple C version of [`StoreInfo`]
+impl From<CStoreKind> for StoreKind {
+    fn from(kind: CStoreKind) -> Self {
+        match kind {
+            CStoreKind::Recording => StoreKind::Recording,
+            CStoreKind::Blueprint => StoreKind::Blueprint,
+        }
+    }
+}
+
+/// Simple C version of [`CStoreInfo`]
 #[repr(C)]
 #[derive(Debug)]
 pub struct CStoreInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: *const c_char,
 
-    pub store_kind: u32, // CStoreKind
+    pub store_kind: CStoreKind,
 }
 
 #[repr(C)]
@@ -66,6 +73,9 @@ pub struct CDataRow {
 // ----------------------------------------------------------------------------
 // Global data:
 
+const RERUN_REC_STREAM_CURRENT_RECORDING: CRecStreamId = 0xFFFFFFFF;
+const RERUN_REC_STREAM_CURRENT_BLUEPRINT: CRecStreamId = 0xFFFFFFFE;
+
 #[derive(Default)]
 pub struct RecStreams {
     next_id: CRecStreamId,
@@ -78,6 +88,21 @@ impl RecStreams {
         self.next_id += 1;
         self.streams.insert(id, stream);
         id
+    }
+
+    fn get(&self, id: CRecStreamId) -> Option<RecordingStream> {
+        match id {
+            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None),
+            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None),
+            _ => self.streams.get(&id).cloned(),
+        }
+    }
+
+    fn remove(&mut self, id: CRecStreamId) -> Option<RecordingStream> {
+        match id {
+            RERUN_REC_STREAM_CURRENT_BLUEPRINT | RERUN_REC_STREAM_CURRENT_RECORDING => None,
+            _ => self.streams.remove(&id),
+        }
     }
 }
 
@@ -100,10 +125,7 @@ pub extern "C" fn rr_version_string() -> *const c_char {
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_recording_stream_new(
-    cstore_info: *const CStoreInfo,
-    tcp_addr: *const c_char,
-) -> CRecStreamId {
+pub unsafe extern "C" fn rr_recording_stream_new(cstore_info: *const CStoreInfo) -> CRecStreamId {
     initialize_logging();
 
     let cstore_info = unsafe { &*cstore_info };
@@ -114,36 +136,19 @@ pub unsafe extern "C" fn rr_recording_stream_new(
     } = *cstore_info;
     let application_id = unsafe { CStr::from_ptr(application_id) };
 
-    let application_id =
-        ApplicationId::from(application_id.to_str().expect("invalid application_id"));
+    let mut rec_stream_builder =
+        RecordingStreamBuilder::new(application_id.to_str().expect("invalid application_id"))
+            //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
+            //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
+            .store_source(re_log_types::StoreSource::CSdk);
 
-    let store_kind = match store_kind {
-        1 => StoreKind::Recording,
-        2 => StoreKind::Blueprint,
-        _ => panic!("invalid store_kind: expected 1 or 2, got {store_kind}"),
-    };
+    if store_kind == CStoreKind::Blueprint {
+        rec_stream_builder = rec_stream_builder.blueprint();
+    }
 
-    let store_info = StoreInfo {
-        application_id,
-        store_id: StoreId::random(store_kind),
-        is_official_example: false,
-        started: Time::now(),
-        store_source: StoreSource::CSdk,
-        store_kind,
-    };
-
-    let batcher_config = Default::default();
-
-    assert!(!tcp_addr.is_null());
-    let tcp_addr = unsafe { CStr::from_ptr(tcp_addr) };
-    let tcp_addr = tcp_addr
-        .to_str()
-        .expect("invalid tcp_addr string")
-        .parse()
-        .expect("invalid tcp_addr");
-    let sink = Box::new(TcpSink::new(tcp_addr, re_sdk::default_flush_timeout()));
-
-    let rec_stream = RecordingStream::new(store_info, batcher_config, sink).unwrap();
+    let rec_stream = rec_stream_builder
+        .buffered()
+        .expect("Failed to create recording stream");
 
     RECORDING_STREAMS.lock().insert(rec_stream)
 }
@@ -151,17 +156,76 @@ pub unsafe extern "C" fn rr_recording_stream_new(
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_free(id: CRecStreamId) {
-    let mut lock = RECORDING_STREAMS.lock();
-    if let Some(sink) = lock.streams.remove(&id) {
-        sink.disconnect();
+    if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
+        stream.disconnect();
     }
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_log(stream: CRecStreamId, data_row: *const CDataRow) {
-    let lock = RECORDING_STREAMS.lock();
-    let Some(stream) = lock.streams.get(&stream) else {
+pub extern "C" fn rr_recording_stream_set_global(id: CRecStreamId, store_kind: CStoreKind) {
+    let stream = RECORDING_STREAMS.lock().get(id);
+    RecordingStream::set_global(store_kind.into(), stream);
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_set_thread_local(id: CRecStreamId, store_kind: CStoreKind) {
+    let stream = RECORDING_STREAMS.lock().get(id);
+    RecordingStream::set_thread_local(store_kind.into(), stream);
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecStreamId) {
+    if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
+        stream.flush_blocking();
+    }
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rr_recording_stream_connect(
+    id: CRecStreamId,
+    tcp_addr: *const c_char,
+    flush_timeout_sec: f32,
+) {
+    let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
+        return;
+    };
+
+    let tcp_addr = unsafe { CStr::from_ptr(tcp_addr) };
+    let tcp_addr = tcp_addr.to_str().expect("invalid tcp_addr");
+    let tcp_addr = tcp_addr.parse().expect("failed to parse tcp_addr");
+
+    let flush_timeout = if flush_timeout_sec >= 0.0 {
+        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
+    } else {
+        None
+    };
+
+    stream.connect(tcp_addr, flush_timeout);
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rr_recording_stream_save(id: CRecStreamId, path: *const c_char) {
+    let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
+        return;
+    };
+
+    let path = unsafe { CStr::from_ptr(path) };
+    let path = path.to_str().expect("invalid path");
+
+    stream
+        .save(path)
+        .expect("Failed to save recording stream to file");
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rr_log(id: CRecStreamId, data_row: *const CDataRow, inject_time: bool) {
+    let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
         return;
     };
 
@@ -211,7 +275,6 @@ pub unsafe extern "C" fn rr_log(stream: CRecStreamId, data_row: *const CDataRow)
         cells: re_log_types::DataCellRow(cells),
     };
 
-    let inject_time = true;
     stream.record_row(data_row, inject_time);
 }
 
@@ -273,5 +336,3 @@ fn parse_arrow_ipc_encapsulated_message(
 
     Ok(arrays.into_iter().next().unwrap())
 }
-
-// ----------------------------------------------------------------------------

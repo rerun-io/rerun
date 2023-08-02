@@ -324,13 +324,15 @@ impl QuotedObject {
                 // Builder methods for all optional components.
                 for obj_field in obj.fields.iter().filter(|field| field.is_nullable) {
                     let field_ident = format_ident!("{}", obj_field.name);
+                    // C++ compilers give warnings for re-using the same name as the member variable.
+                    let parameter_ident = format_ident!("_{}", obj_field.name);
                     let method_ident = format_ident!("with_{}", obj_field.name);
                     let non_nullable = ObjectField {
                         is_nullable: false,
                         ..obj_field.clone()
                     };
                     let parameter_declaration =
-                        quote_variable(&mut hpp_includes, &non_nullable, &field_ident);
+                        quote_variable(&mut hpp_includes, &non_nullable, &parameter_ident);
                     methods.push(Method {
                         docs: obj_field.docs.clone().into(),
                         declaration: MethodDeclaration {
@@ -341,7 +343,7 @@ impl QuotedObject {
                             },
                         },
                         definition_body: quote! {
-                            this->#field_ident = std::move(#field_ident);
+                            #field_ident = std::move(#parameter_ident);
                             return *this;
                         },
                         inline: true,

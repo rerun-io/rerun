@@ -1,15 +1,20 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
+
+add_subdirectory(tests)
 
 # NOTE: CMake docs strongly discourages using GLOB, and instead suggests
 # manually listing all the files, like it's 1972.
 # However, that won't work for use since we auto-generate the source tree.
 # See https://cmake.org/cmake/help/latest/command/file.html#glob
 file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
-    "*.hpp"
-    "*.cpp"
+    "src/*.hpp"
+    "src/*.cpp"
 )
 
 add_library(rerun_sdk ${rerun_sdk_SRC})
+
+# TODO(andreas): Fix all warnings and enable this.
+# set_default_warning_settings(rerun_sdk)
 
 # ------------------------------------------------------------------------------
 
@@ -18,7 +23,8 @@ include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../crates/rerun_c/src)
 
 # Make sure the compiler can find include files for rerun
 # when other libraries or executables link to rerun:
-target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# TODO(andreas): These should be prefixed `rerun/`.
+target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # ------------------------------------------------------------------------------
 # Loguru logging library (https://github.com/emilk/loguru):
@@ -38,8 +44,8 @@ FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 target_link_libraries(rerun_sdk PRIVATE loguru::loguru)
 
 # ------------------------------------------------------------------------------
-execute_process(COMMAND cargo build -p re_types) # Generates most of the C++ source files
-execute_process(COMMAND cargo build -p rerun_c) # We link against this, so must be up-to-date
+execute_process(COMMAND cargo build -p re_types COMMAND_ERROR_IS_FATAL ANY) # Generates most of the C++ source files
+execute_process(COMMAND cargo build -p rerun_c COMMAND_ERROR_IS_FATAL ANY) # We link against this, so must be up-to-date
 
 # ------------------------------------------------------------------------------
 if(APPLE)
