@@ -10,6 +10,7 @@ If you create a new archetype definition without end-to-end tests, this will fai
 from __future__ import annotations
 
 import argparse
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -19,12 +20,19 @@ from os.path import isfile, join
 
 ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 
+# TODO(andreas): Remove these
+cpp_opt_out = ["points2d", "disconnected_space", "transform3d", "arrows3d"]
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run our end-to-end cross-language roundtrip tests for all SDK")
     parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
     parser.add_argument("--full-dump", action="store_true", help="Dump both rrd files as tables")
-    parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="Run cargo invocations with --release and CMake with `-DCMAKE_BUILD_TYPE=Release` & `--config Release`",
+    )
     parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
 
@@ -38,11 +46,33 @@ def main() -> None:
             del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
 
         print("----------------------------------------------------------")
-        print("Building rerun-sdk…")
+        print("Building rerun-sdk for Python…")
         start_time = time.time()
-        subprocess.Popen(["just", "py-build"], env=build_env).wait()
+        returncode = subprocess.Popen(["just", "py-build"], env=build_env).wait()
+        assert returncode == 0, f"Python rerun-sdk build failed with exit code {returncode}"
         elapsed = time.time() - start_time
-        print(f"rerun-sdk built in {elapsed:.1f} seconds")
+        print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
+        print("")
+
+        print("----------------------------------------------------------")
+        print("Build rerun-sdk for C++…")
+        start_time = time.time()
+        os.makedirs("build", exist_ok=True)
+        if args.release:
+            configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."]
+        else:
+            configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Debug", ".."]
+        print(subprocess.list2cmdline(configure_args))
+        returncode = subprocess.Popen(
+            configure_args,
+            env=build_env,
+            cwd="./build",
+        ).wait()
+        assert returncode == 0, f"configuring cmake failed with exit code {returncode}"
+        cmake_build("rerun_sdk", args.release)
+
+        elapsed = time.time() - start_time
+        print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
 
     files = [f for f in listdir(ARCHETYPES_PATH) if isfile(join(ARCHETYPES_PATH, f))]
@@ -52,6 +82,10 @@ def main() -> None:
         python_output_path = run_roundtrip_python(arch)
         rust_output_path = run_roundtrip_rust(arch, args.release, args.target, args.target_dir)
         run_comparison(python_output_path, rust_output_path, args.full_dump)
+
+        if arch not in cpp_opt_out:
+            cpp_output_path = run_roundtrip_cpp(arch, args.release)
+            run_comparison(rust_output_path, cpp_output_path, args.full_dump)
 
 
 def roundtrip_env() -> dict[str, str]:
@@ -106,11 +140,48 @@ def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir:
     return output_path
 
 
-def run_comparison(python_output_path: str, rust_output_path: str, full_dump: bool):
+def run_roundtrip_cpp(arch: str, release: bool) -> str:
+    target_name = f"roundtrip_{arch}"
+    output_path = f"tests/cpp/roundtrips/{arch}/out.rrd"
+
+    cmake_build(target_name, release)
+
+    cmd = [f"./build/tests/cpp/roundtrips/{target_name}", output_path]
+    print(cmd)
+    roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
+    returncode = roundtrip_process.wait(timeout=12000)
+    assert returncode == 0, f"cpp roundtrip process exited with error code {returncode}"
+
+    return output_path
+
+
+def cmake_build(target: str, release: bool) -> None:
+    config = "Debug"
+    if release:
+        config = "Release"
+
+    build_process_args = [
+        "cmake",
+        "--build",
+        ".",
+        "--config",
+        config,
+        "--target",
+        target,
+        "--parallel",
+        str(multiprocessing.cpu_count()),
+    ]
+    print(subprocess.list2cmdline(build_process_args))
+    result = subprocess.run(build_process_args, cwd="./build")
+
+    assert result.returncode == 0, f"cmake build of {target} exited with error code {result.returncode}"
+
+
+def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
     cmd = ["rerun", "compare"]
     if full_dump:
         cmd += ["--full-dump"]
-    cmd += [python_output_path, rust_output_path]
+    cmd += [rrd0_path, rrd1_path]
 
     print(cmd)
     comparison_process = subprocess.Popen(cmd, env=roundtrip_env())
