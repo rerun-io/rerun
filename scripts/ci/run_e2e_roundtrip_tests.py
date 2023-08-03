@@ -21,7 +21,7 @@ from os.path import isfile, join
 ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 
 # TODO(andreas): Remove these
-cpp_opt_out = ["points2d", "disconnected_space", "transform3d"]
+cpp_opt_out = ["points2d", "transform3d"]
 
 
 def main() -> None:
