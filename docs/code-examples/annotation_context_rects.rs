@@ -1,4 +1,4 @@
-//! Log rectangles with different colors and labels.
+//! Log rectangles with different colors and labels using annotation context
 use rerun::{
     archetypes::AnnotationContext,
     components::{ClassId, Color, Label, Rect2D},

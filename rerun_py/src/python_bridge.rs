@@ -1426,11 +1426,5 @@ fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
 fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
     let components = re_log_types::parse_entity_path(entity_path)
         .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-    if components.is_empty() {
-        Err(PyTypeError::new_err(
-            "You cannot log to the root {entity_path:?}",
-        ))
-    } else {
-        Ok(EntityPath::from(components))
-    }
+    Ok(EntityPath::from(components))
 }
