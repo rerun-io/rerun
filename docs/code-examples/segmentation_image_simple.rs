@@ -1,6 +1,7 @@
 //! Create and log a segmentation image.
 use ndarray::{s, Array, ShapeBuilder};
-use rerun::components::{AnnotationContext, Color, Label, Tensor, TensorDataMeaning};
+use rerun::archetypes::AnnotationContext;
+use rerun::components::{Color, Label, Tensor, TensorDataMeaning};
 use rerun::datatypes::{AnnotationInfo, ClassDescription};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
@@ -36,9 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ]);
 
     // log the annotation and the image
-    MsgSender::new("/")
-        .with_component(&[annotation])?
-        .send(&rec_stream)?;
+    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
 
     MsgSender::new("image")
         .with_component(&[tensor])?

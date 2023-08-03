@@ -1,5 +1,6 @@
 //! Log some very simple points.
-use rerun::components::{AnnotationContext, ClassId, Color, KeypointId, Label, Point3D};
+use rerun::archetypes::AnnotationContext;
+use rerun::components::{ClassId, Color, KeypointId, Label, Point3D};
 use rerun::datatypes::{AnnotationInfo, ClassDescription, KeypointPair};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
@@ -10,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log an annotation context to assign a label and color to each class
     // Create a class description with labels and color for each keypoint ID as well as some
     // connections between keypoints.
-    let annotation: AnnotationContext = [
+    let annotation = AnnotationContext::new([
         ClassDescription {
             info: AnnotationInfo {
                 id: 0,
@@ -19,8 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             keypoint_connections: KeypointPair::vec_from([(0, 2), (1, 2), (2, 3)]),
             ..Default::default()
-        }
-        .into(),
+        },
         AnnotationInfo {
             id: 1,
             label: Some(Label("one".into())),
@@ -39,12 +39,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             color: Some(Color::from_rgb(255, 255, 0)),
         }
         .into(),
-    ]
-    .into();
+    ]);
 
-    MsgSender::new("/")
-        .with_component(&[annotation])?
-        .send(&rec_stream)?;
+    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
 
     // Log some points with different keypoint IDs
     let points = [

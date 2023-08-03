@@ -1,6 +1,7 @@
 //! Log rectangles with different colors and labels.
 use rerun::{
-    components::{AnnotationContext, ClassId, Color, Label, Rect2D},
+    archetypes::AnnotationContext,
+    components::{ClassId, Color, Label, Rect2D},
     datatypes::{AnnotationInfo, Vec4D},
     MsgSender, RecordingStreamBuilder,
 };
@@ -9,24 +10,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("annotation_context_rects").memory()?;
 
     // Log an annotation context to assign a label and color to each class
-    let annotation = AnnotationContext::from([
+    let annotation = AnnotationContext::new([
         AnnotationInfo {
             id: 1,
             label: Some(Label("red".into())),
             color: Some(Color::from_rgb(255, 0, 0)),
-        }
-        .into(),
+        },
         AnnotationInfo {
             id: 2,
             label: Some(Label("green".into())),
             color: Some(Color::from_rgb(0, 255, 0)),
-        }
-        .into(),
+        },
     ]);
 
-    MsgSender::new("/")
-        .with_component(&[annotation])?
-        .send(&rec_stream)?;
+    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
 
     // Log a batch of 2 rectangles with different class IDs
     MsgSender::new("detections")

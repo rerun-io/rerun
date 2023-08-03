@@ -22,9 +22,11 @@
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AnnotationContext(pub Vec<crate::datatypes::ClassDescriptionMapElem>);
 
-impl<T: Into<Vec<crate::datatypes::ClassDescriptionMapElem>>> From<T> for AnnotationContext {
+impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = I>> From<T>
+    for AnnotationContext
+{
     fn from(v: T) -> Self {
-        Self(v.into())
+        Self(v.into_iter().map(|v| v.into()).collect())
     }
 }
 

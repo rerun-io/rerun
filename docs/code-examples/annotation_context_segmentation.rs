@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.meaning = TensorDataMeaning::ClassId;
 
     // create an annotation context to describe the classes
-    let annotation = AnnotationContext::new([
+    let annotation = AnnotationContext::from([
         ClassDescription {
             info: AnnotationInfo {
                 id: 1,

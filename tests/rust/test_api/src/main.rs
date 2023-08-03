@@ -17,8 +17,8 @@ use std::{collections::HashSet, f32::consts::TAU};
 use itertools::Itertools;
 use rerun::{
     components::{
-        AnnotationContext, Box3D, Color, DrawOrder, Label, LineStrip2D, LineStrip3D, Point2D,
-        Point3D, Radius, Rect2D, Tensor, TensorDataMeaning, TextEntry, ViewCoordinates,
+        Box3D, Color, DrawOrder, Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D,
+        Tensor, TensorDataMeaning, TextEntry, ViewCoordinates,
     },
     coordinates::SignedAxis3,
     datatypes::{AnnotationInfo, TranslationRotationScale3D, Vec2D, Vec3D},
@@ -433,13 +433,12 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
     rec_stream.set_time_seconds("sim_time", 2f64);
 
-    MsgSender::new("seg_test")
-        .with_component(&[AnnotationContext::new([
-            (13, "label1"),
-            (42, "label2"),
-            (99, "label3"),
-        ])])?
-        .send(rec_stream)?;
+    use rerun::archetypes::AnnotationContext;
+    MsgSender::from_archetype(
+        "seg_test",
+        &AnnotationContext::new([(13, "label1"), (42, "label2"), (99, "label3")]),
+    )?
+    .send(rec_stream)?;
     log_info(
         rec_stream,
         "default colored rects, default colored points, all points except the \
@@ -449,20 +448,23 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     rec_stream.set_time_seconds("sim_time", 3f64);
 
     // Log an updated segmentation map with specific colors
-    MsgSender::new("seg_test")
-        .with_component(&[AnnotationContext::new([
+    MsgSender::from_archetype(
+        "seg_test",
+        &AnnotationContext::new([
             (13, "label1", Color::from_rgb(255, 0, 0)),
             (42, "label2", Color::from_rgb(0, 255, 0)),
             (99, "label3", Color::from_rgb(0, 0, 255)),
-        ])])?
-        .send(rec_stream)?;
+        ]),
+    )?
+    .send(rec_stream)?;
     log_info(rec_stream, "points/rects with user specified colors")?;
 
     rec_stream.set_time_seconds("sim_time", 4f64);
 
     // Log with a mixture of set and unset colors / labels
-    MsgSender::new("seg_test")
-        .with_component(&[AnnotationContext::new([
+    MsgSender::from_archetype(
+        "seg_test",
+        &AnnotationContext::new([
             AnnotationInfo {
                 id: 13,
                 label: None,
@@ -470,8 +472,9 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             },
             (42, "label2", Color::from_rgb(0, 255, 0)).into(),
             (99, "label3").into(),
-        ])])?
-        .send(rec_stream)?;
+        ]),
+    )?
+    .send(rec_stream)?;
     log_info(
         rec_stream,
         "label1 disappears and everything with label3 is now default colored again",

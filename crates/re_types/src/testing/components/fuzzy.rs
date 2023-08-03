@@ -1173,9 +1173,11 @@ impl crate::Component for AffixFuzzer6 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer7(pub Option<Vec<crate::testing::datatypes::AffixFuzzer1>>);
 
-impl<T: Into<Option<Vec<crate::testing::datatypes::AffixFuzzer1>>>> From<T> for AffixFuzzer7 {
-    fn from(v: T) -> Self {
-        Self(v.into())
+impl<I: Into<crate::testing::datatypes::AffixFuzzer1>, T: IntoIterator<Item = I>> From<Option<T>>
+    for AffixFuzzer7
+{
+    fn from(v: Option<T>) -> Self {
+        Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
     }
 }
 
@@ -2775,9 +2777,11 @@ impl crate::Component for AffixFuzzer15 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer16(pub Vec<crate::testing::datatypes::AffixFuzzer3>);
 
-impl<T: Into<Vec<crate::testing::datatypes::AffixFuzzer3>>> From<T> for AffixFuzzer16 {
+impl<I: Into<crate::testing::datatypes::AffixFuzzer3>, T: IntoIterator<Item = I>> From<T>
+    for AffixFuzzer16
+{
     fn from(v: T) -> Self {
-        Self(v.into())
+        Self(v.into_iter().map(|v| v.into()).collect())
     }
 }
 
@@ -2984,9 +2988,11 @@ impl crate::Component for AffixFuzzer16 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer17(pub Option<Vec<crate::testing::datatypes::AffixFuzzer3>>);
 
-impl<T: Into<Option<Vec<crate::testing::datatypes::AffixFuzzer3>>>> From<T> for AffixFuzzer17 {
-    fn from(v: T) -> Self {
-        Self(v.into())
+impl<I: Into<crate::testing::datatypes::AffixFuzzer3>, T: IntoIterator<Item = I>> From<Option<T>>
+    for AffixFuzzer17
+{
+    fn from(v: Option<T>) -> Self {
+        Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
     }
 }
 
@@ -3191,9 +3197,11 @@ impl crate::Component for AffixFuzzer17 {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer18(pub Option<Vec<crate::testing::datatypes::AffixFuzzer4>>);
 
-impl<T: Into<Option<Vec<crate::testing::datatypes::AffixFuzzer4>>>> From<T> for AffixFuzzer18 {
-    fn from(v: T) -> Self {
-        Self(v.into())
+impl<I: Into<crate::testing::datatypes::AffixFuzzer4>, T: IntoIterator<Item = I>> From<Option<T>>
+    for AffixFuzzer18
+{
+    fn from(v: Option<T>) -> Self {
+        Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
     }
 }
 

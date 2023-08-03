@@ -9,7 +9,7 @@ use re_types::{
 
 #[test]
 fn roundtrip() {
-    let expected = components::AnnotationContext::new([
+    let expected = components::AnnotationContext::from([
         (1, "hello").into(),
         ClassDescription {
             info: (2, "world", Color::from_rgb(3, 4, 5)).into(),
