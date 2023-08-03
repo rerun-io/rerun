@@ -7,10 +7,8 @@ int main(int argc, char** argv) {
 
     rec_stream.log_archetype(
         "points3d",
-        rr::archetypes::Points3D({
-                                     rr::datatypes::Vec3D{1.0, 2.0, 3.0},
-                                     rr::datatypes::Vec3D{4.0, 5.0, 6.0},
-                                 })
+        rr::archetypes::Points3D({rr::datatypes::Vec3D{1.0, 2.0, 3.0},
+                                  rr::datatypes::Vec3D{4.0, 5.0, 6.0}})
             .with_radii({0.42f, 0.43f})
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({std::string("hello"), std::string("friend")})
