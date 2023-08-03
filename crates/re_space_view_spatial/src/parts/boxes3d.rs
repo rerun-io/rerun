@@ -52,7 +52,7 @@ impl Boxes3DPart {
                        radius: Option<Radius>,
                        label: Option<Label>,
                        class_id: Option<ClassId>| {
-            let class_description = ent_context.annotations.class_description(class_id);
+            let class_description = ent_context.annotations.resolved_class_description(class_id);
             let annotation_info = class_description.annotation_info();
 
             let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));

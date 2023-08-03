@@ -50,7 +50,7 @@ impl Lines3DPart {
             // TODO(andreas): support class ids for lines
             let annotation_info = ent_context
                 .annotations
-                .class_description(None)
+                .resolved_class_description(None)
                 .annotation_info();
             let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
             let color =

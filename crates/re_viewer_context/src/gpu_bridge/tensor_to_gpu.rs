@@ -173,11 +173,11 @@ fn class_id_tensor_to_gpu(
     let colormap_height = (num_colors + colormap_width - 1) / colormap_width;
 
     let colormap_texture_handle =
-        get_or_create_texture(render_ctx, hash(annotations.row_id), || {
+        get_or_create_texture(render_ctx, hash(annotations.row_id()), || {
             let data: Vec<u8> = (0..(colormap_width * colormap_height))
                 .flat_map(|id| {
                     let color = annotations
-                        .class_description(Some(ClassId(id as u16)))
+                        .resolved_class_description(Some(ClassId(id as u16)))
                         .annotation_info()
                         .color(None, DefaultColor::TransparentBlack);
                     color.to_array() // premultiplied!

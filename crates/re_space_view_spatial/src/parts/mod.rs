@@ -19,6 +19,7 @@ pub use images::Image;
 pub use images::ImagesPart;
 use re_types::components::Color;
 use re_types::components::InstanceKey;
+use re_types::datatypes::KeypointPair;
 use re_types::Archetype;
 pub use spatial_view_part::SpatialViewPartData;
 pub use transform3d_arrows::add_axis_arrows;
@@ -166,7 +167,9 @@ where
     if !arch_view.has_component::<re_types::components::KeypointId>()
         && !arch_view.has_component::<re_types::components::ClassId>()
     {
-        let resolved_annotation = annotations.class_description(None).annotation_info();
+        let resolved_annotation = annotations
+            .resolved_class_description(None)
+            .annotation_info();
         return Ok((
             vec![resolved_annotation; arch_view.num_instances()],
             keypoints,
@@ -179,7 +182,7 @@ where
         arch_view.iter_optional_component::<re_types::components::ClassId>()?,
     )
     .map(|(primary, keypoint_id, class_id)| {
-        let class_description = annotations.class_description(class_id);
+        let class_description = annotations.resolved_class_description(class_id);
 
         if let (Some(keypoint_id), Some(class_id), primary) = (keypoint_id, class_id, primary) {
             keypoints
@@ -237,7 +240,11 @@ pub fn load_keypoint_connections(
         .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
     for ((class_id, _time), keypoints_in_class) in keypoints {
-        let Some(class_description) = ent_context.annotations.context.class_map.get(&class_id) else {
+        let resolved_class_description = ent_context
+            .annotations
+            .resolved_class_description(Some(class_id));
+
+        let Some(class_description) = resolved_class_description.class_description else {
             continue;
         };
 
@@ -246,7 +253,11 @@ pub fn load_keypoint_connections(
             |color| color.into(),
         );
 
-        for (a, b) in &class_description.keypoint_connections {
+        for KeypointPair {
+            keypoint0: a,
+            keypoint1: b,
+        } in &class_description.keypoint_connections
+        {
             let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
                 re_log::warn_once!(
                     "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",

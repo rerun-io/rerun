@@ -255,7 +255,7 @@ impl ImagesPart {
 
             let color = ent_context
                 .annotations
-                .class_description(None)
+                .resolved_class_description(None)
                 .annotation_info()
                 .color(
                     color.map(|c| c.to_array()).as_ref(),

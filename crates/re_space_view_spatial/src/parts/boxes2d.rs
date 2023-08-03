@@ -57,7 +57,7 @@ impl Boxes2DPart {
 
                 let annotation_info = ent_context
                     .annotations
-                    .class_description(class_id)
+                    .resolved_class_description(class_id)
                     .annotation_info();
                 let color =
                     annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
