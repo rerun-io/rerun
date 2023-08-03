@@ -252,7 +252,7 @@ impl QuotedObject {
             ObjectKind::Datatype | ObjectKind::Component => {
                 if obj.fields.len() == 1 {
                     // Single-field struct - it is a newtype wrapper.
-                    // Create a implicit constructor from its own field-type - do so by copy, and if meaningful by rvalue reference.
+                    // Create a implicit constructor and assignment from its own field-type.
                     let obj_field = &obj.fields[0];
                     if let Type::Array { .. } = &obj_field.typ {
                         // TODO(emilk): implicit constructor for arrays
@@ -270,6 +270,20 @@ impl QuotedObject {
                                 }),
                                 ..Method::default()
                             });
+                        methods.push(Method {
+                            declaration: MethodDeclaration {
+                                is_static: false,
+                                return_type: quote!(#type_ident&),
+                                name_and_parameters: quote! {
+                                    operator=(#parameter_declaration)
+                                },
+                            },
+                            definition_body: quote! {
+                                #field_ident = std::move(#field_ident);
+                                return *this;
+                            },
+                            ..Method::default()
+                        });
                     }
                 };
 
