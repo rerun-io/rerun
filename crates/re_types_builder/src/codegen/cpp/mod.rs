@@ -261,12 +261,13 @@ impl QuotedObject {
                         // If it was a temporary it gets moved into the value and then moved again into the field.
                         // If it was a lvalue it gets copied into the value and then moved into the field.
                         let field_ident = format_ident!("{}", obj_field.name);
+                        let param_ident = format_ident!("_{}", obj_field.name);
                         let parameter_declaration =
-                            quote_variable(&mut hpp_includes, obj_field, &field_ident);
+                            quote_variable(&mut hpp_includes, obj_field, &param_ident);
                         hpp_includes.system.insert("utility".to_owned()); // std::move
                         methods.push(Method {
                                 declaration: MethodDeclaration::constructor(quote! {
-                                    #type_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
+                                    #type_ident(#parameter_declaration) : #field_ident(std::move(#param_ident))
                                 }),
                                 ..Method::default()
                             });
@@ -279,7 +280,7 @@ impl QuotedObject {
                                 },
                             },
                             definition_body: quote! {
-                                #field_ident = std::move(#field_ident);
+                                #field_ident = std::move(#param_ident);
                                 return *this;
                             },
                             ..Method::default()
@@ -456,6 +457,9 @@ impl QuotedObject {
             let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
             quote! {
                 public:
+                    #type_ident() = default;
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
                     #(#methods_hpp)*
             }
         };
@@ -755,6 +759,8 @@ impl QuotedObject {
                     struct #pascal_case_ident {
                         #(#constants_hpp;)*
 
+                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
+
                         #copy_constructor
 
                         // Copy-assignment
@@ -793,10 +799,6 @@ impl QuotedObject {
                     private:
                         detail::#tag_typename _tag;
                         detail::#data_typename _data;
-
-                        // Empty state required by static constructors:
-                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
-                        public:
                     };
                 }
             }
