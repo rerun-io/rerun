@@ -277,8 +277,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
                     .filter_map(|cwi| cwi.map(|(_, cwi)| cwi))
                     .collect();
 
-                let mut arch_view = ArchetypeView::from_components(components);
-                arch_view.row_id = row_id;
+                let arch_view = ArchetypeView::from_components(row_id, components);
 
                 (time, arch_view)
             })

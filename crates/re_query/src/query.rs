@@ -208,7 +208,7 @@ pub fn query_archetype<A: Archetype>(
         .iter()
         .map(|component| {
             get_component_with_instances(store, query, ent_path, *component)
-                .map(|(_, component_result)| component_result)
+                .map(|(row_id, component_result)| (row_id, component_result))
         })
         .collect();
 
@@ -221,7 +221,10 @@ pub fn query_archetype<A: Archetype>(
         return crate::Result::Err(QueryError::PrimaryNotFound);
     }
 
-    let required_components = required_components.into_iter().flatten();
+    let (row_ids, required_components): (Vec<_>, Vec<_>) =
+        required_components.into_iter().flatten().unzip();
+
+    let row_id = row_ids.first().unwrap_or(&RowId::ZERO);
 
     let recommended_components = A::recommended_components();
     let optional_components = A::optional_components();
@@ -235,7 +238,8 @@ pub fn query_archetype<A: Archetype>(
         });
 
     Ok(ArchetypeView::from_components(
-        required_components.chain(other_components),
+        *row_id,
+        required_components.into_iter().chain(other_components),
     ))
 }
 
