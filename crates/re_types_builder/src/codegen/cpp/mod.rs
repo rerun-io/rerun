@@ -857,7 +857,7 @@ fn component_to_data_cell_method(
     cpp_includes: &mut Includes,
 ) -> Method {
     hpp_includes.local.insert("../data_cell.hpp".to_owned());
-    cpp_includes.local.insert("../rerun.hpp".to_owned()); // ipc_from_table
+    cpp_includes.local.insert("../arrow.hpp".to_owned()); // ipc_from_table
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
     let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");

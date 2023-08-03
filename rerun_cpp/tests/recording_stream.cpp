@@ -1,10 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
-// TODO(andreas): These should be namespaced `rerun/recording_stream.hpp`
-#include <archetypes/points2d.hpp>
-#include <components/point2d.hpp>
-#include <datatypes/vec2d.hpp>
-#include <recording_stream.hpp>
+#include <rerun/archetypes/points2d.hpp>
+#include <rerun/components/point2d.hpp>
+#include <rerun/datatypes/vec2d.hpp>
+#include <rerun/recording_stream.hpp>
 
 #include <array>
 #include <filesystem>
