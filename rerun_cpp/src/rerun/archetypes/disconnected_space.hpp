@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace archetypes {
         /// Specifies that the entity path at which this is logged is disconnected from its parent.
         ///
@@ -19,10 +19,10 @@ namespace rr {
         /// If a transform or pinhole is logged on the same path, this archetype's components
         /// will be ignored.
         struct DisconnectedSpace {
-            rr::components::DisconnectedSpace disconnected_space;
+            rerun::components::DisconnectedSpace disconnected_space;
 
           public:
-            DisconnectedSpace(rr::components::DisconnectedSpace disconnected_space)
+            DisconnectedSpace(rerun::components::DisconnectedSpace disconnected_space)
                 : disconnected_space(std::move(disconnected_space)) {}
 
             /// Returns the number of primary instances of this archetype.
@@ -31,7 +31,7 @@ namespace rr {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rr::DataCell>> to_data_cells() const;
+            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
-} // namespace rr
+} // namespace rerun

@@ -11,16 +11,16 @@
 #include <optional>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         struct AffixFuzzer4 {
-            std::optional<rr::datatypes::AffixFuzzer1> single_optional;
+            std::optional<rerun::datatypes::AffixFuzzer1> single_optional;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
-            AffixFuzzer4(std::optional<rr::datatypes::AffixFuzzer1> single_optional)
+            AffixFuzzer4(std::optional<rerun::datatypes::AffixFuzzer1> single_optional)
                 : single_optional(std::move(single_optional)) {}
 
             /// Returns the arrow data type this type corresponds to.
@@ -37,9 +37,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of AffixFuzzer4 components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const AffixFuzzer4* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         /// A 16-bit ID representing a type of semantic class.
         struct ClassId {
@@ -35,9 +35,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of ClassId components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const ClassId* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

@@ -10,17 +10,17 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         /// A point in 2D space.
         struct Point2D {
-            rr::datatypes::Vec2D xy;
+            rerun::datatypes::Vec2D xy;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
-            Point2D(rr::datatypes::Vec2D xy) : xy(std::move(xy)) {}
+            Point2D(rerun::datatypes::Vec2D xy) : xy(std::move(xy)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
@@ -35,9 +35,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of Point2D components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const Point2D* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

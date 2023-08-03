@@ -10,13 +10,13 @@
 #include <optional>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         struct AffixFuzzer5 {
-            std::optional<rr::datatypes::AffixFuzzer4> single_optional_union;
+            std::optional<rerun::datatypes::AffixFuzzer4> single_optional_union;
 
           public:
-            AffixFuzzer5(std::optional<rr::datatypes::AffixFuzzer4> single_optional_union)
+            AffixFuzzer5(std::optional<rerun::datatypes::AffixFuzzer4> single_optional_union)
                 : single_optional_union(std::move(single_optional_union)) {}
 
             /// Returns the arrow data type this type corresponds to.
@@ -33,4 +33,4 @@ namespace rr {
             );
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

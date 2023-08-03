@@ -8,14 +8,14 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace components {
         const char* AffixFuzzer17::NAME = "rerun.testing.components.AffixFuzzer17";
 
         const std::shared_ptr<arrow::DataType>& AffixFuzzer17::to_arrow_datatype() {
             static const auto datatype = arrow::list(arrow::field(
                 "item",
-                rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                rerun::datatypes::AffixFuzzer3::to_arrow_datatype(),
                 true,
                 nullptr
             ));
@@ -31,7 +31,7 @@ namespace rr {
 
             return arrow::Result(std::make_shared<arrow::ListBuilder>(
                 memory_pool,
-                rr::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).ValueOrDie()
+                rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).ValueOrDie()
             ));
         }
 
@@ -52,7 +52,7 @@ namespace rr {
             return arrow::Status::OK();
         }
 
-        arrow::Result<rr::DataCell> AffixFuzzer17::to_data_cell(
+        arrow::Result<rerun::DataCell> AffixFuzzer17::to_data_cell(
             const AffixFuzzer17* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -71,14 +71,14 @@ namespace rr {
                 {arrow::field(AffixFuzzer17::NAME, AffixFuzzer17::to_arrow_datatype(), false)}
             );
 
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = AffixFuzzer17::NAME;
             ARROW_ASSIGN_OR_RAISE(
                 cell.buffer,
-                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
             );
 
             return cell;
         }
     } // namespace components
-} // namespace rr
+} // namespace rerun

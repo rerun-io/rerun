@@ -12,17 +12,17 @@
 #include <utility>
 #include <vector>
 
-namespace rr {
+namespace rerun {
     namespace components {
         struct AffixFuzzer18 {
-            std::optional<std::vector<rr::datatypes::AffixFuzzer4>> many_optional_unions;
+            std::optional<std::vector<rerun::datatypes::AffixFuzzer4>> many_optional_unions;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
             AffixFuzzer18(
-                std::optional<std::vector<rr::datatypes::AffixFuzzer4>> many_optional_unions
+                std::optional<std::vector<rerun::datatypes::AffixFuzzer4>> many_optional_unions
             )
                 : many_optional_unions(std::move(many_optional_unions)) {}
 
@@ -40,9 +40,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of AffixFuzzer18 components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const AffixFuzzer18* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

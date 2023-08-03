@@ -9,7 +9,7 @@
 // TODO(#2873): Should avoid leaking arrow headers.
 #include <arrow/result.h>
 
-namespace rr {
+namespace rerun {
     struct DataCell;
 
     enum class StoreKind {
@@ -213,4 +213,4 @@ namespace rr {
         uint32_t _id;
         StoreKind _store_kind;
     };
-} // namespace rr
+} // namespace rerun

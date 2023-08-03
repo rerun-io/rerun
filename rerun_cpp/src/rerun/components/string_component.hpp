@@ -10,7 +10,7 @@
 #include <string>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         struct StringComponent {
             std::string value;
@@ -35,9 +35,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of StringComponent components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const StringComponent* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

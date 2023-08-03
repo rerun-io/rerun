@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         /// An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear
         /// alpha.
@@ -36,9 +36,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of Color components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const Color* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

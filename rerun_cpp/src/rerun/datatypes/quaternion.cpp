@@ -5,7 +5,7 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &Quaternion::to_arrow_datatype() {
             static const auto datatype =
@@ -47,4 +47,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

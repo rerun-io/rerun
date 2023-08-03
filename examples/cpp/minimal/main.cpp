@@ -3,6 +3,9 @@
 
 #include <array>
 
+namespace rr = rerun;
+namespace rrc = rr::components;
+
 int main(int argc, char** argv) {
     loguru::g_preamble_uptime = false;
     loguru::g_preamble_thread = false;
@@ -15,10 +18,8 @@ int main(int argc, char** argv) {
 
     rr_stream.log_archetype(
         "3d/points",
-        rr::archetypes::Points3D({
-                                     rr::datatypes::Vec3D{1.0, 2.0, 3.0},
-                                     rr::datatypes::Vec3D{4.0, 5.0, 6.0},
-                                 })
+        rr::archetypes::Points3D({rr::datatypes::Vec3D{1.0, 2.0, 3.0},
+                                  rr::datatypes::Vec3D{4.0, 5.0, 6.0}})
             .with_radii({0.42, 0.43})
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({std::string("hello"), std::string("friend")})
@@ -27,23 +28,14 @@ int main(int argc, char** argv) {
             .with_instance_keys({66, 666})
     );
 
-    rr::components::Label c_style_array[3] = {
-        rr::components::Label("hello"),
-        rr::components::Label("friend"),
-        rr::components::Label("yo"),
-    };
+    rrc::Label c_style_array[3] = {rrc::Label("hello"), rrc::Label("friend"), rrc::Label("yo")};
     rr_stream.log_components(
         "2d/points",
         std::vector{
-            rr::components::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
-            rr::components::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
-            rr::components::Point2D(rr::datatypes::Vec2D{5.0, 5.0}),
-        },
-        std::array{
-            rr::components::Color(0xFF0000FF),
-            rr::components::Color(0x00FF00FF),
-            rr::components::Color(0x0000FFFF),
-        },
+            rrc::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
+            rrc::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
+            rrc::Point2D(rr::datatypes::Vec2D{5.0, 5.0})},
+        std::array{rrc::Color(0xFF0000FF), rrc::Color(0x00FF00FF), rrc::Color(0x0000FFFF)},
         c_style_array
     );
 

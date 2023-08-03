@@ -8,12 +8,12 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace components {
         const char *Vector3D::NAME = "rerun.components.Vector3D";
 
         const std::shared_ptr<arrow::DataType> &Vector3D::to_arrow_datatype() {
-            static const auto datatype = rr::datatypes::Vec3D::to_arrow_datatype();
+            static const auto datatype = rerun::datatypes::Vec3D::to_arrow_datatype();
             return datatype;
         }
 
@@ -24,7 +24,7 @@ namespace rr {
             }
 
             return arrow::Result(
-                rr::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie()
+                rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie()
             );
         }
 
@@ -38,17 +38,17 @@ namespace rr {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(rr::datatypes::Vec3D) == sizeof(Vector3D));
-            ARROW_RETURN_NOT_OK(rr::datatypes::Vec3D::fill_arrow_array_builder(
+            static_assert(sizeof(rerun::datatypes::Vec3D) == sizeof(Vector3D));
+            ARROW_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rr::datatypes::Vec3D *>(elements),
+                reinterpret_cast<const rerun::datatypes::Vec3D *>(elements),
                 num_elements
             ));
 
             return arrow::Status::OK();
         }
 
-        arrow::Result<rr::DataCell> Vector3D::to_data_cell(
+        arrow::Result<rerun::DataCell> Vector3D::to_data_cell(
             const Vector3D *instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -66,14 +66,14 @@ namespace rr {
             auto schema =
                 arrow::schema({arrow::field(Vector3D::NAME, Vector3D::to_arrow_datatype(), false)});
 
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = Vector3D::NAME;
             ARROW_ASSIGN_OR_RAISE(
                 cell.buffer,
-                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
             );
 
             return cell;
         }
     } // namespace components
-} // namespace rr
+} // namespace rerun

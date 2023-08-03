@@ -6,7 +6,7 @@
 #include <arrow/type_fwd.h>
 #include <cstdint>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         /// A 4x4 column-major Matrix.
         struct Mat4x4 {
@@ -26,4 +26,4 @@ namespace rr {
             );
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

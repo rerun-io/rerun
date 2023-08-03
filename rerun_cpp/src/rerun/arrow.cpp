@@ -6,7 +6,7 @@
 
 #include <loguru.hpp>
 
-namespace rr {
+namespace rerun {
     arrow::Result<std::shared_ptr<arrow::Buffer>> ipc_from_table(const arrow::Table& table) {
         ERROR_CONTEXT("ipc_from_table", "");
         ARROW_ASSIGN_OR_RAISE(auto output, arrow::io::BufferOutputStream::Create());
@@ -15,4 +15,4 @@ namespace rr {
         ARROW_RETURN_NOT_OK(writer->Close());
         return output->Finish();
     }
-} // namespace rr
+} // namespace rerun

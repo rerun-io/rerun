@@ -10,15 +10,16 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace archetypes {
         /// A 3D transform.
         struct Transform3D {
             /// The transform
-            rr::components::Transform3D transform;
+            rerun::components::Transform3D transform;
 
           public:
-            Transform3D(rr::components::Transform3D transform) : transform(std::move(transform)) {}
+            Transform3D(rerun::components::Transform3D transform)
+                : transform(std::move(transform)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
@@ -26,7 +27,7 @@ namespace rr {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rr::DataCell>> to_data_cells() const;
+            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
-} // namespace rr
+} // namespace rerun

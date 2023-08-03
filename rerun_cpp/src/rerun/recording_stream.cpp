@@ -5,7 +5,7 @@
 #include <arrow/buffer.h>
 #include <vector>
 
-namespace rr {
+namespace rerun {
     static int32_t store_kind_to_c(StoreKind store_kind) {
         switch (store_kind) {
             case StoreKind::Recording:
@@ -92,4 +92,4 @@ namespace rr {
 
         rr_log(_id, &c_data_row, true);
     }
-} // namespace rr
+} // namespace rerun

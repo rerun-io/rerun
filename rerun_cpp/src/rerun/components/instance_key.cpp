@@ -7,7 +7,7 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace components {
         const char* InstanceKey::NAME = "rerun.instance_key";
 
@@ -42,7 +42,7 @@ namespace rr {
             return arrow::Status::OK();
         }
 
-        arrow::Result<rr::DataCell> InstanceKey::to_data_cell(
+        arrow::Result<rerun::DataCell> InstanceKey::to_data_cell(
             const InstanceKey* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -61,14 +61,14 @@ namespace rr {
                 {arrow::field(InstanceKey::NAME, InstanceKey::to_arrow_datatype(), false)}
             );
 
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = InstanceKey::NAME;
             ARROW_ASSIGN_OR_RAISE(
                 cell.buffer,
-                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
             );
 
             return cell;
         }
     } // namespace components
-} // namespace rr
+} // namespace rerun

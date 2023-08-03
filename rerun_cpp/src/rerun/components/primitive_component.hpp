@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         struct PrimitiveComponent {
             uint32_t value;
@@ -35,9 +35,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of PrimitiveComponent components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const PrimitiveComponent* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

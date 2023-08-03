@@ -7,12 +7,17 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType>& Scale3D::to_arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field("ThreeD", rr::datatypes::Vec3D::to_arrow_datatype(), false, nullptr),
+                arrow::field(
+                    "ThreeD",
+                    rerun::datatypes::Vec3D::to_arrow_datatype(),
+                    false,
+                    nullptr
+                ),
                 arrow::field("Uniform", arrow::float32(), false, nullptr),
             });
             return datatype;
@@ -29,7 +34,7 @@ namespace rr {
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
-                    rr::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
                     std::make_shared<arrow::FloatBuilder>(memory_pool),
                 }),
                 to_arrow_datatype()
@@ -54,4 +59,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

@@ -8,7 +8,7 @@
 #include <optional>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         struct AffixFuzzer2 {
             std::optional<float> single_float_optional;
@@ -31,4 +31,4 @@ namespace rr {
             );
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

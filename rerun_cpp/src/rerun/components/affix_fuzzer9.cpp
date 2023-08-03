@@ -7,7 +7,7 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace components {
         const char* AffixFuzzer9::NAME = "rerun.testing.components.AffixFuzzer9";
 
@@ -44,7 +44,7 @@ namespace rr {
             return arrow::Status::OK();
         }
 
-        arrow::Result<rr::DataCell> AffixFuzzer9::to_data_cell(
+        arrow::Result<rerun::DataCell> AffixFuzzer9::to_data_cell(
             const AffixFuzzer9* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -63,14 +63,14 @@ namespace rr {
                 {arrow::field(AffixFuzzer9::NAME, AffixFuzzer9::to_arrow_datatype(), false)}
             );
 
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = AffixFuzzer9::NAME;
             ARROW_ASSIGN_OR_RAISE(
                 cell.buffer,
-                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
             );
 
             return cell;
         }
     } // namespace components
-} // namespace rr
+} // namespace rerun

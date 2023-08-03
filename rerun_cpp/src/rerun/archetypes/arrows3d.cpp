@@ -13,16 +13,16 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace archetypes {
-        arrow::Result<std::vector<rr::DataCell>> Arrows3D::to_data_cells() const {
-            std::vector<rr::DataCell> cells;
+        arrow::Result<std::vector<rerun::DataCell>> Arrows3D::to_data_cells() const {
+            std::vector<rerun::DataCell> cells;
             cells.reserve(7);
 
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::Vector3D::to_data_cell(vectors.data(), vectors.size())
+                    rerun::components::Vector3D::to_data_cell(vectors.data(), vectors.size())
                 );
                 cells.push_back(cell);
             }
@@ -30,7 +30,7 @@ namespace rr {
                 const auto& value = origins.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::Origin3D::to_data_cell(value.data(), value.size())
+                    rerun::components::Origin3D::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -38,7 +38,7 @@ namespace rr {
                 const auto& value = radii.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::Radius::to_data_cell(value.data(), value.size())
+                    rerun::components::Radius::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -46,7 +46,7 @@ namespace rr {
                 const auto& value = colors.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::Color::to_data_cell(value.data(), value.size())
+                    rerun::components::Color::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -54,7 +54,7 @@ namespace rr {
                 const auto& value = labels.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::Label::to_data_cell(value.data(), value.size())
+                    rerun::components::Label::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -62,7 +62,7 @@ namespace rr {
                 const auto& value = class_ids.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::ClassId::to_data_cell(value.data(), value.size())
+                    rerun::components::ClassId::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -70,7 +70,7 @@ namespace rr {
                 const auto& value = instance_keys.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::InstanceKey::to_data_cell(value.data(), value.size())
+                    rerun::components::InstanceKey::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -78,4 +78,4 @@ namespace rr {
             return cells;
         }
     } // namespace archetypes
-} // namespace rr
+} // namespace rerun

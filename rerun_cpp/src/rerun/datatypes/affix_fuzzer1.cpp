@@ -7,7 +7,7 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &AffixFuzzer1::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
@@ -35,7 +35,7 @@ namespace rr {
                 arrow::field("flattened_scalar", arrow::float32(), false, nullptr),
                 arrow::field(
                     "almost_flattened_scalar",
-                    rr::datatypes::FlattenedScalar::to_arrow_datatype(),
+                    rerun::datatypes::FlattenedScalar::to_arrow_datatype(),
                     false,
                     nullptr
                 ),
@@ -71,7 +71,7 @@ namespace rr {
                         std::make_shared<arrow::StringBuilder>(memory_pool)
                     ),
                     std::make_shared<arrow::FloatBuilder>(memory_pool),
-                    rr::datatypes::FlattenedScalar::new_arrow_array_builder(memory_pool)
+                    rerun::datatypes::FlattenedScalar::new_arrow_array_builder(memory_pool)
                         .ValueOrDie(),
                     std::make_shared<arrow::BooleanBuilder>(memory_pool),
                 })
@@ -167,4 +167,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

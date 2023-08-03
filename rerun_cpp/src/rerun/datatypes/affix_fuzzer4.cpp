@@ -7,14 +7,14 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType>& AffixFuzzer4::to_arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field(
                     "single_required",
-                    rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                    rerun::datatypes::AffixFuzzer3::to_arrow_datatype(),
                     false,
                     nullptr
                 ),
@@ -22,7 +22,7 @@ namespace rr {
                     "many_required",
                     arrow::list(arrow::field(
                         "item",
-                        rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                        rerun::datatypes::AffixFuzzer3::to_arrow_datatype(),
                         false,
                         nullptr
                     )),
@@ -33,7 +33,7 @@ namespace rr {
                     "many_optional",
                     arrow::list(arrow::field(
                         "item",
-                        rr::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                        rerun::datatypes::AffixFuzzer3::to_arrow_datatype(),
                         true,
                         nullptr
                     )),
@@ -54,15 +54,16 @@ namespace rr {
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
-                    rr::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
+                        .ValueOrDie(),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        rr::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
+                        rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
                             .ValueOrDie()
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        rr::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
+                        rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
                             .ValueOrDie()
                     ),
                 }),
@@ -88,4 +89,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

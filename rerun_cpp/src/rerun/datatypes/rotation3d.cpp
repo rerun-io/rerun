@@ -8,20 +8,20 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType>& Rotation3D::to_arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field(
                     "Quaternion",
-                    rr::datatypes::Quaternion::to_arrow_datatype(),
+                    rerun::datatypes::Quaternion::to_arrow_datatype(),
                     false,
                     nullptr
                 ),
                 arrow::field(
                     "AxisAngle",
-                    rr::datatypes::RotationAxisAngle::to_arrow_datatype(),
+                    rerun::datatypes::RotationAxisAngle::to_arrow_datatype(),
                     false,
                     nullptr
                 ),
@@ -39,8 +39,8 @@ namespace rr {
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
-                    rr::datatypes::Quaternion::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rr::datatypes::RotationAxisAngle::new_arrow_array_builder(memory_pool)
+                    rerun::datatypes::Quaternion::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::RotationAxisAngle::new_arrow_array_builder(memory_pool)
                         .ValueOrDie(),
                 }),
                 to_arrow_datatype()
@@ -65,4 +65,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

@@ -8,12 +8,12 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace components {
         const char *AffixFuzzer20::NAME = "rerun.testing.components.AffixFuzzer20";
 
         const std::shared_ptr<arrow::DataType> &AffixFuzzer20::to_arrow_datatype() {
-            static const auto datatype = rr::datatypes::AffixFuzzer20::to_arrow_datatype();
+            static const auto datatype = rerun::datatypes::AffixFuzzer20::to_arrow_datatype();
             return datatype;
         }
 
@@ -25,7 +25,7 @@ namespace rr {
             }
 
             return arrow::Result(
-                rr::datatypes::AffixFuzzer20::new_arrow_array_builder(memory_pool).ValueOrDie()
+                rerun::datatypes::AffixFuzzer20::new_arrow_array_builder(memory_pool).ValueOrDie()
             );
         }
 
@@ -39,17 +39,17 @@ namespace rr {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(rr::datatypes::AffixFuzzer20) == sizeof(AffixFuzzer20));
-            ARROW_RETURN_NOT_OK(rr::datatypes::AffixFuzzer20::fill_arrow_array_builder(
+            static_assert(sizeof(rerun::datatypes::AffixFuzzer20) == sizeof(AffixFuzzer20));
+            ARROW_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer20::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rr::datatypes::AffixFuzzer20 *>(elements),
+                reinterpret_cast<const rerun::datatypes::AffixFuzzer20 *>(elements),
                 num_elements
             ));
 
             return arrow::Status::OK();
         }
 
-        arrow::Result<rr::DataCell> AffixFuzzer20::to_data_cell(
+        arrow::Result<rerun::DataCell> AffixFuzzer20::to_data_cell(
             const AffixFuzzer20 *instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -68,14 +68,14 @@ namespace rr {
                 {arrow::field(AffixFuzzer20::NAME, AffixFuzzer20::to_arrow_datatype(), false)}
             );
 
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = AffixFuzzer20::NAME;
             ARROW_ASSIGN_OR_RAISE(
                 cell.buffer,
-                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
             );
 
             return cell;
         }
     } // namespace components
-} // namespace rr
+} // namespace rerun

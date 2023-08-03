@@ -26,275 +26,275 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace archetypes {
-        arrow::Result<std::vector<rr::DataCell>> AffixFuzzer1::to_data_cells() const {
-            std::vector<rr::DataCell> cells;
+        arrow::Result<std::vector<rerun::DataCell>> AffixFuzzer1::to_data_cells() const {
+            std::vector<rerun::DataCell> cells;
             cells.reserve(74);
 
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer1::to_data_cell(&fuzz1001, 1)
+                    rerun::components::AffixFuzzer1::to_data_cell(&fuzz1001, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer2::to_data_cell(&fuzz1002, 1)
+                    rerun::components::AffixFuzzer2::to_data_cell(&fuzz1002, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer3::to_data_cell(&fuzz1003, 1)
+                    rerun::components::AffixFuzzer3::to_data_cell(&fuzz1003, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer4::to_data_cell(&fuzz1004, 1)
+                    rerun::components::AffixFuzzer4::to_data_cell(&fuzz1004, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer5::to_data_cell(&fuzz1005, 1)
+                    rerun::components::AffixFuzzer5::to_data_cell(&fuzz1005, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer6::to_data_cell(&fuzz1006, 1)
+                    rerun::components::AffixFuzzer6::to_data_cell(&fuzz1006, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer7::to_data_cell(&fuzz1007, 1)
+                    rerun::components::AffixFuzzer7::to_data_cell(&fuzz1007, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer8::to_data_cell(&fuzz1008, 1)
+                    rerun::components::AffixFuzzer8::to_data_cell(&fuzz1008, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer9::to_data_cell(&fuzz1009, 1)
+                    rerun::components::AffixFuzzer9::to_data_cell(&fuzz1009, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer10::to_data_cell(&fuzz1010, 1)
+                    rerun::components::AffixFuzzer10::to_data_cell(&fuzz1010, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer11::to_data_cell(&fuzz1011, 1)
+                    rerun::components::AffixFuzzer11::to_data_cell(&fuzz1011, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer12::to_data_cell(&fuzz1012, 1)
+                    rerun::components::AffixFuzzer12::to_data_cell(&fuzz1012, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer13::to_data_cell(&fuzz1013, 1)
+                    rerun::components::AffixFuzzer13::to_data_cell(&fuzz1013, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer14::to_data_cell(&fuzz1014, 1)
+                    rerun::components::AffixFuzzer14::to_data_cell(&fuzz1014, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer15::to_data_cell(&fuzz1015, 1)
+                    rerun::components::AffixFuzzer15::to_data_cell(&fuzz1015, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer16::to_data_cell(&fuzz1016, 1)
+                    rerun::components::AffixFuzzer16::to_data_cell(&fuzz1016, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer17::to_data_cell(&fuzz1017, 1)
+                    rerun::components::AffixFuzzer17::to_data_cell(&fuzz1017, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer18::to_data_cell(&fuzz1018, 1)
+                    rerun::components::AffixFuzzer18::to_data_cell(&fuzz1018, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer19::to_data_cell(&fuzz1019, 1)
+                    rerun::components::AffixFuzzer19::to_data_cell(&fuzz1019, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer20::to_data_cell(&fuzz1020, 1)
+                    rerun::components::AffixFuzzer20::to_data_cell(&fuzz1020, 1)
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer1::to_data_cell(fuzz1101.data(), fuzz1101.size())
+                    rerun::components::AffixFuzzer1::to_data_cell(fuzz1101.data(), fuzz1101.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer2::to_data_cell(fuzz1102.data(), fuzz1102.size())
+                    rerun::components::AffixFuzzer2::to_data_cell(fuzz1102.data(), fuzz1102.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer3::to_data_cell(fuzz1103.data(), fuzz1103.size())
+                    rerun::components::AffixFuzzer3::to_data_cell(fuzz1103.data(), fuzz1103.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer4::to_data_cell(fuzz1104.data(), fuzz1104.size())
+                    rerun::components::AffixFuzzer4::to_data_cell(fuzz1104.data(), fuzz1104.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer5::to_data_cell(fuzz1105.data(), fuzz1105.size())
+                    rerun::components::AffixFuzzer5::to_data_cell(fuzz1105.data(), fuzz1105.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer6::to_data_cell(fuzz1106.data(), fuzz1106.size())
+                    rerun::components::AffixFuzzer6::to_data_cell(fuzz1106.data(), fuzz1106.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer7::to_data_cell(fuzz1107.data(), fuzz1107.size())
+                    rerun::components::AffixFuzzer7::to_data_cell(fuzz1107.data(), fuzz1107.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer8::to_data_cell(fuzz1108.data(), fuzz1108.size())
+                    rerun::components::AffixFuzzer8::to_data_cell(fuzz1108.data(), fuzz1108.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer9::to_data_cell(fuzz1109.data(), fuzz1109.size())
+                    rerun::components::AffixFuzzer9::to_data_cell(fuzz1109.data(), fuzz1109.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer10::to_data_cell(fuzz1110.data(), fuzz1110.size())
+                    rerun::components::AffixFuzzer10::to_data_cell(fuzz1110.data(), fuzz1110.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer11::to_data_cell(fuzz1111.data(), fuzz1111.size())
+                    rerun::components::AffixFuzzer11::to_data_cell(fuzz1111.data(), fuzz1111.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer12::to_data_cell(fuzz1112.data(), fuzz1112.size())
+                    rerun::components::AffixFuzzer12::to_data_cell(fuzz1112.data(), fuzz1112.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer13::to_data_cell(fuzz1113.data(), fuzz1113.size())
+                    rerun::components::AffixFuzzer13::to_data_cell(fuzz1113.data(), fuzz1113.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer14::to_data_cell(fuzz1114.data(), fuzz1114.size())
+                    rerun::components::AffixFuzzer14::to_data_cell(fuzz1114.data(), fuzz1114.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer15::to_data_cell(fuzz1115.data(), fuzz1115.size())
+                    rerun::components::AffixFuzzer15::to_data_cell(fuzz1115.data(), fuzz1115.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer16::to_data_cell(fuzz1116.data(), fuzz1116.size())
+                    rerun::components::AffixFuzzer16::to_data_cell(fuzz1116.data(), fuzz1116.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer17::to_data_cell(fuzz1117.data(), fuzz1117.size())
+                    rerun::components::AffixFuzzer17::to_data_cell(fuzz1117.data(), fuzz1117.size())
                 );
                 cells.push_back(cell);
             }
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer18::to_data_cell(fuzz1118.data(), fuzz1118.size())
+                    rerun::components::AffixFuzzer18::to_data_cell(fuzz1118.data(), fuzz1118.size())
                 );
                 cells.push_back(cell);
             }
@@ -302,7 +302,7 @@ namespace rr {
                 const auto& value = fuzz2001.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer1::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer1::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -310,7 +310,7 @@ namespace rr {
                 const auto& value = fuzz2002.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer2::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer2::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -318,7 +318,7 @@ namespace rr {
                 const auto& value = fuzz2003.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer3::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer3::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -326,7 +326,7 @@ namespace rr {
                 const auto& value = fuzz2004.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer4::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer4::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -334,7 +334,7 @@ namespace rr {
                 const auto& value = fuzz2005.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer5::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer5::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -342,7 +342,7 @@ namespace rr {
                 const auto& value = fuzz2006.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer6::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer6::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -350,7 +350,7 @@ namespace rr {
                 const auto& value = fuzz2007.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer7::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer7::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -358,7 +358,7 @@ namespace rr {
                 const auto& value = fuzz2008.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer8::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer8::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -366,7 +366,7 @@ namespace rr {
                 const auto& value = fuzz2009.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer9::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer9::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -374,7 +374,7 @@ namespace rr {
                 const auto& value = fuzz2010.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer10::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer10::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -382,7 +382,7 @@ namespace rr {
                 const auto& value = fuzz2011.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer11::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer11::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -390,7 +390,7 @@ namespace rr {
                 const auto& value = fuzz2012.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer12::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer12::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -398,7 +398,7 @@ namespace rr {
                 const auto& value = fuzz2013.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer13::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer13::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -406,7 +406,7 @@ namespace rr {
                 const auto& value = fuzz2014.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer14::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer14::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -414,7 +414,7 @@ namespace rr {
                 const auto& value = fuzz2015.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer15::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer15::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -422,7 +422,7 @@ namespace rr {
                 const auto& value = fuzz2016.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer16::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer16::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -430,7 +430,7 @@ namespace rr {
                 const auto& value = fuzz2017.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer17::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer17::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -438,7 +438,7 @@ namespace rr {
                 const auto& value = fuzz2018.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer18::to_data_cell(&value, 1)
+                    rerun::components::AffixFuzzer18::to_data_cell(&value, 1)
                 );
                 cells.push_back(cell);
             }
@@ -446,7 +446,7 @@ namespace rr {
                 const auto& value = fuzz2101.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer1::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer1::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -454,7 +454,7 @@ namespace rr {
                 const auto& value = fuzz2102.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer2::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer2::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -462,7 +462,7 @@ namespace rr {
                 const auto& value = fuzz2103.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer3::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer3::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -470,7 +470,7 @@ namespace rr {
                 const auto& value = fuzz2104.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer4::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer4::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -478,7 +478,7 @@ namespace rr {
                 const auto& value = fuzz2105.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer5::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer5::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -486,7 +486,7 @@ namespace rr {
                 const auto& value = fuzz2106.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer6::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer6::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -494,7 +494,7 @@ namespace rr {
                 const auto& value = fuzz2107.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer7::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer7::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -502,7 +502,7 @@ namespace rr {
                 const auto& value = fuzz2108.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer8::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer8::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -510,7 +510,7 @@ namespace rr {
                 const auto& value = fuzz2109.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer9::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer9::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -518,7 +518,7 @@ namespace rr {
                 const auto& value = fuzz2110.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer10::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer10::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -526,7 +526,7 @@ namespace rr {
                 const auto& value = fuzz2111.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer11::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer11::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -534,7 +534,7 @@ namespace rr {
                 const auto& value = fuzz2112.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer12::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer12::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -542,7 +542,7 @@ namespace rr {
                 const auto& value = fuzz2113.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer13::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer13::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -550,7 +550,7 @@ namespace rr {
                 const auto& value = fuzz2114.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer14::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer14::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -558,7 +558,7 @@ namespace rr {
                 const auto& value = fuzz2115.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer15::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer15::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -566,7 +566,7 @@ namespace rr {
                 const auto& value = fuzz2116.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer16::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer16::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -574,7 +574,7 @@ namespace rr {
                 const auto& value = fuzz2117.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer17::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer17::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -582,7 +582,7 @@ namespace rr {
                 const auto& value = fuzz2118.value();
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::AffixFuzzer18::to_data_cell(value.data(), value.size())
+                    rerun::components::AffixFuzzer18::to_data_cell(value.data(), value.size())
                 );
                 cells.push_back(cell);
             }
@@ -590,4 +590,4 @@ namespace rr {
             return cells;
         }
     } // namespace archetypes
-} // namespace rr
+} // namespace rerun

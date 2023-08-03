@@ -7,13 +7,13 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType>& AffixFuzzer5::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
                     "single_optional_union",
-                    rr::datatypes::AffixFuzzer4::to_arrow_datatype(),
+                    rerun::datatypes::AffixFuzzer4::to_arrow_datatype(),
                     true,
                     nullptr
                 ),
@@ -32,7 +32,8 @@ namespace rr {
                 to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rr::datatypes::AffixFuzzer4::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::AffixFuzzer4::new_arrow_array_builder(memory_pool)
+                        .ValueOrDie(),
                 })
             ));
         }
@@ -55,4 +56,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

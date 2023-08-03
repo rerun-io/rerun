@@ -19,32 +19,32 @@
 #include <utility>
 #include <vector>
 
-namespace rr {
+namespace rerun {
     namespace archetypes {
         /// A 2D point cloud with positions and optional colors, radii, labels, etc.
         struct Points2D {
             /// All the actual 2D points that make up the point cloud.
-            std::vector<rr::components::Point2D> points;
+            std::vector<rerun::components::Point2D> points;
 
             /// Optional radii for the points, effectively turning them into circles.
-            std::optional<std::vector<rr::components::Radius>> radii;
+            std::optional<std::vector<rerun::components::Radius>> radii;
 
             /// Optional colors for the points.
-            std::optional<std::vector<rr::components::Color>> colors;
+            std::optional<std::vector<rerun::components::Color>> colors;
 
             /// Optional text labels for the points.
-            std::optional<std::vector<rr::components::Label>> labels;
+            std::optional<std::vector<rerun::components::Label>> labels;
 
             /// An optional floating point value that specifies the 2D drawing order.
             /// Objects with higher values are drawn on top of those with lower values.
             ///
             /// The default for 2D points is 30.0.
-            std::optional<rr::components::DrawOrder> draw_order;
+            std::optional<rerun::components::DrawOrder> draw_order;
 
             /// Optional class Ids for the points.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            std::optional<std::vector<rr::components::ClassId>> class_ids;
+            std::optional<std::vector<rerun::components::ClassId>> class_ids;
 
             /// Optional keypoint IDs for the points, identifying them within a class.
             ///
@@ -53,28 +53,28 @@ namespace rr {
             /// This is useful to identify points within a single classification (which is
             /// identified with `class_id`). E.g. the classification might be 'Person' and the
             /// keypoints refer to joints on a detected skeleton.
-            std::optional<std::vector<rr::components::KeypointId>> keypoint_ids;
+            std::optional<std::vector<rerun::components::KeypointId>> keypoint_ids;
 
             /// Unique identifiers for each individual point in the batch.
-            std::optional<std::vector<rr::components::InstanceKey>> instance_keys;
+            std::optional<std::vector<rerun::components::InstanceKey>> instance_keys;
 
           public:
-            Points2D(std::vector<rr::components::Point2D> points) : points(std::move(points)) {}
+            Points2D(std::vector<rerun::components::Point2D> points) : points(std::move(points)) {}
 
             /// Optional radii for the points, effectively turning them into circles.
-            Points2D& with_radii(std::vector<rr::components::Radius> _radii) {
+            Points2D& with_radii(std::vector<rerun::components::Radius> _radii) {
                 radii = std::move(_radii);
                 return *this;
             }
 
             /// Optional colors for the points.
-            Points2D& with_colors(std::vector<rr::components::Color> _colors) {
+            Points2D& with_colors(std::vector<rerun::components::Color> _colors) {
                 colors = std::move(_colors);
                 return *this;
             }
 
             /// Optional text labels for the points.
-            Points2D& with_labels(std::vector<rr::components::Label> _labels) {
+            Points2D& with_labels(std::vector<rerun::components::Label> _labels) {
                 labels = std::move(_labels);
                 return *this;
             }
@@ -83,7 +83,7 @@ namespace rr {
             /// Objects with higher values are drawn on top of those with lower values.
             ///
             /// The default for 2D points is 30.0.
-            Points2D& with_draw_order(rr::components::DrawOrder _draw_order) {
+            Points2D& with_draw_order(rerun::components::DrawOrder _draw_order) {
                 draw_order = std::move(_draw_order);
                 return *this;
             }
@@ -91,7 +91,7 @@ namespace rr {
             /// Optional class Ids for the points.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            Points2D& with_class_ids(std::vector<rr::components::ClassId> _class_ids) {
+            Points2D& with_class_ids(std::vector<rerun::components::ClassId> _class_ids) {
                 class_ids = std::move(_class_ids);
                 return *this;
             }
@@ -103,13 +103,14 @@ namespace rr {
             /// This is useful to identify points within a single classification (which is
             /// identified with `class_id`). E.g. the classification might be 'Person' and the
             /// keypoints refer to joints on a detected skeleton.
-            Points2D& with_keypoint_ids(std::vector<rr::components::KeypointId> _keypoint_ids) {
+            Points2D& with_keypoint_ids(std::vector<rerun::components::KeypointId> _keypoint_ids) {
                 keypoint_ids = std::move(_keypoint_ids);
                 return *this;
             }
 
             /// Unique identifiers for each individual point in the batch.
-            Points2D& with_instance_keys(std::vector<rr::components::InstanceKey> _instance_keys) {
+            Points2D& with_instance_keys(std::vector<rerun::components::InstanceKey> _instance_keys
+            ) {
                 instance_keys = std::move(_instance_keys);
                 return *this;
             }
@@ -120,7 +121,7 @@ namespace rr {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rr::DataCell>> to_data_cells() const;
+            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
-} // namespace rr
+} // namespace rerun

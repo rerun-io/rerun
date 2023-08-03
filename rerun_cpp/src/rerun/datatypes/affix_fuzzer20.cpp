@@ -8,19 +8,19 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType>& AffixFuzzer20::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
                     "p",
-                    rr::components::PrimitiveComponent::to_arrow_datatype(),
+                    rerun::components::PrimitiveComponent::to_arrow_datatype(),
                     false,
                     nullptr
                 ),
                 arrow::field(
                     "s",
-                    rr::components::StringComponent::to_arrow_datatype(),
+                    rerun::components::StringComponent::to_arrow_datatype(),
                     false,
                     nullptr
                 ),
@@ -39,9 +39,9 @@ namespace rr {
                 to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rr::components::PrimitiveComponent::new_arrow_array_builder(memory_pool)
+                    rerun::components::PrimitiveComponent::new_arrow_array_builder(memory_pool)
                         .ValueOrDie(),
-                    rr::components::StringComponent::new_arrow_array_builder(memory_pool)
+                    rerun::components::StringComponent::new_arrow_array_builder(memory_pool)
                         .ValueOrDie(),
                 })
             ));
@@ -68,4 +68,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

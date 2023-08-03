@@ -7,7 +7,7 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace components {
         const char* Radius::NAME = "rerun.radius";
 
@@ -42,7 +42,7 @@ namespace rr {
             return arrow::Status::OK();
         }
 
-        arrow::Result<rr::DataCell> Radius::to_data_cell(
+        arrow::Result<rerun::DataCell> Radius::to_data_cell(
             const Radius* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -60,14 +60,14 @@ namespace rr {
             auto schema =
                 arrow::schema({arrow::field(Radius::NAME, Radius::to_arrow_datatype(), false)});
 
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = Radius::NAME;
             ARROW_ASSIGN_OR_RAISE(
                 cell.buffer,
-                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
             );
 
             return cell;
         }
     } // namespace components
-} // namespace rr
+} // namespace rerun

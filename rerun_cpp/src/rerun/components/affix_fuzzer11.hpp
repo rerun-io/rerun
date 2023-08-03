@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace rr {
+namespace rerun {
     namespace components {
         struct AffixFuzzer11 {
             std::optional<std::vector<float>> many_floats_optional;
@@ -37,9 +37,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of AffixFuzzer11 components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const AffixFuzzer11* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

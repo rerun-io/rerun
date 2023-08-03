@@ -11,7 +11,7 @@
 #include <cstring>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class Transform3DTag {
@@ -24,9 +24,9 @@ namespace rr {
             };
 
             union Transform3DData {
-                rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3;
+                rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3;
 
-                rr::datatypes::TranslationRotationScale3D translation_rotation_scale;
+                rerun::datatypes::TranslationRotationScale3D translation_rotation_scale;
 
                 Transform3DData() {}
 
@@ -72,7 +72,7 @@ namespace rr {
             }
 
             static Transform3D translation_and_mat3x3(
-                rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3
+                rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3
             ) {
                 Transform3D self;
                 self._tag = detail::Transform3DTag::TranslationAndMat3x3;
@@ -81,7 +81,7 @@ namespace rr {
             }
 
             static Transform3D translation_rotation_scale(
-                rr::datatypes::TranslationRotationScale3D translation_rotation_scale
+                rerun::datatypes::TranslationRotationScale3D translation_rotation_scale
             ) {
                 Transform3D self;
                 self._tag = detail::Transform3DTag::TranslationRotationScale;
@@ -89,11 +89,11 @@ namespace rr {
                 return std::move(self);
             }
 
-            Transform3D(rr::datatypes::TranslationAndMat3x3 translation_and_mat3x3) {
+            Transform3D(rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3) {
                 *this = Transform3D::translation_and_mat3x3(std::move(translation_and_mat3x3));
             }
 
-            Transform3D(rr::datatypes::TranslationRotationScale3D translation_rotation_scale) {
+            Transform3D(rerun::datatypes::TranslationRotationScale3D translation_rotation_scale) {
                 *this =
                     Transform3D::translation_rotation_scale(std::move(translation_rotation_scale));
             }
@@ -120,4 +120,4 @@ namespace rr {
           public:
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

@@ -10,16 +10,16 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         struct AffixFuzzer3 {
-            rr::datatypes::AffixFuzzer1 single_required;
+            rerun::datatypes::AffixFuzzer1 single_required;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
-            AffixFuzzer3(rr::datatypes::AffixFuzzer1 single_required)
+            AffixFuzzer3(rerun::datatypes::AffixFuzzer1 single_required)
                 : single_required(std::move(single_required)) {}
 
             /// Returns the arrow data type this type corresponds to.
@@ -36,9 +36,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of AffixFuzzer3 components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const AffixFuzzer3* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

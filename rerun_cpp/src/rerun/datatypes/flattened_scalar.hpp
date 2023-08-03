@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         struct FlattenedScalar {
             float value;
@@ -29,4 +29,4 @@ namespace rr {
             );
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

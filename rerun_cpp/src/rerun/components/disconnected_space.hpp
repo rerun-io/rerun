@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         /// Specifies that the entity path at which this is logged is disconnected from its parent.
         ///
@@ -40,9 +40,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of DisconnectedSpace components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const DisconnectedSpace* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

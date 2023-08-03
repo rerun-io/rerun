@@ -9,23 +9,28 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &TranslationRotationScale3D::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
                     "translation",
-                    rr::datatypes::Vec3D::to_arrow_datatype(),
+                    rerun::datatypes::Vec3D::to_arrow_datatype(),
                     true,
                     nullptr
                 ),
                 arrow::field(
                     "rotation",
-                    rr::datatypes::Rotation3D::to_arrow_datatype(),
+                    rerun::datatypes::Rotation3D::to_arrow_datatype(),
                     true,
                     nullptr
                 ),
-                arrow::field("scale", rr::datatypes::Scale3D::to_arrow_datatype(), true, nullptr),
+                arrow::field(
+                    "scale",
+                    rerun::datatypes::Scale3D::to_arrow_datatype(),
+                    true,
+                    nullptr
+                ),
                 arrow::field("from_parent", arrow::boolean(), false, nullptr),
             });
             return datatype;
@@ -41,9 +46,9 @@ namespace rr {
                 to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rr::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rr::datatypes::Rotation3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rr::datatypes::Scale3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Rotation3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Scale3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
                     std::make_shared<arrow::BooleanBuilder>(memory_pool),
                 })
             ));
@@ -82,4 +87,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

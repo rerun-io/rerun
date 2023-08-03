@@ -8,17 +8,22 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &TranslationAndMat3x3::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
                     "translation",
-                    rr::datatypes::Vec3D::to_arrow_datatype(),
+                    rerun::datatypes::Vec3D::to_arrow_datatype(),
                     true,
                     nullptr
                 ),
-                arrow::field("matrix", rr::datatypes::Mat3x3::to_arrow_datatype(), true, nullptr),
+                arrow::field(
+                    "matrix",
+                    rerun::datatypes::Mat3x3::to_arrow_datatype(),
+                    true,
+                    nullptr
+                ),
                 arrow::field("from_parent", arrow::boolean(), false, nullptr),
             });
             return datatype;
@@ -34,8 +39,8 @@ namespace rr {
                 to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rr::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rr::datatypes::Mat3x3::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Mat3x3::new_arrow_array_builder(memory_pool).ValueOrDie(),
                     std::make_shared<arrow::BooleanBuilder>(memory_pool),
                 })
             ));
@@ -70,4 +75,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

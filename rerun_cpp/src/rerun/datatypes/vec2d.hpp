@@ -6,7 +6,7 @@
 #include <arrow/type_fwd.h>
 #include <cstdint>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         /// A vector in 2D space.
         struct Vec2D {
@@ -26,4 +26,4 @@ namespace rr {
             );
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

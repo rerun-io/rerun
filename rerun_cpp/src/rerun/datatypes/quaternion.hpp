@@ -6,7 +6,7 @@
 #include <arrow/type_fwd.h>
 #include <cstdint>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         /// A Quaternion represented by 4 real numbers.
         struct Quaternion {
@@ -27,4 +27,4 @@ namespace rr {
             );
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

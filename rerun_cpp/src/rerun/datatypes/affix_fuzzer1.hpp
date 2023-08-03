@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         struct AffixFuzzer1 {
             std::optional<float> single_float_optional;
@@ -28,7 +28,7 @@ namespace rr {
 
             float flattened_scalar;
 
-            rr::datatypes::FlattenedScalar almost_flattened_scalar;
+            rerun::datatypes::FlattenedScalar almost_flattened_scalar;
 
             std::optional<bool> from_parent;
 
@@ -47,4 +47,4 @@ namespace rr {
             );
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

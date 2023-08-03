@@ -9,12 +9,12 @@
 #include <arrow/type_fwd.h>
 #include <cstdint>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         struct AffixFuzzer20 {
-            rr::components::PrimitiveComponent p;
+            rerun::components::PrimitiveComponent p;
 
-            rr::components::StringComponent s;
+            rerun::components::StringComponent s;
 
           public:
             /// Returns the arrow data type this type corresponds to.
@@ -31,4 +31,4 @@ namespace rr {
             );
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

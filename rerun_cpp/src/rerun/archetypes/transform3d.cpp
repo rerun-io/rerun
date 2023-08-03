@@ -7,16 +7,16 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace archetypes {
-        arrow::Result<std::vector<rr::DataCell>> Transform3D::to_data_cells() const {
-            std::vector<rr::DataCell> cells;
+        arrow::Result<std::vector<rerun::DataCell>> Transform3D::to_data_cells() const {
+            std::vector<rerun::DataCell> cells;
             cells.reserve(1);
 
             {
                 ARROW_ASSIGN_OR_RAISE(
                     const auto cell,
-                    rr::components::Transform3D::to_data_cell(&transform, 1)
+                    rerun::components::Transform3D::to_data_cell(&transform, 1)
                 );
                 cells.push_back(cell);
             }
@@ -24,4 +24,4 @@ namespace rr {
             return cells;
         }
     } // namespace archetypes
-} // namespace rr
+} // namespace rerun

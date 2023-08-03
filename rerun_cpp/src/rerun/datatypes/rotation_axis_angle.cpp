@@ -8,12 +8,12 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType>& RotationAxisAngle::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field("axis", rr::datatypes::Vec3D::to_arrow_datatype(), false, nullptr),
-                arrow::field("angle", rr::datatypes::Angle::to_arrow_datatype(), false, nullptr),
+                arrow::field("axis", rerun::datatypes::Vec3D::to_arrow_datatype(), false, nullptr),
+                arrow::field("angle", rerun::datatypes::Angle::to_arrow_datatype(), false, nullptr),
             });
             return datatype;
         }
@@ -28,8 +28,8 @@ namespace rr {
                 to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rr::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rr::datatypes::Angle::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Angle::new_arrow_array_builder(memory_pool).ValueOrDie(),
                 })
             ));
         }
@@ -55,4 +55,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

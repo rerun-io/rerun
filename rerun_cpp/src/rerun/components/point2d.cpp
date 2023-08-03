@@ -8,12 +8,12 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace components {
         const char *Point2D::NAME = "rerun.point2d";
 
         const std::shared_ptr<arrow::DataType> &Point2D::to_arrow_datatype() {
-            static const auto datatype = rr::datatypes::Vec2D::to_arrow_datatype();
+            static const auto datatype = rerun::datatypes::Vec2D::to_arrow_datatype();
             return datatype;
         }
 
@@ -24,7 +24,7 @@ namespace rr {
             }
 
             return arrow::Result(
-                rr::datatypes::Vec2D::new_arrow_array_builder(memory_pool).ValueOrDie()
+                rerun::datatypes::Vec2D::new_arrow_array_builder(memory_pool).ValueOrDie()
             );
         }
 
@@ -38,17 +38,17 @@ namespace rr {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(rr::datatypes::Vec2D) == sizeof(Point2D));
-            ARROW_RETURN_NOT_OK(rr::datatypes::Vec2D::fill_arrow_array_builder(
+            static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(Point2D));
+            ARROW_RETURN_NOT_OK(rerun::datatypes::Vec2D::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rr::datatypes::Vec2D *>(elements),
+                reinterpret_cast<const rerun::datatypes::Vec2D *>(elements),
                 num_elements
             ));
 
             return arrow::Status::OK();
         }
 
-        arrow::Result<rr::DataCell> Point2D::to_data_cell(
+        arrow::Result<rerun::DataCell> Point2D::to_data_cell(
             const Point2D *instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -66,14 +66,14 @@ namespace rr {
             auto schema =
                 arrow::schema({arrow::field(Point2D::NAME, Point2D::to_arrow_datatype(), false)});
 
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = Point2D::NAME;
             ARROW_ASSIGN_OR_RAISE(
                 cell.buffer,
-                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
             );
 
             return cell;
         }
     } // namespace components
-} // namespace rr
+} // namespace rerun

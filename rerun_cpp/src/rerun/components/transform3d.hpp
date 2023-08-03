@@ -10,18 +10,18 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         /// An affine transform between two 3D spaces, represented in a given direction.
         struct Transform3D {
             /// Representation of the transform.
-            rr::datatypes::Transform3D repr;
+            rerun::datatypes::Transform3D repr;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
-            Transform3D(rr::datatypes::Transform3D repr) : repr(std::move(repr)) {}
+            Transform3D(rerun::datatypes::Transform3D repr) : repr(std::move(repr)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
@@ -37,9 +37,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of Transform3D components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const Transform3D* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

@@ -10,10 +10,12 @@
 #include <vector>
 
 namespace fs = std::filesystem;
+namespace rr = rerun;
+namespace rrc = rr::components;
 
 #define TEST_TAG "[recording_stream]"
 
-namespace rr {
+namespace rerun {
     std::ostream& operator<<(std::ostream& os, StoreKind kind) {
         switch (kind) {
             case rr::StoreKind::Recording:
@@ -28,7 +30,7 @@ namespace rr {
         }
         return os;
     }
-} // namespace rr
+} // namespace rerun
 
 SCENARIO("RecordingStream can be created, destroyed and lists correct properties", TEST_TAG) {
     for (auto kind : std::array{rr::StoreKind::Recording, rr::StoreKind::Blueprint}) {
@@ -82,7 +84,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 rr::RecordingStream stream("test", kind);
 
                 THEN("components as c-array can be logged") {
-                    rr::components::Point2D c_style_array[2] = {
+                    rrc::Point2D c_style_array[2] = {
                         rr::datatypes::Vec2D{1.0, 2.0},
                         rr::datatypes::Vec2D{4.0, 5.0},
                     };
@@ -92,7 +94,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("components as std::array can be logged") {
                     stream.log_components(
                         "as-array",
-                        std::array<rr::components::Point2D, 2>{
+                        std::array<rrc::Point2D, 2>{
                             rr::datatypes::Vec2D{1.0, 2.0},
                             rr::datatypes::Vec2D{4.0, 5.0},
                         }
@@ -101,29 +103,29 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("components as std::vector can be logged") {
                     stream.log_components(
                         "as-vector",
-                        std::vector<rr::components::Point2D>{
+                        std::vector<rrc::Point2D>{
                             rr::datatypes::Vec2D{1.0, 2.0},
                             rr::datatypes::Vec2D{4.0, 5.0},
                         }
                     );
                 }
                 THEN("several components with a mix of vector, array and c-array can be logged") {
-                    rr::components::Label c_style_array[3] = {
-                        rr::components::Label("hello"),
-                        rr::components::Label("friend"),
-                        rr::components::Label("yo"),
+                    rrc::Label c_style_array[3] = {
+                        rrc::Label("hello"),
+                        rrc::Label("friend"),
+                        rrc::Label("yo"),
                     };
                     stream.log_components(
                         "as-mix",
                         std::vector{
-                            rr::components::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
-                            rr::components::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
-                            rr::components::Point2D(rr::datatypes::Vec2D{5.0, 5.0}),
+                            rrc::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
+                            rrc::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
+                            rrc::Point2D(rr::datatypes::Vec2D{5.0, 5.0}),
                         },
                         std::array{
-                            rr::components::Color(0xFF0000FF),
-                            rr::components::Color(0x00FF00FF),
-                            rr::components::Color(0x0000FFFF),
+                            rrc::Color(0xFF0000FF),
+                            rrc::Color(0x00FF00FF),
+                            rrc::Color(0x0000FFFF),
                         },
                         c_style_array
                     );
@@ -174,7 +176,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                     WHEN("logging a component to the second stream") {
                         stream1->log_components(
                             "as-array",
-                            std::array<rr::components::Point2D, 2>{
+                            std::array<rrc::Point2D, 2>{
                                 rr::datatypes::Vec2D{1.0, 2.0},
                                 rr::datatypes::Vec2D{4.0, 5.0},
                             }
@@ -215,7 +217,7 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
         WHEN("logging a component and then flushing") {
             stream.log_components(
                 "as-array",
-                std::array<rr::components::Point2D, 2>{
+                std::array<rrc::Point2D, 2>{
                     rr::datatypes::Vec2D{1.0, 2.0},
                     rr::datatypes::Vec2D{4.0, 5.0},
                 }

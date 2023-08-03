@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class AffixFuzzer3Tag {
@@ -32,7 +32,7 @@ namespace rr {
 
                 std::optional<float> radians;
 
-                std::vector<rr::datatypes::AffixFuzzer1> craziness;
+                std::vector<rerun::datatypes::AffixFuzzer1> craziness;
 
                 float fixed_size_shenanigans[3];
 
@@ -91,7 +91,7 @@ namespace rr {
                         break; // has a trivial destructor
                     }
                     case detail::AffixFuzzer3Tag::craziness: {
-                        typedef std::vector<rr::datatypes::AffixFuzzer1> TypeAlias;
+                        typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
                         _data.craziness.~TypeAlias();
                         break;
                     }
@@ -122,8 +122,8 @@ namespace rr {
                 return std::move(self);
             }
 
-            static AffixFuzzer3 craziness(std::vector<rr::datatypes::AffixFuzzer1> craziness) {
-                typedef std::vector<rr::datatypes::AffixFuzzer1> TypeAlias;
+            static AffixFuzzer3 craziness(std::vector<rerun::datatypes::AffixFuzzer1> craziness) {
+                typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::craziness;
                 new (&self._data.craziness) TypeAlias(std::move(craziness));
@@ -162,4 +162,4 @@ namespace rr {
           public:
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

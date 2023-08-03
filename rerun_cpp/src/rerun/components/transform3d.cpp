@@ -8,12 +8,12 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace components {
         const char *Transform3D::NAME = "rerun.transform3d";
 
         const std::shared_ptr<arrow::DataType> &Transform3D::to_arrow_datatype() {
-            static const auto datatype = rr::datatypes::Transform3D::to_arrow_datatype();
+            static const auto datatype = rerun::datatypes::Transform3D::to_arrow_datatype();
             return datatype;
         }
 
@@ -24,7 +24,7 @@ namespace rr {
             }
 
             return arrow::Result(
-                rr::datatypes::Transform3D::new_arrow_array_builder(memory_pool).ValueOrDie()
+                rerun::datatypes::Transform3D::new_arrow_array_builder(memory_pool).ValueOrDie()
             );
         }
 
@@ -38,17 +38,17 @@ namespace rr {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(rr::datatypes::Transform3D) == sizeof(Transform3D));
-            ARROW_RETURN_NOT_OK(rr::datatypes::Transform3D::fill_arrow_array_builder(
+            static_assert(sizeof(rerun::datatypes::Transform3D) == sizeof(Transform3D));
+            ARROW_RETURN_NOT_OK(rerun::datatypes::Transform3D::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rr::datatypes::Transform3D *>(elements),
+                reinterpret_cast<const rerun::datatypes::Transform3D *>(elements),
                 num_elements
             ));
 
             return arrow::Status::OK();
         }
 
-        arrow::Result<rr::DataCell> Transform3D::to_data_cell(
+        arrow::Result<rerun::DataCell> Transform3D::to_data_cell(
             const Transform3D *instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -67,14 +67,14 @@ namespace rr {
                 {arrow::field(Transform3D::NAME, Transform3D::to_arrow_datatype(), false)}
             );
 
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = Transform3D::NAME;
             ARROW_ASSIGN_OR_RAISE(
                 cell.buffer,
-                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
             );
 
             return cell;
         }
     } // namespace components
-} // namespace rr
+} // namespace rerun

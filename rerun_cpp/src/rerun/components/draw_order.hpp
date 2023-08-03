@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         /// Draw order used for the display order of 2D elements.
         ///
@@ -41,9 +41,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of DrawOrder components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const DrawOrder* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

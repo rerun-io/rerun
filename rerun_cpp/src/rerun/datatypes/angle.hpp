@@ -8,7 +8,7 @@
 #include <cstring>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class AngleTag {
@@ -104,4 +104,4 @@ namespace rr {
           public:
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

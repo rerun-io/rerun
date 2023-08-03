@@ -10,7 +10,7 @@
 #include <string>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         /// A String label component.
         struct Label {
@@ -36,9 +36,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of Label components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const Label* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

@@ -7,7 +7,7 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType>& AffixFuzzer3::to_arrow_datatype() {
             static const auto datatype = arrow::dense_union({
@@ -18,7 +18,7 @@ namespace rr {
                     "craziness",
                     arrow::list(arrow::field(
                         "item",
-                        rr::datatypes::AffixFuzzer1::to_arrow_datatype(),
+                        rerun::datatypes::AffixFuzzer1::to_arrow_datatype(),
                         false,
                         nullptr
                     )),
@@ -52,7 +52,7 @@ namespace rr {
                     std::make_shared<arrow::FloatBuilder>(memory_pool),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        rr::datatypes::AffixFuzzer1::new_arrow_array_builder(memory_pool)
+                        rerun::datatypes::AffixFuzzer1::new_arrow_array_builder(memory_pool)
                             .ValueOrDie()
                     ),
                     std::make_shared<arrow::FixedSizeListBuilder>(
@@ -83,4 +83,4 @@ namespace rr {
             return arrow::Status::OK();
         }
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

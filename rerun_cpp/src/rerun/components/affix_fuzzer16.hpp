@@ -11,16 +11,16 @@
 #include <utility>
 #include <vector>
 
-namespace rr {
+namespace rerun {
     namespace components {
         struct AffixFuzzer16 {
-            std::vector<rr::datatypes::AffixFuzzer3> many_required_unions;
+            std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
-            AffixFuzzer16(std::vector<rr::datatypes::AffixFuzzer3> many_required_unions)
+            AffixFuzzer16(std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions)
                 : many_required_unions(std::move(many_required_unions)) {}
 
             /// Returns the arrow data type this type corresponds to.
@@ -37,9 +37,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of AffixFuzzer16 components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const AffixFuzzer16* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

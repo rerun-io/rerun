@@ -6,7 +6,7 @@ namespace arrow {
     class Buffer;
 }
 
-namespace rr {
+namespace rerun {
     struct DataCell {
         /// Name of the logged component.
         const char* component_name;
@@ -19,4 +19,4 @@ namespace rr {
         /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
         std::shared_ptr<arrow::Buffer> buffer;
     };
-} // namespace rr
+} // namespace rerun

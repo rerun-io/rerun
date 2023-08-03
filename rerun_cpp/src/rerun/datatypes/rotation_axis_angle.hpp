@@ -9,7 +9,7 @@
 #include <arrow/type_fwd.h>
 #include <cstdint>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         /// 3D rotation represented by a rotation around a given axis.
         struct RotationAxisAngle {
@@ -18,10 +18,10 @@ namespace rr {
             /// This is not required to be normalized.
             /// If normalization fails (typically because the vector is length zero), the rotation
             /// is silently ignored.
-            rr::datatypes::Vec3D axis;
+            rerun::datatypes::Vec3D axis;
 
             /// How much to rotate around the axis.
-            rr::datatypes::Angle angle;
+            rerun::datatypes::Angle angle;
 
           public:
             /// Returns the arrow data type this type corresponds to.
@@ -39,4 +39,4 @@ namespace rr {
             );
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

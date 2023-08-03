@@ -10,7 +10,7 @@
 #include <cstring>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class Scale3DTag {
@@ -24,7 +24,7 @@ namespace rr {
 
             union Scale3DData {
                 /// Individual scaling factors for each axis, distorting the original object.
-                rr::datatypes::Vec3D three_d;
+                rerun::datatypes::Vec3D three_d;
 
                 /// Uniform scaling factor along all axis.
                 float uniform;
@@ -73,7 +73,7 @@ namespace rr {
             }
 
             /// Individual scaling factors for each axis, distorting the original object.
-            static Scale3D three_d(rr::datatypes::Vec3D three_d) {
+            static Scale3D three_d(rerun::datatypes::Vec3D three_d) {
                 Scale3D self;
                 self._tag = detail::Scale3DTag::ThreeD;
                 self._data.three_d = std::move(three_d);
@@ -89,7 +89,7 @@ namespace rr {
             }
 
             /// Individual scaling factors for each axis, distorting the original object.
-            Scale3D(rr::datatypes::Vec3D three_d) {
+            Scale3D(rerun::datatypes::Vec3D three_d) {
                 *this = Scale3D::three_d(std::move(three_d));
             }
 
@@ -120,4 +120,4 @@ namespace rr {
           public:
         };
     } // namespace datatypes
-} // namespace rr
+} // namespace rerun

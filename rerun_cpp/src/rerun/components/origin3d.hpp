@@ -10,17 +10,17 @@
 #include <cstdint>
 #include <utility>
 
-namespace rr {
+namespace rerun {
     namespace components {
         /// A point of origin in 3D space.
         struct Origin3D {
-            rr::datatypes::Vec3D origin;
+            rerun::datatypes::Vec3D origin;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
-            Origin3D(rr::datatypes::Vec3D origin) : origin(std::move(origin)) {}
+            Origin3D(rerun::datatypes::Vec3D origin) : origin(std::move(origin)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
@@ -35,9 +35,9 @@ namespace rr {
             );
 
             /// Creates a Rerun DataCell from an array of Origin3D components.
-            static arrow::Result<rr::DataCell> to_data_cell(
+            static arrow::Result<rerun::DataCell> to_data_cell(
                 const Origin3D* instances, size_t num_instances
             );
         };
     } // namespace components
-} // namespace rr
+} // namespace rerun

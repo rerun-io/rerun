@@ -7,7 +7,7 @@
 
 #include <arrow/api.h>
 
-namespace rr {
+namespace rerun {
     namespace components {
         const char* DrawOrder::NAME = "rerun.draw_order";
 
@@ -42,7 +42,7 @@ namespace rr {
             return arrow::Status::OK();
         }
 
-        arrow::Result<rr::DataCell> DrawOrder::to_data_cell(
+        arrow::Result<rerun::DataCell> DrawOrder::to_data_cell(
             const DrawOrder* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -61,14 +61,14 @@ namespace rr {
                 arrow::schema({arrow::field(DrawOrder::NAME, DrawOrder::to_arrow_datatype(), false)}
                 );
 
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = DrawOrder::NAME;
             ARROW_ASSIGN_OR_RAISE(
                 cell.buffer,
-                rr::ipc_from_table(*arrow::Table::Make(schema, {array}))
+                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
             );
 
             return cell;
         }
     } // namespace components
-} // namespace rr
+} // namespace rerun
