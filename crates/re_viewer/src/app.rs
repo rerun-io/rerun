@@ -167,7 +167,7 @@ impl App {
             populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
         {
             re_log::error!(
-                "Failed to populate space view type registry with builtin space views: {}",
+                "Failed to populate Space View type registry with builtin Space Views: {}",
                 err
             );
         }

@@ -99,11 +99,11 @@ impl UICommand {
 
             UICommand::ToggleMemoryPanel => (
                 "Toggle Memory Panel",
-                "Investigate what is using up RAM in Rerun Viewer",
+                "View and track current RAM usage inside Rerun Viewer",
             ),
-            UICommand::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
-            UICommand::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
-            UICommand::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom time panel"),
+            UICommand::ToggleBlueprintPanel => ("Toggle Blueprint Panel", "Toggle the left panel"),
+            UICommand::ToggleSelectionPanel => ("Toggle Selection Panel", "Toggle the right panel"),
+            UICommand::ToggleTimePanel => ("Toggle Time Panel", "Toggle the bottom panel"),
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => (
@@ -111,20 +111,18 @@ impl UICommand {
                 "Toggle between windowed and fullscreen viewer",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ZoomIn => ("Zoom In", "Increases the ui scaling factor"),
+            UICommand::ZoomIn => ("Zoom In", "Increases the UI scaling factor"),
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ZoomOut => ("Zoom Out", "Decreases the ui scaling factor"),
+            UICommand::ZoomOut => ("Zoom Out", "Decreases the UI scaling factor"),
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomReset => (
                 "Reset Zoom",
-                "Resets ui scaling factor to the OS provided default",
+                "Resets UI scaling factor to the OS provided default",
             ),
 
             UICommand::SelectionPrevious => ("Previous selection", "Go to previous selection"),
             UICommand::SelectionNext => ("Next selection", "Go to next selection"),
-            UICommand::ToggleCommandPalette => {
-                ("Command Palette…", "Toggle the command palette window")
-            }
+            UICommand::ToggleCommandPalette => ("Command Palette…", "Toggle the Command Palette"),
 
             UICommand::PlaybackTogglePlayPause => {
                 ("Toggle play/pause", "Either play or pause the time")

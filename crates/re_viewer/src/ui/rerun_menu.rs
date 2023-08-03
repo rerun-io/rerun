@@ -190,7 +190,7 @@ impl App {
         {
             if self.re_ui
                 .checkbox(ui, &mut self.state.app_options.experimental_space_view_screenshots, "(experimental) Space View screenshots")
-                .on_hover_text("Allow taking screenshots of 2D & 3D space views via their context menu. Does not contain labels.")
+                .on_hover_text("Allow taking screenshots of 2D & 3D Space Views via their context menu. Does not contain labels.")
                 .clicked()
             {
                 ui.close_menu();

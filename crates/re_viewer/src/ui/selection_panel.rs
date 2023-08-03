@@ -166,7 +166,7 @@ fn what_is_selected_ui(
 
                 if let Some(space_view_id) = space_view_id {
                     if let Some(space_view) = viewport.space_view_mut(space_view_id) {
-                        ui.label("in Space View");
+                        ui.label("In Space View");
                         re_viewport::item_ui::space_view_button(ctx, ui, space_view);
                         ui.end_row();
                     }
@@ -192,7 +192,7 @@ fn what_is_selected_ui(
                             );
                             ui.end_row();
 
-                            ui.label("in Space View");
+                            ui.label("In Space View");
                             re_viewport::item_ui::space_view_button(ctx, ui, space_view);
                             ui.end_row();
                         });
@@ -232,7 +232,7 @@ fn blueprint_ui(
 
                 if ui
                     .button("Clone Space View")
-                    .on_hover_text("Create an exact duplicate of this Space View including all blueprint settings")
+                    .on_hover_text("Create an exact duplicate of this Space View including all Blueprint settings")
                     .clicked()
                 {
                     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
