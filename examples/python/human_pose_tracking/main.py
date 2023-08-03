@@ -28,7 +28,7 @@ def track_pose(video_path: str, segment: bool) -> None:
     rr.log_annotation_context(
         "/",
         rr.ClassDescription(
-            info=rr.AnnotationInfo(label="Person"),
+            info=rr.AnnotationInfo(id=0, label="Person"),
             keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
             keypoint_connections=mp_pose.POSE_CONNECTIONS,
         ),
