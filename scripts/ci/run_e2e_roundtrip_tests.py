@@ -26,7 +26,7 @@ cpp_opt_out = ["points2d", "transform3d"]
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run our end-to-end cross-language roundtrip tests for all SDK")
-    parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
+    parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk")
     parser.add_argument("--full-dump", action="store_true", help="Dump both rrd files as tables")
     parser.add_argument(
         "--release",
@@ -38,13 +38,13 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if args.no_build:
-        print("Skipping building rerun-sdk - assuming it is already built and up-to-date!")
-    else:
-        build_env = os.environ.copy()
-        if "RUST_LOG" in build_env:
-            del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
+    build_env = os.environ.copy()
+    if "RUST_LOG" in build_env:
+        del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
 
+    if args.no_py_build:
+        print("Skipping building python rerun-sdk - assuming it is already built and up-to-date!")
+    else:
         print("----------------------------------------------------------")
         print("Building rerun-sdk for Python…")
         start_time = time.time()
@@ -54,26 +54,25 @@ def main() -> None:
         print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
         print("")
 
-        print("----------------------------------------------------------")
-        print("Build rerun-sdk for C++…")
-        start_time = time.time()
-        os.makedirs("build", exist_ok=True)
-        if args.release:
-            configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."]
-        else:
-            configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Debug", ".."]
-        print(subprocess.list2cmdline(configure_args))
-        returncode = subprocess.Popen(
-            configure_args,
-            env=build_env,
-            cwd="./build",
-        ).wait()
-        assert returncode == 0, f"configuring cmake failed with exit code {returncode}"
-        cmake_build("rerun_sdk", args.release)
-
-        elapsed = time.time() - start_time
-        print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
-        print("")
+    print("----------------------------------------------------------")
+    print("Build rerun-sdk for C++…")
+    start_time = time.time()
+    os.makedirs("build", exist_ok=True)
+    if args.release:
+        configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."]
+    else:
+        configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Debug", ".."]
+    print(subprocess.list2cmdline(configure_args))
+    returncode = subprocess.Popen(
+        configure_args,
+        env=build_env,
+        cwd="build",
+    ).wait()
+    assert returncode == 0, f"configuring cmake failed with exit code {returncode}"
+    cmake_build("rerun_sdk", args.release)
+    elapsed = time.time() - start_time
+    print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
+    print("")
 
     files = [f for f in listdir(ARCHETYPES_PATH) if isfile(join(ARCHETYPES_PATH, f))]
     archetypes = [filename for filename, extension in [os.path.splitext(file) for file in files] if extension == ".fbs"]
@@ -172,7 +171,7 @@ def cmake_build(target: str, release: bool) -> None:
         str(multiprocessing.cpu_count()),
     ]
     print(subprocess.list2cmdline(build_process_args))
-    result = subprocess.run(build_process_args, cwd="./build")
+    result = subprocess.run(build_process_args, cwd="build")
 
     assert result.returncode == 0, f"cmake build of {target} exited with error code {result.returncode}"
 
