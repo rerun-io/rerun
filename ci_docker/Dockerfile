@@ -2,14 +2,20 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.7"
+LABEL version="0.8"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
 # This mirrors scripts/setup.sh
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    apache-arrow \
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y ca-certificates lsb-release wget; \
+    wget https://apache.jfrog.io/artifactory/arrow/ubuntu/apache-arrow-apt-source-latest-focal.deb; \
+    apt-get install -y ./apache-arrow-apt-source-latest-focal.deb; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+    libarrow-dev \
     build-essential \
     clang-format \
     cmake \
@@ -27,9 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxkbcommon-dev \
     lsb-release \
     python3-pip \
-    sudo \
-    wget && \
-    rm -rf /var/lib/apt/lists/*
+    sudo; \
+    rm -rf /var/lib/apt/lists/*;
 
 # Need a more recent pip for manylinux packages to work properly
 RUN python3 -m pip install -U pip
@@ -37,17 +42,18 @@ RUN python3 -m pip install -U pip
 # We need a more modern patchelf than ships on ubuntu-20.04
 RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | tar -xz ./bin/patchelf
 
+# TODO(andreas): Update cargo-deny below when updating rust version to 1.70.0 or above!
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
     RUST_VERSION=1.69.0 \
-    RUSTUP_VERSION=1.25.2
+    RUSTUP_VERSION=1.26.0
 
 # Install Rust
-# Borrowed from: https://github.com/rust-lang/docker-rust/blob/master/1.67.1/bookworm/Dockerfile
+# Borrowed from: https://github.com/rust-lang/docker-rust/blob/a8a2a9d/1.71.0/bookworm/Dockerfile
 RUN set -eux; \
     rustArch='x86_64-unknown-linux-gnu'; \
-    rustupSha256='bb31eaf643926b2ee9f4d8d6fc0e2835e03c0a60f34d324048aa194f0b29a71c'; \
+    rustupSha256='0b2f6c8f85a3d02fde2efc0ced4657869d73fccfce59defb4e8d29233116e6db'; \
     url="https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${rustArch}/rustup-init"; \
     wget "$url"; \
     echo "${rustupSha256} *rustup-init" | sha256sum -c -; \
@@ -61,9 +67,10 @@ RUN set -eux; \
 
 # Install some cargo tools we know we'll always need
 # We can't do this until after we've installed rust / cargo above
-RUN cargo install cargo-deny && \
-    cargo install cargo-cranky && \
-    cargo install cargo-benchcmp
+# Latest cargo-deny requires a rust update!
+RUN cargo install cargo-deny@0.13.9
+RUN cargo install cargo-cranky
+RUN cargo install cargo-benchcmp
 
 # Install the python build dependencies
 ADD rerun_py/requirements-build.txt requirements-build.txt

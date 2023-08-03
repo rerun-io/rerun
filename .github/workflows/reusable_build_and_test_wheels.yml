@@ -70,7 +70,7 @@ jobs:
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               run_tests="true"
-              container="{'image': 'rerunio/ci_docker:0.7'}"
+              container="{'image': 'rerunio/ci_docker:0.8'}"
               ;;
             windows)
               runner="windows-latest-8-cores"
@@ -297,4 +297,3 @@ jobs:
         with:
           name: ${{ inputs.RRD_ARTIFACT_NAME }}
           path: rrd
-

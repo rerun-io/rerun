@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.16)
 
 add_subdirectory(tests)
 
@@ -44,18 +44,32 @@ FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 target_link_libraries(rerun_sdk PRIVATE loguru::loguru)
 
 # ------------------------------------------------------------------------------
-execute_process(COMMAND cargo build -p re_types COMMAND_ERROR_IS_FATAL ANY) # Generates most of the C++ source files
-execute_process(COMMAND cargo build -p rerun_c COMMAND_ERROR_IS_FATAL ANY) # We link against this, so must be up-to-date
+# execute process doesn't fail if the process fails.
+# `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
+# which isn't default on Ubuntu LTS as of writing, causing unnecessary friction.
+execute_process(COMMAND cargo build --release -p re_types RESULT_VARIABLE ret) # Generates most of the C++ source files
+
+if(NOT(ret EQUAL "0"))
+    message(FATAL_ERROR "Failed to build re_types in order to generate C++ source files.")
+endif()
+
+execute_process(COMMAND cargo build --release -p rerun_c RESULT_VARIABLE ret) # We link against this, so must be up-to-date
+
+if(NOT(ret EQUAL "0"))
+    message(FATAL_ERROR "Failed to build rerun_c.")
+endif()
 
 # ------------------------------------------------------------------------------
 if(APPLE)
-    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/debug/librerun_c.a)
+    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
     target_link_libraries(rerun_sdk PRIVATE "-framework CoreFoundation" "-framework IOKit")
-endif()
-
-if(LINUX)
-    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/debug/librerun_c.a)
+elseif(UNIX) # if(LINUX) # CMake 3.25
+    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
     target_link_libraries(rerun_sdk PRIVATE "-lm")
+elseif(WIN32)
+    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
+
+    # TODO(andreas): Untested. Almost certainly gonna encounter issues here.
 endif()
 
 # -----------------------------------------------------------------------------
