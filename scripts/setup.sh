@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Setup required to build rerun.
-# This file is mirrored in ci_docker/Dockerfile.
+# This file is largly mirrored in ci_docker/Dockerfile.
 
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
@@ -32,16 +32,23 @@ elif [ -x "$(command -v dnf)" ];   then
         pkg-config
 fi
 
-# C++ SDK requires `apache-arrow` and `cmake`
-packagesNeeded='apache-arrow cmake'
+# C++ SDK requires `cmake` and `apache-arrow`
+# Note that this may look different for different package managers.
+# If you have issues installing arrow, check https://arrow.apache.org/install/
+packagesNeeded='cmake apache-arrow'
 if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
 elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
-elif [ -x "$(command -v apt-get)" ]; then sudo apt-get -y install $packagesNeeded
+elif [ -x "$(command -v apt-get)" ]; then
+    sudo apt-get install -y -V ca-certificates lsb-release wget
+    wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+    sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+    sudo apt-get update
+    sudo apt-get -y install 'cmake libarrow-dev'
 elif [ -x "$(command -v dnf)" ];     then sudo dnf install $packagesNeeded
 elif [ -x "$(command -v zypper)" ];  then sudo zypper install $packagesNeeded
 elif [ -x "$(command -v apk)" ];     then sudo apk add --no-cache $packagesNeeded
 elif [ -x "$(command -v winget)" ];  then sudo winget add --no-cache $packagesNeeded
-elif [ -x "$(command -v pacman)" ];  then sudo pacman -S $packagesNeeded
+elif [ -x "$(command -v pacman)" ];  then sudo pacman -S 'cmake arrow'
 else
     echo "FAILED TO INSTALL PACKAGE: Package manager not found. You must manually install: $packagesNeeded">&2;
     exit 1
