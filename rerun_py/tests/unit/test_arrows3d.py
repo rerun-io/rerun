@@ -19,21 +19,18 @@ from .common_arrays import (
     labels_expected,
     radii_arrays,
     radii_expected,
+    vec3ds_arrays,
+    vec3ds_expected,
 )
 
 
 def test_arrows3d() -> None:
-    arrows_arrays: list[rrd.Arrow3DArrayLike] = [
-        [],
-        # Arrow3DArrayLike: Sequence[Arrow3DLike]: Arrow3D
-        [
-            rrd.Arrow3D(origin=[1, 2, 3], vector=[4, 5, 6]),
-            rrd.Arrow3D(origin=[10, 20, 30], vector=[40, 50, 60]),
-        ],
-    ]
+    vectors_arrays = vec3ds_arrays
+    origins_arrays = vec3ds_arrays
 
     all_arrays = itertools.zip_longest(
-        arrows_arrays,
+        vectors_arrays,
+        origins_arrays,
         radii_arrays,
         colors_arrays,
         labels_arrays,
@@ -41,11 +38,13 @@ def test_arrows3d() -> None:
         instance_keys_arrays,
     )
 
-    for arrows, radii, colors, labels, class_ids, instance_keys in all_arrays:
-        arrows = arrows if arrows is not None else arrows_arrays[-1]
+    for vectors, origins, radii, colors, labels, class_ids, instance_keys in all_arrays:
+        vectors = vectors if vectors is not None else vectors_arrays[-1]
+        origins = origins if origins is not None else origins_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        arrows = cast(Optional[rrd.Arrow3DArrayLike], arrows)
+        vectors = cast(rrd.Vec3DArrayLike, vectors)
+        origins = cast(Optional[rrd.Vec3DArrayLike], origins)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
         colors = cast(Optional[rrc.ColorArrayLike], colors)
         labels = cast(Optional[rrc.LabelArrayLike], labels)
@@ -54,7 +53,8 @@ def test_arrows3d() -> None:
 
         print(
             f"rr2.Arrows3D(\n"
-            f"    {arrows}\n"
+            f"    {vectors}\n"
+            f"    origins={origins}\n"
             f"    radii={radii}\n"
             f"    colors={colors}\n"
             f"    labels={labels}\n"
@@ -63,7 +63,8 @@ def test_arrows3d() -> None:
             f")"
         )
         arch = rr2.Arrows3D(
-            arrows,
+            vectors,
+            origins=origins,
             radii=radii,
             colors=colors,
             labels=labels,
@@ -72,14 +73,8 @@ def test_arrows3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.arrows == rrc.Arrow3DArray.from_similar(
-            []
-            if is_empty(arrows)
-            else [
-                rrd.Arrow3D(origin=[1, 2, 3], vector=[4, 5, 6]),
-                rrd.Arrow3D(origin=[10, 20, 30], vector=[40, 50, 60]),
-            ]
-        )
+        assert arch.vectors == vec3ds_expected(is_empty(vectors), rrc.Vector3DArray)
+        assert arch.origins == vec3ds_expected(is_empty(origins), rrc.Origin3DArray)
         assert arch.radii == radii_expected(is_empty(radii))
         assert arch.colors == colors_expected(is_empty(colors))
         assert arch.labels == labels_expected(is_empty(labels))

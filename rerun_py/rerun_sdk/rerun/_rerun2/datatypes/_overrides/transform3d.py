@@ -83,8 +83,6 @@ def _build_struct_array_from_axis_angle_rotation(
 
 
 def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionType) -> pa.Array:
-    from .. import Vec3D
-
     if scale is None:
         scale_discriminant = "_null_markers"
         scale_pa_arr = pa.nulls(1, pa.null())

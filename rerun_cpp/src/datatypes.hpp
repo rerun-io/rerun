@@ -10,7 +10,6 @@
 #include "datatypes/affix_fuzzer5.hpp"
 #include "datatypes/angle.hpp"
 #include "datatypes/annotation_info.hpp"
-#include "datatypes/arrow3d.hpp"
 #include "datatypes/class_description.hpp"
 #include "datatypes/class_description_map_elem.hpp"
 #include "datatypes/flattened_scalar.hpp"

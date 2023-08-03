@@ -2,9 +2,9 @@
 
 use rerun::{
     archetypes::Transform3D,
+    components::Vector3D,
     datatypes::{
-        Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
-        TranslationRotationScale3D, Vec3D,
+        Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
     },
     MsgSender, RecordingStreamBuilder,
 };
@@ -13,10 +13,10 @@ use std::f32::consts::PI;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("transform").memory()?;
 
-    let arrow = rerun::components::Arrow3D::new(Vec3D::ZERO, (0.0, 1.0, 0.0));
+    let vector = Vector3D::from((0.0, 1.0, 0.0));
 
     MsgSender::new("base")
-        .with_component(&[arrow])?
+        .with_component(&[vector])?
         .send(&rec_stream)?;
 
     MsgSender::from_archetype(
@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .send(&rec_stream)?;
 
     MsgSender::new("base/translated")
-        .with_component(&[arrow])?
+        .with_component(&[vector])?
         .send(&rec_stream)?;
 
     MsgSender::from_archetype(
@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .send(&rec_stream)?;
 
     MsgSender::new("base/rotated_scaled")
-        .with_component(&[arrow])?
+        .with_component(&[vector])?
         .send(&rec_stream)?;
 
     rerun::native_viewer::show(storage.take())?;

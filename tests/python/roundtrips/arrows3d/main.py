@@ -9,14 +9,11 @@ import argparse
 import numpy as np
 import rerun as rr
 import rerun.experimental as rr2
-from rerun.experimental import dt as rrd
 
 
 def main() -> None:
-    arrows = [
-        rrd.Arrow3D(origin=[1, 2, 3], vector=[4, 5, 6]),
-        rrd.Arrow3D(origin=[10, 20, 30], vector=[40, 50, 60]),
-    ]
+    origins = [[1, 2, 3], [10, 20, 30]]
+    vectors = [[4, 5, 6], [40, 50, 60]]
     radii = np.array([0.1, 1.0], dtype=np.float32)
     colors = np.array(
         [
@@ -30,7 +27,8 @@ def main() -> None:
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
     arrows3d = rr2.Arrows3D(
-        arrows,
+        vectors,
+        origins=origins,
         radii=radii,
         colors=colors,
         labels=labels,

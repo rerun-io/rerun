@@ -98,15 +98,16 @@ pub mod external {
 // ----------------------------------------------------------------------------
 
 use re_types::components::{
-    Arrow3D, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label, Point2D,
-    Point3D, Radius, Transform3D,
+    ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label, Origin3D,
+    Point2D, Point3D, Radius, Transform3D, Vector3D,
 };
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 27] = [
+    static ref FIELDS: [Field; 28] = [
         <AnnotationContext as LegacyComponent>::field(),
         <Box3D as LegacyComponent>::field(),
+        <LegacyVec3D as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),
         <LineStrip3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
@@ -118,9 +119,7 @@ lazy_static! {
         <Tensor as LegacyComponent>::field(),
         <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
-        <LegacyVec3D as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
-        Field::new(Arrow3D::name().as_str(), Arrow3D::to_arrow_datatype(), false),
         Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),
         Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),
         Field::new(DisconnectedSpace::name().as_str(), DisconnectedSpace::to_arrow_datatype(), false),
@@ -128,10 +127,12 @@ lazy_static! {
         Field::new(InstanceKey::name().as_str(), InstanceKey::to_arrow_datatype(), false),
         Field::new(KeypointId::name().as_str(), KeypointId::to_arrow_datatype(), false),
         Field::new(Label::name().as_str(), Label::to_arrow_datatype(), false),
+        Field::new(Origin3D::name().as_str(), Origin3D::to_arrow_datatype(), false),
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
         Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),
         Field::new(Radius::name().as_str(), Radius::to_arrow_datatype(), false),
         Field::new(Transform3D::name().as_str(), Transform3D::to_arrow_datatype(), false),
+        Field::new(Vector3D::name().as_str(), Vector3D::to_arrow_datatype(), false),
     ];
 }
 

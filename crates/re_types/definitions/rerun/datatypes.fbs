@@ -1,5 +1,4 @@
 include "./datatypes/angle.fbs";
-include "./datatypes/arrow3d.fbs";
 include "./datatypes/mat3x3.fbs";
 include "./datatypes/mat4x4.fbs";
 include "./datatypes/annotation_info.fbs";

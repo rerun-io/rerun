@@ -2,8 +2,6 @@
 
 mod annotation_context;
 mod annotation_context_ext;
-mod arrow3d;
-mod arrow3d_ext;
 mod class_id;
 mod class_id_ext;
 mod color;
@@ -18,6 +16,7 @@ mod keypoint_id;
 mod keypoint_id_ext;
 mod label;
 mod label_ext;
+mod origin3d;
 mod point2d;
 mod point2d_ext;
 mod point3d;
@@ -26,9 +25,9 @@ mod radius;
 mod radius_ext;
 mod transform3d;
 mod transform3d_ext;
+mod vector3d;
 
 pub use self::annotation_context::AnnotationContext;
-pub use self::arrow3d::Arrow3D;
 pub use self::class_id::ClassId;
 pub use self::color::Color;
 pub use self::disconnected_space::DisconnectedSpace;
@@ -36,7 +35,9 @@ pub use self::draw_order::DrawOrder;
 pub use self::instance_key::InstanceKey;
 pub use self::keypoint_id::KeypointId;
 pub use self::label::Label;
+pub use self::origin3d::Origin3D;
 pub use self::point2d::Point2D;
 pub use self::point3d::Point3D;
 pub use self::radius::Radius;
 pub use self::transform3d::Transform3D;
+pub use self::vector3d::Vector3D;

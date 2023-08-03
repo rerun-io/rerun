@@ -3,12 +3,13 @@
 
 #pragma once
 
-#include "../components/arrow3d.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
 #include "../components/label.hpp"
+#include "../components/origin3d.hpp"
 #include "../components/radius.hpp"
+#include "../components/vector3d.hpp"
 #include "../data_cell.hpp"
 
 #include <arrow/type_fwd.h>
@@ -21,8 +22,11 @@ namespace rr {
     namespace archetypes {
         /// A batch of 3D arrows with optional colors, radii, labels, etc.
         struct Arrows3D {
-            /// All the individual arrows that make up the batch.
-            std::vector<rr::components::Arrow3D> arrows;
+            /// All the vectors for each arrow in the batch.
+            std::vector<rr::components::Vector3D> vectors;
+
+            /// All the origin points for each arrow in the batch.
+            std::optional<std::vector<rr::components::Origin3D>> origins;
 
             /// Optional radii for the arrows.
             ///
@@ -45,7 +49,13 @@ namespace rr {
             std::optional<std::vector<rr::components::InstanceKey>> instance_keys;
 
           public:
-            Arrows3D(std::vector<rr::components::Arrow3D> arrows) : arrows(std::move(arrows)) {}
+            Arrows3D(std::vector<rr::components::Vector3D> vectors) : vectors(std::move(vectors)) {}
+
+            /// All the origin points for each arrow in the batch.
+            Arrows3D& with_origins(std::vector<rr::components::Origin3D> _origins) {
+                origins = std::move(_origins);
+                return *this;
+            }
 
             /// Optional radii for the arrows.
             ///
@@ -84,7 +94,7 @@ namespace rr {
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
-                return arrows.size();
+                return vectors.size();
             }
 
             /// Creates a list of Rerun DataCell from this archetype.

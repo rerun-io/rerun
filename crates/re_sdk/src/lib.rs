@@ -77,8 +77,8 @@ pub mod components {
         TensorData, TensorDataMeaning, TensorDimension, TensorId, TextEntry, ViewCoordinates,
     };
     pub use re_types::components::{
-        AnnotationContext, Arrow3D, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey,
-        KeypointId, Label, Point2D, Point3D, Radius, Transform3D,
+        AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
+        Label, Origin3D, Point2D, Point3D, Radius, Transform3D, Vector3D,
     };
 }
 

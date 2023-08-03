@@ -23,30 +23,26 @@
 ///
 /// use rerun::{
 ///    archetypes::Arrows3D,
-///    components::{Arrow3D, Color},
-///    datatypes::Vec3D,
+///    components::{Color, Vector3D},
 ///    MsgSender, RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec_stream, storage) = RecordingStreamBuilder::new("arrow").memory()?;
 ///
-///    let (arrows, colors): (Vec<_>, Vec<_>) = (0..100)
+///    let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
 ///        .map(|i| {
 ///            let angle = TAU * i as f32 * 0.01;
 ///            let length = ((i + 1) as f32).log2();
 ///            let c = (angle / TAU * 255.0) as u8;
 ///            (
-///                Arrow3D::new(
-///                    Vec3D::ZERO,
-///                    [length * angle.sin(), 0.0, length * angle.cos()],
-///                ),
+///                Vector3D::from([length * angle.sin(), 0.0, length * angle.cos()]),
 ///                Color::from_unmultiplied_rgba(255 - c, c, 128, 128),
 ///            )
 ///        })
 ///        .unzip();
 ///
-///    MsgSender::from_archetype("arrows", &Arrows3D::new(arrows).with_colors(colors))?
+///    MsgSender::from_archetype("arrows", &Arrows3D::new(vectors).with_colors(colors))?
 ///        .send(&rec_stream)?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;
@@ -55,8 +51,11 @@
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct Arrows3D {
-    /// All the individual arrows that make up the batch.
-    pub arrows: Vec<crate::components::Arrow3D>,
+    /// All the vectors for each arrow in the batch.
+    pub vectors: Vec<crate::components::Vector3D>,
+
+    /// All the origin points for each arrow in the batch.
+    pub origins: Option<Vec<crate::components::Origin3D>>,
 
     /// Optional radii for the arrows.
     ///
@@ -80,21 +79,24 @@ pub struct Arrows3D {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.arrow3d".into()]);
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.radius".into(), "rerun.colorrgba".into()]);
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.Vector3D".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.Origin3D".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.radius".into(),
+            "rerun.colorrgba".into(),
             "rerun.label".into(),
             "rerun.class_id".into(),
             "rerun.instance_key".into(),
         ]
     });
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.arrow3d".into(),
+            "rerun.components.Vector3D".into(),
+            "rerun.components.Origin3D".into(),
             "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.label".into(),
@@ -104,7 +106,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 6usize]> =
     });
 
 impl Arrows3D {
-    pub const NUM_COMPONENTS: usize = 6usize;
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 impl crate::Archetype for Arrows3D {
@@ -144,24 +146,47 @@ impl crate::Archetype for Arrows3D {
             {
                 Some({
                     let array =
-                        <crate::components::Arrow3D>::try_to_arrow(self.arrows.iter(), None);
+                        <crate::components::Vector3D>::try_to_arrow(self.vectors.iter(), None);
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.Arrow3D".into(),
+                            "rerun.components.Vector3D".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.arrow3d".into()),
+                            Some("rerun.components.Vector3D".into()),
                         );
                         (
-                            ::arrow2::datatypes::Field::new("arrows", datatype, false),
+                            ::arrow2::datatypes::Field::new("vectors", datatype, false),
                             array,
                         )
                     })
                 })
                 .transpose()
                 .map_err(|err| crate::SerializationError::Context {
-                    location: "rerun.archetypes.Arrows3D#arrows".into(),
+                    location: "rerun.archetypes.Arrows3D#vectors".into(),
                     source: Box::new(err),
                 })?
+            },
+            {
+                self.origins
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::Origin3D>::try_to_arrow(many.iter(), None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.Origin3D".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.components.Origin3D".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("origins", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()
+                    .map_err(|err| crate::SerializationError::Context {
+                        location: "rerun.archetypes.Arrows3D#origins".into(),
+                        source: Box::new(err),
+                    })?
             },
             {
                 self.radii
@@ -294,19 +319,19 @@ impl crate::Archetype for Arrows3D {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let arrows = {
+        let vectors = {
             let array = arrays_by_name
-                .get("arrows")
+                .get("vectors")
                 .ok_or_else(|| crate::DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.Arrows3D#arrows".into(),
+                    location: "rerun.archetypes.Arrows3D#vectors".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::Arrow3D>::try_from_arrow_opt(&**array)
+            <crate::components::Vector3D>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.Arrows3D#arrows".into(),
+                    location: "rerun.archetypes.Arrows3D#vectors".into(),
                     source: Box::new(err),
                 })?
                 .into_iter()
@@ -317,9 +342,31 @@ impl crate::Archetype for Arrows3D {
                 })
                 .collect::<crate::DeserializationResult<Vec<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.Arrows3D#arrows".into(),
+                    location: "rerun.archetypes.Arrows3D#vectors".into(),
                     source: Box::new(err),
                 })?
+        };
+        let origins = if let Some(array) = arrays_by_name.get("origins") {
+            Some(
+                <crate::components::Origin3D>::try_from_arrow_opt(&**array)
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.archetypes.Arrows3D#origins".into(),
+                        source: Box::new(err),
+                    })?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.archetypes.Arrows3D#origins".into(),
+                        source: Box::new(err),
+                    })?,
+            )
+        } else {
+            None
         };
         let radii = if let Some(array) = arrays_by_name.get("radii") {
             Some(
@@ -432,7 +479,8 @@ impl crate::Archetype for Arrows3D {
             None
         };
         Ok(Self {
-            arrows,
+            vectors,
+            origins,
             radii,
             colors,
             labels,
@@ -443,15 +491,24 @@ impl crate::Archetype for Arrows3D {
 }
 
 impl Arrows3D {
-    pub fn new(arrows: impl IntoIterator<Item = impl Into<crate::components::Arrow3D>>) -> Self {
+    pub fn new(vectors: impl IntoIterator<Item = impl Into<crate::components::Vector3D>>) -> Self {
         Self {
-            arrows: arrows.into_iter().map(Into::into).collect(),
+            vectors: vectors.into_iter().map(Into::into).collect(),
+            origins: None,
             radii: None,
             colors: None,
             labels: None,
             class_ids: None,
             instance_keys: None,
         }
+    }
+
+    pub fn with_origins(
+        mut self,
+        origins: impl IntoIterator<Item = impl Into<crate::components::Origin3D>>,
+    ) -> Self {
+        self.origins = Some(origins.into_iter().map(Into::into).collect());
+        self
     }
 
     pub fn with_radii(
