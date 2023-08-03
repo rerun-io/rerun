@@ -20,11 +20,7 @@ use lazy_static::lazy_static;
 use re_types::Loggable;
 
 mod bbox;
-mod class_id;
-mod color;
 pub mod coordinates;
-mod keypoint_id;
-mod label;
 mod linestrip;
 mod mat;
 mod mesh3d;
@@ -45,8 +41,6 @@ mod load_file;
 pub mod datagen;
 
 // ----------------------------------------------------------------------------
-// TODO(emilk): split into modules, like we do in re_sdk/src/lib.rs
-pub(crate) use self::{color::LegacyColor, label::LegacyLabel};
 
 // TODO(cmc): get rid of this once every single archetypes depending on those have been migrated.
 pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};

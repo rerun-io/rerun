@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use re_log_types::RowId;
 use re_query::{ArchetypeView, ComponentWithInstances};
 use re_types::archetypes::Points2D;
 use re_types::components::{Color, InstanceKey, Point2D};
