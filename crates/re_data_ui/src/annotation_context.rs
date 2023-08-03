@@ -176,18 +176,18 @@ fn class_description_ui(ui: &mut egui::Ui, class: &ClassDescription, id: ClassId
                 .body(|mut body| {
                     re_ui::ReUi::setup_table_body(&mut body);
 
+                    // TODO(jleibs): Helper to do this with caching somewhere
+                    let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = class
+                        .keypoint_annotations
+                        .iter()
+                        .map(|kp| (kp.id.into(), kp.clone()))
+                        .collect();
+
                     for KeypointPair {
                         keypoint0: from,
                         keypoint1: to,
                     } in &class.keypoint_connections
                     {
-                        // TODO(jleibs): Helper to do this with caching somewhere
-                        let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = class
-                            .keypoint_annotations
-                            .iter()
-                            .map(|kp| (kp.id.into(), kp.clone()))
-                            .collect();
-
                         body.row(row_height, |mut row| {
                             for id in [from, to] {
                                 row.col(|ui| {
