@@ -17,7 +17,7 @@ namespace rerun.components;
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 table AnnotationContext (
-  "attr.python.array_aliases": "Sequence[datatypes.ClassDescriptionMapElemLike]",
+  "attr.python.array_aliases": "datatypes.ClassDescription, Sequence[datatypes.ClassDescriptionMapElemLike]",
   "attr.rerun.legacy_fqname": "rerun.annotation_context",
   "attr.rust.derive": "Default, Eq, PartialEq",
   order: 100

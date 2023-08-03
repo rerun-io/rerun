@@ -1,4 +1,8 @@
 # This is a sha256 hash for all direct and indirect dependencies of this crate's build script.
 # It can be safely removed at anytime to force the build script to run again.
 # Check out build.rs to see how it's computed.
+<<<<<<< HEAD
 2af796dfd1a8ef65a6fba51a5d7d62bf8fc882f839326663393b2c9c815a9319
+=======
+16f638b1119c495b6b06d47c3f658d81f2a64107aefcc591e14a81f3c2fee009
+>>>>>>> 53cc6780c (Also support singleton ClassDescription as input to AnnotationContext)

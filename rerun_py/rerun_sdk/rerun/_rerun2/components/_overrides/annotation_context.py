@@ -47,8 +47,11 @@ def annotationcontext_class_map_converter(
 
 
 def annotationcontext_native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
-    from ...datatypes import ClassDescriptionMapElemArray
+    from ...datatypes import ClassDescription, ClassDescriptionMapElemArray
     from .. import AnnotationContext
+
+    if isinstance(data, ClassDescription):
+        data = [data]
 
     # TODO(jleibs): Sort out typing on this.
     # We really only want to support AnnotationContext or Sequence[ClassDescriptionMapElemLike]
