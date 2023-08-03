@@ -16,7 +16,7 @@ function(set_default_warning_settings target)
     # set_property(TARGET ${target} PROPERTY COMPILE_WARNING_AS_ERROR ON)
 endfunction()
 
-# Use makefils on linux, otherwise it might use Ninja which isn't installed by default.
+# Use makefiles on linux, otherwise it might use Ninja which isn't installed by default.
 if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
     set(CMAKE_GENERATOR "Unix Makefiles")
 endif()
