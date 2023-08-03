@@ -2,7 +2,7 @@
 #include <recording_stream.hpp>
 
 int main(int argc, char** argv) {
-    auto rec_stream = rr::RecordingStream("c-example-app");
+    auto rec_stream = rr::RecordingStream("roundtrip_arrows3d");
     rec_stream.save(argv[1]);
 
     rec_stream.log_archetype(
