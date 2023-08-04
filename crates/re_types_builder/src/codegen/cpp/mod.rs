@@ -314,14 +314,33 @@ impl QuotedObject {
                     // Single-field struct - it is a newtype wrapper.
                     // Create a implicit constructor and assignment from its own field-type.
                     let obj_field = &obj.fields[0];
-                    if let Type::Array { .. } = &obj_field.typ {
-                        // TODO(emilk): implicit constructor for arrays
+
+                    let field_ident = format_ident!("{}", obj_field.name);
+                    let param_ident = format_ident!("_{}", obj_field.name);
+
+                    if let Type::Array { elem_type, length } = &obj_field.typ {
+                        // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
+                        // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
+                        let length_quoted = quote_integer(length);
+                        let element_type = quote_element_type(&mut hpp_includes, elem_type);
+                        let element_assignments = (0..*length).map(|i| {
+                            let i = quote_integer(i);
+                            quote!(#param_ident[#i])
+                        });
+                        methods.push(Method {
+                            declaration: MethodDeclaration::constructor(quote! {
+                                #type_ident(const #element_type (&#param_ident)[#length_quoted]) : #field_ident{#(#element_assignments),*}
+                            }),
+                            ..Method::default()
+                        });
+
+                        // No assignment operator for arrays since c arrays aren't typically assignable anyways.
+                        // Note that creating an std::array overload would make initializer_list based construction ambiguous.
+                        // Assignment operator for std::array could make sense though?
                     } else {
                         // Pass by value:
                         // If it was a temporary it gets moved into the value and then moved again into the field.
                         // If it was a lvalue it gets copied into the value and then moved into the field.
-                        let field_ident = format_ident!("{}", obj_field.name);
-                        let param_ident = format_ident!("_{}", obj_field.name);
                         let parameter_declaration =
                             quote_variable(&mut hpp_includes, obj_field, &param_ident);
                         hpp_includes.system.insert("utility".to_owned()); // std::move
@@ -472,7 +491,7 @@ impl QuotedObject {
                                 },
                             },
                             definition_body: quote! {
-                                #field_ident = std::move(std::vector(1, std::move(#parameter_ident)));
+                                #field_ident = std::vector(1, std::move(#parameter_ident));
                                 return *this;
                             },
                             inline: true,
