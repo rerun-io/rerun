@@ -7,7 +7,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("annotation_context_rects").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
 
     // Log an annotation context to assign a label and color to each class
     let annotation = AnnotationContext::new([

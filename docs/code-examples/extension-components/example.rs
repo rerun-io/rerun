@@ -17,4 +17,3 @@ fn log_custom(session: &mut Session) -> Result<(), rerun::MsgSenderError> {
         .with_splat(MyComponent(0.9))?
         .send(session)
 }
-c

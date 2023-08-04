@@ -6,7 +6,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("linestrip2d").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
 
     let points = vec![[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
 

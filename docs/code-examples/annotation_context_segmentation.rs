@@ -5,8 +5,7 @@ use rerun::datatypes::{AnnotationInfo, ClassDescription};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
-        RecordingStreamBuilder::new("annotation_context_segmentation").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
 
     // create a segmentation image
     let mut data = Array::<u8, _>::zeros((200, 300).f());
