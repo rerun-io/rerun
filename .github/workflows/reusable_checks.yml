@@ -345,3 +345,7 @@ jobs:
       - name: Build and run rerun_cpp tests
         shell: bash
         run: ./rerun_cpp/build_and_run_tests.sh
+
+      - name: Build code examples
+        shell: bash
+        run: ./tests/cpp/build_all_doc_examples.sh

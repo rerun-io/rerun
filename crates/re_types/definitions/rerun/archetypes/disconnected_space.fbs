@@ -24,6 +24,12 @@ namespace rerun.archetypes;
 /// \rs ```ignore
 /// \rs \include:../../../../../docs/code-examples/disconnected_space_v2.rs
 /// \rs ```
+///
+/// \cpp ## Example
+/// \cpp
+/// \cpp ```
+/// \cpp \include:../../../../../docs/code-examples/disconnected_space_v2.cpp
+/// \cpp ```
 table DisconnectedSpace (
   "attr.rust.derive": "Copy, PartialEq, Eq",
   order: 100

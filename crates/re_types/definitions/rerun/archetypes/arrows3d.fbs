@@ -21,6 +21,12 @@ namespace rerun.archetypes;
 /// \rs ```ignore
 /// \rs \include:../../../../../docs/code-examples/arrow3d_simple_v2.rs
 /// \rs ```
+///
+/// \cpp ## Example
+/// \cpp
+/// \cpp ```
+/// \cpp \include:../../../../../docs/code-examples/arrow3d_simple_v2.cpp
+/// \cpp ```
 table Arrows3D (
   "attr.rust.derive": "PartialEq",
   order: 100

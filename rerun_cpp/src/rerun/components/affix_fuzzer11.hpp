@@ -20,8 +20,15 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            AffixFuzzer11(std::optional<std::vector<float>> many_floats_optional)
-                : many_floats_optional(std::move(many_floats_optional)) {}
+            AffixFuzzer11() = default;
+
+            AffixFuzzer11(std::optional<std::vector<float>> _many_floats_optional)
+                : many_floats_optional(std::move(_many_floats_optional)) {}
+
+            AffixFuzzer11& operator=(std::optional<std::vector<float>> _many_floats_optional) {
+                many_floats_optional = std::move(_many_floats_optional);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

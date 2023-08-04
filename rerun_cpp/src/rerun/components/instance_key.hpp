@@ -19,7 +19,14 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            InstanceKey(uint64_t value) : value(std::move(value)) {}
+            InstanceKey() = default;
+
+            InstanceKey(uint64_t _value) : value(std::move(_value)) {}
+
+            InstanceKey& operator=(uint64_t _value) {
+                value = std::move(_value);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

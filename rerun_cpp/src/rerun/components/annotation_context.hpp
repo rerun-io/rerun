@@ -27,8 +27,17 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            AnnotationContext(std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map)
-                : class_map(std::move(class_map)) {}
+            AnnotationContext() = default;
+
+            AnnotationContext(std::vector<rerun::datatypes::ClassDescriptionMapElem> _class_map)
+                : class_map(std::move(_class_map)) {}
+
+            AnnotationContext& operator=(
+                std::vector<rerun::datatypes::ClassDescriptionMapElem> _class_map
+            ) {
+                class_map = std::move(_class_map);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

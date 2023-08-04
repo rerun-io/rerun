@@ -18,7 +18,14 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            PrimitiveComponent(uint32_t value) : value(std::move(value)) {}
+            PrimitiveComponent() = default;
+
+            PrimitiveComponent(uint32_t _value) : value(std::move(_value)) {}
+
+            PrimitiveComponent& operator=(uint32_t _value) {
+                value = std::move(_value);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

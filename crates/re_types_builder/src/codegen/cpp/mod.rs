@@ -252,7 +252,7 @@ impl QuotedObject {
             ObjectKind::Datatype | ObjectKind::Component => {
                 if obj.fields.len() == 1 {
                     // Single-field struct - it is a newtype wrapper.
-                    // Create a implicit constructor from its own field-type - do so by copy, and if meaningful by rvalue reference.
+                    // Create a implicit constructor and assignment from its own field-type.
                     let obj_field = &obj.fields[0];
                     if let Type::Array { .. } = &obj_field.typ {
                         // TODO(emilk): implicit constructor for arrays
@@ -261,15 +261,30 @@ impl QuotedObject {
                         // If it was a temporary it gets moved into the value and then moved again into the field.
                         // If it was a lvalue it gets copied into the value and then moved into the field.
                         let field_ident = format_ident!("{}", obj_field.name);
+                        let param_ident = format_ident!("_{}", obj_field.name);
                         let parameter_declaration =
-                            quote_variable(&mut hpp_includes, obj_field, &field_ident);
+                            quote_variable(&mut hpp_includes, obj_field, &param_ident);
                         hpp_includes.system.insert("utility".to_owned()); // std::move
                         methods.push(Method {
                                 declaration: MethodDeclaration::constructor(quote! {
-                                    #type_ident(#parameter_declaration) : #field_ident(std::move(#field_ident))
+                                    #type_ident(#parameter_declaration) : #field_ident(std::move(#param_ident))
                                 }),
                                 ..Method::default()
                             });
+                        methods.push(Method {
+                            declaration: MethodDeclaration {
+                                is_static: false,
+                                return_type: quote!(#type_ident&),
+                                name_and_parameters: quote! {
+                                    operator=(#parameter_declaration)
+                                },
+                            },
+                            definition_body: quote! {
+                                #field_ident = std::move(#param_ident);
+                                return *this;
+                            },
+                            ..Method::default()
+                        });
                     }
                 };
 
@@ -301,15 +316,16 @@ impl QuotedObject {
                     .filter(|field| !field.is_nullable)
                     .collect_vec();
 
-                // Constructor with all required components.
+                // Constructors with all required components.
                 {
                     let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
                         .iter()
                         .map(|obj_field| {
                             let field_ident = format_ident!("{}", obj_field.name);
+                            let arg_ident = format_ident!("_{}", obj_field.name);
                             (
-                                quote_variable(&mut hpp_includes, obj_field, &field_ident),
-                                quote! { #field_ident(std::move(#field_ident)) },
+                                quote_variable(&mut hpp_includes, obj_field, &arg_ident),
+                                quote! { #field_ident(std::move(#arg_ident)) },
                             )
                         })
                         .unzip();
@@ -320,6 +336,40 @@ impl QuotedObject {
                         }),
                         ..Method::default()
                     });
+
+                    // Provide a non-array version if there's any vectors.
+                    if required_component_fields
+                        .iter()
+                        .any(|obj_field| matches!(obj_field.typ, Type::Vector { .. }))
+                    {
+                        let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
+                            .iter()
+                            .map(|obj_field| {
+                                let field_ident = format_ident!("{}", obj_field.name);
+                                let arg_ident = format_ident!("_{}", obj_field.name);
+
+                                if let Type::Vector { elem_type } = &obj_field.typ {
+                                    let elem_type =
+                                        quote_element_type(&mut hpp_includes, elem_type);
+                                    (
+                                        quote! { #elem_type #arg_ident },
+                                        quote! { #field_ident(1, std::move(#arg_ident)) },
+                                    )
+                                } else {
+                                    (
+                                        quote_variable(&mut hpp_includes, obj_field, &arg_ident),
+                                        quote! { #field_ident(std::move(#arg_ident)) },
+                                    )
+                                }
+                            })
+                            .unzip();
+                        methods.push(Method {
+                            declaration: MethodDeclaration::constructor(quote! {
+                                #type_ident(#(#arguments),*) : #(#assignments),*
+                            }),
+                            ..Method::default()
+                        });
+                    }
                 }
                 // Builder methods for all optional components.
                 for obj_field in obj.fields.iter().filter(|field| field.is_nullable) {
@@ -348,6 +398,26 @@ impl QuotedObject {
                         },
                         inline: true,
                     });
+
+                    // Provide a non-array version if it's a vector.
+                    if let Type::Vector { elem_type } = &obj_field.typ {
+                        let elem_type = quote_element_type(&mut hpp_includes, elem_type);
+                        methods.push(Method {
+                            docs: obj_field.docs.clone().into(),
+                            declaration: MethodDeclaration {
+                                is_static: false,
+                                return_type: quote!(#type_ident&),
+                                name_and_parameters: quote! {
+                                    #method_ident(#elem_type #parameter_ident)
+                                },
+                            },
+                            definition_body: quote! {
+                                #field_ident = std::move(std::vector(1, std::move(#parameter_ident)));
+                                return *this;
+                            },
+                            inline: true,
+                        });
+                    }
                 }
 
                 // Num instances gives the number of primary instances.
@@ -387,6 +457,9 @@ impl QuotedObject {
             let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
             quote! {
                 public:
+                    #type_ident() = default;
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
                     #(#methods_hpp)*
             }
         };
@@ -686,6 +759,8 @@ impl QuotedObject {
                     struct #pascal_case_ident {
                         #(#constants_hpp;)*
 
+                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
+
                         #copy_constructor
 
                         // Copy-assignment
@@ -724,10 +799,6 @@ impl QuotedObject {
                     private:
                         detail::#tag_typename _tag;
                         detail::#data_typename _data;
-
-                        // Empty state required by static constructors:
-                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
-                        public:
                     };
                 }
             }

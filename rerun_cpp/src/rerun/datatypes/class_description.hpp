@@ -37,6 +37,8 @@ namespace rerun {
             std::vector<rerun::datatypes::KeypointPair> keypoint_connections;
 
           public:
+            ClassDescription() = default;
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 

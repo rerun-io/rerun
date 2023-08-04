@@ -20,7 +20,14 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            Point2D(rerun::datatypes::Vec2D xy) : xy(std::move(xy)) {}
+            Point2D() = default;
+
+            Point2D(rerun::datatypes::Vec2D _xy) : xy(std::move(_xy)) {}
+
+            Point2D& operator=(rerun::datatypes::Vec2D _xy) {
+                xy = std::move(_xy);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
