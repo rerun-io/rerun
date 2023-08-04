@@ -70,6 +70,20 @@
 //! This sibling file needs to implement an extension class that is mixed in with the
 //! auto-generated class.
 //! The simplest way to get started is to look at any of the existing examples.
+//!
+//!
+//! #### C++
+//!
+//! Generated C++ code can be manually extended by adding a sibling file with the `_ext.cpp` prefix.
+//! E.g. to extend `vec2d.cpp`, create a `vec2d_ext.cpp`.
+//!
+//! The sibling file is compiled as-is as part of the `rerun_cpp` crate.
+//! In order to extend the generated type declaration in the header,
+//! you can specify a single code-block that you want to be injected into the type declaration by
+//! starting it with `[CODEGEN COPY TO HEADER BEGIN]` and ending it with `[CODEGEN COPY TO HEADER END]`.
+//! Note that it is your responsibility to make sure that the cpp file is valid C++ code -
+//! the code generator & build will not adjust the extension file for you!
+//!
 
 // ---
 

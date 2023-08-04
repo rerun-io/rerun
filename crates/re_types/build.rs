@@ -3,9 +3,9 @@
 use std::path::PathBuf;
 
 use re_build_tools::{
-    compute_crate_hash, compute_dir_hash, compute_strings_hash, is_tracked_env_var_set, iter_dir,
-    read_versioning_hash, rerun_if_changed, rerun_if_changed_or_doesnt_exist,
-    write_versioning_hash,
+    compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_strings_hash,
+    is_tracked_env_var_set, iter_dir, read_versioning_hash, rerun_if_changed,
+    rerun_if_changed_or_doesnt_exist, write_versioning_hash,
 };
 
 // ---
@@ -49,36 +49,40 @@ fn main() {
     let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
     let re_types_builder_hash = compute_crate_hash("re_types_builder");
     let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&["fbs"]));
-    let doc_examples_hash = compute_dir_hash(DOC_EXAMPLES_DIR_PATH, Some(&["rs", "py"]));
-    let archetype_overrides_hash = compute_dir_hash(
+    let doc_examples_hash = compute_dir_hash(DOC_EXAMPLES_DIR_PATH, Some(&["rs", "py", "cpp"]));
+    let python_archetype_overrides_hash = compute_dir_hash(
         PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(ARCHETYPE_OVERRIDES_SUB_DIR_PATH),
         Some(&["py"]),
     );
-    let component_overrides_hash = compute_dir_hash(
+    let python_component_overrides_hash = compute_dir_hash(
         PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(COMPONENT_OVERRIDES_SUB_DIR_PATH),
         Some(&["py"]),
     );
-    let datatype_overrides_hash = compute_dir_hash(
+    let python_datatype_overrides_hash = compute_dir_hash(
         PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(DATATYPE_OVERRIDES_SUB_DIR_PATH),
         Some(&["py"]),
     );
+    let cpp_extensions_hash = compute_dir_filtered_hash(CPP_OUTPUT_DIR_PATH, |path| {
+        path.to_str().unwrap().ends_with("_ext.cpp")
+    });
 
     let new_hash = compute_strings_hash(&[
         &re_types_builder_hash,
         &definitions_hash,
         &doc_examples_hash,
-        &archetype_overrides_hash,
-        &component_overrides_hash,
-        &datatype_overrides_hash,
+        &python_archetype_overrides_hash,
+        &python_component_overrides_hash,
+        &python_datatype_overrides_hash,
+        &cpp_extensions_hash,
     ]);
 
     // Leave these be please, very useful when debugging.
     eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
     eprintln!("definitions_hash: {definitions_hash:?}");
     eprintln!("doc_examples_hash: {doc_examples_hash:?}");
-    eprintln!("archetype_overrides_hash: {archetype_overrides_hash:?}");
-    eprintln!("component_overrides_hash: {component_overrides_hash:?}");
-    eprintln!("datatype_overrides_hash: {datatype_overrides_hash:?}");
+    eprintln!("archetype_overrides_hash: {python_archetype_overrides_hash:?}");
+    eprintln!("component_overrides_hash: {python_component_overrides_hash:?}");
+    eprintln!("datatype_overrides_hash: {python_datatype_overrides_hash:?}");
     eprintln!("new_hash: {new_hash:?}");
     eprintln!("cur_hash: {cur_hash:?}");
 
