@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components/class_id.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A helper type for mapping class IDs to class descriptions.
+///
+/// This is internal to the `AnnotationContext` structure.
+table ClassDescriptionMapElem (
+  "attr.python.aliases": "datatypes.ClassDescriptionLike",
+  "attr.rust.derive": "Default, Eq, PartialEq",
+  order: 100
+) {
+  class_id: rerun.components.ClassId (order: 100);
+  class_description: rerun.datatypes.ClassDescription (order: 200);
+}

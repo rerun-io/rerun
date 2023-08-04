@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .annotation_context import AnnotationContext
 from .arrows3d import Arrows3D
 from .disconnected_space import DisconnectedSpace
 from .fuzzy import AffixFuzzer1
@@ -9,4 +10,4 @@ from .points2d import Points2D
 from .points3d import Points3D
 from .transform3d import Transform3D
 
-__all__ = ["AffixFuzzer1", "Arrows3D", "DisconnectedSpace", "Points2D", "Points3D", "Transform3D"]
+__all__ = ["AffixFuzzer1", "AnnotationContext", "Arrows3D", "DisconnectedSpace", "Points2D", "Points3D", "Transform3D"]

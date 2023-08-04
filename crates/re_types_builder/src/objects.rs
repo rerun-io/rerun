@@ -923,6 +923,30 @@ impl Type {
         }
     }
 
+    pub fn vector_inner(&self) -> Option<&ElementType> {
+        match self {
+            Self::Vector { elem_type } => Some(elem_type),
+            Self::Array {
+                elem_type: _,
+                length: _,
+            }
+            | Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Bool
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64
+            | Self::String
+            | Self::Object(_) => None,
+        }
+    }
+
     /// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
     pub fn fqname(&self) -> Option<&str> {
         match self {

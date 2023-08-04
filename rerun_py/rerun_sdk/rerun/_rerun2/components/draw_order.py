@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -39,7 +39,10 @@ class DrawOrder:
         return float(self.value)
 
 
-DrawOrderLike = Union[DrawOrder, float]
+if TYPE_CHECKING:
+    DrawOrderLike = Union[DrawOrder, float]
+else:
+    DrawOrderLike = Any
 
 DrawOrderArrayLike = Union[DrawOrder, Sequence[DrawOrderLike], float, npt.NDArray[np.float32]]
 
