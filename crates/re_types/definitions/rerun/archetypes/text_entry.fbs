@@ -1,0 +1,29 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+
+/// A 3D transform.
+///
+/// \py Example
+/// \py -------
+/// \py
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/transform3d_simple_v2.py
+/// \py ```
+///
+/// \rs ## Example
+/// \rs
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/transform3d_simple_v2.rs
+/// \rs ```
+table TextEntry (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  bodies: [rerun.components.Body] ("attr.rerun.component_required", required, order: 1000);
+  levels: [rerun.components.Level] ("attr.rerun.component_recommended", nullable, order: 2000);
+}

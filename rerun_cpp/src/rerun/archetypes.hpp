@@ -8,4 +8,5 @@
 #include "archetypes/disconnected_space.hpp"
 #include "archetypes/points2d.hpp"
 #include "archetypes/points3d.hpp"
+#include "archetypes/text_entry.hpp"
 #include "archetypes/transform3d.hpp"

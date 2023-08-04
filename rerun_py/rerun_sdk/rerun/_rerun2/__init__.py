@@ -2,6 +2,24 @@
 
 from __future__ import annotations
 
-__all__ = ["AffixFuzzer1", "AnnotationContext", "Arrows3D", "DisconnectedSpace", "Points2D", "Points3D", "Transform3D"]
+__all__ = [
+    "AffixFuzzer1",
+    "AnnotationContext",
+    "Arrows3D",
+    "DisconnectedSpace",
+    "Points2D",
+    "Points3D",
+    "TextEntry",
+    "Transform3D",
+]
 
-from .archetypes import AffixFuzzer1, AnnotationContext, Arrows3D, DisconnectedSpace, Points2D, Points3D, Transform3D
+from .archetypes import (
+    AffixFuzzer1,
+    AnnotationContext,
+    Arrows3D,
+    DisconnectedSpace,
+    Points2D,
+    Points3D,
+    TextEntry,
+    Transform3D,
+)

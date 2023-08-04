@@ -9,6 +9,7 @@ from .annotation_context import (
     AnnotationContextLike,
     AnnotationContextType,
 )
+from .body import Body, BodyArray, BodyArrayLike, BodyLike, BodyType
 from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
 from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
 from .disconnected_space import (
@@ -106,6 +107,7 @@ from .fuzzy_deps import (
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
 from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
+from .level import Level, LevelArray, LevelArrayLike, LevelLike, LevelType
 from .origin3d import Origin3DArray, Origin3DType
 from .point2d import Point2DArray, Point2DType
 from .point3d import Point3DArray, Point3DType
@@ -189,6 +191,11 @@ __all__ = [
     "AnnotationContextArrayLike",
     "AnnotationContextLike",
     "AnnotationContextType",
+    "Body",
+    "BodyArray",
+    "BodyArrayLike",
+    "BodyLike",
+    "BodyType",
     "ClassId",
     "ClassIdArray",
     "ClassIdArrayLike",
@@ -224,6 +231,11 @@ __all__ = [
     "LabelArrayLike",
     "LabelLike",
     "LabelType",
+    "Level",
+    "LevelArray",
+    "LevelArrayLike",
+    "LevelLike",
+    "LevelType",
     "Origin3DArray",
     "Origin3DType",
     "Point2DArray",
