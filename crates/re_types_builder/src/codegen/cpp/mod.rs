@@ -395,7 +395,7 @@ impl QuotedObject {
 
             #hpp_declarations
 
-            namespace rr {
+            namespace rerun {
                 namespace #namespace_ident {
                     #quoted_docs
                     struct #type_ident {
@@ -413,7 +413,7 @@ impl QuotedObject {
         let cpp = quote! {
             #cpp_includes
 
-            namespace rr {
+            namespace rerun {
                 namespace #namespace_ident {
                     #(#constants_cpp;)*
 
@@ -655,7 +655,7 @@ impl QuotedObject {
 
             #hpp_declarations
 
-            namespace rr {
+            namespace rerun {
                 namespace #namespace_ident {
                     namespace detail {
                         enum class #tag_typename {
@@ -739,7 +739,7 @@ impl QuotedObject {
 
             #(#constants_cpp;)*
 
-            namespace rr {
+            namespace rerun {
                 namespace #namespace_ident {
                     #(#cpp_methods)*
                 }
@@ -857,7 +857,7 @@ fn component_to_data_cell_method(
     cpp_includes: &mut Includes,
 ) -> Method {
     hpp_includes.local.insert("../data_cell.hpp".to_owned());
-    cpp_includes.local.insert("../rerun.hpp".to_owned()); // ipc_from_table
+    cpp_includes.local.insert("../arrow.hpp".to_owned()); // ipc_from_table
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
     let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
@@ -866,7 +866,7 @@ fn component_to_data_cell_method(
         docs: format!("Creates a Rerun DataCell from an array of {type_ident} components.").into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { arrow::Result<rr::DataCell> },
+            return_type: quote! { arrow::Result<rerun::DataCell> },
             name_and_parameters: quote! {
                 to_data_cell(const #type_ident* instances, size_t num_instances)
             },
@@ -896,9 +896,9 @@ fn component_to_data_cell_method(
             )});
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            rr::DataCell cell;
+            rerun::DataCell cell;
             cell.component_name = #type_ident::NAME;
-            ARROW_ASSIGN_OR_RAISE(cell.buffer, rr::ipc_from_table(*arrow::Table::Make(schema, {array})));
+            ARROW_ASSIGN_OR_RAISE(cell.buffer, rerun::ipc_from_table(*arrow::Table::Make(schema, {array})));
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return cell;
@@ -961,11 +961,11 @@ fn archetype_to_data_cells(
         docs: "Creates a list of Rerun DataCell from this archetype.".into(),
         declaration: MethodDeclaration {
             is_static: false,
-            return_type: quote!(arrow::Result<std::vector<rr::DataCell>>),
+            return_type: quote!(arrow::Result<std::vector<rerun::DataCell>>),
             name_and_parameters: quote!(to_data_cells() const),
         },
         definition_body: quote! {
-            std::vector<rr::DataCell> cells;
+            std::vector<rerun::DataCell> cells;
             cells.reserve(#num_fields);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
@@ -1606,12 +1606,11 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
     let fqname = fqname
         .replace(".testing", "")
         .replace('.', "::")
-        .replace("crate", "rr")
-        .replace("rerun", "rr");
+        .replace("crate", "rerun");
 
     // fqname example: "rr::datatypes::Transform3D"
     let components = fqname.split("::").collect::<Vec<_>>();
-    if let ["rr", obj_kind, typname] = &components[..] {
+    if let ["rerun", obj_kind, typname] = &components[..] {
         includes.local.insert(format!(
             "../{obj_kind}/{}.hpp",
             crate::to_snake_case(typname)

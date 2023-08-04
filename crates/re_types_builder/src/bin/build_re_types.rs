@@ -2,7 +2,7 @@
 
 const DEFINITIONS_DIR_PATH: &str = "crates/re_types/definitions";
 const ENTRYPOINT_PATH: &str = "crates/re_types/definitions/rerun/archetypes.fbs";
-const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp/src";
+const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp/src/rerun";
 const RUST_OUTPUT_DIR_PATH: &str = "crates/re_types/.";
 const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun/_rerun2";
 
