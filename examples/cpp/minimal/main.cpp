@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     rrc::Label c_style_array[3] = {rrc::Label("hello"), rrc::Label("friend"), rrc::Label("yo")};
     rr_stream.log_components(
         "2d/points",
-        std::vector{rrc::Point2D({0.0, 0.0}), rrc::Point2D({1.0, 3.0}), rrc::Point2D({5.0, 5.0})},
+        std::vector{rrc::Point2D(0.0, 0.0), rrc::Point2D(1.0, 3.0), rrc::Point2D(5.0, 5.0)},
         std::array{rrc::Color(0xFF0000FF), rrc::Color(0x00FF00FF), rrc::Color(0x0000FFFF)},
         c_style_array
     );
