@@ -14,14 +14,14 @@ int main() {
         rr::archetypes::Points3D(rr::datatypes::Vec3D{0.0f, 0.0f, 0.0f})
     );
     rr_stream.log(
-        "world/room1/point",
+        "world/room2/point",
         rr::archetypes::Points3D(rr::datatypes::Vec3D{1.0f, 1.0f, 1.0f})
     );
 
     // ..but this one lives in a completely separate space!
-    rr_stream.log("world/room1/point", rr::archetypes::DisconnectedSpace(true));
+    rr_stream.log("world/wormhole", rr::archetypes::DisconnectedSpace(true));
     rr_stream.log(
-        "world/room1/point",
+        "world/wormhole/point",
         rr::archetypes::Points3D(rr::datatypes::Vec3D{2.0f, 2.0f, 2.0f})
     );
 }
