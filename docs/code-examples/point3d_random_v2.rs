@@ -1,4 +1,5 @@
-//! Log some random points with color and radii."""
+//! Log some random points with color and radii.
+
 use rand::distributions::Uniform;
 use rand::Rng;
 use rerun::{archetypes::Points3D, components::Color, MsgSender, RecordingStreamBuilder};

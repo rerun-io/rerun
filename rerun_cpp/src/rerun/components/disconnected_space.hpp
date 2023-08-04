@@ -23,7 +23,15 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            DisconnectedSpace(bool is_disconnected) : is_disconnected(std::move(is_disconnected)) {}
+            DisconnectedSpace() = default;
+
+            DisconnectedSpace(bool _is_disconnected)
+                : is_disconnected(std::move(_is_disconnected)) {}
+
+            DisconnectedSpace& operator=(bool _is_disconnected) {
+                is_disconnected = std::move(_is_disconnected);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

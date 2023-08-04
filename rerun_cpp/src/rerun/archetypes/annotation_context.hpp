@@ -23,8 +23,10 @@ namespace rerun {
             rerun::components::AnnotationContext context;
 
           public:
-            AnnotationContext(rerun::components::AnnotationContext context)
-                : context(std::move(context)) {}
+            AnnotationContext() = default;
+
+            AnnotationContext(rerun::components::AnnotationContext _context)
+                : context(std::move(_context)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

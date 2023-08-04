@@ -13,6 +13,8 @@ namespace rerun {
             float xy[2];
 
           public:
+            Vec2D() = default;
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 

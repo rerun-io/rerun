@@ -46,6 +46,8 @@ namespace rerun {
 
         /// 3D scaling factor, part of a transform representation.
         struct Scale3D {
+            Scale3D() : _tag(detail::Scale3DTag::NONE) {}
+
             Scale3D(const Scale3D& other) : _tag(other._tag) {
                 memcpy(&this->_data, &other._data, sizeof(detail::Scale3DData));
             }
@@ -114,10 +116,6 @@ namespace rerun {
           private:
             detail::Scale3DTag _tag;
             detail::Scale3DData _data;
-
-            Scale3D() : _tag(detail::Scale3DTag::NONE) {}
-
-          public:
         };
     } // namespace datatypes
 } // namespace rerun

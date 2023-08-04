@@ -19,8 +19,15 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            AffixFuzzer19(rerun::datatypes::AffixFuzzer5 just_a_table_nothing_shady)
-                : just_a_table_nothing_shady(std::move(just_a_table_nothing_shady)) {}
+            AffixFuzzer19() = default;
+
+            AffixFuzzer19(rerun::datatypes::AffixFuzzer5 _just_a_table_nothing_shady)
+                : just_a_table_nothing_shady(std::move(_just_a_table_nothing_shady)) {}
+
+            AffixFuzzer19& operator=(rerun::datatypes::AffixFuzzer5 _just_a_table_nothing_shady) {
+                just_a_table_nothing_shady = std::move(_just_a_table_nothing_shady);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

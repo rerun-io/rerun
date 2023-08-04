@@ -14,13 +14,20 @@ namespace rerun {
     namespace components {
         /// A point in 3D space.
         struct Point3D {
-            rerun::datatypes::Vec3D xy;
+            rerun::datatypes::Vec3D xyz;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
 
           public:
-            Point3D(rerun::datatypes::Vec3D xy) : xy(std::move(xy)) {}
+            Point3D() = default;
+
+            Point3D(rerun::datatypes::Vec3D _xyz) : xyz(std::move(_xyz)) {}
+
+            Point3D& operator=(rerun::datatypes::Vec3D _xyz) {
+                xyz = std::move(_xyz);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

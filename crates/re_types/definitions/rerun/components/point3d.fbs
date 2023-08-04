@@ -17,5 +17,5 @@ struct Point3D (
   "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
   order: 100
 ) {
-  xy: rerun.datatypes.Vec3D (order: 100);
+  xyz: rerun.datatypes.Vec3D (order: 100);
 }

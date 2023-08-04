@@ -19,8 +19,15 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            AffixFuzzer20(rerun::datatypes::AffixFuzzer20 nested_transparent)
-                : nested_transparent(std::move(nested_transparent)) {}
+            AffixFuzzer20() = default;
+
+            AffixFuzzer20(rerun::datatypes::AffixFuzzer20 _nested_transparent)
+                : nested_transparent(std::move(_nested_transparent)) {}
+
+            AffixFuzzer20& operator=(rerun::datatypes::AffixFuzzer20 _nested_transparent) {
+                nested_transparent = std::move(_nested_transparent);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

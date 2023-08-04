@@ -13,6 +13,8 @@ namespace rerun {
             float xyzw[4];
 
           public:
+            Quaternion() = default;
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 

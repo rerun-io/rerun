@@ -21,6 +21,29 @@
 namespace rerun {
     namespace archetypes {
         /// A 3D point cloud with positions and optional colors, radii, labels, etc.
+        ///
+        /// ## Example
+        ///
+        ///```
+        ///// Log some very simple points.
+        ///
+        /// #include <rerun.hpp>
+        ///
+        /// namespace rr = rerun;
+        ///
+        /// int main() {
+        ///    auto rr_stream = rr::RecordingStream(\"points3d_simple\");
+        ///    rr_stream.connect(\"127.0.0.1:9876\");
+        ///
+        ///    rr_stream.log(
+        ///        \"points\",
+        ///        rr::archetypes::Points3D(
+        ///            {rr::datatypes::Vec3D{0.0f, 0.0f, 0.0f},
+        ///            rr::datatypes::Vec3D{1.0f, 1.0f, 1.0f}}
+        ///        )
+        ///    );
+        /// }
+        ///```
         struct Points3D {
             /// All the actual 3D points that make up the point cloud.
             std::vector<rerun::components::Point3D> points;
@@ -52,11 +75,22 @@ namespace rerun {
             std::optional<std::vector<rerun::components::InstanceKey>> instance_keys;
 
           public:
-            Points3D(std::vector<rerun::components::Point3D> points) : points(std::move(points)) {}
+            Points3D() = default;
+
+            Points3D(std::vector<rerun::components::Point3D> _points)
+                : points(std::move(_points)) {}
+
+            Points3D(rerun::components::Point3D _points) : points(1, std::move(_points)) {}
 
             /// Optional radii for the points, effectively turning them into circles.
             Points3D& with_radii(std::vector<rerun::components::Radius> _radii) {
                 radii = std::move(_radii);
+                return *this;
+            }
+
+            /// Optional radii for the points, effectively turning them into circles.
+            Points3D& with_radii(rerun::components::Radius _radii) {
+                radii = std::move(std::vector(1, std::move(_radii)));
                 return *this;
             }
 
@@ -66,9 +100,21 @@ namespace rerun {
                 return *this;
             }
 
+            /// Optional colors for the points.
+            Points3D& with_colors(rerun::components::Color _colors) {
+                colors = std::move(std::vector(1, std::move(_colors)));
+                return *this;
+            }
+
             /// Optional text labels for the points.
             Points3D& with_labels(std::vector<rerun::components::Label> _labels) {
                 labels = std::move(_labels);
+                return *this;
+            }
+
+            /// Optional text labels for the points.
+            Points3D& with_labels(rerun::components::Label _labels) {
+                labels = std::move(std::vector(1, std::move(_labels)));
                 return *this;
             }
 
@@ -77,6 +123,14 @@ namespace rerun {
             /// The class ID provides colors and labels if not specified explicitly.
             Points3D& with_class_ids(std::vector<rerun::components::ClassId> _class_ids) {
                 class_ids = std::move(_class_ids);
+                return *this;
+            }
+
+            /// Optional class Ids for the points.
+            ///
+            /// The class ID provides colors and labels if not specified explicitly.
+            Points3D& with_class_ids(rerun::components::ClassId _class_ids) {
+                class_ids = std::move(std::vector(1, std::move(_class_ids)));
                 return *this;
             }
 
@@ -92,10 +146,28 @@ namespace rerun {
                 return *this;
             }
 
+            /// Optional keypoint IDs for the points, identifying them within a class.
+            ///
+            /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
+            /// default to 0.
+            /// This is useful to identify points within a single classification (which is
+            /// identified with `class_id`). E.g. the classification might be 'Person' and the
+            /// keypoints refer to joints on a detected skeleton.
+            Points3D& with_keypoint_ids(rerun::components::KeypointId _keypoint_ids) {
+                keypoint_ids = std::move(std::vector(1, std::move(_keypoint_ids)));
+                return *this;
+            }
+
             /// Unique identifiers for each individual point in the batch.
             Points3D& with_instance_keys(std::vector<rerun::components::InstanceKey> _instance_keys
             ) {
                 instance_keys = std::move(_instance_keys);
+                return *this;
+            }
+
+            /// Unique identifiers for each individual point in the batch.
+            Points3D& with_instance_keys(rerun::components::InstanceKey _instance_keys) {
+                instance_keys = std::move(std::vector(1, std::move(_instance_keys)));
                 return *this;
             }
 

@@ -20,8 +20,15 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            AffixFuzzer12(std::vector<std::string> many_strings_required)
-                : many_strings_required(std::move(many_strings_required)) {}
+            AffixFuzzer12() = default;
+
+            AffixFuzzer12(std::vector<std::string> _many_strings_required)
+                : many_strings_required(std::move(_many_strings_required)) {}
+
+            AffixFuzzer12& operator=(std::vector<std::string> _many_strings_required) {
+                many_strings_required = std::move(_many_strings_required);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

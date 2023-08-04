@@ -21,7 +21,14 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            Transform3D(rerun::datatypes::Transform3D repr) : repr(std::move(repr)) {}
+            Transform3D() = default;
+
+            Transform3D(rerun::datatypes::Transform3D _repr) : repr(std::move(_repr)) {}
+
+            Transform3D& operator=(rerun::datatypes::Transform3D _repr) {
+                repr = std::move(_repr);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

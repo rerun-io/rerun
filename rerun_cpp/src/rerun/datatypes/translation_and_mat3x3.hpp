@@ -27,6 +27,8 @@ namespace rerun {
             bool from_parent;
 
           public:
+            TranslationAndMat3x3() = default;
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
