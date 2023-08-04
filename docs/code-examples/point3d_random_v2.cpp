@@ -2,6 +2,7 @@
 
 #include <rerun.hpp>
 
+#include <algorithm>
 #include <random>
 
 namespace rr = rerun;
