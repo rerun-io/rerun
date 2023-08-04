@@ -26,7 +26,12 @@ cpp_opt_out = ["points2d", "transform3d"]
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run our end-to-end cross-language roundtrip tests for all SDK")
-    parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk")
+    parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
+    parser.add_argument(
+        "--no-cpp-build",
+        action="store_true",
+        help="Skip cmake configure and ahead of time build for rerun_c & rerun_cpp",
+    )
     parser.add_argument("--full-dump", action="store_true", help="Dump both rrd files as tables")
     parser.add_argument(
         "--release",
@@ -54,25 +59,28 @@ def main() -> None:
         print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
         print("")
 
-    print("----------------------------------------------------------")
-    print("Build rerun-sdk for C++…")
-    start_time = time.time()
-    os.makedirs("build", exist_ok=True)
-    if args.release:
-        configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."]
+    if args.no_cpp_build:
+        print("Skipping cmake configure & build for rerun_c & rerun_cpp - assuming it is already built and up-to-date!")
     else:
-        configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Debug", ".."]
-    print(subprocess.list2cmdline(configure_args))
-    returncode = subprocess.Popen(
-        configure_args,
-        env=build_env,
-        cwd="build",
-    ).wait()
-    assert returncode == 0, f"configuring cmake failed with exit code {returncode}"
-    cmake_build("rerun_sdk", args.release)
-    elapsed = time.time() - start_time
-    print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
-    print("")
+        print("----------------------------------------------------------")
+        print("Build rerun_c & rerun_cpp…")
+        start_time = time.time()
+        os.makedirs("build", exist_ok=True)
+        if args.release:
+            configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."]
+        else:
+            configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Debug", ".."]
+        print(subprocess.list2cmdline(configure_args))
+        returncode = subprocess.Popen(
+            configure_args,
+            env=build_env,
+            cwd="build",
+        ).wait()
+        assert returncode == 0, f"configuring cmake failed with exit code {returncode}"
+        cmake_build("rerun_sdk", args.release)
+        elapsed = time.time() - start_time
+        print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
+        print("")
 
     files = [f for f in listdir(ARCHETYPES_PATH) if isfile(join(ARCHETYPES_PATH, f))]
     archetypes = [filename for filename, extension in [os.path.splitext(file) for file in files] if extension == ".fbs"]
