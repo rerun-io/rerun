@@ -109,8 +109,8 @@ impl PerTensorState {
                 self.slice.dim_mapping != default_mapping,
                 egui::Button::new("Reset mapping"),
             )
-            .on_disabled_hover_text("The default is already set up.")
-            .on_hover_text("Reset dimension mapping to the default.")
+            .on_disabled_hover_text("The default is already set up")
+            .on_hover_text("Reset dimension mapping to the default")
             .clicked()
         {
             self.slice.dim_mapping = DimensionMapping::create(tensor.shape());

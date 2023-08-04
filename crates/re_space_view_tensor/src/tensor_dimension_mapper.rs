@@ -248,9 +248,9 @@ pub fn dimension_mapping_ui(
 
                         let response = re_ui.visibility_toggle_button(ui, &mut selector.visible);
                         if selector.visible {
-                            response.on_hover_text("Hide selector ui from the Space View.")
+                            response.on_hover_text("Hide dimension slider")
                         } else {
-                            response.on_hover_text("Show selector ui in the Space View.")
+                            response.on_hover_text("Show dimension slider")
                         };
                         ui.end_row();
                     }

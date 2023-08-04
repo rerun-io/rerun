@@ -226,13 +226,13 @@ pub fn tensor_summary_ui_grid_contents(
 
     re_ui
         .grid_left_hand_label(ui, "Data type")
-        .on_hover_text("Data type used for all individual elements within the tensor.");
+        .on_hover_text("Data type used for all individual elements within the tensor");
     ui.label(tensor.dtype().to_string());
     ui.end_row();
 
     re_ui
         .grid_left_hand_label(ui, "Shape")
-        .on_hover_text("Extent of every dimension.");
+        .on_hover_text("Extent of every dimension");
     ui.vertical(|ui| {
         // For unnamed tensor dimension more than a single line usually doesn't make sense!
         // But what if some are named and some are not?
@@ -294,7 +294,7 @@ pub fn tensor_summary_ui_grid_contents(
 
     if let Some((min, max)) = range {
         ui.label("Data range")
-            .on_hover_text("All values of the tensor range within these bounds.");
+            .on_hover_text("All values of the tensor range within these bounds");
         ui.monospace(format!(
             "[{} - {}]",
             re_format::format_f64(*min),
@@ -305,7 +305,7 @@ pub fn tensor_summary_ui_grid_contents(
     // Show finite range only if it is different from the actual range.
     if let (true, Some((min, max))) = (range != finite_range, finite_range) {
         ui.label("Finite data range")
-            .on_hover_text("The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds.");
+            .on_hover_text("The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds");
         ui.monospace(format!(
             "[{} - {}]",
             re_format::format_f64(*min),

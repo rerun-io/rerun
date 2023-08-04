@@ -153,7 +153,7 @@ impl DataCell {
     /// Builds a new `DataCell` from a uniform iterable of native component values.
     ///
     /// Fails if the given iterable cannot be serialized to arrow, which should never happen when
-    /// using Rerun's builtin components.
+    /// using Rerun's built-in components.
     #[inline]
     pub fn try_from_native<'a, C>(
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
@@ -167,7 +167,7 @@ impl DataCell {
     /// Builds a new `DataCell` from a uniform iterable of native component values.
     ///
     /// Fails if the given iterable cannot be serialized to arrow, which should never happen when
-    /// using Rerun's builtin components.
+    /// using Rerun's built-in components.
     #[inline]
     pub fn try_from_native_sparse<'a, C>(
         values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, C>>>>,
@@ -184,7 +184,7 @@ impl DataCell {
     /// Builds a new `DataCell` from a uniform iterable of native component values.
     ///
     /// Panics if the given iterable cannot be serialized to arrow, which should never happen when
-    /// using Rerun's builtin components.
+    /// using Rerun's built-in components.
     /// See [`Self::try_from_native`] for the fallible alternative.
     #[inline]
     pub fn from_native<'a, C>(
@@ -199,7 +199,7 @@ impl DataCell {
     /// Builds a new `DataCell` from a uniform iterable of native component values.
     ///
     /// Panics if the given iterable cannot be serialized to arrow, which should never happen when
-    /// using Rerun's builtin components.
+    /// using Rerun's built-in components.
     /// See [`Self::try_from_native`] for the fallible alternative.
     #[inline]
     pub fn from_native_sparse<'a, C>(

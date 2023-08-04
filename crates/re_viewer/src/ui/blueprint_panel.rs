@@ -48,7 +48,7 @@ fn title_bar_ui(
         .show_inside(ui, |ui| {
             ui.horizontal_centered(|ui| {
                 ui.strong("Blueprint")
-                    .on_hover_text("The Blueprint is where you can configure the Rerun Viewer.");
+                    .on_hover_text("The Blueprint is where you can configure the Rerun Viewer");
 
                 ui.allocate_ui_with_layout(
                     ui.available_size_before_wrap(),

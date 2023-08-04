@@ -171,7 +171,7 @@ pub struct TargetConfiguration {
 
     /// How many pixels are there per point.
     ///
-    /// I.e. the ui scaling factor.
+    /// I.e. the UI zoom factor.
     /// Note that this does not affect any of the camera & projection properties and is only used
     /// whenever point sizes were explicitly specified.
     pub pixels_from_point: f32,

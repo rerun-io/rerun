@@ -1,4 +1,4 @@
-//! Handles picking in 2D & 3D spaces.
+//! Handles picking in 2D and 3D spaces.
 
 use ahash::HashSet;
 use re_data_store::InstancePathHash;

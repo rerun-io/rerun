@@ -258,7 +258,7 @@ fn color_ui(ui: &mut egui::Ui, info: &AnnotationInfo, size: Vec2) {
         color_picker::show_color(ui, color, size);
         if info.color.is_none() {
             ui.weak("(auto)")
-                .on_hover_text("Color chosen automatically, since it was not logged.");
+                .on_hover_text("Color chosen automatically, since it was not logged");
         }
     });
 }
@@ -273,6 +273,6 @@ fn small_color_ui(ui: &mut egui::Ui, info: &AnnotationInfo) {
     let response = color_picker::show_color(ui, color, size);
 
     if info.color.is_none() {
-        response.on_hover_text("Color chosen automatically, since it was not logged.");
+        response.on_hover_text("Color chosen automatically, since it was not logged");
     }
 }

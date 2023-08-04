@@ -87,8 +87,8 @@ impl UICommand {
             UICommand::Quit => ("Quit", "Close the Rerun Viewer"),
 
             UICommand::ResetViewer => (
-                "Reset viewer",
-                "Reset the viewer to how it looked the first time you ran it",
+                "Reset Viewer",
+                "Reset the Viewer to how it looked the first time you ran it",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -98,12 +98,12 @@ impl UICommand {
             ),
 
             UICommand::ToggleMemoryPanel => (
-                "Toggle memory panel",
-                "Investigate what is using up RAM in Rerun Viewer",
+                "Toggle Memory Panel",
+                "View and track current RAM usage inside Rerun Viewer",
             ),
-            UICommand::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
-            UICommand::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
-            UICommand::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom time panel"),
+            UICommand::ToggleBlueprintPanel => ("Toggle Blueprint Panel", "Toggle the left panel"),
+            UICommand::ToggleSelectionPanel => ("Toggle Selection Panel", "Toggle the right panel"),
+            UICommand::ToggleTimePanel => ("Toggle Time Panel", "Toggle the bottom panel"),
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => (
@@ -111,20 +111,18 @@ impl UICommand {
                 "Toggle between windowed and fullscreen viewer",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ZoomIn => ("Zoom In", "Increases the ui scaling factor"),
+            UICommand::ZoomIn => ("Zoom In", "Increases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ZoomOut => ("Zoom Out", "Decreases the ui scaling factor"),
+            UICommand::ZoomOut => ("Zoom Out", "Decreases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomReset => (
                 "Reset Zoom",
-                "Resets ui scaling factor to the OS provided default",
+                "Resets the UI zoom level to the operating system's default value",
             ),
 
             UICommand::SelectionPrevious => ("Previous selection", "Go to previous selection"),
             UICommand::SelectionNext => ("Next selection", "Go to next selection"),
-            UICommand::ToggleCommandPalette => {
-                ("Command palette…", "Toggle the command palette window")
-            }
+            UICommand::ToggleCommandPalette => ("Command Palette…", "Toggle the Command Palette"),
 
             UICommand::PlaybackTogglePlayPause => {
                 ("Toggle play/pause", "Either play or pause the time")
