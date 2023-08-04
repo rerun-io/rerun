@@ -47,6 +47,8 @@ namespace rerun {
 
         /// A 3D rotation.
         struct Rotation3D {
+            Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
+
             Rotation3D(const Rotation3D& other) : _tag(other._tag) {
                 memcpy(&this->_data, &other._data, sizeof(detail::Rotation3DData));
             }
@@ -115,10 +117,6 @@ namespace rerun {
           private:
             detail::Rotation3DTag _tag;
             detail::Rotation3DData _data;
-
-            Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
-
-          public:
         };
     } // namespace datatypes
 } // namespace rerun

@@ -218,7 +218,7 @@ impl crate::Loggable for Point3D {
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
         .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.components.Point3D#xy".into(),
+            location: "rerun.components.Point3D#xyz".into(),
             source: Box::new(err),
         })?)
     }

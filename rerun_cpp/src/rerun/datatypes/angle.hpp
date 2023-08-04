@@ -42,6 +42,8 @@ namespace rerun {
 
         /// Angle in either radians or degrees.
         struct Angle {
+            Angle() : _tag(detail::AngleTag::NONE) {}
+
             Angle(const Angle& other) : _tag(other._tag) {
                 memcpy(&this->_data, &other._data, sizeof(detail::AngleData));
             }
@@ -98,10 +100,6 @@ namespace rerun {
           private:
             detail::AngleTag _tag;
             detail::AngleData _data;
-
-            Angle() : _tag(detail::AngleTag::NONE) {}
-
-          public:
         };
     } // namespace datatypes
 } // namespace rerun

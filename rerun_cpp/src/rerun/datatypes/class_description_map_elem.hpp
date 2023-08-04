@@ -20,6 +20,8 @@ namespace rerun {
             rerun::datatypes::ClassDescription class_description;
 
           public:
+            ClassDescriptionMapElem() = default;
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 

@@ -45,6 +45,8 @@ namespace rerun {
 
         /// Representation of a 3D affine transform.
         struct Transform3D {
+            Transform3D() : _tag(detail::Transform3DTag::NONE) {}
+
             Transform3D(const Transform3D& other) : _tag(other._tag) {
                 memcpy(&this->_data, &other._data, sizeof(detail::Transform3DData));
             }
@@ -114,10 +116,6 @@ namespace rerun {
           private:
             detail::Transform3DTag _tag;
             detail::Transform3DData _data;
-
-            Transform3D() : _tag(detail::Transform3DTag::NONE) {}
-
-          public:
         };
     } // namespace datatypes
 } // namespace rerun

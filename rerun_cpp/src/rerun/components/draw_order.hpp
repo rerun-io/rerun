@@ -25,7 +25,14 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            DrawOrder(float value) : value(std::move(value)) {}
+            DrawOrder() = default;
+
+            DrawOrder(float _value) : value(std::move(_value)) {}
+
+            DrawOrder& operator=(float _value) {
+                value = std::move(_value);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

@@ -19,7 +19,14 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            KeypointId(uint16_t id) : id(std::move(id)) {}
+            KeypointId() = default;
+
+            KeypointId(uint16_t _id) : id(std::move(_id)) {}
+
+            KeypointId& operator=(uint16_t _id) {
+                id = std::move(_id);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

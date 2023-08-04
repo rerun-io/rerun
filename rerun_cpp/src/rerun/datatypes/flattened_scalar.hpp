@@ -13,7 +13,14 @@ namespace rerun {
             float value;
 
           public:
-            FlattenedScalar(float value) : value(std::move(value)) {}
+            FlattenedScalar() = default;
+
+            FlattenedScalar(float _value) : value(std::move(_value)) {}
+
+            FlattenedScalar& operator=(float _value) {
+                value = std::move(_value);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

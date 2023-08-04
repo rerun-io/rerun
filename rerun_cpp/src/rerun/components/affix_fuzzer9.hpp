@@ -19,8 +19,15 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            AffixFuzzer9(std::string single_string_required)
-                : single_string_required(std::move(single_string_required)) {}
+            AffixFuzzer9() = default;
+
+            AffixFuzzer9(std::string _single_string_required)
+                : single_string_required(std::move(_single_string_required)) {}
+
+            AffixFuzzer9& operator=(std::string _single_string_required) {
+                single_string_required = std::move(_single_string_required);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

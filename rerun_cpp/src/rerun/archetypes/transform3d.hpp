@@ -18,8 +18,10 @@ namespace rerun {
             rerun::components::Transform3D transform;
 
           public:
-            Transform3D(rerun::components::Transform3D transform)
-                : transform(std::move(transform)) {}
+            Transform3D() = default;
+
+            Transform3D(rerun::components::Transform3D _transform)
+                : transform(std::move(_transform)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

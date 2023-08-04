@@ -49,6 +49,8 @@ namespace rerun {
         } // namespace detail
 
         struct AffixFuzzer4 {
+            AffixFuzzer4() : _tag(detail::AffixFuzzer4Tag::NONE) {}
+
             AffixFuzzer4(const AffixFuzzer4& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer4Tag::single_required: {
@@ -159,10 +161,6 @@ namespace rerun {
           private:
             detail::AffixFuzzer4Tag _tag;
             detail::AffixFuzzer4Data _data;
-
-            AffixFuzzer4() : _tag(detail::AffixFuzzer4Tag::NONE) {}
-
-          public:
         };
     } // namespace datatypes
 } // namespace rerun

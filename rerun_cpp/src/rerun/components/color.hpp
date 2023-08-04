@@ -20,7 +20,14 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            Color(uint32_t rgba) : rgba(std::move(rgba)) {}
+            Color() = default;
+
+            Color(uint32_t _rgba) : rgba(std::move(_rgba)) {}
+
+            Color& operator=(uint32_t _rgba) {
+                rgba = std::move(_rgba);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

@@ -21,8 +21,17 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            AffixFuzzer7(std::optional<std::vector<rerun::datatypes::AffixFuzzer1>> many_optional)
-                : many_optional(std::move(many_optional)) {}
+            AffixFuzzer7() = default;
+
+            AffixFuzzer7(std::optional<std::vector<rerun::datatypes::AffixFuzzer1>> _many_optional)
+                : many_optional(std::move(_many_optional)) {}
+
+            AffixFuzzer7& operator=(
+                std::optional<std::vector<rerun::datatypes::AffixFuzzer1>> _many_optional
+            ) {
+                many_optional = std::move(_many_optional);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

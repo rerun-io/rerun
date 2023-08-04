@@ -16,8 +16,17 @@ namespace rerun {
             std::optional<rerun::datatypes::AffixFuzzer4> single_optional_union;
 
           public:
-            AffixFuzzer5(std::optional<rerun::datatypes::AffixFuzzer4> single_optional_union)
-                : single_optional_union(std::move(single_optional_union)) {}
+            AffixFuzzer5() = default;
+
+            AffixFuzzer5(std::optional<rerun::datatypes::AffixFuzzer4> _single_optional_union)
+                : single_optional_union(std::move(_single_optional_union)) {}
+
+            AffixFuzzer5& operator=(
+                std::optional<rerun::datatypes::AffixFuzzer4> _single_optional_union
+            ) {
+                single_optional_union = std::move(_single_optional_union);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

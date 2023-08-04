@@ -20,7 +20,14 @@ namespace rerun {
             static const char* NAME;
 
           public:
-            Origin3D(rerun::datatypes::Vec3D origin) : origin(std::move(origin)) {}
+            Origin3D() = default;
+
+            Origin3D(rerun::datatypes::Vec3D _origin) : origin(std::move(_origin)) {}
+
+            Origin3D& operator=(rerun::datatypes::Vec3D _origin) {
+                origin = std::move(_origin);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
