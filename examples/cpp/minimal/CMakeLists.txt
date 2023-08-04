@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.16)
 
 # project(RerunExample)
 
@@ -7,10 +7,6 @@ cmake_minimum_required(VERSION 3.19)
 # Arrow requires a C++17 compliant compiler
 if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
-endif()
-
-if(NOT DEFINED CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
 endif()
 
 add_executable(rerun_example main.cpp)

@@ -1,9 +1,8 @@
-//! Log rectangles with different colors and labels.
+//! Log rectangles with different colors and labels using annotation context
 use rerun::{
-    components::{
-        AnnotationContext, AnnotationInfo, ClassDescription, ClassId, Color, Label, Rect2D,
-    },
-    datatypes::Vec4D,
+    archetypes::AnnotationContext,
+    components::{ClassId, Color, Label, Rect2D},
+    datatypes::{AnnotationInfo, Vec4D},
     MsgSender, RecordingStreamBuilder,
 };
 
@@ -11,33 +10,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("annotation_context_rects").memory()?;
 
     // Log an annotation context to assign a label and color to each class
-    let mut annotation = AnnotationContext::default();
-    annotation.class_map.insert(
-        ClassId(1),
-        ClassDescription {
-            info: AnnotationInfo {
-                id: 1,
-                label: Some(Label("red".into()).into()),
-                color: Some(Color::from_rgb(255, 0, 0).into()),
-            },
-            ..Default::default()
+    let annotation = AnnotationContext::new([
+        AnnotationInfo {
+            id: 1,
+            label: Some(Label("red".into())),
+            color: Some(Color::from_rgb(255, 0, 0)),
         },
-    );
-    annotation.class_map.insert(
-        ClassId(2),
-        ClassDescription {
-            info: AnnotationInfo {
-                id: 2,
-                label: Some(Label("green".into()).into()),
-                color: Some(Color::from_rgb(0, 255, 0).into()),
-            },
-            ..Default::default()
+        AnnotationInfo {
+            id: 2,
+            label: Some(Label("green".into())),
+            color: Some(Color::from_rgb(0, 255, 0)),
         },
-    );
+    ]);
 
-    MsgSender::new("/")
-        .with_component(&[annotation])?
-        .send(&rec_stream)?;
+    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
 
     // Log a batch of 2 rectangles with different class IDs
     MsgSender::new("detections")

@@ -2,6 +2,14 @@
 
 mod angle;
 mod angle_ext;
+mod annotation_info;
+mod annotation_info_ext;
+mod class_description;
+mod class_description_ext;
+mod class_description_map_elem;
+mod class_description_map_elem_ext;
+mod keypoint_pair;
+mod keypoint_pair_ext;
 mod mat3x3;
 mod mat3x3_ext;
 mod mat4x4;
@@ -26,6 +34,10 @@ mod vec3d_ext;
 mod vec4d;
 
 pub use self::angle::Angle;
+pub use self::annotation_info::AnnotationInfo;
+pub use self::class_description::ClassDescription;
+pub use self::class_description_map_elem::ClassDescriptionMapElem;
+pub use self::keypoint_pair::KeypointPair;
 pub use self::mat3x3::Mat3x3;
 pub use self::mat4x4::Mat4x4;
 pub use self::quaternion::Quaternion;

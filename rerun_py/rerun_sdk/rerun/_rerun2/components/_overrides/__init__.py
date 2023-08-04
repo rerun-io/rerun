@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .annotation_context import annotationcontext_class_map_converter, annotationcontext_native_to_pa_array
 from .class_id import classid_native_to_pa_array
 from .color import color_native_to_pa_array, color_rgba_converter
 from .disconnected_space import disconnectedspace_native_to_pa_array

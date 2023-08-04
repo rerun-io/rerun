@@ -17,12 +17,11 @@ use std::{collections::HashSet, f32::consts::TAU};
 use itertools::Itertools;
 use rerun::{
     components::{
-        AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, Color, DrawOrder,
-        Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D, Tensor,
-        TensorDataMeaning, TextEntry, ViewCoordinates,
+        Box3D, Color, DrawOrder, Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D,
+        Tensor, TensorDataMeaning, TextEntry, ViewCoordinates,
     },
     coordinates::SignedAxis3,
-    datatypes::{TranslationRotationScale3D, Vec2D, Vec3D},
+    datatypes::{AnnotationInfo, TranslationRotationScale3D, Vec2D, Vec3D},
     external::{
         re_log, re_log_types,
         re_log_types::external::{arrow2, arrow2_convert},
@@ -434,37 +433,12 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
     rec_stream.set_time_seconds("sim_time", 2f64);
 
-    // Log an initial segmentation map with arbitrary colors
-    // TODO(cmc): Gotta provide _MUCH_ better helpers for building out annotations, this is just
-    // unapologetically painful
-    fn create_class(
-        id: u16,
-        label: Option<&str>,
-        color: Option<[u8; 3]>,
-    ) -> (ClassId, ClassDescription) {
-        (
-            ClassId(id),
-            ClassDescription {
-                info: AnnotationInfo {
-                    id,
-                    label: label.map(Into::into),
-                    color: color.map(|c| Color::from_rgb(c[0], c[1], c[2]).into()),
-                },
-                ..Default::default()
-            },
-        )
-    }
-    MsgSender::new("seg_test")
-        .with_component(&[AnnotationContext {
-            class_map: [
-                create_class(13, "label1".into(), None),
-                create_class(42, "label2".into(), None),
-                create_class(99, "label3".into(), None),
-            ]
-            .into_iter()
-            .collect(),
-        }])?
-        .send(rec_stream)?;
+    use rerun::archetypes::AnnotationContext;
+    MsgSender::from_archetype(
+        "seg_test",
+        &AnnotationContext::new([(13, "label1"), (42, "label2"), (99, "label3")]),
+    )?
+    .send(rec_stream)?;
     log_info(
         rec_stream,
         "default colored rects, default colored points, all points except the \
@@ -474,33 +448,33 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     rec_stream.set_time_seconds("sim_time", 3f64);
 
     // Log an updated segmentation map with specific colors
-    MsgSender::new("seg_test")
-        .with_component(&[AnnotationContext {
-            class_map: [
-                create_class(13, "label1".into(), [255, 0, 0].into()),
-                create_class(42, "label2".into(), [0, 255, 0].into()),
-                create_class(99, "label3".into(), [0, 0, 255].into()),
-            ]
-            .into_iter()
-            .collect(),
-        }])?
-        .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "seg_test",
+        &AnnotationContext::new([
+            (13, "label1", Color::from_rgb(255, 0, 0)),
+            (42, "label2", Color::from_rgb(0, 255, 0)),
+            (99, "label3", Color::from_rgb(0, 0, 255)),
+        ]),
+    )?
+    .send(rec_stream)?;
     log_info(rec_stream, "points/rects with user specified colors")?;
 
     rec_stream.set_time_seconds("sim_time", 4f64);
 
     // Log with a mixture of set and unset colors / labels
-    MsgSender::new("seg_test")
-        .with_component(&[AnnotationContext {
-            class_map: [
-                create_class(13, None, [255, 0, 0].into()),
-                create_class(42, "label2".into(), [0, 255, 0].into()),
-                create_class(99, "label3".into(), None),
-            ]
-            .into_iter()
-            .collect(),
-        }])?
-        .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "seg_test",
+        &AnnotationContext::new([
+            AnnotationInfo {
+                id: 13,
+                label: None,
+                color: Some(Color::from_rgb(255, 0, 0)),
+            },
+            (42, "label2", Color::from_rgb(0, 255, 0)).into(),
+            (99, "label3").into(),
+        ]),
+    )?
+    .send(rec_stream)?;
     log_info(
         rec_stream,
         "label1 disappears and everything with label3 is now default colored again",

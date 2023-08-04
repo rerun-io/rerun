@@ -1,6 +1,16 @@
 from __future__ import annotations
 
 from .angle import angle_init
+from .annotation_context import (
+    annotationinfo_native_to_pa_array,
+    classdescription_info_converter,
+    classdescription_init,
+    classdescription_keypoint_annotations_converter,
+    classdescription_keypoint_connections_converter,
+    classdescription_native_to_pa_array,
+    classdescriptionmapelem_native_to_pa_array,
+    keypointpair_native_to_pa_array,
+)
 from .matnxn import mat3x3_coeffs_converter, mat4x4_coeffs_converter
 from .quaternion import quaternion_init
 from .rotation3d import rotation3d_inner_converter

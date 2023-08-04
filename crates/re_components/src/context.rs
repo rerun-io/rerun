@@ -58,7 +58,7 @@ struct KeypointPairArrow {
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 struct ClassDescriptionArrow {
     info: AnnotationInfo,
-    keypoint_map: Vec<AnnotationInfo>,
+    keypoint_annotations: Vec<AnnotationInfo>,
     keypoint_connections: Vec<KeypointPairArrow>,
 }
 
@@ -66,7 +66,7 @@ impl From<&ClassDescription> for ClassDescriptionArrow {
     fn from(v: &ClassDescription) -> Self {
         ClassDescriptionArrow {
             info: v.info.clone(),
-            keypoint_map: v.keypoint_map.values().cloned().collect(),
+            keypoint_annotations: v.keypoint_map.values().cloned().collect(),
             keypoint_connections: v
                 .keypoint_connections
                 .iter()
@@ -84,7 +84,7 @@ impl From<ClassDescriptionArrow> for ClassDescription {
         ClassDescription {
             info: v.info,
             keypoint_map: v
-                .keypoint_map
+                .keypoint_annotations
                 .into_iter()
                 .map(|elem| (KeypointId(elem.id), elem))
                 .collect(),
@@ -130,7 +130,7 @@ impl From<ClassDescriptionArrow> for ClassDescription {
 ///                         false
 ///                     ),
 ///                     Field::new(
-///                         "keypoint_map",
+///                         "keypoint_annotations",
 ///                         DataType::List(Box::new(Field::new(
 ///                             "item",
 ///                             DataType::Struct(vec![
