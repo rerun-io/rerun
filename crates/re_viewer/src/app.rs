@@ -502,7 +502,11 @@ impl App {
             .default_width(300.0)
             .resizable(true)
             .frame(self.re_ui.top_panel_frame())
-            .show_animated_inside(ui, self.style_panel_open, |ui| ctx.settings_ui(ui));
+            .show_animated_inside(ui, self.style_panel_open, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ctx.settings_ui(ui);
+                });
+            });
     }
 
     /// Top-level ui function.
