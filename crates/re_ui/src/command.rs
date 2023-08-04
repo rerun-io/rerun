@@ -111,13 +111,13 @@ impl UICommand {
                 "Toggle between windowed and fullscreen viewer",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ZoomIn => ("Zoom In", "Increases the UI scaling factor"),
+            UICommand::ZoomIn => ("Zoom In", "Increases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ZoomOut => ("Zoom Out", "Decreases the UI scaling factor"),
+            UICommand::ZoomOut => ("Zoom Out", "Decreases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomReset => (
                 "Reset Zoom",
-                "Resets UI scaling factor to the OS provided default",
+                "Resets the UI zoom level to the operating system's default value",
             ),
 
             UICommand::SelectionPrevious => ("Previous selection", "Go to previous selection"),

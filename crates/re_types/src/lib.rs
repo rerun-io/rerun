@@ -92,7 +92,7 @@ pub trait Loggable: Sized {
     /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
     ///
     /// Panics on failure.
-    /// This will _never_ fail for Rerun's builtin [`Loggable`]s.
+    /// This will _never_ fail for Rerun's built-in [`Loggable`]s.
     ///
     /// For the fallible version, see [`Loggable::try_to_arrow`].
     #[inline]
@@ -110,7 +110,7 @@ pub trait Loggable: Sized {
     /// them into an Arrow array.
     /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
     ///
-    /// This will _never_ fail for Rerun's builtin [`Loggable`].
+    /// This will _never_ fail for Rerun's built-in [`Loggable`].
     /// For the non-fallible version, see [`Loggable::to_arrow`].
     #[inline]
     fn try_to_arrow<'a>(
@@ -128,7 +128,7 @@ pub trait Loggable: Sized {
     /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
     ///
     /// Panics on failure.
-    /// This will _never_ fail for Rerun's builtin [`Loggable`].
+    /// This will _never_ fail for Rerun's built-in [`Loggable`].
     ///
     /// For the fallible version, see [`Loggable::try_to_arrow_opt`].
     #[inline]
@@ -146,7 +146,7 @@ pub trait Loggable: Sized {
     /// [`Loggable`], serializes them into an Arrow array.
     /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
     ///
-    /// This will _never_ fail for Rerun's builtin [`Loggable`].
+    /// This will _never_ fail for Rerun's built-in [`Loggable`].
     /// For the non-fallible version, see [`Loggable::to_arrow_opt`].
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
@@ -278,7 +278,7 @@ pub trait Archetype {
     /// Serializes all non-null [`Component`]s of this [`Archetype`] into Arrow arrays.
     ///
     /// Panics on failure.
-    /// This can _never_ fail for Rerun's builtin archetypes.
+    /// This can _never_ fail for Rerun's built-in archetypes.
     ///
     /// For the fallible version, see [`Archetype::try_to_arrow`].
     #[inline]
@@ -288,7 +288,7 @@ pub trait Archetype {
 
     /// Serializes all non-null [`Component`]s of this [`Archetype`] into Arrow arrays.
     ///
-    /// This can _never_ fail for Rerun's builtin archetypes.
+    /// This can _never_ fail for Rerun's built-in archetypes.
     /// For the non-fallible version, see [`Archetype::to_arrow`].
     fn try_to_arrow(
         &self,

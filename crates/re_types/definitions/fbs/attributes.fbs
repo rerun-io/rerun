@@ -11,7 +11,7 @@ namespace fbs.attributes;
 /// In unions, this effectively defines the arrow tag of each variant, since the tag depends on the
 /// fields's order in the datatype!
 ///
-/// NOTE: We do not use flatbuffers' builtin `id` attribute as it only works on `table`s, whereas we
+/// NOTE: We do not use flatbuffers' built-in `id` attribute as it only works on `table`s, whereas we
 /// need a stable order for all kinds of things.
 attribute "order";
 
@@ -34,7 +34,7 @@ attribute "transparent";
 /// If specified on a field, the field becomes nullable, which affects both its native as well as
 /// its arrow datatypes.
 ///
-/// NOTE: We do not use flatbuffers' builtin `required` attribute because A) it has many
+/// NOTE: We do not use flatbuffers' built-in `required` attribute because A) it has many
 /// limitations that do not make sense for our use case and B) our overall data model is built
 /// around the idea of nullability, rather than requirements (i.e. the exact opposite).
 attribute "nullable";
