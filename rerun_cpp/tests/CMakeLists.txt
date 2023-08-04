@@ -9,11 +9,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-# Test application:
-if(NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 17)
-endif()
-
 file(GLOB_RECURSE rerun_sdk_tests_SRC CONFIGURE_DEPENDS
     "*.hpp"
     "*.cpp"
