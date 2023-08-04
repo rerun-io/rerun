@@ -16,9 +16,16 @@ function(set_default_warning_settings target)
     # set_property(TARGET ${target} PROPERTY COMPILE_WARNING_AS_ERROR ON)
 endfunction()
 
+# Use makefiles on linux, otherwise it might use Ninja which isn't installed by default.
 if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
     set(CMAKE_GENERATOR "Unix Makefiles")
 endif()
 
+# Arrow requires a C++17 compliant compiler.
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+endif()
+
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library
 add_subdirectory(examples/cpp/minimal)
+add_subdirectory(tests/cpp)

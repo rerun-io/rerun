@@ -15,10 +15,8 @@ int main(int argc, char** argv) {
 
     rr_stream.log_archetype(
         "3d/points",
-        rr::archetypes::Points3D({
-                                     rr::datatypes::Vec3D{1.0, 2.0, 3.0},
-                                     rr::datatypes::Vec3D{4.0, 5.0, 6.0},
-                                 })
+        rr::archetypes::Points3D({rr::datatypes::Vec3D{1.0, 2.0, 3.0},
+                                  rr::datatypes::Vec3D{4.0, 5.0, 6.0}})
             .with_radii({0.42, 0.43})
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({std::string("hello"), std::string("friend")})
@@ -37,13 +35,11 @@ int main(int argc, char** argv) {
         std::vector{
             rr::components::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
             rr::components::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
-            rr::components::Point2D(rr::datatypes::Vec2D{5.0, 5.0}),
-        },
+            rr::components::Point2D(rr::datatypes::Vec2D{5.0, 5.0})},
         std::array{
             rr::components::Color(0xFF0000FF),
             rr::components::Color(0x00FF00FF),
-            rr::components::Color(0x0000FFFF),
-        },
+            rr::components::Color(0x0000FFFF)},
         c_style_array
     );
 
