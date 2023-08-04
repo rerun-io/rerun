@@ -7,14 +7,11 @@
 
 #include <array>
 
-namespace rr = rerun;
+using namespace rerun::datatypes;
 
 #define TEST_TAG "[vec_and_quaternion]"
 
-void ctor_checks(
-    const rr::datatypes::Vec2D& v2, const rr::datatypes::Vec3D& v3, const rr::datatypes::Vec4D& v4,
-    const rr::datatypes::Quaternion& q
-) {
+void ctor_checks(const Vec2D& v2, const Vec3D& v3, const Vec4D& v4, const Quaternion& q) {
     CHECK(v2.x() == 1.0);
     CHECK(v2.y() == 2.0);
 
@@ -35,10 +32,10 @@ void ctor_checks(
 
 TEST_CASE("Construct VecND in different ways", TEST_TAG) {
     SECTION("Default constructor") {
-        rr::datatypes::Vec2D v2;
-        rr::datatypes::Vec3D v3;
-        rr::datatypes::Vec4D v4;
-        rr::datatypes::Quaternion q;
+        Vec2D v2;
+        Vec3D v3;
+        Vec4D v4;
+        Quaternion q;
 
         // Not initialized! Access is undefined behavior.
         // Suppress unused warnings.
@@ -49,28 +46,28 @@ TEST_CASE("Construct VecND in different ways", TEST_TAG) {
     }
 
     SECTION("Passing values to constructor") {
-        rr::datatypes::Vec2D v2(1.0f, 2.0f);
-        rr::datatypes::Vec3D v3(1.0f, 2.0f, 3.0f);
-        rr::datatypes::Vec4D v4(1.0f, 2.0f, 3.0f, 4.0f);
-        rr::datatypes::Quaternion q(1.0f, 2.0f, 3.0f, 4.0f);
+        Vec2D v2(1.0f, 2.0f);
+        Vec3D v3(1.0f, 2.0f, 3.0f);
+        Vec4D v4(1.0f, 2.0f, 3.0f, 4.0f);
+        Quaternion q(1.0f, 2.0f, 3.0f, 4.0f);
 
         ctor_checks(v2, v3, v4, q);
     }
 
     SECTION("Via brace initialization") {
-        rr::datatypes::Vec2D v2{1.0f, 2.0f};
-        rr::datatypes::Vec3D v3{1.0f, 2.0f, 3.0f};
-        rr::datatypes::Vec4D v4{1.0f, 2.0f, 3.0f, 4.0f};
-        rr::datatypes::Quaternion q{1.0f, 2.0f, 3.0f, 4.0f};
+        Vec2D v2{1.0f, 2.0f};
+        Vec3D v3{1.0f, 2.0f, 3.0f};
+        Vec4D v4{1.0f, 2.0f, 3.0f, 4.0f};
+        Quaternion q{1.0f, 2.0f, 3.0f, 4.0f};
 
         ctor_checks(v2, v3, v4, q);
     }
 
     SECTION("Via initializer list") {
-        rr::datatypes::Vec2D v2({1.0f, 2.0f});
-        rr::datatypes::Vec3D v3({1.0f, 2.0f, 3.0f});
-        rr::datatypes::Vec4D v4({1.0f, 2.0f, 3.0f, 4.0f});
-        rr::datatypes::Quaternion q({1.0f, 2.0f, 3.0f, 4.0f});
+        Vec2D v2({1.0f, 2.0f});
+        Vec3D v3({1.0f, 2.0f, 3.0f});
+        Vec4D v4({1.0f, 2.0f, 3.0f, 4.0f});
+        Quaternion q({1.0f, 2.0f, 3.0f, 4.0f});
 
         ctor_checks(v2, v3, v4, q);
     }
@@ -78,26 +75,26 @@ TEST_CASE("Construct VecND in different ways", TEST_TAG) {
     // Dropped this since providing an std::array version makes the initializer list version
     // ambiguous.
     // SECTION("Via std::array") {
-    //     rr::datatypes::Vec2D v2(std::array<float, 2>{1.0f, 2.0f});
-    //     rr::datatypes::Vec3D v3(std::array<float, 3>{1.0f, 2.0f, 3.0f});
-    //     rr::datatypes::Vec4D v4(std::array<float, 4>{1.0f, 2.0f, 3.0f, 4.0f});
-    //     rr::datatypes::Quaternion q(std::array<float, 4>{1.0f, 2.0f, 3.0f, 4.0f});
+    //     Vec2D v2(std::array<float, 2>{1.0f, 2.0f});
+    //     Vec3D v3(std::array<float, 3>{1.0f, 2.0f, 3.0f});
+    //     Vec4D v4(std::array<float, 4>{1.0f, 2.0f, 3.0f, 4.0f});
+    //     Quaternion q(std::array<float, 4>{1.0f, 2.0f, 3.0f, 4.0f});
 
     //     ctor_checks(v2, v3, v4, q);
     // }
 
     SECTION("Via c-array") {
         float c_v2[2] = {1.0f, 2.0f};
-        rr::datatypes::Vec2D v2(c_v2);
+        Vec2D v2(c_v2);
 
         float c_v3[3] = {1.0f, 2.0f, 3.0f};
-        rr::datatypes::Vec3D v3(c_v3);
+        Vec3D v3(c_v3);
 
         float c_v4[4] = {1.0f, 2.0f, 3.0f, 4.0f};
-        rr::datatypes::Vec4D v4(c_v4);
+        Vec4D v4(c_v4);
 
         float c_q[4] = {1.0f, 2.0f, 3.0f, 4.0f};
-        rr::datatypes::Quaternion q(c_q);
+        Quaternion q(c_q);
 
         ctor_checks(v2, v3, v4, q);
     }
