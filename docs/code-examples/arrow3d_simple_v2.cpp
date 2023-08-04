@@ -17,7 +17,7 @@ int main() {
     for (int i = 0; i < 100; ++i) {
         float angle = 2.0 * M_PI * i * 0.01f;
         float length = log2f(i + 1);
-        vectors.push_back(rr::datatypes::Vec3D{length * sinf(angle), 0.0, length * cosf(angle)});
+        vectors.push_back({length * sinf(angle), 0.0, length * cosf(angle)});
 
         uint8_t c = static_cast<uint8_t>(angle / (2.0 * M_PI) * 255.0);
         colors.push_back({static_cast<uint8_t>(255 - c), c, 128, 128});

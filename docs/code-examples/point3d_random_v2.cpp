@@ -18,11 +18,11 @@ int main() {
 
     std::vector<rr::components::Point3D> points3d(10);
     std::generate(points3d.begin(), points3d.end(), [&] {
-        return rr::datatypes::Vec3D{dist_pos(gen), dist_pos(gen), dist_pos(gen)};
+        return rr::components::Point3D(dist_pos(gen), dist_pos(gen), dist_pos(gen));
     });
     std::vector<rr::components::Color> colors(10);
     std::generate(colors.begin(), colors.end(), [&] {
-        return std::array{dist_color(gen), dist_color(gen), dist_color(gen)};
+        return rr::components::Color(dist_color(gen), dist_color(gen), dist_color(gen));
     });
     std::vector<rr::components::Radius> radii(10);
     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
