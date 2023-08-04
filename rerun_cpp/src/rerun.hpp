@@ -1,14 +1,11 @@
 // The Rerun C++ SDK.
 #pragma once
 
-// Auto-generated:
+// Built-in Rerun types (largely generated from an interface definition language)
 #include "rerun/archetypes.hpp"
 #include "rerun/components.hpp"
 #include "rerun/datatypes.hpp"
 
-// Manually written:
+// Rerun API.
 #include "rerun/recording_stream.hpp"
 #include "rerun/sdk_info.hpp"
-
-// Generally not needed.
-// #include "rerun/arrow.hpp"
