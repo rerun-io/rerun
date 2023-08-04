@@ -177,11 +177,14 @@ fn class_description_ui(ui: &mut egui::Ui, class: &ClassDescription, id: ClassId
                     re_ui::ReUi::setup_table_body(&mut body);
 
                     // TODO(jleibs): Helper to do this with caching somewhere
-                    let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = class
-                        .keypoint_annotations
-                        .iter()
-                        .map(|kp| (kp.id.into(), kp.clone()))
-                        .collect();
+                    let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
+                        re_tracing::profile_scope!("build_annotation_map");
+                        class
+                            .keypoint_annotations
+                            .iter()
+                            .map(|kp| (kp.id.into(), kp.clone()))
+                            .collect()
+                    };
 
                     for KeypointPair {
                         keypoint0: from,
