@@ -1,79 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Iterable, Sequence, Tuple, Union
+from typing import Iterable
 
-from rerun import bindings
-from rerun.log import Color, _normalize_colors
+from rerun._rerun2.datatypes import AnnotationInfo, ClassDescription, ClassDescriptionLike
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
-__all__ = [
-    "AnnotationInfo",
-    "ClassDescription",
-    "log_annotation_context",
-]
-
-
-@dataclass
-class AnnotationInfo:
-    """
-    Annotation info annotating a class id or key-point id.
-
-    Color and label will be used to annotate entities/keypoints which reference the id.
-    The id refers either to a class or key-point id
-    """
-
-    id: int = 0
-    """The id of the class or key-point to annotate"""
-
-    label: str | None = None
-    """The label that will be shown in the UI"""
-
-    color: Color | None = None
-    """The color that will be applied to the annotated entity"""
-
-
-AnnotationInfoLike = Union[Tuple[int, str], Tuple[int, str, Color], AnnotationInfo]
-"""Type helper representing the different ways to specify an [AnnotationInfo][rerun.log.annotation.AnnotationInfo]"""
-
-
-def coerce_annotation_info(arg: AnnotationInfoLike) -> AnnotationInfo:
-    if type(arg) is AnnotationInfo:
-        return arg
-    else:
-        return AnnotationInfo(*arg)  # type: ignore[misc]
-
-
-@dataclass
-class ClassDescription:
-    """
-    Metadata about a class type identified by an id.
-
-    Typically a class description contains only a annotation info.
-    However, within a class there might be several keypoints, each with its own annotation info.
-    Keypoints in turn may be connected to each other by connections (typically used for skeleton edges).
-    """
-
-    info: AnnotationInfoLike | None = None
-    """The annotation info for the class"""
-
-    keypoint_annotations: Iterable[AnnotationInfoLike] | None = None
-    """The annotation infos for the all key-points"""
-
-    keypoint_connections: Iterable[int | tuple[int, int]] | None = None
-    """The connections between key-points"""
-
-
-ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
-"""Type helper representing the different ways to specify a [ClassDescription][rerun.log.annotation.ClassDescription]"""
-
-
-def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
-    if type(arg) is ClassDescription:
-        return arg
-    else:
-        return ClassDescription(info=arg)  # type: ignore[arg-type]
+__all__ = ["log_annotation_context", "AnnotationInfo", "ClassDescription", "ClassDescriptionLike"]
 
 
 @log_decorator
@@ -123,42 +56,8 @@ def log_annotation_context(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    import rerun.experimental as rr2
+
     recording = RecordingStream.to_native(recording)
 
-    if not isinstance(class_descriptions, Iterable):
-        class_descriptions = [class_descriptions]
-
-    # Coerce tuples into ClassDescription dataclass for convenience
-    typed_class_descriptions = (coerce_class_descriptor_like(d) for d in class_descriptions)
-
-    # Convert back to fixed tuple for easy pyo3 conversion
-    # This is pretty messy but will likely go away / be refactored with pending data-model changes.
-    def info_to_tuple(info: AnnotationInfoLike | None) -> tuple[int, str | None, Sequence[int] | None]:
-        if info is None:
-            return (0, None, None)
-        info = coerce_annotation_info(info)
-        color = None if info.color is None else _normalize_colors(info.color).tolist()
-        return (info.id, info.label, color)
-
-    def keypoint_connections_to_flat_list(
-        keypoint_connections: Iterable[int | tuple[int, int]] | None
-    ) -> Sequence[int]:
-        if keypoint_connections is None:
-            return []
-        # flatten keypoint connections
-        connections = list(keypoint_connections)
-        if type(connections[0]) is tuple:
-            connections = [item for tuple in connections for item in tuple]  # type: ignore[union-attr]
-        return connections  # type: ignore[return-value]
-
-    tuple_class_descriptions = [
-        (
-            info_to_tuple(d.info),
-            tuple(info_to_tuple(a) for a in d.keypoint_annotations or []),
-            keypoint_connections_to_flat_list(d.keypoint_connections),
-        )
-        for d in typed_class_descriptions
-    ]
-
-    # AnnotationContext arrow handling happens inside the python bridge
-    bindings.log_annotation_context(entity_path, tuple_class_descriptions, timeless, recording=recording)
+    rr2.log(entity_path, rr2.AnnotationContext(class_descriptions), timeless=timeless, recording=recording)

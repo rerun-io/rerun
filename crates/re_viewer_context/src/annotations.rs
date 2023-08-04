@@ -1,57 +1,109 @@
 use std::{collections::BTreeMap, sync::Arc};
 
+use ahash::HashMap;
 use lazy_static::lazy_static;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
-use re_components::{
-    context::{AnnotationInfo, ClassDescription},
-    AnnotationContext,
-};
 use re_data_store::EntityPath;
 use re_log_types::RowId;
-use re_query::query_entity_with_primary;
+use re_query::{query_archetype, ArchetypeView};
+use re_types::archetypes::AnnotationContext;
 use re_types::components::{ClassId, KeypointId};
+use re_types::datatypes::{AnnotationInfo, ClassDescription};
 
 use super::{auto_color, ViewerContext};
 use crate::DefaultColor;
 
 #[derive(Clone, Debug)]
 pub struct Annotations {
-    pub row_id: RowId,
-    pub context: AnnotationContext,
+    row_id: RowId,
+    class_map: HashMap<ClassId, CachedClassDescription>,
 }
 
 impl Annotations {
+    pub fn try_from_view(view: &ArchetypeView<AnnotationContext>) -> Option<Self> {
+        re_tracing::profile_function!();
+        // TODO(jleibs): Mono helpers for ArchetypeView.
+        view.iter_required_component::<re_types::components::AnnotationContext>()
+            .ok()
+            .and_then(|mut iter| iter.next())
+            .map(|ctx| Self {
+                row_id: view.row_id(),
+                class_map: ctx
+                    .0
+                    .into_iter()
+                    .map(|elem| {
+                        (
+                            elem.class_id,
+                            CachedClassDescription::from(elem.class_description),
+                        )
+                    })
+                    .collect(),
+            })
+    }
+
     #[inline]
-    pub fn class_description(&self, class_id: Option<ClassId>) -> ResolvedClassDescription<'_> {
+    pub fn resolved_class_description(
+        &self,
+        class_id: Option<ClassId>,
+    ) -> ResolvedClassDescription<'_> {
+        let found = class_id.and_then(|class_id| self.class_map.get(&class_id));
         ResolvedClassDescription {
             class_id,
-            class_description: class_id.and_then(|class_id| self.context.class_map.get(&class_id)),
+            class_description: found.map(|f| &f.class_description),
+            keypoint_map: found.map(|f| &f.keypoint_map),
+        }
+    }
+
+    #[inline]
+    pub fn row_id(&self) -> RowId {
+        self.row_id
+    }
+}
+
+#[derive(Clone, Debug)]
+struct CachedClassDescription {
+    class_description: ClassDescription,
+    keypoint_map: HashMap<KeypointId, AnnotationInfo>,
+}
+
+impl From<ClassDescription> for CachedClassDescription {
+    fn from(desc: ClassDescription) -> Self {
+        let keypoint_map = desc
+            .keypoint_annotations
+            .iter()
+            .map(|kp| (kp.id.into(), kp.clone()))
+            .collect();
+        Self {
+            class_description: desc,
+            keypoint_map,
         }
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct ResolvedClassDescription<'a> {
     pub class_id: Option<ClassId>,
     pub class_description: Option<&'a ClassDescription>,
+    pub keypoint_map: Option<&'a HashMap<KeypointId, AnnotationInfo>>,
 }
 
 impl<'a> ResolvedClassDescription<'a> {
     #[inline]
     pub fn annotation_info(&self) -> ResolvedAnnotationInfo {
         ResolvedAnnotationInfo {
-            class_id: self.class_id,
+            class_id: self.class_description.map(|desc| desc.info.id.into()),
             annotation_info: self.class_description.map(|desc| desc.info.clone()),
         }
     }
 
     /// Merges class annotation info with keypoint annotation info (if existing respectively).
     pub fn annotation_info_with_keypoint(&self, keypoint_id: KeypointId) -> ResolvedAnnotationInfo {
-        if let Some(desc) = self.class_description {
+        if let (Some(desc), Some(keypoint_map)) = (self.class_description, self.keypoint_map) {
             // Assuming that keypoint annotation is the rarer case, merging the entire annotation ahead of time
             // is cheaper than doing it lazily (which would cause more branches down the line for callsites without keypoints)
-            if let Some(keypoint_annotation_info) = desc.keypoint_map.get(&keypoint_id) {
+            if let Some(keypoint_annotation_info) = keypoint_map.get(&keypoint_id) {
                 ResolvedAnnotationInfo {
                     class_id: self.class_id,
                     annotation_info: Some(AnnotationInfo {
@@ -75,7 +127,7 @@ impl<'a> ResolvedClassDescription<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ResolvedAnnotationInfo {
     pub class_id: Option<ClassId>,
     pub annotation_info: Option<AnnotationInfo>,
@@ -155,22 +207,11 @@ impl AnnotationMap {
                     // Otherwise check the obj_store for the field.
                     // If we find one, insert it and then we can break.
                     std::collections::btree_map::Entry::Vacant(entry) => {
-                        if query_entity_with_primary::<AnnotationContext>(
-                            data_store,
-                            time_query,
-                            &parent,
-                            &[],
-                        )
-                        .ok()
-                        .and_then(|entity| {
-                            entity.iter_primary().ok()?.next()?.map(|context| {
-                                entry.insert(Arc::new(Annotations {
-                                    row_id: entity.row_id(),
-                                    context,
-                                }))
-                            })
-                        })
-                        .is_some()
+                        if query_archetype::<AnnotationContext>(data_store, time_query, &parent)
+                            .ok()
+                            .and_then(|view| Annotations::try_from_view(&view))
+                            .map(|annotations| entry.insert(Arc::new(annotations)))
+                            .is_some()
                         {
                             break;
                         }
@@ -208,7 +249,7 @@ lazy_static! {
     pub static ref MISSING_ANNOTATIONS: Arc<Annotations> = {
         Arc::new(Annotations {
             row_id: MISSING_ROW_ID,
-            context: Default::default(),
+            class_map: Default::default(),
         })
     };
 }

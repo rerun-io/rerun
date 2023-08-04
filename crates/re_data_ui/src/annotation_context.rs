@@ -1,8 +1,10 @@
 use egui::{color_picker, Vec2};
 use itertools::Itertools;
 
-use re_components::{AnnotationContext, AnnotationInfo};
-use re_types::components::ClassId;
+use re_types::components::{AnnotationContext, ClassId, KeypointId};
+use re_types::datatypes::{
+    AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointPair,
+};
 use re_viewer_context::{auto_color, UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -19,7 +21,9 @@ impl crate::EntityDataUi for ClassId {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         let annotations = crate::annotations(ctx, query, entity_path);
-        let class = annotations.class_description(Some(*self)).class_description;
+        let class = annotations
+            .resolved_class_description(Some(*self))
+            .class_description;
         if let Some(class) = class {
             let response = ui.horizontal(|ui| {
                 // Color first, to keep subsequent rows of the same things aligned
@@ -32,7 +36,9 @@ impl crate::EntityDataUi for ClassId {
 
             match verbosity {
                 UiVerbosity::Small => {
-                    if !class.keypoint_connections.is_empty() || !class.keypoint_map.is_empty() {
+                    if !class.keypoint_connections.is_empty()
+                        || !class.keypoint_annotations.is_empty()
+                    {
                         response.response.on_hover_ui(|ui| {
                             class_description_ui(ui, class, *self);
                         });
@@ -77,17 +83,15 @@ fn annotation_info(
     entity_path: &re_log_types::EntityPath,
     query: &re_arrow_store::LatestAtQuery,
     keypoint_id: &re_types::components::KeypointId,
-) -> Option<re_components::AnnotationInfo> {
+) -> Option<AnnotationInfo> {
     let class_id = ctx
         .store_db
         .entity_db
         .data_store
         .query_latest_component::<ClassId>(entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);
-    let class = annotations
-        .class_description(Some(class_id))
-        .class_description?;
-    class.keypoint_map.get(keypoint_id).cloned()
+    let class = annotations.resolved_class_description(Some(class_id));
+    class.keypoint_map?.get(keypoint_id).cloned()
 }
 
 impl DataUi for AnnotationContext {
@@ -100,23 +104,24 @@ impl DataUi for AnnotationContext {
     ) {
         match verbosity {
             UiVerbosity::Small => {
-                ui.label(format!(
-                    "AnnotationContext with {} classes",
-                    self.class_map.len()
-                ));
+                ui.label(format!("AnnotationContext with {} classes", self.0.len()));
             }
             UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     annotation_info_table_ui(
                         ui,
-                        self.class_map
-                            .values()
-                            .map(|class| &class.info)
+                        self.0
+                            .iter()
+                            .map(|class| &class.class_description.info)
                             .sorted_by_key(|info| info.id),
                     );
 
-                    for (id, class) in &self.class_map {
-                        class_description_ui(ui, class, *id);
+                    for ClassDescriptionMapElem {
+                        class_id,
+                        class_description,
+                    } in &self.0
+                    {
+                        class_description_ui(ui, class_description, *class_id);
                     }
                 });
             }
@@ -124,23 +129,23 @@ impl DataUi for AnnotationContext {
     }
 }
 
-fn class_description_ui(ui: &mut egui::Ui, class: &re_components::ClassDescription, id: ClassId) {
-    if class.keypoint_connections.is_empty() && class.keypoint_map.is_empty() {
+fn class_description_ui(ui: &mut egui::Ui, class: &ClassDescription, id: ClassId) {
+    if class.keypoint_connections.is_empty() && class.keypoint_annotations.is_empty() {
         return;
     }
 
     let row_height = re_ui::ReUi::table_line_height();
     ui.separator();
     ui.strong(format!("Keypoints for Class {}", id.0));
-    if !class.keypoint_map.is_empty() {
+    if !class.keypoint_annotations.is_empty() {
         ui.add_space(8.0);
         ui.strong("Keypoints Annotations");
         ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
             annotation_info_table_ui(
                 ui,
                 class
-                    .keypoint_map
-                    .values()
+                    .keypoint_annotations
+                    .iter()
                     .sorted_by_key(|annotation| annotation.id),
             );
         });
@@ -171,13 +176,26 @@ fn class_description_ui(ui: &mut egui::Ui, class: &re_components::ClassDescripti
                 .body(|mut body| {
                     re_ui::ReUi::setup_table_body(&mut body);
 
-                    for (from, to) in &class.keypoint_connections {
+                    // TODO(jleibs): Helper to do this with caching somewhere
+                    let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
+                        re_tracing::profile_scope!("build_annotation_map");
+                        class
+                            .keypoint_annotations
+                            .iter()
+                            .map(|kp| (kp.id.into(), kp.clone()))
+                            .collect()
+                    };
+
+                    for KeypointPair {
+                        keypoint0: from,
+                        keypoint1: to,
+                    } in &class.keypoint_connections
+                    {
                         body.row(row_height, |mut row| {
                             for id in [from, to] {
                                 row.col(|ui| {
                                     ui.label(
-                                        class
-                                            .keypoint_map
+                                        keypoint_map
                                             .get(id)
                                             .and_then(|info| info.label.as_ref())
                                             .map_or_else(

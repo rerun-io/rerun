@@ -20,12 +20,7 @@ use lazy_static::lazy_static;
 use re_types::Loggable;
 
 mod bbox;
-mod class_id;
-mod color;
-pub mod context;
 pub mod coordinates;
-mod keypoint_id;
-mod label;
 mod linestrip;
 mod mat;
 mod mesh3d;
@@ -46,21 +41,12 @@ mod load_file;
 pub mod datagen;
 
 // ----------------------------------------------------------------------------
-// TODO(emilk): split into modules, like we do in re_sdk/src/lib.rs
-
-// NOTE: We keep these legacy types around because they are used by the legacy `AnnotationContext`,
-// which needs them to implement `arrow2-convert`'s' traits.
-// TODO(#2794): get rid of this once `AnnotationContext` has been migrated.
-pub(crate) use self::{
-    class_id::LegacyClassId, color::LegacyColor, keypoint_id::LegacyKeypointId, label::LegacyLabel,
-};
 
 // TODO(cmc): get rid of this once every single archetypes depending on those have been migrated.
 pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};
 
 pub use self::{
     bbox::Box3D,
-    context::{AnnotationContext, AnnotationInfo, ClassDescription},
     coordinates::ViewCoordinates,
     linestrip::{LineStrip2D, LineStrip3D},
     mat::LegacyMat3x3,
@@ -98,14 +84,13 @@ pub mod external {
 // ----------------------------------------------------------------------------
 
 use re_types::components::{
-    ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId, Label, Origin3D,
-    Point2D, Point3D, Radius, Transform3D, Vector3D,
+    AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
+    Label, Origin3D, Point2D, Point3D, Radius, Transform3D, Vector3D,
 };
 
 lazy_static! {
     //TODO(john): use a run-time type registry
     static ref FIELDS: [Field; 28] = [
-        <AnnotationContext as LegacyComponent>::field(),
         <Box3D as LegacyComponent>::field(),
         <LegacyVec3D as LegacyComponent>::field(),
         <LineStrip2D as LegacyComponent>::field(),
@@ -120,6 +105,7 @@ lazy_static! {
         <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
+        Field::new(AnnotationContext::name().as_str(), AnnotationContext::to_arrow_datatype(), false),
         Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),
         Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),
         Field::new(DisconnectedSpace::name().as_str(), DisconnectedSpace::to_arrow_datatype(), false),

@@ -1,5 +1,4 @@
-use re_components::AnnotationContext;
-use re_types::Loggable as _;
+use re_types::{components::AnnotationContext, Loggable};
 use re_viewer_context::{AnnotationMap, ArchetypeDefinition, ViewContextSystem};
 
 #[derive(Default)]

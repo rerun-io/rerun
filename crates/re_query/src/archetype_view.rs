@@ -339,9 +339,12 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Helper function to produce an [`ArchetypeView`] from a collection of [`ComponentWithInstances`]
     #[inline]
-    pub fn from_components(components: impl IntoIterator<Item = ComponentWithInstances>) -> Self {
+    pub fn from_components(
+        row_id: RowId,
+        components: impl IntoIterator<Item = ComponentWithInstances>,
+    ) -> Self {
         Self {
-            row_id: RowId::ZERO,
+            row_id,
             components: components
                 .into_iter()
                 .map(|comp| (comp.name(), comp))

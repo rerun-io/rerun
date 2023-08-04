@@ -20,7 +20,6 @@ use re_viewport::{
 
 use re_log_types::{DataRow, StoreKind};
 use rerun::{
-    datatypes::{ClassDescriptionMapElem, KeypointPair},
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
     time::TimePoint,
@@ -156,7 +155,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
 
     // legacy log functions not yet ported to pure python
-    m.add_function(wrap_pyfunction!(log_annotation_context, m)?)?;
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
@@ -778,69 +776,6 @@ impl From<AnnotationInfoTuple> for AnnotationInfo {
                 .map(|bytes| bytes.into()),
         }
     }
-}
-
-type ClassDescriptionTuple = (AnnotationInfoTuple, Vec<AnnotationInfoTuple>, Vec<u16>);
-
-#[pyfunction]
-fn log_annotation_context(
-    entity_path_str: &str,
-    class_descriptions: Vec<ClassDescriptionTuple>,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
-
-    // We normally disallow logging to root, but we make an exception for class_descriptions
-    let entity_path = if entity_path_str == "/" {
-        EntityPath::root()
-    } else {
-        parse_entity_path(entity_path_str)?
-    };
-
-    let annotation_context = AnnotationContext(
-        class_descriptions
-            .into_iter()
-            .map(
-                |(info, keypoint_annotations, keypoint_skeleton_edges)| ClassDescriptionMapElem {
-                    class_id: ClassId(info.0),
-                    class_description: ClassDescription {
-                        info: info.into(),
-                        keypoint_annotations: keypoint_annotations
-                            .into_iter()
-                            .map(|k| k.into())
-                            .collect(),
-                        keypoint_connections: keypoint_skeleton_edges
-                            .chunks_exact(2)
-                            .map(|pair| KeypointPair {
-                                keypoint0: KeypointId(pair[0]),
-                                keypoint1: KeypointId(pair[1]),
-                            })
-                            .collect(),
-                    },
-                },
-            )
-            .collect(),
-    );
-
-    // We currently log AnnotationContext from inside the bridge because it's a
-    // fairly complex type with a need for a fair amount of data-validation. We
-    // already have the serialization implemented in rust so we start with this
-    // implementation.
-    //
-    // TODO(jleibs) replace with python-native implementation
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        TimePoint::default(),
-        1,
-        [annotation_context].as_slice(),
-    );
-
-    recording.record_row(row, !timeless);
-
-    Ok(())
 }
 
 // --- Log assets ---

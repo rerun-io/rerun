@@ -86,8 +86,8 @@ pub fn build_some_instances_from(instances: impl IntoIterator<Item = u64>) -> Ve
 /// Crafts a simple but interesting [`re_log_types::DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
 pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
-    use crate::{LegacyColor, LegacyLabel, Point2D};
     use re_log_types::{DataRow, DataTable, RowId, TableId, TimePoint};
+    use re_types::components::{Color, Label, Point2D};
 
     let table_id = TableId::random();
 
@@ -109,8 +109,8 @@ pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
     let row0 = {
         let num_instances = 2;
         let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-        let colors: &[_] = &[LegacyColor::from_rgb(128, 128, 128)];
-        let labels: &[LegacyLabel] = &[];
+        let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
+        let labels: &[Label] = &[];
 
         DataRow::from_cells3(
             RowId::random(),
@@ -123,15 +123,15 @@ pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
 
     let row1 = {
         let num_instances = 0;
-        let colors: &[LegacyColor] = &[];
+        let colors: &[Color] = &[];
 
         DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors)
     };
 
     let row2 = {
         let num_instances = 1;
-        let colors: &[_] = &[LegacyColor::from_rgb(255, 255, 255)];
-        let labels: &[_] = &[LegacyLabel("hey".into())];
+        let colors: &[_] = &[Color::from_rgb(255, 255, 255)];
+        let labels: &[_] = &[Label("hey".into())];
 
         DataRow::from_cells2(
             RowId::random(),

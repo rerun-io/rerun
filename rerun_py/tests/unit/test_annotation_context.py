@@ -144,7 +144,12 @@ def test_annotation_context_component(ctx: Sequence[rr_dt.ClassDescriptionMapEle
     assert_correct_annotation_context(rr_cmp.AnnotationContext(ctx))
 
 
-@pytest.mark.parametrize("ctx", ANNOTATION_CONTEXT_INPUTS)
+ANNOTATION_ARCH_INPUTS = [
+    rr_dt.ClassDescription((1, "label1", [1, 2, 3])),
+] + ANNOTATION_CONTEXT_INPUTS
+
+
+@pytest.mark.parametrize("ctx", ANNOTATION_ARCH_INPUTS)
 def test_annotation_context_arch(ctx: rr_cmp.AnnotationContextLike) -> None:
     # Verify we can construct the archetype
     rr_arch.AnnotationContext(ctx)
