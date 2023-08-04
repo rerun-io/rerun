@@ -1,5 +1,7 @@
-#include <archetypes/arrows3d.hpp> // TODO(andreas): Should be rerun/ prefixed.
-#include <recording_stream.hpp>
+#include <rerun/archetypes/arrows3d.hpp>
+#include <rerun/recording_stream.hpp>
+
+namespace rr = rerun;
 
 int main(int argc, char** argv) {
     auto rec_stream = rr::RecordingStream("roundtrip_arrows3d");
