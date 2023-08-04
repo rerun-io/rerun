@@ -27,32 +27,32 @@
 /// keypoints should be connected with an edge. The edge should be labeled and
 /// colored as described by the class's `AnnotationInfo`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct ClassDescription {
+pub struct ClassDescription<'s> {
     /// The `AnnotationInfo` for the class.
-    pub info: crate::datatypes::AnnotationInfo,
+    pub info: crate::datatypes::AnnotationInfo<'s>,
 
     /// The `AnnotationInfo` for all of the keypoints.
-    pub keypoint_annotations: Vec<crate::datatypes::AnnotationInfo>,
+    pub keypoint_annotations: Vec<crate::datatypes::AnnotationInfo<'s>>,
 
     /// The connections between keypoints.
     pub keypoint_connections: Vec<crate::datatypes::KeypointPair>,
 }
 
-impl<'a> From<ClassDescription> for ::std::borrow::Cow<'a, ClassDescription> {
+impl<'s> From<ClassDescription<'s>> for ::std::borrow::Cow<'s, ClassDescription<'s>> {
     #[inline]
-    fn from(value: ClassDescription) -> Self {
+    fn from(value: ClassDescription<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a ClassDescription> for ::std::borrow::Cow<'a, ClassDescription> {
+impl<'s> From<&'s ClassDescription<'s>> for ::std::borrow::Cow<'s, ClassDescription<'s>> {
     #[inline]
-    fn from(value: &'a ClassDescription) -> Self {
+    fn from(value: &'s ClassDescription<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for ClassDescription {
+impl<'s> crate::Loggable<'s> for ClassDescription<'s> {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -68,7 +68,7 @@ impl crate::Loggable for ClassDescription {
         DataType::Struct(vec![
             Field {
                 name: "info".to_owned(),
-                data_type: <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
+                data_type: <crate::datatypes::AnnotationInfo<'s>>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -76,7 +76,7 @@ impl crate::Loggable for ClassDescription {
                 name: "keypoint_annotations".to_owned(),
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
-                    data_type: <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
+                    data_type: <crate::datatypes::AnnotationInfo<'s>>::to_arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 })),
@@ -119,178 +119,69 @@ impl crate::Loggable for ClassDescription {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::ClassDescription>::to_arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::ClassDescription>::to_arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
-                vec![
-                    {
-                        let (somes, info): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { info, .. } = &**datum;
-                                    info.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let info_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = info_bitmap;
-                            _ = extension_wrapper;
-                            crate::datatypes::AnnotationInfo::try_to_arrow_opt(info, None::<&str>)?
-                        }
-                    },
-                    {
-                        let (somes, keypoint_annotations): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        keypoint_annotations,
-                                        ..
-                                    } = &**datum;
-                                    keypoint_annotations.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let keypoint_annotations_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let keypoint_annotations_inner_data: Vec<_> = keypoint_annotations
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
-                            let keypoint_annotations_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
-                            > = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                keypoint_annotations.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                {
-                                    _ = keypoint_annotations_inner_bitmap;
-                                    _ = extension_wrapper;
-                                    crate::datatypes::AnnotationInfo::try_to_arrow_opt(
-                                        keypoint_annotations_inner_data,
-                                        None::<&str>,
-                                    )?
-                                },
-                                keypoint_annotations_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, keypoint_connections): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        keypoint_connections,
-                                        ..
-                                    } = &**datum;
-                                    keypoint_connections.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let keypoint_connections_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let keypoint_connections_inner_data: Vec<_> = keypoint_connections
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
-                            let keypoint_connections_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
-                            > = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                keypoint_connections.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::KeypointPair>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                {
-                                    _ = keypoint_connections_inner_bitmap;
-                                    _ = extension_wrapper;
-                                    crate::datatypes::KeypointPair::try_to_arrow_opt(
-                                        keypoint_connections_inner_data,
-                                        None::<&str>,
-                                    )?
-                                },
-                                keypoint_connections_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                ],
-                bitmap,
-            )
-            .boxed()
+            StructArray :: new ((if let Some (ext) = extension_wrapper { DataType :: Extension (ext . to_owned () , Box :: new (< crate :: datatypes :: ClassDescription :: < 's > > :: to_arrow_datatype ()) , None) }
+
+ else { < crate :: datatypes :: ClassDescription :: < 's > > :: to_arrow_datatype () }
+
+) . to_logical_type () . clone () , vec ! [{ let (somes , info) : (Vec < _ > , Vec < _ >) = data . iter () . map (| datum | { let datum = datum . as_ref () . map (| datum | { let Self { info , .. }
+
+ = & * * datum ; info . clone () }
+
+) ; (datum . is_some () , datum) }
+
+) . unzip () ; let info_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; { _ = info_bitmap ; _ = extension_wrapper ; crate :: datatypes :: AnnotationInfo :: < 's > :: try_to_arrow_opt (info , None :: < & str >) ? }
+
+ }
+
+ , { let (somes , keypoint_annotations) : (Vec < _ > , Vec < _ >) = data . iter () . map (| datum | { let datum = datum . as_ref () . map (| datum | { let Self { keypoint_annotations , .. }
+
+ = & * * datum ; keypoint_annotations . clone () }
+
+) ; (datum . is_some () , datum) }
+
+) . unzip () ; let keypoint_annotations_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; { use arrow2 :: { buffer :: Buffer , offset :: OffsetsBuffer }
+
+ ; let keypoint_annotations_inner_data : Vec < _ > = keypoint_annotations . iter () . flatten () . flatten () . cloned () . map (Some) . collect () ; let keypoint_annotations_inner_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = None ; let offsets = :: arrow2 :: offset :: Offsets :: < i32 > :: try_from_lengths (keypoint_annotations . iter () . map (| opt | opt . as_ref () . map (| datum | datum . len ()) . unwrap_or_default ())) . unwrap () . into () ; ListArray :: new ({ _ = extension_wrapper ; DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: datatypes :: AnnotationInfo :: < 's > > :: to_arrow_datatype () , is_nullable : false , metadata : [] . into () , }
+
+)) . to_logical_type () . clone () }
+
+ , offsets , { _ = keypoint_annotations_inner_bitmap ; _ = extension_wrapper ; crate :: datatypes :: AnnotationInfo :: < 's > :: try_to_arrow_opt (keypoint_annotations_inner_data , None :: < & str >) ? }
+
+ , keypoint_annotations_bitmap ,) . boxed () }
+
+ }
+
+ , { let (somes , keypoint_connections) : (Vec < _ > , Vec < _ >) = data . iter () . map (| datum | { let datum = datum . as_ref () . map (| datum | { let Self { keypoint_connections , .. }
+
+ = & * * datum ; keypoint_connections . clone () }
+
+) ; (datum . is_some () , datum) }
+
+) . unzip () ; let keypoint_connections_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = { let any_nones = somes . iter () . any (| some | ! * some) ; any_nones . then (|| somes . into ()) }
+
+ ; { use arrow2 :: { buffer :: Buffer , offset :: OffsetsBuffer }
+
+ ; let keypoint_connections_inner_data : Vec < _ > = keypoint_connections . iter () . flatten () . flatten () . cloned () . map (Some) . collect () ; let keypoint_connections_inner_bitmap : Option < :: arrow2 :: bitmap :: Bitmap > = None ; let offsets = :: arrow2 :: offset :: Offsets :: < i32 > :: try_from_lengths (keypoint_connections . iter () . map (| opt | opt . as_ref () . map (| datum | datum . len ()) . unwrap_or_default ())) . unwrap () . into () ; ListArray :: new ({ _ = extension_wrapper ; DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: datatypes :: KeypointPair > :: to_arrow_datatype () , is_nullable : false , metadata : [] . into () , }
+
+)) . to_logical_type () . clone () }
+
+ , offsets , { _ = keypoint_connections_inner_bitmap ; _ = extension_wrapper ; crate :: datatypes :: KeypointPair :: try_to_arrow_opt (keypoint_connections_inner_data , None :: < & str >) ? }
+
+ , keypoint_connections_bitmap ,) . boxed () }
+
+ }
+
+ ,] , bitmap ,) . boxed ()
         })
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -324,7 +215,7 @@ impl crate::Loggable for ClassDescription {
                 let info = {
                     let data = &**arrays_by_name["info"];
 
-                    crate::datatypes::AnnotationInfo::try_from_arrow_opt(data)
+                    crate::datatypes::AnnotationInfo::<'s>::try_from_arrow_opt(data)
                         .map_err(|err| crate::DeserializationError::Context {
                             location: "rerun.datatypes.ClassDescription#info".into(),
                             source: Box::new(err),
@@ -343,7 +234,7 @@ impl crate::Loggable for ClassDescription {
 
  else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
 
- ; let data = & * * data . values () ; let data = crate :: datatypes :: AnnotationInfo :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#keypoint_annotations" . into () , source : Box :: new (err) , }
+ ; let data = & * * data . values () ; let data = crate :: datatypes :: AnnotationInfo :: < 's > :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#keypoint_annotations" . into () , source : Box :: new (err) , }
 
 ) ? . into_iter () . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -404,7 +295,7 @@ impl crate::Loggable for ClassDescription {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -418,4 +309,4 @@ impl crate::Loggable for ClassDescription {
     }
 }
 
-impl crate::Datatype for ClassDescription {}
+impl<'s> crate::Datatype<'s> for ClassDescription<'s> {}

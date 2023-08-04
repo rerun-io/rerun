@@ -29,23 +29,23 @@ pub struct TranslationRotationScale3D {
     pub from_parent: bool,
 }
 
-impl<'a> From<TranslationRotationScale3D> for ::std::borrow::Cow<'a, TranslationRotationScale3D> {
+impl<'s> From<TranslationRotationScale3D> for ::std::borrow::Cow<'s, TranslationRotationScale3D> {
     #[inline]
     fn from(value: TranslationRotationScale3D) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a TranslationRotationScale3D>
-    for ::std::borrow::Cow<'a, TranslationRotationScale3D>
+impl<'s> From<&'s TranslationRotationScale3D>
+    for ::std::borrow::Cow<'s, TranslationRotationScale3D>
 {
     #[inline]
-    fn from(value: &'a TranslationRotationScale3D) -> Self {
+    fn from(value: &'s TranslationRotationScale3D) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for TranslationRotationScale3D {
+impl<'s> crate::Loggable<'s> for TranslationRotationScale3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -274,7 +274,7 @@ impl crate::Loggable for TranslationRotationScale3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -371,7 +371,7 @@ impl crate::Loggable for TranslationRotationScale3D {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -385,4 +385,4 @@ impl crate::Loggable for TranslationRotationScale3D {
     }
 }
 
-impl crate::Datatype for TranslationRotationScale3D {}
+impl<'s> crate::Datatype<'s> for TranslationRotationScale3D {}

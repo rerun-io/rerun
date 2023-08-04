@@ -16,21 +16,21 @@
 #[repr(transparent)]
 pub struct PrimitiveComponent(pub u32);
 
-impl<'a> From<PrimitiveComponent> for ::std::borrow::Cow<'a, PrimitiveComponent> {
+impl<'s> From<PrimitiveComponent> for ::std::borrow::Cow<'s, PrimitiveComponent> {
     #[inline]
     fn from(value: PrimitiveComponent) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a PrimitiveComponent> for ::std::borrow::Cow<'a, PrimitiveComponent> {
+impl<'s> From<&'s PrimitiveComponent> for ::std::borrow::Cow<'s, PrimitiveComponent> {
     #[inline]
-    fn from(value: &'a PrimitiveComponent) -> Self {
+    fn from(value: &'s PrimitiveComponent) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for PrimitiveComponent {
+impl<'s> crate::Loggable<'s> for PrimitiveComponent {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -92,7 +92,7 @@ impl crate::Loggable for PrimitiveComponent {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -120,7 +120,7 @@ impl crate::Loggable for PrimitiveComponent {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -134,27 +134,27 @@ impl crate::Loggable for PrimitiveComponent {
     }
 }
 
-impl crate::Component for PrimitiveComponent {}
+impl<'s> crate::Component<'s> for PrimitiveComponent {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(transparent)]
-pub struct StringComponent(pub String);
+pub struct StringComponent<'s>(pub &'s str);
 
-impl<'a> From<StringComponent> for ::std::borrow::Cow<'a, StringComponent> {
+impl<'s> From<StringComponent<'s>> for ::std::borrow::Cow<'s, StringComponent<'s>> {
     #[inline]
-    fn from(value: StringComponent) -> Self {
+    fn from(value: StringComponent<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a StringComponent> for ::std::borrow::Cow<'a, StringComponent> {
+impl<'s> From<&'s StringComponent<'s>> for ::std::borrow::Cow<'s, StringComponent<'s>> {
     #[inline]
-    fn from(value: &'a StringComponent) -> Self {
+    fn from(value: &'s StringComponent<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for StringComponent {
+impl<'s> crate::Loggable<'s> for StringComponent<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -231,7 +231,7 @@ impl crate::Loggable for StringComponent {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -243,7 +243,6 @@ impl crate::Loggable for StringComponent {
             .downcast_ref::<Utf8Array<i32>>()
             .unwrap()
             .into_iter()
-            .map(|v| v.map(ToOwned::to_owned))
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -259,7 +258,7 @@ impl crate::Loggable for StringComponent {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -273,4 +272,4 @@ impl crate::Loggable for StringComponent {
     }
 }
 
-impl crate::Component for StringComponent {}
+impl<'s> crate::Component<'s> for StringComponent<'s> {}

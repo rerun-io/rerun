@@ -74,7 +74,7 @@
 // ---
 
 /// Anything that can be serialized to and deserialized from Arrow data.
-pub trait Loggable: Sized {
+pub trait Loggable<'s>: Sized {
     type Name;
     type Item<'a>;
     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
@@ -162,7 +162,7 @@ pub trait Loggable: Sized {
     /// Panics if the data schema doesn't match, or if optional entries were missing at runtime.
     /// For the non-fallible version, see [`Loggable::try_from_arrow`].
     #[inline]
-    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
+    fn from_arrow(data: &'s dyn ::arrow2::array::Array) -> Vec<Self> {
         Self::try_iter_from_arrow(data)
             .detailed_unwrap()
             .map(Self::convert_item_to_self)
@@ -181,7 +181,7 @@ pub trait Loggable: Sized {
     /// [`Loggable::to_arrow_datatype`].
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
-    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
+    fn try_from_arrow(data: &'s dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
         Self::try_iter_from_arrow(data)?
             .map(Self::convert_item_to_self)
             .map(|v| {
@@ -198,7 +198,7 @@ pub trait Loggable: Sized {
     /// [`Loggable::to_arrow_datatype`].
     /// For the fallible version, see [`Loggable::try_from_arrow_opt`].
     #[inline]
-    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>> {
+    fn from_arrow_opt(data: &'s dyn ::arrow2::array::Array) -> Vec<Option<Self>> {
         Self::try_from_arrow_opt(data).detailed_unwrap()
     }
 
@@ -209,7 +209,7 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         Ok(Self::try_iter_from_arrow(data)?
             .map(Self::convert_item_to_self)
@@ -230,7 +230,7 @@ pub trait Loggable: Sized {
     /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
     /// [`Loggable::to_arrow_datatype`].
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Self::Iter<'_>>;
 
     /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
@@ -243,16 +243,16 @@ pub trait Loggable: Sized {
 pub type DatatypeName = ::std::borrow::Cow<'static, str>;
 
 /// A [`Datatype`] describes plain old data that can be used by any number of [`Component`].
-pub trait Datatype: Loggable {}
+pub trait Datatype<'s>: Loggable<'s> {}
 
-pub trait Component: Loggable<Name = ComponentName> + Clone {}
+pub trait Component<'s>: Loggable<'s, Name = ComponentName> + Clone {}
 
 // ---
 
 /// The fully-qualified name of an [`Archetype`], e.g. `rerun.archetypes.Points2D`.
 pub type ArchetypeName = ::std::borrow::Cow<'static, str>;
 
-pub trait Archetype {
+pub trait Archetype<'s> {
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
 
@@ -282,7 +282,7 @@ pub trait Archetype {
     ///
     /// For the fallible version, see [`Archetype::try_to_arrow`].
     #[inline]
-    fn to_arrow(&self) -> Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)> {
+    fn to_arrow(&'s self) -> Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)> {
         self.try_to_arrow().detailed_unwrap()
     }
 
@@ -291,7 +291,7 @@ pub trait Archetype {
     /// This can _never_ fail for Rerun's built-in archetypes.
     /// For the non-fallible version, see [`Archetype::to_arrow`].
     fn try_to_arrow(
-        &self,
+        &'s self,
     ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>;
 
     // ---
@@ -306,12 +306,24 @@ pub trait Archetype {
     /// logged to stderr.
     #[inline]
     fn from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, &'s dyn ::arrow2::array::Array)>,
     ) -> Self
     where
         Self: Sized,
     {
         Self::try_from_arrow(data).detailed_unwrap()
+    }
+
+    #[inline]
+    // TODO(jleibs): This is hacky -- is there a better way to get a reference here?
+    fn from_arrow_vec(
+        data: &'s Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+    ) -> Self
+    where
+        Self: Sized,
+    {
+        //let ref_vec = .collect();
+        Self::try_from_arrow(data.iter().map(|(f, a)| (f.clone(), a.as_ref()))).detailed_unwrap()
     }
 
     /// Given an iterator of Arrow arrays and their respective field metadata, deserializes them
@@ -322,7 +334,7 @@ pub trait Archetype {
     ///
     /// For the non-fallible version, see [`Archetype::from_arrow`].
     fn try_from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, &'s dyn ::arrow2::array::Array)>,
     ) -> DeserializationResult<Self>
     where
         Self: Sized;

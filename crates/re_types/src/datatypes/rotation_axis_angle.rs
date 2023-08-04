@@ -26,21 +26,21 @@ pub struct RotationAxisAngle {
     pub angle: crate::datatypes::Angle,
 }
 
-impl<'a> From<RotationAxisAngle> for ::std::borrow::Cow<'a, RotationAxisAngle> {
+impl<'s> From<RotationAxisAngle> for ::std::borrow::Cow<'s, RotationAxisAngle> {
     #[inline]
     fn from(value: RotationAxisAngle) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a RotationAxisAngle> for ::std::borrow::Cow<'a, RotationAxisAngle> {
+impl<'s> From<&'s RotationAxisAngle> for ::std::borrow::Cow<'s, RotationAxisAngle> {
     #[inline]
-    fn from(value: &'a RotationAxisAngle) -> Self {
+    fn from(value: &'s RotationAxisAngle) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for RotationAxisAngle {
+impl<'s> crate::Loggable<'s> for RotationAxisAngle {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -197,7 +197,7 @@ impl crate::Loggable for RotationAxisAngle {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -300,7 +300,7 @@ impl crate::Loggable for RotationAxisAngle {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -314,4 +314,4 @@ impl crate::Loggable for RotationAxisAngle {
     }
 }
 
-impl crate::Datatype for RotationAxisAngle {}
+impl<'s> crate::Datatype<'s> for RotationAxisAngle {}

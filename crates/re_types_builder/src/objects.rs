@@ -609,6 +609,12 @@ impl Object {
     pub fn snake_case_name(&self) -> String {
         crate::to_snake_case(&self.name)
     }
+
+    pub fn needs_lifetime(&self, objects: &Objects) -> bool {
+        self.fields
+            .iter()
+            .any(|field| field.needs_lifetime(objects))
+    }
 }
 
 /// Properties specific to either structs or unions, but not both.
@@ -794,6 +800,10 @@ impl ObjectField {
         T::Err: std::error::Error + Send + Sync + 'static,
     {
         self.attrs.try_get(self.fqname.as_str(), name)
+    }
+
+    pub fn needs_lifetime(&self, objects: &Objects) -> bool {
+        self.typ.needs_lifetime(objects)
     }
 }
 
@@ -983,6 +993,28 @@ impl Type {
             Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
         }
     }
+
+    pub fn needs_lifetime(&self, objects: &Objects) -> bool {
+        match self {
+            Type::UInt8
+            | Type::UInt16
+            | Type::UInt32
+            | Type::UInt64
+            | Type::Int8
+            | Type::Int16
+            | Type::Int32
+            | Type::Int64
+            | Type::Bool
+            | Type::Float16
+            | Type::Float32
+            | Type::Float64 => false,
+            Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+                elem_type.needs_lifetime(objects)
+            }
+            Type::Object(fqname) => objects[fqname].needs_lifetime(objects),
+            Type::String => true,
+        }
+    }
 }
 
 /// The underlying element type for arrays/vectors/maps.
@@ -1073,6 +1105,25 @@ impl ElementType {
             Self::String => false,
 
             Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
+        }
+    }
+
+    pub fn needs_lifetime(&self, objects: &Objects) -> bool {
+        match self {
+            Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Bool
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64 => false,
+            Self::Object(fqname) => objects[fqname].needs_lifetime(objects),
+            Self::String => true,
         }
     }
 }

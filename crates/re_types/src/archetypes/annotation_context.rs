@@ -69,8 +69,8 @@
 /// }
 /// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AnnotationContext {
-    pub context: crate::components::AnnotationContext,
+pub struct AnnotationContext<'s> {
+    pub context: crate::components::AnnotationContext<'s>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
@@ -82,11 +82,11 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.annotation_context".into()]);
 
-impl AnnotationContext {
+impl<'s> AnnotationContext<'s> {
     pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-impl crate::Archetype for AnnotationContext {
+impl<'s> crate::Archetype<'s> for AnnotationContext<'s> {
     #[inline]
     fn name() -> crate::ArchetypeName {
         crate::ArchetypeName::Borrowed("rerun.archetypes.AnnotationContext")
@@ -114,7 +114,7 @@ impl crate::Archetype for AnnotationContext {
 
     #[inline]
     fn try_to_arrow(
-        &self,
+        &'s self,
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
@@ -122,7 +122,7 @@ impl crate::Archetype for AnnotationContext {
         Ok([{
             Some({
                 let array =
-                    <crate::components::AnnotationContext>::try_to_arrow([&self.context], None);
+                    <crate::components::AnnotationContext<'s>>::try_to_arrow([&self.context], None);
                 array.map(|array| {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.AnnotationContext".into(),
@@ -148,7 +148,7 @@ impl crate::Archetype for AnnotationContext {
 
     #[inline]
     fn try_from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, &'s dyn ::arrow2::array::Array)>,
     ) -> crate::DeserializationResult<Self> {
         use crate::Loggable as _;
         let arrays_by_name: ::std::collections::HashMap<_, _> = data
@@ -165,7 +165,7 @@ impl crate::Archetype for AnnotationContext {
                     location: "rerun.archetypes.AnnotationContext#context".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::AnnotationContext>::try_from_arrow_opt(&**array)
+            <crate::components::AnnotationContext<'s>>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.archetypes.AnnotationContext#context".into(),
                     source: Box::new(err),
@@ -185,8 +185,8 @@ impl crate::Archetype for AnnotationContext {
     }
 }
 
-impl AnnotationContext {
-    pub fn new(context: impl Into<crate::components::AnnotationContext>) -> Self {
+impl<'s> AnnotationContext<'s> {
+    pub fn new(context: impl Into<crate::components::AnnotationContext<'s>>) -> Self {
         Self {
             context: context.into(),
         }

@@ -201,7 +201,7 @@ fn roundtrip() {
 
     let fuzzy20 = components::AffixFuzzer20(datatypes::AffixFuzzer20 {
         p: components::PrimitiveComponent(17),
-        s: components::StringComponent("fuzz".to_owned()),
+        s: components::StringComponent("fuzz"),
     });
 
     let arch = AffixFuzzer1::new(
@@ -318,7 +318,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = AffixFuzzer1::from_arrow(serialized);
+    let deserialized = AffixFuzzer1::from_arrow_vec(&serialized);
     similar_asserts::assert_eq!(arch, deserialized);
 }
 

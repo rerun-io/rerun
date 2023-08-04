@@ -16,26 +16,28 @@
 ///
 /// This is internal to the `AnnotationContext` structure.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct ClassDescriptionMapElem {
+pub struct ClassDescriptionMapElem<'s> {
     pub class_id: crate::components::ClassId,
-    pub class_description: crate::datatypes::ClassDescription,
+    pub class_description: crate::datatypes::ClassDescription<'s>,
 }
 
-impl<'a> From<ClassDescriptionMapElem> for ::std::borrow::Cow<'a, ClassDescriptionMapElem> {
+impl<'s> From<ClassDescriptionMapElem<'s>> for ::std::borrow::Cow<'s, ClassDescriptionMapElem<'s>> {
     #[inline]
-    fn from(value: ClassDescriptionMapElem) -> Self {
+    fn from(value: ClassDescriptionMapElem<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a ClassDescriptionMapElem> for ::std::borrow::Cow<'a, ClassDescriptionMapElem> {
+impl<'s> From<&'s ClassDescriptionMapElem<'s>>
+    for ::std::borrow::Cow<'s, ClassDescriptionMapElem<'s>>
+{
     #[inline]
-    fn from(value: &'a ClassDescriptionMapElem) -> Self {
+    fn from(value: &'s ClassDescriptionMapElem<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for ClassDescriptionMapElem {
+impl<'s> crate::Loggable<'s> for ClassDescriptionMapElem<'s> {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -57,7 +59,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
             },
             Field {
                 name: "class_description".to_owned(),
-                data_type: <crate::datatypes::ClassDescription>::to_arrow_datatype(),
+                data_type: <crate::datatypes::ClassDescription<'s>>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -90,11 +92,13 @@ impl crate::Loggable for ClassDescriptionMapElem {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::ClassDescriptionMapElem>::to_arrow_datatype()),
+                        Box::new(
+                            <crate::datatypes::ClassDescriptionMapElem<'s>>::to_arrow_datatype(),
+                        ),
                         None,
                     )
                 } else {
-                    <crate::datatypes::ClassDescriptionMapElem>::to_arrow_datatype()
+                    <crate::datatypes::ClassDescriptionMapElem<'s>>::to_arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -154,7 +158,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         {
                             _ = class_description_bitmap;
                             _ = extension_wrapper;
-                            crate::datatypes::ClassDescription::try_to_arrow_opt(
+                            crate::datatypes::ClassDescription::<'s>::try_to_arrow_opt(
                                 class_description,
                                 None::<&str>,
                             )?
@@ -169,7 +173,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -212,7 +216,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                 let class_description = {
                     let data = &**arrays_by_name["class_description"];
 
-                    crate::datatypes::ClassDescription::try_from_arrow_opt(data)
+                    crate::datatypes::ClassDescription::<'s>::try_from_arrow_opt(data)
                         .map_err(|err| crate::DeserializationError::Context {
                             location: "rerun.datatypes.ClassDescriptionMapElem#class_description"
                                 .into(),
@@ -239,7 +243,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -253,4 +257,4 @@ impl crate::Loggable for ClassDescriptionMapElem {
     }
 }
 
-impl crate::Datatype for ClassDescriptionMapElem {}
+impl<'s> crate::Datatype<'s> for ClassDescriptionMapElem<'s> {}

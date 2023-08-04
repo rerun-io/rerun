@@ -16,21 +16,21 @@
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Vec4D(pub [f32; 4usize]);
 
-impl<'a> From<Vec4D> for ::std::borrow::Cow<'a, Vec4D> {
+impl<'s> From<Vec4D> for ::std::borrow::Cow<'s, Vec4D> {
     #[inline]
     fn from(value: Vec4D) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Vec4D> for ::std::borrow::Cow<'a, Vec4D> {
+impl<'s> From<&'s Vec4D> for ::std::borrow::Cow<'s, Vec4D> {
     #[inline]
-    fn from(value: &'a Vec4D) -> Self {
+    fn from(value: &'s Vec4D) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Vec4D {
+impl<'s> crate::Loggable<'s> for Vec4D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -136,7 +136,7 @@ impl crate::Loggable for Vec4D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -212,7 +212,7 @@ impl crate::Loggable for Vec4D {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -226,4 +226,4 @@ impl crate::Loggable for Vec4D {
     }
 }
 
-impl crate::Datatype for Vec4D {}
+impl<'s> crate::Datatype<'s> for Vec4D {}

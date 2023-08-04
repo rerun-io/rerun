@@ -22,21 +22,21 @@ pub enum Scale3D {
     Uniform(f32),
 }
 
-impl<'a> From<Scale3D> for ::std::borrow::Cow<'a, Scale3D> {
+impl<'s> From<Scale3D> for ::std::borrow::Cow<'s, Scale3D> {
     #[inline]
     fn from(value: Scale3D) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Scale3D> for ::std::borrow::Cow<'a, Scale3D> {
+impl<'s> From<&'s Scale3D> for ::std::borrow::Cow<'s, Scale3D> {
     #[inline]
-    fn from(value: &'a Scale3D) -> Self {
+    fn from(value: &'s Scale3D) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Scale3D {
+impl<'s> crate::Loggable<'s> for Scale3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -239,7 +239,7 @@ impl crate::Loggable for Scale3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -348,7 +348,7 @@ impl crate::Loggable for Scale3D {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -362,4 +362,4 @@ impl crate::Loggable for Scale3D {
     }
 }
 
-impl crate::Datatype for Scale3D {}
+impl<'s> crate::Datatype<'s> for Scale3D {}

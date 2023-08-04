@@ -13,29 +13,29 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer1(pub crate::testing::datatypes::AffixFuzzer1);
+pub struct AffixFuzzer1<'s>(pub crate::testing::datatypes::AffixFuzzer1<'s>);
 
-impl<T: Into<crate::testing::datatypes::AffixFuzzer1>> From<T> for AffixFuzzer1 {
+impl<'s, T: Into<crate::testing::datatypes::AffixFuzzer1<'s>>> From<T> for AffixFuzzer1<'s> {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
+impl<'s> From<AffixFuzzer1<'s>> for ::std::borrow::Cow<'s, AffixFuzzer1<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer1) -> Self {
+    fn from(value: AffixFuzzer1<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
+impl<'s> From<&'s AffixFuzzer1<'s>> for ::std::borrow::Cow<'s, AffixFuzzer1<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer1) -> Self {
+    fn from(value: &'s AffixFuzzer1<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer1 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer1<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -150,7 +150,7 @@ impl crate::Loggable for AffixFuzzer1 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer1"),
                 )?
@@ -160,7 +160,7 @@ impl crate::Loggable for AffixFuzzer1 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -168,7 +168,7 @@ impl crate::Loggable for AffixFuzzer1 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer1::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
                     source: Box::new(err),
@@ -190,7 +190,7 @@ impl crate::Loggable for AffixFuzzer1 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -204,32 +204,32 @@ impl crate::Loggable for AffixFuzzer1 {
     }
 }
 
-impl crate::Component for AffixFuzzer1 {}
+impl<'s> crate::Component<'s> for AffixFuzzer1<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer2(pub crate::testing::datatypes::AffixFuzzer1);
+pub struct AffixFuzzer2<'s>(pub crate::testing::datatypes::AffixFuzzer1<'s>);
 
-impl<T: Into<crate::testing::datatypes::AffixFuzzer1>> From<T> for AffixFuzzer2 {
+impl<'s, T: Into<crate::testing::datatypes::AffixFuzzer1<'s>>> From<T> for AffixFuzzer2<'s> {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
+impl<'s> From<AffixFuzzer2<'s>> for ::std::borrow::Cow<'s, AffixFuzzer2<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer2) -> Self {
+    fn from(value: AffixFuzzer2<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
+impl<'s> From<&'s AffixFuzzer2<'s>> for ::std::borrow::Cow<'s, AffixFuzzer2<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer2) -> Self {
+    fn from(value: &'s AffixFuzzer2<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer2 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer2<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -344,7 +344,7 @@ impl crate::Loggable for AffixFuzzer2 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer2"),
                 )?
@@ -354,7 +354,7 @@ impl crate::Loggable for AffixFuzzer2 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -362,7 +362,7 @@ impl crate::Loggable for AffixFuzzer2 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer1::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
                     source: Box::new(err),
@@ -384,7 +384,7 @@ impl crate::Loggable for AffixFuzzer2 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -398,32 +398,32 @@ impl crate::Loggable for AffixFuzzer2 {
     }
 }
 
-impl crate::Component for AffixFuzzer2 {}
+impl<'s> crate::Component<'s> for AffixFuzzer2<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer3(pub crate::testing::datatypes::AffixFuzzer1);
+pub struct AffixFuzzer3<'s>(pub crate::testing::datatypes::AffixFuzzer1<'s>);
 
-impl<T: Into<crate::testing::datatypes::AffixFuzzer1>> From<T> for AffixFuzzer3 {
+impl<'s, T: Into<crate::testing::datatypes::AffixFuzzer1<'s>>> From<T> for AffixFuzzer3<'s> {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
+impl<'s> From<AffixFuzzer3<'s>> for ::std::borrow::Cow<'s, AffixFuzzer3<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer3) -> Self {
+    fn from(value: AffixFuzzer3<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
+impl<'s> From<&'s AffixFuzzer3<'s>> for ::std::borrow::Cow<'s, AffixFuzzer3<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer3) -> Self {
+    fn from(value: &'s AffixFuzzer3<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer3 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer3<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -538,7 +538,7 @@ impl crate::Loggable for AffixFuzzer3 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer3"),
                 )?
@@ -548,7 +548,7 @@ impl crate::Loggable for AffixFuzzer3 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -556,7 +556,7 @@ impl crate::Loggable for AffixFuzzer3 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer1::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
                     source: Box::new(err),
@@ -578,7 +578,7 @@ impl crate::Loggable for AffixFuzzer3 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -592,32 +592,34 @@ impl crate::Loggable for AffixFuzzer3 {
     }
 }
 
-impl crate::Component for AffixFuzzer3 {}
+impl<'s> crate::Component<'s> for AffixFuzzer3<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer4(pub Option<crate::testing::datatypes::AffixFuzzer1>);
+pub struct AffixFuzzer4<'s>(pub Option<crate::testing::datatypes::AffixFuzzer1<'s>>);
 
-impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer4 {
+impl<'s, T: Into<Option<crate::testing::datatypes::AffixFuzzer1<'s>>>> From<T>
+    for AffixFuzzer4<'s>
+{
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
+impl<'s> From<AffixFuzzer4<'s>> for ::std::borrow::Cow<'s, AffixFuzzer4<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer4) -> Self {
+    fn from(value: AffixFuzzer4<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
+impl<'s> From<&'s AffixFuzzer4<'s>> for ::std::borrow::Cow<'s, AffixFuzzer4<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer4) -> Self {
+    fn from(value: &'s AffixFuzzer4<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer4 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer4<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -734,7 +736,7 @@ impl crate::Loggable for AffixFuzzer4 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer4"),
                 )?
@@ -744,7 +746,7 @@ impl crate::Loggable for AffixFuzzer4 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -752,7 +754,7 @@ impl crate::Loggable for AffixFuzzer4 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer1::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
                     source: Box::new(err),
@@ -770,7 +772,7 @@ impl crate::Loggable for AffixFuzzer4 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -784,32 +786,34 @@ impl crate::Loggable for AffixFuzzer4 {
     }
 }
 
-impl crate::Component for AffixFuzzer4 {}
+impl<'s> crate::Component<'s> for AffixFuzzer4<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer5(pub Option<crate::testing::datatypes::AffixFuzzer1>);
+pub struct AffixFuzzer5<'s>(pub Option<crate::testing::datatypes::AffixFuzzer1<'s>>);
 
-impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer5 {
+impl<'s, T: Into<Option<crate::testing::datatypes::AffixFuzzer1<'s>>>> From<T>
+    for AffixFuzzer5<'s>
+{
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
+impl<'s> From<AffixFuzzer5<'s>> for ::std::borrow::Cow<'s, AffixFuzzer5<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer5) -> Self {
+    fn from(value: AffixFuzzer5<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
+impl<'s> From<&'s AffixFuzzer5<'s>> for ::std::borrow::Cow<'s, AffixFuzzer5<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer5) -> Self {
+    fn from(value: &'s AffixFuzzer5<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer5 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer5<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -926,7 +930,7 @@ impl crate::Loggable for AffixFuzzer5 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer5"),
                 )?
@@ -936,7 +940,7 @@ impl crate::Loggable for AffixFuzzer5 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -944,7 +948,7 @@ impl crate::Loggable for AffixFuzzer5 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer1::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
                     source: Box::new(err),
@@ -962,7 +966,7 @@ impl crate::Loggable for AffixFuzzer5 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -976,32 +980,34 @@ impl crate::Loggable for AffixFuzzer5 {
     }
 }
 
-impl crate::Component for AffixFuzzer5 {}
+impl<'s> crate::Component<'s> for AffixFuzzer5<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer6(pub Option<crate::testing::datatypes::AffixFuzzer1>);
+pub struct AffixFuzzer6<'s>(pub Option<crate::testing::datatypes::AffixFuzzer1<'s>>);
 
-impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer6 {
+impl<'s, T: Into<Option<crate::testing::datatypes::AffixFuzzer1<'s>>>> From<T>
+    for AffixFuzzer6<'s>
+{
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer6> for ::std::borrow::Cow<'a, AffixFuzzer6> {
+impl<'s> From<AffixFuzzer6<'s>> for ::std::borrow::Cow<'s, AffixFuzzer6<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer6) -> Self {
+    fn from(value: AffixFuzzer6<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer6> for ::std::borrow::Cow<'a, AffixFuzzer6> {
+impl<'s> From<&'s AffixFuzzer6<'s>> for ::std::borrow::Cow<'s, AffixFuzzer6<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer6) -> Self {
+    fn from(value: &'s AffixFuzzer6<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer6 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer6<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -1118,7 +1124,7 @@ impl crate::Loggable for AffixFuzzer6 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer1::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer6"),
                 )?
@@ -1128,7 +1134,7 @@ impl crate::Loggable for AffixFuzzer6 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -1136,7 +1142,7 @@ impl crate::Loggable for AffixFuzzer6 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer1::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
                     source: Box::new(err),
@@ -1154,7 +1160,7 @@ impl crate::Loggable for AffixFuzzer6 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -1168,34 +1174,34 @@ impl crate::Loggable for AffixFuzzer6 {
     }
 }
 
-impl crate::Component for AffixFuzzer6 {}
+impl<'s> crate::Component<'s> for AffixFuzzer6<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer7(pub Option<Vec<crate::testing::datatypes::AffixFuzzer1>>);
+pub struct AffixFuzzer7<'s>(pub Option<Vec<crate::testing::datatypes::AffixFuzzer1<'s>>>);
 
-impl<I: Into<crate::testing::datatypes::AffixFuzzer1>, T: IntoIterator<Item = I>> From<Option<T>>
-    for AffixFuzzer7
+impl<'s, I: Into<crate::testing::datatypes::AffixFuzzer1<'s>>, T: IntoIterator<Item = I>>
+    From<Option<T>> for AffixFuzzer7<'s>
 {
     fn from(v: Option<T>) -> Self {
         Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
     }
 }
 
-impl<'a> From<AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
+impl<'s> From<AffixFuzzer7<'s>> for ::std::borrow::Cow<'s, AffixFuzzer7<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer7) -> Self {
+    fn from(value: AffixFuzzer7<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
+impl<'s> From<&'s AffixFuzzer7<'s>> for ::std::borrow::Cow<'s, AffixFuzzer7<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer7) -> Self {
+    fn from(value: &'s AffixFuzzer7<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer7 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer7<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -1210,7 +1216,7 @@ impl crate::Loggable for AffixFuzzer7 {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer1<'s>>::to_arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }))
@@ -1261,42 +1267,20 @@ impl crate::Loggable for AffixFuzzer7 {
                 )
                 .unwrap()
                 .into();
-                ListArray::new(
-                    {
-                        _ = extension_wrapper;
-                        DataType::Extension(
-                            "rerun.testing.components.AffixFuzzer7".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type:
-                                    <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            }))),
-                            None,
-                        )
-                        .to_logical_type()
-                        .clone()
-                    },
-                    offsets,
-                    {
-                        _ = data0_inner_bitmap;
-                        _ = extension_wrapper;
-                        crate::testing::datatypes::AffixFuzzer1::try_to_arrow_opt(
-                            data0_inner_data,
-                            Some("rerun.testing.components.AffixFuzzer7"),
-                        )?
-                    },
-                    data0_bitmap,
-                )
-                .boxed()
+                ListArray :: new ({ _ = extension_wrapper ; DataType :: Extension ("rerun.testing.components.AffixFuzzer7" . to_owned () , Box :: new (DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: testing :: datatypes :: AffixFuzzer1 :: < 's > > :: to_arrow_datatype () , is_nullable : true , metadata : [] . into () , }
+
+))) , None) . to_logical_type () . clone () }
+
+ , offsets , { _ = data0_inner_bitmap ; _ = extension_wrapper ; crate :: testing :: datatypes :: AffixFuzzer1 :: < 's > :: try_to_arrow_opt (data0_inner_data , Some ("rerun.testing.components.AffixFuzzer7")) ? }
+
+ , data0_bitmap ,) . boxed ()
             }
         })
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -1317,7 +1301,7 @@ impl crate::Loggable for AffixFuzzer7 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                let data = crate::testing::datatypes::AffixFuzzer1::<'s>::try_from_arrow_opt(data)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
                         source: Box::new(err),
@@ -1362,7 +1346,7 @@ impl crate::Loggable for AffixFuzzer7 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -1376,26 +1360,26 @@ impl crate::Loggable for AffixFuzzer7 {
     }
 }
 
-impl crate::Component for AffixFuzzer7 {}
+impl<'s> crate::Component<'s> for AffixFuzzer7<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer8(pub Option<f32>);
 
-impl<'a> From<AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
+impl<'s> From<AffixFuzzer8> for ::std::borrow::Cow<'s, AffixFuzzer8> {
     #[inline]
     fn from(value: AffixFuzzer8) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
+impl<'s> From<&'s AffixFuzzer8> for ::std::borrow::Cow<'s, AffixFuzzer8> {
     #[inline]
-    fn from(value: &'a AffixFuzzer8) -> Self {
+    fn from(value: &'s AffixFuzzer8) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer8 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer8 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -1459,7 +1443,7 @@ impl crate::Loggable for AffixFuzzer8 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -1483,7 +1467,7 @@ impl crate::Loggable for AffixFuzzer8 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -1497,26 +1481,26 @@ impl crate::Loggable for AffixFuzzer8 {
     }
 }
 
-impl crate::Component for AffixFuzzer8 {}
+impl<'s> crate::Component<'s> for AffixFuzzer8 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer9(pub String);
+pub struct AffixFuzzer9<'s>(pub &'s str);
 
-impl<'a> From<AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
+impl<'s> From<AffixFuzzer9<'s>> for ::std::borrow::Cow<'s, AffixFuzzer9<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer9) -> Self {
+    fn from(value: AffixFuzzer9<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
+impl<'s> From<&'s AffixFuzzer9<'s>> for ::std::borrow::Cow<'s, AffixFuzzer9<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer9) -> Self {
+    fn from(value: &'s AffixFuzzer9<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer9 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer9<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -1593,7 +1577,7 @@ impl crate::Loggable for AffixFuzzer9 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -1605,7 +1589,6 @@ impl crate::Loggable for AffixFuzzer9 {
             .downcast_ref::<Utf8Array<i32>>()
             .unwrap()
             .into_iter()
-            .map(|v| v.map(ToOwned::to_owned))
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -1621,7 +1604,7 @@ impl crate::Loggable for AffixFuzzer9 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -1635,26 +1618,26 @@ impl crate::Loggable for AffixFuzzer9 {
     }
 }
 
-impl crate::Component for AffixFuzzer9 {}
+impl<'s> crate::Component<'s> for AffixFuzzer9<'s> {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer10(pub Option<String>);
+pub struct AffixFuzzer10<'s>(pub Option<&'s str>);
 
-impl<'a> From<AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
+impl<'s> From<AffixFuzzer10<'s>> for ::std::borrow::Cow<'s, AffixFuzzer10<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer10) -> Self {
+    fn from(value: AffixFuzzer10<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
+impl<'s> From<&'s AffixFuzzer10<'s>> for ::std::borrow::Cow<'s, AffixFuzzer10<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer10) -> Self {
+    fn from(value: &'s AffixFuzzer10<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer10 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer10<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -1733,7 +1716,7 @@ impl crate::Loggable for AffixFuzzer10 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -1745,7 +1728,6 @@ impl crate::Loggable for AffixFuzzer10 {
             .downcast_ref::<Utf8Array<i32>>()
             .unwrap()
             .into_iter()
-            .map(|v| v.map(ToOwned::to_owned))
             .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
@@ -1757,7 +1739,7 @@ impl crate::Loggable for AffixFuzzer10 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -1771,26 +1753,26 @@ impl crate::Loggable for AffixFuzzer10 {
     }
 }
 
-impl crate::Component for AffixFuzzer10 {}
+impl<'s> crate::Component<'s> for AffixFuzzer10<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer11(pub Option<Vec<f32>>);
 
-impl<'a> From<AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
+impl<'s> From<AffixFuzzer11> for ::std::borrow::Cow<'s, AffixFuzzer11> {
     #[inline]
     fn from(value: AffixFuzzer11) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
+impl<'s> From<&'s AffixFuzzer11> for ::std::borrow::Cow<'s, AffixFuzzer11> {
     #[inline]
-    fn from(value: &'a AffixFuzzer11) -> Self {
+    fn from(value: &'s AffixFuzzer11) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer11 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer11 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -1900,7 +1882,7 @@ impl crate::Loggable for AffixFuzzer11 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -1966,7 +1948,7 @@ impl crate::Loggable for AffixFuzzer11 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -1980,26 +1962,26 @@ impl crate::Loggable for AffixFuzzer11 {
     }
 }
 
-impl crate::Component for AffixFuzzer11 {}
+impl<'s> crate::Component<'s> for AffixFuzzer11 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer12(pub Vec<String>);
+pub struct AffixFuzzer12<'s>(pub Vec<&'s str>);
 
-impl<'a> From<AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
+impl<'s> From<AffixFuzzer12<'s>> for ::std::borrow::Cow<'s, AffixFuzzer12<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer12) -> Self {
+    fn from(value: AffixFuzzer12<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
+impl<'s> From<&'s AffixFuzzer12<'s>> for ::std::borrow::Cow<'s, AffixFuzzer12<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer12) -> Self {
+    fn from(value: &'s AffixFuzzer12<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer12 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer12<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -2122,7 +2104,7 @@ impl crate::Loggable for AffixFuzzer12 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -2148,7 +2130,6 @@ impl crate::Loggable for AffixFuzzer12 {
                     .downcast_ref::<Utf8Array<i32>>()
                     .unwrap()
                     .into_iter()
-                    .map(|v| v.map(ToOwned::to_owned))
                     .map(|v| {
                         v.ok_or_else(|| crate::DeserializationError::MissingData {
                             backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -2192,7 +2173,7 @@ impl crate::Loggable for AffixFuzzer12 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -2206,26 +2187,26 @@ impl crate::Loggable for AffixFuzzer12 {
     }
 }
 
-impl crate::Component for AffixFuzzer12 {}
+impl<'s> crate::Component<'s> for AffixFuzzer12<'s> {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer13(pub Option<Vec<String>>);
+pub struct AffixFuzzer13<'s>(pub Option<Vec<&'s str>>);
 
-impl<'a> From<AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
+impl<'s> From<AffixFuzzer13<'s>> for ::std::borrow::Cow<'s, AffixFuzzer13<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer13) -> Self {
+    fn from(value: AffixFuzzer13<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
+impl<'s> From<&'s AffixFuzzer13<'s>> for ::std::borrow::Cow<'s, AffixFuzzer13<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer13) -> Self {
+    fn from(value: &'s AffixFuzzer13<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer13 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer13<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -2350,7 +2331,7 @@ impl crate::Loggable for AffixFuzzer13 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -2376,7 +2357,6 @@ impl crate::Loggable for AffixFuzzer13 {
                     .downcast_ref::<Utf8Array<i32>>()
                     .unwrap()
                     .into_iter()
-                    .map(|v| v.map(ToOwned::to_owned))
                     .map(|v| {
                         v.ok_or_else(|| crate::DeserializationError::MissingData {
                             backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -2416,7 +2396,7 @@ impl crate::Loggable for AffixFuzzer13 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -2430,32 +2410,32 @@ impl crate::Loggable for AffixFuzzer13 {
     }
 }
 
-impl crate::Component for AffixFuzzer13 {}
+impl<'s> crate::Component<'s> for AffixFuzzer13<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer14(pub crate::testing::datatypes::AffixFuzzer3);
+pub struct AffixFuzzer14<'s>(pub crate::testing::datatypes::AffixFuzzer3<'s>);
 
-impl<T: Into<crate::testing::datatypes::AffixFuzzer3>> From<T> for AffixFuzzer14 {
+impl<'s, T: Into<crate::testing::datatypes::AffixFuzzer3<'s>>> From<T> for AffixFuzzer14<'s> {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer14> for ::std::borrow::Cow<'a, AffixFuzzer14> {
+impl<'s> From<AffixFuzzer14<'s>> for ::std::borrow::Cow<'s, AffixFuzzer14<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer14) -> Self {
+    fn from(value: AffixFuzzer14<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer14> for ::std::borrow::Cow<'a, AffixFuzzer14> {
+impl<'s> From<&'s AffixFuzzer14<'s>> for ::std::borrow::Cow<'s, AffixFuzzer14<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer14) -> Self {
+    fn from(value: &'s AffixFuzzer14<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer14 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer14<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -2492,7 +2472,8 @@ impl crate::Loggable for AffixFuzzer14 {
                     name: "craziness".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer1<'s>>::to_arrow_datatype(
+                        ),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -2548,7 +2529,7 @@ impl crate::Loggable for AffixFuzzer14 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer3::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer3::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer14"),
                 )?
@@ -2558,7 +2539,7 @@ impl crate::Loggable for AffixFuzzer14 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -2566,7 +2547,7 @@ impl crate::Loggable for AffixFuzzer14 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer3::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
                     source: Box::new(err),
@@ -2588,7 +2569,7 @@ impl crate::Loggable for AffixFuzzer14 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -2602,32 +2583,34 @@ impl crate::Loggable for AffixFuzzer14 {
     }
 }
 
-impl crate::Component for AffixFuzzer14 {}
+impl<'s> crate::Component<'s> for AffixFuzzer14<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer15(pub Option<crate::testing::datatypes::AffixFuzzer3>);
+pub struct AffixFuzzer15<'s>(pub Option<crate::testing::datatypes::AffixFuzzer3<'s>>);
 
-impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer3>>> From<T> for AffixFuzzer15 {
+impl<'s, T: Into<Option<crate::testing::datatypes::AffixFuzzer3<'s>>>> From<T>
+    for AffixFuzzer15<'s>
+{
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer15> for ::std::borrow::Cow<'a, AffixFuzzer15> {
+impl<'s> From<AffixFuzzer15<'s>> for ::std::borrow::Cow<'s, AffixFuzzer15<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer15) -> Self {
+    fn from(value: AffixFuzzer15<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer15> for ::std::borrow::Cow<'a, AffixFuzzer15> {
+impl<'s> From<&'s AffixFuzzer15<'s>> for ::std::borrow::Cow<'s, AffixFuzzer15<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer15) -> Self {
+    fn from(value: &'s AffixFuzzer15<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer15 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer15<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -2664,7 +2647,8 @@ impl crate::Loggable for AffixFuzzer15 {
                     name: "craziness".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer1<'s>>::to_arrow_datatype(
+                        ),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -2722,7 +2706,7 @@ impl crate::Loggable for AffixFuzzer15 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer3::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer3::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer15"),
                 )?
@@ -2732,7 +2716,7 @@ impl crate::Loggable for AffixFuzzer15 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -2740,7 +2724,7 @@ impl crate::Loggable for AffixFuzzer15 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer3::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
                     source: Box::new(err),
@@ -2758,7 +2742,7 @@ impl crate::Loggable for AffixFuzzer15 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -2772,34 +2756,34 @@ impl crate::Loggable for AffixFuzzer15 {
     }
 }
 
-impl crate::Component for AffixFuzzer15 {}
+impl<'s> crate::Component<'s> for AffixFuzzer15<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer16(pub Vec<crate::testing::datatypes::AffixFuzzer3>);
+pub struct AffixFuzzer16<'s>(pub Vec<crate::testing::datatypes::AffixFuzzer3<'s>>);
 
-impl<I: Into<crate::testing::datatypes::AffixFuzzer3>, T: IntoIterator<Item = I>> From<T>
-    for AffixFuzzer16
+impl<'s, I: Into<crate::testing::datatypes::AffixFuzzer3<'s>>, T: IntoIterator<Item = I>> From<T>
+    for AffixFuzzer16<'s>
 {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())
     }
 }
 
-impl<'a> From<AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
+impl<'s> From<AffixFuzzer16<'s>> for ::std::borrow::Cow<'s, AffixFuzzer16<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer16) -> Self {
+    fn from(value: AffixFuzzer16<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
+impl<'s> From<&'s AffixFuzzer16<'s>> for ::std::borrow::Cow<'s, AffixFuzzer16<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer16) -> Self {
+    fn from(value: &'s AffixFuzzer16<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer16 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer16<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -2814,7 +2798,7 @@ impl crate::Loggable for AffixFuzzer16 {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer3<'s>>::to_arrow_datatype(),
             is_nullable: false,
             metadata: [].into(),
         }))
@@ -2863,42 +2847,20 @@ impl crate::Loggable for AffixFuzzer16 {
                 )
                 .unwrap()
                 .into();
-                ListArray::new(
-                    {
-                        _ = extension_wrapper;
-                        DataType::Extension(
-                            "rerun.testing.components.AffixFuzzer16".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type:
-                                    <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }))),
-                            None,
-                        )
-                        .to_logical_type()
-                        .clone()
-                    },
-                    offsets,
-                    {
-                        _ = data0_inner_bitmap;
-                        _ = extension_wrapper;
-                        crate::testing::datatypes::AffixFuzzer3::try_to_arrow_opt(
-                            data0_inner_data,
-                            Some("rerun.testing.components.AffixFuzzer16"),
-                        )?
-                    },
-                    data0_bitmap,
-                )
-                .boxed()
+                ListArray :: new ({ _ = extension_wrapper ; DataType :: Extension ("rerun.testing.components.AffixFuzzer16" . to_owned () , Box :: new (DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: testing :: datatypes :: AffixFuzzer3 :: < 's > > :: to_arrow_datatype () , is_nullable : false , metadata : [] . into () , }
+
+))) , None) . to_logical_type () . clone () }
+
+ , offsets , { _ = data0_inner_bitmap ; _ = extension_wrapper ; crate :: testing :: datatypes :: AffixFuzzer3 :: < 's > :: try_to_arrow_opt (data0_inner_data , Some ("rerun.testing.components.AffixFuzzer16")) ? }
+
+ , data0_bitmap ,) . boxed ()
             }
         })
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -2919,7 +2881,7 @@ impl crate::Loggable for AffixFuzzer16 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                let data = crate::testing::datatypes::AffixFuzzer3::<'s>::try_from_arrow_opt(data)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.components.AffixFuzzer16#many_required_unions"
                             .into(),
@@ -2969,7 +2931,7 @@ impl crate::Loggable for AffixFuzzer16 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -2983,34 +2945,34 @@ impl crate::Loggable for AffixFuzzer16 {
     }
 }
 
-impl crate::Component for AffixFuzzer16 {}
+impl<'s> crate::Component<'s> for AffixFuzzer16<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer17(pub Option<Vec<crate::testing::datatypes::AffixFuzzer3>>);
+pub struct AffixFuzzer17<'s>(pub Option<Vec<crate::testing::datatypes::AffixFuzzer3<'s>>>);
 
-impl<I: Into<crate::testing::datatypes::AffixFuzzer3>, T: IntoIterator<Item = I>> From<Option<T>>
-    for AffixFuzzer17
+impl<'s, I: Into<crate::testing::datatypes::AffixFuzzer3<'s>>, T: IntoIterator<Item = I>>
+    From<Option<T>> for AffixFuzzer17<'s>
 {
     fn from(v: Option<T>) -> Self {
         Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
     }
 }
 
-impl<'a> From<AffixFuzzer17> for ::std::borrow::Cow<'a, AffixFuzzer17> {
+impl<'s> From<AffixFuzzer17<'s>> for ::std::borrow::Cow<'s, AffixFuzzer17<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer17) -> Self {
+    fn from(value: AffixFuzzer17<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer17> for ::std::borrow::Cow<'a, AffixFuzzer17> {
+impl<'s> From<&'s AffixFuzzer17<'s>> for ::std::borrow::Cow<'s, AffixFuzzer17<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer17) -> Self {
+    fn from(value: &'s AffixFuzzer17<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer17 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer17<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -3025,7 +2987,7 @@ impl crate::Loggable for AffixFuzzer17 {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer3<'s>>::to_arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }))
@@ -3076,42 +3038,20 @@ impl crate::Loggable for AffixFuzzer17 {
                 )
                 .unwrap()
                 .into();
-                ListArray::new(
-                    {
-                        _ = extension_wrapper;
-                        DataType::Extension(
-                            "rerun.testing.components.AffixFuzzer17".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type:
-                                    <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            }))),
-                            None,
-                        )
-                        .to_logical_type()
-                        .clone()
-                    },
-                    offsets,
-                    {
-                        _ = data0_inner_bitmap;
-                        _ = extension_wrapper;
-                        crate::testing::datatypes::AffixFuzzer3::try_to_arrow_opt(
-                            data0_inner_data,
-                            Some("rerun.testing.components.AffixFuzzer17"),
-                        )?
-                    },
-                    data0_bitmap,
-                )
-                .boxed()
+                ListArray :: new ({ _ = extension_wrapper ; DataType :: Extension ("rerun.testing.components.AffixFuzzer17" . to_owned () , Box :: new (DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: testing :: datatypes :: AffixFuzzer3 :: < 's > > :: to_arrow_datatype () , is_nullable : true , metadata : [] . into () , }
+
+))) , None) . to_logical_type () . clone () }
+
+ , offsets , { _ = data0_inner_bitmap ; _ = extension_wrapper ; crate :: testing :: datatypes :: AffixFuzzer3 :: < 's > :: try_to_arrow_opt (data0_inner_data , Some ("rerun.testing.components.AffixFuzzer17")) ? }
+
+ , data0_bitmap ,) . boxed ()
             }
         })
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -3132,7 +3072,7 @@ impl crate::Loggable for AffixFuzzer17 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                let data = crate::testing::datatypes::AffixFuzzer3::<'s>::try_from_arrow_opt(data)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.components.AffixFuzzer17#many_optional_unions"
                             .into(),
@@ -3178,7 +3118,7 @@ impl crate::Loggable for AffixFuzzer17 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -3192,34 +3132,34 @@ impl crate::Loggable for AffixFuzzer17 {
     }
 }
 
-impl crate::Component for AffixFuzzer17 {}
+impl<'s> crate::Component<'s> for AffixFuzzer17<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer18(pub Option<Vec<crate::testing::datatypes::AffixFuzzer4>>);
+pub struct AffixFuzzer18<'s>(pub Option<Vec<crate::testing::datatypes::AffixFuzzer4<'s>>>);
 
-impl<I: Into<crate::testing::datatypes::AffixFuzzer4>, T: IntoIterator<Item = I>> From<Option<T>>
-    for AffixFuzzer18
+impl<'s, I: Into<crate::testing::datatypes::AffixFuzzer4<'s>>, T: IntoIterator<Item = I>>
+    From<Option<T>> for AffixFuzzer18<'s>
 {
     fn from(v: Option<T>) -> Self {
         Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
     }
 }
 
-impl<'a> From<AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
+impl<'s> From<AffixFuzzer18<'s>> for ::std::borrow::Cow<'s, AffixFuzzer18<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer18) -> Self {
+    fn from(value: AffixFuzzer18<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
+impl<'s> From<&'s AffixFuzzer18<'s>> for ::std::borrow::Cow<'s, AffixFuzzer18<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer18) -> Self {
+    fn from(value: &'s AffixFuzzer18<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer18 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer18<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -3234,7 +3174,7 @@ impl crate::Loggable for AffixFuzzer18 {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer4<'s>>::to_arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }))
@@ -3285,42 +3225,20 @@ impl crate::Loggable for AffixFuzzer18 {
                 )
                 .unwrap()
                 .into();
-                ListArray::new(
-                    {
-                        _ = extension_wrapper;
-                        DataType::Extension(
-                            "rerun.testing.components.AffixFuzzer18".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type:
-                                    <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            }))),
-                            None,
-                        )
-                        .to_logical_type()
-                        .clone()
-                    },
-                    offsets,
-                    {
-                        _ = data0_inner_bitmap;
-                        _ = extension_wrapper;
-                        crate::testing::datatypes::AffixFuzzer4::try_to_arrow_opt(
-                            data0_inner_data,
-                            Some("rerun.testing.components.AffixFuzzer18"),
-                        )?
-                    },
-                    data0_bitmap,
-                )
-                .boxed()
+                ListArray :: new ({ _ = extension_wrapper ; DataType :: Extension ("rerun.testing.components.AffixFuzzer18" . to_owned () , Box :: new (DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: testing :: datatypes :: AffixFuzzer4 :: < 's > > :: to_arrow_datatype () , is_nullable : true , metadata : [] . into () , }
+
+))) , None) . to_logical_type () . clone () }
+
+ , offsets , { _ = data0_inner_bitmap ; _ = extension_wrapper ; crate :: testing :: datatypes :: AffixFuzzer4 :: < 's > :: try_to_arrow_opt (data0_inner_data , Some ("rerun.testing.components.AffixFuzzer18")) ? }
+
+ , data0_bitmap ,) . boxed ()
             }
         })
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -3341,7 +3259,7 @@ impl crate::Loggable for AffixFuzzer18 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
+                let data = crate::testing::datatypes::AffixFuzzer4::<'s>::try_from_arrow_opt(data)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.testing.components.AffixFuzzer18#many_optional_unions"
                             .into(),
@@ -3387,7 +3305,7 @@ impl crate::Loggable for AffixFuzzer18 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -3401,32 +3319,32 @@ impl crate::Loggable for AffixFuzzer18 {
     }
 }
 
-impl crate::Component for AffixFuzzer18 {}
+impl<'s> crate::Component<'s> for AffixFuzzer18<'s> {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer19(pub crate::testing::datatypes::AffixFuzzer5);
+pub struct AffixFuzzer19<'s>(pub crate::testing::datatypes::AffixFuzzer5<'s>);
 
-impl<T: Into<crate::testing::datatypes::AffixFuzzer5>> From<T> for AffixFuzzer19 {
+impl<'s, T: Into<crate::testing::datatypes::AffixFuzzer5<'s>>> From<T> for AffixFuzzer19<'s> {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
+impl<'s> From<AffixFuzzer19<'s>> for ::std::borrow::Cow<'s, AffixFuzzer19<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer19) -> Self {
+    fn from(value: AffixFuzzer19<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
+impl<'s> From<&'s AffixFuzzer19<'s>> for ::std::borrow::Cow<'s, AffixFuzzer19<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer19) -> Self {
+    fn from(value: &'s AffixFuzzer19<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer19 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer19<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -3441,7 +3359,7 @@ impl crate::Loggable for AffixFuzzer19 {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "single_optional_union".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer4<'s>>::to_arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }])
@@ -3476,7 +3394,7 @@ impl crate::Loggable for AffixFuzzer19 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer5::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer5::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer19"),
                 )?
@@ -3486,7 +3404,7 @@ impl crate::Loggable for AffixFuzzer19 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -3494,7 +3412,7 @@ impl crate::Loggable for AffixFuzzer19 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer5::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer5::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
                         .into(),
@@ -3518,7 +3436,7 @@ impl crate::Loggable for AffixFuzzer19 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -3532,32 +3450,32 @@ impl crate::Loggable for AffixFuzzer19 {
     }
 }
 
-impl crate::Component for AffixFuzzer19 {}
+impl<'s> crate::Component<'s> for AffixFuzzer19<'s> {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AffixFuzzer20(pub crate::testing::datatypes::AffixFuzzer20);
+pub struct AffixFuzzer20<'s>(pub crate::testing::datatypes::AffixFuzzer20<'s>);
 
-impl<T: Into<crate::testing::datatypes::AffixFuzzer20>> From<T> for AffixFuzzer20 {
+impl<'s, T: Into<crate::testing::datatypes::AffixFuzzer20<'s>>> From<T> for AffixFuzzer20<'s> {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
+impl<'s> From<AffixFuzzer20<'s>> for ::std::borrow::Cow<'s, AffixFuzzer20<'s>> {
     #[inline]
-    fn from(value: AffixFuzzer20) -> Self {
+    fn from(value: AffixFuzzer20<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
+impl<'s> From<&'s AffixFuzzer20<'s>> for ::std::borrow::Cow<'s, AffixFuzzer20<'s>> {
     #[inline]
-    fn from(value: &'a AffixFuzzer20) -> Self {
+    fn from(value: &'s AffixFuzzer20<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AffixFuzzer20 {
+impl<'s> crate::Loggable<'s> for AffixFuzzer20<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -3579,7 +3497,7 @@ impl crate::Loggable for AffixFuzzer20 {
             },
             Field {
                 name: "s".to_owned(),
-                data_type: <crate::testing::components::StringComponent>::to_arrow_datatype(),
+                data_type: <crate::testing::components::StringComponent<'s>>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -3615,7 +3533,7 @@ impl crate::Loggable for AffixFuzzer20 {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::testing::datatypes::AffixFuzzer20::try_to_arrow_opt(
+                crate::testing::datatypes::AffixFuzzer20::<'s>::try_to_arrow_opt(
                     data0,
                     Some("rerun.testing.components.AffixFuzzer20"),
                 )?
@@ -3625,7 +3543,7 @@ impl crate::Loggable for AffixFuzzer20 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -3633,7 +3551,7 @@ impl crate::Loggable for AffixFuzzer20 {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer20::try_from_arrow_opt(data)
+            crate::testing::datatypes::AffixFuzzer20::<'s>::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.testing.components.AffixFuzzer20#nested_transparent".into(),
                     source: Box::new(err),
@@ -3655,7 +3573,7 @@ impl crate::Loggable for AffixFuzzer20 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -3669,4 +3587,4 @@ impl crate::Loggable for AffixFuzzer20 {
     }
 }
 
-impl crate::Component for AffixFuzzer20 {}
+impl<'s> crate::Component<'s> for AffixFuzzer20<'s> {}

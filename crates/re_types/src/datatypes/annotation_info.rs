@@ -17,32 +17,32 @@
 /// Color and label will be used to annotate entities/keypoints which reference the id.
 /// The id refers either to a class or key-point id
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct AnnotationInfo {
+pub struct AnnotationInfo<'s> {
     /// `ClassId` or `KeypointId` to which this annotation info belongs.
     pub id: u16,
 
     /// The label that will be shown in the UI.
-    pub label: Option<crate::components::Label>,
+    pub label: Option<crate::components::Label<'s>>,
 
     /// The color that will be applied to the annotated entity.
     pub color: Option<crate::components::Color>,
 }
 
-impl<'a> From<AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
+impl<'s> From<AnnotationInfo<'s>> for ::std::borrow::Cow<'s, AnnotationInfo<'s>> {
     #[inline]
-    fn from(value: AnnotationInfo) -> Self {
+    fn from(value: AnnotationInfo<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
+impl<'s> From<&'s AnnotationInfo<'s>> for ::std::borrow::Cow<'s, AnnotationInfo<'s>> {
     #[inline]
-    fn from(value: &'a AnnotationInfo) -> Self {
+    fn from(value: &'s AnnotationInfo<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AnnotationInfo {
+impl<'s> crate::Loggable<'s> for AnnotationInfo<'s> {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -64,7 +64,7 @@ impl crate::Loggable for AnnotationInfo {
             },
             Field {
                 name: "label".to_owned(),
-                data_type: <crate::components::Label>::to_arrow_datatype(),
+                data_type: <crate::components::Label<'s>>::to_arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
@@ -103,11 +103,11 @@ impl crate::Loggable for AnnotationInfo {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::AnnotationInfo>::to_arrow_datatype()),
+                        Box::new(<crate::datatypes::AnnotationInfo<'s>>::to_arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::AnnotationInfo>::to_arrow_datatype()
+                    <crate::datatypes::AnnotationInfo<'s>>::to_arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -160,7 +160,7 @@ impl crate::Loggable for AnnotationInfo {
                                 .iter()
                                 .flatten()
                                 .flat_map(|datum| {
-                                    let crate::components::Label(data0) = datum;
+                                    let crate::components::Label::<'s>(data0) = datum;
                                     data0.bytes()
                                 })
                                 .collect();
@@ -168,7 +168,7 @@ impl crate::Loggable for AnnotationInfo {
                                 label.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| {
-                                            let crate::components::Label(data0) = datum;
+                                            let crate::components::Label::<'s>(data0) = datum;
                                             data0.len()
                                         })
                                         .unwrap_or_default()
@@ -238,7 +238,7 @@ impl crate::Loggable for AnnotationInfo {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -285,7 +285,7 @@ impl crate::Loggable for AnnotationInfo {
                         .downcast_ref::<Utf8Array<i32>>()
                         .unwrap()
                         .into_iter()
-                        .map(|opt| opt.map(|v| crate::components::Label(v.to_owned())))
+                        .map(|opt| opt.map(|v| crate::components::Label::<'s>(v)))
                 };
                 let color = {
                     let data = &**arrays_by_name["color"];
@@ -327,7 +327,7 @@ impl crate::Loggable for AnnotationInfo {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -341,4 +341,4 @@ impl crate::Loggable for AnnotationInfo {
     }
 }
 
-impl crate::Datatype for AnnotationInfo {}
+impl<'s> crate::Datatype<'s> for AnnotationInfo<'s> {}

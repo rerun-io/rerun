@@ -16,21 +16,21 @@
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Quaternion(pub [f32; 4usize]);
 
-impl<'a> From<Quaternion> for ::std::borrow::Cow<'a, Quaternion> {
+impl<'s> From<Quaternion> for ::std::borrow::Cow<'s, Quaternion> {
     #[inline]
     fn from(value: Quaternion) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Quaternion> for ::std::borrow::Cow<'a, Quaternion> {
+impl<'s> From<&'s Quaternion> for ::std::borrow::Cow<'s, Quaternion> {
     #[inline]
-    fn from(value: &'a Quaternion) -> Self {
+    fn from(value: &'s Quaternion) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Quaternion {
+impl<'s> crate::Loggable<'s> for Quaternion {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -136,7 +136,7 @@ impl crate::Loggable for Quaternion {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -212,7 +212,7 @@ impl crate::Loggable for Quaternion {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -226,4 +226,4 @@ impl crate::Loggable for Quaternion {
     }
 }
 
-impl crate::Datatype for Quaternion {}
+impl<'s> crate::Datatype<'s> for Quaternion {}

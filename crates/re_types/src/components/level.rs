@@ -15,23 +15,23 @@
 /// A String label component.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Level(pub String);
+pub struct Level<'s>(pub &'s str);
 
-impl<'a> From<Level> for ::std::borrow::Cow<'a, Level> {
+impl<'s> From<Level<'s>> for ::std::borrow::Cow<'s, Level<'s>> {
     #[inline]
-    fn from(value: Level) -> Self {
+    fn from(value: Level<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Level> for ::std::borrow::Cow<'a, Level> {
+impl<'s> From<&'s Level<'s>> for ::std::borrow::Cow<'s, Level<'s>> {
     #[inline]
-    fn from(value: &'a Level) -> Self {
+    fn from(value: &'s Level<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Level {
+impl<'s> crate::Loggable<'s> for Level<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -108,7 +108,7 @@ impl crate::Loggable for Level {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -120,7 +120,6 @@ impl crate::Loggable for Level {
             .downcast_ref::<Utf8Array<i32>>()
             .unwrap()
             .into_iter()
-            .map(|v| v.map(ToOwned::to_owned))
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -136,7 +135,7 @@ impl crate::Loggable for Level {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -150,4 +149,4 @@ impl crate::Loggable for Level {
     }
 }
 
-impl crate::Component for Level {}
+impl<'s> crate::Component<'s> for Level<'s> {}

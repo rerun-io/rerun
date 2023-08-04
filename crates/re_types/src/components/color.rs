@@ -28,21 +28,21 @@
 #[repr(transparent)]
 pub struct Color(pub u32);
 
-impl<'a> From<Color> for ::std::borrow::Cow<'a, Color> {
+impl<'s> From<Color> for ::std::borrow::Cow<'s, Color> {
     #[inline]
     fn from(value: Color) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Color> for ::std::borrow::Cow<'a, Color> {
+impl<'s> From<&'s Color> for ::std::borrow::Cow<'s, Color> {
     #[inline]
-    fn from(value: &'a Color) -> Self {
+    fn from(value: &'s Color) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Color {
+impl<'s> crate::Loggable<'s> for Color {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -104,7 +104,7 @@ impl crate::Loggable for Color {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -132,7 +132,7 @@ impl crate::Loggable for Color {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -146,4 +146,4 @@ impl crate::Loggable for Color {
     }
 }
 
-impl crate::Component for Color {}
+impl<'s> crate::Component<'s> for Color {}

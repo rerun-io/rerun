@@ -15,23 +15,23 @@
 /// A String label component.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Body(pub String);
+pub struct Body<'s>(pub &'s str);
 
-impl<'a> From<Body> for ::std::borrow::Cow<'a, Body> {
+impl<'s> From<Body<'s>> for ::std::borrow::Cow<'s, Body<'s>> {
     #[inline]
-    fn from(value: Body) -> Self {
+    fn from(value: Body<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Body> for ::std::borrow::Cow<'a, Body> {
+impl<'s> From<&'s Body<'s>> for ::std::borrow::Cow<'s, Body<'s>> {
     #[inline]
-    fn from(value: &'a Body) -> Self {
+    fn from(value: &'s Body<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Body {
+impl<'s> crate::Loggable<'s> for Body<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -108,7 +108,7 @@ impl crate::Loggable for Body {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -120,7 +120,6 @@ impl crate::Loggable for Body {
             .downcast_ref::<Utf8Array<i32>>()
             .unwrap()
             .into_iter()
-            .map(|v| v.map(ToOwned::to_owned))
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -136,7 +135,7 @@ impl crate::Loggable for Body {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -150,4 +149,4 @@ impl crate::Loggable for Body {
     }
 }
 
-impl crate::Component for Body {}
+impl<'s> crate::Component<'s> for Body<'s> {}

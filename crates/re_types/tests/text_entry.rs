@@ -36,7 +36,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = TextEntry::from_arrow(serialized);
+    let deserialized = TextEntry::from_arrow_vec(&serialized);
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

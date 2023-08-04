@@ -22,21 +22,21 @@ pub enum Rotation3D {
     AxisAngle(crate::datatypes::RotationAxisAngle),
 }
 
-impl<'a> From<Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
+impl<'s> From<Rotation3D> for ::std::borrow::Cow<'s, Rotation3D> {
     #[inline]
     fn from(value: Rotation3D) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
+impl<'s> From<&'s Rotation3D> for ::std::borrow::Cow<'s, Rotation3D> {
     #[inline]
-    fn from(value: &'a Rotation3D) -> Self {
+    fn from(value: &'s Rotation3D) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Rotation3D {
+impl<'s> crate::Loggable<'s> for Rotation3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -242,7 +242,7 @@ impl crate::Loggable for Rotation3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -353,7 +353,7 @@ impl crate::Loggable for Rotation3D {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -367,4 +367,4 @@ impl crate::Loggable for Rotation3D {
     }
 }
 
-impl crate::Datatype for Rotation3D {}
+impl<'s> crate::Datatype<'s> for Rotation3D {}

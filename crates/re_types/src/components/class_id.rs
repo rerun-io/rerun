@@ -19,21 +19,21 @@
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ClassId(pub u16);
 
-impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'s> From<ClassId> for ::std::borrow::Cow<'s, ClassId> {
     #[inline]
     fn from(value: ClassId) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'s> From<&'s ClassId> for ::std::borrow::Cow<'s, ClassId> {
     #[inline]
-    fn from(value: &'a ClassId) -> Self {
+    fn from(value: &'s ClassId) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for ClassId {
+impl<'s> crate::Loggable<'s> for ClassId {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -95,7 +95,7 @@ impl crate::Loggable for ClassId {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -123,7 +123,7 @@ impl crate::Loggable for ClassId {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -137,4 +137,4 @@ impl crate::Loggable for ClassId {
     }
 }
 
-impl crate::Component for ClassId {}
+impl<'s> crate::Component<'s> for ClassId {}

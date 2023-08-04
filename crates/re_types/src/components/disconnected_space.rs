@@ -20,21 +20,21 @@
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct DisconnectedSpace(pub bool);
 
-impl<'a> From<DisconnectedSpace> for ::std::borrow::Cow<'a, DisconnectedSpace> {
+impl<'s> From<DisconnectedSpace> for ::std::borrow::Cow<'s, DisconnectedSpace> {
     #[inline]
     fn from(value: DisconnectedSpace) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a DisconnectedSpace> for ::std::borrow::Cow<'a, DisconnectedSpace> {
+impl<'s> From<&'s DisconnectedSpace> for ::std::borrow::Cow<'s, DisconnectedSpace> {
     #[inline]
-    fn from(value: &'a DisconnectedSpace) -> Self {
+    fn from(value: &'s DisconnectedSpace) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for DisconnectedSpace {
+impl<'s> crate::Loggable<'s> for DisconnectedSpace {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -96,7 +96,7 @@ impl crate::Loggable for DisconnectedSpace {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -123,7 +123,7 @@ impl crate::Loggable for DisconnectedSpace {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -137,4 +137,4 @@ impl crate::Loggable for DisconnectedSpace {
     }
 }
 
-impl crate::Component for DisconnectedSpace {}
+impl<'s> crate::Component<'s> for DisconnectedSpace {}

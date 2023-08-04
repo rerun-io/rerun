@@ -40,7 +40,7 @@
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq)]
-pub struct Points2D {
+pub struct Points2D<'s> {
     /// All the actual 2D points that make up the point cloud.
     pub points: Vec<crate::components::Point2D>,
 
@@ -51,7 +51,7 @@ pub struct Points2D {
     pub colors: Option<Vec<crate::components::Color>>,
 
     /// Optional text labels for the points.
-    pub labels: Option<Vec<crate::components::Label>>,
+    pub labels: Option<Vec<crate::components::Label<'s>>>,
 
     /// An optional floating point value that specifies the 2D drawing order.
     /// Objects with higher values are drawn on top of those with lower values.
@@ -106,11 +106,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
         ]
     });
 
-impl Points2D {
+impl<'s> Points2D<'s> {
     pub const NUM_COMPONENTS: usize = 8usize;
 }
 
-impl crate::Archetype for Points2D {
+impl<'s> crate::Archetype<'s> for Points2D<'s> {
     #[inline]
     fn name() -> crate::ArchetypeName {
         crate::ArchetypeName::Borrowed("rerun.archetypes.Points2D")
@@ -138,7 +138,7 @@ impl crate::Archetype for Points2D {
 
     #[inline]
     fn try_to_arrow(
-        &self,
+        &'s self,
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
@@ -216,7 +216,7 @@ impl crate::Archetype for Points2D {
                 self.labels
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Label>::try_to_arrow(many.iter(), None);
+                        let array = <crate::components::Label<'s>>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Label".into(),
@@ -337,7 +337,7 @@ impl crate::Archetype for Points2D {
 
     #[inline]
     fn try_from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, &'s dyn ::arrow2::array::Array)>,
     ) -> crate::DeserializationResult<Self> {
         use crate::Loggable as _;
         let arrays_by_name: ::std::collections::HashMap<_, _> = data
@@ -417,7 +417,7 @@ impl crate::Archetype for Points2D {
         };
         let labels = if let Some(array) = arrays_by_name.get("labels") {
             Some(
-                <crate::components::Label>::try_from_arrow_opt(&**array)
+                <crate::components::Label<'s>>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.archetypes.Points2D#labels".into(),
                         source: Box::new(err),
@@ -537,7 +537,7 @@ impl crate::Archetype for Points2D {
     }
 }
 
-impl Points2D {
+impl<'s> Points2D<'s> {
     pub fn new(points: impl IntoIterator<Item = impl Into<crate::components::Point2D>>) -> Self {
         Self {
             points: points.into_iter().map(Into::into).collect(),
@@ -569,7 +569,7 @@ impl Points2D {
 
     pub fn with_labels(
         mut self,
-        labels: impl IntoIterator<Item = impl Into<crate::components::Label>>,
+        labels: impl IntoIterator<Item = impl Into<crate::components::Label<'s>>>,
     ) -> Self {
         self.labels = Some(labels.into_iter().map(Into::into).collect());
         self

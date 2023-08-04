@@ -20,31 +20,31 @@
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct AnnotationContext(pub Vec<crate::datatypes::ClassDescriptionMapElem>);
+pub struct AnnotationContext<'s>(pub Vec<crate::datatypes::ClassDescriptionMapElem<'s>>);
 
-impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = I>> From<T>
-    for AnnotationContext
+impl<'s, I: Into<crate::datatypes::ClassDescriptionMapElem<'s>>, T: IntoIterator<Item = I>> From<T>
+    for AnnotationContext<'s>
 {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())
     }
 }
 
-impl<'a> From<AnnotationContext> for ::std::borrow::Cow<'a, AnnotationContext> {
+impl<'s> From<AnnotationContext<'s>> for ::std::borrow::Cow<'s, AnnotationContext<'s>> {
     #[inline]
-    fn from(value: AnnotationContext) -> Self {
+    fn from(value: AnnotationContext<'s>) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a AnnotationContext> for ::std::borrow::Cow<'a, AnnotationContext> {
+impl<'s> From<&'s AnnotationContext<'s>> for ::std::borrow::Cow<'s, AnnotationContext<'s>> {
     #[inline]
-    fn from(value: &'a AnnotationContext) -> Self {
+    fn from(value: &'s AnnotationContext<'s>) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for AnnotationContext {
+impl<'s> crate::Loggable<'s> for AnnotationContext<'s> {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -59,7 +59,7 @@ impl crate::Loggable for AnnotationContext {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::datatypes::ClassDescriptionMapElem>::to_arrow_datatype(),
+            data_type: <crate::datatypes::ClassDescriptionMapElem<'s>>::to_arrow_datatype(),
             is_nullable: false,
             metadata: [].into(),
         }))
@@ -108,20 +108,50 @@ impl crate::Loggable for AnnotationContext {
                 )
                 .unwrap()
                 .into();
-                ListArray :: new ({ _ = extension_wrapper ; DataType :: Extension ("rerun.components.AnnotationContext" . to_owned () , Box :: new (DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: datatypes :: ClassDescriptionMapElem > :: to_arrow_datatype () , is_nullable : false , metadata : [] . into () , }
-
-))) , None) . to_logical_type () . clone () }
-
- , offsets , { _ = data0_inner_bitmap ; _ = extension_wrapper ; crate :: datatypes :: ClassDescriptionMapElem :: try_to_arrow_opt (data0_inner_data , Some ("rerun.components.AnnotationContext")) ? }
-
- , data0_bitmap ,) . boxed ()
+                ListArray::new(
+                    {
+                        _ = extension_wrapper;
+                        DataType::Extension(
+                            "rerun.components.AnnotationContext".to_owned(),
+                            Box::new(
+                                DataType::List(
+                                    Box::new(
+                                        Field {
+                                            name: "item".to_owned(),
+                                            data_type: <crate::datatypes::ClassDescriptionMapElem<
+                                                's,
+                                            >>::to_arrow_datatype(
+                                            ),
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        },
+                                    ),
+                                ),
+                            ),
+                            None,
+                        )
+                        .to_logical_type()
+                        .clone()
+                    },
+                    offsets,
+                    {
+                        _ = data0_inner_bitmap;
+                        _ = extension_wrapper;
+                        crate::datatypes::ClassDescriptionMapElem::<'s>::try_to_arrow_opt(
+                            data0_inner_data,
+                            Some("rerun.components.AnnotationContext"),
+                        )?
+                    },
+                    data0_bitmap,
+                )
+                .boxed()
             }
         })
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -142,18 +172,19 @@ impl crate::Loggable for AnnotationContext {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = crate::datatypes::ClassDescriptionMapElem::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.components.AnnotationContext#class_map".into(),
-                        source: Box::new(err),
-                    })?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                let data =
+                    crate::datatypes::ClassDescriptionMapElem::<'s>::try_from_arrow_opt(data)
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.components.AnnotationContext#class_map".into(),
+                            source: Box::new(err),
+                        })?
+                        .into_iter()
+                        .map(|v| {
+                            v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            })
                         })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -191,7 +222,7 @@ impl crate::Loggable for AnnotationContext {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -205,4 +236,4 @@ impl crate::Loggable for AnnotationContext {
     }
 }
 
-impl crate::Component for AnnotationContext {}
+impl<'s> crate::Component<'s> for AnnotationContext<'s> {}

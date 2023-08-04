@@ -16,21 +16,21 @@
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
 pub struct Mat3x3(pub [f32; 9usize]);
 
-impl<'a> From<Mat3x3> for ::std::borrow::Cow<'a, Mat3x3> {
+impl<'s> From<Mat3x3> for ::std::borrow::Cow<'s, Mat3x3> {
     #[inline]
     fn from(value: Mat3x3) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Mat3x3> for ::std::borrow::Cow<'a, Mat3x3> {
+impl<'s> From<&'s Mat3x3> for ::std::borrow::Cow<'s, Mat3x3> {
     #[inline]
-    fn from(value: &'a Mat3x3) -> Self {
+    fn from(value: &'s Mat3x3) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Mat3x3 {
+impl<'s> crate::Loggable<'s> for Mat3x3 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -136,7 +136,7 @@ impl crate::Loggable for Mat3x3 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -212,7 +212,7 @@ impl crate::Loggable for Mat3x3 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -226,4 +226,4 @@ impl crate::Loggable for Mat3x3 {
     }
 }
 
-impl crate::Datatype for Mat3x3 {}
+impl<'s> crate::Datatype<'s> for Mat3x3 {}

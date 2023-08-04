@@ -23,21 +23,21 @@
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);
 
-impl<'a> From<DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
+impl<'s> From<DrawOrder> for ::std::borrow::Cow<'s, DrawOrder> {
     #[inline]
     fn from(value: DrawOrder) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
+impl<'s> From<&'s DrawOrder> for ::std::borrow::Cow<'s, DrawOrder> {
     #[inline]
-    fn from(value: &'a DrawOrder) -> Self {
+    fn from(value: &'s DrawOrder) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for DrawOrder {
+impl<'s> crate::Loggable<'s> for DrawOrder {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -99,7 +99,7 @@ impl crate::Loggable for DrawOrder {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -127,7 +127,7 @@ impl crate::Loggable for DrawOrder {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -141,4 +141,4 @@ impl crate::Loggable for DrawOrder {
     }
 }
 
-impl crate::Component for DrawOrder {}
+impl<'s> crate::Component<'s> for DrawOrder {}

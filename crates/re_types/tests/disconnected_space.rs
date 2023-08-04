@@ -51,7 +51,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = DisconnectedSpace::from_arrow(serialized);
+        let deserialized = DisconnectedSpace::from_arrow_vec(&serialized);
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

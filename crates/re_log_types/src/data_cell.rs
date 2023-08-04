@@ -159,7 +159,7 @@ impl DataCell {
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
     ) -> DataCellResult<Self>
     where
-        C: Component + Clone + 'a,
+        C: Component<'a> + Clone + 'a,
     {
         Ok(Self::from_arrow(C::name(), C::try_to_arrow(values, None)?))
     }
@@ -173,7 +173,7 @@ impl DataCell {
         values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, C>>>>,
     ) -> DataCellResult<Self>
     where
-        C: Component + Clone + 'a,
+        C: Component<'a> + Clone + 'a,
     {
         Ok(Self::from_arrow(
             C::name(),
@@ -191,7 +191,7 @@ impl DataCell {
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
     ) -> Self
     where
-        C: Component + Clone + 'a,
+        C: Component<'a> + Clone + 'a,
     {
         Self::try_from_native(values).unwrap()
     }
@@ -206,7 +206,7 @@ impl DataCell {
         values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, C>>>>,
     ) -> Self
     where
-        C: Component + Clone + 'a,
+        C: Component<'a> + Clone + 'a,
     {
         Self::try_from_native_sparse(values).unwrap()
     }
@@ -214,7 +214,7 @@ impl DataCell {
     /// Builds a cell from an iterable of items that can be turned into a [`Component`].
     pub fn from_component<'a, C>(values: impl IntoIterator<Item = impl Into<C>>) -> Self
     where
-        C: Component + Clone + 'a,
+        C: Component<'a> + Clone + 'a,
         C: Into<::std::borrow::Cow<'a, C>>,
     {
         Self::from_native(values.into_iter().map(Into::into))
@@ -229,7 +229,7 @@ impl DataCell {
         values: impl IntoIterator<Item = Option<impl Into<C>>>,
     ) -> Self
     where
-        C: Component + Clone + 'a,
+        C: Component<'a> + Clone + 'a,
         C: Into<::std::borrow::Cow<'a, C>>,
     {
         Self::from_native_sparse(values.into_iter().map(|value| value.map(Into::into)))
@@ -269,7 +269,7 @@ impl DataCell {
     // TODO(#1595): do keep in mind there's a future not too far away where components become a
     // `(component, type)` tuple kinda thing.
     #[inline]
-    pub fn from_native_empty<C: Component>() -> Self {
+    pub fn from_native_empty<'a, C: Component<'a>>() -> Self {
         Self::from_arrow_empty(C::name(), C::to_arrow_datatype())
     }
 
@@ -359,7 +359,7 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
-    pub fn try_to_native<'a, C: Component + Default + 'a>(
+    pub fn try_to_native<'a, C: Component<'a> + Default + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = C> + '_> {
         Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?
@@ -379,7 +379,7 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
-    pub fn try_to_native_mono<'a, C: Component + 'a>(&'a self) -> DataCellResult<Option<C>> {
+    pub fn try_to_native_mono<'a, C: Component<'a> + 'a>(&'a self) -> DataCellResult<Option<C>> {
         let mut iter =
             C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self);
 
@@ -409,7 +409,9 @@ impl DataCell {
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native`] for a fallible alternative.
     #[inline]
-    pub fn to_native<'a, C: Component + Default + 'a>(&'a self) -> impl Iterator<Item = C> + '_ {
+    pub fn to_native<'a, C: Component<'a> + Default + 'a>(
+        &'a self,
+    ) -> impl Iterator<Item = C> + '_ {
         self.try_to_native().unwrap()
     }
 
@@ -417,7 +419,7 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
-    pub fn try_to_native_opt<'a, C: Component + 'a>(
+    pub fn try_to_native_opt<'a, C: Component<'a> + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_> {
         Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self))
@@ -428,7 +430,9 @@ impl DataCell {
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native_opt`] for a fallible alternative.
     #[inline]
-    pub fn to_native_opt<'a, C: Component + 'a>(&'a self) -> impl Iterator<Item = Option<C>> + '_ {
+    pub fn to_native_opt<'a, C: Component<'a> + 'a>(
+        &'a self,
+    ) -> impl Iterator<Item = Option<C>> + '_ {
         self.try_to_native_opt().unwrap()
     }
 }
@@ -508,7 +512,7 @@ impl DataCell {
 
 impl<'a, C> From<&'a [C]> for DataCell
 where
-    C: Component + Clone + 'a,
+    C: Component<'a> + Clone + 'a,
     &'a C: Into<::std::borrow::Cow<'a, C>>,
 {
     #[inline]
@@ -519,7 +523,7 @@ where
 
 impl<'a, C> From<[C; 1]> for DataCell
 where
-    C: Component + Clone + 'a,
+    C: Component<'a> + Clone + 'a,
     C: Into<::std::borrow::Cow<'a, C>>,
 {
     #[inline]
@@ -530,7 +534,7 @@ where
 
 impl<'a, C> From<&'a Vec<C>> for DataCell
 where
-    C: Component + Clone + 'a,
+    C: Component<'a> + Clone + 'a,
     &'a C: Into<::std::borrow::Cow<'a, C>>,
 {
     #[inline]
@@ -541,7 +545,7 @@ where
 
 impl<'a, C> From<Vec<C>> for DataCell
 where
-    C: Component + Clone + 'a,
+    C: Component<'a> + Clone + 'a,
     C: Into<::std::borrow::Cow<'a, C>>,
 {
     #[inline]

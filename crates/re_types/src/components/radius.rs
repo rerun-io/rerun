@@ -16,21 +16,21 @@
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Radius(pub f32);
 
-impl<'a> From<Radius> for ::std::borrow::Cow<'a, Radius> {
+impl<'s> From<Radius> for ::std::borrow::Cow<'s, Radius> {
     #[inline]
     fn from(value: Radius) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Radius> for ::std::borrow::Cow<'a, Radius> {
+impl<'s> From<&'s Radius> for ::std::borrow::Cow<'s, Radius> {
     #[inline]
-    fn from(value: &'a Radius) -> Self {
+    fn from(value: &'s Radius) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Radius {
+impl<'s> crate::Loggable<'s> for Radius {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -92,7 +92,7 @@ impl crate::Loggable for Radius {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -120,7 +120,7 @@ impl crate::Loggable for Radius {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -134,4 +134,4 @@ impl crate::Loggable for Radius {
     }
 }
 
-impl crate::Component for Radius {}
+impl<'s> crate::Component<'s> for Radius {}

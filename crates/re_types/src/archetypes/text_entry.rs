@@ -67,9 +67,9 @@
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq)]
-pub struct TextEntry {
-    pub bodies: Vec<crate::components::Body>,
-    pub levels: Option<Vec<crate::components::Level>>,
+pub struct TextEntry<'s> {
+    pub bodies: Vec<crate::components::Body<'s>>,
+    pub levels: Option<Vec<crate::components::Level<'s>>>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
@@ -81,11 +81,11 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.label".into(), "rerun.label".into()]);
 
-impl TextEntry {
+impl<'s> TextEntry<'s> {
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-impl crate::Archetype for TextEntry {
+impl<'s> crate::Archetype<'s> for TextEntry<'s> {
     #[inline]
     fn name() -> crate::ArchetypeName {
         crate::ArchetypeName::Borrowed("rerun.archetypes.TextEntry")
@@ -113,7 +113,7 @@ impl crate::Archetype for TextEntry {
 
     #[inline]
     fn try_to_arrow(
-        &self,
+        &'s self,
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
@@ -121,7 +121,8 @@ impl crate::Archetype for TextEntry {
         Ok([
             {
                 Some({
-                    let array = <crate::components::Body>::try_to_arrow(self.bodies.iter(), None);
+                    let array =
+                        <crate::components::Body<'s>>::try_to_arrow(self.bodies.iter(), None);
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.components.Body".into(),
@@ -144,7 +145,7 @@ impl crate::Archetype for TextEntry {
                 self.levels
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Level>::try_to_arrow(many.iter(), None);
+                        let array = <crate::components::Level<'s>>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Level".into(),
@@ -171,7 +172,7 @@ impl crate::Archetype for TextEntry {
 
     #[inline]
     fn try_from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, &'s dyn ::arrow2::array::Array)>,
     ) -> crate::DeserializationResult<Self> {
         use crate::Loggable as _;
         let arrays_by_name: ::std::collections::HashMap<_, _> = data
@@ -188,7 +189,7 @@ impl crate::Archetype for TextEntry {
                     location: "rerun.archetypes.TextEntry#bodies".into(),
                     source: Box::new(err),
                 })?;
-            <crate::components::Body>::try_from_arrow_opt(&**array)
+            <crate::components::Body<'s>>::try_from_arrow_opt(&**array)
                 .map_err(|err| crate::DeserializationError::Context {
                     location: "rerun.archetypes.TextEntry#bodies".into(),
                     source: Box::new(err),
@@ -207,7 +208,7 @@ impl crate::Archetype for TextEntry {
         };
         let levels = if let Some(array) = arrays_by_name.get("levels") {
             Some(
-                <crate::components::Level>::try_from_arrow_opt(&**array)
+                <crate::components::Level<'s>>::try_from_arrow_opt(&**array)
                     .map_err(|err| crate::DeserializationError::Context {
                         location: "rerun.archetypes.TextEntry#levels".into(),
                         source: Box::new(err),
@@ -231,8 +232,8 @@ impl crate::Archetype for TextEntry {
     }
 }
 
-impl TextEntry {
-    pub fn new(bodies: impl IntoIterator<Item = impl Into<crate::components::Body>>) -> Self {
+impl<'s> TextEntry<'s> {
+    pub fn new(bodies: impl IntoIterator<Item = impl Into<crate::components::Body<'s>>>) -> Self {
         Self {
             bodies: bodies.into_iter().map(Into::into).collect(),
             levels: None,
@@ -241,7 +242,7 @@ impl TextEntry {
 
     pub fn with_levels(
         mut self,
-        levels: impl IntoIterator<Item = impl Into<crate::components::Level>>,
+        levels: impl IntoIterator<Item = impl Into<crate::components::Level<'s>>>,
     ) -> Self {
         self.levels = Some(levels.into_iter().map(Into::into).collect());
         self

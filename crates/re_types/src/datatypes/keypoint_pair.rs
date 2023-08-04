@@ -19,21 +19,21 @@ pub struct KeypointPair {
     pub keypoint1: crate::components::KeypointId,
 }
 
-impl<'a> From<KeypointPair> for ::std::borrow::Cow<'a, KeypointPair> {
+impl<'s> From<KeypointPair> for ::std::borrow::Cow<'s, KeypointPair> {
     #[inline]
     fn from(value: KeypointPair) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a KeypointPair> for ::std::borrow::Cow<'a, KeypointPair> {
+impl<'s> From<&'s KeypointPair> for ::std::borrow::Cow<'s, KeypointPair> {
     #[inline]
-    fn from(value: &'a KeypointPair) -> Self {
+    fn from(value: &'s KeypointPair) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for KeypointPair {
+impl<'s> crate::Loggable<'s> for KeypointPair {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -176,7 +176,7 @@ impl crate::Loggable for KeypointPair {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -264,7 +264,7 @@ impl crate::Loggable for KeypointPair {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -278,4 +278,4 @@ impl crate::Loggable for KeypointPair {
     }
 }
 
-impl crate::Datatype for KeypointPair {}
+impl<'s> crate::Datatype<'s> for KeypointPair {}

@@ -25,21 +25,21 @@ impl<T: Into<crate::datatypes::Transform3D>> From<T> for Transform3D {
     }
 }
 
-impl<'a> From<Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
+impl<'s> From<Transform3D> for ::std::borrow::Cow<'s, Transform3D> {
     #[inline]
     fn from(value: Transform3D) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
+impl<'s> From<&'s Transform3D> for ::std::borrow::Cow<'s, Transform3D> {
     #[inline]
-    fn from(value: &'a Transform3D) -> Self {
+    fn from(value: &'s Transform3D) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Transform3D {
+impl<'s> crate::Loggable<'s> for Transform3D {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -117,7 +117,7 @@ impl crate::Loggable for Transform3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -145,7 +145,7 @@ impl crate::Loggable for Transform3D {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -159,4 +159,4 @@ impl crate::Loggable for Transform3D {
     }
 }
 
-impl crate::Component for Transform3D {}
+impl<'s> crate::Component<'s> for Transform3D {}

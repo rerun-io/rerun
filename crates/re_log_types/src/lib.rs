@@ -428,7 +428,7 @@ macro_rules! profile_scope {
 macro_rules! component_legacy_shim {
     ($entity:ident) => {
 
-        impl re_types::Loggable for $entity {
+        impl<'s> re_types::Loggable<'s> for $entity {
             type Name = re_types::ComponentName;
             type Item<'a> = <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::Item;
             type Iter<'a> =
@@ -490,7 +490,7 @@ macro_rules! component_legacy_shim {
             }
         }
 
-        impl re_types::Component for $entity {}
+        impl<'s> re_types::Component<'s> for $entity {}
 
         impl<'a> From<$entity> for ::std::borrow::Cow<'a, $entity> {
             #[inline]

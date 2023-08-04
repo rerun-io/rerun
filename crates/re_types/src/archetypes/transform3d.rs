@@ -85,7 +85,7 @@ impl Transform3D {
     pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-impl crate::Archetype for Transform3D {
+impl<'s> crate::Archetype<'s> for Transform3D {
     #[inline]
     fn name() -> crate::ArchetypeName {
         crate::ArchetypeName::Borrowed("rerun.archetypes.Transform3D")
@@ -113,7 +113,7 @@ impl crate::Archetype for Transform3D {
 
     #[inline]
     fn try_to_arrow(
-        &self,
+        &'s self,
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
@@ -146,7 +146,7 @@ impl crate::Archetype for Transform3D {
 
     #[inline]
     fn try_from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, &'s dyn ::arrow2::array::Array)>,
     ) -> crate::DeserializationResult<Self> {
         use crate::Loggable as _;
         let arrays_by_name: ::std::collections::HashMap<_, _> = data

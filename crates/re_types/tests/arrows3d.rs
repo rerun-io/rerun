@@ -27,8 +27,8 @@ fn roundtrip() {
             Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
         labels: Some(vec![
-            Label("hello".to_owned()),  //
-            Label("friend".to_owned()), //
+            Label("hello"),  //
+            Label("friend"), //
         ]),
         class_ids: Some(vec![
             ClassId(126), //
@@ -77,7 +77,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Arrows3D::from_arrow(serialized);
+    let deserialized = Arrows3D::from_arrow_vec(&serialized);
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

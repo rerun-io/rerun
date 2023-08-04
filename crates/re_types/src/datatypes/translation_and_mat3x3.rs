@@ -28,21 +28,21 @@ pub struct TranslationAndMat3x3 {
     pub from_parent: bool,
 }
 
-impl<'a> From<TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAndMat3x3> {
+impl<'s> From<TranslationAndMat3x3> for ::std::borrow::Cow<'s, TranslationAndMat3x3> {
     #[inline]
     fn from(value: TranslationAndMat3x3) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAndMat3x3> {
+impl<'s> From<&'s TranslationAndMat3x3> for ::std::borrow::Cow<'s, TranslationAndMat3x3> {
     #[inline]
-    fn from(value: &'a TranslationAndMat3x3) -> Self {
+    fn from(value: &'s TranslationAndMat3x3) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for TranslationAndMat3x3 {
+impl<'s> crate::Loggable<'s> for TranslationAndMat3x3 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
@@ -281,7 +281,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -399,7 +399,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
 
     #[inline]
     fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
+        data: &'s dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Self::Iter<'_>>
     where
         Self: Sized,
@@ -413,4 +413,4 @@ impl crate::Loggable for TranslationAndMat3x3 {
     }
 }
 
-impl crate::Datatype for TranslationAndMat3x3 {}
+impl<'s> crate::Datatype<'s> for TranslationAndMat3x3 {}
