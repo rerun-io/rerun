@@ -118,6 +118,18 @@ namespace rerun {
         /// Logs an archetype.
         ///
         /// Prefer this interface for ease of use over the more general `log_components` interface.
+        ///
+        /// Alias for `log_archetype`.
+        /// TODO(andreas): Would be nice if this were able to combine both log_archetype and
+        /// log_components!
+        template <typename T>
+        void log(const char* entity_path, const T& archetype) {
+            log_archetype(entity_path, archetype);
+        }
+
+        /// Logs an archetype.
+        ///
+        /// Prefer this interface for ease of use over the more general `log_components` interface.
         template <typename T>
         void log_archetype(const char* entity_path, const T& archetype) {
             // TODO(andreas): Handle splats.
