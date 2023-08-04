@@ -897,10 +897,13 @@ fn quote_aliases_from_object(obj: &Object) -> String {
         &if let Some(aliases) = aliases {
             format!(
                 r#"
-                {name}Like = Union[
-                    {name},
-                    {aliases}
-                ]
+                if TYPE_CHECKING:
+                    {name}Like = Union[
+                        {name},
+                        {aliases}
+                    ]
+                else:
+                    {name}Like = Any
                 "#,
             )
         } else {

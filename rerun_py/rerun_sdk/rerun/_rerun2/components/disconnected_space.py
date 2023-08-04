@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -37,7 +37,10 @@ class DisconnectedSpace:
     is_disconnected: bool = field(converter=bool)
 
 
-DisconnectedSpaceLike = Union[DisconnectedSpace, bool]
+if TYPE_CHECKING:
+    DisconnectedSpaceLike = Union[DisconnectedSpace, bool]
+else:
+    DisconnectedSpaceLike = Any
 
 DisconnectedSpaceArrayLike = Union[DisconnectedSpace, Sequence[DisconnectedSpaceLike], bool, npt.NDArray[np.bool_]]
 

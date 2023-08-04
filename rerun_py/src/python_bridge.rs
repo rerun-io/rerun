@@ -20,6 +20,7 @@ use re_viewport::{
 
 use re_log_types::{DataRow, StoreKind};
 use rerun::{
+    datatypes::{ClassDescriptionMapElem, KeypointPair},
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
     time::TimePoint,
@@ -28,13 +29,14 @@ use rerun::{
 
 pub use rerun::{
     components::{
-        AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, Color,
-        DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
-        LineStrip3D, Mesh3D, MeshFormat, MeshId, Origin3D, Pinhole, Point2D, Point3D, Quaternion,
-        Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData, TensorDimension,
-        TensorId, TextEntry, Transform3D, Vector3D, ViewCoordinates,
+        AnnotationContext, Box3D, ClassId, Color, DisconnectedSpace, DrawOrder, EncodedMesh3D,
+        InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, MeshId,
+        Origin3D, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Scalar,
+        ScalarPlotProps, Tensor, TensorData, TensorDimension, TensorId, TextEntry, Transform3D,
+        Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
+    datatypes::{AnnotationInfo, ClassDescription},
 };
 
 #[cfg(feature = "web_viewer")]
@@ -796,24 +798,30 @@ fn log_annotation_context(
         parse_entity_path(entity_path_str)?
     };
 
-    let mut annotation_context = AnnotationContext::default();
-
-    for (info, keypoint_annotations, keypoint_skeleton_edges) in class_descriptions {
-        annotation_context
-            .class_map
-            .entry(ClassId(info.0))
-            .or_insert_with(|| ClassDescription {
-                info: info.into(),
-                keypoint_map: keypoint_annotations
-                    .into_iter()
-                    .map(|k| (KeypointId(k.0), k.into()))
-                    .collect(),
-                keypoint_connections: keypoint_skeleton_edges
-                    .chunks_exact(2)
-                    .map(|pair| (KeypointId(pair[0]), KeypointId(pair[1])))
-                    .collect(),
-            });
-    }
+    let annotation_context = AnnotationContext(
+        class_descriptions
+            .into_iter()
+            .map(
+                |(info, keypoint_annotations, keypoint_skeleton_edges)| ClassDescriptionMapElem {
+                    class_id: ClassId(info.0),
+                    class_description: ClassDescription {
+                        info: info.into(),
+                        keypoint_annotations: keypoint_annotations
+                            .into_iter()
+                            .map(|k| k.into())
+                            .collect(),
+                        keypoint_connections: keypoint_skeleton_edges
+                            .chunks_exact(2)
+                            .map(|pair| KeypointPair {
+                                keypoint0: KeypointId(pair[0]),
+                                keypoint1: KeypointId(pair[1]),
+                            })
+                            .collect(),
+                    },
+                },
+            )
+            .collect(),
+    );
 
     // We currently log AnnotationContext from inside the bridge because it's a
     // fairly complex type with a need for a fair amount of data-validation. We
@@ -1418,11 +1426,5 @@ fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
 fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
     let components = re_log_types::parse_entity_path(entity_path)
         .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-    if components.is_empty() {
-        Err(PyTypeError::new_err(
-            "You cannot log to the root {entity_path:?}",
-        ))
-    } else {
-        Ok(EntityPath::from(components))
-    }
+    Ok(EntityPath::from(components))
 }

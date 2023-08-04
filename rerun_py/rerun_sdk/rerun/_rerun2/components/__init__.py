@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .annotation_context import (
+    AnnotationContext,
+    AnnotationContextArray,
+    AnnotationContextArrayLike,
+    AnnotationContextLike,
+    AnnotationContextType,
+)
 from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
 from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
 from .disconnected_space import (
@@ -177,6 +184,11 @@ __all__ = [
     "AffixFuzzer9ArrayLike",
     "AffixFuzzer9Like",
     "AffixFuzzer9Type",
+    "AnnotationContext",
+    "AnnotationContextArray",
+    "AnnotationContextArrayLike",
+    "AnnotationContextLike",
+    "AnnotationContextType",
     "ClassId",
     "ClassIdArray",
     "ClassIdArrayLike",

@@ -3,6 +3,27 @@
 from __future__ import annotations
 
 from .angle import Angle, AngleArray, AngleArrayLike, AngleLike, AngleType
+from .annotation_info import (
+    AnnotationInfo,
+    AnnotationInfoArray,
+    AnnotationInfoArrayLike,
+    AnnotationInfoLike,
+    AnnotationInfoType,
+)
+from .class_description import (
+    ClassDescription,
+    ClassDescriptionArray,
+    ClassDescriptionArrayLike,
+    ClassDescriptionLike,
+    ClassDescriptionType,
+)
+from .class_description_map_elem import (
+    ClassDescriptionMapElem,
+    ClassDescriptionMapElemArray,
+    ClassDescriptionMapElemArrayLike,
+    ClassDescriptionMapElemLike,
+    ClassDescriptionMapElemType,
+)
 from .fuzzy import (
     AffixFuzzer1,
     AffixFuzzer1Array,
@@ -40,6 +61,7 @@ from .fuzzy import (
     FlattenedScalarLike,
     FlattenedScalarType,
 )
+from .keypoint_pair import KeypointPair, KeypointPairArray, KeypointPairArrayLike, KeypointPairLike, KeypointPairType
 from .mat3x3 import Mat3x3, Mat3x3Array, Mat3x3ArrayLike, Mat3x3Like, Mat3x3Type
 from .mat4x4 import Mat4x4, Mat4x4Array, Mat4x4ArrayLike, Mat4x4Like, Mat4x4Type
 from .quaternion import Quaternion, QuaternionArray, QuaternionArrayLike, QuaternionLike, QuaternionType
@@ -107,11 +129,31 @@ __all__ = [
     "AngleArrayLike",
     "AngleLike",
     "AngleType",
+    "AnnotationInfo",
+    "AnnotationInfoArray",
+    "AnnotationInfoArrayLike",
+    "AnnotationInfoLike",
+    "AnnotationInfoType",
+    "ClassDescription",
+    "ClassDescriptionArray",
+    "ClassDescriptionArrayLike",
+    "ClassDescriptionLike",
+    "ClassDescriptionMapElem",
+    "ClassDescriptionMapElemArray",
+    "ClassDescriptionMapElemArrayLike",
+    "ClassDescriptionMapElemLike",
+    "ClassDescriptionMapElemType",
+    "ClassDescriptionType",
     "FlattenedScalar",
     "FlattenedScalarArray",
     "FlattenedScalarArrayLike",
     "FlattenedScalarLike",
     "FlattenedScalarType",
+    "KeypointPair",
+    "KeypointPairArray",
+    "KeypointPairArrayLike",
+    "KeypointPairLike",
+    "KeypointPairType",
     "Mat3x3",
     "Mat3x3Array",
     "Mat3x3ArrayLike",

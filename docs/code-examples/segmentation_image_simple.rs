@@ -1,9 +1,8 @@
 //! Create and log a segmentation image.
 use ndarray::{s, Array, ShapeBuilder};
-use rerun::components::{
-    AnnotationContext, AnnotationInfo, ClassDescription, ClassId, Color, Label, Tensor,
-    TensorDataMeaning,
-};
+use rerun::archetypes::AnnotationContext;
+use rerun::components::{Color, Label, Tensor, TensorDataMeaning};
+use rerun::datatypes::{AnnotationInfo, ClassDescription};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -18,34 +17,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tensor.meaning = TensorDataMeaning::ClassId;
 
     // create an annotation context to describe the classes
-    let mut annotation = AnnotationContext::default();
-    annotation.class_map.insert(
-        ClassId(1),
+    let annotation = AnnotationContext::new([
         ClassDescription {
             info: AnnotationInfo {
                 id: 1,
-                label: Some(Label("red".into()).into()),
-                color: Some(Color::from_rgb(255, 0, 0).into()),
+                label: Some(Label("red".into())),
+                color: Some(Color::from_rgb(255, 0, 0)),
             },
             ..Default::default()
         },
-    );
-    annotation.class_map.insert(
-        ClassId(2),
         ClassDescription {
             info: AnnotationInfo {
                 id: 2,
-                label: Some(Label("green".into()).into()),
-                color: Some(Color::from_rgb(0, 255, 0).into()),
+                label: Some(Label("green".into())),
+                color: Some(Color::from_rgb(0, 255, 0)),
             },
             ..Default::default()
         },
-    );
+    ]);
 
     // log the annotation and the image
-    MsgSender::new("/")
-        .with_component(&[annotation])?
-        .send(&rec_stream)?;
+    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
 
     MsgSender::new("image")
         .with_component(&[tensor])?
