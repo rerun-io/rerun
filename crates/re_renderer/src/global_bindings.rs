@@ -32,7 +32,7 @@ pub struct FrameUniformBuffer {
     pub camera_forward: glam::Vec3,
 
     /// How many pixels there are per point.
-    /// I.e. the ui scaling factor.
+    /// I.e. the UI zoom factor
     pub pixels_from_point: f32,
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
