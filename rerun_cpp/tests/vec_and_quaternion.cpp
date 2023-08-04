@@ -5,8 +5,6 @@
 #include <rerun/datatypes/vec3d.hpp>
 #include <rerun/datatypes/vec4d.hpp>
 
-#include <array>
-
 using namespace rerun::datatypes;
 
 #define TEST_TAG "[vec_and_quaternion]"

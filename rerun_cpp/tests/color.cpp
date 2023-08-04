@@ -2,8 +2,6 @@
 
 #include <rerun/components/color.hpp>
 
-#include <array>
-
 using namespace rerun::components;
 
 #define TEST_TAG "[color]"
