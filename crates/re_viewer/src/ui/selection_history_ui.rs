@@ -18,7 +18,7 @@ impl SelectionHistoryUi {
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         ui.horizontal_centered(|ui| {
-            ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s).");
+            ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s)");
 
             // TODO(emilk): an egui helper for right-to-left
             ui.allocate_ui_with_layout(
@@ -171,7 +171,7 @@ fn item_to_string(blueprint: &ViewportBlueprint<'_>, item: &Item) -> String {
             if let Some(space_view) = blueprint.space_view(sid) {
                 space_view.display_name.clone()
             } else {
-                "<removed space view>".to_owned()
+                "<removed Space View>".to_owned()
             }
         }
         Item::InstancePath(_, entity_path) => entity_path.to_string(),
@@ -180,10 +180,10 @@ fn item_to_string(blueprint: &ViewportBlueprint<'_>, item: &Item) -> String {
                 if let Some(group) = space_view.data_blueprint.group(*handle) {
                     group.display_name.clone()
                 } else {
-                    format!("<removed group in {}>", space_view.display_name)
+                    format!("<removed Group in {}>", space_view.display_name)
                 }
             } else {
-                "<group in removed space view>".to_owned()
+                "<Group in removed Space View>".to_owned()
             }
         }
         Item::ComponentPath(path) => {

@@ -152,7 +152,7 @@ impl SpatialSpaceViewState {
                         );
                     });
                     ui.label("Point radius")
-                    .on_hover_text("Point radius used whenever not explicitly specified.");
+                    .on_hover_text("Point radius used whenever not explicitly specified");
                 });
                 ui.horizontal(|ui| {
                     ui.push_id("lines", |ui| {
@@ -163,14 +163,14 @@ impl SpatialSpaceViewState {
                             &mut self.auto_size_config.line_radius,
                         );
                         ui.label("Line radius")
-                            .on_hover_text("Line radius used whenever not explicitly specified.");
+                            .on_hover_text("Line radius used whenever not explicitly specified");
                     });
                 });
             });
             ui.end_row();
 
             ctx.re_ui.grid_left_hand_label(ui, "Camera")
-                .on_hover_text("The virtual camera which controls what is shown on screen.");
+                .on_hover_text("The virtual camera which controls what is shown on screen");
             ui.vertical(|ui| {
                 if spatial_kind == SpatialSpaceViewKind::ThreeD {
                     if ui.button("Reset").on_hover_text(
@@ -180,14 +180,14 @@ impl SpatialSpaceViewState {
                         self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
                     }
                     re_ui.checkbox(ui, &mut self.state_3d.spin, "Spin")
-                        .on_hover_text("Spin camera around the orbit center.");
+                        .on_hover_text("Spin camera around the orbit center");
                 }
             });
             ui.end_row();
 
             if spatial_kind == SpatialSpaceViewKind::ThreeD {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
-                    .on_hover_text("The world coordinate system used for this view.");
+                    .on_hover_text("The world coordinate system used for this view");
                 ui.vertical(|ui|{
                     let up_description = if let Some(up) = view_coordinates.and_then(|v| v.up()) {
                         format!("Up is {up}")
@@ -210,7 +210,7 @@ impl SpatialSpaceViewState {
             }
 
             ctx.re_ui.grid_left_hand_label(ui, "Bounding box")
-                .on_hover_text("The bounding box encompassing all Entities in the view right now.");
+                .on_hover_text("The bounding box encompassing all Entities in the view right now");
             ui.vertical(|ui| {
                 ui.style_mut().wrap = Some(false);
                 let BoundingBox { min, max } = self.scene_bbox;
@@ -261,11 +261,11 @@ fn size_ui(
             ui.set_min_width(64.0);
 
             ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
-                .on_hover_text("Determine automatically.");
+                .on_hover_text("Determine automatically");
             ui.selectable_value(&mut mode, AutoSizeUnit::UiPoints, AutoSizeUnit::UiPoints)
-                .on_hover_text("Manual in UI points.");
+                .on_hover_text("Manual in UI points");
             ui.selectable_value(&mut mode, AutoSizeUnit::World, AutoSizeUnit::World)
-                .on_hover_text("Manual in scene units.");
+                .on_hover_text("Manual in scene units");
         });
     if mode != mode_before {
         *size = match mode {

@@ -136,11 +136,11 @@ fn what_is_selected_ui(
             egui::Grid::new("component_path")
                 .num_columns(2)
                 .show(ui, |ui| {
-                    ui.label("Entity:");
+                    ui.label("Entity");
                     item_ui::entity_path_button(ctx, ui, None, entity_path);
                     ui.end_row();
 
-                    ui.label("Component:");
+                    ui.label("Component");
                     ui.label(component_name.short_name())
                         .on_hover_text(component_name.full_name());
                     ui.end_row();
@@ -149,7 +149,7 @@ fn what_is_selected_ui(
         Item::SpaceView(space_view_id) => {
             if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                 ui.horizontal(|ui| {
-                    ui.label("Space view:");
+                    ui.label("Space View");
                     ui.text_edit_singleline(&mut space_view.display_name);
                 });
             }
@@ -157,16 +157,16 @@ fn what_is_selected_ui(
         Item::InstancePath(space_view_id, instance_path) => {
             egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
                 if instance_path.instance_key.is_splat() {
-                    ui.label("Entity:");
+                    ui.label("Entity");
                 } else {
-                    ui.label("Entity instance:");
+                    ui.label("Entity instance");
                 }
                 item_ui::instance_path_button(ctx, ui, *space_view_id, instance_path);
                 ui.end_row();
 
                 if let Some(space_view_id) = space_view_id {
                     if let Some(space_view) = viewport.space_view_mut(space_view_id) {
-                        ui.label("in Space View:");
+                        ui.label("In Space View");
                         re_viewport::item_ui::space_view_button(ctx, ui, space_view);
                         ui.end_row();
                     }
@@ -182,7 +182,7 @@ fn what_is_selected_ui(
                     egui::Grid::new("data_blueprint_group")
                         .num_columns(2)
                         .show(ui, |ui| {
-                            ui.label("Data Group:");
+                            ui.label("Data Group");
                             item_ui::data_blueprint_group_button_to(
                                 ctx,
                                 ui,
@@ -192,7 +192,7 @@ fn what_is_selected_ui(
                             );
                             ui.end_row();
 
-                            ui.label("in Space View:");
+                            ui.label("In Space View");
                             re_viewport::item_ui::space_view_button(ctx, ui, space_view);
                             ui.end_row();
                         });
@@ -222,8 +222,8 @@ fn blueprint_ui(
         Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
                 if ui
-                    .button("Add/remove entities")
-                    .on_hover_text("Manually add or remove entities from the Space View.")
+                    .button("Add/remove Entities")
+                    .on_hover_text("Manually add or remove Entities from the Space View")
                     .clicked()
                 {
                     viewport
@@ -231,8 +231,8 @@ fn blueprint_ui(
                 }
 
                 if ui
-                    .button("Clone view")
-                    .on_hover_text("Create an exact duplicate of this Space View including all blueprint settings")
+                    .button("Clone Space View")
+                    .on_hover_text("Create an exact duplicate of this Space View including all Blueprint settings")
                     .clicked()
                 {
                     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
@@ -324,7 +324,7 @@ fn list_existing_data_blueprints(
         ui.weak("(Not shown in any Space View)");
         // TODO(andreas): Offer options for adding?
     } else {
-        ui.label("Is shown in:");
+        ui.label("Is shown in");
 
         ui.indent("list of data blueprints indent", |ui| {
             for space_view_id in &space_views_with_path {
@@ -369,7 +369,7 @@ fn entity_props_ui(
                             .speed(speed)
                             .suffix("s"),
                     )
-                    .on_hover_text("Include this much history of the Entity in the Space View.");
+                    .on_hover_text("Include this much history of the Entity in the Space View");
                     visible_history.nanos = (time_sec * 1e9).round() as _;
                 }
                 TimeType::Sequence => {
@@ -379,7 +379,7 @@ fn entity_props_ui(
                             .clamp_range(0.0..=f32::INFINITY)
                             .speed(speed),
                     )
-                    .on_hover_text("Include this much history of the Entity in the Space View.");
+                    .on_hover_text("Include this much history of the Entity in the Space View");
                 }
             }
             ui.end_row();
@@ -446,7 +446,7 @@ fn pinhole_props_ui(
                     .clamp_range(0.0..=1.0e8)
                     .speed(speed),
             )
-            .on_hover_text("Controls how far away the image plane is.")
+            .on_hover_text("Controls how far away the image plane is")
             .changed()
         {
             entity_props.pinhole_image_plane_distance = EditableAutoValue::UserEdited(distance);

@@ -130,7 +130,7 @@ pub fn loop_selection_ui(
             } else {
                 // inactive - show a tooltip at least:
                 ui.interact(rect, middle_id, egui::Sense::hover())
-                        .on_hover_text("Click the loop button to turn on the loop selection, or use shift-drag to select a new loop selection.");
+                        .on_hover_text("Click the loop button to turn on the loop selection, or use shift-drag to select a new loop selection");
             }
         }
 

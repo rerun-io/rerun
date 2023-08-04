@@ -124,7 +124,7 @@ impl MemoryPanel {
 
             if let Some(counted) = mem_use.counted {
                 ui.label(format!("counted: {}", format_bytes(counted as _)))
-                    .on_hover_text("Live bytes, counted by our own allocator.");
+                    .on_hover_text("Live bytes, counted by our own allocator");
             } else if cfg!(debug_assertions) {
                 ui.label("Memory-tracking allocator not installed.");
             }
@@ -137,7 +137,7 @@ impl MemoryPanel {
                 &mut is_tracking_callstacks,
                 "Detailed allocation tracking",
             )
-            .on_hover_text("This will slow down the program.");
+            .on_hover_text("This will slow down the program");
         re_memory::accounting_allocator::set_tracking_callstacks(is_tracking_callstacks);
 
         if let Some(tracking_stats) = re_memory::accounting_allocator::tracking_stats() {

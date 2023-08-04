@@ -176,7 +176,7 @@ impl ViewportBlueprint<'_> {
                         visibility_button_ui(re_ui, ui, true, &mut visible).changed();
                     if re_ui
                         .small_icon_button(ui, &re_ui::icons::REMOVE)
-                        .on_hover_text("Remove Space View from the viewport.")
+                        .on_hover_text("Remove Space View from the Viewport")
                         .clicked()
                     {
                         action = TreeAction::Remove;
@@ -272,7 +272,7 @@ impl ViewportBlueprint<'_> {
                         }
                         if re_ui
                             .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove Entity from the space view.")
+                            .on_hover_text("Remove Entity from the Space View")
                             .clicked()
                         {
                             space_view.data_blueprint.remove_entity(entity_path);
@@ -326,7 +326,7 @@ impl ViewportBlueprint<'_> {
                         );
                         if re_ui
                             .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove group and all its children from the space view.")
+                            .on_hover_text("Remove Group and all its children from the Space View")
                             .clicked()
                         {
                             remove_group = true;
@@ -388,7 +388,7 @@ impl ViewportBlueprint<'_> {
             }
         })
         .response
-        .on_hover_text("Add new space view.");
+        .on_hover_text("Add new Space View");
     }
 }
 
