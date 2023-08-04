@@ -22,8 +22,7 @@ int main() {
     });
     std::vector<rr::components::Color> colors(10);
     std::generate(colors.begin(), colors.end(), [&] {
-        // TODO(andreas): provide a `rgb` factory method.
-        return (dist_color(gen) << 24) + (dist_color(gen) << 16) + (dist_color(gen) << 8) + 255;
+        return std::array{dist_color(gen), dist_color(gen), dist_color(gen)};
     });
     std::vector<rr::components::Radius> radii(10);
     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
