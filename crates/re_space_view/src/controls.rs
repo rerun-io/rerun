@@ -1,6 +1,10 @@
 /// Modifier to press for scroll to zoom.
 pub const ZOOM_SCROLL_MODIFIER: egui::Modifiers = egui::Modifiers::COMMAND;
 
+/// Modifier to press for scroll to change aspect ratio.
+pub const ASPECT_SCROLL_MODIFIER: egui::Modifiers =
+    egui::Modifiers::ALT.plus(egui::Modifiers::COMMAND);
+
 /// Modifier to press for scroll to pan horizontally.
 pub const HORIZONTAL_SCROLL_MODIFIER: egui::Modifiers = egui::Modifiers::SHIFT;
 
