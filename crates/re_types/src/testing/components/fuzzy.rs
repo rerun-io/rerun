@@ -1500,7 +1500,7 @@ impl crate::Loggable for AffixFuzzer8 {
 impl crate::Component for AffixFuzzer8 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer9(pub String);
+pub struct AffixFuzzer9(pub crate::arrow_adapter::ArrowString);
 
 impl<'a> From<AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
     #[inline]
@@ -1560,11 +1560,11 @@ impl crate::Loggable for AffixFuzzer9 {
             };
             {
                 let inner_data: ::arrow2::buffer::Buffer<u8> =
-                    data0.iter().flatten().flat_map(|s| s.bytes()).collect();
+                    data0.iter().flatten().flat_map(|s| s.0.clone()).collect();
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
+                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
                 )
                 .unwrap()
                 .into();
@@ -1600,23 +1600,26 @@ impl crate::Loggable for AffixFuzzer9 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(data
-            .as_any()
-            .downcast_ref::<Utf8Array<i32>>()
-            .unwrap()
-            .into_iter()
-            .map(|v| v.map(ToOwned::to_owned))
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
+        Ok({
+            let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+            let offsets = downcast.offsets();
+            offsets
+                .iter()
+                .zip(offsets.lengths())
+                .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
+                .map(|v| v.map(crate::arrow_adapter::ArrowString))
+        }
+        .map(|v| {
+            v.ok_or_else(|| crate::DeserializationError::MissingData {
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer9#single_string_required".into(),
-                source: Box::new(err),
-            })?)
+        })
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .map_err(|err| crate::DeserializationError::Context {
+            location: "rerun.testing.components.AffixFuzzer9#single_string_required".into(),
+            source: Box::new(err),
+        })?)
     }
 
     #[inline]
@@ -1638,7 +1641,7 @@ impl crate::Loggable for AffixFuzzer9 {
 impl crate::Component for AffixFuzzer9 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer10(pub Option<String>);
+pub struct AffixFuzzer10(pub Option<crate::arrow_adapter::ArrowString>);
 
 impl<'a> From<AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
     #[inline]
@@ -1700,11 +1703,11 @@ impl crate::Loggable for AffixFuzzer10 {
             };
             {
                 let inner_data: ::arrow2::buffer::Buffer<u8> =
-                    data0.iter().flatten().flat_map(|s| s.bytes()).collect();
+                    data0.iter().flatten().flat_map(|s| s.0.clone()).collect();
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
+                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
                 )
                 .unwrap()
                 .into();
@@ -1740,19 +1743,22 @@ impl crate::Loggable for AffixFuzzer10 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(data
-            .as_any()
-            .downcast_ref::<Utf8Array<i32>>()
-            .unwrap()
-            .into_iter()
-            .map(|v| v.map(ToOwned::to_owned))
-            .map(Ok)
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer10#single_string_optional".into(),
-                source: Box::new(err),
-            })?)
+        Ok({
+            let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+            let offsets = downcast.offsets();
+            offsets
+                .iter()
+                .zip(offsets.lengths())
+                .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
+                .map(|v| v.map(crate::arrow_adapter::ArrowString))
+        }
+        .map(Ok)
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .map_err(|err| crate::DeserializationError::Context {
+            location: "rerun.testing.components.AffixFuzzer10#single_string_optional".into(),
+            source: Box::new(err),
+        })?)
     }
 
     #[inline]
@@ -1983,7 +1989,7 @@ impl crate::Loggable for AffixFuzzer11 {
 impl crate::Component for AffixFuzzer11 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer12(pub Vec<String>);
+pub struct AffixFuzzer12(pub Vec<crate::arrow_adapter::ArrowString>);
 
 impl<'a> From<AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
     #[inline]
@@ -2084,11 +2090,11 @@ impl crate::Loggable for AffixFuzzer12 {
                         let inner_data: ::arrow2::buffer::Buffer<u8> = data0_inner_data
                             .iter()
                             .flatten()
-                            .flat_map(|s| s.bytes())
+                            .flat_map(|s| s.0.clone())
                             .collect();
                         let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                             data0_inner_data.iter().map(|opt| {
-                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                             }),
                         )
                         .unwrap()
@@ -2143,18 +2149,21 @@ impl crate::Loggable for AffixFuzzer12 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = data
-                    .as_any()
-                    .downcast_ref::<Utf8Array<i32>>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.map(ToOwned::to_owned))
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
+                let data = {
+                    let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                    let offsets = downcast.offsets();
+                    offsets
+                        .iter()
+                        .zip(offsets.lengths())
+                        .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
+                        .map(|v| v.map(crate::arrow_adapter::ArrowString))
+                }
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?;
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -2209,7 +2218,7 @@ impl crate::Loggable for AffixFuzzer12 {
 impl crate::Component for AffixFuzzer12 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer13(pub Option<Vec<String>>);
+pub struct AffixFuzzer13(pub Option<Vec<crate::arrow_adapter::ArrowString>>);
 
 impl<'a> From<AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
     #[inline]
@@ -2312,11 +2321,11 @@ impl crate::Loggable for AffixFuzzer13 {
                         let inner_data: ::arrow2::buffer::Buffer<u8> = data0_inner_data
                             .iter()
                             .flatten()
-                            .flat_map(|s| s.bytes())
+                            .flat_map(|s| s.0.clone())
                             .collect();
                         let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                             data0_inner_data.iter().map(|opt| {
-                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                             }),
                         )
                         .unwrap()
@@ -2371,18 +2380,21 @@ impl crate::Loggable for AffixFuzzer13 {
                     offsets.iter().copied().zip(offsets.iter().copied().skip(1))
                 };
                 let data = &**data.values();
-                let data = data
-                    .as_any()
-                    .downcast_ref::<Utf8Array<i32>>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.map(ToOwned::to_owned))
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
+                let data = {
+                    let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                    let offsets = downcast.offsets();
+                    offsets
+                        .iter()
+                        .zip(offsets.lengths())
+                        .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
+                        .map(|v| v.map(crate::arrow_adapter::ArrowString))
+                }
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?;
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {

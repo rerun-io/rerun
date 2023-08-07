@@ -200,7 +200,7 @@ fn class_description_ui(ui: &mut egui::Ui, class: &ClassDescription, id: ClassId
                                             .and_then(|info| info.label.as_ref())
                                             .map_or_else(
                                                 || format!("id {id:?}"),
-                                                |label| label.0.clone(),
+                                                |label| label.0.as_str().to_owned(),
                                             ),
                                     );
                                 });

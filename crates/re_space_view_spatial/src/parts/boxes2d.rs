@@ -62,7 +62,7 @@ impl Boxes2DPart {
                 let color =
                     annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
                 let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
-                let label = annotation_info.label(label.map(|l| l.0).as_ref());
+                let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
 
                 self.0.extend_bounding_box(
                     macaw::BoundingBox {
