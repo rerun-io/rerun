@@ -1678,7 +1678,7 @@ fn static_constructor_for_enum_type(
                 for (size_t i = 0; i < #length; i += 1) {
                     #element_assignment
                 }
-                return std::move(self);
+                return self;
             },
             inline: true,
         }
@@ -1691,7 +1691,7 @@ fn static_constructor_for_enum_type(
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 self._data.#snake_case_ident = std::move(#snake_case_ident);
-                return std::move(self);
+                return self;
             },
             inline: true,
         }
@@ -1708,7 +1708,7 @@ fn static_constructor_for_enum_type(
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));
-                return std::move(self);
+                return self;
             },
             inline: true,
         }
