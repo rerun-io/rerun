@@ -1133,7 +1133,7 @@ fn quote_fill_arrow_array_builder(
     datatype: &DataType,
     fields: &[ObjectField],
     builder: &Ident,
-    cpp_includes: &mut Includes,
+    includes: &mut Includes,
 ) -> anyhow::Result<TokenStream> {
     let tokens = match datatype {
         DataType::Boolean
@@ -1158,7 +1158,7 @@ fn quote_fill_arrow_array_builder(
                 datatype
             );
             let object_field = &fields[0];
-            quote_append_elements_to_builder(object_field, datatype, builder, true)
+            quote_append_elements_to_builder(object_field, datatype, builder, true, includes)
         }
         DataType::List(field) | DataType::FixedSizeList(field, _) => {
             anyhow::ensure!(
@@ -1273,7 +1273,7 @@ fn quote_fill_arrow_array_builder(
                         _ => {
                             let element_builder = format_ident!("element_builder");
                             let element_builder_type = arrow_array_builder_type(arrow_field.data_type());
-                            let field_append = quote_append_elements_to_builder(field, datatype, &element_builder, false);
+                            let field_append = quote_append_elements_to_builder(field, datatype, &element_builder, false, includes);
                             quote! {
                                 {
                                     auto #element_builder = static_cast<arrow::#element_builder_type*>(builder->field_builder(#builder_index));
@@ -1305,11 +1305,11 @@ fn quote_fill_arrow_array_builder(
                     let arrow_builder_type = arrow_array_builder_type(arrow_field.data_type());
                     let field_name = format_ident!("{}", field.name);
 
-                    let field_append = if matches!(field.typ, Type::Object(..) | Type::Vector {..} | Type::Array {..}) {
-                        quote! { return arrow::Status::NotImplemented("TODO(andreas): non-trivial types in unions are not yet supported");}
+                    let field_append = if matches!(field.typ, Type::Vector {..} | Type::Array {..}) {
+                        quote! { return arrow::Status::NotImplemented("TODO(andreas): list types in unions are not yet supported");}
                     } else {
                         let element_accessor = quote!(element._data);
-                        quote_append_single_element_to_builder(field, &element_builder, &element_accessor)
+                        quote_append_single_element_to_builder(field, &element_builder, &element_accessor, includes)
                     };
 
                     quote! {
@@ -1347,7 +1347,7 @@ fn quote_fill_arrow_array_builder(
                 // Idea: pass in a tagged union for both optional and non-optional arrays to all fill_arrow_array_builder methods?
                 quote!(return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));)
             } else {
-                let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
+                let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
                 quote! {
                     static_assert(sizeof(#quoted_fqname) == sizeof(#pascal_case_ident));
                     ARROW_RETURN_NOT_OK(#quoted_fqname::fill_arrow_array_builder(
@@ -1389,6 +1389,7 @@ fn quote_append_elements_to_builder(
     datatype: &DataType,
     builder: &Ident,
     is_transparent: bool,
+    includes: &mut Includes,
 ) -> TokenStream {
     if !field.is_nullable && is_transparent && trivial_batch_append(datatype) {
         // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
@@ -1403,7 +1404,7 @@ fn quote_append_elements_to_builder(
     } else {
         let element_accessor = quote!(elements[elem_idx]);
         let single_append =
-            quote_append_single_element_to_builder(field, builder, &element_accessor);
+            quote_append_single_element_to_builder(field, builder, &element_accessor, includes);
         quote! {
             ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
@@ -1417,20 +1418,51 @@ fn quote_append_single_element_to_builder(
     field: &ObjectField,
     builder: &Ident,
     element_accessor: &TokenStream,
+    includes: &mut Includes,
 ) -> TokenStream {
     let field_name = format_ident!("{}", crate::to_snake_case(&field.name));
+    let value_access = if field.is_nullable {
+        quote!(element.#field_name.value())
+    } else {
+        quote!(#element_accessor.#field_name)
+    };
+
+    let append_value = match &field.typ {
+        Type::UInt8
+        | Type::UInt16
+        | Type::UInt32
+        | Type::UInt64
+        | Type::Int8
+        | Type::Int16
+        | Type::Int32
+        | Type::Int64
+        | Type::Bool
+        | Type::Float16
+        | Type::Float32
+        | Type::Float64
+        | Type::String => {
+            quote!(#builder->Append(#value_access))
+        }
+        Type::Array { .. } => unimplemented!("Single append of array to builder not implemented"),
+        Type::Vector { .. } => unimplemented!("Single append of vector to builder not implemented"),
+        Type::Object(fqname) => {
+            let fqname = quote_fqname_as_type_path(includes, fqname);
+            quote!(#fqname::fill_arrow_array_builder(#builder, &#value_access, 1))
+        }
+    };
+
     if field.is_nullable {
         quote! {
             const auto& element = #element_accessor;
             if (element.#field_name.has_value()) {
-                ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name.value()));
+                ARROW_RETURN_NOT_OK(#append_value);
             } else {
                 ARROW_RETURN_NOT_OK(#builder->AppendNull());
             }
         }
     } else {
         quote! {
-            ARROW_RETURN_NOT_OK(#builder->Append(#element_accessor.#field_name));
+            ARROW_RETURN_NOT_OK(#append_value);
         }
     }
 }
