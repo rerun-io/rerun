@@ -53,10 +53,6 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
         code.push_str(&format!("// Based on {source_path:?}\n"));
     }
 
-    // if source_path.map_or(false, |p| p.as_str().contains("color")) {
-    //     panic!("token_stream: {:?}", token_stream.to_string());
-    // }
-
     code.push('\n');
     code.push_str(
         &token_stream

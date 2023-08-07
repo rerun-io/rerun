@@ -80,9 +80,10 @@ fn main() {
     eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
     eprintln!("definitions_hash: {definitions_hash:?}");
     eprintln!("doc_examples_hash: {doc_examples_hash:?}");
-    eprintln!("archetype_overrides_hash: {python_archetype_overrides_hash:?}");
-    eprintln!("component_overrides_hash: {python_component_overrides_hash:?}");
-    eprintln!("datatype_overrides_hash: {python_datatype_overrides_hash:?}");
+    eprintln!("python_archetype_overrides_hash: {python_archetype_overrides_hash:?}");
+    eprintln!("python_component_overrides_hash: {python_component_overrides_hash:?}");
+    eprintln!("python_datatype_overrides_hash: {python_datatype_overrides_hash:?}");
+    eprintln!("cpp_extensions_hash: {cpp_extensions_hash:?}");
     eprintln!("new_hash: {new_hash:?}");
     eprintln!("cur_hash: {cur_hash:?}");
 
