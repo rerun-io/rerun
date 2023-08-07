@@ -951,7 +951,7 @@ fn new_arrow_array_builder_method(datatype: &DataType, cpp_includes: &mut Includ
 fn fill_arrow_array_builder_method(
     datatype: &DataType,
     obj: &Object,
-    pascal_case_ident: &Ident,
+    type_ident: &Ident,
     cpp_includes: &mut Includes,
 ) -> Method {
     cpp_includes.system.insert("arrow/api.h".to_owned());
@@ -964,7 +964,7 @@ fn fill_arrow_array_builder_method(
     let arrow_builder_type = arrow_array_builder_type(datatype);
 
     let fill_builder = quote_fill_arrow_array_builder(
-        pascal_case_ident,
+        type_ident,
         logical_datatype,
         &obj.fields,
         &builder,
@@ -980,7 +980,7 @@ fn fill_arrow_array_builder_method(
             return_type: quote! { arrow::Status },
             // TODO(andreas): Pass in validity map.
             name_and_parameters: quote! {
-                fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #pascal_case_ident* elements, size_t num_elements)
+                fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #type_ident* elements, size_t num_elements)
             },
         },
         definition_body: quote! {
@@ -1129,7 +1129,7 @@ fn archetype_to_data_cells(
 }
 
 fn quote_fill_arrow_array_builder(
-    pascal_case_ident: &Ident,
+    type_ident: &Ident,
     datatype: &DataType,
     fields: &[ObjectField],
     builder: &Ident,
@@ -1171,7 +1171,7 @@ fn quote_fill_arrow_array_builder(
             let value_builder = format_ident!("value_builder");
             let value_builder_type = arrow_array_builder_type(field.data_type());
             let field_name = format_ident!("{}", &object_field.name);
-            let (num_items_per_element, reserve_factor) = match datatype {
+            let (num_items_per_element, value_reserve_factor) = match datatype {
                 DataType::List(..) => {
                     if field.is_nullable {
                         (quote!(element.#field_name.value().size()), quote_integer(1))
@@ -1189,7 +1189,7 @@ fn quote_fill_arrow_array_builder(
             let setup = quote! {
                 auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                 ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(#value_builder->Reserve(num_elements * #reserve_factor));
+                ARROW_RETURN_NOT_OK(#value_builder->Reserve(num_elements * #value_reserve_factor));
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
             };
 
@@ -1237,9 +1237,7 @@ fn quote_fill_arrow_array_builder(
                     #setup
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
-                        for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            #append_value
-                        }
+                        #append_value
                         ARROW_RETURN_NOT_OK(#builder->Append());
                     }
                 }
@@ -1287,7 +1285,7 @@ fn quote_fill_arrow_array_builder(
         }
         DataType::Union(union_datatypes, _types, _mode) => {
             let variant_builder = format_ident!("variant_builder");
-            let tag_name = format_ident!("{}Tag", pascal_case_ident);
+            let tag_name = format_ident!("{}Tag", type_ident);
 
             // We insert a null tag in the union datatypes.
             assert_eq!(union_datatypes.len(), fields.len() + 1);
@@ -1345,7 +1343,7 @@ fn quote_fill_arrow_array_builder(
             } else {
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
                 quote! {
-                    static_assert(sizeof(#quoted_fqname) == sizeof(#pascal_case_ident));
+                    static_assert(sizeof(#quoted_fqname) == sizeof(#type_ident));
                     ARROW_RETURN_NOT_OK(#quoted_fqname::fill_arrow_array_builder(
                         builder, reinterpret_cast<const #quoted_fqname*>(elements), num_elements
                     ));
@@ -1442,9 +1440,13 @@ fn quote_append_single_field_to_builder(
     }
 }
 
+/// Appends a single value to an arrow array builder.
+///
+/// If the value is an array/vector, it will try to append the batch in one go.
+/// Note that in that case this does *not* take care of the array/vector builder itself, just the underlying value builder.
 fn quote_append_single_value_to_builder(
     typ: &Type,
-    builder: &Ident,
+    value_builder: &Ident,
     value_access: &TokenStream,
     includes: &mut Includes,
 ) -> TokenStream {
@@ -1462,7 +1464,7 @@ fn quote_append_single_value_to_builder(
         | Type::Float32
         | Type::Float64
         | Type::String => {
-            quote!(ARROW_RETURN_NOT_OK(#builder->Append(#value_access));)
+            quote!(ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access));)
         }
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
             let num_items_per_element = match &typ {
@@ -1489,27 +1491,27 @@ fn quote_append_single_value_to_builder(
                 | ElementType::Float32
                 | ElementType::Float64 => {
                     quote! {
-                        ARROW_RETURN_NOT_OK(#builder->AppendValues(#element_ptr_accessor, #num_items_per_element, nullptr));
+                        ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#element_ptr_accessor, #num_items_per_element, nullptr));
                     }
                 }
                 ElementType::String => {
                     quote! {
                         for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            ARROW_RETURN_NOT_OK(#builder->Append(#value_access[item_idx]));
+                            ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access[item_idx]));
                         }
                     }
                 }
                 ElementType::Object(fqname) => {
                     let fqname = quote_fqname_as_type_path(includes, fqname);
                     quote! {
-                        ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#builder, #element_ptr_accessor, #num_items_per_element));
+                        ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #element_ptr_accessor, #num_items_per_element));
                     }
                 }
             }
         }
         Type::Object(fqname) => {
             let fqname = quote_fqname_as_type_path(includes, fqname);
-            quote!(ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#builder, &#value_access, 1));)
+            quote!(ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, &#value_access, 1));)
         }
     }
 }
