@@ -1,5 +1,13 @@
 use arrow2::buffer::Buffer;
 
+/// Convenience-wrapper around an arrow [`Buffer`] that is known to contain a
+/// string.
+///
+/// The arrow2 [`Buffer`] object is internally reference-counted and can be
+/// easily converted back to a `&str` referencing the underlying storage.
+/// This avoids some of the lifetime complexities that would otherwise
+/// arise from returning a `&str` directly, but is significantly more
+/// performant than doing the full allocation necessary to return a `String`.
 #[derive(Clone, Debug, Default)]
 pub struct ArrowString(pub Buffer<u8>);
 
