@@ -19,7 +19,7 @@ namespace rerun {
         /// approximations of smooth curves.
         ///
         /// The points will be connected in order, like so:
-        ///```ignore
+        ///```text
         ///        2------3     5
         ///       /        \\   /
         /// 0----1          \\ /
