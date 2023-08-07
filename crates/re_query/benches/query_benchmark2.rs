@@ -212,16 +212,24 @@ fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
         .collect()
 }
 
-fn build_strings_rows(paths: &[EntityPath], strings: usize) -> Vec<DataRow> {
+fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> {
     (0..NUM_FRAMES_STRINGS)
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
-                let mut row = DataRow::from_cells1(
+                let mut row = DataRow::from_cells2(
                     RowId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
-                    strings as _,
-                    build_some_strings(strings),
+                    num_strings as _,
+                    // We still need to create points because they are the primary for the
+                    // archetype query we want to do. We won't actually deserialize the points
+                    // during the query -- we just need it for the primary keys.
+                    // TODO(jleibs): switch this to use `TextEntry` once the new type has
+                    // landed.
+                    (
+                        build_some_point2d(num_strings),
+                        build_some_strings(num_strings),
+                    ),
                 );
                 // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
                 // in debug mode, by the standard test harness.
