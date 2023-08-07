@@ -10,6 +10,7 @@ include "./datatypes/rotation3d.fbs";
 include "./datatypes/rotation_axis_angle.fbs";
 include "./datatypes/scalars.fbs";
 include "./datatypes/scale3d.fbs";
+include "./datatypes/tensor_data.fbs";
 include "./datatypes/transform3d.fbs";
 include "./datatypes/translation_and_mat3x3.fbs";
 include "./datatypes/translation_rotation_scale3d.fbs";

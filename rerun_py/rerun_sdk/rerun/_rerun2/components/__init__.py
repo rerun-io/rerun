@@ -112,6 +112,7 @@ from .origin3d import Origin3DArray, Origin3DType
 from .point2d import Point2DArray, Point2DType
 from .point3d import Point3DArray, Point3DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
+from .tensor import TensorArray, TensorType
 from .transform3d import Transform3DArray, Transform3DType
 from .vector3d import Vector3DArray, Vector3DType
 
@@ -257,6 +258,8 @@ __all__ = [
     "StringComponentArrayLike",
     "StringComponentLike",
     "StringComponentType",
+    "TensorArray",
+    "TensorType",
     "Transform3DArray",
     "Transform3DType",
     "Vector3DArray",
