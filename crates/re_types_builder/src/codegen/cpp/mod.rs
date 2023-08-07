@@ -581,7 +581,7 @@ impl QuotedObject {
         // We implement sum-types as tagged unions;
         // Putting non-POD types in a union requires C++11.
         //
-        // enum class Rotation3DTag {
+        // enum class Rotation3DTag : uint8_t {
         //     NONE = 0,
         //     Quaternion,
         //     AxisAngle,
@@ -810,7 +810,7 @@ impl QuotedObject {
             namespace rerun {
                 namespace #namespace_ident {
                     namespace detail {
-                        enum class #tag_typename {
+                        enum class #tag_typename : uint8_t {
                             #(#tag_fields)*
                         };
 
@@ -926,7 +926,6 @@ fn new_arrow_array_builder_method(datatype: &DataType, cpp_includes: &mut Includ
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
     let arrow_builder_type = arrow_array_builder_type(datatype);
-    let arrow_builder_type = format_ident!("{arrow_builder_type}");
     let builder_instantiation =
         quote_arrow_array_builder_type_instantiation(datatype, cpp_includes, true);
 
@@ -963,7 +962,6 @@ fn fill_arrow_array_builder_method(
 
     let builder = format_ident!("builder");
     let arrow_builder_type = arrow_array_builder_type(datatype);
-    let arrow_builder_type = format_ident!("{arrow_builder_type}");
 
     let fill_builder = quote_fill_arrow_array_builder(
         pascal_case_ident,
@@ -1177,7 +1175,6 @@ fn quote_fill_arrow_array_builder(
             }
 
             let value_builder_type = arrow_array_builder_type(field.data_type());
-            let value_builder_type = format_ident!("{value_builder_type}");
             let field_name = format_ident!("{}", &object_field.name);
             let (num_items_per_element, reserve_factor) = match datatype {
                 DataType::List(..) => {
@@ -1276,7 +1273,6 @@ fn quote_fill_arrow_array_builder(
                         _ => {
                             let element_builder = format_ident!("element_builder");
                             let element_builder_type = arrow_array_builder_type(arrow_field.data_type());
-                            let element_builder_type = format_ident!("{element_builder_type}");
                             let field_append = quote_append_elements_to_builder(field, datatype, &element_builder, false);
                             quote! {
                                 {
@@ -1295,15 +1291,54 @@ fn quote_fill_arrow_array_builder(
                 ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
             }
         }
-        DataType::Union(_, _, _) => {
+        DataType::Union(union_datatypes, _types, _mode) => {
+            let element_builder = format_ident!("element_builder");
+            let tag_name = format_ident!("{}Tag", pascal_case_ident);
+
+            // We insert a null tag in the union datatypes.
+            assert_eq!(union_datatypes.len(), fields.len() + 1);
+
+            let tag_cases = fields
+                .iter()
+                .zip(union_datatypes.iter().skip(1))
+                .map(|(field, arrow_field)| {
+                    let arrow_builder_type = arrow_array_builder_type(arrow_field.data_type());
+                    let field_name = format_ident!("{}", field.name);
+
+                    let field_append = if matches!(field.typ, Type::Object(..) | Type::Vector {..} | Type::Array {..}) {
+                        quote! { return arrow::Status::NotImplemented("TODO(andreas): non-trivial types in unions are not yet supported");}
+                    } else {
+                        let element_accessor = quote!(element._data);
+                        quote_append_single_element_to_builder(field, &element_builder, &element_accessor)
+                    };
+
+                    quote! {
+                        case detail::#tag_name::#field_name: {
+                            auto #element_builder = std::static_pointer_cast<arrow::#arrow_builder_type>(
+                                builder->child_builder(static_cast<int>(detail::#tag_name::#field_name))
+                            );
+                            #field_append
+                            break;
+                        }
+                    }
+                });
+
             quote! {
                 #NEWLINE_TOKEN
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto& element = elements[elem_idx];
+                    ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(element._tag)));
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    switch (element._tag) {
+                        case detail::#tag_name::NONE: {
+                            ARROW_RETURN_NOT_OK(#builder->child_builder(0)->AppendNull());
+                            break;
+                        }
+                        #(#tag_cases)*
+                    }
                 }
-                return arrow::Status::NotImplemented(
-                    "TODO(andreas): unions are not yet implemented"
-                );
             }
         }
         DataType::Extension(fqname, _datatype, _) => {
@@ -1355,22 +1390,10 @@ fn quote_append_elements_to_builder(
     builder: &Ident,
     is_transparent: bool,
 ) -> TokenStream {
-    let field_name = format_ident!("{}", field.name);
-    if field.is_nullable {
-        quote! {
-            ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto& element = elements[elem_idx];
-                if (element.#field_name.has_value()) {
-                    ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name.value()));
-                } else {
-                    ARROW_RETURN_NOT_OK(#builder->AppendNull());
-                }
-            }
-        }
-    } else if is_transparent && trivial_batch_append(datatype) {
+    if !field.is_nullable && is_transparent && trivial_batch_append(datatype) {
         // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
         // we can just pass the whole array as-is!
+        let field_name = format_ident!("{}", field.name);
         let element_ptr_accessor =
             quote_batch_append_cast(datatype, quote!(&elements->#field_name));
         quote! {
@@ -1378,11 +1401,36 @@ fn quote_append_elements_to_builder(
             ARROW_RETURN_NOT_OK(#builder->AppendValues(#element_ptr_accessor, num_elements));
         }
     } else {
+        let element_accessor = quote!(elements[elem_idx]);
+        let single_append =
+            quote_append_single_element_to_builder(field, builder, &element_accessor);
         quote! {
             ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                ARROW_RETURN_NOT_OK(#builder->Append(elements[elem_idx].#field_name));
+            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                #single_append
             }
+        }
+    }
+}
+
+fn quote_append_single_element_to_builder(
+    field: &ObjectField,
+    builder: &Ident,
+    element_accessor: &TokenStream,
+) -> TokenStream {
+    let field_name = format_ident!("{}", crate::to_snake_case(&field.name));
+    if field.is_nullable {
+        quote! {
+            const auto& element = #element_accessor;
+            if (element.#field_name.has_value()) {
+                ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name.value()));
+            } else {
+                ARROW_RETURN_NOT_OK(#builder->AppendNull());
+            }
+        }
+    } else {
+        quote! {
+            ARROW_RETURN_NOT_OK(#builder->Append(#element_accessor.#field_name));
         }
     }
 }
@@ -1396,8 +1444,8 @@ fn quote_batch_append_cast(datatype: &DataType, element_ptr_accessor: TokenStrea
     }
 }
 
-fn arrow_array_builder_type(datatype: &DataType) -> &'static str {
-    match datatype.to_logical_type() {
+fn arrow_array_builder_type(datatype: &DataType) -> Ident {
+    let name = match datatype.to_logical_type() {
         DataType::Boolean => "BooleanBuilder",
         DataType::Int8 => "Int8Builder",
         DataType::Int16 => "Int16Builder",
@@ -1429,7 +1477,8 @@ fn arrow_array_builder_type(datatype: &DataType) -> &'static str {
             "Arrow serialization for type {:?} not implemented",
             datatype
         ),
-    }
+    };
+    format_ident!("{name}")
 }
 
 fn quote_arrow_array_builder_type_instantiation(
@@ -1438,7 +1487,6 @@ fn quote_arrow_array_builder_type_instantiation(
     is_top_level_type: bool,
 ) -> TokenStream {
     let builder_type = arrow_array_builder_type(datatype);
-    let builder_type = format_ident!("{builder_type}");
 
     match datatype {
         DataType::Boolean
