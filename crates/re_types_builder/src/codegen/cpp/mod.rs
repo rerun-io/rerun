@@ -1168,12 +1168,7 @@ fn quote_fill_arrow_array_builder(
             );
             let object_field = &fields[0];
 
-            if matches!(field.data_type(), DataType::Extension { .. }) {
-                return Ok(quote!(return arrow::Status::NotImplemented(
-                    "TODO(andreas): custom data types in lists/fixedsizelist are not yet implemented"
-                );));
-            }
-
+            let value_builder = format_ident!("value_builder");
             let value_builder_type = arrow_array_builder_type(field.data_type());
             let field_name = format_ident!("{}", &object_field.name);
             let (num_items_per_element, reserve_factor) = match datatype {
@@ -1192,33 +1187,32 @@ fn quote_fill_arrow_array_builder(
             };
 
             let setup = quote! {
-                auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
+                auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                 ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * #reserve_factor));
+                ARROW_RETURN_NOT_OK(#value_builder->Reserve(num_elements * #reserve_factor));
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
             };
 
+            let value_accessor = if field.is_nullable {
+                quote!(element.#field_name.value())
+            } else {
+                quote!(element.#field_name)
+            };
+
+            let append_value = quote_append_single_value_to_builder(
+                &object_field.typ,
+                &value_builder,
+                &value_accessor,
+                includes,
+            );
+
             if field.is_nullable {
-                let item_append = if trivial_batch_append(field.data_type()) {
-                    // `&expression[0]` is not pretty but works on both arrays and vectors!
-                    let element_ptr_accessor =
-                        quote_batch_append_cast(datatype, quote!(&element.#field_name.value()[0]));
-                    quote! {
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(#element_ptr_accessor, #num_items_per_element, nullptr));
-                    }
-                } else {
-                    quote! {
-                        for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            ARROW_RETURN_NOT_OK(value_builder->Append(element.#field_name.value()[item_idx]));
-                        }
-                    }
-                };
                 quote! {
                     #setup
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
                         if (element.#field_name.has_value()) {
-                            #item_append
+                            #append_value
                             ARROW_RETURN_NOT_OK(#builder->Append());
                         } else {
                             ARROW_RETURN_NOT_OK(#builder->AppendNull());
@@ -1232,10 +1226,10 @@ fn quote_fill_arrow_array_builder(
                 let element_ptr_accessor =
                     quote_batch_append_cast(datatype, quote!(elements[0].#field_name));
                 quote! {
-                    auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
+                    auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                     #NEWLINE_TOKEN #NEWLINE_TOKEN
                     static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
-                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(#element_ptr_accessor, num_elements * #num_items_per_element, nullptr));
+                    ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#element_ptr_accessor, num_elements * #num_items_per_element, nullptr));
                     ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
                 }
             } else {
@@ -1244,7 +1238,7 @@ fn quote_fill_arrow_array_builder(
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
                         for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            ARROW_RETURN_NOT_OK(value_builder->Append(element.#field_name[item_idx]));
+                            #append_value
                         }
                         ARROW_RETURN_NOT_OK(#builder->Append());
                     }
@@ -1292,7 +1286,7 @@ fn quote_fill_arrow_array_builder(
             }
         }
         DataType::Union(union_datatypes, _types, _mode) => {
-            let element_builder = format_ident!("element_builder");
+            let variant_builder = format_ident!("variant_builder");
             let tag_name = format_ident!("{}Tag", pascal_case_ident);
 
             // We insert a null tag in the union datatypes.
@@ -1308,15 +1302,13 @@ fn quote_fill_arrow_array_builder(
                     let field_append = if matches!(field.typ, Type::Vector {..} | Type::Array {..}) {
                         quote! { return arrow::Status::NotImplemented("TODO(andreas): list types in unions are not yet supported");}
                     } else {
-                        let element_accessor = quote!(element._data);
-                        quote_append_single_element_to_builder(field, &element_builder, &element_accessor, includes)
+                        let element_accessor = quote!(union_instance._data);
+                        quote_append_single_field_to_builder(field, &variant_builder, &element_accessor, includes)
                     };
 
                     quote! {
                         case detail::#tag_name::#field_name: {
-                            auto #element_builder = std::static_pointer_cast<arrow::#arrow_builder_type>(
-                                builder->child_builder(static_cast<int>(detail::#tag_name::#field_name))
-                            );
+                            auto #variant_builder = static_cast<arrow::#arrow_builder_type*>(variant_builder_untyped);
                             #field_append
                             break;
                         }
@@ -1327,13 +1319,17 @@ fn quote_fill_arrow_array_builder(
                 #NEWLINE_TOKEN
                 ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto& element = elements[elem_idx];
-                    ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(element._tag)));
+                    const auto& union_instance = elements[elem_idx];
+                    ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(union_instance._tag)));
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
-                    switch (element._tag) {
+                    auto variant_index = static_cast<int>(union_instance._tag);
+                    auto variant_builder_untyped = builder->child_builder(variant_index).get();
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    switch (union_instance._tag) {
                         case detail::#tag_name::NONE: {
-                            ARROW_RETURN_NOT_OK(#builder->child_builder(0)->AppendNull());
+                            ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                             break;
                         }
                         #(#tag_cases)*
@@ -1404,7 +1400,7 @@ fn quote_append_elements_to_builder(
     } else {
         let element_accessor = quote!(elements[elem_idx]);
         let single_append =
-            quote_append_single_element_to_builder(field, builder, &element_accessor, includes);
+            quote_append_single_field_to_builder(field, builder, &element_accessor, includes);
         quote! {
             ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
@@ -1414,7 +1410,7 @@ fn quote_append_elements_to_builder(
     }
 }
 
-fn quote_append_single_element_to_builder(
+fn quote_append_single_field_to_builder(
     field: &ObjectField,
     builder: &Ident,
     element_accessor: &TokenStream,
@@ -1427,7 +1423,32 @@ fn quote_append_single_element_to_builder(
         quote!(#element_accessor.#field_name)
     };
 
-    let append_value = match &field.typ {
+    let append_value =
+        quote_append_single_value_to_builder(&field.typ, builder, &value_access, includes);
+
+    if field.is_nullable {
+        quote! {
+            const auto& element = #element_accessor;
+            if (element.#field_name.has_value()) {
+                #append_value
+            } else {
+                ARROW_RETURN_NOT_OK(#builder->AppendNull());
+            }
+        }
+    } else {
+        quote! {
+            #append_value
+        }
+    }
+}
+
+fn quote_append_single_value_to_builder(
+    typ: &Type,
+    builder: &Ident,
+    value_access: &TokenStream,
+    includes: &mut Includes,
+) -> TokenStream {
+    match &typ {
         Type::UInt8
         | Type::UInt16
         | Type::UInt32
@@ -1441,34 +1462,73 @@ fn quote_append_single_element_to_builder(
         | Type::Float32
         | Type::Float64
         | Type::String => {
-            quote!(#builder->Append(#value_access))
+            quote!(ARROW_RETURN_NOT_OK(#builder->Append(#value_access));)
         }
-        Type::Array { .. } => unimplemented!("Single append of array to builder not implemented"),
-        Type::Vector { .. } => unimplemented!("Single append of vector to builder not implemented"),
-        Type::Object(fqname) => {
-            let fqname = quote_fqname_as_type_path(includes, fqname);
-            quote!(#fqname::fill_arrow_array_builder(#builder, &#value_access, 1))
-        }
-    };
+        Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+            let num_items_per_element = match &typ {
+                Type::Array { length, .. } => quote_integer(length),
+                Type::Vector { .. } => quote!(#value_access.size()),
+                _ => unreachable!(),
+            };
 
-    if field.is_nullable {
-        quote! {
-            const auto& element = #element_accessor;
-            if (element.#field_name.has_value()) {
-                ARROW_RETURN_NOT_OK(#append_value);
-            } else {
-                ARROW_RETURN_NOT_OK(#builder->AppendNull());
+            // `&expression[0]` is not pretty but works on both arrays and vectors!
+            let element_ptr_accessor =
+                quote_batch_append_cast_element(elem_type, quote!(&#value_access[0]));
+
+            match elem_type {
+                ElementType::UInt8
+                | ElementType::UInt16
+                | ElementType::UInt32
+                | ElementType::UInt64
+                | ElementType::Int8
+                | ElementType::Int16
+                | ElementType::Int32
+                | ElementType::Int64
+                | ElementType::Bool
+                | ElementType::Float16
+                | ElementType::Float32
+                | ElementType::Float64 => {
+                    quote! {
+                        ARROW_RETURN_NOT_OK(#builder->AppendValues(#element_ptr_accessor, #num_items_per_element, nullptr));
+                    }
+                }
+                ElementType::String => {
+                    quote! {
+                        for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
+                            ARROW_RETURN_NOT_OK(#builder->Append(#value_access[item_idx]));
+                        }
+                    }
+                }
+                ElementType::Object(fqname) => {
+                    let fqname = quote_fqname_as_type_path(includes, fqname);
+                    quote! {
+                        ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#builder, #element_ptr_accessor, #num_items_per_element));
+                    }
+                }
             }
         }
-    } else {
-        quote! {
-            ARROW_RETURN_NOT_OK(#append_value);
+        Type::Object(fqname) => {
+            let fqname = quote_fqname_as_type_path(includes, fqname);
+            quote!(ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#builder, &#value_access, 1));)
         }
     }
 }
 
+// TODO: remove?
 fn quote_batch_append_cast(datatype: &DataType, element_ptr_accessor: TokenStream) -> TokenStream {
     if *datatype == DataType::Boolean {
+        // Bool needs a cast because it takes uint8_t.
+        quote!(reinterpret_cast<const uint8_t*>(#element_ptr_accessor))
+    } else {
+        element_ptr_accessor
+    }
+}
+
+fn quote_batch_append_cast_element(
+    datatype: &ElementType,
+    element_ptr_accessor: TokenStream,
+) -> TokenStream {
+    if *datatype == ElementType::Bool {
         // Bool needs a cast because it takes uint8_t.
         quote!(reinterpret_cast<const uint8_t*>(#element_ptr_accessor))
     } else {
