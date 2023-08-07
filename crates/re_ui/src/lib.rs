@@ -553,7 +553,7 @@ impl ReUi {
         ];
 
         use std::f32::consts::TAU;
-        let rotation = Rot2::from_angle(egui::remap(openness, 0.0..=1.0, TAU / 4.0..=0.0));
+        let rotation = Rot2::from_angle(egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0));
         for p in &mut points {
             *p = rect.center() + rotation * (*p - pos2(0.5, 0.5)) * extent;
         }
