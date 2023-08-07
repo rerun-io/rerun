@@ -13,7 +13,31 @@ namespace rerun {
             float xyzw[4];
 
           public:
+            // Extensions to generated type defined in 'quaternion_ext.cpp'
+
+            /// Construct Quaternion from x/y/z/w values.
+            Quaternion(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
+
+            float x() const {
+                return xyzw[0];
+            }
+
+            float y() const {
+                return xyzw[1];
+            }
+
+            float z() const {
+                return xyzw[2];
+            }
+
+            float w() const {
+                return xyzw[3];
+            }
+
+          public:
             Quaternion() = default;
+
+            Quaternion(const float (&_xyzw)[4]) : xyzw{_xyzw[0], _xyzw[1], _xyzw[2], _xyzw[3]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

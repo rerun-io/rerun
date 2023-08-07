@@ -25,16 +25,25 @@ pub fn iter_dir<'a>(
     path: impl AsRef<Path>,
     extensions: Option<&'a [&'a str]>,
 ) -> impl Iterator<Item = PathBuf> + 'a {
-    fn filter(entry: &walkdir::DirEntry, extensions: Option<&[&str]>) -> bool {
-        let is_dir = entry.file_type().is_dir();
-        let is_interesting = extensions.map_or(true, |extensions| {
+    iter_dir_filtered(path, move |entry: &Path| {
+        extensions.map_or(true, |extensions| {
             extensions.iter().any(|ext| {
                 entry
-                    .path()
                     .extension()
                     .map_or(false, |ext2| *ext == ext2.to_string_lossy())
             })
-        });
+        })
+    })
+}
+
+/// Recursively walks the directory at `path` in filename order with an arbitrary filter.
+pub fn iter_dir_filtered<'a>(
+    path: impl AsRef<Path>,
+    custom_filter: impl Fn(&Path) -> bool + 'a,
+) -> impl Iterator<Item = PathBuf> + 'a {
+    fn filter(entry: &walkdir::DirEntry, custom_filter: &impl Fn(&Path) -> bool) -> bool {
+        let is_dir = entry.file_type().is_dir();
+        let is_interesting = custom_filter(entry.path());
         is_dir || is_interesting
     }
 
@@ -42,7 +51,7 @@ pub fn iter_dir<'a>(
     walkdir::WalkDir::new(path)
         .sort_by_file_name()
         .into_iter()
-        .filter_entry(move |entry| filter(entry, extensions))
+        .filter_entry(move |entry| filter(entry, &custom_filter))
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| entry.file_type().is_file().then(|| entry.into_path()))
 }
@@ -83,6 +92,33 @@ pub fn compute_dir_hash<'a>(path: impl AsRef<Path>, extensions: Option<&'a [&'a 
 
     let path = path.as_ref();
     for filepath in iter_dir(path, extensions) {
+        let mut file = fs::File::open(&filepath)
+            .with_context(|| format!("couldn't open {filepath:?}"))
+            .unwrap();
+        io::copy(&mut file, &mut hasher)
+            .with_context(|| format!("couldn't copy from {filepath:?}"))
+            .unwrap();
+
+        rerun_if_changed(filepath);
+    }
+
+    encode_hex(hasher.finalize().as_slice())
+}
+
+/// Given a directory path, computes the sha256 hash of the accumulated contents of all of its
+/// files (ordered by filename) except those failing a a custom filter, and returns an hexadecimal string for it.
+///
+/// This includes files in sub-directories (i.e. it's recursive).
+///
+/// This will automatically emit a `rerun-if-changed` clause for all the files that were hashed.
+pub fn compute_dir_filtered_hash<'a>(
+    path: impl AsRef<Path>,
+    custom_filter: impl Fn(&Path) -> bool + 'a,
+) -> String {
+    let mut hasher = Sha256::new();
+
+    let path = path.as_ref();
+    for filepath in iter_dir_filtered(path, custom_filter) {
         let mut file = fs::File::open(&filepath)
             .with_context(|| format!("couldn't open {filepath:?}"))
             .unwrap();

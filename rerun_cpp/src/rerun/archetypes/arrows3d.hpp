@@ -44,13 +44,10 @@ namespace rerun {
         ///    for (int i = 0; i <100; ++i) {
         ///        float angle = 2.0 * M_PI * i * 0.01f;
         ///        float length = log2f(i + 1);
-        ///        vectors.push_back(rr::datatypes::Vec3D{length * sinf(angle), 0.0, length *
-        ///        cosf(angle)});
+        ///        vectors.push_back({length * sinf(angle), 0.0, length * cosf(angle)});
         ///
-        ///        // TODO(andreas): provide `unmultiplied_rgba`
-        ///        uint8_t c = static_cast<uint8_t>((angle / (2.0 * M_PI) * 255.0) + 0.5);
-        ///        uint32_t color = ((255 - c) <<24) + (c <<16) + (128 <<8) + (128 <<0);
-        ///        colors.push_back(color);
+        ///        uint8_t c = static_cast<uint8_t>(angle / (2.0 * M_PI) * 255.0);
+        ///        colors.push_back({static_cast<uint8_t>(255 - c), c, 128, 128});
         ///    }
         ///
         ///    rr_stream.log(\"arrows\", rr::archetypes::Arrows3D(vectors).with_colors(colors));
@@ -99,7 +96,7 @@ namespace rerun {
 
             /// All the origin points for each arrow in the batch.
             Arrows3D& with_origins(rerun::components::Origin3D _origins) {
-                origins = std::move(std::vector(1, std::move(_origins)));
+                origins = std::vector(1, std::move(_origins));
                 return *this;
             }
 
@@ -117,7 +114,7 @@ namespace rerun {
             /// The shaft is rendered as a line with `radius = 0.5 * radius`.
             /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
             Arrows3D& with_radii(rerun::components::Radius _radii) {
-                radii = std::move(std::vector(1, std::move(_radii)));
+                radii = std::vector(1, std::move(_radii));
                 return *this;
             }
 
@@ -129,7 +126,7 @@ namespace rerun {
 
             /// Optional colors for the points.
             Arrows3D& with_colors(rerun::components::Color _colors) {
-                colors = std::move(std::vector(1, std::move(_colors)));
+                colors = std::vector(1, std::move(_colors));
                 return *this;
             }
 
@@ -141,7 +138,7 @@ namespace rerun {
 
             /// Optional text labels for the arrows.
             Arrows3D& with_labels(rerun::components::Label _labels) {
-                labels = std::move(std::vector(1, std::move(_labels)));
+                labels = std::vector(1, std::move(_labels));
                 return *this;
             }
 
@@ -157,7 +154,7 @@ namespace rerun {
             ///
             /// The class ID provides colors and labels if not specified explicitly.
             Arrows3D& with_class_ids(rerun::components::ClassId _class_ids) {
-                class_ids = std::move(std::vector(1, std::move(_class_ids)));
+                class_ids = std::vector(1, std::move(_class_ids));
                 return *this;
             }
 
@@ -170,7 +167,7 @@ namespace rerun {
 
             /// Unique identifiers for each individual point in the batch.
             Arrows3D& with_instance_keys(rerun::components::InstanceKey _instance_keys) {
-                instance_keys = std::move(std::vector(1, std::move(_instance_keys)));
+                instance_keys = std::vector(1, std::move(_instance_keys));
                 return *this;
             }
 

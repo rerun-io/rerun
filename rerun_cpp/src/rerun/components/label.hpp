@@ -20,6 +20,16 @@ namespace rerun {
             static const char* NAME;
 
           public:
+            // Extensions to generated type defined in 'label_ext.cpp'
+
+            /// Construct Label from c string.
+            Label(const char* str) : value(str) {}
+
+            const char* c_str() const {
+                return value.c_str();
+            }
+
+          public:
             Label() = default;
 
             Label(std::string _value) : value(std::move(_value)) {}

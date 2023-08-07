@@ -34,6 +34,8 @@ const DOC_COMMENT_PREFIX_TOKEN: &str = "DOC_COMMENT_PREFIX_TOKEN";
 const DOC_COMMENT_SUFFIX_TOKEN: &str = "DOC_COMMENT_SUFFIX_TOKEN";
 const SYS_INCLUDE_PATH_PREFIX_TOKEN: &str = "SYS_INCLUDE_PATH_PREFIX_TOKEN";
 const SYS_INCLUDE_PATH_SUFFIX_TOKEN: &str = "SYS_INCLUDE_PATH_SUFFIX_TOKEN";
+const HEADER_EXTENSION_PREFIX_TOKEN: &str = "HEADER_EXTENSION_PREFIX_TOKEN";
+const HEADER_EXTENSION_SUFFIX_TOKEN: &str = "HEADER_EXTENSION_SUFFIX_TOKEN";
 const TODO_TOKEN: &str = "TODO_TOKEN";
 
 fn quote_comment(text: &str) -> TokenStream {
@@ -56,10 +58,13 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
         &token_stream
             .to_string()
             .replace(&format!("{NEWLINE_TOKEN:?}"), "\n")
+            .replace(NEWLINE_TOKEN, "\n") // Should only happen inside header extensions.
             .replace(&format!("{NORMAL_COMMENT_PREFIX_TOKEN:?} \""), "//")
             .replace(&format!("\" {NORMAL_COMMENT_SUFFIX_TOKEN:?}"), "\n")
             .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "///")
             .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
+            .replace(&format!("{HEADER_EXTENSION_PREFIX_TOKEN:?} \""), "")
+            .replace(&format!("\" {HEADER_EXTENSION_SUFFIX_TOKEN:?}"), "")
             .replace(&format!("{SYS_INCLUDE_PATH_PREFIX_TOKEN:?} \""), "<")
             .replace(&format!("\" {SYS_INCLUDE_PATH_SUFFIX_TOKEN:?}"), ">")
             .replace(
@@ -106,7 +111,10 @@ impl CppCodeGenerator {
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
             let filename = obj.snake_case_name();
-            let (hpp, cpp) = generate_hpp_cpp(objects, arrow_registry, obj);
+            let extension_filename = folder_path.join(format!("{filename}_ext.cpp"));
+            let hpp_type_extensions = hpp_type_extensions(&extension_filename);
+
+            let (hpp, cpp) = generate_hpp_cpp(objects, arrow_registry, obj, &hpp_type_extensions);
             for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
                 let string = string_from_token_stream(&tokens, obj.relative_filepath());
                 let filepath = folder_path.join(format!("{filename}.{extension}"));
@@ -163,12 +171,50 @@ impl crate::CodeGenerator for CppCodeGenerator {
     }
 }
 
+/// Retrieves code from an extension cpp file that should go to the generated header.
+fn hpp_type_extensions(extension_file: &Utf8Path) -> TokenStream {
+    let Ok(content) = std::fs::read_to_string(extension_file.as_std_path()) else {
+        return quote! {};
+    };
+
+    const COPY_TO_HEADER_START_MARKER: &str = "[CODEGEN COPY TO HEADER START]";
+    const COPY_TO_HEADER_END_MARKER: &str = "[CODEGEN COPY TO HEADER END]";
+
+    let start = content.find(COPY_TO_HEADER_START_MARKER).unwrap_or_else(||
+        panic!("C++ extension file missing start marker. Without it, nothing is exposed to the header, i.e. not accessible to the user. Expected to find '{COPY_TO_HEADER_START_MARKER}' in {extension_file:?}")
+    );
+
+    let end = content.find(COPY_TO_HEADER_END_MARKER).unwrap_or_else(||
+        panic!("C++ extension file has a start marker but no end marker. Expected to find '{COPY_TO_HEADER_START_MARKER}' in {extension_file:?}")
+    );
+    let end = content[..end].rfind('\n').unwrap_or_else(||
+        panic!("Expected line break at some point before {COPY_TO_HEADER_END_MARKER} in {extension_file:?}")
+    );
+
+    let comment = quote_comment(&format!(
+        "Extensions to generated type defined in '{}'",
+        extension_file.file_name().unwrap()
+    ));
+    let extensions = &content[start + COPY_TO_HEADER_START_MARKER.len()..end]
+        .replace('\n', &format!(" {NEWLINE_TOKEN} "));
+    quote! {
+        public:
+        #NEWLINE_TOKEN
+        #comment
+        #NEWLINE_TOKEN
+        #HEADER_EXTENSION_PREFIX_TOKEN #extensions #HEADER_EXTENSION_SUFFIX_TOKEN
+        #NEWLINE_TOKEN
+    }
+}
+
 fn generate_hpp_cpp(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
     obj: &Object,
+    hpp_type_extensions: &TokenStream,
 ) -> (TokenStream, TokenStream) {
-    let QuotedObject { hpp, cpp } = QuotedObject::new(arrow_registry, objects, obj);
+    let QuotedObject { hpp, cpp } =
+        QuotedObject::new(arrow_registry, objects, obj, hpp_type_extensions);
     let snake_case_name = obj.snake_case_name();
     let hash = quote! { # };
     let pragma_once = pragma_once();
@@ -199,10 +245,19 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
-    pub fn new(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> Self {
+    pub fn new(
+        arrow_registry: &ArrowRegistry,
+        objects: &Objects,
+        obj: &Object,
+        hpp_type_extensions: &TokenStream,
+    ) -> Self {
         match obj.specifics {
-            crate::ObjectSpecifics::Struct => Self::from_struct(arrow_registry, objects, obj),
-            crate::ObjectSpecifics::Union { .. } => Self::from_union(arrow_registry, objects, obj),
+            crate::ObjectSpecifics::Struct => {
+                Self::from_struct(arrow_registry, objects, obj, hpp_type_extensions)
+            }
+            crate::ObjectSpecifics::Union { .. } => {
+                Self::from_union(arrow_registry, objects, obj, hpp_type_extensions)
+            }
         }
     }
 
@@ -210,6 +265,7 @@ impl QuotedObject {
         arrow_registry: &ArrowRegistry,
         objects: &Objects,
         obj: &Object,
+        hpp_type_extensions: &TokenStream,
     ) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
         let type_name = &obj.name;
@@ -254,14 +310,33 @@ impl QuotedObject {
                     // Single-field struct - it is a newtype wrapper.
                     // Create a implicit constructor and assignment from its own field-type.
                     let obj_field = &obj.fields[0];
-                    if let Type::Array { .. } = &obj_field.typ {
-                        // TODO(emilk): implicit constructor for arrays
+
+                    let field_ident = format_ident!("{}", obj_field.name);
+                    let param_ident = format_ident!("_{}", obj_field.name);
+
+                    if let Type::Array { elem_type, length } = &obj_field.typ {
+                        // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
+                        // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
+                        let length_quoted = quote_integer(length);
+                        let element_type = quote_element_type(&mut hpp_includes, elem_type);
+                        let element_assignments = (0..*length).map(|i| {
+                            let i = quote_integer(i);
+                            quote!(#param_ident[#i])
+                        });
+                        methods.push(Method {
+                            declaration: MethodDeclaration::constructor(quote! {
+                                #type_ident(const #element_type (&#param_ident)[#length_quoted]) : #field_ident{#(#element_assignments),*}
+                            }),
+                            ..Method::default()
+                        });
+
+                        // No assignment operator for arrays since c arrays aren't typically assignable anyways.
+                        // Note that creating an std::array overload would make initializer_list based construction ambiguous.
+                        // Assignment operator for std::array could make sense though?
                     } else {
                         // Pass by value:
                         // If it was a temporary it gets moved into the value and then moved again into the field.
                         // If it was a lvalue it gets copied into the value and then moved into the field.
-                        let field_ident = format_ident!("{}", obj_field.name);
-                        let param_ident = format_ident!("_{}", obj_field.name);
                         let parameter_declaration =
                             quote_variable(&mut hpp_includes, obj_field, &param_ident);
                         hpp_includes.system.insert("utility".to_owned()); // std::move
@@ -412,7 +487,7 @@ impl QuotedObject {
                                 },
                             },
                             definition_body: quote! {
-                                #field_ident = std::move(std::vector(1, std::move(#parameter_ident)));
+                                #field_ident = std::vector(1, std::move(#parameter_ident));
                                 return *this;
                             },
                             inline: true,
@@ -476,6 +551,8 @@ impl QuotedObject {
 
                         #(#constants_hpp;)*
 
+                        #hpp_type_extensions
+
                         #hpp_method_section
                     };
                 }
@@ -498,7 +575,12 @@ impl QuotedObject {
         Self { hpp, cpp }
     }
 
-    fn from_union(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> QuotedObject {
+    fn from_union(
+        arrow_registry: &ArrowRegistry,
+        objects: &Objects,
+        obj: &Object,
+        hpp_type_extensions: &TokenStream,
+    ) -> QuotedObject {
         // We implement sum-types as tagged unions;
         // Putting non-POD types in a union requires C++11.
         //
@@ -782,6 +864,8 @@ impl QuotedObject {
                         }
 
                         #destructor
+
+                        #hpp_type_extensions
 
                         // This is useful for easily implementing the move constructor and assignment operators:
                         void swap(#pascal_case_ident& other) noexcept {

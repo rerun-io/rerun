@@ -20,6 +20,24 @@ namespace rerun {
             static const char* NAME;
 
           public:
+            // Extensions to generated type defined in 'origin3d_ext.cpp'
+
+            /// Construct Origin3D from x/y/z values.
+            Origin3D(float x, float y, float z) : origin{x, y, z} {}
+
+            float x() const {
+                return origin.x();
+            }
+
+            float y() const {
+                return origin.y();
+            }
+
+            float z() const {
+                return origin.z();
+            }
+
+          public:
             Origin3D() = default;
 
             Origin3D(rerun::datatypes::Vec3D _origin) : origin(std::move(_origin)) {}

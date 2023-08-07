@@ -151,7 +151,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
 SCENARIO("RecordingStream can log to file", TEST_TAG) {
     const char* test_path = "build/test_output";
     fs::create_directories(test_path);
-    static int counter = 0;
+
     std::string test_rrd0 = std::string(test_path) + "test-file-0.rrd";
     std::string test_rrd1 = std::string(test_path) + "test-file-1.rrd";
     std::remove(test_rrd0.c_str());
