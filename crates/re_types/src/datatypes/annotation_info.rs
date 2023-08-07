@@ -284,15 +284,16 @@ impl crate::Loggable for AnnotationInfo {
                     {
                         let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
                         let offsets = downcast.offsets();
-                        offsets
-                            .iter()
-                            .zip(offsets.lengths())
-                            .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
-                            .map(|opt| {
-                                opt.map(|v| {
-                                    crate::components::Label(crate::arrow_adapter::ArrowString(v))
-                                })
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            downcast.validity(),
+                        )
+                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                        .map(|opt| {
+                            opt.map(|v| {
+                                crate::components::Label(crate::arrow_adapter::ArrowString(v))
                             })
+                        })
                     }
                 };
                 let color = {

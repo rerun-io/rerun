@@ -1603,11 +1603,12 @@ impl crate::Loggable for AffixFuzzer9 {
         Ok({
             let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
             let offsets = downcast.offsets();
-            offsets
-                .iter()
-                .zip(offsets.lengths())
-                .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
-                .map(|v| v.map(crate::arrow_adapter::ArrowString))
+            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                offsets.iter().zip(offsets.lengths()),
+                downcast.validity(),
+            )
+            .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+            .map(|v| v.map(crate::arrow_adapter::ArrowString))
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {
@@ -1746,11 +1747,12 @@ impl crate::Loggable for AffixFuzzer10 {
         Ok({
             let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
             let offsets = downcast.offsets();
-            offsets
-                .iter()
-                .zip(offsets.lengths())
-                .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
-                .map(|v| v.map(crate::arrow_adapter::ArrowString))
+            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                offsets.iter().zip(offsets.lengths()),
+                downcast.validity(),
+            )
+            .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+            .map(|v| v.map(crate::arrow_adapter::ArrowString))
         }
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
@@ -2152,11 +2154,12 @@ impl crate::Loggable for AffixFuzzer12 {
                 let data = {
                     let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
                     let offsets = downcast.offsets();
-                    offsets
-                        .iter()
-                        .zip(offsets.lengths())
-                        .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
-                        .map(|v| v.map(crate::arrow_adapter::ArrowString))
+                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                        offsets.iter().zip(offsets.lengths()),
+                        downcast.validity(),
+                    )
+                    .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                    .map(|v| v.map(crate::arrow_adapter::ArrowString))
                 }
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
@@ -2383,11 +2386,12 @@ impl crate::Loggable for AffixFuzzer13 {
                 let data = {
                     let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
                     let offsets = downcast.offsets();
-                    offsets
-                        .iter()
-                        .zip(offsets.lengths())
-                        .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
-                        .map(|v| v.map(crate::arrow_adapter::ArrowString))
+                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                        offsets.iter().zip(offsets.lengths()),
+                        downcast.validity(),
+                    )
+                    .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                    .map(|v| v.map(crate::arrow_adapter::ArrowString))
                 }
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {

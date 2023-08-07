@@ -2319,11 +2319,11 @@ fn quote_arrow_field_deserializer(
                 {
                 let downcast = #data_src.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
                 let offsets = downcast.offsets();
-
-                offsets
-                .iter()
-                .zip(offsets.lengths())
-                .map(|(o, l)| Some(downcast.values().clone().sliced(*o as _, l)))
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    downcast.validity(),
+                )
+                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
                     #quoted_transparent_unmapping
                 }
             }
