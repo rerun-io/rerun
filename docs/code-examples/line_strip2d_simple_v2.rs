@@ -1,19 +1,15 @@
 //! Log a simple line strip.
 
 use rerun::{
-    components::{LineStrip2D, Rect2D},
-    datatypes::Vec4D,
-    MsgSender, RecordingStreamBuilder,
+    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, MsgSender,
+    RecordingStreamBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
 
-    let points = vec![[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
-
-    MsgSender::new("simple")
-        .with_component(&[LineStrip2D(points.into_iter().map(Into::into).collect())])?
-        .send(&rec_stream)?;
+    let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
+    MsgSender::from_archetype("strip", &LineStrips2D::new([points]))?.send(&rec_stream)?;
 
     // Log an extra rect to set the view bounds
     MsgSender::new("bounds")
