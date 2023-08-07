@@ -900,37 +900,18 @@ impl Type {
 
     /// True if this is some kind of array/vector.
     pub fn is_plural(&self) -> bool {
-        match self {
-            Self::Array {
-                elem_type: _,
-                length: _,
-            }
-            | Self::Vector { elem_type: _ } => true,
-            Self::UInt8
-            | Self::UInt16
-            | Self::UInt32
-            | Self::UInt64
-            | Self::Int8
-            | Self::Int16
-            | Self::Int32
-            | Self::Int64
-            | Self::Bool
-            | Self::Float16
-            | Self::Float32
-            | Self::Float64
-            | Self::String
-            | Self::Object(_) => false,
-        }
+        self.plural_inner().is_some()
     }
 
-    pub fn vector_inner(&self) -> Option<&ElementType> {
+    /// Returns element type for arrays and vectors.
+    pub fn plural_inner(&self) -> Option<&ElementType> {
         match self {
-            Self::Vector { elem_type } => Some(elem_type),
-            Self::Array {
-                elem_type: _,
+            Self::Vector { elem_type }
+            | Self::Array {
+                elem_type,
                 length: _,
-            }
-            | Self::UInt8
+            } => Some(elem_type),
+            Self::UInt8
             | Self::UInt16
             | Self::UInt32
             | Self::UInt64
@@ -945,6 +926,11 @@ impl Type {
             | Self::String
             | Self::Object(_) => None,
         }
+    }
+
+    pub fn vector_inner(&self) -> Option<&ElementType> {
+        self.plural_inner()
+            .filter(|_| matches!(self, Self::Vector { .. }))
     }
 
     /// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
