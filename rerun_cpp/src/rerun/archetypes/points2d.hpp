@@ -74,7 +74,7 @@ namespace rerun {
 
             /// Optional radii for the points, effectively turning them into circles.
             Points2D& with_radii(rerun::components::Radius _radii) {
-                radii = std::move(std::vector(1, std::move(_radii)));
+                radii = std::vector(1, std::move(_radii));
                 return *this;
             }
 
@@ -86,7 +86,7 @@ namespace rerun {
 
             /// Optional colors for the points.
             Points2D& with_colors(rerun::components::Color _colors) {
-                colors = std::move(std::vector(1, std::move(_colors)));
+                colors = std::vector(1, std::move(_colors));
                 return *this;
             }
 
@@ -98,7 +98,7 @@ namespace rerun {
 
             /// Optional text labels for the points.
             Points2D& with_labels(rerun::components::Label _labels) {
-                labels = std::move(std::vector(1, std::move(_labels)));
+                labels = std::vector(1, std::move(_labels));
                 return *this;
             }
 
@@ -123,7 +123,7 @@ namespace rerun {
             ///
             /// The class ID provides colors and labels if not specified explicitly.
             Points2D& with_class_ids(rerun::components::ClassId _class_ids) {
-                class_ids = std::move(std::vector(1, std::move(_class_ids)));
+                class_ids = std::vector(1, std::move(_class_ids));
                 return *this;
             }
 
@@ -147,7 +147,7 @@ namespace rerun {
             /// identified with `class_id`). E.g. the classification might be 'Person' and the
             /// keypoints refer to joints on a detected skeleton.
             Points2D& with_keypoint_ids(rerun::components::KeypointId _keypoint_ids) {
-                keypoint_ids = std::move(std::vector(1, std::move(_keypoint_ids)));
+                keypoint_ids = std::vector(1, std::move(_keypoint_ids));
                 return *this;
             }
 
@@ -160,7 +160,7 @@ namespace rerun {
 
             /// Unique identifiers for each individual point in the batch.
             Points2D& with_instance_keys(rerun::components::InstanceKey _instance_keys) {
-                instance_keys = std::move(std::vector(1, std::move(_instance_keys)));
+                instance_keys = std::vector(1, std::move(_instance_keys));
                 return *this;
             }
 

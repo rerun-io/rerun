@@ -20,6 +20,20 @@ namespace rerun {
             static const char* NAME;
 
           public:
+            // Extensions to generated type defined in 'point2d_ext.cpp'
+
+            /// Construct Point2D from x/y/z values.
+            Point2D(float x, float y) : xy{x, y} {}
+
+            float x() const {
+                return xy.x();
+            }
+
+            float y() const {
+                return xy.y();
+            }
+
+          public:
             Point2D() = default;
 
             Point2D(rerun::datatypes::Vec2D _xy) : xy(std::move(_xy)) {}

@@ -15,6 +15,18 @@ namespace rerun {
           public:
             Mat3x3() = default;
 
+            Mat3x3(const float (&_coeffs)[9])
+                : coeffs{
+                      _coeffs[0],
+                      _coeffs[1],
+                      _coeffs[2],
+                      _coeffs[3],
+                      _coeffs[4],
+                      _coeffs[5],
+                      _coeffs[6],
+                      _coeffs[7],
+                      _coeffs[8]} {}
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 

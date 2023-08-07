@@ -15,6 +15,25 @@ namespace rerun {
           public:
             Mat4x4() = default;
 
+            Mat4x4(const float (&_coeffs)[16])
+                : coeffs{
+                      _coeffs[0],
+                      _coeffs[1],
+                      _coeffs[2],
+                      _coeffs[3],
+                      _coeffs[4],
+                      _coeffs[5],
+                      _coeffs[6],
+                      _coeffs[7],
+                      _coeffs[8],
+                      _coeffs[9],
+                      _coeffs[10],
+                      _coeffs[11],
+                      _coeffs[12],
+                      _coeffs[13],
+                      _coeffs[14],
+                      _coeffs[15]} {}
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
