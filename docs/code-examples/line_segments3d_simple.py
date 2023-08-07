@@ -1,7 +1,7 @@
 """Log a simple set of line segments."""
 import rerun as rr
 
-rr.init("linesegments3d", spawn=True)
+rr.init("line_segments3d", spawn=True)
 
 rr.log_line_segments(
     "simple",

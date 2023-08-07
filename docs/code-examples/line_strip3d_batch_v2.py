@@ -24,5 +24,5 @@ rr.log_line_strips_3d(
         ],
     ],
     colors=[[255, 0, 0], [0, 255, 0]],
-    stroke_widths=[0.05, 0.01],
+    stroke_widths=[0.025, 0.005],
 )
