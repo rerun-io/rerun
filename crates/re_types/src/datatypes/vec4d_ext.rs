@@ -1,11 +1,11 @@
-use super::Vec3D;
+use super::Vec4D;
 
-impl Vec3D {
-    pub const ZERO: Vec3D = Vec3D([0.0; 3]);
+impl Vec4D {
+    pub const ZERO: Vec4D = Vec4D([0.0; 4]);
 
     #[inline]
-    pub const fn new(x: f32, y: f32, z: f32) -> Self {
-        Self([x, y, z])
+    pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self([x, y, z, w])
     }
 
     #[inline]
@@ -22,19 +22,24 @@ impl Vec3D {
     pub fn z(&self) -> f32 {
         self.0[2]
     }
+
+    #[inline]
+    pub fn w(&self) -> f32 {
+        self.0[2]
+    }
 }
 
-impl From<[f32; 3]> for Vec3D {
+impl From<[f32; 4]> for Vec4D {
     #[inline]
-    fn from(v: [f32; 3]) -> Self {
+    fn from(v: [f32; 4]) -> Self {
         Self(v)
     }
 }
 
-impl From<(f32, f32, f32)> for Vec3D {
+impl From<(f32, f32, f32, f32)> for Vec4D {
     #[inline]
-    fn from((x, y, z): (f32, f32, f32)) -> Self {
-        Self::new(x, y, z)
+    fn from((x, y, z, w): (f32, f32, f32, f32)) -> Self {
+        Self::new(x, y, z, w)
     }
 }
 
@@ -42,27 +47,27 @@ impl From<(f32, f32, f32)> for Vec3D {
 // slices, because Rust cannot keep track of the inherent `Copy` capability of it all across all the
 // layers of `Into`/`IntoIterator`.
 
-impl<'a> From<&'a Vec3D> for Vec3D {
-    fn from(v: &'a Vec3D) -> Self {
+impl<'a> From<&'a Vec4D> for Vec4D {
+    fn from(v: &'a Vec4D) -> Self {
         Self(v.0)
     }
 }
 
-impl<'a> From<&'a (f32, f32, f32)> for Vec3D {
+impl<'a> From<&'a (f32, f32, f32, f32)> for Vec4D {
     #[inline]
-    fn from((x, y, z): &'a (f32, f32, f32)) -> Self {
-        Self::new(*x, *y, *z)
+    fn from((x, y, z, w): &'a (f32, f32, f32, f32)) -> Self {
+        Self::new(*x, *y, *z, *w)
     }
 }
 
-impl<'a> From<&'a [f32; 3]> for Vec3D {
+impl<'a> From<&'a [f32; 4]> for Vec4D {
     #[inline]
-    fn from(v: &'a [f32; 3]) -> Self {
+    fn from(v: &'a [f32; 4]) -> Self {
         Self(*v)
     }
 }
 
-impl<Idx> std::ops::Index<Idx> for Vec3D
+impl<Idx> std::ops::Index<Idx> for Vec4D
 where
     Idx: std::slice::SliceIndex<[f32]>,
 {
@@ -75,29 +80,30 @@ where
 }
 
 #[cfg(feature = "glam")]
-impl From<Vec3D> for glam::Vec3 {
+impl From<Vec4D> for glam::Vec3 {
     #[inline]
-    fn from(v: Vec3D) -> Self {
+    fn from(v: Vec4D) -> Self {
         Self::from_slice(&v.0)
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<glam::Vec3> for Vec3D {
+impl From<glam::Vec4> for Vec4D {
     #[inline]
-    fn from(v: glam::Vec3) -> Self {
+    fn from(v: glam::Vec4) -> Self {
         Self(v.to_array())
     }
 }
 
-impl std::fmt::Display for Vec3D {
+impl std::fmt::Display for Vec4D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[{:.prec$}, {:.prec$}, {:.prec$}]",
+            "[{:.prec$}, {:.prec$}, {:.prec$}, {:.prec$}]",
             self.x(),
             self.y(),
             self.z(),
+            self.w(),
             prec = crate::DISPLAY_PRECISION,
         )
     }
