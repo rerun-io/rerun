@@ -9,7 +9,7 @@ use re_log_types::{entity_path, DataRow, EntityPath, Index, RowId, TimeInt, Time
 use re_query::query_archetype;
 use re_types::{
     archetypes::Points2D,
-    components::{Color, InstanceKey, Point2D},
+    components::{Color, InstanceKey, Label, Point2D},
     Loggable as _,
 };
 
@@ -19,14 +19,28 @@ use re_types::{
 const NUM_FRAMES_POINTS: u32 = 1_000;
 #[cfg(not(debug_assertions))]
 const NUM_POINTS: u32 = 1_000;
+#[cfg(not(debug_assertions))]
+const NUM_FRAMES_STRINGS: u32 = 1_000;
+#[cfg(not(debug_assertions))]
+const NUM_STRINGS: u32 = 1_000;
 
 // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
 #[cfg(debug_assertions)]
 const NUM_FRAMES_POINTS: u32 = 1;
 #[cfg(debug_assertions)]
 const NUM_POINTS: u32 = 1;
+#[cfg(debug_assertions)]
+const NUM_FRAMES_STRINGS: u32 = 1;
+#[cfg(debug_assertions)]
+const NUM_STRINGS: u32 = 1;
 
-criterion_group!(benches, mono_points, batch_points);
+criterion_group!(
+    benches,
+    mono_points,
+    mono_strings,
+    batch_points,
+    batch_strings
+);
 criterion_main!(benches);
 
 // --- Benchmarks ---
@@ -48,6 +62,23 @@ pub fn build_some_colors(len: usize) -> Vec<Color> {
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`re_log_types::TimePoint`].
 pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
     (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
+}
+
+pub fn build_some_strings(len: usize) -> Vec<Label> {
+    use rand::Rng as _;
+    let mut rng = rand::thread_rng();
+
+    (0..len)
+        .map(|_| {
+            let ilen: usize = rng.gen_range(0..10000);
+            let s: String = rand::thread_rng()
+                .sample_iter(&rand::distributions::Alphanumeric)
+                .take(ilen)
+                .map(char::from)
+                .collect();
+            Label::from(s)
+        })
+        .collect()
 }
 
 fn mono_points(c: &mut Criterion) {
@@ -79,6 +110,34 @@ fn mono_points(c: &mut Criterion) {
     }
 }
 
+fn mono_strings(c: &mut Criterion) {
+    // Each mono string gets logged at a different path
+    let paths = (0..NUM_STRINGS)
+        .map(move |string_idx| entity_path!("strings", Index::Sequence(string_idx as _)))
+        .collect_vec();
+    let msgs = build_strings_rows(&paths, 1);
+
+    {
+        let mut group = c.benchmark_group("arrow_mono_strings2");
+        group.sample_size(10);
+        group.throughput(criterion::Throughput::Elements(
+            (NUM_STRINGS * NUM_FRAMES_STRINGS) as _,
+        ));
+        group.bench_function("insert", |b| {
+            b.iter(|| insert_rows(msgs.iter()));
+        });
+    }
+
+    {
+        let mut group = c.benchmark_group("arrow_mono_strings2");
+        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+        let mut store = insert_rows(msgs.iter());
+        group.bench_function("query", |b| {
+            b.iter(|| query_and_visit_strings(&mut store, &paths));
+        });
+    }
+}
+
 fn batch_points(c: &mut Criterion) {
     // Batch points are logged together at a single path
     let paths = [EntityPath::from("points")];
@@ -104,6 +163,31 @@ fn batch_points(c: &mut Criterion) {
     }
 }
 
+fn batch_strings(c: &mut Criterion) {
+    // Batch strings are logged together at a single path
+    let paths = [EntityPath::from("points")];
+    let msgs = build_strings_rows(&paths, NUM_STRINGS as _);
+
+    {
+        let mut group = c.benchmark_group("arrow_batch_strings2");
+        group.throughput(criterion::Throughput::Elements(
+            (NUM_STRINGS * NUM_FRAMES_STRINGS) as _,
+        ));
+        group.bench_function("insert", |b| {
+            b.iter(|| insert_rows(msgs.iter()));
+        });
+    }
+
+    {
+        let mut group = c.benchmark_group("arrow_batch_strings2");
+        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+        let mut store = insert_rows(msgs.iter());
+        group.bench_function("query", |b| {
+            b.iter(|| query_and_visit_strings(&mut store, &paths));
+        });
+    }
+}
+
 // --- Helpers ---
 
 fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
@@ -116,6 +200,28 @@ fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
                     [build_frame_nr((frame_idx as i64).into())],
                     pts as _,
                     (build_some_point2d(pts), build_some_colors(pts)),
+                );
+                // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
+                // in debug mode, by the standard test harness.
+                if cfg!(debug_assertions) {
+                    row.compute_all_size_bytes();
+                }
+                row
+            })
+        })
+        .collect()
+}
+
+fn build_strings_rows(paths: &[EntityPath], strings: usize) -> Vec<DataRow> {
+    (0..NUM_FRAMES_STRINGS)
+        .flat_map(move |frame_idx| {
+            paths.iter().map(move |path| {
+                let mut row = DataRow::from_cells1(
+                    RowId::ZERO,
+                    path.clone(),
+                    [build_frame_nr((frame_idx as i64).into())],
+                    strings as _,
+                    build_some_strings(strings),
                 );
                 // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
                 // in debug mode, by the standard test harness.
@@ -161,4 +267,28 @@ fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Sa
     }
     assert_eq!(NUM_POINTS as usize, points.len());
     points
+}
+
+struct SaveString {
+    _label: Option<Label>,
+}
+
+fn query_and_visit_strings(store: &mut DataStore, paths: &[EntityPath]) -> Vec<SaveString> {
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES_STRINGS as i64 / 2).into());
+
+    let mut strings = Vec::with_capacity(NUM_STRINGS as _);
+
+    for path in paths.iter() {
+        let arch_view = query_archetype::<Points2D>(store, &query, path).unwrap();
+        arch_view
+            .iter_optional_component::<Label>()
+            .unwrap()
+            .for_each(|label| {
+                strings.push(SaveString { _label: label });
+            });
+    }
+    assert_eq!(NUM_STRINGS as usize, strings.len());
+
+    criterion::black_box(strings)
 }
