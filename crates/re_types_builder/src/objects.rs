@@ -1077,6 +1077,30 @@ impl ElementType {
     }
 }
 
+impl TryFrom<Type> for ElementType {
+    type Error = ();
+
+    fn try_from(value: Type) -> Result<Self, ()> {
+        match value {
+            Type::UInt8 => Ok(ElementType::UInt8),
+            Type::UInt16 => Ok(ElementType::UInt16),
+            Type::UInt32 => Ok(ElementType::UInt32),
+            Type::UInt64 => Ok(ElementType::UInt64),
+            Type::Int8 => Ok(ElementType::Int8),
+            Type::Int16 => Ok(ElementType::Int16),
+            Type::Int32 => Ok(ElementType::Int32),
+            Type::Int64 => Ok(ElementType::Int64),
+            Type::Bool => Ok(ElementType::Bool),
+            Type::Float16 => Ok(ElementType::Float16),
+            Type::Float32 => Ok(ElementType::Float32),
+            Type::Float64 => Ok(ElementType::Float64),
+            Type::String => Ok(ElementType::String),
+            Type::Array { .. } | Type::Vector { .. } => Err(()),
+            Type::Object(fqname) => Ok(ElementType::Object(fqname)),
+        }
+    }
+}
+
 // --- Common ---
 
 /// A collection of arbitrary attributes.

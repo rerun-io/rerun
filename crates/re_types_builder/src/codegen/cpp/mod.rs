@@ -1171,74 +1171,78 @@ fn quote_fill_arrow_array_builder(
             let value_builder = format_ident!("value_builder");
             let value_builder_type = arrow_array_builder_type(field.data_type());
             let field_name = format_ident!("{}", &object_field.name);
-            let (num_items_per_element, value_reserve_factor) = match datatype {
-                DataType::List(..) => {
-                    if field.is_nullable {
-                        (quote!(element.#field_name.value().size()), quote_integer(1))
-                    } else {
-                        (quote!(element.#field_name.size()), quote_integer(2))
-                    }
-                }
-                DataType::FixedSizeList(_, length) => {
-                    let length = quote_integer(length);
-                    (length.clone(), length)
-                }
-                _ => unreachable!(),
-            };
 
-            let setup = quote! {
-                auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
-                ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(#value_builder->Reserve(num_elements * #value_reserve_factor));
-                #NEWLINE_TOKEN #NEWLINE_TOKEN
-            };
-
-            let value_accessor = if field.is_nullable {
-                quote!(element.#field_name.value())
-            } else {
-                quote!(element.#field_name)
-            };
-
-            let append_value = quote_append_single_value_to_builder(
-                &object_field.typ,
-                &value_builder,
-                &value_accessor,
-                includes,
-            );
-
-            if field.is_nullable {
-                quote! {
-                    #setup
-                    for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                        const auto& element = elements[elem_idx];
-                        if (element.#field_name.has_value()) {
-                            #append_value
-                            ARROW_RETURN_NOT_OK(#builder->Append());
-                        } else {
-                            ARROW_RETURN_NOT_OK(#builder->AppendNull());
-                        }
-                    }
-                }
-            } else if matches!(datatype, DataType::FixedSizeList(..))
+            if !field.is_nullable
+                && matches!(datatype, DataType::FixedSizeList(..))
                 && trivial_batch_append(field.data_type())
             {
                 // Optimize common case: Trivial batch of transparent fixed size elements.
-                let element_ptr_accessor =
-                    quote_batch_append_cast(datatype, quote!(elements[0].#field_name));
+                let field_accessor = quote!(elements[0].#field_name);
+                let num_items_per_value =
+                    quote_num_items_per_value(&object_field.typ, &field_accessor);
+                let field_ptr_accessor = quote_field_ptr_access(&object_field.typ, field_accessor);
                 quote! {
                     auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                     #NEWLINE_TOKEN #NEWLINE_TOKEN
                     static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
-                    ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#element_ptr_accessor, num_elements * #num_items_per_element, nullptr));
+                    ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, num_elements * #num_items_per_value, nullptr));
                     ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
                 }
             } else {
-                quote! {
-                    #setup
-                    for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                        const auto& element = elements[elem_idx];
-                        #append_value
-                        ARROW_RETURN_NOT_OK(#builder->Append());
+                let value_reserve_factor = match &object_field.typ {
+                    Type::Vector { .. } => {
+                        if field.is_nullable {
+                            1
+                        } else {
+                            2
+                        }
+                    }
+                    Type::Array { length, .. } => *length,
+                    _ => unreachable!(),
+                };
+                let value_reserve_factor = quote_integer(value_reserve_factor);
+
+                let setup = quote! {
+                    auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
+                    ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+                    ARROW_RETURN_NOT_OK(#value_builder->Reserve(num_elements * #value_reserve_factor));
+                    #NEWLINE_TOKEN #NEWLINE_TOKEN
+                };
+
+                let value_accessor = if field.is_nullable {
+                    quote!(element.#field_name.value())
+                } else {
+                    quote!(element.#field_name)
+                };
+
+                let append_value = quote_append_single_value_to_builder(
+                    &object_field.typ,
+                    &value_builder,
+                    value_accessor,
+                    includes,
+                );
+
+                if field.is_nullable {
+                    quote! {
+                        #setup
+                        for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                            const auto& element = elements[elem_idx];
+                            if (element.#field_name.has_value()) {
+                                #append_value
+                                ARROW_RETURN_NOT_OK(#builder->Append());
+                            } else {
+                                ARROW_RETURN_NOT_OK(#builder->AppendNull());
+                            }
+                        }
+                    }
+                } else {
+                    quote! {
+                        #setup
+                        for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                            const auto& element = elements[elem_idx];
+                            #append_value
+                            ARROW_RETURN_NOT_OK(#builder->Append());
+                        }
                     }
                 }
             }
@@ -1389,11 +1393,10 @@ fn quote_append_elements_to_builder(
         // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
         // we can just pass the whole array as-is!
         let field_name = format_ident!("{}", field.name);
-        let element_ptr_accessor =
-            quote_batch_append_cast(datatype, quote!(&elements->#field_name));
+        let field_ptr_accessor = quote_field_ptr_access(&field.typ, quote!(elements->#field_name));
         quote! {
             static_assert(sizeof(*elements) == sizeof(elements->#field_name));
-            ARROW_RETURN_NOT_OK(#builder->AppendValues(#element_ptr_accessor, num_elements));
+            ARROW_RETURN_NOT_OK(#builder->AppendValues(#field_ptr_accessor, num_elements));
         }
     } else {
         let element_accessor = quote!(elements[elem_idx]);
@@ -1422,7 +1425,7 @@ fn quote_append_single_field_to_builder(
     };
 
     let append_value =
-        quote_append_single_value_to_builder(&field.typ, builder, &value_access, includes);
+        quote_append_single_value_to_builder(&field.typ, builder, value_access, includes);
 
     if field.is_nullable {
         quote! {
@@ -1447,7 +1450,7 @@ fn quote_append_single_field_to_builder(
 fn quote_append_single_value_to_builder(
     typ: &Type,
     value_builder: &Ident,
-    value_access: &TokenStream,
+    value_access: TokenStream,
     includes: &mut Includes,
 ) -> TokenStream {
     match &typ {
@@ -1467,15 +1470,7 @@ fn quote_append_single_value_to_builder(
             quote!(ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access));)
         }
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
-            let num_items_per_element = match &typ {
-                Type::Array { length, .. } => quote_integer(length),
-                Type::Vector { .. } => quote!(#value_access.size()),
-                _ => unreachable!(),
-            };
-
-            // `&expression[0]` is not pretty but works on both arrays and vectors!
-            let element_ptr_accessor =
-                quote_batch_append_cast_element(elem_type, quote!(&#value_access[0]));
+            let num_items_per_element = quote_num_items_per_value(typ, &value_access);
 
             match elem_type {
                 ElementType::UInt8
@@ -1490,8 +1485,9 @@ fn quote_append_single_value_to_builder(
                 | ElementType::Float16
                 | ElementType::Float32
                 | ElementType::Float64 => {
+                    let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
-                        ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#element_ptr_accessor, #num_items_per_element, nullptr));
+                        ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, #num_items_per_element, nullptr));
                     }
                 }
                 ElementType::String => {
@@ -1503,8 +1499,9 @@ fn quote_append_single_value_to_builder(
                 }
                 ElementType::Object(fqname) => {
                     let fqname = quote_fqname_as_type_path(includes, fqname);
+                    let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
-                        ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #element_ptr_accessor, #num_items_per_element));
+                        ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
                     }
                 }
             }
@@ -1516,25 +1513,26 @@ fn quote_append_single_value_to_builder(
     }
 }
 
-// TODO: remove?
-fn quote_batch_append_cast(datatype: &DataType, element_ptr_accessor: TokenStream) -> TokenStream {
-    if *datatype == DataType::Boolean {
-        // Bool needs a cast because it takes uint8_t.
-        quote!(reinterpret_cast<const uint8_t*>(#element_ptr_accessor))
-    } else {
-        element_ptr_accessor
+fn quote_num_items_per_value(typ: &Type, value_accessor: &TokenStream) -> TokenStream {
+    match &typ {
+        Type::Array { length, .. } => quote_integer(length),
+        Type::Vector { .. } => quote!(#value_accessor.size()),
+        _ => quote_integer(1),
     }
 }
 
-fn quote_batch_append_cast_element(
-    datatype: &ElementType,
-    element_ptr_accessor: TokenStream,
-) -> TokenStream {
-    if *datatype == ElementType::Bool {
-        // Bool needs a cast because it takes uint8_t.
-        quote!(reinterpret_cast<const uint8_t*>(#element_ptr_accessor))
+fn quote_field_ptr_access(typ: &Type, field_accessor: TokenStream) -> TokenStream {
+    let (ptr_access, elem_type) = match typ {
+        Type::Array { elem_type, .. } => (field_accessor, elem_type.clone()),
+        Type::Vector { elem_type } => (quote!(#field_accessor.data()), elem_type.clone()),
+        _ => (quote!(&#field_accessor), typ.clone().try_into().unwrap()),
+    };
+
+    if elem_type == ElementType::Bool {
+        // Bool needs a cast because arrow takes it as uint8_t.
+        quote!(reinterpret_cast<const uint8_t*>(#ptr_access))
     } else {
-        element_ptr_accessor
+        ptr_access
     }
 }
 
