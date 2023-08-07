@@ -25,8 +25,6 @@ from .common_arrays import (
     radii_expected,
 )
 
-# TODO: we _have_ to test the shape-based things
-
 strips_arrays: list[rrc.LineStrip2DArrayLike] = [
     [],
     np.array([]),
