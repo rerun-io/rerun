@@ -6,7 +6,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("disconnect_space").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
 
     // These two points can be projected into the same space..
     MsgSender::from_archetype("world/room1/point", &Points3D::new([(0.0, 0.0, 0.0)]))?

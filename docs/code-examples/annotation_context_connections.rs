@@ -1,12 +1,12 @@
 //! Log some very simple points.
-use rerun::archetypes::AnnotationContext;
-use rerun::components::{ClassId, Color, KeypointId, Label, Point3D};
+
+use rerun::archetypes::{AnnotationContext, Points3D};
+use rerun::components::{Color, Label};
 use rerun::datatypes::{AnnotationInfo, ClassDescription, KeypointPair};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
-        RecordingStreamBuilder::new("annotation_context_connections").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
 
     // Log an annotation context to assign a label and color to each class
     // Create a class description with labels and color for each keypoint ID as well as some
@@ -44,21 +44,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
 
     // Log some points with different keypoint IDs
-    let points = [
-        [0., 0., 0.],
-        [50., 0., 20.],
-        [100., 100., 30.],
-        [0., 50., 40.],
-    ]
-    .into_iter()
-    .map(Point3D::from)
-    .collect::<Vec<_>>();
-
-    MsgSender::new("points")
-        .with_component(&points)?
-        .with_component(&[KeypointId(0), KeypointId(1), KeypointId(2), KeypointId(3)])?
-        .with_splat(ClassId(0))?
-        .send(&rec_stream)?;
+    MsgSender::from_archetype(
+        "points",
+        &Points3D::new([
+            [0., 0., 0.],
+            [50., 0., 20.],
+            [100., 100., 30.],
+            [0., 50., 40.],
+        ])
+        .with_keypoint_ids([0, 1, 2, 3])
+        .with_class_ids([0]),
+    )?
+    .send(&rec_stream)?;
 
     rerun::native_viewer::show(storage.take())?;
 

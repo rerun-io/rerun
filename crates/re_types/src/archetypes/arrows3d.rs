@@ -28,7 +28,7 @@
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec_stream, storage) = RecordingStreamBuilder::new("arrow").memory()?;
+///    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
 ///
 ///    let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
 ///        .map(|i| {
