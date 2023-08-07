@@ -50,6 +50,7 @@ use std::{ops::RangeInclusive, sync::Arc};
 
 use parking_lot::Mutex;
 
+use egui::emath::Rot2;
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
@@ -497,12 +498,16 @@ impl ReUi {
                     egui::Vec2::splat(icon_width),
                 );
                 let icon_response = header_response.clone().with_new_rect(icon_rect);
-                egui::collapsing_header::paint_default_icon(ui, openness, &icon_response);
+                Self::paint_collapsing_triangle(ui, openness, &icon_response);
 
                 let visuals = ui.style().interact(&header_response);
 
+                let optical_vertical_alignment = 0.5; // improves perceived vertical alignment
                 let text_pos = icon_response.rect.right_center()
-                    + egui::vec2(space_after_icon, -0.5 * galley.size().y);
+                    + egui::vec2(
+                        space_after_icon,
+                        -0.5 * galley.size().y + optical_vertical_alignment,
+                    );
                 ui.painter()
                     .galley_with_color(text_pos, galley, visuals.text_color());
 
@@ -523,6 +528,41 @@ impl ReUi {
             add_body(ui);
             ui.add_space(4.0); // Same here
         });
+    }
+
+    pub fn paint_collapsing_triangle(ui: &mut egui::Ui, openness: f32, response: &egui::Response) {
+        let visuals = ui.style().interact(response);
+
+        let rect = response.rect;
+        let extent = response.rect.width().min(response.rect.height());
+
+        // normalised in [0, 1]^2 space
+        let mut points = vec![
+            pos2(0.80387, 0.470537),
+            pos2(0.816074, 0.5),
+            pos2(0.80387, 0.529463),
+            pos2(0.316248, 1.017085),
+            pos2(0.286141, 1.029362),
+            pos2(0.257726, 1.017592),
+            pos2(0.245118, 0.987622),
+            pos2(0.245118, 0.012378),
+            pos2(0.257726, -0.017592),
+            pos2(0.286141, -0.029362),
+            pos2(0.316248, -0.017085),
+            pos2(0.80387, 0.470537),
+        ];
+
+        use std::f32::consts::TAU;
+        let rotation = Rot2::from_angle(egui::remap(openness, 0.0..=1.0, TAU / 4.0..=0.0));
+        for p in &mut points {
+            *p = rect.center() + rotation * (*p - pos2(0.5, 0.5)) * extent;
+        }
+
+        ui.painter().add(Shape::convex_polygon(
+            points,
+            visuals.fg_stroke.color,
+            egui::Stroke::NONE,
+        ));
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
