@@ -265,6 +265,13 @@ EXAMPLES = {
         """,
         "build_args": [],
     },
+    "dna": {
+        "title": "Helix",
+        "description": """
+        Simple example of logging line primitives to draw a 3D helix.
+        """,
+        "build_args": [],
+    },
 }
 
 if __name__ == "__main__":
