@@ -13,6 +13,7 @@ rr2.log(
         ],
         colors=[[255, 0, 0], [0, 255, 0]],
         radii=[0.025, 0.005],
+        labels=["one strip here", "and one strip there"],
     ),
 )
 
