@@ -15,7 +15,7 @@ from rerun_demo.data import build_color_spiral
 from rerun_demo.util import bounce_lerp, interleave
 
 
-def log_data():
+def log_data() -> None:
     rr.set_time_seconds("stable_time", 0)
 
     NUM_POINTS = 100
