@@ -1200,21 +1200,21 @@ fn quote_fill_arrow_array_builder(
             let tag_cases = fields
                 .iter()
                 .zip(union_datatypes.iter().skip(1))
-                .map(|(field, arrow_field)| {
+                .map(|(variant, arrow_field)| {
                     let arrow_builder_type = arrow_array_builder_type(arrow_field.data_type());
-                    let field_name = format_ident!("{}", field.name);
+                    let variant_name = format_ident!("{}", variant.name);
 
-                    let field_append = if matches!(field.typ, Type::Vector {..} | Type::Array {..}) {
+                    let variant_append = if variant.typ.is_plural() {
                         quote! { return arrow::Status::NotImplemented("TODO(andreas): list types in unions are not yet supported");}
                     } else {
-                        let element_accessor = quote!(union_instance._data);
-                        quote_append_single_field_to_builder(field, &variant_builder, &element_accessor, includes)
+                        let variant_accessor = quote!(union_instance._data);
+                        quote_append_single_field_to_builder(variant, &variant_builder, &variant_accessor, includes)
                     };
 
                     quote! {
-                        case detail::#tag_name::#field_name: {
+                        case detail::#tag_name::#variant_name: {
                             auto #variant_builder = static_cast<arrow::#arrow_builder_type*>(variant_builder_untyped);
-                            #field_append
+                            #variant_append
                             break;
                         }
                     }
