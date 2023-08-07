@@ -1,4 +1,4 @@
-#include "Label.hpp"
+#include "label.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 #define EDIT_EXTENSION
