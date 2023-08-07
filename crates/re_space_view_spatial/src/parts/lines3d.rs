@@ -44,6 +44,8 @@ impl Lines3DPart {
         annotation_infos: &'a [ResolvedAnnotationInfo],
         world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
+        re_tracing::profile_function!();
+
         let labels = itertools::izip!(
             annotation_infos.iter(),
             arch_view.iter_required_component::<LineStrip3D>()?,
@@ -86,6 +88,8 @@ impl Lines3DPart {
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
+        re_tracing::profile_function!();
+
         let (annotation_infos, _) = process_annotations_and_keypoints::<LineStrip3D, LineStrips3D>(
             query,
             arch_view,

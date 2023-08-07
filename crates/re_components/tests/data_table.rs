@@ -113,9 +113,21 @@ fn data_table_sizes_basics() {
     // variable list
     let mut cell = DataCell::from_native(
         [
-            re_components::LineStrip2D::from(vec![[42.0, 666.0], [42.0, 666.0], [42.0, 666.0]]),
-            re_components::LineStrip2D::from(vec![[42.0, 666.0], [42.0, 666.0], [42.0, 666.0]]),
-            re_components::LineStrip2D::from(vec![[42.0, 666.0], [42.0, 666.0], [42.0, 666.0]]),
+            re_types::components::LineStrip2D::from(vec![
+                [42.0, 666.0],
+                [42.0, 666.0],
+                [42.0, 666.0],
+            ]),
+            re_types::components::LineStrip2D::from(vec![
+                [42.0, 666.0],
+                [42.0, 666.0],
+                [42.0, 666.0],
+            ]),
+            re_types::components::LineStrip2D::from(vec![
+                [42.0, 666.0],
+                [42.0, 666.0],
+                [42.0, 666.0],
+            ]),
         ]
         .as_slice(),
     );
