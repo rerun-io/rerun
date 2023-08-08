@@ -1500,7 +1500,7 @@ impl crate::Loggable for AffixFuzzer8 {
 impl crate::Component for AffixFuzzer8 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer9(pub crate::arrow_adapter::ArrowString);
+pub struct AffixFuzzer9(pub crate::ArrowString);
 
 impl<'a> From<AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
     #[inline]
@@ -1608,7 +1608,7 @@ impl crate::Loggable for AffixFuzzer9 {
                 downcast.validity(),
             )
             .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-            .map(|v| v.map(crate::arrow_adapter::ArrowString))
+            .map(|v| v.map(crate::ArrowString))
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {
@@ -1642,7 +1642,7 @@ impl crate::Loggable for AffixFuzzer9 {
 impl crate::Component for AffixFuzzer9 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer10(pub Option<crate::arrow_adapter::ArrowString>);
+pub struct AffixFuzzer10(pub Option<crate::ArrowString>);
 
 impl<'a> From<AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
     #[inline]
@@ -1752,7 +1752,7 @@ impl crate::Loggable for AffixFuzzer10 {
                 downcast.validity(),
             )
             .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-            .map(|v| v.map(crate::arrow_adapter::ArrowString))
+            .map(|v| v.map(crate::ArrowString))
         }
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
@@ -1991,7 +1991,7 @@ impl crate::Loggable for AffixFuzzer11 {
 impl crate::Component for AffixFuzzer11 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer12(pub Vec<crate::arrow_adapter::ArrowString>);
+pub struct AffixFuzzer12(pub Vec<crate::ArrowString>);
 
 impl<'a> From<AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
     #[inline]
@@ -2159,7 +2159,7 @@ impl crate::Loggable for AffixFuzzer12 {
                         downcast.validity(),
                     )
                     .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-                    .map(|v| v.map(crate::arrow_adapter::ArrowString))
+                    .map(|v| v.map(crate::ArrowString))
                 }
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
@@ -2221,7 +2221,7 @@ impl crate::Loggable for AffixFuzzer12 {
 impl crate::Component for AffixFuzzer12 {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AffixFuzzer13(pub Option<Vec<crate::arrow_adapter::ArrowString>>);
+pub struct AffixFuzzer13(pub Option<Vec<crate::ArrowString>>);
 
 impl<'a> From<AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
     #[inline]
@@ -2391,7 +2391,7 @@ impl crate::Loggable for AffixFuzzer13 {
                         downcast.validity(),
                     )
                     .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-                    .map(|v| v.map(crate::arrow_adapter::ArrowString))
+                    .map(|v| v.map(crate::ArrowString))
                 }
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {

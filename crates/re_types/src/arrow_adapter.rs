@@ -12,6 +12,7 @@ use arrow2::buffer::Buffer;
 pub struct ArrowString(pub Buffer<u8>);
 
 impl PartialEq for ArrowString {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.as_str() == other.as_str()
     }
@@ -20,14 +21,23 @@ impl PartialEq for ArrowString {
 impl Eq for ArrowString {}
 
 impl PartialOrd for ArrowString {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.as_str().partial_cmp(other.as_str())
     }
 }
 
 impl Ord for ArrowString {
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.as_str().cmp(other.as_str())
+    }
+}
+
+impl std::hash::Hash for ArrowString {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.as_str().hash(state);
     }
 }
 

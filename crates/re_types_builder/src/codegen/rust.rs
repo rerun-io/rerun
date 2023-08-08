@@ -612,7 +612,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Float16 => unimplemented!("{typ:#?}"),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
-            Type::String => quote!(crate::arrow_adapter::ArrowString),
+            Type::String => quote!(crate::ArrowString),
             Type::Array { elem_type, length } => {
                 if *unwrap {
                     quote!(#elem_type)
@@ -648,7 +648,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Float16 => unimplemented!("{self:#?}"),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
-            ElementType::String => quote!(crate::arrow_adapter::ArrowString),
+            ElementType::String => quote!(crate::ArrowString),
             ElementType::Object(fqname) => quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
@@ -1791,6 +1791,7 @@ fn quote_arrow_field_serializer(
                         quote! {
                             .flat_map(|datum| {
                                 let #quoted_binding = datum;
+                                // NOTE: `Buffer::clone`, which is just a ref-count bump
                                 #quoted_data_dst .0.clone()
                             })
                         },
@@ -1804,6 +1805,7 @@ fn quote_arrow_field_serializer(
                 } else {
                     (
                         quote! {
+                            // NOTE: `Buffer::clone`, which is just a ref-count bump
                             .flat_map(|s| s.0.clone())
                         },
                         quote! {
@@ -2307,12 +2309,12 @@ fn quote_arrow_field_deserializer(
                     }
                 );
                 if is_tuple_struct {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type(crate::arrow_adapter::ArrowString(v)))))
+                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type(crate::ArrowString(v)))))
                 } else {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type { #quoted_data_dst: crate::arrow_adapter::ArrowString(v) })))
+                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type { #quoted_data_dst: crate::ArrowString(v) })))
                 }
             } else {
-                quote!(.map(|v| v.map(crate::arrow_adapter::ArrowString)))
+                quote!(.map(|v| v.map(crate::ArrowString)))
             };
 
             quote! {

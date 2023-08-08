@@ -15,7 +15,7 @@
 /// A String label component.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Label(pub crate::arrow_adapter::ArrowString);
+pub struct Label(pub crate::ArrowString);
 
 impl<'a> From<Label> for ::std::borrow::Cow<'a, Label> {
     #[inline]
@@ -123,7 +123,7 @@ impl crate::Loggable for Label {
                 downcast.validity(),
             )
             .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-            .map(|v| v.map(crate::arrow_adapter::ArrowString))
+            .map(|v| v.map(crate::ArrowString))
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {

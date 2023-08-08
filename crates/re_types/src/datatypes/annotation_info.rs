@@ -289,11 +289,7 @@ impl crate::Loggable for AnnotationInfo {
                             downcast.validity(),
                         )
                         .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-                        .map(|opt| {
-                            opt.map(|v| {
-                                crate::components::Label(crate::arrow_adapter::ArrowString(v))
-                            })
-                        })
+                        .map(|opt| opt.map(|v| crate::components::Label(crate::ArrowString(v))))
                     }
                 };
                 let color = {
