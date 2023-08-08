@@ -961,7 +961,7 @@ fn fill_arrow_array_builder_method(
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
     let builder = format_ident!("builder");
-    let arrow_builder_type = arrow_array_builder_type_object(&obj, objects);
+    let arrow_builder_type = arrow_array_builder_type_object(obj, objects);
 
     let fill_builder =
         quote_fill_arrow_array_builder(type_ident, obj, objects, &builder, cpp_includes);
