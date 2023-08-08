@@ -55,7 +55,7 @@ impl Lines3DPart {
         )
         .filter_map(
             move |(annotation_info, strip, label, color, labeled_instance)| {
-                let label = annotation_info.label(label.map(|l| l.0).as_ref());
+                let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
                 match (strip, label) {
                     (strip, Some(label)) => {
                         let midpoint = strip
