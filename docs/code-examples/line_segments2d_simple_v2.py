@@ -7,7 +7,14 @@ rr.init("line_segments2d", spawn=True)
 
 rr2.log(
     "segments",
-    rr2.LineStrips2D(np.array([[0, 0], [2, 1], [4, -1], [6, 0]]).reshape([2, 2, 2])),
+    rr2.LineStrips2D(
+        np.array(
+            [
+                [[0, 0], [2, 1]],
+                [[4, -1], [6, 0]],
+            ]
+        )
+    ),
 )
 
 # Log an extra rect to set the view bounds
