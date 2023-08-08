@@ -70,6 +70,40 @@ namespace rerun {
                   scale(_scale),
                   from_parent(_from_parent) {}
 
+            /// From translation only.
+            ///
+            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// where the transform was logged. Otherwise, the transform maps from the space to its
+            TranslationRotationScale3D(
+                const datatypes::Vec3D& _translation, bool _from_parent = false
+            )
+                : translation(_translation),
+                  rotation(std::nullopt),
+                  scale(std::nullopt),
+                  from_parent(_from_parent) {}
+
+            /// From rotation only.
+            ///
+            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// where the transform was logged. Otherwise, the transform maps from the space to its
+            TranslationRotationScale3D(
+                const datatypes::Rotation3D& _rotation, bool _from_parent = false
+            )
+                : translation(std::nullopt),
+                  rotation(_rotation),
+                  scale(std::nullopt),
+                  from_parent(_from_parent) {}
+
+            /// From scale only.
+            ///
+            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// where the transform was logged. Otherwise, the transform maps from the space to its
+            TranslationRotationScale3D(const datatypes::Scale3D& _scale, bool _from_parent = false)
+                : translation(std::nullopt),
+                  rotation(std::nullopt),
+                  scale(_scale),
+                  from_parent(_from_parent) {}
+
             // [CODEGEN COPY TO HEADER END]
         };
 

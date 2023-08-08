@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
 
     rec_stream.log(
         "translation_and_mat3x3/translation",
-        rr::archetypes::Transform3D(rr::datatypes::TranslationAndMat3x3({1.0f, 2.0f, 3.0f}, true))
+        rr::archetypes::Transform3D({1.0f, 2.0f, 3.0f}, true)
     );
 
     rec_stream.log(
@@ -35,27 +35,27 @@ int main(int argc, char** argv) {
 
     rec_stream.log(
         "translation_rotation_scale/translation_scale",
-        rr::archetypes::Transform3D(rr::datatypes::TranslationRotationScale3D(
+        rr::archetypes::Transform3D(
             {1.0f, 2.0f, 3.0f},
             rr::datatypes::Scale3D::uniform(42.0f),
             true
-        ))
+        )
     );
 
     rec_stream.log(
         "translation_rotation_scale/rigid",
-        rr::archetypes::Transform3D(rr::datatypes::TranslationRotationScale3D(
+        rr::archetypes::Transform3D(
             {1.0f, 2.0f, 3.0f},
             rr::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},
                 rr::datatypes::Angle::radians(static_cast<float>(M_PI))
             )
-        ))
+        )
     );
 
     rec_stream.log(
         "translation_rotation_scale/affine",
-        rr::archetypes::Transform3D(rr::datatypes::TranslationRotationScale3D(
+        rr::archetypes::Transform3D(
             {1.0f, 2.0f, 3.0f},
             rr::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},
@@ -63,6 +63,6 @@ int main(int argc, char** argv) {
             ),
             42.0f,
             true
-        ))
+        )
     );
 }
