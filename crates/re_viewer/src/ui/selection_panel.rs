@@ -40,7 +40,9 @@ impl SelectionPanel {
             });
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
-            // no need to extend `ui.max_rect()` as the enclosing frame doesn't have margins
+            // Set the clip rectangle to the panel for the benefit of nested, "full span" widgets
+            // like large collapsing headers. Here, no need to extend `ui.max_rect()` as the
+            // enclosing frame doesn't have inner margins.
             ui.set_clip_rect(ui.max_rect());
 
             egui::TopBottomPanel::top("selection_panel_title_bar")
