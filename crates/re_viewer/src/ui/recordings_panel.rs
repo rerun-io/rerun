@@ -17,40 +17,33 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ..
     } = ctx;
 
-    egui::Frame {
-        inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
-        ..Default::default()
+    let store_dbs = store_context.alternate_recordings.clone();
+
+    if store_dbs.is_empty() {
+        ui.weak("(empty)");
+        return;
     }
-    .show(ui, |ui| {
-        let store_dbs = store_context.alternate_recordings.clone();
 
-        if store_dbs.is_empty() {
-            ui.weak("(empty)");
-            return;
+    let active_recording = store_context.recording.and_then(|rec| Some(rec.store_id()));
+
+    ui.style_mut().wrap = Some(false);
+    for store_db in &store_dbs {
+        let info = if let Some(store_info) = store_db.store_info() {
+            format!(
+                "{} - {}",
+                store_info.application_id,
+                store_info.started.format()
+            )
+        } else {
+            "<UNKNOWN>".to_owned()
+        };
+        if ui
+            .radio(active_recording == Some(store_db.store_id()), info)
+            .clicked()
+        {
+            command_sender.send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
         }
-
-        let active_recording = store_context.recording.and_then(|rec| Some(rec.store_id()));
-
-        ui.style_mut().wrap = Some(false);
-        for store_db in &store_dbs {
-            let info = if let Some(store_info) = store_db.store_info() {
-                format!(
-                    "{} - {}",
-                    store_info.application_id,
-                    store_info.started.format()
-                )
-            } else {
-                "<UNKNOWN>".to_owned()
-            };
-            if ui
-                .radio(active_recording == Some(store_db.store_id()), info)
-                .clicked()
-            {
-                command_sender
-                    .send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
-            }
-        }
-    });
+    }
 }
 
 fn add_button_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {

@@ -18,13 +18,7 @@ pub fn blueprint_panel_ui(
         },
     );
 
-    egui::Frame {
-        inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
-        ..Default::default()
-    }
-    .show(ui, |ui| {
-        blueprint.tree_ui(ctx, ui);
-    });
+    blueprint.tree_ui(ctx, ui);
 }
 
 fn reset_button_ui(

@@ -222,11 +222,10 @@ impl eframe::App for ExampleApp {
         // RIGHT PANEL
         //
         // This is the "idiomatic" panel structure for Rerun:
-        // - Top level `SidePanel` as a `Frame` with margins = 0.0 and sets the clip rectangle.
-        // - Panel titles (`ReUi::panel_title_bar`) are drawn at the top level of the `SidePanel`'s
-        //   hierarchy.
-        // - Actual content beneath the title bar (including large collapsing headers if used) is
-        //   put inside a sub-`Frame` with `inner_margin` set to `ReUi::view_padding()`.
+        // - A top-level `SidePanel` without inner margins and which sets the clip rectangle.
+        // - A `Frame` is immediately nested with proper inner margins (`ReUi::panel_margins()`).
+        // - All the content (titles, etc.) go inside that nest `Frame`, and use the clip rectangle
+        //   for full-span highlighting.
 
         let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,
@@ -238,17 +237,18 @@ impl eframe::App for ExampleApp {
             .show_animated(egui_ctx, self.right_panel, |ui| {
                 ui.set_clip_rect(ui.max_rect());
 
-                self.re_ui.panel_title_bar(
-                    ui,
-                    "Right panel",
-                    Some("This is the title of the right panel"),
-                );
-
+                // inner frame
                 egui::Frame {
-                    inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                    inner_margin: re_ui::ReUi::panel_margin(),
                     ..Default::default()
                 }
                 .show(ui, |ui| {
+                    // first section
+                    self.re_ui.panel_title_bar(
+                        ui,
+                        "Right panel",
+                        Some("This is the title of the right panel"),
+                    );
                     self.re_ui
                         .large_collapsing_header(ui, "Large Collapsing Header", true, |ui| {
                             ui.label("Some data here");
@@ -256,15 +256,9 @@ impl eframe::App for ExampleApp {
 
                             selection_buttons(ui);
                         });
-                });
 
-                self.re_ui.panel_title_bar(ui, "Another section", None);
-
-                egui::Frame {
-                    inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
-                    ..Default::default()
-                }
-                .show(ui, |ui| {
+                    // second section
+                    self.re_ui.panel_title_bar(ui, "Another section", None);
                     ui.label("Some data here");
                     ui.label("Some data there");
                 });

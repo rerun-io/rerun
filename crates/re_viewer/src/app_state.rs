@@ -165,8 +165,14 @@ impl AppState {
                         // doesn't have inner margins.
                         ui.set_clip_rect(ui.max_rect());
 
-                        recordings_panel_ui(&mut ctx, ui);
-                        blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
+                        egui::Frame {
+                            inner_margin: re_ui::ReUi::panel_margin(),
+                            ..Default::default()
+                        }
+                        .show(ui, |ui| {
+                            recordings_panel_ui(&mut ctx, ui);
+                            blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
+                        });
                     },
                 );
 
