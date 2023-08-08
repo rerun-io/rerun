@@ -87,11 +87,16 @@
 
 // ---
 
+use fallible_iterator::FallibleIterator as _;
+
 /// Anything that can be serialized to and deserialized from Arrow data.
 pub trait Loggable: Sized {
     type Name;
     type Item<'a>;
-    type Iter<'a>: Iterator<Item = Self::Item<'a>>;
+    type Iter<'a>: ::fallible_iterator::FallibleIterator<
+        Item = Self::Item<'a>,
+        Error = crate::DeserializationError,
+    >;
 
     /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.
     fn name() -> Self::Name;
@@ -178,15 +183,16 @@ pub trait Loggable: Sized {
     #[inline]
     fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
         Self::try_iter_from_arrow(data)
-            .detailed_unwrap()
-            .map(Self::convert_item_to_self)
-            .map(|v| {
-                v.ok_or_else(|| DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .detailed_unwrap()
-            })
+            .unwrap()
+            .map(|item| Ok(Self::convert_item_to_self(item).unwrap()))
+            // .map(|v| {
+            //     v.ok_or_else(|| DeserializationError::MissingData {
+            //         backtrace: ::backtrace::Backtrace::new_unresolved(),
+            //     })
+            //     .detailed_unwrap()
+            // })
             .collect()
+            .detailed_unwrap()
     }
 
     /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
@@ -196,8 +202,9 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
-        Self::try_iter_from_arrow(data)?
-            .map(Self::convert_item_to_self)
+        Self::try_iter_from_arrow(data)
+            .unwrap()
+            .map(|item| Ok(Self::convert_item_to_self(item)))
             .map(|v| {
                 v.ok_or_else(|| DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -225,9 +232,10 @@ pub trait Loggable: Sized {
     fn try_from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
-        Ok(Self::try_iter_from_arrow(data)?
-            .map(Self::convert_item_to_self)
-            .collect())
+        Self::try_iter_from_arrow(data)
+            .unwrap()
+            .map(|item| Ok(Self::convert_item_to_self(item)))
+            .collect()
     }
 
     /// Given an Arrow array, deserializes it into a iterator of [`Loggable::Item`]s.
@@ -245,7 +253,8 @@ pub trait Loggable: Sized {
     /// [`Loggable::to_arrow_datatype`].
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
-    ) -> DeserializationResult<Self::Iter<'_>>;
+        // TODO: that result should not be here
+    ) -> crate::DeserializationResult<Self::Iter<'_>>;
 
     /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
     ///
@@ -507,6 +516,10 @@ pub use arrow_string::ArrowString;
 
 #[cfg(feature = "testing")]
 pub mod testing;
+
+pub mod external {
+    pub use fallible_iterator;
+}
 
 // ---
 

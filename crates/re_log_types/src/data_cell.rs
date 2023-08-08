@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use arrow2::datatypes::DataType;
-use re_types::{Component, ComponentName, DeserializationError};
+use re_types::{
+    external::fallible_iterator::FallibleIterator as _, Component, ComponentName,
+    DeserializationError,
+};
 
 use crate::SizeBytes;
 
@@ -362,9 +365,14 @@ impl DataCell {
     pub fn try_to_native<'a, C: Component + Default + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = C> + '_> {
-        Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?
+        Ok(
+            {
+                let x = C::try_iter_from_arrow(self.inner.values.as_ref())?.collect::<Vec<_>>()?;
+                x.into_iter()
+            }
             .map(C::convert_item_to_self)
             .map(|v| {
+                // TODO
                 // TODO(#2523): This unwrap and the `Default` bounds should go away once we move to fallible iterators
                 v.unwrap_or_else(|| {
                     re_log::warn_once!(
@@ -380,8 +388,11 @@ impl DataCell {
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
     pub fn try_to_native_mono<'a, C: Component + 'a>(&'a self) -> DataCellResult<Option<C>> {
-        let mut iter =
-            C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self);
+        let mut iter = {
+            let x = C::try_iter_from_arrow(self.inner.values.as_ref())?.collect::<Vec<_>>()?;
+            x.into_iter()
+        }
+        .map(C::convert_item_to_self);
 
         let result = match iter.next() {
             // It's ok to have no result from the iteration: this is what we
@@ -420,7 +431,11 @@ impl DataCell {
     pub fn try_to_native_opt<'a, C: Component + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_> {
-        Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self))
+        Ok({
+            let x = C::try_iter_from_arrow(self.inner.values.as_ref())?.collect::<Vec<_>>()?;
+            x.into_iter()
+        }
+        .map(C::convert_item_to_self))
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.

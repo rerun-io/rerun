@@ -746,7 +746,10 @@ fn quote_trait_impls_from_obj(
                 impl crate::Loggable for #name {
                     type Name = crate::#kind_name;
                     type Item<'a> = Option<Self>;
-                    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+                    type Iter<'a> = Box<dyn ::fallible_iterator::FallibleIterator<
+                        Item = Self::Item<'a>,
+                        Error = crate::DeserializationError,
+                    > + 'a>;
 
                     #[inline]
                     fn name() -> Self::Name {
@@ -797,11 +800,14 @@ fn quote_trait_impls_from_obj(
                     #[inline]
                     fn try_iter_from_arrow(
                         data: &dyn ::arrow2::array::Array,
-                    ) -> crate::DeserializationResult<Self::Iter<'_>>
+                    ) ->  crate::DeserializationResult<Self::Iter<'_>>
                     where
                         Self: Sized,
                     {
-                        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+                        use ::arrow2::{datatypes::*, array::*};
+                        use ::fallible_iterator::{IteratorExt as _, FallibleIterator as _};
+                        use crate::Loggable as _;
+                        Ok(Box::new({#quoted_deserializer}))
                     }
 
                     #[inline]

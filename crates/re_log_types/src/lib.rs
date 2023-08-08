@@ -69,6 +69,7 @@ pub mod external {
     pub use arrow2;
     pub use arrow2_convert;
     pub use re_tuid;
+    pub use re_types;
 }
 
 #[macro_export]
@@ -431,8 +432,13 @@ macro_rules! component_legacy_shim {
         impl re_types::Loggable for $entity {
             type Name = re_types::ComponentName;
             type Item<'a> = <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::Item;
-            type Iter<'a> =
-                <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter;
+            type Iter<'a> = Box<dyn $crate::external::re_types::external::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = $crate::external::re_types::DeserializationError,
+            > + 'a>;
+            // TODO
+            // type Iter<'a> =
+            //     <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter;
 
             #[inline]
             fn name() -> Self::Name {
@@ -481,7 +487,8 @@ macro_rules! component_legacy_shim {
             {
                 let native =
                        <<Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as arrow2_convert::deserialize::ArrowArray>::iter_from_array_ref(data);
-                Ok(native)
+                use $crate::external::re_types::external::fallible_iterator::{IteratorExt as _};
+                Ok(Box::new(native.into_iter().map(Ok).transpose_into_fallible()))
             }
 
             #[inline]
