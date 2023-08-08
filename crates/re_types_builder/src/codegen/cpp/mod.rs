@@ -13,11 +13,11 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::codegen::common::write_file;
-use crate::Object;
 use crate::{
     codegen::AUTOGEN_WARNING, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
     Type,
 };
+use crate::{Object, ObjectSpecifics};
 
 use self::forward_decl::ForwardDecls;
 use self::includes::Includes;
@@ -363,7 +363,11 @@ impl QuotedObject {
                 // Arrow serialization methods.
                 // TODO(andreas): These are just utilities for to_data_cell. How do we hide them best from the public header?
                 methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
-                methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
+                methods.push(new_arrow_array_builder_method(
+                    obj,
+                    objects,
+                    &mut cpp_includes,
+                ));
                 methods.push(fill_arrow_array_builder_method(
                     &datatype,
                     obj,
@@ -695,7 +699,11 @@ impl QuotedObject {
 
         let datatype = arrow_registry.get(&obj.fqname);
         methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
-        methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
+        methods.push(new_arrow_array_builder_method(
+            obj,
+            objects,
+            &mut cpp_includes,
+        ));
         methods.push(fill_arrow_array_builder_method(
             &datatype,
             obj,
@@ -924,12 +932,20 @@ fn arrow_data_type_method(datatype: &DataType, cpp_includes: &mut Includes) -> M
     }
 }
 
-fn new_arrow_array_builder_method(datatype: &DataType, cpp_includes: &mut Includes) -> Method {
+fn new_arrow_array_builder_method(
+    obj: &Object,
+    objects: &Objects,
+    cpp_includes: &mut Includes,
+) -> Method {
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
-    let arrow_builder_type = arrow_array_builder_type(datatype);
-    let builder_instantiation =
-        quote_arrow_array_builder_type_instantiation(datatype, cpp_includes, true);
+    let builder_instantiation = quote_arrow_array_builder_type_instantiation(
+        &Type::Object(obj.fqname.clone()),
+        objects,
+        cpp_includes,
+        true,
+    );
+    let arrow_builder_type = arrow_array_builder_type_object(obj, objects);
 
     Method {
         docs: "Creates a new array builder with an array of this type.".into(),
@@ -964,7 +980,7 @@ fn fill_arrow_array_builder_method(
     };
 
     let builder = format_ident!("builder");
-    let arrow_builder_type = arrow_array_builder_type(datatype);
+    let arrow_builder_type = arrow_array_builder_type_object(&obj, objects);
 
     let fill_builder = quote_fill_arrow_array_builder(
         type_ident,
@@ -1173,7 +1189,7 @@ fn quote_fill_arrow_array_builder(
                     let field_index = quote_integer(field_index);
                     let field_builder = format_ident!("field_builder");
                     let arrow_field_type = arrow_field.data_type();
-                    let field_builder_type = arrow_array_builder_type(arrow_field_type);
+                    let field_builder_type = arrow_array_builder_type(&field.typ, objects, false);
                     let field_append = quote_append_field_to_builder(field, arrow_field_type, &field_builder, false, includes, objects);
                     quote! {
                         {
@@ -1190,18 +1206,14 @@ fn quote_fill_arrow_array_builder(
                 ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
             }
         }
-        DataType::Union(union_datatypes, _types, _mode) => {
+        DataType::Union(_, _types, _mode) => {
             let variant_builder = format_ident!("variant_builder");
             let tag_name = format_ident!("{}Tag", type_ident);
 
-            // We insert a null tag in the union datatypes.
-            assert_eq!(union_datatypes.len(), fields.len() + 1);
-
             let tag_cases = fields
                 .iter()
-                .zip(union_datatypes.iter().skip(1))
-                .map(|(variant, arrow_field)| {
-                    let arrow_builder_type = arrow_array_builder_type(arrow_field.data_type());
+                .map(|variant| {
+                    let arrow_builder_type = arrow_array_builder_type(&variant.typ, objects, false);
                     let variant_name = format_ident!("{}", variant.name);
 
                     let variant_append = if variant.typ.is_plural() {
@@ -1279,13 +1291,8 @@ fn quote_append_field_to_builder(
 
     if let Some(elem_type) = field.typ.plural_inner() {
         let value_builder = format_ident!("value_builder");
-        let elem_arrow_type = match arrow_field_type.to_logical_type() {
-            DataType::List(field)
-            | DataType::FixedSizeList(field, _)
-            | DataType::LargeList(field) => field.data_type(),
-            _ => unreachable!(),
-        };
-        let value_builder_type = arrow_array_builder_type(elem_arrow_type);
+        let value_builder_type =
+            arrow_array_builder_type(&elem_type.clone().into(), objects, false);
 
         if !field.is_nullable
             && matches!(arrow_field_type, DataType::FixedSizeList(..))
@@ -1506,127 +1513,144 @@ fn quote_field_ptr_access(typ: &Type, field_accessor: TokenStream) -> TokenStrea
     }
 }
 
-fn arrow_array_builder_type(datatype: &DataType) -> Ident {
-    let name = match datatype.to_logical_type() {
-        DataType::Boolean => "BooleanBuilder",
-        DataType::Int8 => "Int8Builder",
-        DataType::Int16 => "Int16Builder",
-        DataType::Int32 => "Int32Builder",
-        DataType::Int64 => "Int64Builder",
-        DataType::UInt8 => "UInt8Builder",
-        DataType::UInt16 => "UInt16Builder",
-        DataType::UInt32 => "UInt32Builder",
-        DataType::UInt64 => "UInt64Builder",
-        DataType::Float16 => "HalfFloatBuilder",
-        DataType::Float32 => "FloatBuilder",
-        DataType::Float64 => "DoubleBuilder",
-        DataType::Binary => "BinaryBuilder",
-        DataType::LargeBinary => "LargeBinaryBuilder",
-        DataType::Utf8 => "StringBuilder",
-        DataType::LargeUtf8 => "LargeStringBuilder",
-        DataType::FixedSizeList(..) => "FixedSizeListBuilder",
-        DataType::List(..) => "ListBuilder",
-        DataType::Struct(..) => "StructBuilder",
-        DataType::Null => "NullBuilder",
-        DataType::Union(_, _, mode) => match mode {
-            arrow2::datatypes::UnionMode::Dense => "DenseUnionBuilder",
-            arrow2::datatypes::UnionMode::Sparse => "SparseUnionBuilder",
-        },
-        DataType::Extension(_, _, _metadata) => {
-            unreachable!("Logical type can't be an extension type.")
+fn arrow_array_builder_type(typ: &Type, objects: &Objects, transparent: bool) -> Ident {
+    match typ {
+        Type::Int8 => format_ident!("Int8Builder"),
+        Type::Int16 => format_ident!("Int16Builder"),
+        Type::Int32 => format_ident!("Int32Builder"),
+        Type::Int64 => format_ident!("Int64Builder"),
+        Type::UInt8 => format_ident!("UInt8Builder"),
+        Type::UInt16 => format_ident!("UInt16Builder"),
+        Type::UInt32 => format_ident!("UInt32Builder"),
+        Type::UInt64 => format_ident!("UInt64Builder"),
+        Type::Bool => format_ident!("BooleanBuilder"),
+        Type::Float16 => format_ident!("HalfFloatBuilder"),
+        Type::Float32 => format_ident!("FloatBuilder"),
+        Type::Float64 => format_ident!("DoubleBuilder"),
+        Type::String => format_ident!("StringBuilder"),
+        Type::Array { elem_type, .. } => {
+            if transparent {
+                arrow_array_builder_type(&elem_type.clone().into(), objects, false)
+            } else {
+                format_ident!("FixedSizeListBuilder")
+            }
         }
-        _ => unimplemented!(
-            "Arrow serialization for type {:?} not implemented",
-            datatype
-        ),
-    };
-    format_ident!("{name}")
+        Type::Vector { elem_type } => {
+            if transparent {
+                arrow_array_builder_type(&elem_type.clone().into(), objects, false)
+            } else {
+                format_ident!("ListBuilder")
+            }
+        }
+        Type::Object(fqname) => arrow_array_builder_type_object(&objects[fqname], objects),
+    }
+}
+
+fn arrow_array_builder_type_object(obj: &Object, objects: &Objects) -> Ident {
+    if obj.is_arrow_transparent() {
+        arrow_array_builder_type(&obj.fields[0].typ, objects, false)
+    } else {
+        match obj.specifics {
+            ObjectSpecifics::Struct => format_ident!("StructBuilder"),
+            ObjectSpecifics::Union { .. } => format_ident!("DenseUnionBuilder"),
+        }
+    }
 }
 
 fn quote_arrow_array_builder_type_instantiation(
-    datatype: &DataType,
+    typ: &Type,
+    objects: &Objects,
     cpp_includes: &mut Includes,
     is_top_level_type: bool,
 ) -> TokenStream {
-    let builder_type = arrow_array_builder_type(datatype);
+    let builder_type = arrow_array_builder_type(typ, objects, false);
 
-    match datatype {
-        DataType::Boolean
-        | DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Float16
-        | DataType::Float32
-        | DataType::Float64
-        | DataType::Binary
-        | DataType::LargeBinary
-        | DataType::Utf8
-        | DataType::LargeUtf8
-        | DataType::Null => {
+    match typ {
+        Type::UInt8
+        | Type::UInt16
+        | Type::UInt32
+        | Type::UInt64
+        | Type::Int8
+        | Type::Int16
+        | Type::Int32
+        | Type::Int64
+        | Type::Bool
+        | Type::Float16
+        | Type::Float32
+        | Type::Float64
+        | Type::String => {
             quote!(std::make_shared<arrow::#builder_type>(memory_pool))
         }
-        DataType::List(field) => {
+        Type::Vector { elem_type } => {
             let element_builder = quote_arrow_array_builder_type_instantiation(
-                field.data_type(),
+                &elem_type.clone().into(),
+                objects,
                 cpp_includes,
                 false,
             );
             quote!(std::make_shared<arrow::#builder_type>(memory_pool, #element_builder))
         }
-        DataType::FixedSizeList(field, length) => {
+        Type::Array { elem_type, length } => {
             let quoted_length = quote_integer(length);
             let element_builder = quote_arrow_array_builder_type_instantiation(
-                field.data_type(),
+                &elem_type.clone().into(),
+                objects,
                 cpp_includes,
                 false,
             );
             quote!(std::make_shared<arrow::#builder_type>(memory_pool, #element_builder, #quoted_length))
         }
-        DataType::Struct(fields) => {
-            let field_builders = fields.iter().map(|field| {
-                quote_arrow_array_builder_type_instantiation(field.data_type(), cpp_includes, false)
-            });
-            quote! {
-                std::make_shared<arrow::#builder_type>(
-                    to_arrow_datatype(),
-                    memory_pool,
-                    std::vector<std::shared_ptr<arrow::ArrayBuilder>>({ #(#field_builders,)* })
-                )
-            }
-        }
-        DataType::Union(fields, _, _) => {
-            let field_builders = fields.iter().map(|field| {
-                quote_arrow_array_builder_type_instantiation(field.data_type(), cpp_includes, false)
-            });
-            quote! {
-                std::make_shared<arrow::#builder_type>(
-                    memory_pool,
-                    std::vector<std::shared_ptr<arrow::ArrayBuilder>>({ #(#field_builders,)* }),
-                    to_arrow_datatype()
-                )
-            }
-        }
-        DataType::Extension(fqname, datatype, _metadata) => {
-            if is_top_level_type {
-                quote_arrow_array_builder_type_instantiation(datatype.as_ref(), cpp_includes, false)
-            } else {
+        Type::Object(fqname) => {
+            let object = &objects[fqname];
+
+            if !is_top_level_type {
                 // Propagating error here is hard since we're in a nested context.
                 // But also not that important since we *know* that this only fails for null pools and we already checked that now.
                 let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
                 quote! {
-                    #quoted_fqname::new_arrow_array_builder(memory_pool).ValueOrDie()
+                        #quoted_fqname::new_arrow_array_builder(memory_pool).ValueOrDie()
+                }
+            } else if object.is_arrow_transparent() {
+                quote_arrow_array_builder_type_instantiation(
+                    &object.fields[0].typ,
+                    objects,
+                    cpp_includes,
+                    false,
+                )
+            } else {
+                let field_builders = object.fields.iter().map(|field| {
+                    quote_arrow_array_builder_type_instantiation(
+                        &field.typ,
+                        objects,
+                        cpp_includes,
+                        false,
+                    )
+                });
+
+                match object.specifics {
+                    ObjectSpecifics::Struct => {
+                        quote! {
+                            std::make_shared<arrow::#builder_type>(
+                                to_arrow_datatype(),
+                                memory_pool,
+                                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({ #(#field_builders,)* })
+                            )
+                        }
+                    }
+                    ObjectSpecifics::Union { .. } => {
+                        quote! {
+                             std::make_shared<arrow::#builder_type>(
+                                 memory_pool,
+                                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
+                                     std::make_shared<arrow::NullBuilder>(memory_pool), #(#field_builders,)*
+                                 }),
+                                 to_arrow_datatype()
+                             )
+                        }
+                    }
                 }
             }
         }
-        _ => unimplemented!(
-            "Arrow serialization for type {:?} not implemented",
-            datatype
-        ),
     }
 }
 
@@ -1900,7 +1924,7 @@ fn quote_integer<T: std::fmt::Display>(t: T) -> TokenStream {
 // --- Arrow registry code generators ---
 
 fn quote_arrow_data_type(
-    datatype: &::arrow2::datatypes::DataType,
+    datatype: &DataType,
     includes: &mut Includes,
     is_top_level_type: bool,
 ) -> TokenStream {
