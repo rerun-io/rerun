@@ -1441,13 +1441,13 @@ fn quote_num_items_per_value(typ: &Type, value_accessor: &TokenStream) -> TokenS
 }
 
 fn quote_field_ptr_access(typ: &Type, field_accessor: TokenStream) -> TokenStream {
-    let (ptr_access, elem_type) = match typ {
-        Type::Array { elem_type, .. } => (field_accessor, elem_type.clone()),
-        Type::Vector { elem_type } => (quote!(#field_accessor.data()), elem_type.clone()),
-        _ => (quote!(&#field_accessor), typ.clone().try_into().unwrap()),
+    let (ptr_access, typ) = match typ {
+        Type::Array { elem_type, .. } => (field_accessor, elem_type.clone().into()),
+        Type::Vector { elem_type } => (quote!(#field_accessor.data()), elem_type.clone().into()),
+        _ => (quote!(&#field_accessor), typ.clone()),
     };
 
-    if elem_type == ElementType::Bool {
+    if typ == Type::Bool {
         // Bool needs a cast because arrow takes it as uint8_t.
         quote!(reinterpret_cast<const uint8_t*>(#ptr_access))
     } else {
