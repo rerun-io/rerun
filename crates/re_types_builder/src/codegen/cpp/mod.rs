@@ -1181,16 +1181,15 @@ fn quote_fill_arrow_array_builder(
                 datatype
             );
             let object_field = &fields[0];
-            quote_append_field_to_builder(object_field, datatype, builder, true, includes, objects)
+            quote_append_field_to_builder(object_field, builder, true, includes, objects)
         }
-        DataType::Struct(field_datatypes) => {
-            let fill_fields = fields.iter().zip(field_datatypes).enumerate().map(
-                |(field_index, (field, arrow_field))| {
+        DataType::Struct(..) => {
+            let fill_fields = fields.iter().enumerate().map(
+                |(field_index, field)| {
                     let field_index = quote_integer(field_index);
                     let field_builder = format_ident!("field_builder");
-                    let arrow_field_type = arrow_field.data_type();
                     let field_builder_type = arrow_array_builder_type(&field.typ, objects, false);
-                    let field_append = quote_append_field_to_builder(field, arrow_field_type, &field_builder, false, includes, objects);
+                    let field_append = quote_append_field_to_builder(field, &field_builder, false, includes, objects);
                     quote! {
                         {
                             auto #field_builder = static_cast<arrow::#field_builder_type*>(builder->field_builder(#field_index));
@@ -1281,7 +1280,6 @@ fn quote_fill_arrow_array_builder(
 
 fn quote_append_field_to_builder(
     field: &ObjectField,
-    arrow_field_type: &DataType,
     builder: &Ident,
     is_transparent: bool,
     includes: &mut Includes,
@@ -1295,7 +1293,7 @@ fn quote_append_field_to_builder(
             arrow_array_builder_type(&elem_type.clone().into(), objects, false);
 
         if !field.is_nullable
-            && matches!(arrow_field_type, DataType::FixedSizeList(..))
+            && matches!(field.typ, Type::Array { .. })
             && elem_type.has_default_destructor(objects)
         {
             // Optimize common case: Trivial batch of transparent fixed size elements.
