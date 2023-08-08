@@ -780,8 +780,17 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*};
+                        use ::fallible_iterator::{IteratorExt as _, FallibleIterator as _};
                         use crate::Loggable as _;
-                        Ok(#quoted_deserializer)
+                        Ok({
+                            #quoted_deserializer
+                                // NOTE: implicit Vec<Result> to Result<Vec>
+                                .collect::<Vec<Option<_>>>()
+                                .map_err(|err| crate::DeserializationError::Context {
+                                    location: #legacy_fqname.into(),
+                                    source: Box::new(err),
+                                })?
+                        })
                     }
 
 
@@ -1945,6 +1954,7 @@ fn quote_arrow_field_serializer(
     }
 }
 
+// Remember: the returned TokenStream instantiates a `FallibleIterator<Item = Result<Option<T>>>`!
 fn quote_arrow_deserializer(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
@@ -1990,21 +2000,15 @@ fn quote_arrow_deserializer(
         };
 
         let quoted_opt_map = if is_tuple_struct {
-            quote!(.map(|res| res.map(|v| Some(Self(v)))))
+            quote!(.map(|v| Ok(Some(Self(v)))))
         } else {
-            quote!(.map(|res| res.map(|#data_dst| Some(Self { #data_dst }))))
+            quote!(.map(|#data_dst| Ok(Some(Self { #data_dst }))))
         };
 
         quote! {
             #quoted_deserializer
             #quoted_unwrap
             #quoted_opt_map
-            // NOTE: implicit Vec<Result> to Result<Vec>
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: #obj_field_fqname.into(),
-                source: Box::new(err),
-            })?
         }
     } else {
         let data_src = data_src.clone();
@@ -2076,17 +2080,10 @@ fn quote_arrow_deserializer(
                             source: Box::new(err),
                         })?;
 
-                    if #data_src.is_empty() {
-                        // NOTE: The outer container is empty and so we already know that the end result
-                        // is also going to be an empty vec.
-                        // Early out right now rather than waste time computing possibly many empty
-                        // datastructures for all of our children.
-                        Vec::new()
-                    } else {
                         let (#data_src_fields, #data_src_arrays, #data_src_bitmap) =
                             (#data_src.fields(), #data_src.values(), #data_src.validity());
 
-                        let is_valid = |i| #data_src_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                        let is_valid = move |i| #data_src_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = #data_src_fields
                             .iter()
@@ -2096,18 +2093,12 @@ fn quote_arrow_deserializer(
 
                         #(#quoted_field_deserializers;)*
 
-                        ::itertools::izip!(#(#quoted_field_names),*)
+                        crate::izip!(#(#quoted_field_names),*)
                             .enumerate()
-                            .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
+                            .map(move |(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
                                 #(#quoted_unwrappings,)*
-                            })).transpose())
-                            // NOTE: implicit Vec<Result> to Result<Vec>
-                            .collect::<crate::DeserializationResult<Vec<_>>>()
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: #obj_fqname.into(),
-                                source: Box::new(err),
-                            })?
-                    }
+                            }))
+                            .transpose())
                 }}
             }
 
@@ -2133,7 +2124,7 @@ fn quote_arrow_deserializer(
                         quote! {
                             let #data_dst = {
                                 let #data_src = &*#data_src_arrays[#i];
-                                 #quoted_deserializer.collect::<Vec<_>>()
+                                #quoted_deserializer.collect::<Vec<_>>().unwrap() // TODO
                             }
                         }
                     });
@@ -2195,13 +2186,6 @@ fn quote_arrow_deserializer(
                             source: Box::new(err),
                         })?;
 
-                    if #data_src.is_empty() {
-                        // NOTE: The outer container is empty and so we already know that the end result
-                        // is also going to be an empty vec.
-                        // Early out right now rather than waste time computing possibly many empty
-                        // datastructures for all of our children.
-                        Vec::new()
-                    } else {
                         let (#data_src_types, #data_src_arrays, #data_src_offsets) =
                             // NOTE: unwrapping of offsets is safe because this is a dense union
                             (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
@@ -2211,7 +2195,7 @@ fn quote_arrow_deserializer(
                         #data_src_types
                             .iter()
                             .enumerate()
-                            .map(|(i, typ)| {
+                            .map(move |(i, typ)| {
                                 let offset = #data_src_offsets[i];
 
                                 if *typ == 0 {
@@ -2223,13 +2207,7 @@ fn quote_arrow_deserializer(
                                     }))
                                 }
                             })
-                            // NOTE: implicit Vec<Result> to Result<Vec>
-                            .collect::<crate::DeserializationResult<Vec<_>>>()
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: #obj_fqname.into(),
-                                source: Box::new(err),
-                            })?
-                    }
+                            .transpose_into_fallible::<_, crate::DeserializationError>()
                 }}
             }
 
@@ -2238,6 +2216,7 @@ fn quote_arrow_deserializer(
     }
 }
 
+// Remember: the returned TokenStream instantiates a `FallibleIterator<Item = Result<Option<T>>>`!
 fn quote_arrow_field_deserializer(
     objects: &Objects,
     datatype: &DataType,
@@ -2299,6 +2278,8 @@ fn quote_arrow_field_deserializer(
                     .unwrap() // safe
                     .into_iter()
                     #quoted_transparent_unmapping
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
         }
 
@@ -2334,7 +2315,8 @@ fn quote_arrow_field_deserializer(
                 )
                 .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
                     #quoted_transparent_unmapping
-                }
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
         }
 
@@ -2375,24 +2357,18 @@ fn quote_arrow_field_deserializer(
                     .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                     .unwrap(); // safe
 
-                if #data_src.is_empty() {
-                    // NOTE: The outer container is empty and so we already know that the end result
-                    // is also going to be an empty vec.
-                    // Early out right now rather than waste time computing possibly many empty
-                    // datastructures for all of our children.
-                    Vec::new()
-                } else {
+                    // TODO: use ziputil thing
                     let bitmap = #data_src.validity().cloned();
                     let offsets = (0..).step_by(#length).zip((#length..).step_by(#length).take(#data_src.len()));
 
                     let #data_src = &**#data_src.values();
 
+                    // TODO: map err
                     let data = #quoted_inner
                         .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
                             backtrace: ::backtrace::Backtrace::new_unresolved(),
                         }))
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                        .collect::<Vec<_>>().unwrap(); // TODO
 
                     offsets
                         .enumerate()
@@ -2417,10 +2393,7 @@ fn quote_arrow_field_deserializer(
                             }).transpose()
                         )
                         #quoted_transparent_unmapping
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                }
-                .into_iter()
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
             }}
         }
 
@@ -2441,13 +2414,6 @@ fn quote_arrow_field_deserializer(
                     .downcast_ref::<::arrow2::array::ListArray<i32>>()
                     .unwrap(); // safe
 
-                if #data_src.is_empty() {
-                    // NOTE: The outer container is empty and so we already know that the end result
-                    // is also going to be an empty vec.
-                    // Early out right now rather than waste time computing possibly many empty
-                    // datastructures for all of our children.
-                    Vec::new()
-                } else {
                     let bitmap = #data_src.validity().cloned();
                     let offsets = {
                         let offsets = #data_src.offsets();
@@ -2456,14 +2422,14 @@ fn quote_arrow_field_deserializer(
 
                     let #data_src = &**#data_src.values();
 
+                    // TODO: map err
                     let data = #quoted_inner
                         .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
                             backtrace: ::backtrace::Backtrace::new_unresolved(),
                         }))
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                        .collect::<Vec<_>>().unwrap(); // TODO
 
-                    offsets
+                     offsets
                         .enumerate()
                         .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
                                 // NOTE: It is absolutely crucial we explicitly handle the
@@ -2483,10 +2449,7 @@ fn quote_arrow_field_deserializer(
                                 Ok(data)
                             }).transpose()
                         )
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                }
-                .into_iter()
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
             }}
         }
 
@@ -2495,11 +2458,10 @@ fn quote_arrow_field_deserializer(
             let fqname_use = quote_fqname_as_type_path(fqname);
             quote! {
                 #fqname_use::try_from_arrow_opt(#data_src)
-                    .map_err(|err| crate::DeserializationError::Context {
-                            location: #obj_field_fqname.into(),
-                            source: Box::new(err),
-                        })
-                    ?.into_iter()
+                    .unwrap() // TODO
+                    .into_iter()
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
         }
 

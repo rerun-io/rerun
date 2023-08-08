@@ -9,7 +9,6 @@ use re_build_tools::{
 };
 
 // ---
-
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
 const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
