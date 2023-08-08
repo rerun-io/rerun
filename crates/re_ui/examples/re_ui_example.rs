@@ -228,6 +228,7 @@ impl eframe::App for ExampleApp {
         egui::SidePanel::right("right_panel")
             .frame(panel_frame)
             .show_animated(egui_ctx, self.right_panel, |ui| {
+                // TODO(ab): use the proper `egui::Rect` function when egui 0.23 is released
                 let clip_rect = egui::Rect::from_min_max(
                     ui.max_rect().min - panel_frame.inner_margin.left_top(),
                     ui.max_rect().max + panel_frame.inner_margin.right_bottom(),
