@@ -107,7 +107,7 @@ def main() -> None:
         state = issue["state"]
         labels = [label["name"] for label in issue["labels"]]
 
-        if '👀 needs triage' in labels:
+        if "👀 needs triage" in labels:
             print(f"{html_url} by {author} needs triage")
         elif len(labels) == 0:
             print(f"{html_url} by {author} has no labels")
