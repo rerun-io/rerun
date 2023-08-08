@@ -3,7 +3,7 @@
 use egui::NumExt as _;
 
 use re_ui::UICommand;
-use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
+use re_viewer_context::StoreContext;
 
 use crate::App;
 
@@ -73,12 +73,6 @@ impl App {
 
             ui.add_space(spacing);
 
-            {
-                ui.menu_button("Recordings", |ui| {
-                    self.recordings_menu(ui, store_context);
-                });
-            }
-
             ui.menu_button("Options", |ui| {
                 self.options_menu_ui(ui, frame);
             });
@@ -140,39 +134,6 @@ impl App {
         LLVM {llvm_version}\n\
         Built {datetime}",
         ));
-    }
-
-    fn recordings_menu(&self, ui: &mut egui::Ui, store_context: Option<&StoreContext<'_>>) {
-        let store_dbs = store_context.map_or(vec![], |ctx| ctx.alternate_recordings.clone());
-
-        if store_dbs.is_empty() {
-            ui.weak("(empty)");
-            return;
-        }
-
-        let active_recording = store_context
-            .and_then(|ctx| ctx.recording)
-            .map(|rec| rec.store_id());
-
-        ui.style_mut().wrap = Some(false);
-        for store_db in &store_dbs {
-            let info = if let Some(store_info) = store_db.store_info() {
-                format!(
-                    "{} - {}",
-                    store_info.application_id,
-                    store_info.started.format()
-                )
-            } else {
-                "<UNKNOWN>".to_owned()
-            };
-            if ui
-                .radio(active_recording == Some(store_db.store_id()), info)
-                .clicked()
-            {
-                self.command_sender
-                    .send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
-            }
-        }
     }
 
     fn options_menu_ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

@@ -444,6 +444,47 @@ impl ReUi {
         response
     }
 
+    /// Static title bar used to separate panels into section.
+    ///
+    /// Use [`panel_title_bar_with_buttons`] to display buttons in the title bar.
+    pub fn panel_title_bar(&self, ui: &mut egui::Ui, label: &str, hover_text: Option<&str>) {
+        self.panel_title_bar_with_buttons(ui, label, hover_text, |_ui| {});
+    }
+
+    /// Static title bar used to separate panels into section with custom buttons when hovered.
+    #[allow(clippy::unused_self)]
+    pub fn panel_title_bar_with_buttons<R>(
+        &self,
+        ui: &mut egui::Ui,
+        label: &str,
+        hover_text: Option<&str>,
+        add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
+        egui::TopBottomPanel::top(ui.id().with(label))
+            .exact_height(Self::title_bar_height())
+            .frame(egui::Frame {
+                inner_margin: egui::Margin::symmetric(Self::view_padding(), 0.0),
+                ..Default::default()
+            })
+            .show_inside(ui, |ui| {
+                ui.horizontal_centered(|ui| {
+                    let resp = ui.strong(label);
+                    if let Some(hover_text) = hover_text {
+                        resp.on_hover_text(hover_text);
+                    }
+
+                    ui.allocate_ui_with_layout(
+                        ui.available_size_before_wrap(),
+                        egui::Layout::right_to_left(egui::Align::Center),
+                        |ui| add_right_buttons(ui),
+                    )
+                    .inner
+                })
+                .inner
+            })
+            .inner
+    }
+
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
     ///
     /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.

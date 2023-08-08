@@ -219,29 +219,44 @@ impl eframe::App for ExampleApp {
                     });
             });
 
+        // RIGHT PANEL
+        //
+        // This is the "idiomatic" panel structure for Rerun:
+        // - Top level `SidePanel` as a `Frame` with margins = 0.0 and sets the clip rectangle.
+        // - Panel titles (`ReUi::panel_title_bar`) are drawn at the top level of the `SidePanel`'s
+        //   hierarchy.
+        // - Actual content beneath the title bar (including large collapsing headers if used) is
+        //   put inside a sub-`Frame` with `inner_margin` set to `ReUi::view_padding()`.
+
         let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,
-            inner_margin: re_ui::ReUi::view_padding().into(),
             ..Default::default()
         };
 
         egui::SidePanel::right("right_panel")
             .frame(panel_frame)
             .show_animated(egui_ctx, self.right_panel, |ui| {
-                // TODO(ab): use the proper `egui::Rect` function when egui 0.23 is released
-                let clip_rect = egui::Rect::from_min_max(
-                    ui.max_rect().min - panel_frame.inner_margin.left_top(),
-                    ui.max_rect().max + panel_frame.inner_margin.right_bottom(),
-                );
-                ui.set_clip_rect(clip_rect);
+                ui.set_clip_rect(ui.max_rect());
 
-                ui.strong("Right panel");
-                selection_buttons(ui);
-                self.re_ui
-                    .large_collapsing_header(ui, "Large Collapsing Header", true, |ui| {
-                        ui.label("Some data here");
-                        ui.label("Some data there");
-                    });
+                self.re_ui.panel_title_bar(
+                    ui,
+                    "Right panel",
+                    Some("This is the title of the right panel"),
+                );
+
+                egui::Frame {
+                    inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                    ..Default::default()
+                }
+                .show(ui, |ui| {
+                    self.re_ui
+                        .large_collapsing_header(ui, "Large Collapsing Header", true, |ui| {
+                            ui.label("Some data here");
+                            ui.label("Some data there");
+
+                            selection_buttons(ui);
+                        });
+                });
             });
 
         egui::CentralPanel::default()
