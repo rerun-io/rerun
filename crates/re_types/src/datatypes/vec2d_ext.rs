@@ -34,6 +34,30 @@ impl From<[f32; 2]> for Vec2D {
     }
 }
 
+// NOTE: All these by-ref impls make the lives of end-users much easier when juggling around with
+// slices, because Rust cannot keep track of the inherent `Copy` capability of it all across all the
+// layers of `Into`/`IntoIterator`.
+
+impl<'a> From<&'a Vec2D> for Vec2D {
+    fn from(v: &'a Vec2D) -> Self {
+        Self(v.0)
+    }
+}
+
+impl<'a> From<&'a (f32, f32)> for Vec2D {
+    #[inline]
+    fn from((x, y): &'a (f32, f32)) -> Self {
+        Self::new(*x, *y)
+    }
+}
+
+impl<'a> From<&'a [f32; 2]> for Vec2D {
+    #[inline]
+    fn from(v: &'a [f32; 2]) -> Self {
+        Self(*v)
+    }
+}
+
 impl<Idx> std::ops::Index<Idx> for Vec2D
 where
     Idx: std::slice::SliceIndex<[f32]>,

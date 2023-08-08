@@ -5032,6 +5032,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_line_strips2d"
+version = "0.9.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
+name = "roundtrip_line_strips3d"
+version = "0.9.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_points2d"
 version = "0.9.0-alpha.2"
 dependencies = [

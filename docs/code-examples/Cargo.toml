@@ -52,16 +52,40 @@ name = "line_segments2d_simple"
 path = "line_segments2d_simple.rs"
 
 [[bin]]
+name = "line_segments2d_simple_v2"
+path = "line_segments2d_simple_v2.rs"
+
+[[bin]]
 name = "line_segments3d_simple"
 path = "line_segments3d_simple.rs"
+
+[[bin]]
+name = "line_segments3d_simple_v2"
+path = "line_segments3d_simple_v2.rs"
 
 [[bin]]
 name = "line_strip2d_simple"
 path = "line_strip2d_simple.rs"
 
 [[bin]]
+name = "line_strip2d_simple_v2"
+path = "line_strip2d_simple_v2.rs"
+
+[[bin]]
+name = "line_strip2d_batch_v2"
+path = "line_strip2d_batch_v2.rs"
+
+[[bin]]
 name = "line_strip3d_simple"
 path = "line_strip3d_simple.rs"
+
+[[bin]]
+name = "line_strip3d_simple_v2"
+path = "line_strip3d_simple_v2.rs"
+
+[[bin]]
+name = "line_strip3d_batch_v2"
+path = "line_strip3d_batch_v2.rs"
 
 [[bin]]
 name = "mesh_simple"

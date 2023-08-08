@@ -1,4 +1,5 @@
 //! Log a simple line strip.
+
 use rerun::components::LineStrip3D;
 use rerun::{MsgSender, RecordingStreamBuilder};
 

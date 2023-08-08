@@ -30,6 +30,8 @@
 #include "components/instance_key.hpp"
 #include "components/keypoint_id.hpp"
 #include "components/label.hpp"
+#include "components/line_strip2d.hpp"
+#include "components/line_strip3d.hpp"
 #include "components/origin3d.hpp"
 #include "components/point2d.hpp"
 #include "components/point3d.hpp"

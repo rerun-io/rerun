@@ -32,6 +32,7 @@ mod vec2d_ext;
 mod vec3d;
 mod vec3d_ext;
 mod vec4d;
+mod vec4d_ext;
 
 pub use self::angle::Angle;
 pub use self::annotation_info::AnnotationInfo;
