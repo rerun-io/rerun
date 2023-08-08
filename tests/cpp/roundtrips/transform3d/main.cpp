@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
 
     rec_stream.log(
         "translation_rotation_scale/rigid",
-        rr::archetypes::Transform3D(rr::datatypes::TranslationRotationScale3D::rigid(
+        rr::archetypes::Transform3D(rr::datatypes::TranslationRotationScale3D(
             {1.0f, 2.0f, 3.0f},
             rr::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
 
     rec_stream.log(
         "translation_rotation_scale/affine",
-        rr::archetypes::Transform3D(rr::datatypes::TranslationRotationScale3D::affine(
+        rr::archetypes::Transform3D(rr::datatypes::TranslationRotationScale3D(
             {1.0f, 2.0f, 3.0f},
             rr::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},

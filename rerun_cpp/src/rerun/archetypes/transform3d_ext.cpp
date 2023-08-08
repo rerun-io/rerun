@@ -19,17 +19,14 @@ namespace rerun {
 
             static const Transform3D IDENTITY;
 
-            /// New transform from translation and arbitrary 3x3 matrix.
-            Transform3D(const rerun::datatypes::TranslationAndMat3x3& translation_and_mat3x3)
-                : Transform3D(
-                      rerun::datatypes::Transform3D::translation_and_mat3x3(translation_and_mat3x3)
+            /// New 3D transform from translation/matrix datatype.
+            Transform3D(const datatypes::TranslationAndMat3x3& translation_and_mat3x3)
+                : Transform3D(datatypes::Transform3D::translation_and_mat3x3(translation_and_mat3x3)
                   ) {}
 
-            /// New transform from translation/rotation/scale.
-            Transform3D(
-                const rerun::datatypes::TranslationRotationScale3D& translation_rotation_scale3d
-            )
-                : Transform3D(rerun::datatypes::Transform3D::translation_rotation_scale(
+            /// New 3D transform from translation/rotation/scale datatype.
+            Transform3D(const datatypes::TranslationRotationScale3D& translation_rotation_scale3d)
+                : Transform3D(datatypes::Transform3D::translation_rotation_scale(
                       translation_rotation_scale3d
                   )) {}
 
