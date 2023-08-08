@@ -27,8 +27,8 @@ fn roundtrip() {
             Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
         labels: Some(vec![
-            Label("hello".to_owned()),  //
-            Label("friend".to_owned()), //
+            Label::from("hello"),  //
+            Label::from("friend"), //
         ]),
         class_ids: Some(vec![
             ClassId(126), //

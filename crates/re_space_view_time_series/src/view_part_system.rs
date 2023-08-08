@@ -144,7 +144,7 @@ impl TimeSeriesSystem {
                         // TODO(andreas): Support entity path
                         let color = annotation_info
                             .color(color.map(|c| c.to_array()).as_ref(), default_color);
-                        let label = annotation_info.label(label.map(|l| l.into()).as_ref());
+                        let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
 
                         const DEFAULT_RADIUS: f32 = 0.75;
 

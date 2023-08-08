@@ -15,7 +15,7 @@
 /// A String label component.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Label(pub String);
+pub struct Label(pub crate::ArrowString);
 
 impl<'a> From<Label> for ::std::borrow::Cow<'a, Label> {
     #[inline]
@@ -75,11 +75,11 @@ impl crate::Loggable for Label {
             };
             {
                 let inner_data: ::arrow2::buffer::Buffer<u8> =
-                    data0.iter().flatten().flat_map(|s| s.bytes()).collect();
+                    data0.iter().flatten().flat_map(|s| s.0.clone()).collect();
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
+                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
                 )
                 .unwrap()
                 .into();
@@ -115,23 +115,27 @@ impl crate::Loggable for Label {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(data
-            .as_any()
-            .downcast_ref::<Utf8Array<i32>>()
-            .unwrap()
-            .into_iter()
-            .map(|v| v.map(ToOwned::to_owned))
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
+        Ok({
+            let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+            let offsets = downcast.offsets();
+            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                offsets.iter().zip(offsets.lengths()),
+                downcast.validity(),
+            )
+            .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+            .map(|v| v.map(crate::ArrowString))
+        }
+        .map(|v| {
+            v.ok_or_else(|| crate::DeserializationError::MissingData {
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Label#value".into(),
-                source: Box::new(err),
-            })?)
+        })
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .map_err(|err| crate::DeserializationError::Context {
+            location: "rerun.components.Label#value".into(),
+            source: Box::new(err),
+        })?)
     }
 
     #[inline]

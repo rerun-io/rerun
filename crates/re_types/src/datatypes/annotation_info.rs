@@ -161,7 +161,7 @@ impl crate::Loggable for AnnotationInfo {
                                 .flatten()
                                 .flat_map(|datum| {
                                     let crate::components::Label(data0) = datum;
-                                    data0.bytes()
+                                    data0.0.clone()
                                 })
                                 .collect();
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
@@ -169,7 +169,7 @@ impl crate::Loggable for AnnotationInfo {
                                     opt.as_ref()
                                         .map(|datum| {
                                             let crate::components::Label(data0) = datum;
-                                            data0.len()
+                                            data0.0.len()
                                         })
                                         .unwrap_or_default()
                                 }),
@@ -281,11 +281,16 @@ impl crate::Loggable for AnnotationInfo {
                 let label = {
                     let data = &**arrays_by_name["label"];
 
-                    data.as_any()
-                        .downcast_ref::<Utf8Array<i32>>()
-                        .unwrap()
-                        .into_iter()
-                        .map(|opt| opt.map(|v| crate::components::Label(v.to_owned())))
+                    {
+                        let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                        let offsets = downcast.offsets();
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            downcast.validity(),
+                        )
+                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                        .map(|opt| opt.map(|v| crate::components::Label(crate::ArrowString(v))))
+                    }
                 };
                 let color = {
                     let data = &**arrays_by_name["color"];

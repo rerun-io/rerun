@@ -23,8 +23,8 @@ fn roundtrip() {
             Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
         labels: Some(vec![
-            Label("hello".to_owned()),  //
-            Label("friend".to_owned()), //
+            Label("hello".into()),  //
+            Label("friend".into()), //
         ]),
         draw_order: Some(DrawOrder(300.0)),
         class_ids: Some(vec![

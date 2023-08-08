@@ -130,7 +130,7 @@ fn log_baseline_objects(
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
                 Transform3D::new(TranslationAndMat3x3::new(translation, rotation))
             };
-            let label = Label(object.category.clone());
+            let label = Label(object.category.clone().into());
 
             (object.id, box3, transform, label)
         })

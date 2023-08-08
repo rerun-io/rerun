@@ -75,7 +75,7 @@ impl Boxes3DPart {
                 box_lines.outline_mask_ids(*outline_mask_ids);
             }
 
-            if let Some(label) = annotation_info.label(label.as_ref().map(|s| &s.0)) {
+            if let Some(label) = annotation_info.label(label.as_ref().map(|s| s.as_str())) {
                 self.0.ui_labels.push(UiLabel {
                     text: label,
                     target: UiLabelTarget::Position3D(

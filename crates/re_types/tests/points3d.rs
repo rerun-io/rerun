@@ -18,8 +18,8 @@ fn roundtrip() {
             components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
         labels: Some(vec![
-            components::Label("hello".to_owned()),  //
-            components::Label("friend".to_owned()), //
+            components::Label::from("hello"),  //
+            components::Label::from("friend"), //
         ]),
         class_ids: Some(vec![
             components::ClassId(126), //

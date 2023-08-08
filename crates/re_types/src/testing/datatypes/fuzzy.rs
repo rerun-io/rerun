@@ -209,11 +209,11 @@ impl crate::Datatype for FlattenedScalar {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
-    pub single_string_required: String,
-    pub single_string_optional: Option<String>,
+    pub single_string_required: crate::ArrowString,
+    pub single_string_optional: Option<crate::ArrowString>,
     pub many_floats_optional: Option<Vec<f32>>,
-    pub many_strings_required: Vec<String>,
-    pub many_strings_optional: Option<Vec<String>>,
+    pub many_strings_required: Vec<crate::ArrowString>,
+    pub many_strings_optional: Option<Vec<crate::ArrowString>>,
     pub flattened_scalar: f32,
     pub almost_flattened_scalar: crate::testing::datatypes::FlattenedScalar,
     pub from_parent: Option<bool>,
@@ -410,11 +410,11 @@ impl crate::Loggable for AffixFuzzer1 {
                             let inner_data: ::arrow2::buffer::Buffer<u8> = single_string_required
                                 .iter()
                                 .flatten()
-                                .flat_map(|s| s.bytes())
+                                .flat_map(|s| s.0.clone())
                                 .collect();
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 single_string_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )
                             .unwrap()
@@ -459,11 +459,11 @@ impl crate::Loggable for AffixFuzzer1 {
                             let inner_data: ::arrow2::buffer::Buffer<u8> = single_string_optional
                                 .iter()
                                 .flatten()
-                                .flat_map(|s| s.bytes())
+                                .flat_map(|s| s.0.clone())
                                 .collect();
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 single_string_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )
                             .unwrap()
@@ -608,13 +608,13 @@ impl crate::Loggable for AffixFuzzer1 {
                                         many_strings_required_inner_data
                                             .iter()
                                             .flatten()
-                                            .flat_map(|s| s.bytes())
+                                            .flat_map(|s| s.0.clone())
                                             .collect();
                                     let offsets =
                                         ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                             many_strings_required_inner_data.iter().map(|opt| {
                                                 opt.as_ref()
-                                                    .map(|datum| datum.len())
+                                                    .map(|datum| datum.0.len())
                                                     .unwrap_or_default()
                                             }),
                                         )
@@ -697,13 +697,13 @@ impl crate::Loggable for AffixFuzzer1 {
                                         many_strings_optional_inner_data
                                             .iter()
                                             .flatten()
-                                            .flat_map(|s| s.bytes())
+                                            .flat_map(|s| s.0.clone())
                                             .collect();
                                     let offsets =
                                         ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                             many_strings_optional_inner_data.iter().map(|opt| {
                                                 opt.as_ref()
-                                                    .map(|datum| datum.len())
+                                                    .map(|datum| datum.0.len())
                                                     .unwrap_or_default()
                                             }),
                                         )
@@ -868,20 +868,30 @@ impl crate::Loggable for AffixFuzzer1 {
                 let single_string_required = {
                     let data = &**arrays_by_name["single_string_required"];
 
-                    data.as_any()
-                        .downcast_ref::<Utf8Array<i32>>()
-                        .unwrap()
-                        .into_iter()
-                        .map(|v| v.map(ToOwned::to_owned))
+                    {
+                        let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                        let offsets = downcast.offsets();
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            downcast.validity(),
+                        )
+                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                        .map(|v| v.map(crate::ArrowString))
+                    }
                 };
                 let single_string_optional = {
                     let data = &**arrays_by_name["single_string_optional"];
 
-                    data.as_any()
-                        .downcast_ref::<Utf8Array<i32>>()
-                        .unwrap()
-                        .into_iter()
-                        .map(|v| v.map(ToOwned::to_owned))
+                    {
+                        let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                        let offsets = downcast.offsets();
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            downcast.validity(),
+                        )
+                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                        .map(|v| v.map(crate::ArrowString))
+                    }
                 };
                 let many_floats_optional = {
                     let data = &**arrays_by_name["many_floats_optional"];
@@ -918,7 +928,9 @@ impl crate::Loggable for AffixFuzzer1 {
 
  else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
 
- ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+ ; let data = & * * data . values () ; let data = { let downcast = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () ; let offsets = downcast . offsets () ; arrow2 :: bitmap :: utils :: ZipValidity :: new_with_validity (offsets . iter () . zip (offsets . lengths ()) , downcast . validity () ,) . map (| elem | elem . map (| (o , l) | downcast . values () . clone () . sliced (* o as _ , l))) . map (| v | v . map (crate :: ArrowString)) }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 )) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -941,7 +953,9 @@ impl crate::Loggable for AffixFuzzer1 {
 
  else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
 
- ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () . into_iter () . map (| v | v . map (ToOwned :: to_owned)) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+ ; let data = & * * data . values () ; let data = { let downcast = data . as_any () . downcast_ref :: < Utf8Array < i32 >> () . unwrap () ; let offsets = downcast . offsets () ; arrow2 :: bitmap :: utils :: ZipValidity :: new_with_validity (offsets . iter () . zip (offsets . lengths ()) , downcast . validity () ,) . map (| elem | elem . map (| (o , l) | downcast . values () . clone () . sliced (* o as _ , l))) . map (| v | v . map (crate :: ArrowString)) }
+
+ . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 )) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -2097,7 +2111,7 @@ impl crate::Loggable for AffixFuzzer20 {
                                 .flatten()
                                 .flat_map(|datum| {
                                     let crate::testing::components::StringComponent(data0) = datum;
-                                    data0.bytes()
+                                    data0.0.clone()
                                 })
                                 .collect();
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
@@ -2106,7 +2120,7 @@ impl crate::Loggable for AffixFuzzer20 {
                                         .map(|datum| {
                                             let crate::testing::components::StringComponent(data0) =
                                                 datum;
-                                            data0.len()
+                                            data0.0.len()
                                         })
                                         .unwrap_or_default()
                                 }),
@@ -2180,13 +2194,20 @@ impl crate::Loggable for AffixFuzzer20 {
                 let s = {
                     let data = &**arrays_by_name["s"];
 
-                    data.as_any()
-                        .downcast_ref::<Utf8Array<i32>>()
-                        .unwrap()
-                        .into_iter()
+                    {
+                        let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                        let offsets = downcast.offsets();
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            downcast.validity(),
+                        )
+                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
                         .map(|opt| {
-                            opt.map(|v| crate::testing::components::StringComponent(v.to_owned()))
+                            opt.map(|v| {
+                                crate::testing::components::StringComponent(crate::ArrowString(v))
+                            })
                         })
+                    }
                 };
                 ::itertools::izip!(p, s)
                     .enumerate()

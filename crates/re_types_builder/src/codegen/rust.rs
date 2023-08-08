@@ -612,7 +612,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Float16 => unimplemented!("{typ:#?}"),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
-            Type::String => quote!(String),
+            Type::String => quote!(crate::ArrowString),
             Type::Array { elem_type, length } => {
                 if *unwrap {
                     quote!(#elem_type)
@@ -648,7 +648,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Float16 => unimplemented!("{self:#?}"),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
-            ElementType::String => quote!(String),
+            ElementType::String => quote!(crate::ArrowString),
             ElementType::Object(fqname) => quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
@@ -1791,23 +1791,25 @@ fn quote_arrow_field_serializer(
                         quote! {
                             .flat_map(|datum| {
                                 let #quoted_binding = datum;
-                                #quoted_data_dst .bytes()
+                                // NOTE: `Buffer::clone`, which is just a ref-count bump
+                                #quoted_data_dst .0.clone()
                             })
                         },
                         quote! {
                             .map(|datum| {
                                 let #quoted_binding = datum;
-                                #quoted_data_dst.len()
+                                #quoted_data_dst.0.len()
                             }).unwrap_or_default()
                         },
                     )
                 } else {
                     (
                         quote! {
-                            .flat_map(|s| s.bytes())
+                            // NOTE: `Buffer::clone`, which is just a ref-count bump
+                            .flat_map(|s| s.0.clone())
                         },
                         quote! {
-                            .map(|datum| datum.len()).unwrap_or_default()
+                            .map(|datum| datum.0.len()).unwrap_or_default()
                         },
                     )
                 };
@@ -2307,21 +2309,25 @@ fn quote_arrow_field_deserializer(
                     }
                 );
                 if is_tuple_struct {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type(v.to_owned()))))
+                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type(crate::ArrowString(v)))))
                 } else {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type { #quoted_data_dst: v.to_owned() })))
+                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type { #quoted_data_dst: crate::ArrowString(v) })))
                 }
             } else {
-                quote!(.map(|v| v.map(ToOwned::to_owned)))
+                quote!(.map(|v| v.map(crate::ArrowString)))
             };
 
             quote! {
-                #data_src
-                    .as_any()
-                    .downcast_ref::<Utf8Array<i32>>()
-                    .unwrap() // safe
-                    .into_iter()
+                {
+                let downcast = #data_src.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                let offsets = downcast.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    downcast.validity(),
+                )
+                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
                     #quoted_transparent_unmapping
+                }
             }
         }
 

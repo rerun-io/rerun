@@ -39,7 +39,7 @@ fn test_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Color::from_rgb(0, 255, 0)])?
         .with_component(&[Radius(0.005)])?
-        .with_component(&[Label("box/t0".to_owned())])?
+        .with_component(&[Label("box/t0".into())])?
         .send(rec_stream)?;
     MsgSender::from_archetype(
         "bbox_test/bbox",
@@ -52,7 +52,7 @@ fn test_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Color::from_rgb(255, 255, 0)])?
         .with_component(&[Radius(0.01)])?
-        .with_component(&[Label("box/t1".to_owned())])?
+        .with_component(&[Label("box/t1".into())])?
         .send(rec_stream)?;
     MsgSender::from_archetype(
         "bbox_test/bbox",
@@ -207,7 +207,7 @@ fn test_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
     MsgSender::new("3d_points/single_point_labeled")
         .with_component(&[Point3D::new(0.0, 0.0, 0.0)])?
-        .with_component(&[Label("labeled point".to_owned())])?
+        .with_component(&[Label("labeled point".into())])?
         .send(rec_stream)?;
 
     fn create_points(
@@ -222,7 +222,7 @@ fn test_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             let i = i as f32;
             let t = 1.0 - i / (n - 1) as f32;
             (
-                Label(i.to_string()),
+                Label(i.to_string().into()),
                 Point3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
                 Radius(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
                 Color::from_rgb(rng.gen(), rng.gen(), rng.gen()),
