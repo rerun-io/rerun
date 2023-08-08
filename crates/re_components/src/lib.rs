@@ -21,7 +21,6 @@ use re_types::Loggable;
 
 mod bbox;
 pub mod coordinates;
-mod linestrip;
 mod mat;
 mod mesh3d;
 mod pinhole;
@@ -48,7 +47,6 @@ pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};
 pub use self::{
     bbox::Box3D,
     coordinates::ViewCoordinates,
-    linestrip::{LineStrip2D, LineStrip3D},
     mat::LegacyMat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},
     pinhole::Pinhole,
@@ -85,7 +83,7 @@ pub mod external {
 
 use re_types::components::{
     AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
-    Label, Origin3D, Point2D, Point3D, Radius, Transform3D, Vector3D,
+    Label, LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, Transform3D, Vector3D,
 };
 
 lazy_static! {
@@ -93,8 +91,6 @@ lazy_static! {
     static ref FIELDS: [Field; 28] = [
         <Box3D as LegacyComponent>::field(),
         <LegacyVec3D as LegacyComponent>::field(),
-        <LineStrip2D as LegacyComponent>::field(),
-        <LineStrip3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
         <Pinhole as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
@@ -113,6 +109,8 @@ lazy_static! {
         Field::new(InstanceKey::name().as_str(), InstanceKey::to_arrow_datatype(), false),
         Field::new(KeypointId::name().as_str(), KeypointId::to_arrow_datatype(), false),
         Field::new(Label::name().as_str(), Label::to_arrow_datatype(), false),
+        Field::new(LineStrip2D::name().as_str(), LineStrip2D::to_arrow_datatype(), false),
+        Field::new(LineStrip3D::name().as_str(), LineStrip3D::to_arrow_datatype(), false),
         Field::new(Origin3D::name().as_str(), Origin3D::to_arrow_datatype(), false),
         Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
         Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),

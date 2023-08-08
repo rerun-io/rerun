@@ -40,7 +40,8 @@
 ///        "strips",
 ///        &LineStrips3D::new([strip1.to_vec(), strip2.to_vec()])
 ///            .with_colors([0xFF0000FF, 0x00FF00FF])
-///            .with_radii([0.025, 0.005]),
+///            .with_radii([0.025, 0.005])
+///            .with_labels(["one strip here", "and one strip there" /**/]),
 ///    )?
 ///    .send(&rec_stream)?;
 ///
