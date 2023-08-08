@@ -28,6 +28,7 @@ namespace rerun {
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             ///
             /// Implementation note: This overload is necessary, otherwise the array may be
             /// interpreted as bool and call the wrong overload.
@@ -41,6 +42,7 @@ namespace rerun {
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             Transform3D(
                 const datatypes::Vec3D& translation, const datatypes::Mat3x3& matrix,
                 bool from_parent = false
@@ -51,6 +53,7 @@ namespace rerun {
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             Transform3D(const datatypes::Vec3D& translation, bool from_parent = false)
                 : Transform3D(datatypes::TranslationAndMat3x3(translation, from_parent)) {}
 
@@ -58,6 +61,7 @@ namespace rerun {
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             Transform3D(const datatypes::Mat3x3& matrix, bool from_parent = false)
                 : Transform3D(datatypes::TranslationAndMat3x3(matrix, from_parent)) {}
 
@@ -71,6 +75,7 @@ namespace rerun {
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             Transform3D(
                 const datatypes::Vec3D& translation, const datatypes::Rotation3D& rotation,
                 const datatypes::Scale3D& scale, bool from_parent = false
@@ -83,9 +88,10 @@ namespace rerun {
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             ///
             /// Implementation note: This explicit overload prevents interpretation of the float as
-            /// bool.
+            /// bool, leading to a call to the wrong overload.
             Transform3D(
                 const datatypes::Vec3D& translation, const datatypes::Rotation3D& rotation,
                 float uniform_scale, bool from_parent = false
@@ -98,6 +104,7 @@ namespace rerun {
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             Transform3D(
                 const datatypes::Vec3D& translation, const datatypes::Rotation3D& rotation,
                 bool from_parent = false
@@ -110,6 +117,7 @@ namespace rerun {
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             Transform3D(
                 const datatypes::Vec3D& translation, const datatypes::Scale3D& scale,
                 bool from_parent = false
@@ -117,13 +125,14 @@ namespace rerun {
                 : Transform3D(datatypes::TranslationRotationScale3D(translation, scale, from_parent)
                   ) {}
 
-            /// From translation & rigid scale only.
+            /// From translation & uniform scale only.
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             ///
             /// Implementation note: This explicit overload prevents interpretation of the float as
-            /// bool.
+            /// bool, leading to a call to the wrong overload.
             Transform3D(
                 const datatypes::Vec3D& translation, float uniform_scale, bool from_parent = false
             )
@@ -131,10 +140,38 @@ namespace rerun {
                       datatypes::TranslationRotationScale3D(translation, uniform_scale, from_parent)
                   ) {}
 
+            /// From rotation & scale.
+            ///
+            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
+            Transform3D(
+                const datatypes::Rotation3D& rotation, const datatypes::Scale3D& scale,
+                bool from_parent = false
+            )
+                : Transform3D(datatypes::TranslationRotationScale3D(rotation, scale, from_parent)) {
+            }
+
+            /// From rotation & uniform scale.
+            ///
+            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
+            ///
+            /// Implementation note: This explicit overload prevents interpretation of the float as
+            /// bool, leading to a call to the wrong overload.
+            Transform3D(
+                const datatypes::Rotation3D& rotation, float uniform_scale, bool from_parent = false
+            )
+                : Transform3D(
+                      datatypes::TranslationRotationScale3D(rotation, uniform_scale, from_parent)
+                  ) {}
+
             /// From rotation only.
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             Transform3D(const datatypes::Rotation3D& rotation, bool from_parent = false)
                 : Transform3D(datatypes::TranslationRotationScale3D(rotation, from_parent)) {}
 
@@ -142,6 +179,7 @@ namespace rerun {
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
             Transform3D(const datatypes::Scale3D& scale, bool from_parent = false)
                 : Transform3D(datatypes::TranslationRotationScale3D(scale, from_parent)) {}
 

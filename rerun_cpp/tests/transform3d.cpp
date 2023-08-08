@@ -109,6 +109,19 @@ SCENARIO(
 
             test_serialization_for_manual_and_builder(manual, utility);
         }
+        GIVEN("Transform3D from rotation/scale and from_parent==" << from_parent) {
+            auto utility =
+                from_parent ? Transform3D(rotation, 1.0f, true) : Transform3D(rotation, 1.0f);
+
+            translation_rotation_scale.translation = std::nullopt;
+            translation_rotation_scale.rotation = rotation;
+            translation_rotation_scale.scale = 1.0f;
+            translation_rotation_scale.from_parent = from_parent;
+            manual.transform.repr =
+                rr::datatypes::Transform3D::translation_rotation_scale(translation_rotation_scale);
+
+            test_serialization_for_manual_and_builder(manual, utility);
+        }
         GIVEN("Transform3D from rotation only and from_parent==" << from_parent) {
             auto utility = from_parent ? Transform3D(rotation, true) : Transform3D(rotation);
 
