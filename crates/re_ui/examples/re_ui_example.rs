@@ -257,6 +257,17 @@ impl eframe::App for ExampleApp {
                             selection_buttons(ui);
                         });
                 });
+
+                self.re_ui.panel_title_bar(ui, "Another section", None);
+
+                egui::Frame {
+                    inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                    ..Default::default()
+                }
+                .show(ui, |ui| {
+                    ui.label("Some data here");
+                    ui.label("Some data there");
+                });
             });
 
         egui::CentralPanel::default()

@@ -446,12 +446,15 @@ impl ReUi {
 
     /// Static title bar used to separate panels into section.
     ///
-    /// Use [`panel_title_bar_with_buttons`] to display buttons in the title bar.
+    /// Use [`panel_title_bar_with_buttons`] to display buttons in the title bar. Note that a clip
+    /// rect must be set (typically by the panel) to avoid any overdraw.
     pub fn panel_title_bar(&self, ui: &mut egui::Ui, label: &str, hover_text: Option<&str>) {
         self.panel_title_bar_with_buttons(ui, label, hover_text, |_ui| {});
     }
 
     /// Static title bar used to separate panels into section with custom buttons when hovered.
+    ///
+    /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
     #[allow(clippy::unused_self)]
     pub fn panel_title_bar_with_buttons<R>(
         &self,
@@ -460,29 +463,42 @@ impl ReUi {
         hover_text: Option<&str>,
         add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
-        egui::TopBottomPanel::top(ui.id().with(label))
-            .exact_height(Self::title_bar_height())
-            .frame(egui::Frame {
-                inner_margin: egui::Margin::symmetric(Self::view_padding(), 0.0),
-                ..Default::default()
-            })
-            .show_inside(ui, |ui| {
-                ui.horizontal_centered(|ui| {
+        egui::Frame {
+            inner_margin: egui::Margin::symmetric(Self::view_padding(), 0.0),
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            ui.allocate_ui_with_layout(
+                egui::vec2(ui.available_width(), Self::title_bar_height()),
+                egui::Layout::left_to_right(egui::Align::Center),
+                |ui| {
+                    // draw horizontal separator lines
+                    let mut rect = ui.available_rect_before_wrap();
+                    let hline_stroke = ui.style().visuals.widgets.noninteractive.bg_stroke;
+                    rect.extend_with_x(ui.clip_rect().right());
+                    rect.extend_with_x(ui.clip_rect().left());
+                    ui.painter().hline(rect.x_range(), rect.top(), hline_stroke);
+                    ui.painter()
+                        .hline(rect.x_range(), rect.bottom(), hline_stroke);
+
+                    // draw label
                     let resp = ui.strong(label);
                     if let Some(hover_text) = hover_text {
                         resp.on_hover_text(hover_text);
                     }
 
+                    // draw hover buttons
                     ui.allocate_ui_with_layout(
-                        ui.available_size_before_wrap(),
+                        ui.available_size(),
                         egui::Layout::right_to_left(egui::Align::Center),
                         |ui| add_right_buttons(ui),
                     )
                     .inner
-                })
-                .inner
-            })
+                },
+            )
             .inner
+        })
+        .inner
     }
 
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
