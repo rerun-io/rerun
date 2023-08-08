@@ -24,7 +24,7 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         return;
     }
 
-    let active_recording = store_context.recording.and_then(|rec| Some(rec.store_id()));
+    let active_recording = store_context.recording.map(|rec| rec.store_id());
 
     ui.style_mut().wrap = Some(false);
     for store_db in &store_dbs {
