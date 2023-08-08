@@ -78,6 +78,10 @@
 //! E.g. to extend `vec2d.cpp`, create a `vec2d_ext.cpp`.
 //!
 //! The sibling file is compiled as-is as part of the `rerun_cpp` crate.
+//!
+//! Any include directive used in the extension is automatically added to the generated header,
+//! except to the generated header itself.
+//!
 //! In order to extend the generated type declaration in the header,
 //! you can specify a single code-block that you want to be injected into the type declaration by
 //! starting it with `[CODEGEN COPY TO HEADER START]` and ending it with `[CODEGEN COPY TO HEADER END]`.
