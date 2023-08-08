@@ -453,7 +453,7 @@ impl ReUi {
     /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
     /// set.
     ///
-    /// Use [`panel_title_bar_with_buttons`] to display buttons in the title bar.
+    /// Use [`ReUi::panel_title_bar_with_buttons`] to display buttons in the title bar.
     pub fn panel_title_bar(&self, ui: &mut egui::Ui, label: &str, hover_text: Option<&str>) {
         self.panel_title_bar_with_buttons(ui, label, hover_text, |_ui| {});
     }
