@@ -23,11 +23,11 @@ int main(int argc, char** argv) {
 
     rec_stream.log(
         "translation_and_mat3x3/rotation",
-        rr::archetypes::Transform3D(rr::datatypes::Mat3x3({
+        rr::archetypes::Transform3D({
             {1.0f, 4.0f, 7.0f},
             {2.0f, 5.0f, 8.0f},
             {3.0f, 6.0f, 9.0f},
-        }))
+        })
     );
 
     rec_stream.log(

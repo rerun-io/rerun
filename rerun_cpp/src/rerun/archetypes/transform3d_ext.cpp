@@ -24,7 +24,7 @@ namespace rerun {
                 : Transform3D(datatypes::Transform3D::translation_and_mat3x3(translation_and_mat3x3)
                   ) {}
 
-            /// Creates a new 3D transform from translation/matrix.
+            /// Creates a new 3D transform from translation and matrix provided as 3 columns.
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
@@ -38,7 +38,7 @@ namespace rerun {
             )
                 : Transform3D(datatypes::TranslationAndMat3x3(translation, columns, from_parent)) {}
 
-            /// Creates a new 3D transform from translation and matrix provided as 3 columns.
+            /// Creates a new 3D transform from translation/matrix.
             ///
             /// @param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
@@ -64,6 +64,14 @@ namespace rerun {
             /// parent.
             Transform3D(const datatypes::Mat3x3& matrix, bool from_parent = false)
                 : Transform3D(datatypes::TranslationAndMat3x3(matrix, from_parent)) {}
+
+            /// From 3x3 matrix provided as 3 columns only.
+            ///
+            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// where the transform was logged. Otherwise, the transform maps from the space to its
+            /// parent.
+            Transform3D(const datatypes::Vec3D (&columns)[3], bool from_parent = false)
+                : Transform3D(datatypes::TranslationAndMat3x3(columns, from_parent)) {}
 
             /// New 3D transform from translation/rotation/scale datatype.
             Transform3D(const datatypes::TranslationRotationScale3D& translation_rotation_scale3d)

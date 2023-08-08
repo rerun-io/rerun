@@ -5,6 +5,7 @@
 #include <rerun/archetypes/transform3d.hpp>
 
 namespace rr = rerun;
+namespace rrd = rr::datatypes;
 using namespace rr::archetypes;
 
 #define TEST_TAG "[transform3d]"
@@ -17,27 +18,38 @@ SCENARIO(
     const bool from_parent = GENERATE(true, false);
 
     SECTION("TranslationAndMat3x3") {
-        // Do NOT write this as rr::datatypes::Mat3x3 as this actually caught an overload resolution
-        // bug.
-        const rr::datatypes::Vec3D matrix[3] = {
-            {1.0f, 2.0f, 3.0f},
-            {4.0f, 5.0f, 6.0f},
-            {7.0f, 8.0f, 9.0f}};
+        // clang-format off
+        // Do NOT write this as rrd::Mat3x3 as this actually caught an overload resolution  bug.
+        #define MATRIX_ILIST {{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f}}
+        // clang-format on
+        rrd::Vec3D columns[3] = MATRIX_ILIST;
 
         Transform3D manual;
-        rr::datatypes::TranslationAndMat3x3 translation_and_mat3;
+        rrd::TranslationAndMat3x3 translation_and_mat3;
 
         GIVEN("Transform3D from translation & matrix and from_parent==" << from_parent) {
-            auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, matrix, true)
-                                       : Transform3D({1.0f, 2.0f, 3.0f}, matrix);
-
             translation_and_mat3.translation = {1.0f, 2.0f, 3.0f};
-            translation_and_mat3.matrix = matrix;
             translation_and_mat3.from_parent = from_parent;
-            manual.transform.repr =
-                rr::datatypes::Transform3D::translation_and_mat3x3(translation_and_mat3);
+            manual.transform.repr = rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
-            test_serialization_for_manual_and_builder(manual, utility);
+            AND_GIVEN("matrix as initializer list") {
+                auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, MATRIX_ILIST, true)
+                                           : Transform3D({1.0f, 2.0f, 3.0f}, MATRIX_ILIST);
+                translation_and_mat3.matrix = rrd::Mat3x3(MATRIX_ILIST);
+                manual.transform.repr =
+                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
+
+                test_serialization_for_manual_and_builder(manual, utility);
+            }
+            AND_GIVEN("matrix as column vectors") {
+                auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, columns, true)
+                                           : Transform3D({1.0f, 2.0f, 3.0f}, columns);
+                translation_and_mat3.matrix = columns;
+                manual.transform.repr =
+                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
+
+                test_serialization_for_manual_and_builder(manual, utility);
+            }
         }
         GIVEN("Transform3D from translation only and from_parent==" << from_parent) {
             auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, true)
@@ -46,29 +58,39 @@ SCENARIO(
             translation_and_mat3.translation = {1.0f, 2.0f, 3.0f};
             translation_and_mat3.matrix = std::nullopt;
             translation_and_mat3.from_parent = from_parent;
-            manual.transform.repr =
-                rr::datatypes::Transform3D::translation_and_mat3x3(translation_and_mat3);
+            manual.transform.repr = rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
             test_serialization_for_manual_and_builder(manual, utility);
         }
-        GIVEN("Transform3D from matrix only and from_parent==" << from_parent) {
-            auto utility = from_parent ? Transform3D(matrix, true) : Transform3D(matrix);
-
+        GIVEN("Transform3D from matrix as initializer list and from_parent==" << from_parent) {
             translation_and_mat3.translation = std::nullopt;
-            translation_and_mat3.matrix = matrix;
             translation_and_mat3.from_parent = from_parent;
-            manual.transform.repr =
-                rr::datatypes::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
-            test_serialization_for_manual_and_builder(manual, utility);
+            AND_GIVEN("matrix as initializer list") {
+                auto utility =
+                    from_parent ? Transform3D(MATRIX_ILIST, true) : Transform3D(MATRIX_ILIST);
+                translation_and_mat3.matrix = rrd::Mat3x3(MATRIX_ILIST);
+                manual.transform.repr =
+                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
+
+                test_serialization_for_manual_and_builder(manual, utility);
+            }
+            AND_GIVEN("matrix as column vectors") {
+                auto utility = from_parent ? Transform3D(columns, true) : Transform3D(columns);
+                translation_and_mat3.matrix = columns;
+                manual.transform.repr =
+                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
+
+                test_serialization_for_manual_and_builder(manual, utility);
+            }
         }
     }
 
     SECTION("TranslationRotationScale") {
-        const auto rotation = rr::datatypes::Quaternion{1.0f, 2.0f, 3.0f, 4.0f};
+        const auto rotation = rrd::Quaternion{1.0f, 2.0f, 3.0f, 4.0f};
 
         Transform3D manual;
-        rr::datatypes::TranslationRotationScale3D translation_rotation_scale;
+        rrd::TranslationRotationScale3D translation_rotation_scale;
 
         GIVEN("Transform3D from translation/rotation/scale and from_parent==" << from_parent) {
             auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, rotation, 1.0f, true)
@@ -79,7 +101,7 @@ SCENARIO(
             translation_rotation_scale.scale = 1.0f;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rr::datatypes::Transform3D::translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_serialization_for_manual_and_builder(manual, utility);
         }
@@ -92,7 +114,7 @@ SCENARIO(
             translation_rotation_scale.scale = 1.0f;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rr::datatypes::Transform3D::translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_serialization_for_manual_and_builder(manual, utility);
         }
@@ -105,7 +127,7 @@ SCENARIO(
             translation_rotation_scale.scale = std::nullopt;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rr::datatypes::Transform3D::translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_serialization_for_manual_and_builder(manual, utility);
         }
@@ -118,7 +140,7 @@ SCENARIO(
             translation_rotation_scale.scale = 1.0f;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rr::datatypes::Transform3D::translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_serialization_for_manual_and_builder(manual, utility);
         }
@@ -130,7 +152,7 @@ SCENARIO(
             translation_rotation_scale.scale = std::nullopt;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rr::datatypes::Transform3D::translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_serialization_for_manual_and_builder(manual, utility);
         }
@@ -142,7 +164,7 @@ SCENARIO(
             translation_rotation_scale.scale = 1.0f;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rr::datatypes::Transform3D::translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_serialization_for_manual_and_builder(manual, utility);
         }

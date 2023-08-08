@@ -17,17 +17,17 @@ namespace rerun {
             static const Mat3x3 IDENTITY;
 
             /// Creates a new 3x3 matrix from 3 *columns* of 3 elements each.
-            Mat3x3(const Vec3D (&_columns)[3])
+            Mat3x3(const Vec3D (&columns)[3])
                 : coeffs{
-                      _columns[0].x(),
-                      _columns[0].y(),
-                      _columns[0].z(),
-                      _columns[1].x(),
-                      _columns[1].y(),
-                      _columns[1].z(),
-                      _columns[2].x(),
-                      _columns[2].y(),
-                      _columns[2].z(),
+                      columns[0].x(),
+                      columns[0].y(),
+                      columns[0].z(),
+                      columns[1].x(),
+                      columns[1].y(),
+                      columns[1].z(),
+                      columns[2].x(),
+                      columns[2].y(),
+                      columns[2].z(),
                   } {}
 
             // [CODEGEN COPY TO HEADER END]
