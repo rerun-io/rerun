@@ -40,6 +40,9 @@ impl SelectionPanel {
             });
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
+            // no need to extend `ui.max_rect()` as the enclosing frame doesn't have margins
+            ui.set_clip_rect(ui.max_rect());
+
             egui::TopBottomPanel::top("selection_panel_title_bar")
                 .exact_height(re_ui::ReUi::title_bar_height())
                 .frame(egui::Frame {

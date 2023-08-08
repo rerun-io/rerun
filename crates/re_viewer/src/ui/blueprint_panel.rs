@@ -21,6 +21,9 @@ pub fn blueprint_panel_ui(
         .default_width((0.35 * screen_width).min(200.0).round());
 
     panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
+        // no need to extend `ui.max_rect()` as the enclosing frame doesn't have margins
+        ui.set_clip_rect(ui.max_rect());
+
         title_bar_ui(blueprint, ctx, ui, spaces_info);
 
         egui::Frame {
