@@ -15,8 +15,8 @@
 /// Storage for a `Tensor`
 #[derive(Clone, Debug, PartialEq)]
 pub enum TensorData {
-    U8(Vec<u8>),
-    U16(Vec<u16>),
+    U8(crate::ArrowBuffer<u8>),
+    U16(crate::ArrowBuffer<u16>),
 }
 
 impl<'a> From<TensorData> for ::std::borrow::Cow<'a, TensorData> {
@@ -140,8 +140,14 @@ impl crate::Loggable for TensorData {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_8_inner_data: Vec<_> =
-                                u_8.iter().flatten().flatten().cloned().map(Some).collect();
+                            let u_8_inner_data: Buffer<_> = u_8
+                                .iter()
+                                .flatten()
+                                .map(|b| b.0.iter())
+                                .flatten()
+                                .cloned()
+                                .collect::<Vec<_>>()
+                                .into();
                             let u_8_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets =
                                 ::arrow2::offset::Offsets::<i32>::try_from_lengths(u_8.iter().map(
@@ -167,10 +173,7 @@ impl crate::Loggable for TensorData {
                                         _ = extension_wrapper;
                                         DataType::UInt8.to_logical_type().clone()
                                     },
-                                    u_8_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    u_8_inner_data,
                                     u_8_inner_bitmap,
                                 )
                                 .boxed(),
@@ -197,8 +200,14 @@ impl crate::Loggable for TensorData {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_16_inner_data: Vec<_> =
-                                u_16.iter().flatten().flatten().cloned().map(Some).collect();
+                            let u_16_inner_data: Buffer<_> = u_16
+                                .iter()
+                                .flatten()
+                                .map(|b| b.0.iter())
+                                .flatten()
+                                .cloned()
+                                .collect::<Vec<_>>()
+                                .into();
                             let u_16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 u_16.iter().map(|opt| {
@@ -225,10 +234,7 @@ impl crate::Loggable for TensorData {
                                         _ = extension_wrapper;
                                         DataType::UInt16.to_logical_type().clone()
                                     },
-                                    u_16_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    u_16_inner_data,
                                     u_16_inner_bitmap,
                                 )
                                 .boxed(),
@@ -277,7 +283,7 @@ impl crate::Loggable for TensorData {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -299,40 +305,80 @@ impl crate::Loggable for TensorData {
                 let u_8 = {
                     let data = &*data_arrays[1usize];
 
-                    { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
-
- else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
-
- ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < UInt8Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ? . to_vec ()) }
-
-) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter () }
-
- . collect :: < Vec < _ >> ()
+                    {
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .unwrap();
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = data.as_any().downcast_ref::<UInt8Array>().unwrap().values();
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            Ok(crate::ArrowBuffer(
+                                                data.clone().sliced(start as usize, end as usize),
+                                            ))
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
+                    }
+                    .collect::<Vec<_>>()
                 };
                 let u_16 = {
                     let data = &*data_arrays[2usize];
 
-                    { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: ListArray < i32 >> () . unwrap () ; if data . is_empty () { Vec :: new () }
-
- else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
-
- ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < UInt16Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ? . to_vec ()) }
-
-) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter () }
-
- . collect :: < Vec < _ >> ()
+                    {
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .unwrap();
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = data
+                                .as_any()
+                                .downcast_ref::<UInt16Array>()
+                                .unwrap()
+                                .values();
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            Ok(crate::ArrowBuffer(
+                                                data.clone().sliced(start as usize, end as usize),
+                                            ))
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
+                    }
+                    .collect::<Vec<_>>()
                 };
                 data_types
                     .iter()

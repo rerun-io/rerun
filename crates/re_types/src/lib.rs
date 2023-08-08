@@ -502,7 +502,9 @@ mod size_bytes;
 pub use component_name::ComponentName;
 pub use size_bytes::SizeBytes;
 
+mod arrow_buffer;
 mod arrow_string;
+pub use arrow_buffer::ArrowBuffer;
 pub use arrow_string::ArrowString;
 
 #[cfg(feature = "testing")]

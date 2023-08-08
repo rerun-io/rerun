@@ -129,7 +129,7 @@ impl crate::Loggable for Tensor {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(crate::datatypes::TensorData::try_from_arrow_opt(data)
             .map_err(|err| crate::DeserializationError::Context {
                 location: "rerun.components.Tensor#data".into(),

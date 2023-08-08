@@ -166,7 +166,7 @@ impl crate::Loggable for AffixFuzzer1 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
@@ -360,7 +360,7 @@ impl crate::Loggable for AffixFuzzer2 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
@@ -554,7 +554,7 @@ impl crate::Loggable for AffixFuzzer3 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
@@ -750,7 +750,7 @@ impl crate::Loggable for AffixFuzzer4 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
@@ -942,7 +942,7 @@ impl crate::Loggable for AffixFuzzer5 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
@@ -1134,7 +1134,7 @@ impl crate::Loggable for AffixFuzzer6 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
@@ -1302,7 +1302,7 @@ impl crate::Loggable for AffixFuzzer7 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -1465,7 +1465,7 @@ impl crate::Loggable for AffixFuzzer8 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<Float32Array>()
@@ -1599,7 +1599,7 @@ impl crate::Loggable for AffixFuzzer9 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
             let offsets = downcast.offsets();
@@ -1743,7 +1743,7 @@ impl crate::Loggable for AffixFuzzer10 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
             let offsets = downcast.offsets();
@@ -1782,7 +1782,7 @@ impl crate::Loggable for AffixFuzzer10 {
 impl crate::Component for AffixFuzzer10 {}
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AffixFuzzer11(pub Option<Vec<f32>>);
+pub struct AffixFuzzer11(pub Option<crate::ArrowBuffer<f32>>);
 
 impl<'a> From<AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
     #[inline]
@@ -1849,13 +1849,14 @@ impl crate::Loggable for AffixFuzzer11 {
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let data0_inner_data: Vec<_> = data0
+                let data0_inner_data: Buffer<_> = data0
                     .iter()
                     .flatten()
+                    .map(|b| b.0.iter())
                     .flatten()
                     .cloned()
-                    .map(Some)
-                    .collect();
+                    .collect::<Vec<_>>()
+                    .into();
                 let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
@@ -1892,10 +1893,7 @@ impl crate::Loggable for AffixFuzzer11 {
                             .to_logical_type()
                             .clone()
                         },
-                        data0_inner_data
-                            .into_iter()
-                            .map(|v| v.unwrap_or_default())
-                            .collect(),
+                        data0_inner_data,
                         data0_inner_bitmap,
                     )
                     .boxed(),
@@ -1914,7 +1912,7 @@ impl crate::Loggable for AffixFuzzer11 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -1933,14 +1931,7 @@ impl crate::Loggable for AffixFuzzer11 {
                     .as_any()
                     .downcast_ref::<Float32Array>()
                     .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    .values();
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -1948,14 +1939,9 @@ impl crate::Loggable for AffixFuzzer11 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                Ok(crate::ArrowBuffer(
+                                    data.clone().sliced(start as usize, end as usize),
+                                ))
                             })
                             .transpose()
                     })
@@ -2136,7 +2122,7 @@ impl crate::Loggable for AffixFuzzer12 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -2368,7 +2354,7 @@ impl crate::Loggable for AffixFuzzer13 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -2580,7 +2566,7 @@ impl crate::Loggable for AffixFuzzer14 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
@@ -2754,7 +2740,7 @@ impl crate::Loggable for AffixFuzzer15 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
@@ -2920,7 +2906,7 @@ impl crate::Loggable for AffixFuzzer16 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -3133,7 +3119,7 @@ impl crate::Loggable for AffixFuzzer17 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -3342,7 +3328,7 @@ impl crate::Loggable for AffixFuzzer18 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -3508,7 +3494,7 @@ impl crate::Loggable for AffixFuzzer19 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer5::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {
@@ -3647,7 +3633,7 @@ impl crate::Loggable for AffixFuzzer20 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer20::try_from_arrow_opt(data)
                 .map_err(|err| crate::DeserializationError::Context {

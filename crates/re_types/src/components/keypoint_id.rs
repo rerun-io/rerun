@@ -103,7 +103,7 @@ impl crate::Loggable for KeypointId {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<UInt16Array>()

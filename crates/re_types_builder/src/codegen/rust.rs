@@ -623,6 +623,8 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Vector { elem_type } => {
                 if *unwrap {
                     quote!(#elem_type)
+                } else if elem_type.is_primitive() {
+                    quote!(crate::ArrowBuffer<#elem_type>)
                 } else {
                     quote!(Vec<#elem_type>)
                 }
@@ -779,7 +781,7 @@ fn quote_trait_impls_from_obj(
                     fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized {
-                        use ::arrow2::{datatypes::*, array::*};
+                        use ::arrow2::{datatypes::*, array::*, buffer::*};
                         use crate::Loggable as _;
                         Ok(#quoted_deserializer)
                     }
@@ -1441,6 +1443,7 @@ fn quote_arrow_serializer(
             obj_field.is_nullable,
             &bitmap_dst,
             &quoted_data_dst,
+            false,
         );
 
         let quoted_bitmap = quoted_bitmap(bitmap_dst);
@@ -1486,6 +1489,7 @@ fn quote_arrow_serializer(
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,
+                        false,
                     );
 
                     let quoted_flatten = quoted_flatten(obj_field.is_nullable);
@@ -1548,6 +1552,7 @@ fn quote_arrow_serializer(
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,
+                        false,
                     );
 
                     let quoted_flatten = quoted_flatten(obj_field.is_nullable);
@@ -1674,6 +1679,7 @@ fn quote_arrow_field_serializer(
     is_nullable: bool,
     bitmap_src: &proc_macro2::Ident,
     data_src: &proc_macro2::Ident,
+    is_list_inner: bool,
 ) -> TokenStream {
     let quoted_datatype = ArrowDataTypeTokenizer(datatype, false);
     let quoted_datatype = if let Some(ext) = extension_wrapper {
@@ -1744,12 +1750,24 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            quote! {
-                PrimitiveArray::new(
-                    #quoted_datatype,
-                    #data_src.into_iter() #quoted_transparent_mapping .collect(),
-                    #bitmap_src,
-                ).boxed()
+            if is_list_inner {
+                // A primitive that's an inner element of a list will already have been mapped
+                // to a buffer type.
+                quote! {
+                    PrimitiveArray::new(
+                        #quoted_datatype,
+                        #data_src,
+                        #bitmap_src,
+                    ).boxed()
+                }
+            } else {
+                quote! {
+                    PrimitiveArray::new(
+                        #quoted_datatype,
+                        #data_src.into_iter() #quoted_transparent_mapping .collect(),
+                        #bitmap_src,
+                    ).boxed()
+                }
             }
         }
 
@@ -1832,6 +1850,10 @@ fn quote_arrow_field_serializer(
 
         DataType::List(inner) | DataType::FixedSizeList(inner, _) => {
             let inner_datatype = inner.data_type();
+            let inner_is_primitive = matches!(
+                inner_datatype,
+                DataType::UInt8 | DataType::UInt16 | DataType::Float32
+            ) && matches!(datatype, DataType::List(_));
 
             let quoted_inner_data = format_ident!("{data_src}_inner_data");
             let quoted_inner_bitmap = format_ident!("{data_src}_inner_bitmap");
@@ -1843,6 +1865,7 @@ fn quote_arrow_field_serializer(
                 inner.is_nullable,
                 &quoted_inner_bitmap,
                 &quoted_inner_data,
+                inner_is_primitive,
             );
 
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
@@ -1874,6 +1897,13 @@ fn quote_arrow_field_serializer(
                     })
                     // NOTE: Flattening yet again since we have to deconstruct the inner list.
                     .flatten()
+                }
+            } else if inner_is_primitive {
+                quote! {
+                    .flatten()
+                    .map(|b| b.0.iter())
+                    .flatten()
+                    .cloned()
                 }
             } else {
                 quote! {
@@ -1910,22 +1940,39 @@ fn quote_arrow_field_serializer(
             // TODO(cmc): We should be checking this, but right now we don't because we don't
             // support intra-list nullability.
             _ = is_nullable;
-            quote! {{
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+            if inner_is_primitive {
+                quote! {{
+                    use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
-                let #quoted_inner_data: Vec<_> = #data_src
-                    .iter()
-                    #quoted_transparent_mapping
-                    // NOTE: Wrapping back into an option as the recursive call will expect the
-                    // guaranteed nullability layer to be present!
-                    .map(Some)
-                    .collect();
+                    let #quoted_inner_data: Buffer<_> = #data_src
+                        .iter()
+                        #quoted_transparent_mapping
+                        .collect::<Vec<_>>()
+                        .into();
 
-                // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
-                let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                    // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
+                    let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
 
-                #quoted_create
-            }}
+                    #quoted_create
+                }}
+            } else {
+                quote! {{
+                    use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+
+                    let #quoted_inner_data: Vec<_> = #data_src
+                        .iter()
+                        #quoted_transparent_mapping
+                        // NOTE: Wrapping back into an option as the recursive call will expect the
+                        // guaranteed nullability layer to be present!
+                        .map(Some)
+                        .collect();
+
+                    // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
+                    let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+
+                    #quoted_create
+                }}
+            }
         }
 
         DataType::Struct(_) | DataType::Union(_, _, _) => {
@@ -1979,6 +2026,7 @@ fn quote_arrow_deserializer(
             obj_field.is_nullable,
             obj_field_fqname,
             &data_src,
+            false,
         );
 
         let quoted_unwrap = if obj_field.is_nullable {
@@ -2026,6 +2074,7 @@ fn quote_arrow_deserializer(
                         obj_field.is_nullable,
                         obj_field.fqname.as_str(),
                         &data_src,
+                        false,
                     );
 
                     quote! {
@@ -2126,6 +2175,7 @@ fn quote_arrow_deserializer(
                             obj_field.is_nullable,
                             obj_field.fqname.as_str(),
                             &data_src,
+                            false,
                         );
 
                         let i = i + 1; // NOTE: +1 to account for `nulls` virtual arm
@@ -2237,6 +2287,7 @@ fn quote_arrow_field_deserializer(
     is_nullable: bool,
     obj_field_fqname: &str,
     data_src: &proc_macro2::Ident,
+    is_list_inner: bool,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
 
@@ -2285,13 +2336,23 @@ fn quote_arrow_field_deserializer(
 
             let arrow_type = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
             let arrow_type = format_ident!("{arrow_type}Array");
-            quote! {
-                #data_src
-                    .as_any()
-                    .downcast_ref::<#arrow_type>()
-                    .unwrap() // safe
-                    .into_iter()
-                    #quoted_transparent_unmapping
+            if is_list_inner {
+                quote! {
+                    #data_src
+                        .as_any()
+                        .downcast_ref::<#arrow_type>()
+                        .unwrap() // safe
+                        .values()
+                }
+            } else {
+                quote! {
+                    #data_src
+                        .as_any()
+                        .downcast_ref::<#arrow_type>()
+                        .unwrap() // safe
+                        .into_iter()
+                        #quoted_transparent_unmapping
+                }
             }
         }
 
@@ -2339,6 +2400,7 @@ fn quote_arrow_field_deserializer(
                 inner.is_nullable,
                 obj_field_fqname,
                 data_src,
+                false,
             );
 
             let quoted_transparent_unmapping = if inner_is_arrow_transparent {
@@ -2415,6 +2477,10 @@ fn quote_arrow_field_deserializer(
 
         DataType::List(inner) => {
             let inner_datatype = inner.data_type();
+            let inner_is_primitive = matches!(
+                inner_datatype,
+                DataType::UInt8 | DataType::UInt16 | DataType::Float32
+            );
 
             let quoted_inner = quote_arrow_field_deserializer(
                 objects,
@@ -2422,54 +2488,92 @@ fn quote_arrow_field_deserializer(
                 inner.is_nullable,
                 obj_field_fqname,
                 data_src,
+                true,
             );
 
-            quote! {{
-                let #data_src = #data_src
-                    .as_any()
-                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                    .unwrap(); // safe
+            if inner_is_primitive {
+                quote! {{
+                    let #data_src = #data_src
+                        .as_any()
+                        .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                        .unwrap(); // safe
 
-                if #data_src.is_empty() {
-                    // NOTE: The outer container is empty and so we already know that the end result
-                    // is also going to be an empty vec.
-                    // Early out right now rather than waste time computing possibly many empty
-                    // datastructures for all of our children.
-                    Vec::new()
-                } else {
-                    let bitmap = #data_src.validity().cloned();
-                    let offsets = {
-                        let offsets = #data_src.offsets();
-                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                    };
+                    if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
+                        Vec::new()
+                    } else {
+                        let bitmap = #data_src.validity().cloned();
+                        let offsets = {
+                            let offsets = #data_src.offsets();
+                            offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                        };
 
-                    let #data_src = &**#data_src.values();
+                        let #data_src = &**#data_src.values();
 
-                    let data = #quoted_inner
-                        .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        }))
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                        let data = #quoted_inner;
 
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                                Ok(data.get(start as usize .. end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec()
-                                )
-                            }).transpose()
-                        )
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                }
-                .into_iter()
-            }}
+                        offsets
+                            .enumerate()
+                            .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
+                                    Ok(crate::ArrowBuffer(data.clone().sliced(start as usize, end as usize)))
+                                }).transpose()
+                            )
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    }
+                    .into_iter()
+                }}
+            } else {
+                quote! {{
+                    let #data_src = #data_src
+                        .as_any()
+                        .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                        .unwrap(); // safe
+
+                    if #data_src.is_empty() {
+                        // NOTE: The outer container is empty and so we already know that the end result
+                        // is also going to be an empty vec.
+                        // Early out right now rather than waste time computing possibly many empty
+                        // datastructures for all of our children.
+                        Vec::new()
+                    } else {
+                        let bitmap = #data_src.validity().cloned();
+                        let offsets = {
+                            let offsets = #data_src.offsets();
+                            offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                        };
+
+                        let #data_src = &**#data_src.values();
+
+                        let data = #quoted_inner
+                            .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            }))
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<_>>>()?;
+
+                        offsets
+                            .enumerate()
+                            .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
+                                    Ok(data.get(start as usize .. end as usize)
+                                        .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                            bounds: (start as usize, end as usize),
+                                            len: data.len(),
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })?
+                                        .to_vec()
+                                    )
+                                }).transpose()
+                            )
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    }
+                    .into_iter()
+                }}
+            }
         }
 
         DataType::Struct(_) | DataType::Union(_, _, _) => {

@@ -125,7 +125,7 @@ impl crate::Loggable for FlattenedScalar {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -211,7 +211,7 @@ pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
     pub single_string_required: crate::ArrowString,
     pub single_string_optional: Option<crate::ArrowString>,
-    pub many_floats_optional: Option<Vec<f32>>,
+    pub many_floats_optional: Option<crate::ArrowBuffer<f32>>,
     pub many_strings_required: Vec<crate::ArrowString>,
     pub many_strings_optional: Option<Vec<crate::ArrowString>>,
     pub flattened_scalar: f32,
@@ -506,13 +506,14 @@ impl crate::Loggable for AffixFuzzer1 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_floats_optional_inner_data: Vec<_> = many_floats_optional
+                            let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
                                 .iter()
                                 .flatten()
+                                .map(|b| b.0.iter())
                                 .flatten()
                                 .cloned()
-                                .map(Some)
-                                .collect();
+                                .collect::<Vec<_>>()
+                                .into();
                             let many_floats_optional_inner_bitmap: Option<
                                 ::arrow2::bitmap::Bitmap,
                             > = None;
@@ -541,10 +542,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                         _ = extension_wrapper;
                                         DataType::Float32.to_logical_type().clone()
                                     },
-                                    many_floats_optional_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    many_floats_optional_inner_data,
                                     many_floats_optional_inner_bitmap,
                                 )
                                 .boxed(),
@@ -831,7 +829,7 @@ impl crate::Loggable for AffixFuzzer1 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -901,19 +899,36 @@ impl crate::Loggable for AffixFuzzer1 {
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .unwrap();
-                        if data . is_empty () { Vec :: new () }
-
- else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
-
- ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ? . to_vec ()) }
-
-) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter ()
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = data
+                                .as_any()
+                                .downcast_ref::<Float32Array>()
+                                .unwrap()
+                                .values();
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            Ok(crate::ArrowBuffer(
+                                                data.clone().sliced(start as usize, end as usize),
+                                            ))
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
                     }
                 };
                 let many_strings_required = {
@@ -1125,7 +1140,7 @@ impl crate::Loggable for AffixFuzzer2 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<Float32Array>()
@@ -1351,7 +1366,7 @@ impl crate::Loggable for AffixFuzzer3 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -1651,7 +1666,7 @@ impl crate::Loggable for AffixFuzzer4 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -1896,7 +1911,7 @@ impl crate::Loggable for AffixFuzzer5 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -2157,7 +2172,7 @@ impl crate::Loggable for AffixFuzzer20 {
         Self: Sized,
     {
         use crate::Loggable as _;
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()

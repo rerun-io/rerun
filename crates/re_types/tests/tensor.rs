@@ -2,7 +2,7 @@ use re_types::{components::Tensor, datatypes::TensorData, Loggable};
 
 #[test]
 fn tensor_roundtrip() {
-    let t = vec![Tensor(TensorData::U8(vec![1, 2, 3, 4]))];
+    let t = vec![Tensor(TensorData::U8(vec![1, 2, 3, 4].into()))];
 
     let serialized = Tensor::try_to_arrow(t.clone(), None).unwrap();
 
