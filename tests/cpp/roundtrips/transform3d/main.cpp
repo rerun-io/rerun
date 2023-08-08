@@ -3,6 +3,8 @@
 #include <rerun/archetypes/transform3d.hpp>
 #include <rerun/recording_stream.hpp>
 
+#include <cmath>
+
 namespace rr = rerun;
 
 int main(int argc, char** argv) {
