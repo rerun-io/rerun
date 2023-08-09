@@ -13,7 +13,7 @@
 namespace rerun {
     namespace datatypes {
         namespace detail {
-            enum class Scale3DTag {
+            enum class Scale3DTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We
                 /// need to be able to leave the object in a state which we can run the destructor
                 /// on.
@@ -79,7 +79,7 @@ namespace rerun {
                 Scale3D self;
                 self._tag = detail::Scale3DTag::ThreeD;
                 self._data.three_d = std::move(three_d);
-                return std::move(self);
+                return self;
             }
 
             /// Uniform scaling factor along all axis.
@@ -87,7 +87,7 @@ namespace rerun {
                 Scale3D self;
                 self._tag = detail::Scale3DTag::Uniform;
                 self._data.uniform = std::move(uniform);
-                return std::move(self);
+                return self;
             }
 
             /// Individual scaling factors for each axis, distorting the original object.

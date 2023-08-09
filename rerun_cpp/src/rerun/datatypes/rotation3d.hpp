@@ -14,7 +14,7 @@
 namespace rerun {
     namespace datatypes {
         namespace detail {
-            enum class Rotation3DTag {
+            enum class Rotation3DTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We
                 /// need to be able to leave the object in a state which we can run the destructor
                 /// on.
@@ -80,7 +80,7 @@ namespace rerun {
                 Rotation3D self;
                 self._tag = detail::Rotation3DTag::Quaternion;
                 self._data.quaternion = std::move(quaternion);
-                return std::move(self);
+                return self;
             }
 
             /// Rotation defined with an axis and an angle.
@@ -88,7 +88,7 @@ namespace rerun {
                 Rotation3D self;
                 self._tag = detail::Rotation3DTag::AxisAngle;
                 self._data.axis_angle = std::move(axis_angle);
-                return std::move(self);
+                return self;
             }
 
             /// Rotation defined by a quaternion.

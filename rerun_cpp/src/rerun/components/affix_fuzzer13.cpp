@@ -12,8 +12,7 @@ namespace rerun {
         const char *AffixFuzzer13::NAME = "rerun.testing.components.AffixFuzzer13";
 
         const std::shared_ptr<arrow::DataType> &AffixFuzzer13::to_arrow_datatype() {
-            static const auto datatype =
-                arrow::list(arrow::field("item", arrow::utf8(), true, nullptr));
+            static const auto datatype = arrow::list(arrow::field("item", arrow::utf8(), false));
             return datatype;
         }
 

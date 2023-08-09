@@ -29,6 +29,54 @@ namespace rerun {
             bool from_parent;
 
           public:
+            // Extensions to generated type defined in 'translation_rotation_scale3d_ext.cpp'
+
+            static const TranslationRotationScale3D IDENTITY;
+
+            TranslationRotationScale3D(
+                const std::optional<Vec3D>& _translation,
+                const std::optional<Rotation3D>& _rotation, const std::optional<Scale3D>& _scale,
+                bool _from_parent
+            )
+                : translation(_translation),
+                  rotation(_rotation),
+                  scale(_scale),
+                  from_parent(_from_parent) {}
+
+            /// From translation & rotation only.
+            TranslationRotationScale3D(
+                const Vec3D& _translation, const Rotation3D& _rotation, bool _from_parent = false
+            )
+                : translation(_translation),
+                  rotation(_rotation),
+                  scale(std::nullopt),
+                  from_parent(_from_parent) {}
+
+            /// From translation & scale only.
+            TranslationRotationScale3D(
+                const Vec3D& _translation, const Scale3D& _scale, bool _from_parent = false
+            )
+                : translation(_translation),
+                  rotation(std::nullopt),
+                  scale(_scale),
+                  from_parent(_from_parent) {}
+
+            /// Creates a new rigid transform (translation & rotation only).
+            static TranslationRotationScale3D rigid(
+                const Vec3D& _translation, const Rotation3D& _rotation, bool _from_parent = false
+            ) {
+                return TranslationRotationScale3D(_translation, _rotation, _from_parent);
+            }
+
+            /// Creates a new affine transform
+            static TranslationRotationScale3D affine(
+                const Vec3D& _translation, const Rotation3D& _rotation, const Scale3D& _scale,
+                bool _from_parent = false
+            ) {
+                return TranslationRotationScale3D(_translation, _rotation, _scale, _from_parent);
+            }
+
+          public:
             TranslationRotationScale3D() = default;
 
             /// Returns the arrow data type this type corresponds to.

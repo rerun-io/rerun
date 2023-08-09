@@ -9,7 +9,7 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &Mat4x4::to_arrow_datatype() {
             static const auto datatype =
-                arrow::fixed_size_list(arrow::field("item", arrow::float32(), false, nullptr), 16);
+                arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 16);
             return datatype;
         }
 

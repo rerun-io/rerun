@@ -9,22 +9,17 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& Scale3D::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &Scale3D::to_arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field(
-                    "ThreeD",
-                    rerun::datatypes::Vec3D::to_arrow_datatype(),
-                    false,
-                    nullptr
-                ),
-                arrow::field("Uniform", arrow::float32(), false, nullptr),
+                arrow::field("ThreeD", rerun::datatypes::Vec3D::to_arrow_datatype(), false),
+                arrow::field("Uniform", arrow::float32(), false),
             });
             return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> Scale3D::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
+            arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
@@ -42,7 +37,7 @@ namespace rerun {
         }
 
         arrow::Status Scale3D::fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const Scale3D* elements, size_t num_elements
+            arrow::DenseUnionBuilder *builder, const Scale3D *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -51,10 +46,37 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto& element = elements[elem_idx];
+            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
+            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto &union_instance = elements[elem_idx];
+                ARROW_RETURN_NOT_OK(builder->Append(static_cast<uint8_t>(union_instance._tag)));
+
+                auto variant_index = static_cast<int>(union_instance._tag);
+                auto variant_builder_untyped = builder->child_builder(variant_index).get();
+
+                switch (union_instance._tag) {
+                    case detail::Scale3DTag::NONE: {
+                        ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
+                        break;
+                    }
+                    case detail::Scale3DTag::ThreeD: {
+                        auto variant_builder =
+                            static_cast<arrow::FixedSizeListBuilder *>(variant_builder_untyped);
+                        ARROW_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
+                            variant_builder,
+                            &union_instance._data.three_d,
+                            1
+                        ));
+                        break;
+                    }
+                    case detail::Scale3DTag::Uniform: {
+                        auto variant_builder =
+                            static_cast<arrow::FloatBuilder *>(variant_builder_untyped);
+                        ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.uniform));
+                        break;
+                    }
+                }
             }
-            return arrow::Status::NotImplemented("TODO(andreas): unions are not yet implemented");
 
             return arrow::Status::OK();
         }

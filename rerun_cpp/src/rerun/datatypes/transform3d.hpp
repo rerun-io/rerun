@@ -14,7 +14,7 @@
 namespace rerun {
     namespace datatypes {
         namespace detail {
-            enum class Transform3DTag {
+            enum class Transform3DTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We
                 /// need to be able to leave the object in a state which we can run the destructor
                 /// on.
@@ -79,7 +79,7 @@ namespace rerun {
                 Transform3D self;
                 self._tag = detail::Transform3DTag::TranslationAndMat3x3;
                 self._data.translation_and_mat3x3 = std::move(translation_and_mat3x3);
-                return std::move(self);
+                return self;
             }
 
             static Transform3D translation_rotation_scale(
@@ -88,7 +88,7 @@ namespace rerun {
                 Transform3D self;
                 self._tag = detail::Transform3DTag::TranslationRotationScale;
                 self._data.translation_rotation_scale = std::move(translation_rotation_scale);
-                return std::move(self);
+                return self;
             }
 
             Transform3D(rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3) {
