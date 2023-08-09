@@ -794,12 +794,9 @@ dependencies = [
 
 [[package]]
 name = "clang-format"
-version = "0.1.3"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c6a49aa81aee4ac71d780395eb37788414b1fdb85033b52b5f13e80cd6b9f4a"
-dependencies = [
- "once_cell",
-]
+checksum = "88dfe5eb75e066e696abfca68fb70db71236441b7335975ecf79caf0875e3175"
 
 [[package]]
 name = "clap"

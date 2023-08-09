@@ -77,11 +77,8 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
     );
     code.push('\n');
 
-    // clang_format has a bit of an ugly API: https://github.com/KDAB/clang-format-rs/issues/3
-    clang_format::CLANG_FORMAT_STYLE
-        .set(clang_format::ClangFormatStyle::File)
-        .ok();
-    code = clang_format::clang_format(&code).expect("Failed to run clang-format");
+    code = clang_format::clang_format_with_style(&code, &clang_format::ClangFormatStyle::File)
+        .expect("Failed to run clang-format");
 
     code
 }
