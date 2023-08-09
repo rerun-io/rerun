@@ -45,7 +45,7 @@ impl<'a> From<&'a TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAn
 impl crate::Loggable for TranslationAndMat3x3 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.TranslationAndMat3x3".into()
@@ -404,7 +404,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

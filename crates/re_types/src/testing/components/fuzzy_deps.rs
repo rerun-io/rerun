@@ -33,7 +33,7 @@ impl<'a> From<&'a PrimitiveComponent> for ::std::borrow::Cow<'a, PrimitiveCompon
 impl crate::Loggable for PrimitiveComponent {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.PrimitiveComponent".into()
@@ -125,7 +125,7 @@ impl crate::Loggable for PrimitiveComponent {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -157,7 +157,7 @@ impl<'a> From<&'a StringComponent> for ::std::borrow::Cow<'a, StringComponent> {
 impl crate::Loggable for StringComponent {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.StringComponent".into()
@@ -268,7 +268,7 @@ impl crate::Loggable for StringComponent {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

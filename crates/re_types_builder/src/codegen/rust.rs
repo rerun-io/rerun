@@ -746,7 +746,7 @@ fn quote_trait_impls_from_obj(
                 impl crate::Loggable for #name {
                     type Name = crate::#kind_name;
                     type Item<'a> = Option<Self>;
-                    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+                    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
                     #[inline]
                     fn name() -> Self::Name {
@@ -792,7 +792,7 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized,
                     {
-                        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+                        Ok(Self::try_from_arrow_opt(data)?.into_iter())
                     }
 
                     #[inline]

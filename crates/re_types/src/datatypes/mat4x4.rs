@@ -33,7 +33,7 @@ impl<'a> From<&'a Mat4x4> for ::std::borrow::Cow<'a, Mat4x4> {
 impl crate::Loggable for Mat4x4 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Mat4x4".into()
@@ -217,7 +217,7 @@ impl crate::Loggable for Mat4x4 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

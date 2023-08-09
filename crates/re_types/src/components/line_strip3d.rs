@@ -50,7 +50,7 @@ impl<'a> From<&'a LineStrip3D> for ::std::borrow::Cow<'a, LineStrip3D> {
 impl crate::Loggable for LineStrip3D {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.linestrip3d".into()
@@ -319,7 +319,7 @@ impl crate::Loggable for LineStrip3D {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

@@ -48,7 +48,7 @@ impl<'a> From<&'a TranslationRotationScale3D>
 impl crate::Loggable for TranslationRotationScale3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.TranslationRotationScale3D".into()
@@ -376,7 +376,7 @@ impl crate::Loggable for TranslationRotationScale3D {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
