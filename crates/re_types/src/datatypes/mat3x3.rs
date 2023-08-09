@@ -175,21 +175,17 @@ impl crate::Loggable for Mat3x3 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                data.get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                let data = data.get(start as usize..end as usize).ok_or(
+                                    crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec()
-                                    .try_into()
-                                    .map_err(|_err| {
-                                        crate::DeserializationError::ArrayLengthMismatch {
-                                            expected: 9usize,
-                                            got: (end - start) as usize,
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        }
-                                    })
+                                    },
+                                )?;
+                                let mut arr = [Default::default(); 9usize];
+
+                                arr.copy_from_slice(data);
+                                Ok(arr)
                             })
                             .transpose()
                     })

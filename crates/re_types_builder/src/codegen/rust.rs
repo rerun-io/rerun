@@ -2390,19 +2390,17 @@ fn quote_arrow_field_deserializer(
                     offsets
                         .enumerate()
                         .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                            data.get(start as usize .. end as usize)
+                            let data = data.get(start as usize .. end as usize)
                                 .ok_or(crate::DeserializationError::OffsetsMismatch {
                                     bounds: (start as usize, end as usize),
                                     len: data.len(),
                                     backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                })?
-                                .to_vec()
-                                .try_into()
-                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                    expected: #length,
-                                    got: (end - start) as usize,
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                })
+                                })?;
+
+                                let mut arr = [Default::default(); #length];
+                                arr.copy_from_slice(data);
+
+                                Ok(arr)
                             }).transpose()
                         )
                         #quoted_transparent_unmapping
