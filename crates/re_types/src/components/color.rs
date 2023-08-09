@@ -44,7 +44,7 @@ impl<'a> From<&'a Color> for ::std::borrow::Cow<'a, Color> {
 
 impl crate::Loggable for Color {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
+    type Item<'a> = Self;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
@@ -130,6 +130,24 @@ impl crate::Loggable for Color {
             })?)
     }
 
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        Ok(data
+            .as_any()
+            .downcast_ref::<UInt32Array>()
+            .unwrap()
+            .values()
+            .as_slice()
+            .iter()
+            .map(|v| Self(*v))
+            .collect::<Vec<_>>())
+    }
+
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
@@ -137,11 +155,16 @@ impl crate::Loggable for Color {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        Ok(Self::try_from_arrow(data)?.into_iter())
     }
 
     #[inline]
     fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
+        Some(item)
+    }
+
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
         item
     }
 }

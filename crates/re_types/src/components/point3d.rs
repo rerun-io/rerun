@@ -234,29 +234,18 @@ impl crate::Loggable for Point3D {
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .unwrap();
             if data.is_empty() {
-                Vec::new()
+                itertools::Either::Left(std::iter::empty())
             } else {
-                let offsets = (0..)
-                    .step_by(3usize)
-                    .zip((3usize..).step_by(3usize).take(data.len()));
                 let data = &**data.values();
                 let data = data
                     .as_any()
                     .downcast_ref::<Float32Array>()
                     .unwrap()
-                    .values();
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| {
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe { data.get_unchecked(start as usize..end as usize) };
-                        let arr = array_init::from_iter(data.iter().copied()).unwrap();
-                        arr
-                    })
-                    .map(|v| crate::datatypes::Vec3D(v))
-                    .collect::<Vec<_>>()
+                    .values()
+                    .as_slice();
+                let data2: &[[f32; 3]] = bytemuck::cast_slice(data);
+                itertools::Either::Right(data2.iter().map(|v| crate::datatypes::Vec3D(*v)))
             }
-            .into_iter()
         }
         .map(|v| Self(v))
         .collect::<Vec<_>>())
