@@ -246,9 +246,7 @@ impl crate::Loggable for RotationAxisAngle {
 
  # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
 
- ; let mut arr = [Default :: default () ; 3usize];
-
- arr . copy_from_slice (data) ; Ok (arr) }
+ ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
 
 ) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 

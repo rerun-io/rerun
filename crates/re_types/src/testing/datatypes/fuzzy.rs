@@ -1440,9 +1440,7 @@ impl crate::Loggable for AffixFuzzer3 {
 
  # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
 
- ; let mut arr = [Default :: default () ; 3usize];
-
- arr . copy_from_slice (data) ; Ok (arr) }
+ ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 

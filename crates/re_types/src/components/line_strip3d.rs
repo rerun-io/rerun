@@ -262,9 +262,8 @@ impl crate::Loggable for LineStrip3D {
                                         let data = unsafe {
                                             data.get_unchecked(start as usize..end as usize)
                                         };
-                                        let mut arr = [Default::default(); 3usize];
-
-                                        arr.copy_from_slice(data);
+                                        let arr =
+                                            array_init::from_iter(data.iter().copied()).unwrap();
                                         Ok(arr)
                                     })
                                     .transpose()

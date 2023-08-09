@@ -280,9 +280,7 @@ impl crate::Loggable for Rotation3D {
 
  # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
 
- ; let mut arr = [Default :: default () ; 4usize];
-
- arr . copy_from_slice (data) ; Ok (arr) }
+ ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
 
 ) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Quaternion (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 

@@ -2411,8 +2411,7 @@ fn quote_arrow_field_deserializer(
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                 let data = unsafe { data.get_unchecked(start as usize .. end as usize) };
 
-                                let mut arr = [Default::default(); #length];
-                                arr.copy_from_slice(data);
+                                let arr = array_init::from_iter(data.iter().copied()).unwrap(); // safe: checked above
 
                                 Ok(arr)
                             }).transpose()
