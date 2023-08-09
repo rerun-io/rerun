@@ -39,7 +39,7 @@ impl<'a> From<&'a Point2D> for ::std::borrow::Cow<'a, Point2D> {
 impl crate::Loggable for Point2D {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.point2d".into()
@@ -228,7 +228,7 @@ impl crate::Loggable for Point2D {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

@@ -34,7 +34,7 @@ impl<'a> From<&'a FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
 impl crate::Loggable for FlattenedScalar {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.FlattenedScalar".into()
@@ -195,7 +195,7 @@ impl crate::Loggable for FlattenedScalar {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -236,7 +236,7 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
 impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer1".into()
@@ -1039,7 +1039,7 @@ impl crate::Loggable for AffixFuzzer1 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1070,7 +1070,7 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
 impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer2".into()
@@ -1160,7 +1160,7 @@ impl crate::Loggable for AffixFuzzer2 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1196,7 +1196,7 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
 impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer3".into()
@@ -1512,7 +1512,7 @@ impl crate::Loggable for AffixFuzzer3 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1547,7 +1547,7 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
 impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer4".into()
@@ -1827,7 +1827,7 @@ impl crate::Loggable for AffixFuzzer4 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1868,7 +1868,7 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
 impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer5".into()
@@ -2027,7 +2027,7 @@ impl crate::Loggable for AffixFuzzer5 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -2061,7 +2061,7 @@ impl<'a> From<&'a AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
 impl crate::Loggable for AffixFuzzer20 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer20".into()
@@ -2323,7 +2323,7 @@ impl crate::Loggable for AffixFuzzer20 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
