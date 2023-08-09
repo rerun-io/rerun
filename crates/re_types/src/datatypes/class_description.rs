@@ -106,7 +106,7 @@ impl crate::Loggable for ClassDescription {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -296,50 +296,50 @@ impl crate::Loggable for ClassDescription {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::Struct(vec![
-                        Field {
-                            name: "info".to_owned(),
-                            data_type: <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "keypoint_annotations".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Struct(vec![
+                            Field {
+                                name: "info".to_owned(),
                                 data_type: <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
-                            })),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "keypoint_connections".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: <crate::datatypes::KeypointPair>::to_arrow_datatype(),
+                            },
+                            Field {
+                                name: "keypoint_annotations".to_owned(),
+                                data_type: DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type:
+                                        <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 is_nullable: false,
                                 metadata: [].into(),
-                            })),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ]),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            },
+                            Field {
+                                name: "keypoint_connections".to_owned(),
+                                data_type: DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: <crate::datatypes::KeypointPair>::to_arrow_datatype(
+                                    ),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ]),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.ClassDescription".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.datatypes.ClassDescription")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -354,10 +354,7 @@ impl crate::Loggable for ClassDescription {
                 let info = {
                     let data = &**arrays_by_name["info"];
                     crate::datatypes::AnnotationInfo::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.ClassDescription#info".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.ClassDescription#info")?
                         .into_iter()
                 };
                 let keypoint_annotations = {
@@ -366,39 +363,33 @@ impl crate::Loggable for ClassDescription {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                expected: DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type:
-                                        <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
-                                got: data.data_type().clone(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type:
+                                            <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    })),
+                                    data.data_type().clone(),
+                                )
                             })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: "rerun.datatypes.ClassDescription#keypoint_annotations"
-                                    .into(),
-                                source: Box::new(err),
-                            })?;
+                            .with_context(
+                                "rerun.datatypes.ClassDescription#keypoint_annotations",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
                             let data_inner = {
                                 let data_inner = &**data.values();
                                 crate::datatypes::AnnotationInfo::try_from_arrow_opt(data_inner)
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location:
-                                            "rerun.datatypes.ClassDescription#keypoint_annotations"
-                                                .into(),
-                                        source: Box::new(err),
-                                    })?
+                                    .with_context(
+                                        "rerun.datatypes.ClassDescription#keypoint_annotations",
+                                    )?
                                     .into_iter()
                                     .map(|v| {
-                                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
+                                        v.ok_or_else(crate::DeserializationError::missing_data)
                                     })
                                     .collect::<crate::DeserializationResult<Vec<_>>>()?
                             };
@@ -412,11 +403,10 @@ impl crate::Loggable for ClassDescription {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > data_inner.len() {
-                                        return Err(crate::DeserializationError::OffsetsMismatch {
-                                            bounds: (start as usize, end as usize),
-                                            len: data_inner.len(),
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        });
+                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                            (start, end),
+                                            data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -440,39 +430,33 @@ impl crate::Loggable for ClassDescription {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                expected: DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: <crate::datatypes::KeypointPair>::to_arrow_datatype(
-                                    ),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
-                                got: data.data_type().clone(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type:
+                                            <crate::datatypes::KeypointPair>::to_arrow_datatype(),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    })),
+                                    data.data_type().clone(),
+                                )
                             })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: "rerun.datatypes.ClassDescription#keypoint_connections"
-                                    .into(),
-                                source: Box::new(err),
-                            })?;
+                            .with_context(
+                                "rerun.datatypes.ClassDescription#keypoint_connections",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
                             let data_inner = {
                                 let data_inner = &**data.values();
                                 crate::datatypes::KeypointPair::try_from_arrow_opt(data_inner)
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location:
-                                            "rerun.datatypes.ClassDescription#keypoint_connections"
-                                                .into(),
-                                        source: Box::new(err),
-                                    })?
+                                    .with_context(
+                                        "rerun.datatypes.ClassDescription#keypoint_connections",
+                                    )?
                                     .into_iter()
                                     .map(|v| {
-                                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
+                                        v.ok_or_else(crate::DeserializationError::missing_data)
                                     })
                                     .collect::<crate::DeserializationResult<Vec<_>>>()?
                             };
@@ -486,11 +470,10 @@ impl crate::Loggable for ClassDescription {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > data_inner.len() {
-                                        return Err(crate::DeserializationError::OffsetsMismatch {
-                                            bounds: (start as usize, end as usize),
-                                            len: data_inner.len(),
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        });
+                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                            (start, end),
+                                            data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -512,41 +495,27 @@ impl crate::Loggable for ClassDescription {
                     .enumerate()
                     .map(|(i, (info, keypoint_annotations, keypoint_connections))| {
                         is_valid(i)
-                            .then(|| Ok(Self {
-                                info: info
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.datatypes.ClassDescription#info".into(),
-                                        source: Box::new(err),
-                                    })?,
-                                keypoint_annotations: keypoint_annotations
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.datatypes.ClassDescription#keypoint_annotations"
-                                            .into(),
-                                        source: Box::new(err),
-                                    })?,
-                                keypoint_connections: keypoint_connections
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.datatypes.ClassDescription#keypoint_connections"
-                                            .into(),
-                                        source: Box::new(err),
-                                    })?,
-                            }))
+                            .then(|| {
+                                Ok(Self {
+                                    info: info
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.ClassDescription#info")?,
+                                    keypoint_annotations: keypoint_annotations
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context(
+                                            "rerun.datatypes.ClassDescription#keypoint_annotations",
+                                        )?,
+                                    keypoint_connections: keypoint_connections
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context(
+                                            "rerun.datatypes.ClassDescription#keypoint_connections",
+                                        )?,
+                                })
+                            })
                             .transpose()
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.ClassDescription".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.datatypes.ClassDescription")?
             }
         })
     }

@@ -841,7 +841,7 @@ fn quote_trait_impls_from_obj(
                         Self: Clone + 'a
                     {
                         use ::arrow2::{datatypes::*, array::*};
-                        use crate::Loggable as _;
+                        use crate::{Loggable as _, ResultExt as _};
                         Ok(#quoted_serializer)
                     }
 
@@ -851,7 +851,7 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*};
-                        use crate::Loggable as _;
+                        use crate::{Loggable as _, ResultExt as _};
                         Ok(#quoted_deserializer)
                     }
 
@@ -951,10 +951,7 @@ fn quote_trait_impls_from_obj(
                                 #extract_datatype_and_return
                             })
                             .transpose()
-                            .map_err(|err| crate::SerializationError::Context {
-                                location: #obj_field_fqname.into(),
-                                source: Box::new(err),
-                            })?
+                            .with_context(#obj_field_fqname)?
                         },
                         (true, false) => quote! {
                             Some({
@@ -962,10 +959,7 @@ fn quote_trait_impls_from_obj(
                                 #extract_datatype_and_return
                             })
                             .transpose()
-                            .map_err(|err| crate::SerializationError::Context {
-                                location: #obj_field_fqname.into(),
-                                source: Box::new(err),
-                            })?
+                            .with_context(#obj_field_fqname)?
                         },
                         (false, true) => quote! {
                              self.#field_name.as_ref().map(|single| {
@@ -973,10 +967,7 @@ fn quote_trait_impls_from_obj(
                                 #extract_datatype_and_return
                             })
                             .transpose()
-                            .map_err(|err| crate::SerializationError::Context {
-                                location: #obj_field_fqname.into(),
-                                source: Box::new(err),
-                            })?
+                            .with_context(#obj_field_fqname)?
                         },
                         (false, false) => quote! {
                             Some({
@@ -984,10 +975,7 @@ fn quote_trait_impls_from_obj(
                                 #extract_datatype_and_return
                             })
                             .transpose()
-                            .map_err(|err| crate::SerializationError::Context {
-                                location: #obj_field_fqname.into(),
-                                source: Box::new(err),
-                            })?
+                            .with_context(#obj_field_fqname)?
                         },
                     }
                 })
@@ -1008,41 +996,28 @@ fn quote_trait_impls_from_obj(
                     let quoted_collection = if is_plural {
                         quote! {
                             .into_iter()
-                            .map(|v| v .ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            }))
+                            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                             .collect::<crate::DeserializationResult<Vec<_>>>()
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: #obj_field_fqname.into(),
-                                source: Box::new(err),
-                            })?
+                            .with_context(#obj_field_fqname)?
                         }
                     } else {
                         quote! {
                             .into_iter()
                             .next()
                             .flatten()
-                            .ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: #obj_field_fqname.into(),
-                                source: Box::new(err),
-                            })?
+                            .ok_or_else(crate::DeserializationError::missing_data)
+                            .with_context(#obj_field_fqname)?
                         }
                     };
 
                     let quoted_deser = if is_nullable {
                         quote! {
                             if let Some(array) = arrays_by_name.get(#field_name_str) {
-                                Some(
+                                Some({
                                     <#component>::try_from_arrow_opt(&**array)
-                                        .map_err(|err| crate::DeserializationError::Context {
-                                            location: #obj_field_fqname.into(),
-                                            source: Box::new(err),
-                                        })?
+                                        .with_context(#obj_field_fqname)?
                                         #quoted_collection
-                                )
+                                })
                             } else {
                                 None
                             }
@@ -1051,19 +1026,10 @@ fn quote_trait_impls_from_obj(
                         quote! {{
                             let array = arrays_by_name
                                 .get(#field_name_str)
-                                .ok_or_else(|| crate::DeserializationError::MissingData {
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                })
-                                .map_err(|err| crate::DeserializationError::Context {
-                                    location: #obj_field_fqname.into(),
-                                    source: Box::new(err),
-                                })?;
-                            <#component>::try_from_arrow_opt(&**array)
-                                .map_err(|err| crate::DeserializationError::Context {
-                                    location: #obj_field_fqname.into(),
-                                    source: Box::new(err),
-                                })?
-                                #quoted_collection
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context(#obj_field_fqname)?;
+
+                            <#component>::try_from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
                         }}
                     };
 
@@ -1072,13 +1038,17 @@ fn quote_trait_impls_from_obj(
             };
 
             quote! {
-                static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_required]> = once_cell::sync::Lazy::new(|| {[#required]});
+                static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_required]> =
+                    once_cell::sync::Lazy::new(|| {[#required]});
 
-                static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_recommended]> = once_cell::sync::Lazy::new(|| {[#recommended]});
+                static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_recommended]> =
+                    once_cell::sync::Lazy::new(|| {[#recommended]});
 
-                static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_optional]> = once_cell::sync::Lazy::new(|| {[#optional]});
+                static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_optional]> =
+                    once_cell::sync::Lazy::new(|| {[#optional]});
 
-                static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_all]> = once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
+                static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_all]> =
+                    once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
 
                 impl #name {
                     pub const NUM_COMPONENTS: usize = #num_all;
@@ -1114,7 +1084,7 @@ fn quote_trait_impls_from_obj(
                     fn try_to_arrow(
                         &self,
                     ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
-                        use crate::Loggable as _;
+                        use crate::{Loggable as _, ResultExt as _};
                         Ok([ #({ #all_serializers },)* ].into_iter().flatten().collect())
                     }
 
@@ -1122,7 +1092,7 @@ fn quote_trait_impls_from_obj(
                     fn try_from_arrow(
                         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
-                        use crate::Loggable as _;
+                        use crate::{Loggable as _, ResultExt as _};
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = data
                             .into_iter()
@@ -2060,9 +2030,7 @@ fn quote_arrow_deserializer(
         let quoted_unwrap = if obj_field.is_nullable {
             quote!(.map(Ok))
         } else {
-            quote!(.map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })))
+            quote!(.map(|v| v.ok_or_else(crate::DeserializationError::missing_data)))
         };
 
         let quoted_opt_map = if is_tuple_struct {
@@ -2077,10 +2045,7 @@ fn quote_arrow_deserializer(
             #quoted_opt_map
             // NOTE: implicit Vec<Result> to Result<Vec>
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: #obj_field_fqname.into(),
-                source: Box::new(err),
-            })?
+            .with_context(#obj_field_fqname)?
         }
     } else {
         let data_src = data_src.clone();
@@ -2128,13 +2093,8 @@ fn quote_arrow_deserializer(
                         // TODO: this one shouldnt be an error but a default instead i guess then :/
                         quote! {
                             #quoted_obj_field_name: #quoted_obj_field_name
-                                .ok_or_else(|| crate::DeserializationError::MissingData {
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                })
-                                .map_err(|err| crate::DeserializationError::Context {
-                                    location: #obj_field_fqname.into(),
-                                    source: Box::new(err),
-                                })?
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context(#obj_field_fqname)?
                         }
                     }
                 });
@@ -2172,10 +2132,7 @@ fn quote_arrow_deserializer(
                             })).transpose())
                             // NOTE: implicit Vec<Result> to Result<Vec>
                             .collect::<crate::DeserializationResult<Vec<_>>>()
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: #obj_fqname.into(),
-                                source: Box::new(err),
-                            })?
+                            .with_context(#obj_fqname)?
                     }
                 }}
             }
@@ -2230,15 +2187,9 @@ fn quote_arrow_deserializer(
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when slicing the data (as in: a 100x perf drop)!
                             if offset as usize >= #quoted_obj_field_name.len() {
-                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (offset as usize, offset as usize),
-                                    len: #quoted_obj_field_name.len(),
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                })
-                                .map_err(|err| crate::DeserializationError::Context {
-                                    location: #obj_field_fqname.into(),
-                                    source: Box::new(err),
-                                });
+                                return Err(crate::DeserializationError::offsets_mismatch(
+                                    (offset as _, offset as _), #quoted_obj_field_name.len()
+                                )).with_context(#obj_field_fqname);
                             }
 
                             // Safety: all checked above.
@@ -2255,7 +2206,7 @@ fn quote_arrow_deserializer(
                     quote_array_downcast(obj_fqname, &data_src, &cast_as, datatype)
                 };
 
-                let quoted_expected = ArrowDataTypeTokenizer(datatype, false);
+                let expected_datatype = ArrowDataTypeTokenizer(datatype, false);
                 quote! {{
                     let #data_src = #quoted_downcast?;
                     if #data_src.is_empty() {
@@ -2268,26 +2219,14 @@ fn quote_arrow_deserializer(
                         let (#data_src_types, #data_src_arrays) = (#data_src.types(), #data_src.fields());
 
                         let #data_src_offsets = #data_src.offsets()
-                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                expected: #quoted_expected,
-                                got: #data_src.data_type().clone(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: #obj_fqname.into(),
-                                source: Box::new(err),
-                            })?;
+                            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                #expected_datatype, #data_src.data_type().clone(),
+                            )).with_context(#obj_fqname)?;
 
                         if #data_src_types.len() > #data_src_offsets.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (0, #data_src_types.len()),
-                                len: #data_src_offsets.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: #obj_fqname.into(),
-                                source: Box::new(err),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (0, #data_src_types.len()), #data_src_offsets.len(),
+                            )).with_context(#obj_fqname);
                         }
 
                         #(#quoted_field_deserializers;)*
@@ -2310,10 +2249,7 @@ fn quote_arrow_deserializer(
                             })
                             // NOTE: implicit Vec<Result> to Result<Vec>
                             .collect::<crate::DeserializationResult<Vec<_>>>()
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: #obj_fqname.into(),
-                                source: Box::new(err),
-                            })?
+                            .with_context(#obj_fqname)?
                     }
                 }}
             }
@@ -2441,11 +2377,9 @@ fn quote_arrow_field_deserializer(
                         // boundchecks manually first, otherwise rustc completely chokes
                         // when slicing the data (as in: a 100x perf drop)!
                         if end as usize > #data_src_buf.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start, end as usize),
-                                len: #data_src_buf.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (start, end), #data_src_buf.len(),
+                            ));
                         }
                         // Safety: all checked above.
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2458,10 +2392,8 @@ fn quote_arrow_field_deserializer(
                 #quoted_transparent_unmapping
                 // NOTE: implicit Vec<Result> to Result<Vec>
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: #obj_field_fqname.into(),
-                    source: Box::new(err),
-                })?.into_iter()
+                .with_context(#obj_field_fqname)?
+                .into_iter()
             }}
         }
 
@@ -2516,9 +2448,7 @@ fn quote_arrow_field_deserializer(
                         let #data_src_inner = &**#data_src.values();
                         #quoted_inner
                             // TODO: hmmm... what's the deal here?
-                            .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            }))
+                            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                             // NOTE: implicit Vec<Result> to Result<Vec>
                             .collect::<crate::DeserializationResult<Vec<_>>>()?
                     };
@@ -2534,11 +2464,9 @@ fn quote_arrow_field_deserializer(
                                 // boundchecks manually first, otherwise rustc completely chokes
                                 // when slicing the data (as in: a 100x perf drop)!
                                 if end as usize > #data_src_inner.len() {
-                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: #data_src_inner.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    });
+                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                        (start, end), #data_src_inner.len(),
+                                    ));
                                 }
                                 // Safety: all checked above.
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2586,9 +2514,7 @@ fn quote_arrow_field_deserializer(
                         let #data_src_inner = &**#data_src.values();
                         #quoted_inner
                             // TODO: hmmm... what's the deal here?
-                            .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            }))
+                            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                             // NOTE: implicit Vec<Result> to Result<Vec>
                             .collect::<crate::DeserializationResult<Vec<_>>>()?
                     };
@@ -2608,11 +2534,9 @@ fn quote_arrow_field_deserializer(
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when slicing the data (as in: a 100x perf drop)!
                             if end as usize > #data_src_inner.len() {
-                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: #data_src_inner.len(),
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                });
+                                return Err(crate::DeserializationError::offsets_mismatch(
+                                    (start, end), #data_src_inner.len(),
+                                ));
                             }
                             // Safety: all checked above.
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2631,13 +2555,7 @@ fn quote_arrow_field_deserializer(
         DataType::Struct(_) | DataType::Union(_, _, _) => {
             let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
             let fqname_use = quote_fqname_as_type_path(fqname);
-            quote! {
-                #fqname_use::try_from_arrow_opt(#data_src)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: #obj_field_fqname.into(),
-                        source: Box::new(err),
-                    })?.into_iter()
-            }
+            quote!(#fqname_use::try_from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
         }
 
         _ => unimplemented!("{datatype:#?}"),
@@ -2658,15 +2576,8 @@ fn quote_array_downcast(
         #arr
             .as_any()
             .downcast_ref::<#cast_as>()
-            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                expected: #expected,
-                got: #arr.data_type().clone(),
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-            .map_err(|err| crate::DeserializationError::Context {
-                location: #location.into(),
-                source: Box::new(err),
-            })
+            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(#expected, #arr.data_type().clone()))
+            .with_context(#location)
     }
 }
 

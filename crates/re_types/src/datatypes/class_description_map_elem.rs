@@ -73,7 +73,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -175,34 +175,33 @@ impl crate::Loggable for ClassDescriptionMapElem {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::Struct(vec![
-                        Field {
-                            name: "class_id".to_owned(),
-                            data_type: <crate::components::ClassId>::to_arrow_datatype(),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "class_description".to_owned(),
-                            data_type: <crate::datatypes::ClassDescription>::to_arrow_datatype(),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ]),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Struct(vec![
+                            Field {
+                                name: "class_id".to_owned(),
+                                data_type: <crate::components::ClassId>::to_arrow_datatype(),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "class_description".to_owned(),
+                                data_type: <crate::datatypes::ClassDescription>::to_arrow_datatype(
+                                ),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ]),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.ClassDescriptionMapElem".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.datatypes.ClassDescriptionMapElem")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -218,59 +217,44 @@ impl crate::Loggable for ClassDescriptionMapElem {
                     let data = &**arrays_by_name["class_id"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
-                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                            expected: DataType::UInt16,
-                            got: data.data_type().clone(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::UInt16,
+                                data.data_type().clone(),
+                            )
                         })
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.ClassDescriptionMapElem#class_id".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.ClassDescriptionMapElem#class_id")?
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::ClassId(*v)))
                 };
                 let class_description = {
                     let data = &**arrays_by_name["class_description"];
                     crate::datatypes::ClassDescription::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.ClassDescriptionMapElem#class_description"
-                                .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.ClassDescriptionMapElem#class_description")?
                         .into_iter()
                 };
                 ::itertools::izip!(class_id, class_description)
                     .enumerate()
                     .map(|(i, (class_id, class_description))| {
                         is_valid(i)
-                            .then(|| Ok(Self {
+                            .then(|| {
+                                Ok(Self {
                                 class_id: class_id
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.datatypes.ClassDescriptionMapElem#class_id"
-                                            .into(),
-                                        source: Box::new(err),
-                                    })?,
+                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.datatypes.ClassDescriptionMapElem#class_id",
+                                    )?,
                                 class_description: class_description
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.datatypes.ClassDescriptionMapElem#class_description"
-                                            .into(),
-                                        source: Box::new(err),
-                                    })?,
-                            }))
+                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.datatypes.ClassDescriptionMapElem#class_description",
+                                    )?,
+                            })
+                            })
                             .transpose()
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.ClassDescriptionMapElem".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.datatypes.ClassDescriptionMapElem")?
             }
         })
     }

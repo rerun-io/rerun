@@ -95,7 +95,7 @@ impl crate::Loggable for TranslationRotationScale3D {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -280,46 +280,44 @@ impl crate::Loggable for TranslationRotationScale3D {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::Struct(vec![
-                        Field {
-                            name: "translation".to_owned(),
-                            data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "rotation".to_owned(),
-                            data_type: <crate::datatypes::Rotation3D>::to_arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "scale".to_owned(),
-                            data_type: <crate::datatypes::Scale3D>::to_arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "from_parent".to_owned(),
-                            data_type: DataType::Boolean,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ]),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Struct(vec![
+                            Field {
+                                name: "translation".to_owned(),
+                                data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "rotation".to_owned(),
+                                data_type: <crate::datatypes::Rotation3D>::to_arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "scale".to_owned(),
+                                data_type: <crate::datatypes::Scale3D>::to_arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "from_parent".to_owned(),
+                                data_type: DataType::Boolean,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ]),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.TranslationRotationScale3D".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.datatypes.TranslationRotationScale3D")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -337,55 +335,49 @@ impl crate::Loggable for TranslationRotationScale3D {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                expected: DataType::FixedSizeList(
-                                    Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                    3usize,
-                                ),
-                                got: data.data_type().clone(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    ),
+                                    data.data_type().clone(),
+                                )
                             })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: "rerun.datatypes.TranslationRotationScale3D#translation"
-                                    .into(),
-                                source: Box::new(err),
-                            })?;
+                            .with_context(
+                                "rerun.datatypes.TranslationRotationScale3D#translation",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
                             let offsets = (0..)
                                 .step_by(3usize)
                                 .zip((3usize..).step_by(3usize).take(data.len()));
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let data_inner =
+                                {
+                                    let data_inner = &**data.values();
+                                    data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                        expected: DataType::Float32,
-                                        got: data_inner.data_type().clone(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location:
-                                            "rerun.datatypes.TranslationRotationScale3D#translation"
-                                                .into(),
-                                        source: Box::new(err),
-                                    })?
+                                    .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                        DataType::Float32,
+                                        data_inner.data_type().clone(),
+                                    ))
+                                    .with_context(
+                                        "rerun.datatypes.TranslationRotationScale3D#translation",
+                                    )?
                                     .into_iter()
                                     .map(|v| v.copied())
                                     .map(|v| {
-                                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
+                                        v.ok_or_else(crate::DeserializationError::missing_data)
                                     })
                                     .collect::<crate::DeserializationResult<Vec<_>>>()?
-                            };
+                                };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets,
                                 data.validity(),
@@ -394,11 +386,10 @@ impl crate::Loggable for TranslationRotationScale3D {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 3usize);
                                     if end as usize > data_inner.len() {
-                                        return Err(crate::DeserializationError::OffsetsMismatch {
-                                            bounds: (start as usize, end as usize),
-                                            len: data_inner.len(),
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        });
+                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                            (start, end),
+                                            data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -419,62 +410,48 @@ impl crate::Loggable for TranslationRotationScale3D {
                 let rotation = {
                     let data = &**arrays_by_name["rotation"];
                     crate::datatypes::Rotation3D::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.TranslationRotationScale3D#rotation".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.TranslationRotationScale3D#rotation")?
                         .into_iter()
                 };
                 let scale = {
                     let data = &**arrays_by_name["scale"];
                     crate::datatypes::Scale3D::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.TranslationRotationScale3D#scale".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.TranslationRotationScale3D#scale")?
                         .into_iter()
                 };
                 let from_parent = {
                     let data = &**arrays_by_name["from_parent"];
                     data.as_any()
                         .downcast_ref::<BooleanArray>()
-                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                            expected: DataType::Boolean,
-                            got: data.data_type().clone(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Boolean,
+                                data.data_type().clone(),
+                            )
                         })
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.TranslationRotationScale3D#from_parent"
-                                .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.TranslationRotationScale3D#from_parent")?
                         .into_iter()
                 };
                 ::itertools::izip!(translation, rotation, scale, from_parent)
                     .enumerate()
                     .map(|(i, (translation, rotation, scale, from_parent))| {
                         is_valid(i)
-                            .then(|| Ok(Self {
+                            .then(|| {
+                                Ok(Self {
                                 translation,
                                 rotation,
                                 scale,
                                 from_parent: from_parent
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.datatypes.TranslationRotationScale3D#from_parent"
-                                            .into(),
-                                        source: Box::new(err),
-                                    })?,
-                            }))
+                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.datatypes.TranslationRotationScale3D#from_parent",
+                                    )?,
+                            })
+                            })
                             .transpose()
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.TranslationRotationScale3D".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.datatypes.TranslationRotationScale3D")?
             }
         })
     }

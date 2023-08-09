@@ -86,7 +86,7 @@ impl crate::Loggable for AnnotationInfo {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -245,40 +245,38 @@ impl crate::Loggable for AnnotationInfo {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::Struct(vec![
-                        Field {
-                            name: "id".to_owned(),
-                            data_type: DataType::UInt16,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "label".to_owned(),
-                            data_type: <crate::components::Label>::to_arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "color".to_owned(),
-                            data_type: <crate::components::Color>::to_arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                    ]),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Struct(vec![
+                            Field {
+                                name: "id".to_owned(),
+                                data_type: DataType::UInt16,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "label".to_owned(),
+                                data_type: <crate::components::Label>::to_arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "color".to_owned(),
+                                data_type: <crate::components::Color>::to_arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                        ]),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.AnnotationInfo".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.datatypes.AnnotationInfo")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -294,15 +292,13 @@ impl crate::Loggable for AnnotationInfo {
                     let data = &**arrays_by_name["id"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
-                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                            expected: DataType::UInt16,
-                            got: data.data_type().clone(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::UInt16,
+                                data.data_type().clone(),
+                            )
                         })
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.AnnotationInfo#id".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.AnnotationInfo#id")?
                         .into_iter()
                         .map(|v| v.copied())
                 };
@@ -312,15 +308,13 @@ impl crate::Loggable for AnnotationInfo {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
-                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                expected: DataType::Utf8,
-                                got: data.data_type().clone(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::Utf8,
+                                    data.data_type().clone(),
+                                )
                             })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: "rerun.datatypes.AnnotationInfo#label".into(),
-                                source: Box::new(err),
-                            })?;
+                            .with_context("rerun.datatypes.AnnotationInfo#label")?;
                         let data_buf = data.values();
                         let offsets = data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -332,11 +326,10 @@ impl crate::Loggable for AnnotationInfo {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > data_buf.len() {
-                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start, end as usize),
-                                        len: data_buf.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    });
+                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                        (start, end),
+                                        data_buf.len(),
+                                    ));
                                 }
 
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -351,10 +344,7 @@ impl crate::Loggable for AnnotationInfo {
                             })
                         })
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.AnnotationInfo#label".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.AnnotationInfo#label")?
                         .into_iter()
                     }
                 };
@@ -362,15 +352,13 @@ impl crate::Loggable for AnnotationInfo {
                     let data = &**arrays_by_name["color"];
                     data.as_any()
                         .downcast_ref::<UInt32Array>()
-                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                            expected: DataType::UInt32,
-                            got: data.data_type().clone(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::UInt32,
+                                data.data_type().clone(),
+                            )
                         })
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.AnnotationInfo#color".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.AnnotationInfo#color")?
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::Color(*v)))
                 };
@@ -381,13 +369,8 @@ impl crate::Loggable for AnnotationInfo {
                             .then(|| {
                                 Ok(Self {
                                     id: id
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                        .map_err(|err| crate::DeserializationError::Context {
-                                            location: "rerun.datatypes.AnnotationInfo#id".into(),
-                                            source: Box::new(err),
-                                        })?,
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.AnnotationInfo#id")?,
                                     label,
                                     color,
                                 })
@@ -395,10 +378,7 @@ impl crate::Loggable for AnnotationInfo {
                             .transpose()
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.AnnotationInfo".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.datatypes.AnnotationInfo")?
             }
         })
     }

@@ -84,7 +84,7 @@ impl crate::Loggable for Transform3D {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -215,15 +215,16 @@ impl crate::Loggable for Transform3D {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::Union(
-                        vec![
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Union(
+                            vec![
                             Field { name : "_null_markers".to_owned(), data_type :
                             DataType::Null, is_nullable : true, metadata : [].into(), },
                             Field { name : "TranslationAndMat3x3".to_owned(), data_type :
@@ -235,25 +236,23 @@ impl crate::Loggable for Transform3D {
                             ::to_arrow_datatype(), is_nullable : false, metadata : []
                             .into(), },
                         ],
-                        Some(vec![0i32, 1i32, 2i32]),
-                        UnionMode::Dense,
-                    ),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            Some(vec![0i32, 1i32, 2i32]),
+                            UnionMode::Dense,
+                        ),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.Transform3D".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.datatypes.Transform3D")?;
             if data.is_empty() {
                 Vec::new()
             } else {
                 let (data_types, data_arrays) = (data.types(), data.fields());
                 let data_offsets = data
                     .offsets()
-                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                        expected: DataType::Union(
-                            vec![
+                    .ok_or_else(|| {
+                        crate::DeserializationError::datatype_mismatch(
+                            DataType::Union(
+                                vec![
                                 Field { name : "_null_markers".to_owned(), data_type :
                                 DataType::Null, is_nullable : true, metadata : [].into(), },
                                 Field { name : "TranslationAndMat3x3".to_owned(), data_type
@@ -265,44 +264,31 @@ impl crate::Loggable for Transform3D {
                                 ::to_arrow_datatype(), is_nullable : false, metadata : []
                                 .into(), },
                             ],
-                            Some(vec![0i32, 1i32, 2i32]),
-                            UnionMode::Dense,
-                        ),
-                        got: data.data_type().clone(),
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                Some(vec![0i32, 1i32, 2i32]),
+                                UnionMode::Dense,
+                            ),
+                            data.data_type().clone(),
+                        )
                     })
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.Transform3D".into(),
-                        source: Box::new(err),
-                    })?;
+                    .with_context("rerun.datatypes.Transform3D")?;
                 if data_types.len() > data_offsets.len() {
-                    return Err(crate::DeserializationError::OffsetsMismatch {
-                        bounds: (0, data_types.len()),
-                        len: data_offsets.len(),
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.Transform3D".into(),
-                        source: Box::new(err),
-                    });
+                    return Err(crate::DeserializationError::offsets_mismatch(
+                        (0, data_types.len()),
+                        data_offsets.len(),
+                    ))
+                    .with_context("rerun.datatypes.Transform3D");
                 }
                 let translation_and_mat_3_x_3 = {
                     let data = &*data_arrays[1usize];
                     crate::datatypes::TranslationAndMat3x3::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.Transform3D#TranslationAndMat3x3".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.Transform3D#TranslationAndMat3x3")?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
                 let translation_rotation_scale = {
                     let data = &*data_arrays[2usize];
                     crate::datatypes::TranslationRotationScale3D::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.Transform3D#TranslationRotationScale".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.datatypes.Transform3D#TranslationRotationScale")?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
@@ -314,66 +300,49 @@ impl crate::Loggable for Transform3D {
                         if *typ == 0 {
                             Ok(None)
                         } else {
-                            Ok(
-                                Some(
-                                    match typ {
-                                        1i8 => {
-                                            Transform3D::TranslationAndMat3X3({
-                                                if offset as usize >= translation_and_mat_3_x_3.len() {
-                                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                                            bounds: (offset as usize, offset as usize),
-                                                            len: translation_and_mat_3_x_3.len(),
-                                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                        })
-                                                        .map_err(|err| crate::DeserializationError::Context {
-                                                            location: "rerun.datatypes.Transform3D#TranslationAndMat3x3"
-                                                                .into(),
-                                                            source: Box::new(err),
-                                                        });
-                                                }
+                            Ok(Some(match typ {
+                                1i8 => Transform3D::TranslationAndMat3X3({
+                                    if offset as usize >= translation_and_mat_3_x_3.len() {
+                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                            (offset as _, offset as _),
+                                            translation_and_mat_3_x_3.len(),
+                                        ))
+                                        .with_context(
+                                            "rerun.datatypes.Transform3D#TranslationAndMat3x3",
+                                        );
+                                    }
 
-                                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                                unsafe {
-                                                    translation_and_mat_3_x_3.get_unchecked(offset as usize)
-                                                }
-                                                    .clone()
-                                                    .unwrap()
-                                            })
-                                        }
-                                        2i8 => {
-                                            Transform3D::TranslationRotationScale({
-                                                if offset as usize >= translation_rotation_scale.len() {
-                                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                                            bounds: (offset as usize, offset as usize),
-                                                            len: translation_rotation_scale.len(),
-                                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                        })
-                                                        .map_err(|err| crate::DeserializationError::Context {
-                                                            location: "rerun.datatypes.Transform3D#TranslationRotationScale"
-                                                                .into(),
-                                                            source: Box::new(err),
-                                                        });
-                                                }
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe {
+                                        translation_and_mat_3_x_3.get_unchecked(offset as usize)
+                                    }
+                                    .clone()
+                                    .unwrap()
+                                }),
+                                2i8 => Transform3D::TranslationRotationScale({
+                                    if offset as usize >= translation_rotation_scale.len() {
+                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                            (offset as _, offset as _),
+                                            translation_rotation_scale.len(),
+                                        ))
+                                        .with_context(
+                                            "rerun.datatypes.Transform3D#TranslationRotationScale",
+                                        );
+                                    }
 
-                                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                                unsafe {
-                                                    translation_rotation_scale.get_unchecked(offset as usize)
-                                                }
-                                                    .clone()
-                                                    .unwrap()
-                                            })
-                                        }
-                                        _ => unreachable!(),
-                                    },
-                                ),
-                            )
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe {
+                                        translation_rotation_scale.get_unchecked(offset as usize)
+                                    }
+                                    .clone()
+                                    .unwrap()
+                                }),
+                                _ => unreachable!(),
+                            }))
                         }
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.Transform3D".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.datatypes.Transform3D")?
             }
         })
     }

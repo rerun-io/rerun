@@ -69,7 +69,7 @@ impl crate::Loggable for Vector3D {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -154,29 +154,27 @@ impl crate::Loggable for Vector3D {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::FixedSizeList(
-                        Box::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }),
-                        3usize,
-                    ),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            Box::new(Field {
+                                name: "item".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            }),
+                            3usize,
+                        ),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.components.Vector3D#vector".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.components.Vector3D#vector")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -188,22 +186,16 @@ impl crate::Loggable for Vector3D {
                     data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                            expected: DataType::Float32,
-                            got: data_inner.data_type().clone(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data_inner.data_type().clone(),
+                            )
                         })
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.components.Vector3D#vector".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.components.Vector3D#vector")?
                         .into_iter()
                         .map(|v| v.copied())
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            })
-                        })
+                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                         .collect::<crate::DeserializationResult<Vec<_>>>()?
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, data.validity())
@@ -211,11 +203,10 @@ impl crate::Loggable for Vector3D {
                         elem.map(|(start, end)| {
                             debug_assert!(end - start == 3usize);
                             if end as usize > data_inner.len() {
-                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data_inner.len(),
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                });
+                                return Err(crate::DeserializationError::offsets_mismatch(
+                                    (start, end),
+                                    data_inner.len(),
+                                ));
                             }
 
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -231,17 +222,10 @@ impl crate::Loggable for Vector3D {
             }
             .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-        })
+        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.components.Vector3D#vector".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.components.Vector3D#vector")?)
     }
 
     #[inline]
