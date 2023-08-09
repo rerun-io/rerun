@@ -252,7 +252,26 @@ impl crate::Loggable for AnnotationInfo {
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
+                    expected: DataType::Struct(vec![
+                        Field {
+                            name: "id".to_owned(),
+                            data_type: DataType::UInt16,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                        Field {
+                            name: "label".to_owned(),
+                            data_type: <crate::components::Label>::to_arrow_datatype(),
+                            is_nullable: true,
+                            metadata: [].into(),
+                        },
+                        Field {
+                            name: "color".to_owned(),
+                            data_type: <crate::components::Color>::to_arrow_datatype(),
+                            is_nullable: true,
+                            metadata: [].into(),
+                        },
+                    ]),
                     got: data.data_type().clone(),
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
@@ -275,14 +294,33 @@ impl crate::Loggable for AnnotationInfo {
                     let data = &**arrays_by_name["id"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
-                        .unwrap()
+                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                            expected: DataType::UInt16,
+                            got: data.data_type().clone(),
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.AnnotationInfo#id".into(),
+                            source: Box::new(err),
+                        })?
                         .into_iter()
                         .map(|v| v.copied())
                 };
                 let label = {
                     let data = &**arrays_by_name["label"];
                     {
-                        let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                        let downcast = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                                expected: DataType::Utf8,
+                                got: data.data_type().clone(),
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            })
+                            .map_err(|err| crate::DeserializationError::Context {
+                                location: "rerun.datatypes.AnnotationInfo#label".into(),
+                                source: Box::new(err),
+                            })?;
                         let offsets = downcast.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
                             offsets.iter().zip(offsets.lengths()),
@@ -296,7 +334,15 @@ impl crate::Loggable for AnnotationInfo {
                     let data = &**arrays_by_name["color"];
                     data.as_any()
                         .downcast_ref::<UInt32Array>()
-                        .unwrap()
+                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                            expected: DataType::UInt32,
+                            got: data.data_type().clone(),
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.AnnotationInfo#color".into(),
+                            source: Box::new(err),
+                        })?
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::Color(*v)))
                 };

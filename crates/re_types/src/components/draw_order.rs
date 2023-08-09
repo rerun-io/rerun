@@ -110,7 +110,15 @@ impl crate::Loggable for DrawOrder {
         Ok(data
             .as_any()
             .downcast_ref::<Float32Array>()
-            .unwrap()
+            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                expected: DataType::Float32,
+                got: data.data_type().clone(),
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            })
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.DrawOrder#value".into(),
+                source: Box::new(err),
+            })?
             .into_iter()
             .map(|v| v.copied())
             .map(|v| {

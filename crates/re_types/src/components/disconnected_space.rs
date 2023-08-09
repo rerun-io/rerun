@@ -107,7 +107,15 @@ impl crate::Loggable for DisconnectedSpace {
         Ok(data
             .as_any()
             .downcast_ref::<BooleanArray>()
-            .unwrap()
+            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                expected: DataType::Boolean,
+                got: data.data_type().clone(),
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            })
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.DisconnectedSpace#is_disconnected".into(),
+                source: Box::new(err),
+            })?
             .into_iter()
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {

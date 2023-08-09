@@ -250,7 +250,30 @@ impl crate::Loggable for Scale3D {
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
                 .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
+                    expected: DataType::Union(
+                        vec![
+                            Field {
+                                name: "_null_markers".to_owned(),
+                                data_type: DataType::Null,
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "ThreeD".to_owned(),
+                                data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "Uniform".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ],
+                        Some(vec![0i32, 1i32, 2i32]),
+                        UnionMode::Dense,
+                    ),
                     got: data.data_type().clone(),
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
@@ -269,7 +292,23 @@ impl crate::Loggable for Scale3D {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .unwrap();
+                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                                expected: DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    3usize,
+                                ),
+                                got: data.data_type().clone(),
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            })
+                            .map_err(|err| crate::DeserializationError::Context {
+                                location: "rerun.datatypes.Scale3D#ThreeD".into(),
+                                source: Box::new(err),
+                            })?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
@@ -281,7 +320,15 @@ impl crate::Loggable for Scale3D {
                             let data = data
                                 .as_any()
                                 .downcast_ref::<Float32Array>()
-                                .unwrap()
+                                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                                    expected: DataType::Float32,
+                                    got: data.data_type().clone(),
+                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                })
+                                .map_err(|err| crate::DeserializationError::Context {
+                                    location: "rerun.datatypes.Scale3D#ThreeD".into(),
+                                    source: Box::new(err),
+                                })?
                                 .into_iter()
                                 .map(|v| v.copied())
                                 .map(|v| {
@@ -329,7 +376,15 @@ impl crate::Loggable for Scale3D {
                     let data = &*data_arrays[2usize];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                            expected: DataType::Float32,
+                            got: data.data_type().clone(),
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.Scale3D#Uniform".into(),
+                            source: Box::new(err),
+                        })?
                         .into_iter()
                         .map(|v| v.copied())
                         .collect::<Vec<_>>()

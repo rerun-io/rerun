@@ -115,7 +115,15 @@ impl crate::Loggable for Color {
         Ok(data
             .as_any()
             .downcast_ref::<UInt32Array>()
-            .unwrap()
+            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                expected: DataType::UInt32,
+                got: data.data_type().clone(),
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            })
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.Color#rgba".into(),
+                source: Box::new(err),
+            })?
             .into_iter()
             .map(|v| v.copied())
             .map(|v| {

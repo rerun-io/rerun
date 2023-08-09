@@ -209,7 +209,30 @@ impl crate::Loggable for Angle {
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
                 .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
+                    expected: DataType::Union(
+                        vec![
+                            Field {
+                                name: "_null_markers".to_owned(),
+                                data_type: DataType::Null,
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "Radians".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "Degrees".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ],
+                        Some(vec![0i32, 1i32, 2i32]),
+                        UnionMode::Dense,
+                    ),
                     got: data.data_type().clone(),
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
@@ -226,7 +249,15 @@ impl crate::Loggable for Angle {
                     let data = &*data_arrays[1usize];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                            expected: DataType::Float32,
+                            got: data.data_type().clone(),
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.Angle#Radians".into(),
+                            source: Box::new(err),
+                        })?
                         .into_iter()
                         .map(|v| v.copied())
                         .collect::<Vec<_>>()
@@ -235,7 +266,15 @@ impl crate::Loggable for Angle {
                     let data = &*data_arrays[2usize];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                            expected: DataType::Float32,
+                            got: data.data_type().clone(),
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.Angle#Degrees".into(),
+                            source: Box::new(err),
+                        })?
                         .into_iter()
                         .map(|v| v.copied())
                         .collect::<Vec<_>>()
