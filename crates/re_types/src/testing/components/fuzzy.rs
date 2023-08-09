@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer1(pub crate::testing::datatypes::AffixFuzzer1);
 
 impl<T: Into<crate::testing::datatypes::AffixFuzzer1>> From<T> for AffixFuzzer1 {
@@ -197,7 +197,7 @@ impl crate::Loggable for AffixFuzzer1 {
 
 impl crate::Component for AffixFuzzer1 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer2(pub crate::testing::datatypes::AffixFuzzer1);
 
 impl<T: Into<crate::testing::datatypes::AffixFuzzer1>> From<T> for AffixFuzzer2 {
@@ -382,7 +382,7 @@ impl crate::Loggable for AffixFuzzer2 {
 
 impl crate::Component for AffixFuzzer2 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer3(pub crate::testing::datatypes::AffixFuzzer1);
 
 impl<T: Into<crate::testing::datatypes::AffixFuzzer1>> From<T> for AffixFuzzer3 {
@@ -567,7 +567,7 @@ impl crate::Loggable for AffixFuzzer3 {
 
 impl crate::Component for AffixFuzzer3 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer4(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer4 {
@@ -754,7 +754,7 @@ impl crate::Loggable for AffixFuzzer4 {
 
 impl crate::Component for AffixFuzzer4 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer5(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer5 {
@@ -941,7 +941,7 @@ impl crate::Loggable for AffixFuzzer5 {
 
 impl crate::Component for AffixFuzzer5 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer6(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer6 {
@@ -1128,7 +1128,7 @@ impl crate::Loggable for AffixFuzzer6 {
 
 impl crate::Component for AffixFuzzer6 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer7(pub Option<Vec<crate::testing::datatypes::AffixFuzzer1>>);
 
 impl<I: Into<crate::testing::datatypes::AffixFuzzer1>, T: IntoIterator<Item = I>> From<Option<T>>
@@ -1345,7 +1345,7 @@ impl crate::Loggable for AffixFuzzer7 {
 
 impl crate::Component for AffixFuzzer7 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer8(pub Option<f32>);
 
 impl<'a> From<AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
@@ -1470,7 +1470,7 @@ impl crate::Loggable for AffixFuzzer8 {
 
 impl crate::Component for AffixFuzzer8 {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer9(pub crate::ArrowString);
 
 impl<'a> From<AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
@@ -1636,7 +1636,7 @@ impl crate::Loggable for AffixFuzzer9 {
 
 impl crate::Component for AffixFuzzer9 {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer10(pub Option<crate::ArrowString>);
 
 impl<'a> From<AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
@@ -1804,7 +1804,7 @@ impl crate::Loggable for AffixFuzzer10 {
 
 impl crate::Component for AffixFuzzer10 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer11(pub Option<Vec<f32>>);
 
 impl<'a> From<AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
@@ -2032,7 +2032,7 @@ impl crate::Loggable for AffixFuzzer11 {
 
 impl crate::Component for AffixFuzzer11 {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer12(pub Vec<crate::ArrowString>);
 
 impl<'a> From<AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
@@ -2304,7 +2304,7 @@ impl crate::Loggable for AffixFuzzer12 {
 
 impl crate::Component for AffixFuzzer12 {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer13(pub Option<Vec<crate::ArrowString>>);
 
 impl<'a> From<AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
@@ -2578,7 +2578,7 @@ impl crate::Loggable for AffixFuzzer13 {
 
 impl crate::Component for AffixFuzzer13 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer14(pub crate::testing::datatypes::AffixFuzzer3);
 
 impl<T: Into<crate::testing::datatypes::AffixFuzzer3>> From<T> for AffixFuzzer14 {
@@ -2741,7 +2741,7 @@ impl crate::Loggable for AffixFuzzer14 {
 
 impl crate::Component for AffixFuzzer14 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer15(pub Option<crate::testing::datatypes::AffixFuzzer3>);
 
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer3>>> From<T> for AffixFuzzer15 {
@@ -2906,7 +2906,7 @@ impl crate::Loggable for AffixFuzzer15 {
 
 impl crate::Component for AffixFuzzer15 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer16(pub Vec<crate::testing::datatypes::AffixFuzzer3>);
 
 impl<I: Into<crate::testing::datatypes::AffixFuzzer3>, T: IntoIterator<Item = I>> From<T>
@@ -3123,7 +3123,7 @@ impl crate::Loggable for AffixFuzzer16 {
 
 impl crate::Component for AffixFuzzer16 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer17(pub Option<Vec<crate::testing::datatypes::AffixFuzzer3>>);
 
 impl<I: Into<crate::testing::datatypes::AffixFuzzer3>, T: IntoIterator<Item = I>> From<Option<T>>
@@ -3342,7 +3342,7 @@ impl crate::Loggable for AffixFuzzer17 {
 
 impl crate::Component for AffixFuzzer17 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer18(pub Option<Vec<crate::testing::datatypes::AffixFuzzer4>>);
 
 impl<I: Into<crate::testing::datatypes::AffixFuzzer4>, T: IntoIterator<Item = I>> From<Option<T>>
@@ -3561,7 +3561,7 @@ impl crate::Loggable for AffixFuzzer18 {
 
 impl crate::Component for AffixFuzzer18 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer19(pub crate::testing::datatypes::AffixFuzzer5);
 
 impl<T: Into<crate::testing::datatypes::AffixFuzzer5>> From<T> for AffixFuzzer19 {
@@ -3683,7 +3683,7 @@ impl crate::Loggable for AffixFuzzer19 {
 
 impl crate::Component for AffixFuzzer19 {}
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AffixFuzzer20(pub crate::testing::datatypes::AffixFuzzer20);
 
 impl<T: Into<crate::testing::datatypes::AffixFuzzer20>> From<T> for AffixFuzzer20 {
