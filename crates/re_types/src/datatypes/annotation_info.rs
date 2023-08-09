@@ -336,9 +336,9 @@ impl crate::Loggable for AnnotationInfo {
                             })
                             .transpose()
                         })
-                        .map(|res| {
-                            res.map(|opt| {
-                                opt.map(|v| crate::components::Label(crate::ArrowString(v)))
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| crate::components::Label(crate::ArrowString(v)))
                             })
                         })
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()

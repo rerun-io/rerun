@@ -1607,7 +1607,9 @@ impl crate::Loggable for AffixFuzzer9 {
                 })
                 .transpose()
             })
-            .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+            .map(|res_or_opt| {
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+            })
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.testing.components.AffixFuzzer9#single_string_required")?
             .into_iter()
@@ -1775,7 +1777,9 @@ impl crate::Loggable for AffixFuzzer10 {
                 })
                 .transpose()
             })
-            .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+            .map(|res_or_opt| {
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+            })
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.testing.components.AffixFuzzer10#single_string_optional")?
             .into_iter()
@@ -2239,7 +2243,9 @@ impl crate::Loggable for AffixFuzzer12 {
                             })
                             .transpose()
                         })
-                        .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                        })
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
                         .with_context(
                             "rerun.testing.components.AffixFuzzer12#many_strings_required",
@@ -2513,7 +2519,9 @@ impl crate::Loggable for AffixFuzzer13 {
                             })
                             .transpose()
                         })
-                        .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                        })
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
                         .with_context(
                             "rerun.testing.components.AffixFuzzer13#many_strings_optional",

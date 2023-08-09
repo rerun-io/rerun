@@ -53,14 +53,13 @@ pub fn quote_arrow_deserializer(
             &data_src,
         );
 
-        // TODO: this one shouldnt be an error but a default instead i guess then :/
-        let quoted_unwrap = if obj_field.is_nullable {
+        let quoted_unwrapping = if obj_field.is_nullable {
             quote!(.map(Ok))
         } else {
             quote!(.map(|v| v.ok_or_else(crate::DeserializationError::missing_data)))
         };
 
-        let quoted_opt_map = if is_tuple_struct {
+        let quoted_remapping = if is_tuple_struct {
             quote!(.map(|res| res.map(|v| Some(Self(v)))))
         } else {
             quote!(.map(|res| res.map(|#data_dst| Some(Self { #data_dst }))))
@@ -68,8 +67,8 @@ pub fn quote_arrow_deserializer(
 
         quote! {
             #quoted_deserializer
-            #quoted_unwrap
-            #quoted_opt_map
+            #quoted_unwrapping
+            #quoted_remapping
             // NOTE: implicit Vec<Result> to Result<Vec>
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .with_context(#obj_field_fqname)?
@@ -354,32 +353,17 @@ fn quote_arrow_field_deserializer(
         }
 
         DataType::Utf8 => {
-            // TODO: can we get a general unmapper with optional transparency?
-            let quoted_transparent_unmapping = if inner_is_arrow_transparent {
-                let inner_obj = inner_obj.as_ref().unwrap();
-                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
-                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
-                let quoted_data_dst = format_ident!(
-                    "{}",
-                    if is_tuple_struct {
-                        "data0"
-                    } else {
-                        inner_obj.fields[0].name.as_str()
-                    }
-                );
-                if is_tuple_struct {
-                    quote!(.map(|res| res.map(|opt| opt.map(|v| #quoted_inner_obj_type(crate::ArrowString(v))))))
-                } else {
-                    quote!(.map(|res| res.map(|opt| opt.map(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst: crate::ArrowString(v) }))))
-                }
-            } else {
-                quote!(.map(|res| res.map(|opt| opt.map(crate::ArrowString))))
-            };
-
             let quoted_downcast = {
                 let cast_as = quote!(::arrow2::array::Utf8Array<i32>);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
+
+            let quoted_unmapping = quote_iterator_unmapper(
+                objects,
+                datatype,
+                IteratorKind::ResultOptionValue,
+                quote!(crate::ArrowString).into(),
+            );
 
             let data_src_buf = format_ident!("{data_src}_buf");
 
@@ -414,7 +398,7 @@ fn quote_arrow_field_deserializer(
                         Ok(data)
                     }).transpose()
                 )
-                #quoted_transparent_unmapping
+                #quoted_unmapping
                 // NOTE: implicit Vec<Result> to Result<Vec>
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
                 .with_context(#obj_field_fqname)?
@@ -432,31 +416,13 @@ fn quote_arrow_field_deserializer(
                 &data_src_inner,
             );
 
-            let quoted_transparent_unmapping = if inner_is_arrow_transparent {
-                let inner_obj = inner_obj.as_ref().unwrap();
-                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
-                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
-                let quoted_data_dst = format_ident!(
-                    "{}",
-                    if is_tuple_struct {
-                        "data0"
-                    } else {
-                        inner_obj.fields[0].name.as_str()
-                    }
-                );
-                if is_tuple_struct {
-                    quote!(.map(|res| res.map(|opt| opt.map(|v| #quoted_inner_obj_type(v)))))
-                } else {
-                    quote!(.map(|res| res.map(|opt| opt.map(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst }))))
-                }
-            } else {
-                quote!()
-            };
-
             let quoted_downcast = {
                 let cast_as = quote!(::arrow2::array::FixedSizeListArray);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
+
+            let quoted_unmapping =
+                quote_iterator_unmapper(objects, datatype, IteratorKind::ResultOptionValue, None);
 
             quote! {{
                 let #data_src = #quoted_downcast?;
@@ -521,7 +487,7 @@ fn quote_arrow_field_deserializer(
                                 Ok(arr)
                             }).transpose()
                         )
-                        #quoted_transparent_unmapping
+                        #quoted_unmapping
                         // NOTE: implicit Vec<Result> to Result<Vec>
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                 }
@@ -639,5 +605,84 @@ fn quote_array_downcast(
             .downcast_ref::<#cast_as>()
             .ok_or_else(|| crate::DeserializationError::datatype_mismatch(#expected, #arr.data_type().clone()))
             .with_context(#location)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
+enum IteratorKind {
+    ResultOptionValue,
+    OptionResultValue,
+    OptionValue,
+    ResultValue,
+    Value,
+}
+
+#[allow(clippy::collapsible_else_if)]
+fn quote_iterator_unmapper(
+    objects: &Objects,
+    datatype: &DataType,
+    iter_kind: IteratorKind,
+    extra_wrapper: Option<TokenStream>,
+) -> TokenStream {
+    let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+        Some(&objects[fqname])
+    } else {
+        None
+    };
+    let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+
+    if inner_is_arrow_transparent {
+        let inner_obj = inner_obj.as_ref().unwrap();
+        let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
+
+        let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+        let quoted_data_dst = format_ident!(
+            "{}",
+            if is_tuple_struct {
+                "data0"
+            } else {
+                inner_obj.fields[0].name.as_str()
+            }
+        );
+
+        let quoted_binding = if is_tuple_struct {
+            if let Some(extra_wrapper) = extra_wrapper {
+                quote!(|v| #quoted_inner_obj_type(#extra_wrapper(v)))
+            } else {
+                quote!(|v| #quoted_inner_obj_type(v))
+            }
+        } else {
+            if let Some(extra_wrapper) = extra_wrapper {
+                quote!(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst: #extra_wrapper(v) })
+            } else {
+                quote!(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst })
+            }
+        };
+
+        match iter_kind {
+            IteratorKind::ResultOptionValue | IteratorKind::OptionResultValue => {
+                quote!(.map(|res_or_opt| res_or_opt.map(|res_or_opt| res_or_opt.map(#quoted_binding))))
+            }
+            IteratorKind::OptionValue | IteratorKind::ResultValue => {
+                quote!(.map(|res_or_opt| res_or_opt.map(#quoted_binding)))
+            }
+            IteratorKind::Value => quote!(.map(#quoted_binding)),
+        }
+    } else {
+        if let Some(extra_wrapper) = extra_wrapper {
+            let quoted_binding = quote!(|v| #extra_wrapper(v));
+            match iter_kind {
+                IteratorKind::ResultOptionValue | IteratorKind::OptionResultValue => {
+                    quote!(.map(|res_or_opt| res_or_opt.map(|res_or_opt| res_or_opt.map(#quoted_binding))))
+                }
+                IteratorKind::OptionValue | IteratorKind::ResultValue => {
+                    quote!(.map(|res_or_opt| res_or_opt.map(#quoted_binding)))
+                }
+                IteratorKind::Value => quote!(.map(#quoted_binding)),
+            }
+        } else {
+            quote!()
+        }
     }
 }
