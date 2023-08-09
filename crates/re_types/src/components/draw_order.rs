@@ -40,7 +40,7 @@ impl<'a> From<&'a DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
 impl crate::Loggable for DrawOrder {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.draw_order".into()
@@ -132,7 +132,7 @@ impl crate::Loggable for DrawOrder {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

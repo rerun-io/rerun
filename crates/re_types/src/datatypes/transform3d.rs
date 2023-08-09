@@ -39,7 +39,7 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
 impl crate::Loggable for Transform3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Transform3D".into()
@@ -262,15 +262,27 @@ impl crate::Loggable for Transform3D {
 
  if * typ == 0 { Ok (None) }
 
- else { Ok (Some (match typ { 1i8 => Transform3D :: TranslationAndMat3X3 (translation_and_mat_3_x_3 . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : translation_and_mat_3_x_3 . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+ else { Ok (Some (match typ { 1i8 => Transform3D :: TranslationAndMat3X3 ({ if offset as usize >= translation_and_mat_3_x_3 . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : translation_and_mat_3_x_3 . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Transform3D#TranslationAndMat3x3" . into () , source : Box :: new (err) , }
 
-) ? . clone () . unwrap ()) , 2i8 => Transform3D :: TranslationRotationScale (translation_rotation_scale . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : translation_rotation_scale . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { translation_and_mat_3_x_3 . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
+
+) , 2i8 => Transform3D :: TranslationRotationScale ({ if offset as usize >= translation_rotation_scale . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : translation_rotation_scale . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.Transform3D#TranslationRotationScale" . into () , source : Box :: new (err) , }
 
-) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { translation_rotation_scale . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
+
+) , _ => unreachable ! () , }
 
 )) }
 
@@ -290,7 +302,7 @@ impl crate::Loggable for Transform3D {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

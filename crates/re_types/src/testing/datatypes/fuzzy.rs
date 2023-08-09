@@ -34,7 +34,7 @@ impl<'a> From<&'a FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
 impl crate::Loggable for FlattenedScalar {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.FlattenedScalar".into()
@@ -195,7 +195,7 @@ impl crate::Loggable for FlattenedScalar {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -236,7 +236,7 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
 impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer1".into()
@@ -907,9 +907,13 @@ impl crate::Loggable for AffixFuzzer1 {
 
  ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec ()) }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -932,9 +936,13 @@ impl crate::Loggable for AffixFuzzer1 {
 
  . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec ()) }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -957,9 +965,13 @@ impl crate::Loggable for AffixFuzzer1 {
 
  . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec ()) }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -1027,7 +1039,7 @@ impl crate::Loggable for AffixFuzzer1 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1058,7 +1070,7 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
 impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer2".into()
@@ -1148,7 +1160,7 @@ impl crate::Loggable for AffixFuzzer2 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1184,7 +1196,7 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
 impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer3".into()
@@ -1401,9 +1413,13 @@ impl crate::Loggable for AffixFuzzer3 {
 
 ) ? . into_iter () . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec ()) }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -1418,11 +1434,13 @@ impl crate::Loggable for AffixFuzzer3 {
 
  else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec () . try_into () . map_err (| _err | crate :: DeserializationError :: ArrayLengthMismatch { expected : 3usize , got : (end - start) as usize , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+) ; }
 
-) }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
+
+ ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -1434,23 +1452,47 @@ impl crate::Loggable for AffixFuzzer3 {
 
  if * typ == 0 { Ok (None) }
 
- else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees (degrees . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer3 :: Degrees ({ if offset as usize >= degrees . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : degrees . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#degrees" . into () , source : Box :: new (err) , }
 
-) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer3 :: Radians (radians . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { degrees . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
+
+) , 2i8 => AffixFuzzer3 :: Radians ({ if offset as usize >= radians . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#radians" . into () , source : Box :: new (err) , }
 
-) ? . clone ()) , 3i8 => AffixFuzzer3 :: Craziness (craziness . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { radians . get_unchecked (offset as usize) }
+
+ . clone () }
+
+) , 3i8 => AffixFuzzer3 :: Craziness ({ if offset as usize >= craziness . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#craziness" . into () , source : Box :: new (err) , }
 
-) ? . clone () . unwrap ()) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans (fixed_size_shenanigans . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { craziness . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
+
+) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans ({ if offset as usize >= fixed_size_shenanigans . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans" . into () , source : Box :: new (err) , }
 
-) ? . clone () . unwrap ()) , _ => unreachable ! () , }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { fixed_size_shenanigans . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
+
+) , _ => unreachable ! () , }
 
 )) }
 
@@ -1470,7 +1512,7 @@ impl crate::Loggable for AffixFuzzer3 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1505,7 +1547,7 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
 impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer4".into()
@@ -1692,9 +1734,13 @@ impl crate::Loggable for AffixFuzzer4 {
 
 ) ? . into_iter () . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec ()) }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -1713,9 +1759,13 @@ impl crate::Loggable for AffixFuzzer4 {
 
 ) ? . into_iter () . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { Ok (data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? . to_vec ()) }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -1727,19 +1777,37 @@ impl crate::Loggable for AffixFuzzer4 {
 
  if * typ == 0 { Ok (None) }
 
- else { Ok (Some (match typ { 1i8 => AffixFuzzer4 :: SingleRequired (single_required . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : single_required . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+ else { Ok (Some (match typ { 1i8 => AffixFuzzer4 :: SingleRequired ({ if offset as usize >= single_required . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : single_required . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#single_required" . into () , source : Box :: new (err) , }
 
-) ? . clone () . unwrap ()) , 2i8 => AffixFuzzer4 :: ManyRequired (many_required . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_required . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { single_required . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
+
+) , 2i8 => AffixFuzzer4 :: ManyRequired ({ if offset as usize >= many_required . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_required . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_required" . into () , source : Box :: new (err) , }
 
-) ? . clone () . unwrap ()) , 3i8 => AffixFuzzer4 :: ManyOptional (many_optional . get (offset as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_optional . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { many_required . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
+
+) , 3i8 => AffixFuzzer4 :: ManyOptional ({ if offset as usize >= many_optional . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_optional . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.testing.datatypes.AffixFuzzer4#many_optional" . into () , source : Box :: new (err) , }
 
-) ? . clone ()) , _ => unreachable ! () , }
+) ; }
+
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { many_optional . get_unchecked (offset as usize) }
+
+ . clone () }
+
+) , _ => unreachable ! () , }
 
 )) }
 
@@ -1759,7 +1827,7 @@ impl crate::Loggable for AffixFuzzer4 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1800,7 +1868,7 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
 impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer5".into()
@@ -1959,7 +2027,7 @@ impl crate::Loggable for AffixFuzzer5 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1993,7 +2061,7 @@ impl<'a> From<&'a AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
 impl crate::Loggable for AffixFuzzer20 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.datatypes.AffixFuzzer20".into()
@@ -2255,7 +2323,7 @@ impl crate::Loggable for AffixFuzzer20 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

@@ -39,7 +39,7 @@ impl<'a> From<&'a Point2D> for ::std::borrow::Cow<'a, Point2D> {
 impl crate::Loggable for Point2D {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.point2d".into()
@@ -187,21 +187,19 @@ impl crate::Loggable for Point2D {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                data.get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec()
-                                    .try_into()
-                                    .map_err(|_err| {
-                                        crate::DeserializationError::ArrayLengthMismatch {
-                                            expected: 2usize,
-                                            got: (end - start) as usize,
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        }
-                                    })
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data =
+                                    unsafe { data.get_unchecked(start as usize..end as usize) };
+                                let arr = array_init::from_iter(data.iter().copied()).unwrap();
+                                Ok(arr)
                             })
                             .transpose()
                     })
@@ -230,7 +228,7 @@ impl crate::Loggable for Point2D {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

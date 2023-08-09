@@ -4554,6 +4554,7 @@ name = "re_types"
 version = "0.9.0-alpha.2"
 dependencies = [
  "anyhow",
+ "array-init",
  "arrow2",
  "arrow2_convert",
  "backtrace",

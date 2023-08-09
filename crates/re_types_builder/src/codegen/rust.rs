@@ -746,7 +746,7 @@ fn quote_trait_impls_from_obj(
                 impl crate::Loggable for #name {
                     type Name = crate::#kind_name;
                     type Item<'a> = Option<Self>;
-                    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+                    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
                     #[inline]
                     fn name() -> Self::Name {
@@ -792,7 +792,7 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized,
                     {
-                        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+                        Ok(Self::try_from_arrow_opt(data)?.into_iter())
                     }
 
                     #[inline]
@@ -2156,10 +2156,12 @@ fn quote_arrow_deserializer(
                     };
 
                     quote! {
-                        #i => #quoted_obj_name::#quoted_obj_field_type(
-                            #quoted_obj_field_name
-                                .get(offset as usize)
-                                .ok_or(crate::DeserializationError::OffsetsMismatch {
+                        #i => #quoted_obj_name::#quoted_obj_field_type({
+                            // NOTE: It is absolutely crucial we explicitly handle the
+                            // boundchecks manually first, otherwise rustc completely chokes
+                            // when slicing the data (as in: a 100x perf drop)!
+                            if offset as usize >= #quoted_obj_field_name.len() {
+                                return Err(crate::DeserializationError::OffsetsMismatch {
                                     bounds: (offset as usize, offset as usize),
                                     len: #quoted_obj_field_name.len(),
                                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -2167,10 +2169,15 @@ fn quote_arrow_deserializer(
                                 .map_err(|err| crate::DeserializationError::Context {
                                     location: #obj_field_fqname.into(),
                                     source: Box::new(err),
-                                })?
+                                });
+                            }
+
+                            // Safety: all checked above.
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            unsafe { #quoted_obj_field_name.get_unchecked(offset as usize) }
                                 .clone()
                                 #quoted_unwrap
-                        )
+                        })
                     }
                 });
 
@@ -2390,19 +2397,23 @@ fn quote_arrow_field_deserializer(
                     offsets
                         .enumerate()
                         .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                            data.get(start as usize .. end as usize)
-                                .ok_or(crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data.len(),
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                })?
-                                .to_vec()
-                                .try_into()
-                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                    expected: #length,
-                                    got: (end - start) as usize,
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                })
+                                // NOTE: It is absolutely crucial we explicitly handle the
+                                // boundchecks manually first, otherwise rustc completely chokes
+                                // when slicing the data (as in: a 100x perf drop)!
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    });
+                                }
+                                // Safety: all checked above.
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data.get_unchecked(start as usize .. end as usize) };
+
+                                let arr = array_init::from_iter(data.iter().copied()).unwrap(); // safe: checked above
+
+                                Ok(arr)
                             }).transpose()
                         )
                         #quoted_transparent_unmapping
@@ -2455,14 +2466,21 @@ fn quote_arrow_field_deserializer(
                     offsets
                         .enumerate()
                         .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                                Ok(data.get(start as usize .. end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                // NOTE: It is absolutely crucial we explicitly handle the
+                                // boundchecks manually first, otherwise rustc completely chokes
+                                // when slicing the data (as in: a 100x perf drop)!
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec()
-                                )
+                                    });
+                                }
+                                // Safety: all checked above.
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data.get_unchecked(start as usize .. end as usize).to_vec() };
+
+                                Ok(data)
                             }).transpose()
                         )
                         // NOTE: implicit Vec<Result> to Result<Vec>

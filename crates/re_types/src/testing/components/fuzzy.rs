@@ -38,7 +38,7 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
 impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer1".into()
@@ -195,7 +195,7 @@ impl crate::Loggable for AffixFuzzer1 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -232,7 +232,7 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
 impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer2".into()
@@ -389,7 +389,7 @@ impl crate::Loggable for AffixFuzzer2 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -426,7 +426,7 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
 impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer3".into()
@@ -583,7 +583,7 @@ impl crate::Loggable for AffixFuzzer3 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -620,7 +620,7 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
 impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer4".into()
@@ -775,7 +775,7 @@ impl crate::Loggable for AffixFuzzer4 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -812,7 +812,7 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
 impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer5".into()
@@ -967,7 +967,7 @@ impl crate::Loggable for AffixFuzzer5 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1004,7 +1004,7 @@ impl<'a> From<&'a AffixFuzzer6> for ::std::borrow::Cow<'a, AffixFuzzer6> {
 impl crate::Loggable for AffixFuzzer6 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer6".into()
@@ -1159,7 +1159,7 @@ impl crate::Loggable for AffixFuzzer6 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1198,7 +1198,7 @@ impl<'a> From<&'a AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
 impl crate::Loggable for AffixFuzzer7 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer7".into()
@@ -1336,14 +1336,19 @@ impl crate::Loggable for AffixFuzzer7 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -1367,7 +1372,7 @@ impl crate::Loggable for AffixFuzzer7 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1398,7 +1403,7 @@ impl<'a> From<&'a AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
 impl crate::Loggable for AffixFuzzer8 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer8".into()
@@ -1488,7 +1493,7 @@ impl crate::Loggable for AffixFuzzer8 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1519,7 +1524,7 @@ impl<'a> From<&'a AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
 impl crate::Loggable for AffixFuzzer9 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer9".into()
@@ -1630,7 +1635,7 @@ impl crate::Loggable for AffixFuzzer9 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1661,7 +1666,7 @@ impl<'a> From<&'a AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
 impl crate::Loggable for AffixFuzzer10 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer10".into()
@@ -1770,7 +1775,7 @@ impl crate::Loggable for AffixFuzzer10 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -1801,7 +1806,7 @@ impl<'a> From<&'a AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
 impl crate::Loggable for AffixFuzzer11 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer11".into()
@@ -1948,14 +1953,19 @@ impl crate::Loggable for AffixFuzzer11 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -1979,7 +1989,7 @@ impl crate::Loggable for AffixFuzzer11 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -2010,7 +2020,7 @@ impl<'a> From<&'a AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
 impl crate::Loggable for AffixFuzzer12 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer12".into()
@@ -2174,14 +2184,19 @@ impl crate::Loggable for AffixFuzzer12 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -2209,7 +2224,7 @@ impl crate::Loggable for AffixFuzzer12 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -2240,7 +2255,7 @@ impl<'a> From<&'a AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
 impl crate::Loggable for AffixFuzzer13 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer13".into()
@@ -2406,14 +2421,19 @@ impl crate::Loggable for AffixFuzzer13 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -2437,7 +2457,7 @@ impl crate::Loggable for AffixFuzzer13 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -2474,7 +2494,7 @@ impl<'a> From<&'a AffixFuzzer14> for ::std::borrow::Cow<'a, AffixFuzzer14> {
 impl crate::Loggable for AffixFuzzer14 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer14".into()
@@ -2609,7 +2629,7 @@ impl crate::Loggable for AffixFuzzer14 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -2646,7 +2666,7 @@ impl<'a> From<&'a AffixFuzzer15> for ::std::borrow::Cow<'a, AffixFuzzer15> {
 impl crate::Loggable for AffixFuzzer15 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer15".into()
@@ -2779,7 +2799,7 @@ impl crate::Loggable for AffixFuzzer15 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -2818,7 +2838,7 @@ impl<'a> From<&'a AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
 impl crate::Loggable for AffixFuzzer16 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer16".into()
@@ -2955,14 +2975,19 @@ impl crate::Loggable for AffixFuzzer16 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -2990,7 +3015,7 @@ impl crate::Loggable for AffixFuzzer16 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -3029,7 +3054,7 @@ impl<'a> From<&'a AffixFuzzer17> for ::std::borrow::Cow<'a, AffixFuzzer17> {
 impl crate::Loggable for AffixFuzzer17 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer17".into()
@@ -3168,14 +3193,19 @@ impl crate::Loggable for AffixFuzzer17 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -3199,7 +3229,7 @@ impl crate::Loggable for AffixFuzzer17 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -3238,7 +3268,7 @@ impl<'a> From<&'a AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
 impl crate::Loggable for AffixFuzzer18 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer18".into()
@@ -3377,14 +3407,19 @@ impl crate::Loggable for AffixFuzzer18 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -3408,7 +3443,7 @@ impl crate::Loggable for AffixFuzzer18 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -3445,7 +3480,7 @@ impl<'a> From<&'a AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
 impl crate::Loggable for AffixFuzzer19 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer19".into()
@@ -3539,7 +3574,7 @@ impl crate::Loggable for AffixFuzzer19 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
@@ -3576,7 +3611,7 @@ impl<'a> From<&'a AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
 impl crate::Loggable for AffixFuzzer20 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer20".into()
@@ -3676,7 +3711,7 @@ impl crate::Loggable for AffixFuzzer20 {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]
