@@ -4,7 +4,7 @@
 // #define EDIT_EXTENSION
 
 namespace rerun {
-    namespace components {
+    namespace datatypes {
 
 #ifdef EDIT_EXTENSION
         struct LabelExt {
@@ -23,5 +23,5 @@ namespace rerun {
             // [CODEGEN COPY TO HEADER END]
         };
 #endif
-    } // namespace components
+    } // namespace datatypes
 } // namespace rerun

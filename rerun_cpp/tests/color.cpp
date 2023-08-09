@@ -1,12 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <rerun/components/color.hpp>
-
-using namespace rerun::components;
+#include <rerun/datatypes/color.hpp>
 
 #define TEST_TAG "[color]"
 
-TEST_CASE("Construct Color in different ways", TEST_TAG) {
+template <typename Color>
+void test() {
     SECTION("Default constructor") {
         Color c;
 
@@ -31,6 +31,7 @@ TEST_CASE("Construct Color in different ways", TEST_TAG) {
         CHECK(c.a() == 255);
     }
 
+    // Ambiguous overload.
     SECTION("Passing RGBA to constructor via initializer list") {
         Color c({1, 2, 3, 4});
         CHECK(c.r() == 1);
@@ -64,5 +65,14 @@ TEST_CASE("Construct Color in different ways", TEST_TAG) {
         CHECK(c.g() == 2);
         CHECK(c.b() == 3);
         CHECK(c.a() == 255);
+    }
+}
+
+TEST_CASE("Construct Color in different ways", TEST_TAG) {
+    SECTION("datatypes::Color") {
+        test<rerun::datatypes::Color>();
+    }
+    SECTION("components::Color") {
+        test<rerun::components::Color>();
     }
 }
