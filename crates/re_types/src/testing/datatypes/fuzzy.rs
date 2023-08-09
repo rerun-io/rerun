@@ -199,7 +199,7 @@ impl crate::Loggable for FlattenedScalar {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -1043,7 +1043,7 @@ impl crate::Loggable for AffixFuzzer1 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -1164,7 +1164,7 @@ impl crate::Loggable for AffixFuzzer2 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -1516,7 +1516,7 @@ impl crate::Loggable for AffixFuzzer3 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -1831,7 +1831,7 @@ impl crate::Loggable for AffixFuzzer4 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -2031,7 +2031,7 @@ impl crate::Loggable for AffixFuzzer5 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -2327,7 +2327,7 @@ impl crate::Loggable for AffixFuzzer20 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }

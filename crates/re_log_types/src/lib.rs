@@ -485,7 +485,7 @@ macro_rules! component_legacy_shim {
             }
 
             #[inline]
-            fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+            fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
                 <Self as arrow2_convert::deserialize::ArrowDeserialize>::arrow_deserialize(item)
             }
         }
