@@ -38,7 +38,7 @@ impl<'a> From<&'a Point3D> for ::std::borrow::Cow<'a, Point3D> {
 
 impl crate::Loggable for Point3D {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
+    type Item<'a> = Self;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
@@ -221,6 +221,47 @@ impl crate::Loggable for Point3D {
         })?)
     }
 
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                .unwrap();
+            if data.is_empty() {
+                Vec::new()
+            } else {
+                let offsets = (0..)
+                    .step_by(3usize)
+                    .zip((3usize..).step_by(3usize).take(data.len()));
+                let data = &**data.values();
+                let data = data
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .values();
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data = unsafe { data.get_unchecked(start as usize..end as usize) };
+                        let arr = array_init::from_iter(data.iter().copied()).unwrap();
+                        arr
+                    })
+                    .map(|v| crate::datatypes::Vec3D(v))
+                    .collect::<Vec<_>>()
+            }
+            .into_iter()
+        }
+        .map(|v| Self(v))
+        .collect::<Vec<_>>())
+    }
+
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
@@ -228,12 +269,17 @@ impl crate::Loggable for Point3D {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        Ok(Self::try_from_arrow(data)?.into_iter())
+    }
+
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
+        item
     }
 
     #[inline]
     fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
+        Some(item)
     }
 }
 

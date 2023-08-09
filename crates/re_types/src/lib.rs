@@ -200,14 +200,9 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
-        Self::try_iter_from_arrow(data)?
-            .map(Self::convert_item_to_opt_self)
-            .map(|v| {
-                v.ok_or_else(|| DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
-            .collect()
+        Ok(Self::try_iter_from_arrow(data)?
+            .map(Self::convert_item_to_self)
+            .collect())
     }
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.

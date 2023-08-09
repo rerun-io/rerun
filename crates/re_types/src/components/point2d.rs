@@ -38,7 +38,7 @@ impl<'a> From<&'a Point2D> for ::std::borrow::Cow<'a, Point2D> {
 
 impl crate::Loggable for Point2D {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
+    type Item<'a> = Self;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
     #[inline]
     fn name() -> Self::Name {
@@ -221,6 +221,37 @@ impl crate::Loggable for Point2D {
         })?)
     }
 
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                .unwrap();
+            if data.is_empty() {
+                itertools::Either::Left(std::iter::empty())
+            } else {
+                let data = &**data.values();
+                let data = data
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .values()
+                    .as_slice();
+                let data2: &[[f32; 2]] = bytemuck::cast_slice(data);
+                itertools::Either::Right(data2.iter().map(|v| crate::datatypes::Vec2D(*v)))
+            }
+        }
+        .map(|v| Self(v))
+        .collect::<Vec<_>>())
+    }
+
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
@@ -228,12 +259,17 @@ impl crate::Loggable for Point2D {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        Ok(Self::try_from_arrow(data)?.into_iter())
+    }
+
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
+        item
     }
 
     #[inline]
     fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
+        Some(item)
     }
 }
 
