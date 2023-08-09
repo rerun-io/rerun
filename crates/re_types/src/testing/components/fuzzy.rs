@@ -1287,8 +1287,7 @@ impl crate::Loggable for AffixFuzzer7 {
                     crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data_inner)
                         .with_context("rerun.testing.components.AffixFuzzer7#many_optional")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -1307,11 +1306,13 @@ impl crate::Loggable for AffixFuzzer7 {
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            data_inner
-                                .get_unchecked(start as usize..end as usize)
-                                .to_vec()
-                        };
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
                         Ok(data)
                     })
                     .transpose()
@@ -1973,8 +1974,7 @@ impl crate::Loggable for AffixFuzzer11 {
                         )?
                         .into_iter()
                         .map(|v| v.copied())
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -1993,11 +1993,13 @@ impl crate::Loggable for AffixFuzzer11 {
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            data_inner
-                                .get_unchecked(start as usize..end as usize)
-                                .to_vec()
-                        };
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
                         Ok(data)
                     })
                     .transpose()
@@ -2244,8 +2246,7 @@ impl crate::Loggable for AffixFuzzer12 {
                         )?
                         .into_iter()
                     }
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -2264,11 +2265,13 @@ impl crate::Loggable for AffixFuzzer12 {
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            data_inner
-                                .get_unchecked(start as usize..end as usize)
-                                .to_vec()
-                        };
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
                         Ok(data)
                     })
                     .transpose()
@@ -2517,8 +2520,7 @@ impl crate::Loggable for AffixFuzzer13 {
                         )?
                         .into_iter()
                     }
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -2537,11 +2539,13 @@ impl crate::Loggable for AffixFuzzer13 {
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            data_inner
-                                .get_unchecked(start as usize..end as usize)
-                                .to_vec()
-                        };
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
                         Ok(data)
                     })
                     .transpose()
@@ -3061,8 +3065,7 @@ impl crate::Loggable for AffixFuzzer16 {
                             "rerun.testing.components.AffixFuzzer16#many_required_unions",
                         )?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -3081,11 +3084,13 @@ impl crate::Loggable for AffixFuzzer16 {
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            data_inner
-                                .get_unchecked(start as usize..end as usize)
-                                .to_vec()
-                        };
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
                         Ok(data)
                     })
                     .transpose()
@@ -3279,8 +3284,7 @@ impl crate::Loggable for AffixFuzzer17 {
                             "rerun.testing.components.AffixFuzzer17#many_optional_unions",
                         )?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -3299,11 +3303,13 @@ impl crate::Loggable for AffixFuzzer17 {
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            data_inner
-                                .get_unchecked(start as usize..end as usize)
-                                .to_vec()
-                        };
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
                         Ok(data)
                     })
                     .transpose()
@@ -3497,8 +3503,7 @@ impl crate::Loggable for AffixFuzzer18 {
                             "rerun.testing.components.AffixFuzzer18#many_optional_unions",
                         )?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -3517,11 +3522,13 @@ impl crate::Loggable for AffixFuzzer18 {
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            data_inner
-                                .get_unchecked(start as usize..end as usize)
-                                .to_vec()
-                        };
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
                         Ok(data)
                     })
                     .transpose()

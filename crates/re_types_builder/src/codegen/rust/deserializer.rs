@@ -98,6 +98,7 @@ pub fn quote_arrow_deserializer(
 
                     quote! {
                         let #data_dst = {
+                            // TODO: is this safe? if so, why?
                             let #data_src = &**arrays_by_name[#field_name];
                              #quoted_deserializer
                         }
@@ -473,11 +474,7 @@ fn quote_arrow_field_deserializer(
 
                     let #data_src_inner = {
                         let #data_src_inner = &**#data_src.values();
-                        #quoted_inner
-                            // TODO: hmmm... what's the deal here?
-                            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                            // NOTE: implicit Vec<Result> to Result<Vec>
-                            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        #quoted_inner.collect::<Vec<_>>()
                     };
 
                     arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, #data_src.validity())
@@ -499,8 +496,30 @@ fn quote_arrow_field_deserializer(
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                 let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
 
+                                // NOTE: The call to `Option::unwrap_or_default` is very important here.
+                                //
+                                // Since we can only get here if the outer entry is marked as
+                                // non-null, the only possible reason for the default() path
+                                // to be taken is because the inner field itself is nullable and
+                                // happens to have one or more nullable values in the referenced
+                                // slice.
+                                // This is perfectly fine, and when it happens, we need to fill the
+                                // resulting vec with some data, hence default().
+                                //
+                                // This does have a subtle implication though!
+                                // Since we never even look at the inner field's data when the outer
+                                // entry is null, it means we won't notice it if illegal/malformed/corrupt
+                                // in any way.
+                                // It is important that we turn a blind eye here, because most SDKs in
+                                // the ecosystem will put illegal data (e.g. null entries in an array of
+                                // non-null floats) in the inner buffer if the outer entry itself
+                                // is null.
+                                //
+                                // TODO(#2875): use MaybeUninit rather than requiring a default impl
+                                let data = data.iter().cloned().map(Option::unwrap_or_default);
+
                                 // NOTE: Unwrapping cannot fail: the length must be correct.
-                                let arr = array_init::from_iter(data.iter().copied()).unwrap();
+                                let arr = array_init::from_iter(data).unwrap();
 
                                 Ok(arr)
                             }).transpose()
@@ -539,11 +558,7 @@ fn quote_arrow_field_deserializer(
                 } else {
                     let #data_src_inner = {
                         let #data_src_inner = &**#data_src.values();
-                        #quoted_inner
-                            // TODO: hmmm... what's the deal here?
-                            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                            // NOTE: implicit Vec<Result> to Result<Vec>
-                            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        #quoted_inner.collect::<Vec<_>>()
                     };
 
                     let offsets = #data_src.offsets();
@@ -567,7 +582,29 @@ fn quote_arrow_field_deserializer(
                             }
                             // Safety: all checked above.
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize).to_vec() };
+                            let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
+
+                            // NOTE: The call to `Option::unwrap_or_default` is very important here.
+                            //
+                            // Since we can only get here if the outer entry is marked as
+                            // non-null, the only possible reason for the default() path
+                            // to be taken is because the inner field itself is nullable and
+                            // happens to have one or more nullable values in the referenced
+                            // slice.
+                            // This is perfectly fine, and when it happens, we need to fill the
+                            // resulting vec with some data, hence default().
+                            //
+                            // This does have a subtle implication though!
+                            // Since we never even look at the inner field's data when the outer
+                            // entry is null, it means we won't notice it if illegal/malformed/corrupt
+                            // in any way.
+                            // It is important that we turn a blind eye here, because most SDKs in
+                            // the ecosystem will put illegal data (e.g. null entries in an array of
+                            // non-null floats) in the inner buffer if the outer entry itself
+                            // is null.
+                            //
+                            // TODO(#2875): use MaybeUninit rather than requiring a default impl
+                            let data = data.iter().cloned().map(Option::unwrap_or_default).collect();
 
                             Ok(data)
                         }).transpose()

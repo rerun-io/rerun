@@ -179,8 +179,7 @@ impl crate::Loggable for AnnotationContext {
                     crate::datatypes::ClassDescriptionMapElem::try_from_arrow_opt(data_inner)
                         .with_context("rerun.components.AnnotationContext#class_map")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -199,11 +198,13 @@ impl crate::Loggable for AnnotationContext {
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            data_inner
-                                .get_unchecked(start as usize..end as usize)
-                                .to_vec()
-                        };
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
                         Ok(data)
                     })
                     .transpose()

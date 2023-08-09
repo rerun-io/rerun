@@ -281,10 +281,7 @@ impl crate::Loggable for RotationAxisAngle {
                                     .with_context("rerun.datatypes.RotationAxisAngle#axis")?
                                     .into_iter()
                                     .map(|v| v.copied())
-                                    .map(|v| {
-                                        v.ok_or_else(crate::DeserializationError::missing_data)
-                                    })
-                                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+                                    .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets,
@@ -304,7 +301,8 @@ impl crate::Loggable for RotationAxisAngle {
                                     let data = unsafe {
                                         data_inner.get_unchecked(start as usize..end as usize)
                                     };
-                                    let arr = array_init::from_iter(data.iter().copied()).unwrap();
+                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                    let arr = array_init::from_iter(data).unwrap();
                                     Ok(arr)
                                 })
                                 .transpose()
