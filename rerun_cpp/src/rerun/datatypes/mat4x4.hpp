@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "vec4d.hpp"
+
 #include <arrow/type_fwd.h>
 #include <cstdint>
 
@@ -11,6 +13,32 @@ namespace rerun {
         /// A 4x4 column-major Matrix.
         struct Mat4x4 {
             float coeffs[16];
+
+          public:
+            // Extensions to generated type defined in 'mat4x4_ext.cpp'
+
+            static const Mat4x4 IDENTITY;
+
+            /// Creates a new 4x4 matrix from 3 *columns* of 4 elements each.
+            Mat4x4(const Vec4D (&_columns)[4])
+                : coeffs{
+                      _columns[0].x(),
+                      _columns[0].y(),
+                      _columns[0].z(),
+                      _columns[0].w(),
+                      _columns[1].x(),
+                      _columns[1].y(),
+                      _columns[1].z(),
+                      _columns[1].w(),
+                      _columns[2].x(),
+                      _columns[2].y(),
+                      _columns[2].z(),
+                      _columns[2].w(),
+                      _columns[3].x(),
+                      _columns[3].y(),
+                      _columns[3].z(),
+                      _columns[3].w(),
+                  } {}
 
           public:
             Mat4x4() = default;
