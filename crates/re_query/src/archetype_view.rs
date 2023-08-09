@@ -284,6 +284,7 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_required_component<'a, C: Component + Default + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
+        re_tracing::profile_function!(C::name().as_str());
         debug_assert!(A::required_components()
             .iter()
             .any(|c| c.as_ref() == C::name()));

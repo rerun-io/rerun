@@ -362,6 +362,7 @@ impl DataCell {
     pub fn try_to_native<'a, C: Component + Default + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = C> + '_> {
+        re_tracing::profile_function!(C::name().as_str());
         Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?
             .map(C::convert_item_to_self)
             .map(|v| {
