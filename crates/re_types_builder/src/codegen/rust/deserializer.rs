@@ -82,7 +82,6 @@ pub fn quote_arrow_deserializer(
             DataType::Struct(_) => {
                 let data_src_fields = format_ident!("{data_src}_fields");
                 let data_src_arrays = format_ident!("{data_src}_arrays");
-                let data_src_bitmap = format_ident!("{data_src}_bitmap");
 
                 let quoted_field_deserializers = obj.fields.iter().map(|obj_field| {
                     let field_name = &obj_field.name;
@@ -140,10 +139,7 @@ pub fn quote_arrow_deserializer(
                         // datastructures for all of our children.
                         Vec::new()
                     } else {
-                        let (#data_src_fields, #data_src_arrays, #data_src_bitmap) =
-                            (#data_src.fields(), #data_src.values(), #data_src.validity());
-
-                        let is_valid = |i| #data_src_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                        let (#data_src_fields, #data_src_arrays) = (#data_src.fields(), #data_src.values());
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = #data_src_fields
                             .iter()
@@ -153,14 +149,14 @@ pub fn quote_arrow_deserializer(
 
                         #(#quoted_field_deserializers;)*
 
-                        ::itertools::izip!(#(#quoted_field_names),*)
-                            .enumerate()
-                            .map(|(i, (#(#quoted_field_names),*))| is_valid(i).then(|| Ok(Self {
-                                #(#quoted_unwrappings,)*
-                            })).transpose())
-                            // NOTE: implicit Vec<Result> to Result<Vec>
-                            .collect::<crate::DeserializationResult<Vec<_>>>()
-                            .with_context(#obj_fqname)?
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            ::itertools::izip!(#(#quoted_field_names),*),
+                            #data_src.validity(),
+                        )
+                        .map(|opt| opt.map(|(#(#quoted_field_names),*)| Ok(Self { #(#quoted_unwrappings,)* })).transpose())
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .with_context(#obj_fqname)?
                     }
                 }}
             }
@@ -203,6 +199,7 @@ pub fn quote_arrow_deserializer(
                     let quoted_obj_field_type =
                         format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
+                    // TODO: uh-oh
                     let quoted_unwrap = if obj_field.is_nullable {
                         quote!()
                     } else {

@@ -211,9 +211,7 @@ impl crate::Loggable for KeypointPair {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -247,24 +245,25 @@ impl crate::Loggable for KeypointPair {
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::KeypointId(*v)))
                 };
-                ::itertools::izip!(keypoint0, keypoint1)
-                    .enumerate()
-                    .map(|(i, (keypoint0, keypoint1))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    keypoint0: keypoint0
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.KeypointPair#keypoint0")?,
-                                    keypoint1: keypoint1
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.KeypointPair#keypoint1")?,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(keypoint0, keypoint1),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(keypoint0, keypoint1)| {
+                        Ok(Self {
+                            keypoint0: keypoint0
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.KeypointPair#keypoint0")?,
+                            keypoint1: keypoint1
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.KeypointPair#keypoint1")?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.datatypes.KeypointPair")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.KeypointPair")?
             }
         })
     }

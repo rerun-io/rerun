@@ -280,9 +280,7 @@ impl crate::Loggable for AnnotationInfo {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -362,23 +360,24 @@ impl crate::Loggable for AnnotationInfo {
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::Color(*v)))
                 };
-                ::itertools::izip!(id, label, color)
-                    .enumerate()
-                    .map(|(i, (id, label, color))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    id: id
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.AnnotationInfo#id")?,
-                                    label,
-                                    color,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(id, label, color),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(id, label, color)| {
+                        Ok(Self {
+                            id: id
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.AnnotationInfo#id")?,
+                            label,
+                            color,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.datatypes.AnnotationInfo")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.AnnotationInfo")?
             }
         })
     }

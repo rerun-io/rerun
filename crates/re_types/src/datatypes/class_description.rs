@@ -343,9 +343,7 @@ impl crate::Loggable for ClassDescription {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -491,31 +489,32 @@ impl crate::Loggable for ClassDescription {
                         .into_iter()
                     }
                 };
-                ::itertools::izip!(info, keypoint_annotations, keypoint_connections)
-                    .enumerate()
-                    .map(|(i, (info, keypoint_annotations, keypoint_connections))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    info: info
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.ClassDescription#info")?,
-                                    keypoint_annotations: keypoint_annotations
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context(
-                                            "rerun.datatypes.ClassDescription#keypoint_annotations",
-                                        )?,
-                                    keypoint_connections: keypoint_connections
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context(
-                                            "rerun.datatypes.ClassDescription#keypoint_connections",
-                                        )?,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(info, keypoint_annotations, keypoint_connections),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(info, keypoint_annotations, keypoint_connections)| {
+                        Ok(Self {
+                            info: info
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.ClassDescription#info")?,
+                            keypoint_annotations: keypoint_annotations
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context(
+                                    "rerun.datatypes.ClassDescription#keypoint_annotations",
+                                )?,
+                            keypoint_connections: keypoint_connections
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context(
+                                    "rerun.datatypes.ClassDescription#keypoint_connections",
+                                )?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.datatypes.ClassDescription")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.ClassDescription")?
             }
         })
     }
