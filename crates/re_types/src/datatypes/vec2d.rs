@@ -227,7 +227,7 @@ impl crate::Loggable for Vec2D {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }

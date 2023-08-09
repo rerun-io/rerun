@@ -130,7 +130,7 @@ impl crate::Loggable for PrimitiveComponent {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -300,7 +300,7 @@ impl crate::Loggable for StringComponent {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }

@@ -183,7 +183,7 @@ pub trait Loggable: Sized {
     fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
         Self::try_iter_from_arrow(data)
             .detailed_unwrap()
-            .map(Self::convert_item_to_self)
+            .map(Self::convert_item_to_opt_self)
             .map(|v| {
                 v.ok_or_else(|| DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -201,7 +201,7 @@ pub trait Loggable: Sized {
     #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
         Self::try_iter_from_arrow(data)?
-            .map(Self::convert_item_to_self)
+            .map(Self::convert_item_to_opt_self)
             .map(|v| {
                 v.ok_or_else(|| DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -230,7 +230,7 @@ pub trait Loggable: Sized {
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         Ok(Self::try_iter_from_arrow(data)?
-            .map(Self::convert_item_to_self)
+            .map(Self::convert_item_to_opt_self)
             .collect())
     }
 
@@ -251,10 +251,18 @@ pub trait Loggable: Sized {
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Self::Iter<'_>>;
 
-    /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
+    /// Convert a [`Loggable::Item`] into a [`Loggable`]
     ///
     /// This is intended to be used with [`Loggable::try_iter_from_arrow`]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self>;
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
+        Self::convert_item_to_opt_self(item).unwrap()
+    }
+
+    /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
+    ///
+    /// This is intended to be used with [`Loggable::try_iter_from_arrow_opt`]
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self>;
 }
 
 /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.

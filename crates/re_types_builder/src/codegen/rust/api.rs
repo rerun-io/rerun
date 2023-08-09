@@ -793,7 +793,7 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
-                    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+                    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
                         item
                     }
                 }
