@@ -4,8 +4,6 @@ mod method;
 
 use std::collections::BTreeSet;
 
-use anyhow::Context;
-use arrow2::datatypes::DataType;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
 use proc_macro2::{Ident, TokenStream};
@@ -13,11 +11,11 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::codegen::common::write_file;
-use crate::Object;
 use crate::{
     codegen::AUTOGEN_WARNING, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
     Type,
 };
+use crate::{Object, ObjectSpecifics};
 
 use self::forward_decl::ForwardDecls;
 use self::includes::Includes;
@@ -97,7 +95,6 @@ impl CppCodeGenerator {
     fn generate_folder(
         &self,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
         object_kind: ObjectKind,
         folder_name: &str,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -111,7 +108,7 @@ impl CppCodeGenerator {
             let extension_filename = folder_path.join(format!("{filename}_ext.cpp"));
             let hpp_type_extensions = hpp_type_extensions(&extension_filename);
 
-            let (hpp, cpp) = generate_hpp_cpp(objects, arrow_registry, obj, &hpp_type_extensions);
+            let (hpp, cpp) = generate_hpp_cpp(objects, obj, &hpp_type_extensions);
             for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
                 let string = string_from_token_stream(&tokens, obj.relative_filepath());
                 let filepath = folder_path.join(format!("{filename}.{extension}"));
@@ -155,13 +152,13 @@ impl crate::CodeGenerator for CppCodeGenerator {
     fn generate(
         &mut self,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        _arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
         ObjectKind::ALL
             .par_iter()
             .map(|object_kind| {
                 let folder_name = object_kind.plural_snake_case();
-                self.generate_folder(objects, arrow_registry, *object_kind, folder_name)
+                self.generate_folder(objects, *object_kind, folder_name)
             })
             .flatten()
             .collect()
@@ -206,12 +203,10 @@ fn hpp_type_extensions(extension_file: &Utf8Path) -> TokenStream {
 
 fn generate_hpp_cpp(
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
     obj: &Object,
     hpp_type_extensions: &TokenStream,
 ) -> (TokenStream, TokenStream) {
-    let QuotedObject { hpp, cpp } =
-        QuotedObject::new(arrow_registry, objects, obj, hpp_type_extensions);
+    let QuotedObject { hpp, cpp } = QuotedObject::new(objects, obj, hpp_type_extensions);
     let snake_case_name = obj.snake_case_name();
     let hash = quote! { # };
     let pragma_once = pragma_once();
@@ -242,24 +237,16 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
-    pub fn new(
-        arrow_registry: &ArrowRegistry,
-        objects: &Objects,
-        obj: &Object,
-        hpp_type_extensions: &TokenStream,
-    ) -> Self {
+    pub fn new(objects: &Objects, obj: &Object, hpp_type_extensions: &TokenStream) -> Self {
         match obj.specifics {
-            crate::ObjectSpecifics::Struct => {
-                Self::from_struct(arrow_registry, objects, obj, hpp_type_extensions)
-            }
+            crate::ObjectSpecifics::Struct => Self::from_struct(objects, obj, hpp_type_extensions),
             crate::ObjectSpecifics::Union { .. } => {
-                Self::from_union(arrow_registry, objects, obj, hpp_type_extensions)
+                Self::from_union(objects, obj, hpp_type_extensions)
             }
         }
     }
 
     fn from_struct(
-        arrow_registry: &ArrowRegistry,
         objects: &Objects,
         obj: &Object,
         hpp_type_extensions: &TokenStream,
@@ -298,8 +285,6 @@ impl QuotedObject {
         let (constants_hpp, constants_cpp) =
             quote_constants_header_and_cpp(obj, objects, &type_ident);
         let mut methods = Vec::new();
-
-        let datatype = arrow_registry.get(&obj.fqname);
 
         match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
@@ -362,13 +347,17 @@ impl QuotedObject {
 
                 // Arrow serialization methods.
                 // TODO(andreas): These are just utilities for to_data_cell. How do we hide them best from the public header?
-                methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
-                methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
+                methods.push(arrow_data_type_method(obj, objects, &mut cpp_includes));
+                methods.push(new_arrow_array_builder_method(
+                    obj,
+                    objects,
+                    &mut cpp_includes,
+                ));
                 methods.push(fill_arrow_array_builder_method(
-                    &datatype,
                     obj,
                     &type_ident,
                     &mut cpp_includes,
+                    objects,
                 ));
 
                 if obj.kind == ObjectKind::Component {
@@ -573,7 +562,6 @@ impl QuotedObject {
     }
 
     fn from_union(
-        arrow_registry: &ArrowRegistry,
         objects: &Objects,
         obj: &Object,
         hpp_type_extensions: &TokenStream,
@@ -581,7 +569,7 @@ impl QuotedObject {
         // We implement sum-types as tagged unions;
         // Putting non-POD types in a union requires C++11.
         //
-        // enum class Rotation3DTag {
+        // enum class Rotation3DTag : uint8_t {
         //     NONE = 0,
         //     Quaternion,
         //     AxisAngle,
@@ -692,14 +680,17 @@ impl QuotedObject {
             // `enum Angle { Radians(f32), Degrees(f32) };`
         };
 
-        let datatype = arrow_registry.get(&obj.fqname);
-        methods.push(arrow_data_type_method(&datatype, &mut cpp_includes));
-        methods.push(new_arrow_array_builder_method(&datatype, &mut cpp_includes));
+        methods.push(arrow_data_type_method(obj, objects, &mut cpp_includes));
+        methods.push(new_arrow_array_builder_method(
+            obj,
+            objects,
+            &mut cpp_includes,
+        ));
         methods.push(fill_arrow_array_builder_method(
-            &datatype,
             obj,
             &pascal_case_ident,
             &mut cpp_includes,
+            objects,
         ));
 
         let destructor = if obj.has_default_destructor(objects) {
@@ -810,7 +801,7 @@ impl QuotedObject {
             namespace rerun {
                 namespace #namespace_ident {
                     namespace detail {
-                        enum class #tag_typename {
+                        enum class #tag_typename : uint8_t {
                             #(#tag_fields)*
                         };
 
@@ -902,10 +893,15 @@ impl QuotedObject {
     }
 }
 
-fn arrow_data_type_method(datatype: &DataType, cpp_includes: &mut Includes) -> Method {
+fn arrow_data_type_method(obj: &Object, objects: &Objects, cpp_includes: &mut Includes) -> Method {
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
-    let quoted_datatype = quote_arrow_data_type(datatype, cpp_includes, true);
+    let quoted_datatype = quote_arrow_data_type(
+        &Type::Object(obj.fqname.clone()),
+        objects,
+        cpp_includes,
+        true,
+    );
 
     Method {
         docs: "Returns the arrow data type this type corresponds to.".into(),
@@ -922,13 +918,20 @@ fn arrow_data_type_method(datatype: &DataType, cpp_includes: &mut Includes) -> M
     }
 }
 
-fn new_arrow_array_builder_method(datatype: &DataType, cpp_includes: &mut Includes) -> Method {
+fn new_arrow_array_builder_method(
+    obj: &Object,
+    objects: &Objects,
+    cpp_includes: &mut Includes,
+) -> Method {
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
-    let arrow_builder_type = arrow_array_builder_type(datatype);
-    let arrow_builder_type = format_ident!("{arrow_builder_type}");
-    let builder_instantiation =
-        quote_arrow_array_builder_type_instantiation(datatype, cpp_includes, true);
+    let builder_instantiation = quote_arrow_array_builder_type_instantiation(
+        &Type::Object(obj.fqname.clone()),
+        objects,
+        cpp_includes,
+        true,
+    );
+    let arrow_builder_type = arrow_array_builder_type_object(obj, objects);
 
     Method {
         docs: "Creates a new array builder with an array of this type.".into(),
@@ -950,30 +953,18 @@ fn new_arrow_array_builder_method(datatype: &DataType, cpp_includes: &mut Includ
 }
 
 fn fill_arrow_array_builder_method(
-    datatype: &DataType,
     obj: &Object,
-    pascal_case_ident: &Ident,
+    type_ident: &Ident,
     cpp_includes: &mut Includes,
+    objects: &Objects,
 ) -> Method {
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
-    let DataType::Extension(_fqname, logical_datatype, _metadata) = datatype else {
-        panic!("Can only generate arrow serialization code for extension types. {}", obj.fqname);
-    };
-
     let builder = format_ident!("builder");
-    let arrow_builder_type = arrow_array_builder_type(datatype);
-    let arrow_builder_type = format_ident!("{arrow_builder_type}");
+    let arrow_builder_type = arrow_array_builder_type_object(obj, objects);
 
-    let fill_builder = quote_fill_arrow_array_builder(
-        pascal_case_ident,
-        logical_datatype,
-        &obj.fields,
-        &builder,
-        cpp_includes,
-    )
-    .context(format!("Generating serialization for {}", obj.fqname))
-    .unwrap();
+    let fill_builder =
+        quote_fill_arrow_array_builder(type_ident, obj, objects, &builder, cpp_includes);
 
     Method {
         docs: "Fills an arrow array builder with an array of this type.".into(),
@@ -982,7 +973,7 @@ fn fill_arrow_array_builder_method(
             return_type: quote! { arrow::Status },
             // TODO(andreas): Pass in validity map.
             name_and_parameters: quote! {
-                fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #pascal_case_ident* elements, size_t num_elements)
+                fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #type_ident* elements, size_t num_elements)
             },
         },
         definition_body: quote! {
@@ -1131,392 +1122,475 @@ fn archetype_to_data_cells(
 }
 
 fn quote_fill_arrow_array_builder(
-    pascal_case_ident: &Ident,
-    datatype: &DataType,
-    fields: &[ObjectField],
+    type_ident: &Ident,
+    obj: &Object,
+    objects: &Objects,
     builder: &Ident,
-    cpp_includes: &mut Includes,
-) -> anyhow::Result<TokenStream> {
-    let tokens = match datatype {
-        DataType::Boolean
-        | DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Float16
-        | DataType::Float32
-        | DataType::Float64
-        | DataType::Binary
-        | DataType::LargeBinary
-        | DataType::Utf8
-        | DataType::LargeUtf8 => {
-            anyhow::ensure!(
-                fields.len() == 1,
-                "Expected exactly one field for primitive type {:?}",
-                datatype
-            );
-            let object_field = &fields[0];
-            quote_append_elements_to_builder(object_field, datatype, builder, true)
-        }
-        DataType::List(field) | DataType::FixedSizeList(field, _) => {
-            anyhow::ensure!(
-                fields.len() == 1,
-                "Expected exactly one field for list type {:?}",
-                datatype
-            );
-            let object_field = &fields[0];
-
-            if matches!(field.data_type(), DataType::Extension { .. }) {
-                return Ok(quote!(return arrow::Status::NotImplemented(
-                    "TODO(andreas): custom data types in lists/fixedsizelist are not yet implemented"
-                );));
+    includes: &mut Includes,
+) -> TokenStream {
+    if obj.is_arrow_transparent() {
+        let field = &obj.fields[0];
+        if let Type::Object(fqname) = &field.typ {
+            if field.is_nullable {
+                quote!(return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));)
+            } else {
+                // Trivial forwarding to inner type.
+                let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
+                quote! {
+                    static_assert(sizeof(#quoted_fqname) == sizeof(#type_ident));
+                    ARROW_RETURN_NOT_OK(#quoted_fqname::fill_arrow_array_builder(
+                        builder, reinterpret_cast<const #quoted_fqname*>(elements), num_elements
+                    ));
+                }
             }
+        } else {
+            quote_append_field_to_builder(&obj.fields[0], builder, true, includes, objects)
+        }
+    } else {
+        match obj.specifics {
+            ObjectSpecifics::Struct => {
+                let fill_fields = obj.fields.iter().enumerate().map(
+                |(field_index, field)| {
+                    let field_index = quote_integer(field_index);
+                    let field_builder = format_ident!("field_builder");
+                    let field_builder_type = arrow_array_builder_type(&field.typ, objects, false);
+                    let field_append = quote_append_field_to_builder(field, &field_builder, false, includes, objects);
+                    quote! {
+                        {
+                            auto #field_builder = static_cast<arrow::#field_builder_type*>(builder->field_builder(#field_index));
+                            #field_append
+                        }
+                    }
+                },
+            );
 
-            let value_builder_type = arrow_array_builder_type(field.data_type());
-            let value_builder_type = format_ident!("{value_builder_type}");
-            let field_name = format_ident!("{}", &object_field.name);
-            let (num_items_per_element, reserve_factor) = match datatype {
-                DataType::List(..) => {
-                    if field.is_nullable {
-                        (quote!(element.#field_name.value().size()), quote_integer(1))
+                quote! {
+                    #(#fill_fields)*
+                    #NEWLINE_TOKEN
+                    ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+                }
+            }
+            ObjectSpecifics::Union { .. } => {
+                let variant_builder = format_ident!("variant_builder");
+                let tag_name = format_ident!("{}Tag", type_ident);
+
+                let tag_cases = obj.fields
+                .iter()
+                .map(|variant| {
+                    let arrow_builder_type = arrow_array_builder_type(&variant.typ, objects, false);
+                    let variant_name = format_ident!("{}", variant.name);
+
+                    let variant_append = if variant.typ.is_plural() {
+                        quote! { return arrow::Status::NotImplemented("TODO(andreas): list types in unions are not yet supported");}
                     } else {
-                        (quote!(element.#field_name.size()), quote_integer(2))
+                        let variant_accessor = quote!(union_instance._data);
+                        quote_append_single_field_to_builder(variant, &variant_builder, &variant_accessor, includes)
+                    };
+
+                    quote! {
+                        case detail::#tag_name::#variant_name: {
+                            auto #variant_builder = static_cast<arrow::#arrow_builder_type*>(variant_builder_untyped);
+                            #variant_append
+                            break;
+                        }
+                    }
+                });
+
+                quote! {
+                    #NEWLINE_TOKEN
+                    ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+                    for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                        const auto& union_instance = elements[elem_idx];
+                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(union_instance._tag)));
+                        #NEWLINE_TOKEN
+                        #NEWLINE_TOKEN
+                        auto variant_index = static_cast<int>(union_instance._tag);
+                        auto variant_builder_untyped = builder->child_builder(variant_index).get();
+                        #NEWLINE_TOKEN
+                        #NEWLINE_TOKEN
+                        switch (union_instance._tag) {
+                            case detail::#tag_name::NONE: {
+                                ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
+                                break;
+                            }
+                            #(#tag_cases)*
+                        }
                     }
                 }
-                DataType::FixedSizeList(_, length) => {
-                    let length = quote_integer(length);
-                    (length.clone(), length)
+            }
+        }
+    }
+}
+
+fn quote_append_field_to_builder(
+    field: &ObjectField,
+    builder: &Ident,
+    is_transparent: bool,
+    includes: &mut Includes,
+    objects: &Objects,
+) -> TokenStream {
+    let field_name = format_ident!("{}", field.name);
+
+    if let Some(elem_type) = field.typ.plural_inner() {
+        let value_builder = format_ident!("value_builder");
+        let value_builder_type =
+            arrow_array_builder_type(&elem_type.clone().into(), objects, false);
+
+        if !field.is_nullable
+            && matches!(field.typ, Type::Array { .. })
+            && elem_type.has_default_destructor(objects)
+        {
+            // Optimize common case: Trivial batch of transparent fixed size elements.
+            let field_accessor = quote!(elements[0].#field_name);
+            let num_items_per_value = quote_num_items_per_value(&field.typ, &field_accessor);
+            let field_ptr_accessor = quote_field_ptr_access(&field.typ, field_accessor);
+            quote! {
+                auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
+                #NEWLINE_TOKEN #NEWLINE_TOKEN
+                static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
+                ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, num_elements * #num_items_per_value, nullptr));
+                ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
+            }
+        } else {
+            let value_reserve_factor = match &field.typ {
+                Type::Vector { .. } => {
+                    if field.is_nullable {
+                        1
+                    } else {
+                        2
+                    }
                 }
+                Type::Array { length, .. } => *length,
                 _ => unreachable!(),
             };
+            let value_reserve_factor = quote_integer(value_reserve_factor);
 
             let setup = quote! {
-                auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
+                auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                 ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * #reserve_factor));
+                ARROW_RETURN_NOT_OK(#value_builder->Reserve(num_elements * #value_reserve_factor));
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
             };
 
+            let value_accessor = if field.is_nullable {
+                quote!(element.#field_name.value())
+            } else {
+                quote!(element.#field_name)
+            };
+
+            let append_value = quote_append_single_value_to_builder(
+                &field.typ,
+                &value_builder,
+                value_accessor,
+                includes,
+            );
+
             if field.is_nullable {
-                let item_append = if trivial_batch_append(field.data_type()) {
-                    // `&expression[0]` is not pretty but works on both arrays and vectors!
-                    let element_ptr_accessor =
-                        quote_batch_append_cast(datatype, quote!(&element.#field_name.value()[0]));
-                    quote! {
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(#element_ptr_accessor, #num_items_per_element, nullptr));
-                    }
-                } else {
-                    quote! {
-                        for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            ARROW_RETURN_NOT_OK(value_builder->Append(element.#field_name.value()[item_idx]));
-                        }
-                    }
-                };
                 quote! {
                     #setup
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
                         if (element.#field_name.has_value()) {
-                            #item_append
+                            #append_value
                             ARROW_RETURN_NOT_OK(#builder->Append());
                         } else {
                             ARROW_RETURN_NOT_OK(#builder->AppendNull());
                         }
                     }
                 }
-            } else if matches!(datatype, DataType::FixedSizeList(..))
-                && trivial_batch_append(field.data_type())
-            {
-                // Optimize common case: Trivial batch of transparent fixed size elements.
-                let element_ptr_accessor =
-                    quote_batch_append_cast(datatype, quote!(elements[0].#field_name));
-                quote! {
-                    auto value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
-                    #NEWLINE_TOKEN #NEWLINE_TOKEN
-                    static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
-                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(#element_ptr_accessor, num_elements * #num_items_per_element, nullptr));
-                    ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
-                }
             } else {
                 quote! {
                     #setup
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
-                        for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
-                            ARROW_RETURN_NOT_OK(value_builder->Append(element.#field_name[item_idx]));
-                        }
+                        #append_value
                         ARROW_RETURN_NOT_OK(#builder->Append());
                     }
                 }
             }
         }
-        DataType::Struct(field_datatypes) => {
-            let fill_fields = fields.iter().zip(field_datatypes).enumerate().map(
-                |(i, (field, arrow_field))| {
-                    let builder_index = quote_integer(i);
-                    match arrow_field.data_type() {
-                        DataType::FixedSizeList(..) | DataType::List(..) => {
-                            quote!(
-                                return arrow::Status::NotImplemented(
-                                    "TODO(andreas): lists in structs are not yet supported"
-                                );
-                            )
-                        }
-                        DataType::Extension(_fqname, _, _) => {
-                            quote!(
-                                return arrow::Status::NotImplemented(
-                                    "TODO(andreas): extensions in structs are not yet supported"
-                                );
-                            )
-                        }
-                        _ => {
-                            let element_builder = format_ident!("element_builder");
-                            let element_builder_type = arrow_array_builder_type(arrow_field.data_type());
-                            let element_builder_type = format_ident!("{element_builder_type}");
-                            let field_append = quote_append_elements_to_builder(field, datatype, &element_builder, false);
-                            quote! {
-                                {
-                                    auto #element_builder = static_cast<arrow::#element_builder_type*>(builder->field_builder(#builder_index));
-                                    #field_append
-                                }
-                            }
-                        }
-                    }
-                },
-            );
-
-            quote! {
-                #(#fill_fields)*
-                #NEWLINE_TOKEN
-                ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
-            }
+    } else if !field.is_nullable && is_transparent && field.typ.has_default_destructor(objects) {
+        // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
+        // we can just pass the whole array as-is!
+        let field_ptr_accessor = quote_field_ptr_access(&field.typ, quote!(elements->#field_name));
+        quote! {
+            static_assert(sizeof(*elements) == sizeof(elements->#field_name));
+            ARROW_RETURN_NOT_OK(#builder->AppendValues(#field_ptr_accessor, num_elements));
         }
-        DataType::Union(_, _, _) => {
-            quote! {
-                #NEWLINE_TOKEN
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto& element = elements[elem_idx];
-                }
-                return arrow::Status::NotImplemented(
-                    "TODO(andreas): unions are not yet implemented"
-                );
-            }
-        }
-        DataType::Extension(fqname, _datatype, _) => {
-            assert_eq!(fields.len(), 1);
-            if fields[0].is_nullable {
-                // Idea: pass in a tagged union for both optional and non-optional arrays to all fill_arrow_array_builder methods?
-                quote!(return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));)
-            } else {
-                let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
-                quote! {
-                    static_assert(sizeof(#quoted_fqname) == sizeof(#pascal_case_ident));
-                    ARROW_RETURN_NOT_OK(#quoted_fqname::fill_arrow_array_builder(
-                        builder, reinterpret_cast<const #quoted_fqname*>(elements), num_elements
-                    ));
-                }
-            }
-        }
-        _ => anyhow::bail!(
-            "Arrow serialization for type {:?} not implemented",
-            datatype
-        ),
-    };
-
-    Ok(tokens)
-}
-
-fn trivial_batch_append(datatype: &DataType) -> bool {
-    matches!(
-        datatype,
-        DataType::Null
-            | DataType::Boolean
-            | DataType::Int8
-            | DataType::Int16
-            | DataType::Int32
-            | DataType::Int64
-            | DataType::UInt8
-            | DataType::UInt16
-            | DataType::UInt32
-            | DataType::UInt64
-            | DataType::Float16
-            | DataType::Float32
-            | DataType::Float64
-    )
-}
-
-fn quote_append_elements_to_builder(
-    field: &ObjectField,
-    datatype: &DataType,
-    builder: &Ident,
-    is_transparent: bool,
-) -> TokenStream {
-    let field_name = format_ident!("{}", field.name);
-    if field.is_nullable {
+    } else {
+        let element_accessor = quote!(elements[elem_idx]);
+        let single_append =
+            quote_append_single_field_to_builder(field, builder, &element_accessor, includes);
         quote! {
             ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto& element = elements[elem_idx];
-                if (element.#field_name.has_value()) {
-                    ARROW_RETURN_NOT_OK(#builder->Append(element.#field_name.value()));
-                } else {
-                    ARROW_RETURN_NOT_OK(#builder->AppendNull());
+                #single_append
+            }
+        }
+    }
+}
+
+fn quote_append_single_field_to_builder(
+    field: &ObjectField,
+    builder: &Ident,
+    element_accessor: &TokenStream,
+    includes: &mut Includes,
+) -> TokenStream {
+    let field_name = format_ident!("{}", crate::to_snake_case(&field.name));
+    let value_access = if field.is_nullable {
+        quote!(element.#field_name.value())
+    } else {
+        quote!(#element_accessor.#field_name)
+    };
+
+    let append_value =
+        quote_append_single_value_to_builder(&field.typ, builder, value_access, includes);
+
+    if field.is_nullable {
+        quote! {
+            const auto& element = #element_accessor;
+            if (element.#field_name.has_value()) {
+                #append_value
+            } else {
+                ARROW_RETURN_NOT_OK(#builder->AppendNull());
+            }
+        }
+    } else {
+        quote! {
+            #append_value
+        }
+    }
+}
+
+/// Appends a single value to an arrow array builder.
+///
+/// If the value is an array/vector, it will try to append the batch in one go.
+/// Note that in that case this does *not* take care of the array/vector builder itself, just the underlying value builder.
+fn quote_append_single_value_to_builder(
+    typ: &Type,
+    value_builder: &Ident,
+    value_access: TokenStream,
+    includes: &mut Includes,
+) -> TokenStream {
+    match &typ {
+        Type::UInt8
+        | Type::UInt16
+        | Type::UInt32
+        | Type::UInt64
+        | Type::Int8
+        | Type::Int16
+        | Type::Int32
+        | Type::Int64
+        | Type::Bool
+        | Type::Float16
+        | Type::Float32
+        | Type::Float64
+        | Type::String => {
+            quote!(ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access));)
+        }
+        Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+            let num_items_per_element = quote_num_items_per_value(typ, &value_access);
+
+            match elem_type {
+                ElementType::UInt8
+                | ElementType::UInt16
+                | ElementType::UInt32
+                | ElementType::UInt64
+                | ElementType::Int8
+                | ElementType::Int16
+                | ElementType::Int32
+                | ElementType::Int64
+                | ElementType::Bool
+                | ElementType::Float16
+                | ElementType::Float32
+                | ElementType::Float64 => {
+                    let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
+                    quote! {
+                        ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, #num_items_per_element, nullptr));
+                    }
+                }
+                ElementType::String => {
+                    quote! {
+                        for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
+                            ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access[item_idx]));
+                        }
+                    }
+                }
+                ElementType::Object(fqname) => {
+                    let fqname = quote_fqname_as_type_path(includes, fqname);
+                    let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
+                    quote! {
+                        ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
+                    }
                 }
             }
         }
-    } else if is_transparent && trivial_batch_append(datatype) {
-        // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
-        // we can just pass the whole array as-is!
-        let element_ptr_accessor =
-            quote_batch_append_cast(datatype, quote!(&elements->#field_name));
-        quote! {
-            static_assert(sizeof(*elements) == sizeof(elements->#field_name));
-            ARROW_RETURN_NOT_OK(#builder->AppendValues(#element_ptr_accessor, num_elements));
+        Type::Object(fqname) => {
+            let fqname = quote_fqname_as_type_path(includes, fqname);
+            quote!(ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, &#value_access, 1));)
         }
+    }
+}
+
+fn quote_num_items_per_value(typ: &Type, value_accessor: &TokenStream) -> TokenStream {
+    match &typ {
+        Type::Array { length, .. } => quote_integer(length),
+        Type::Vector { .. } => quote!(#value_accessor.size()),
+        _ => quote_integer(1),
+    }
+}
+
+fn quote_field_ptr_access(typ: &Type, field_accessor: TokenStream) -> TokenStream {
+    let (ptr_access, typ) = match typ {
+        Type::Array { elem_type, .. } => (field_accessor, elem_type.clone().into()),
+        Type::Vector { elem_type } => (quote!(#field_accessor.data()), elem_type.clone().into()),
+        _ => (quote!(&#field_accessor), typ.clone()),
+    };
+
+    if typ == Type::Bool {
+        // Bool needs a cast because arrow takes it as uint8_t.
+        quote!(reinterpret_cast<const uint8_t*>(#ptr_access))
     } else {
-        quote! {
-            ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                ARROW_RETURN_NOT_OK(#builder->Append(elements[elem_idx].#field_name));
+        ptr_access
+    }
+}
+
+fn arrow_array_builder_type(typ: &Type, objects: &Objects, transparent: bool) -> Ident {
+    match typ {
+        Type::Int8 => format_ident!("Int8Builder"),
+        Type::Int16 => format_ident!("Int16Builder"),
+        Type::Int32 => format_ident!("Int32Builder"),
+        Type::Int64 => format_ident!("Int64Builder"),
+        Type::UInt8 => format_ident!("UInt8Builder"),
+        Type::UInt16 => format_ident!("UInt16Builder"),
+        Type::UInt32 => format_ident!("UInt32Builder"),
+        Type::UInt64 => format_ident!("UInt64Builder"),
+        Type::Bool => format_ident!("BooleanBuilder"),
+        Type::Float16 => format_ident!("HalfFloatBuilder"),
+        Type::Float32 => format_ident!("FloatBuilder"),
+        Type::Float64 => format_ident!("DoubleBuilder"),
+        Type::String => format_ident!("StringBuilder"),
+        Type::Array { elem_type, .. } => {
+            if transparent {
+                arrow_array_builder_type(&elem_type.clone().into(), objects, false)
+            } else {
+                format_ident!("FixedSizeListBuilder")
             }
         }
-    }
-}
-
-fn quote_batch_append_cast(datatype: &DataType, element_ptr_accessor: TokenStream) -> TokenStream {
-    if *datatype == DataType::Boolean {
-        // Bool needs a cast because it takes uint8_t.
-        quote!(reinterpret_cast<const uint8_t*>(#element_ptr_accessor))
-    } else {
-        element_ptr_accessor
-    }
-}
-
-fn arrow_array_builder_type(datatype: &DataType) -> &'static str {
-    match datatype.to_logical_type() {
-        DataType::Boolean => "BooleanBuilder",
-        DataType::Int8 => "Int8Builder",
-        DataType::Int16 => "Int16Builder",
-        DataType::Int32 => "Int32Builder",
-        DataType::Int64 => "Int64Builder",
-        DataType::UInt8 => "UInt8Builder",
-        DataType::UInt16 => "UInt16Builder",
-        DataType::UInt32 => "UInt32Builder",
-        DataType::UInt64 => "UInt64Builder",
-        DataType::Float16 => "HalfFloatBuilder",
-        DataType::Float32 => "FloatBuilder",
-        DataType::Float64 => "DoubleBuilder",
-        DataType::Binary => "BinaryBuilder",
-        DataType::LargeBinary => "LargeBinaryBuilder",
-        DataType::Utf8 => "StringBuilder",
-        DataType::LargeUtf8 => "LargeStringBuilder",
-        DataType::FixedSizeList(..) => "FixedSizeListBuilder",
-        DataType::List(..) => "ListBuilder",
-        DataType::Struct(..) => "StructBuilder",
-        DataType::Null => "NullBuilder",
-        DataType::Union(_, _, mode) => match mode {
-            arrow2::datatypes::UnionMode::Dense => "DenseUnionBuilder",
-            arrow2::datatypes::UnionMode::Sparse => "SparseUnionBuilder",
-        },
-        DataType::Extension(_, _, _metadata) => {
-            unreachable!("Logical type can't be an extension type.")
+        Type::Vector { elem_type } => {
+            if transparent {
+                arrow_array_builder_type(&elem_type.clone().into(), objects, false)
+            } else {
+                format_ident!("ListBuilder")
+            }
         }
-        _ => unimplemented!(
-            "Arrow serialization for type {:?} not implemented",
-            datatype
-        ),
+        Type::Object(fqname) => arrow_array_builder_type_object(&objects[fqname], objects),
+    }
+}
+
+fn arrow_array_builder_type_object(obj: &Object, objects: &Objects) -> Ident {
+    if obj.is_arrow_transparent() {
+        arrow_array_builder_type(&obj.fields[0].typ, objects, false)
+    } else {
+        match obj.specifics {
+            ObjectSpecifics::Struct => format_ident!("StructBuilder"),
+            ObjectSpecifics::Union { .. } => format_ident!("DenseUnionBuilder"),
+        }
     }
 }
 
 fn quote_arrow_array_builder_type_instantiation(
-    datatype: &DataType,
+    typ: &Type,
+    objects: &Objects,
     cpp_includes: &mut Includes,
     is_top_level_type: bool,
 ) -> TokenStream {
-    let builder_type = arrow_array_builder_type(datatype);
-    let builder_type = format_ident!("{builder_type}");
+    let builder_type = arrow_array_builder_type(typ, objects, false);
 
-    match datatype {
-        DataType::Boolean
-        | DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Float16
-        | DataType::Float32
-        | DataType::Float64
-        | DataType::Binary
-        | DataType::LargeBinary
-        | DataType::Utf8
-        | DataType::LargeUtf8
-        | DataType::Null => {
+    match typ {
+        Type::UInt8
+        | Type::UInt16
+        | Type::UInt32
+        | Type::UInt64
+        | Type::Int8
+        | Type::Int16
+        | Type::Int32
+        | Type::Int64
+        | Type::Bool
+        | Type::Float16
+        | Type::Float32
+        | Type::Float64
+        | Type::String => {
             quote!(std::make_shared<arrow::#builder_type>(memory_pool))
         }
-        DataType::List(field) => {
+        Type::Vector { elem_type } => {
             let element_builder = quote_arrow_array_builder_type_instantiation(
-                field.data_type(),
+                &elem_type.clone().into(),
+                objects,
                 cpp_includes,
                 false,
             );
             quote!(std::make_shared<arrow::#builder_type>(memory_pool, #element_builder))
         }
-        DataType::FixedSizeList(field, length) => {
+        Type::Array { elem_type, length } => {
             let quoted_length = quote_integer(length);
             let element_builder = quote_arrow_array_builder_type_instantiation(
-                field.data_type(),
+                &elem_type.clone().into(),
+                objects,
                 cpp_includes,
                 false,
             );
             quote!(std::make_shared<arrow::#builder_type>(memory_pool, #element_builder, #quoted_length))
         }
-        DataType::Struct(fields) => {
-            let field_builders = fields.iter().map(|field| {
-                quote_arrow_array_builder_type_instantiation(field.data_type(), cpp_includes, false)
-            });
-            quote! {
-                std::make_shared<arrow::#builder_type>(
-                    to_arrow_datatype(),
-                    memory_pool,
-                    std::vector<std::shared_ptr<arrow::ArrayBuilder>>({ #(#field_builders,)* })
-                )
-            }
-        }
-        DataType::Union(fields, _, _) => {
-            let field_builders = fields.iter().map(|field| {
-                quote_arrow_array_builder_type_instantiation(field.data_type(), cpp_includes, false)
-            });
-            quote! {
-                std::make_shared<arrow::#builder_type>(
-                    memory_pool,
-                    std::vector<std::shared_ptr<arrow::ArrayBuilder>>({ #(#field_builders,)* }),
-                    to_arrow_datatype()
-                )
-            }
-        }
-        DataType::Extension(fqname, datatype, _metadata) => {
-            if is_top_level_type {
-                quote_arrow_array_builder_type_instantiation(datatype.as_ref(), cpp_includes, false)
-            } else {
+        Type::Object(fqname) => {
+            let object = &objects[fqname];
+
+            if !is_top_level_type {
                 // Propagating error here is hard since we're in a nested context.
                 // But also not that important since we *know* that this only fails for null pools and we already checked that now.
                 let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
-                quote! {
-                    #quoted_fqname::new_arrow_array_builder(memory_pool).ValueOrDie()
+                quote!(#quoted_fqname::new_arrow_array_builder(memory_pool).ValueOrDie())
+            } else if object.is_arrow_transparent() {
+                quote_arrow_array_builder_type_instantiation(
+                    &object.fields[0].typ,
+                    objects,
+                    cpp_includes,
+                    false,
+                )
+            } else {
+                let field_builders = object.fields.iter().map(|field| {
+                    quote_arrow_array_builder_type_instantiation(
+                        &field.typ,
+                        objects,
+                        cpp_includes,
+                        false,
+                    )
+                });
+
+                match object.specifics {
+                    ObjectSpecifics::Struct => {
+                        quote! {
+                            std::make_shared<arrow::#builder_type>(
+                                to_arrow_datatype(),
+                                memory_pool,
+                                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({ #(#field_builders,)* })
+                            )
+                        }
+                    }
+                    ObjectSpecifics::Union { .. } => {
+                        quote! {
+                             std::make_shared<arrow::#builder_type>(
+                                 memory_pool,
+                                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
+                                     std::make_shared<arrow::NullBuilder>(memory_pool), #(#field_builders,)*
+                                 }),
+                                 to_arrow_datatype()
+                             )
+                        }
+                    }
                 }
             }
         }
-        _ => unimplemented!(
-            "Arrow serialization for type {:?} not implemented",
-            datatype
-        ),
     }
 }
 
@@ -1568,7 +1642,7 @@ fn static_constructor_for_enum_type(
                 for (size_t i = 0; i < #length; i += 1) {
                     #element_assignment
                 }
-                return std::move(self);
+                return self;
             },
             inline: true,
         }
@@ -1581,7 +1655,7 @@ fn static_constructor_for_enum_type(
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 self._data.#snake_case_ident = std::move(#snake_case_ident);
-                return std::move(self);
+                return self;
             },
             inline: true,
         }
@@ -1598,7 +1672,7 @@ fn static_constructor_for_enum_type(
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));
-                return std::move(self);
+                return self;
             },
             inline: true,
         }
@@ -1787,104 +1861,95 @@ fn quote_integer<T: std::fmt::Display>(t: T) -> TokenStream {
     quote!(#t)
 }
 
-// --- Arrow registry code generators ---
-
 fn quote_arrow_data_type(
-    datatype: &::arrow2::datatypes::DataType,
+    typ: &Type,
+    objects: &Objects,
     includes: &mut Includes,
     is_top_level_type: bool,
 ) -> TokenStream {
-    use arrow2::datatypes::UnionMode;
-    match datatype {
-        DataType::Null => quote!(arrow::null()),
-        DataType::Boolean => quote!(arrow::boolean()),
-        DataType::Int8 => quote!(arrow::int8()),
-        DataType::Int16 => quote!(arrow::int16()),
-        DataType::Int32 => quote!(arrow::int32()),
-        DataType::Int64 => quote!(arrow::int64()),
-        DataType::UInt8 => quote!(arrow::uint8()),
-        DataType::UInt16 => quote!(arrow::uint16()),
-        DataType::UInt32 => quote!(arrow::uint32()),
-        DataType::UInt64 => quote!(arrow::uint64()),
-        DataType::Float16 => quote!(arrow::float16()),
-        DataType::Float32 => quote!(arrow::float32()),
-        DataType::Float64 => quote!(arrow::float64()),
-        DataType::Binary => quote!(arrow::binary()),
-        DataType::LargeBinary => quote!(arrow::large_binary()),
-        DataType::Utf8 => quote!(arrow::utf8()),
-        DataType::LargeUtf8 => quote!(arrow::large_utf8()),
+    match typ {
+        Type::Int8 => quote!(arrow::int8()),
+        Type::Int16 => quote!(arrow::int16()),
+        Type::Int32 => quote!(arrow::int32()),
+        Type::Int64 => quote!(arrow::int64()),
+        Type::UInt8 => quote!(arrow::uint8()),
+        Type::UInt16 => quote!(arrow::uint16()),
+        Type::UInt32 => quote!(arrow::uint32()),
+        Type::UInt64 => quote!(arrow::uint64()),
+        Type::Float16 => quote!(arrow::float16()),
+        Type::Float32 => quote!(arrow::float32()),
+        Type::Float64 => quote!(arrow::float64()),
+        Type::String => quote!(arrow::utf8()),
+        Type::Bool => quote!(arrow::boolean()),
 
-        DataType::List(field) => {
-            let quoted_field = quote_arrow_field(field, includes);
+        Type::Vector { elem_type } => {
+            let quoted_field = quote_arrow_elem_type(elem_type, objects, includes);
             quote!(arrow::list(#quoted_field))
         }
 
-        DataType::FixedSizeList(field, length) => {
-            let quoted_field = quote_arrow_field(field, includes);
+        Type::Array { elem_type, length } => {
+            let quoted_field = quote_arrow_elem_type(elem_type, objects, includes);
             let quoted_length = quote_integer(length);
             quote!(arrow::fixed_size_list(#quoted_field, #quoted_length))
         }
 
-        DataType::Union(fields, _, mode) => {
-            let quoted_fields = fields
-                .iter()
-                .map(|field| quote_arrow_field(field, includes));
-            match mode {
-                UnionMode::Dense => {
-                    quote! { arrow::dense_union({ #(#quoted_fields,)* }) }
-                }
-                UnionMode::Sparse => {
-                    quote! { arrow::sparse_union({ #(#quoted_fields,)* }) }
-                }
-            }
-        }
-
-        DataType::Struct(fields) => {
-            let fields = fields
-                .iter()
-                .map(|field| quote_arrow_field(field, includes));
-            quote! { arrow::struct_({ #(#fields,)* }) }
-        }
-
-        DataType::Extension(fqname, datatype, _metadata) => {
-            // If we're not at the top level, we should have already a `to_arrow_datatype` method that we can relay to.
-            if is_top_level_type {
-                // TODO(andreas): We're no`t emitting the actual extension types here yet which is why we're skipping the extension type at top level.
-                // Currently, we wrap only Components in extension types but this is done in `rerun_c`.
-                // In the future we'll add the extension type here to the schema.
-                quote_arrow_data_type(datatype, includes, false)
-            } else {
-                // TODO(andreas): remove unnecessary namespacing.
+        Type::Object(fqname) => {
+            // TODO(andreas): We're no`t emitting the actual extension types here yet which is why we're skipping the extension type at top level.
+            // Currently, we wrap only Components in extension types but this is done in `rerun_c`.
+            // In the future we'll add the extension type here to the schema.
+            let obj = &objects[fqname];
+            if !is_top_level_type {
+                // If we're not at the top level, we should have already a `to_arrow_datatype` method that we can relay to.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
-                quote! { #quoted_fqname::to_arrow_datatype() }
+                quote!(#quoted_fqname::to_arrow_datatype())
+            } else if obj.is_arrow_transparent() {
+                quote_arrow_data_type(&obj.fields[0].typ, objects, includes, false)
+            } else {
+                let quoted_fields = obj
+                    .fields
+                    .iter()
+                    .map(|field| quote_arrow_field_type(field, objects, includes));
+
+                match &obj.specifics {
+                    ObjectSpecifics::Union { .. } => {
+                        quote! {
+                            arrow::dense_union({
+                                arrow::field("_null_markers", arrow::null(), true, nullptr), #(#quoted_fields,)*
+                            })
+                        }
+                    }
+                    ObjectSpecifics::Struct => {
+                        quote!(arrow::struct_({ #(#quoted_fields,)* }))
+                    }
+                }
             }
         }
-
-        _ => unimplemented!("{:#?}", datatype),
     }
 }
 
-fn quote_arrow_field(field: &::arrow2::datatypes::Field, includes: &mut Includes) -> TokenStream {
-    let arrow2::datatypes::Field {
-        name,
-        data_type,
-        is_nullable,
-        metadata,
-    } = field;
-
-    let datatype = quote_arrow_data_type(data_type, includes, false);
-
-    let metadata = if metadata.is_empty() {
-        quote!(nullptr)
-    } else {
-        let keys = metadata.keys();
-        let values = metadata.values();
-        quote! {
-            arrow::KeyValueMetadata::Make({ #(#keys,)* }, { #(#values,)* })
-        }
-    };
+fn quote_arrow_field_type(
+    field: &ObjectField,
+    objects: &Objects,
+    includes: &mut Includes,
+) -> TokenStream {
+    let name = &field.name;
+    let datatype = quote_arrow_data_type(&field.typ, objects, includes, false);
+    let is_nullable = field.is_nullable;
 
     quote! {
-        arrow::field(#name, #datatype, #is_nullable, #metadata)
+        arrow::field(#name, #datatype, #is_nullable)
+    }
+}
+
+fn quote_arrow_elem_type(
+    elem_type: &ElementType,
+    objects: &Objects,
+    includes: &mut Includes,
+) -> TokenStream {
+    let typ: Type = elem_type.clone().into();
+    let datatype = quote_arrow_data_type(&typ, objects, includes, false);
+
+    quote! {
+        arrow::field("item", #datatype, false)
     }
 }

@@ -10,26 +10,20 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& ClassDescriptionMapElem::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &ClassDescriptionMapElem::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field(
-                    "class_id",
-                    rerun::components::ClassId::to_arrow_datatype(),
-                    false,
-                    nullptr
-                ),
+                arrow::field("class_id", rerun::components::ClassId::to_arrow_datatype(), false),
                 arrow::field(
                     "class_description",
                     rerun::datatypes::ClassDescription::to_arrow_datatype(),
-                    false,
-                    nullptr
+                    false
                 ),
             });
             return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StructBuilder>>
-            ClassDescriptionMapElem::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
+            ClassDescriptionMapElem::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
             }
@@ -46,7 +40,7 @@ namespace rerun {
         }
 
         arrow::Status ClassDescriptionMapElem::fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const ClassDescriptionMapElem* elements,
+            arrow::StructBuilder *builder, const ClassDescriptionMapElem *elements,
             size_t num_elements
         ) {
             if (!builder) {
@@ -56,12 +50,30 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            return arrow::Status::NotImplemented(
-                "TODO(andreas): extensions in structs are not yet supported"
-            );
-            return arrow::Status::NotImplemented(
-                "TODO(andreas): extensions in structs are not yet supported"
-            );
+            {
+                auto field_builder = static_cast<arrow::UInt16Builder *>(builder->field_builder(0));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(rerun::components::ClassId::fill_arrow_array_builder(
+                        field_builder,
+                        &elements[elem_idx].class_id,
+                        1
+                    ));
+                }
+            }
+            {
+                auto field_builder = static_cast<arrow::StructBuilder *>(builder->field_builder(1));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(
+                        rerun::datatypes::ClassDescription::fill_arrow_array_builder(
+                            field_builder,
+                            &elements[elem_idx].class_description,
+                            1
+                        )
+                    );
+                }
+            }
             ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
 
             return arrow::Status::OK();

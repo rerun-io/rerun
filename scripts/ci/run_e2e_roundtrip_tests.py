@@ -26,7 +26,6 @@ cpp_opt_out = [
     "line_strips2d",
     "line_strips3d",
     "points2d",
-    "transform3d",
 ]
 
 

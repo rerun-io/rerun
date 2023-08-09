@@ -16,7 +16,7 @@
 namespace rerun {
     namespace datatypes {
         namespace detail {
-            enum class AffixFuzzer4Tag {
+            enum class AffixFuzzer4Tag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We
                 /// need to be able to leave the object in a state which we can run the destructor
                 /// on.
@@ -122,7 +122,7 @@ namespace rerun {
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::single_required;
                 new (&self._data.single_required) TypeAlias(std::move(single_required));
-                return std::move(self);
+                return self;
             }
 
             static AffixFuzzer4 many_required(
@@ -132,7 +132,7 @@ namespace rerun {
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_required;
                 new (&self._data.many_required) TypeAlias(std::move(many_required));
-                return std::move(self);
+                return self;
             }
 
             static AffixFuzzer4 many_optional(
@@ -142,7 +142,7 @@ namespace rerun {
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_optional;
                 new (&self._data.many_optional) TypeAlias(std::move(many_optional));
-                return std::move(self);
+                return self;
             }
 
             /// Returns the arrow data type this type corresponds to.
