@@ -131,6 +131,7 @@ impl crate::Loggable for Color {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
     where
         Self: Sized,

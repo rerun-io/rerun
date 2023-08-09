@@ -411,6 +411,7 @@ impl DataCell {
     pub fn try_to_native_opt<'a, C: Component + 'a>(
         &'a self,
     ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_> {
+        re_tracing::profile_function!(C::name().as_str());
         Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_opt_self))
     }
 

@@ -43,6 +43,7 @@ impl ComponentWithInstances {
     pub fn iter_instance_keys(
         &self,
     ) -> impl Iterator<Item = re_types::components::InstanceKey> + '_ {
+        re_tracing::profile_function!();
         self.instance_keys.to_native::<InstanceKey>()
     }
 
@@ -51,6 +52,7 @@ impl ComponentWithInstances {
     pub fn iter_values<'a, C: Component + 'a>(
         &'a self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + 'a> {
+        re_tracing::profile_function!();
         if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
                 actual: self.name(),
@@ -268,6 +270,7 @@ impl<A: Archetype> ArchetypeView<A> {
     /// Iterate over the [`InstanceKey`]s.
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
+        re_tracing::profile_function!();
         // TODO(https://github.com/rerun-io/rerun/issues/2750): Maybe make this an intersection instead
         self.required_comp().iter_instance_keys()
     }
@@ -311,7 +314,8 @@ impl<A: Archetype> ArchetypeView<A> {
     #[inline]
     pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
-    ) -> DeserializationResult<impl Iterator<Item = Option<C>> + '_> {
+    ) -> crate::Result<impl Iterator<Item = Option<C>> + '_> {
+        re_tracing::profile_function!(C::name().as_str());
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
@@ -319,8 +323,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
             let mut component_instance_key_iter = component.iter_instance_keys();
 
-            let component_value_iter =
-                C::try_from_arrow_opt(component.values.as_arrow_ref())?.into_iter();
+            let component_value_iter = component.iter_values()?;
 
             let next_component_instance_key = component_instance_key_iter.next();
 
