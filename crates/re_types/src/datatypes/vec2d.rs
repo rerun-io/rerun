@@ -182,7 +182,7 @@ impl crate::Loggable for Vec2D {
                         })
                         .with_context("rerun.datatypes.Vec2D#xy")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                         .collect::<Vec<_>>()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, data.validity())

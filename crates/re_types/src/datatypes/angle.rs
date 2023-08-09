@@ -293,7 +293,7 @@ impl crate::Loggable for Angle {
                         })
                         .with_context("rerun.datatypes.Angle#Radians")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                         .collect::<Vec<_>>()
                 };
                 let degrees = {
@@ -308,7 +308,7 @@ impl crate::Loggable for Angle {
                         })
                         .with_context("rerun.datatypes.Angle#Degrees")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                         .collect::<Vec<_>>()
                 };
                 data_types

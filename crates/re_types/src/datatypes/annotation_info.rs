@@ -298,7 +298,7 @@ impl crate::Loggable for AnnotationInfo {
                         })
                         .with_context("rerun.datatypes.AnnotationInfo#id")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                 };
                 let label = {
                     let data = &**arrays_by_name["label"];
@@ -358,7 +358,8 @@ impl crate::Loggable for AnnotationInfo {
                         })
                         .with_context("rerun.datatypes.AnnotationInfo#color")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| crate::components::Color(*v)))
+                        .map(|opt| opt.map(|v| *v))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::components::Color(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(id, label, color),

@@ -223,7 +223,8 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         })
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_id")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| crate::components::ClassId(*v)))
+                        .map(|opt| opt.map(|v| *v))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::components::ClassId(v)))
                 };
                 let class_description = {
                     let data = &**arrays_by_name["class_description"];

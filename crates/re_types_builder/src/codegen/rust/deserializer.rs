@@ -296,13 +296,6 @@ fn quote_arrow_field_deserializer(
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
 
-    let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
-        Some(&objects[fqname])
-    } else {
-        None
-    };
-    let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
-
     match datatype.to_logical_type() {
         DataType::Int8
         | DataType::Int16
@@ -316,27 +309,12 @@ fn quote_arrow_field_deserializer(
         | DataType::Float32
         | DataType::Float64
         | DataType::Boolean => {
-            let quoted_transparent_unmapping = if inner_is_arrow_transparent {
-                let inner_obj = inner_obj.as_ref().unwrap();
-                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
-                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
-                let quoted_data_dst = format_ident!(
-                    "{}",
-                    if is_tuple_struct {
-                        "data0"
-                    } else {
-                        inner_obj.fields[0].name.as_str()
-                    }
-                );
-                if is_tuple_struct {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type(*v))))
-                } else {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type { #quoted_data_dst: *v })))
-                }
-            } else if *datatype.to_logical_type() == DataType::Boolean {
-                quote!()
+            let quoted_unmapping =
+                quote_iterator_unmapper(objects, datatype, IteratorKind::OptionValue, None);
+            let quoted_unmapping = if *datatype.to_logical_type() == DataType::Boolean {
+                quoted_unmapping
             } else {
-                quote!(.map(|v| v.copied()))
+                quote!(.map(|opt| opt.map(|v| *v)) #quoted_unmapping)
             };
 
             let quoted_downcast = {
@@ -348,7 +326,7 @@ fn quote_arrow_field_deserializer(
             quote! {
                 #quoted_downcast?
                     .into_iter() // NOTE: automatically checks the bitmap on our behalf
-                    #quoted_transparent_unmapping
+                    #quoted_unmapping
             }
         }
 
@@ -618,6 +596,7 @@ enum IteratorKind {
     Value,
 }
 
+/// Generates code to unmap the data stuck within the depths of an iterator, no matter what.
 #[allow(clippy::collapsible_else_if)]
 fn quote_iterator_unmapper(
     objects: &Objects,
