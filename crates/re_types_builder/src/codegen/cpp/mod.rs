@@ -52,27 +52,41 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
     }
 
     code.push('\n');
-    code.push_str(
-        &token_stream
-            .to_string()
-            .replace(&format!("{NEWLINE_TOKEN:?}"), "\n")
-            .replace(NEWLINE_TOKEN, "\n") // Should only happen inside header extensions.
-            .replace(&format!("{NORMAL_COMMENT_PREFIX_TOKEN:?} \""), "//")
-            .replace(&format!("\" {NORMAL_COMMENT_SUFFIX_TOKEN:?}"), "\n")
-            .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "///")
-            .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
-            .replace(&format!("{HEADER_EXTENSION_PREFIX_TOKEN:?} \""), "")
-            .replace(&format!("\" {HEADER_EXTENSION_SUFFIX_TOKEN:?}"), "")
-            .replace(&format!("{SYS_INCLUDE_PATH_PREFIX_TOKEN:?} \""), "<")
-            .replace(&format!("\" {SYS_INCLUDE_PATH_SUFFIX_TOKEN:?}"), ">")
-            .replace(
-                &format!("{TODO_TOKEN:?}"),
-                "\n// TODO(#2647): code-gen for C++\n",
-            )
-            .replace("< ", "<")
-            .replace(" >", ">")
-            .replace(" ::", "::"),
-    );
+
+    let generated_code = token_stream
+        .to_string()
+        .replace(&format!("{NEWLINE_TOKEN:?}"), "\n")
+        .replace(NEWLINE_TOKEN, "\n") // Should only happen inside header extensions.
+        .replace(&format!("{NORMAL_COMMENT_PREFIX_TOKEN:?} \""), "//")
+        .replace(&format!("\" {NORMAL_COMMENT_SUFFIX_TOKEN:?}"), "\n")
+        .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "///")
+        .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
+        .replace(&format!("{HEADER_EXTENSION_PREFIX_TOKEN:?} \""), "")
+        .replace(&format!("\" {HEADER_EXTENSION_SUFFIX_TOKEN:?}"), "")
+        .replace(&format!("{SYS_INCLUDE_PATH_PREFIX_TOKEN:?} \""), "<")
+        .replace(&format!("\" {SYS_INCLUDE_PATH_SUFFIX_TOKEN:?}"), ">")
+        .replace(
+            &format!("{TODO_TOKEN:?}"),
+            "\n// TODO(#2647): code-gen for C++\n",
+        )
+        .replace("< ", "<")
+        .replace(" >", ">")
+        .replace(" ::", "::");
+
+    // Need to fix escaped quotes inside of comments.
+    // Walk through all comments, replace and push to `code` as we go.
+    let mut last_comment_end = 0;
+    while let Some(comment_start) = generated_code[last_comment_end..].find("//") {
+        code.push_str(&generated_code[last_comment_end..last_comment_end + comment_start]);
+        let comment_start = last_comment_end + comment_start;
+        let comment_end = comment_start + generated_code[comment_start..].find('\n').unwrap();
+        let comment = &generated_code[comment_start..comment_end];
+        let comment = comment.replace("\\\"", "\"");
+        code.push_str(&comment);
+        last_comment_end = comment_end;
+    }
+    code.push_str(&generated_code[last_comment_end..]);
+
     code.push('\n');
 
     code = clang_format::clang_format_with_style(&code, &clang_format::ClangFormatStyle::File)
