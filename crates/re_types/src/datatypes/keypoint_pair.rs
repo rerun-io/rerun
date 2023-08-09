@@ -36,7 +36,12 @@ impl<'a> From<&'a KeypointPair> for ::std::borrow::Cow<'a, KeypointPair> {
 impl crate::Loggable for KeypointPair {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.KeypointPair".into()
@@ -183,25 +188,24 @@ impl crate::Loggable for KeypointPair {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.KeypointPair".into(),
-                    source: Box::new(err),
-                })?;
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::StructArray>()
+                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                        expected: data.data_type().clone(),
+                        got: data.data_type().clone(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.KeypointPair".into(),
+                        source: Box::new(err),
+                    })?;
                 let (data_fields, data_arrays, data_bitmap) =
                     (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let is_valid = move |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -215,6 +219,8 @@ impl crate::Loggable for KeypointPair {
                         .unwrap()
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::KeypointId(*v)))
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
                 };
                 let keypoint1 = {
                     let data = &**arrays_by_name["keypoint1"];
@@ -224,10 +230,11 @@ impl crate::Loggable for KeypointPair {
                         .unwrap()
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::KeypointId(*v)))
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
                 };
-                ::itertools::izip!(keypoint0, keypoint1)
-                    .enumerate()
-                    .map(|(i, (keypoint0, keypoint1))| {
+                crate::izip!(keypoint0, keypoint1).enumerate().map(
+                    move |(i, (keypoint0, keypoint1))| {
                         is_valid(i)
                             .then(|| {
                                 Ok(Self {
@@ -252,13 +259,14 @@ impl crate::Loggable for KeypointPair {
                                 })
                             })
                             .transpose()
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.KeypointPair".into(),
-                        source: Box::new(err),
-                    })?
+                    },
+                )
             }
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.datatypes.KeypointPair".into(),
+                source: Box::new(err),
+            })?
         })
     }
 
@@ -269,7 +277,83 @@ impl crate::Loggable for KeypointPair {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::StructArray>()
+                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                        expected: data.data_type().clone(),
+                        got: data.data_type().clone(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.KeypointPair".into(),
+                        source: Box::new(err),
+                    })?;
+                let (data_fields, data_arrays, data_bitmap) =
+                    (data.fields(), data.values(), data.validity());
+                let is_valid = move |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(data_arrays)
+                    .collect();
+                let keypoint0 = {
+                    let data = &**arrays_by_name["keypoint0"];
+
+                    data.as_any()
+                        .downcast_ref::<UInt16Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|opt| opt.map(|v| crate::components::KeypointId(*v)))
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
+                };
+                let keypoint1 = {
+                    let data = &**arrays_by_name["keypoint1"];
+
+                    data.as_any()
+                        .downcast_ref::<UInt16Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|opt| opt.map(|v| crate::components::KeypointId(*v)))
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
+                };
+                crate::izip!(keypoint0, keypoint1).enumerate().map(
+                    move |(i, (keypoint0, keypoint1))| {
+                        is_valid(i)
+                            .then(|| {
+                                Ok(Self {
+                                    keypoint0: keypoint0
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.KeypointPair#keypoint0"
+                                                .into(),
+                                            source: Box::new(err),
+                                        })?,
+                                    keypoint1: keypoint1
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.KeypointPair#keypoint1"
+                                                .into(),
+                                            source: Box::new(err),
+                                        })?,
+                                })
+                            })
+                            .transpose()
+                    },
+                )
+            }
+        }))
     }
 
     #[inline]

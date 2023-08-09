@@ -41,6 +41,7 @@ testing = []
 [dependencies]
 # Rerun
 re_error.workspace = true
+re_tracing.workspace = true
 
 # External
 arrow2 = { workspace = true, features = [

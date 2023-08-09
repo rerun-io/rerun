@@ -34,7 +34,12 @@ impl<'a> From<&'a Label> for ::std::borrow::Cow<'a, Label> {
 impl crate::Loggable for Label {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.label".into()
@@ -115,27 +120,32 @@ impl crate::Loggable for Label {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
-            let offsets = downcast.offsets();
-            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                offsets.iter().zip(offsets.lengths()),
-                downcast.validity(),
-            )
-            .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-            .map(|v| v.map(crate::ArrowString))
-        }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            {
+                let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                let offsets = downcast.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    downcast.validity(),
+                )
+                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                .map(|v| v.map(crate::ArrowString))
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
             })
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.label".into(),
+                source: Box::new(err),
+            })?
         })
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.components.Label#value".into(),
-            source: Box::new(err),
-        })?)
     }
 
     #[inline]
@@ -145,7 +155,29 @@ impl crate::Loggable for Label {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                let offsets = downcast.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    downcast.validity(),
+                )
+                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                .map(|v| v.map(crate::ArrowString))
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+            })
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]

@@ -38,7 +38,12 @@ impl<'a> From<&'a ClassDescriptionMapElem> for ::std::borrow::Cow<'a, ClassDescr
 impl crate::Loggable for ClassDescriptionMapElem {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.ClassDescriptionMapElem".into()
@@ -176,25 +181,65 @@ impl crate::Loggable for ClassDescriptionMapElem {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.ClassDescriptionMapElem".into(),
-                    source: Box::new(err),
-                })?;
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: StructArray > () . ok_or_else (|| crate :: DeserializationError :: DatatypeMismatch { expected : data . data_type () . clone () , got : data . data_type () . clone () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescriptionMapElem" . into () , source : Box :: new (err) , }
+
+) ? ; let (data_fields , data_arrays , data_bitmap) = (data . fields () , data . values () , data . validity ()) ; let is_valid = move | i | data_bitmap . map_or (true , | bitmap | bitmap . get_bit (i)) ; let arrays_by_name : :: std :: collections :: HashMap < _ , _ > = data_fields . iter () . map (| field | field . name . as_str ()) . zip (data_arrays) . collect () ; let class_id = { let data = & * * arrays_by_name ["class_id"];
+
+ data . as_any () . downcast_ref :: < UInt16Array > () . unwrap () . into_iter () . map (| opt | opt . map (| v | crate :: components :: ClassId (* v))) . map (Ok) . transpose_into_fallible :: < _ , crate :: DeserializationError > () }
+
+ ; let class_description = { let data = & * * arrays_by_name ["class_description"];
+
+ crate :: datatypes :: ClassDescription :: try_from_arrow_opt (data) . unwrap () . into_iter () . map (Ok) . transpose_into_fallible :: < _ , crate :: DeserializationError > () }
+
+ ; crate :: izip ! (class_id , class_description) . enumerate () . map (move | (i , (class_id , class_description)) | is_valid (i) . then (|| Ok (Self { class_id : class_id . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescriptionMapElem#class_id" . into () , source : Box :: new (err) , }
+
+) ? , class_description : class_description . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+
+) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescriptionMapElem#class_description" . into () , source : Box :: new (err) , }
+
+) ? , }
+
+)) . transpose ()) }
+
+ . collect :: < Vec < Option < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescriptionMapElem" . into () , source : Box :: new (err) , }
+
+) ?
+        })
+    }
+
+    #[inline]
+    fn try_iter_from_arrow(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
+    where
+        Self: Sized,
+    {
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::StructArray>()
+                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                        expected: data.data_type().clone(),
+                        got: data.data_type().clone(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.ClassDescriptionMapElem".into(),
+                        source: Box::new(err),
+                    })?;
                 let (data_fields, data_arrays, data_bitmap) =
                     (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let is_valid = move |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -208,19 +253,19 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         .unwrap()
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::ClassId(*v)))
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
                 };
                 let class_description = {
                     let data = &**arrays_by_name["class_description"];
 
                     crate::datatypes::ClassDescription::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.ClassDescriptionMapElem#class_description"
-                                .into(),
-                            source: Box::new(err),
-                        })?
+                        .unwrap()
                         .into_iter()
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
                 };
-                :: itertools :: izip ! (class_id , class_description) . enumerate () . map (| (i , (class_id , class_description)) | is_valid (i) . then (|| Ok (Self { class_id : class_id . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+                crate :: izip ! (class_id , class_description) . enumerate () . map (move | (i , (class_id , class_description)) | is_valid (i) . then (|| Ok (Self { class_id : class_id . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
 ) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescriptionMapElem#class_id" . into () , source : Box :: new (err) , }
 
@@ -230,21 +275,9 @@ impl crate::Loggable for ClassDescriptionMapElem {
 
 ) ? , }
 
-)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescriptionMapElem" . into () , source : Box :: new (err) , }
-
-) ?
+)) . transpose ())
             }
-        })
-    }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        }))
     }
 
     #[inline]

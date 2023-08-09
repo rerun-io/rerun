@@ -2313,16 +2313,17 @@ fn quote_arrow_field_deserializer(
 
             quote! {
                 {
-                let downcast = #data_src.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
-                let offsets = downcast.offsets();
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets.iter().zip(offsets.lengths()),
-                    downcast.validity(),
-                )
-                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-                    #quoted_transparent_unmapping
-                    .map(Ok)
-                    .transpose_into_fallible::<_, crate::DeserializationError>()
+                    let downcast = #data_src.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                    let offsets = downcast.offsets();
+                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                        offsets.iter().zip(offsets.lengths()),
+                        downcast.validity(),
+                    )
+                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                        #quoted_transparent_unmapping
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
+                }
             }
         }
 

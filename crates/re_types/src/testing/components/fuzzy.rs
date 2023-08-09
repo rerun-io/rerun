@@ -38,7 +38,12 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
 impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer1".into()
@@ -167,25 +172,25 @@ impl crate::Loggable for AffixFuzzer1 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
                 })
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
+                    location: "rerun.testing.components.AffixFuzzer1".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -195,7 +200,22 @@ impl crate::Loggable for AffixFuzzer1 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -232,7 +252,12 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
 impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer2".into()
@@ -361,25 +386,25 @@ impl crate::Loggable for AffixFuzzer2 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
                 })
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
+                    location: "rerun.testing.components.AffixFuzzer2".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -389,7 +414,22 @@ impl crate::Loggable for AffixFuzzer2 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -426,7 +466,12 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
 impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer3".into()
@@ -555,25 +600,25 @@ impl crate::Loggable for AffixFuzzer3 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
                 })
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
+                    location: "rerun.testing.components.AffixFuzzer3".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -583,7 +628,22 @@ impl crate::Loggable for AffixFuzzer3 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -620,7 +680,12 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
 impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer4".into()
@@ -751,21 +816,21 @@ impl crate::Loggable for AffixFuzzer4 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
                 .map(Ok)
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
+                    location: "rerun.testing.components.AffixFuzzer4".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -775,7 +840,18 @@ impl crate::Loggable for AffixFuzzer4 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -812,7 +888,12 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
 impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer5".into()
@@ -943,21 +1024,21 @@ impl crate::Loggable for AffixFuzzer5 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
                 .map(Ok)
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
+                    location: "rerun.testing.components.AffixFuzzer5".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -967,7 +1048,18 @@ impl crate::Loggable for AffixFuzzer5 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -1004,7 +1096,12 @@ impl<'a> From<&'a AffixFuzzer6> for ::std::borrow::Cow<'a, AffixFuzzer6> {
 impl crate::Loggable for AffixFuzzer6 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer6".into()
@@ -1135,21 +1232,21 @@ impl crate::Loggable for AffixFuzzer6 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
                 .map(Ok)
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
+                    location: "rerun.testing.components.AffixFuzzer6".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -1159,7 +1256,18 @@ impl crate::Loggable for AffixFuzzer6 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -1198,7 +1306,12 @@ impl<'a> From<&'a AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
 impl crate::Loggable for AffixFuzzer7 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer7".into()
@@ -1303,14 +1416,13 @@ impl crate::Loggable for AffixFuzzer7 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
                 let bitmap = data.validity().cloned();
                 let offsets = {
                     let offsets = data.offsets();
@@ -1318,17 +1430,17 @@ impl crate::Loggable for AffixFuzzer7 {
                 };
                 let data = &**data.values();
                 let data = crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
-                        source: Box::new(err),
-                    })?
+                    .unwrap()
                     .into_iter()
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
                     .map(|v| {
                         v.ok_or_else(|| crate::DeserializationError::MissingData {
                             backtrace: ::backtrace::Backtrace::new_unresolved(),
                         })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    .collect::<Vec<_>>()
+                    .unwrap();
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -1352,17 +1464,16 @@ impl crate::Loggable for AffixFuzzer7 {
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
-            .into_iter()
-        }
-        .map(Ok)
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
-            source: Box::new(err),
-        })?)
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.AffixFuzzer7".into(),
+                source: Box::new(err),
+            })?
+        })
     }
 
     #[inline]
@@ -1372,7 +1483,61 @@ impl crate::Loggable for AffixFuzzer7 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
+                let bitmap = data.validity().cloned();
+                let offsets = {
+                    let offsets = data.offsets();
+                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                };
+                let data = &**data.values();
+                let data = crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
+                    .unwrap()
+                    .into_iter()
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .unwrap();
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
+                            })
+                            .transpose()
+                    })
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -1403,7 +1568,12 @@ impl<'a> From<&'a AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
 impl crate::Loggable for AffixFuzzer8 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer8".into()
@@ -1471,19 +1641,23 @@ impl crate::Loggable for AffixFuzzer8 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(data
-            .as_any()
-            .downcast_ref::<Float32Array>()
-            .unwrap()
-            .into_iter()
-            .map(|v| v.copied())
-            .map(Ok)
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer8#single_float_optional".into(),
-                source: Box::new(err),
-            })?)
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
+            data.as_any()
+                .downcast_ref::<Float32Array>()
+                .unwrap()
+                .into_iter()
+                .map(|v| v.copied())
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.AffixFuzzer8".into(),
+                    source: Box::new(err),
+                })?
+        })
     }
 
     #[inline]
@@ -1493,7 +1667,20 @@ impl crate::Loggable for AffixFuzzer8 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            data.as_any()
+                .downcast_ref::<Float32Array>()
+                .unwrap()
+                .into_iter()
+                .map(|v| v.copied())
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -1524,7 +1711,12 @@ impl<'a> From<&'a AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
 impl crate::Loggable for AffixFuzzer9 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer9".into()
@@ -1605,27 +1797,32 @@ impl crate::Loggable for AffixFuzzer9 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
-            let offsets = downcast.offsets();
-            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                offsets.iter().zip(offsets.lengths()),
-                downcast.validity(),
-            )
-            .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-            .map(|v| v.map(crate::ArrowString))
-        }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            {
+                let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                let offsets = downcast.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    downcast.validity(),
+                )
+                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                .map(|v| v.map(crate::ArrowString))
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
             })
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.AffixFuzzer9".into(),
+                source: Box::new(err),
+            })?
         })
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer9#single_string_required".into(),
-            source: Box::new(err),
-        })?)
     }
 
     #[inline]
@@ -1635,7 +1832,29 @@ impl crate::Loggable for AffixFuzzer9 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                let offsets = downcast.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    downcast.validity(),
+                )
+                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                .map(|v| v.map(crate::ArrowString))
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+            })
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -1666,7 +1885,12 @@ impl<'a> From<&'a AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
 impl crate::Loggable for AffixFuzzer10 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer10".into()
@@ -1749,23 +1973,28 @@ impl crate::Loggable for AffixFuzzer10 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
-            let offsets = downcast.offsets();
-            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                offsets.iter().zip(offsets.lengths()),
-                downcast.validity(),
-            )
-            .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-            .map(|v| v.map(crate::ArrowString))
-        }
-        .map(Ok)
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer10#single_string_optional".into(),
-            source: Box::new(err),
-        })?)
+            {
+                let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                let offsets = downcast.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    downcast.validity(),
+                )
+                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                .map(|v| v.map(crate::ArrowString))
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.AffixFuzzer10".into(),
+                source: Box::new(err),
+            })?
+        })
     }
 
     #[inline]
@@ -1775,7 +2004,25 @@ impl crate::Loggable for AffixFuzzer10 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                let offsets = downcast.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    downcast.validity(),
+                )
+                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                .map(|v| v.map(crate::ArrowString))
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -1806,7 +2053,12 @@ impl<'a> From<&'a AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
 impl crate::Loggable for AffixFuzzer11 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer11".into()
@@ -1920,14 +2172,13 @@ impl crate::Loggable for AffixFuzzer11 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
                 let bitmap = data.validity().cloned();
                 let offsets = {
                     let offsets = data.offsets();
@@ -1940,12 +2191,15 @@ impl crate::Loggable for AffixFuzzer11 {
                     .unwrap()
                     .into_iter()
                     .map(|v| v.copied())
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
                     .map(|v| {
                         v.ok_or_else(|| crate::DeserializationError::MissingData {
                             backtrace: ::backtrace::Backtrace::new_unresolved(),
                         })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    .collect::<Vec<_>>()
+                    .unwrap();
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -1969,17 +2223,16 @@ impl crate::Loggable for AffixFuzzer11 {
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
-            .into_iter()
-        }
-        .map(Ok)
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer11#many_floats_optional".into(),
-            source: Box::new(err),
-        })?)
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.AffixFuzzer11".into(),
+                source: Box::new(err),
+            })?
+        })
     }
 
     #[inline]
@@ -1989,7 +2242,64 @@ impl crate::Loggable for AffixFuzzer11 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
+                let bitmap = data.validity().cloned();
+                let offsets = {
+                    let offsets = data.offsets();
+                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                };
+                let data = &**data.values();
+                let data = data
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .unwrap();
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
+                            })
+                            .transpose()
+                    })
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -2020,7 +2330,12 @@ impl<'a> From<&'a AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
 impl crate::Loggable for AffixFuzzer12 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer12".into()
@@ -2147,14 +2462,13 @@ impl crate::Loggable for AffixFuzzer12 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
                 let bitmap = data.validity().cloned();
                 let offsets = {
                     let offsets = data.offsets();
@@ -2170,13 +2484,16 @@ impl crate::Loggable for AffixFuzzer12 {
                     )
                     .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
                     .map(|v| v.map(crate::ArrowString))
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
                 }
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
                 })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                .collect::<Vec<_>>()
+                .unwrap();
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -2200,21 +2517,20 @@ impl crate::Loggable for AffixFuzzer12 {
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
-            .into_iter()
-        }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
             })
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.AffixFuzzer12".into(),
+                source: Box::new(err),
+            })?
         })
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer12#many_strings_required".into(),
-            source: Box::new(err),
-        })?)
     }
 
     #[inline]
@@ -2224,7 +2540,72 @@ impl crate::Loggable for AffixFuzzer12 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
+                let bitmap = data.validity().cloned();
+                let offsets = {
+                    let offsets = data.offsets();
+                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                };
+                let data = &**data.values();
+                let data = {
+                    let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                    let offsets = downcast.offsets();
+                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                        offsets.iter().zip(offsets.lengths()),
+                        downcast.validity(),
+                    )
+                    .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                    .map(|v| v.map(crate::ArrowString))
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+                }
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .collect::<Vec<_>>()
+                .unwrap();
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
+                            })
+                            .transpose()
+                    })
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+            })
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -2255,7 +2636,12 @@ impl<'a> From<&'a AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
 impl crate::Loggable for AffixFuzzer13 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer13".into()
@@ -2384,14 +2770,13 @@ impl crate::Loggable for AffixFuzzer13 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
                 let bitmap = data.validity().cloned();
                 let offsets = {
                     let offsets = data.offsets();
@@ -2407,13 +2792,16 @@ impl crate::Loggable for AffixFuzzer13 {
                     )
                     .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
                     .map(|v| v.map(crate::ArrowString))
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
                 }
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
                 })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                .collect::<Vec<_>>()
+                .unwrap();
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -2437,17 +2825,16 @@ impl crate::Loggable for AffixFuzzer13 {
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
-            .into_iter()
-        }
-        .map(Ok)
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer13#many_strings_optional".into(),
-            source: Box::new(err),
-        })?)
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.AffixFuzzer13".into(),
+                source: Box::new(err),
+            })?
+        })
     }
 
     #[inline]
@@ -2457,7 +2844,68 @@ impl crate::Loggable for AffixFuzzer13 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
+                let bitmap = data.validity().cloned();
+                let offsets = {
+                    let offsets = data.offsets();
+                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                };
+                let data = &**data.values();
+                let data = {
+                    let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                    let offsets = downcast.offsets();
+                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                        offsets.iter().zip(offsets.lengths()),
+                        downcast.validity(),
+                    )
+                    .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                    .map(|v| v.map(crate::ArrowString))
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+                }
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .collect::<Vec<_>>()
+                .unwrap();
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
+                            })
+                            .transpose()
+                    })
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -2494,7 +2942,12 @@ impl<'a> From<&'a AffixFuzzer14> for ::std::borrow::Cow<'a, AffixFuzzer14> {
 impl crate::Loggable for AffixFuzzer14 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer14".into()
@@ -2601,25 +3054,25 @@ impl crate::Loggable for AffixFuzzer14 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
                 })
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
+                    location: "rerun.testing.components.AffixFuzzer14".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -2629,7 +3082,22 @@ impl crate::Loggable for AffixFuzzer14 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -2666,7 +3134,12 @@ impl<'a> From<&'a AffixFuzzer15> for ::std::borrow::Cow<'a, AffixFuzzer15> {
 impl crate::Loggable for AffixFuzzer15 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer15".into()
@@ -2775,21 +3248,21 @@ impl crate::Loggable for AffixFuzzer15 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
                 .map(Ok)
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
+                    location: "rerun.testing.components.AffixFuzzer15".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -2799,7 +3272,18 @@ impl crate::Loggable for AffixFuzzer15 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(Ok)
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -2838,7 +3322,12 @@ impl<'a> From<&'a AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
 impl crate::Loggable for AffixFuzzer16 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer16".into()
@@ -2941,14 +3430,13 @@ impl crate::Loggable for AffixFuzzer16 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
                 let bitmap = data.validity().cloned();
                 let offsets = {
                     let offsets = data.offsets();
@@ -2956,18 +3444,17 @@ impl crate::Loggable for AffixFuzzer16 {
                 };
                 let data = &**data.values();
                 let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.components.AffixFuzzer16#many_required_unions"
-                            .into(),
-                        source: Box::new(err),
-                    })?
+                    .unwrap()
                     .into_iter()
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
                     .map(|v| {
                         v.ok_or_else(|| crate::DeserializationError::MissingData {
                             backtrace: ::backtrace::Backtrace::new_unresolved(),
                         })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    .collect::<Vec<_>>()
+                    .unwrap();
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -2991,21 +3478,20 @@ impl crate::Loggable for AffixFuzzer16 {
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
-            .into_iter()
-        }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
             })
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.AffixFuzzer16".into(),
+                source: Box::new(err),
+            })?
         })
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer16#many_required_unions".into(),
-            source: Box::new(err),
-        })?)
     }
 
     #[inline]
@@ -3015,7 +3501,65 @@ impl crate::Loggable for AffixFuzzer16 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
+                let bitmap = data.validity().cloned();
+                let offsets = {
+                    let offsets = data.offsets();
+                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                };
+                let data = &**data.values();
+                let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                    .unwrap()
+                    .into_iter()
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .unwrap();
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
+                            })
+                            .transpose()
+                    })
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+            })
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -3054,7 +3598,12 @@ impl<'a> From<&'a AffixFuzzer17> for ::std::borrow::Cow<'a, AffixFuzzer17> {
 impl crate::Loggable for AffixFuzzer17 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer17".into()
@@ -3159,14 +3708,13 @@ impl crate::Loggable for AffixFuzzer17 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
                 let bitmap = data.validity().cloned();
                 let offsets = {
                     let offsets = data.offsets();
@@ -3174,18 +3722,17 @@ impl crate::Loggable for AffixFuzzer17 {
                 };
                 let data = &**data.values();
                 let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.components.AffixFuzzer17#many_optional_unions"
-                            .into(),
-                        source: Box::new(err),
-                    })?
+                    .unwrap()
                     .into_iter()
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
                     .map(|v| {
                         v.ok_or_else(|| crate::DeserializationError::MissingData {
                             backtrace: ::backtrace::Backtrace::new_unresolved(),
                         })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    .collect::<Vec<_>>()
+                    .unwrap();
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -3209,17 +3756,16 @@ impl crate::Loggable for AffixFuzzer17 {
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
-            .into_iter()
-        }
-        .map(Ok)
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer17#many_optional_unions".into(),
-            source: Box::new(err),
-        })?)
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.AffixFuzzer17".into(),
+                source: Box::new(err),
+            })?
+        })
     }
 
     #[inline]
@@ -3229,7 +3775,61 @@ impl crate::Loggable for AffixFuzzer17 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
+                let bitmap = data.validity().cloned();
+                let offsets = {
+                    let offsets = data.offsets();
+                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                };
+                let data = &**data.values();
+                let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
+                    .unwrap()
+                    .into_iter()
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .unwrap();
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
+                            })
+                            .transpose()
+                    })
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -3268,7 +3868,12 @@ impl<'a> From<&'a AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
 impl crate::Loggable for AffixFuzzer18 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer18".into()
@@ -3373,14 +3978,13 @@ impl crate::Loggable for AffixFuzzer18 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
                 let bitmap = data.validity().cloned();
                 let offsets = {
                     let offsets = data.offsets();
@@ -3388,18 +3992,17 @@ impl crate::Loggable for AffixFuzzer18 {
                 };
                 let data = &**data.values();
                 let data = crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.components.AffixFuzzer18#many_optional_unions"
-                            .into(),
-                        source: Box::new(err),
-                    })?
+                    .unwrap()
                     .into_iter()
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
                     .map(|v| {
                         v.ok_or_else(|| crate::DeserializationError::MissingData {
                             backtrace: ::backtrace::Backtrace::new_unresolved(),
                         })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    .collect::<Vec<_>>()
+                    .unwrap();
                 offsets
                     .enumerate()
                     .map(move |(i, (start, end))| {
@@ -3423,17 +4026,16 @@ impl crate::Loggable for AffixFuzzer18 {
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
-            .into_iter()
-        }
-        .map(Ok)
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer18#many_optional_unions".into(),
-            source: Box::new(err),
-        })?)
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.AffixFuzzer18".into(),
+                source: Box::new(err),
+            })?
+        })
     }
 
     #[inline]
@@ -3443,7 +4045,61 @@ impl crate::Loggable for AffixFuzzer18 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                    .unwrap();
+                let bitmap = data.validity().cloned();
+                let offsets = {
+                    let offsets = data.offsets();
+                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                };
+                let data = &**data.values();
+                let data = crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
+                    .unwrap()
+                    .into_iter()
+                    .map(Ok)
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .unwrap();
+                offsets
+                    .enumerate()
+                    .map(move |(i, (start, end))| {
+                        bitmap
+                            .as_ref()
+                            .map_or(true, |bitmap| bitmap.get_bit(i))
+                            .then(|| {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    });
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
+                                Ok(data)
+                            })
+                            .transpose()
+                    })
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+            .map(Ok)
+            .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -3480,7 +4136,12 @@ impl<'a> From<&'a AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
 impl crate::Loggable for AffixFuzzer19 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer19".into()
@@ -3544,27 +4205,25 @@ impl crate::Loggable for AffixFuzzer19 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer5::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
-                        .into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
                 })
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
-                        .into(),
+                    location: "rerun.testing.components.AffixFuzzer19".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -3574,7 +4233,22 @@ impl crate::Loggable for AffixFuzzer19 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer5::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
@@ -3611,7 +4285,12 @@ impl<'a> From<&'a AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
 impl crate::Loggable for AffixFuzzer20 {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.AffixFuzzer20".into()
@@ -3683,25 +4362,25 @@ impl crate::Loggable for AffixFuzzer20 {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
             crate::testing::datatypes::AffixFuzzer20::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer20#nested_transparent".into(),
-                    source: Box::new(err),
-                })?
+                .unwrap()
                 .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
                 .map(|v| {
                     v.ok_or_else(|| crate::DeserializationError::MissingData {
                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                     })
                 })
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
                 .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer20#nested_transparent".into(),
+                    location: "rerun.testing.components.AffixFuzzer20".into(),
                     source: Box::new(err),
-                })?,
-        )
+                })?
+        })
     }
 
     #[inline]
@@ -3711,7 +4390,22 @@ impl crate::Loggable for AffixFuzzer20 {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::testing::datatypes::AffixFuzzer20::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]

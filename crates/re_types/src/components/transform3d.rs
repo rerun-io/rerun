@@ -42,7 +42,12 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
 impl crate::Loggable for Transform3D {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.transform3d".into()
@@ -124,23 +129,25 @@ impl crate::Loggable for Transform3D {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(crate::datatypes::Transform3D::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Transform3D#repr".into(),
-                source: Box::new(err),
-            })?
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
+            crate::datatypes::Transform3D::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
                 })
-            })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Transform3D#repr".into(),
-                source: Box::new(err),
-            })?)
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.transform3d".into(),
+                    source: Box::new(err),
+                })?
+        })
     }
 
     #[inline]
@@ -150,7 +157,22 @@ impl crate::Loggable for Transform3D {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            crate::datatypes::Transform3D::try_from_arrow_opt(data)
+                .unwrap()
+                .into_iter()
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]

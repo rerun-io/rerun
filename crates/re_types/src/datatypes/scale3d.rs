@@ -39,7 +39,12 @@ impl<'a> From<&'a Scale3D> for ::std::borrow::Cow<'a, Scale3D> {
 impl crate::Loggable for Scale3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Scale3D".into()
@@ -246,44 +251,84 @@ impl crate::Loggable for Scale3D {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::UnionArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.Scale3D".into(),
-                    source: Box::new(err),
-                })?;
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::UnionArray>()
+                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                        expected: data.data_type().clone(),
+                        got: data.data_type().clone(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.Scale3D".into(),
+                        source: Box::new(err),
+                    })?;
                 let (data_types, data_arrays, data_offsets) =
                     (data.types(), data.fields(), data.offsets().unwrap());
                 let three_d = {
                     let data = &*data_arrays[1usize];
 
-                    { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
+                    {
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .unwrap();
+                        let bitmap = data.validity().cloned();
+                        let offsets = (0..)
+                            .step_by(3usize)
+                            .zip((3usize..).step_by(3usize).take(data.len()));
+                        let data = &**data.values();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<Float32Array>()
+                            .unwrap()
+                            .into_iter()
+                            .map(|v| v.copied())
+                            .map(Ok)
+                            .transpose_into_fallible::<_, crate::DeserializationError>()
+                            .map(|v| {
+                                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                })
+                            })
+                            .collect::<Vec<_>>()
+                            .unwrap();
+                        offsets
+                            .enumerate()
+                            .map(move |(i, (start, end))| {
+                                bitmap
+                                    .as_ref()
+                                    .map_or(true, |bitmap| bitmap.get_bit(i))
+                                    .then(|| {
+                                        if end as usize > data.len() {
+                                            return Err(
+                                                crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace:
+                                                        ::backtrace::Backtrace::new_unresolved(),
+                                                },
+                                            );
+                                        }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ; }
-
- # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
-
- ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
-
-) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter () }
-
- . collect :: < Vec < _ >> ()
+                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data = unsafe {
+                                            data.get_unchecked(start as usize..end as usize)
+                                        };
+                                        let arr =
+                                            array_init::from_iter(data.iter().copied()).unwrap();
+                                        Ok(arr)
+                                    })
+                                    .transpose()
+                            })
+                            .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
+                            .transpose_into_fallible::<_, crate::DeserializationError>()
+                    }
+                    .collect::<Vec<_>>()
+                    .unwrap()
                 };
                 let uniform = {
                     let data = &*data_arrays[2usize];
@@ -293,12 +338,15 @@ impl crate::Loggable for Scale3D {
                         .unwrap()
                         .into_iter()
                         .map(|v| v.copied())
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
                         .collect::<Vec<_>>()
+                        .unwrap()
                 };
                 data_types
                     .iter()
                     .enumerate()
-                    .map(|(i, typ)| {
+                    .map(move |(i, typ)| {
                         let offset = data_offsets[i];
 
                         if *typ == 0 {
@@ -345,12 +393,13 @@ impl crate::Loggable for Scale3D {
                             }))
                         }
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.Scale3D".into(),
-                        source: Box::new(err),
-                    })?
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
             }
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.datatypes.Scale3D".into(),
+                source: Box::new(err),
+            })?
         })
     }
 
@@ -361,7 +410,153 @@ impl crate::Loggable for Scale3D {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::UnionArray>()
+                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                        expected: data.data_type().clone(),
+                        got: data.data_type().clone(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.Scale3D".into(),
+                        source: Box::new(err),
+                    })?;
+                let (data_types, data_arrays, data_offsets) =
+                    (data.types(), data.fields(), data.offsets().unwrap());
+                let three_d = {
+                    let data = &*data_arrays[1usize];
+
+                    {
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .unwrap();
+                        let bitmap = data.validity().cloned();
+                        let offsets = (0..)
+                            .step_by(3usize)
+                            .zip((3usize..).step_by(3usize).take(data.len()));
+                        let data = &**data.values();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<Float32Array>()
+                            .unwrap()
+                            .into_iter()
+                            .map(|v| v.copied())
+                            .map(Ok)
+                            .transpose_into_fallible::<_, crate::DeserializationError>()
+                            .map(|v| {
+                                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                })
+                            })
+                            .collect::<Vec<_>>()
+                            .unwrap();
+                        offsets
+                            .enumerate()
+                            .map(move |(i, (start, end))| {
+                                bitmap
+                                    .as_ref()
+                                    .map_or(true, |bitmap| bitmap.get_bit(i))
+                                    .then(|| {
+                                        if end as usize > data.len() {
+                                            return Err(
+                                                crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace:
+                                                        ::backtrace::Backtrace::new_unresolved(),
+                                                },
+                                            );
+                                        }
+
+                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data = unsafe {
+                                            data.get_unchecked(start as usize..end as usize)
+                                        };
+                                        let arr =
+                                            array_init::from_iter(data.iter().copied()).unwrap();
+                                        Ok(arr)
+                                    })
+                                    .transpose()
+                            })
+                            .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
+                            .transpose_into_fallible::<_, crate::DeserializationError>()
+                    }
+                    .collect::<Vec<_>>()
+                    .unwrap()
+                };
+                let uniform = {
+                    let data = &*data_arrays[2usize];
+
+                    data.as_any()
+                        .downcast_ref::<Float32Array>()
+                        .unwrap()
+                        .into_iter()
+                        .map(|v| v.copied())
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
+                        .collect::<Vec<_>>()
+                        .unwrap()
+                };
+                data_types
+                    .iter()
+                    .enumerate()
+                    .map(move |(i, typ)| {
+                        let offset = data_offsets[i];
+
+                        if *typ == 0 {
+                            Ok(None)
+                        } else {
+                            Ok(Some(match typ {
+                                1i8 => Scale3D::ThreeD({
+                                    if offset as usize >= three_d.len() {
+                                        return Err(crate::DeserializationError::OffsetsMismatch {
+                                            bounds: (offset as usize, offset as usize),
+                                            len: three_d.len(),
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.Scale3D#ThreeD".into(),
+                                            source: Box::new(err),
+                                        });
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { three_d.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .unwrap()
+                                }),
+                                2i8 => Scale3D::Uniform({
+                                    if offset as usize >= uniform.len() {
+                                        return Err(crate::DeserializationError::OffsetsMismatch {
+                                            bounds: (offset as usize, offset as usize),
+                                            len: uniform.len(),
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.Scale3D#Uniform".into(),
+                                            source: Box::new(err),
+                                        });
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { uniform.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .unwrap()
+                                }),
+                                _ => unreachable!(),
+                            }))
+                        }
+                    })
+                    .transpose_into_fallible::<_, crate::DeserializationError>()
+            }
+        }))
     }
 
     #[inline]

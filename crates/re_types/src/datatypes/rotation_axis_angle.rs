@@ -43,7 +43,12 @@ impl<'a> From<&'a RotationAxisAngle> for ::std::borrow::Cow<'a, RotationAxisAngl
 impl crate::Loggable for RotationAxisAngle {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.RotationAxisAngle".into()
@@ -204,25 +209,24 @@ impl crate::Loggable for RotationAxisAngle {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.RotationAxisAngle".into(),
-                    source: Box::new(err),
-                })?;
-            if data.is_empty() {
-                Vec::new()
-            } else {
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::StructArray>()
+                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                        expected: data.data_type().clone(),
+                        got: data.data_type().clone(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.RotationAxisAngle".into(),
+                        source: Box::new(err),
+                    })?;
                 let (data_fields, data_arrays, data_bitmap) =
                     (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let is_valid = move |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -236,36 +240,70 @@ impl crate::Loggable for RotationAxisAngle {
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                             .unwrap();
-                        if data . is_empty () { Vec :: new () }
+                        let bitmap = data.validity().cloned();
+                        let offsets = (0..)
+                            .step_by(3usize)
+                            .zip((3usize..).step_by(3usize).take(data.len()));
+                        let data = &**data.values();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<Float32Array>()
+                            .unwrap()
+                            .into_iter()
+                            .map(|v| v.copied())
+                            .map(Ok)
+                            .transpose_into_fallible::<_, crate::DeserializationError>()
+                            .map(|v| {
+                                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                })
+                            })
+                            .collect::<Vec<_>>()
+                            .unwrap();
+                        offsets
+                            .enumerate()
+                            .map(move |(i, (start, end))| {
+                                bitmap
+                                    .as_ref()
+                                    .map_or(true, |bitmap| bitmap.get_bit(i))
+                                    .then(|| {
+                                        if end as usize > data.len() {
+                                            return Err(
+                                                crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace:
+                                                        ::backtrace::Backtrace::new_unresolved(),
+                                                },
+                                            );
+                                        }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ; }
-
- # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
-
- ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
-
-) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter ()
+                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data = unsafe {
+                                            data.get_unchecked(start as usize..end as usize)
+                                        };
+                                        let arr =
+                                            array_init::from_iter(data.iter().copied()).unwrap();
+                                        Ok(arr)
+                                    })
+                                    .transpose()
+                            })
+                            .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
+                            .transpose_into_fallible::<_, crate::DeserializationError>()
                     }
                 };
                 let angle = {
                     let data = &**arrays_by_name["angle"];
 
                     crate::datatypes::Angle::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.datatypes.RotationAxisAngle#angle".into(),
-                            source: Box::new(err),
-                        })?
+                        .unwrap()
                         .into_iter()
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
                 };
-                ::itertools::izip!(axis, angle)
+                crate::izip!(axis, angle)
                     .enumerate()
-                    .map(|(i, (axis, angle))| {
+                    .map(move |(i, (axis, angle))| {
                         is_valid(i)
                             .then(|| {
                                 Ok(Self {
@@ -291,12 +329,12 @@ impl crate::Loggable for RotationAxisAngle {
                             })
                             .transpose()
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.RotationAxisAngle".into(),
-                        source: Box::new(err),
-                    })?
             }
+            .collect::<Vec<Option<_>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.datatypes.RotationAxisAngle".into(),
+                source: Box::new(err),
+            })?
         })
     }
 
@@ -307,7 +345,130 @@ impl crate::Loggable for RotationAxisAngle {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            {
+                let data = data
+                    .as_any()
+                    .downcast_ref::<::arrow2::array::StructArray>()
+                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                        expected: data.data_type().clone(),
+                        got: data.data_type().clone(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.RotationAxisAngle".into(),
+                        source: Box::new(err),
+                    })?;
+                let (data_fields, data_arrays, data_bitmap) =
+                    (data.fields(), data.values(), data.validity());
+                let is_valid = move |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(data_arrays)
+                    .collect();
+                let axis = {
+                    let data = &**arrays_by_name["axis"];
+
+                    {
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .unwrap();
+                        let bitmap = data.validity().cloned();
+                        let offsets = (0..)
+                            .step_by(3usize)
+                            .zip((3usize..).step_by(3usize).take(data.len()));
+                        let data = &**data.values();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<Float32Array>()
+                            .unwrap()
+                            .into_iter()
+                            .map(|v| v.copied())
+                            .map(Ok)
+                            .transpose_into_fallible::<_, crate::DeserializationError>()
+                            .map(|v| {
+                                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                })
+                            })
+                            .collect::<Vec<_>>()
+                            .unwrap();
+                        offsets
+                            .enumerate()
+                            .map(move |(i, (start, end))| {
+                                bitmap
+                                    .as_ref()
+                                    .map_or(true, |bitmap| bitmap.get_bit(i))
+                                    .then(|| {
+                                        if end as usize > data.len() {
+                                            return Err(
+                                                crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace:
+                                                        ::backtrace::Backtrace::new_unresolved(),
+                                                },
+                                            );
+                                        }
+
+                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data = unsafe {
+                                            data.get_unchecked(start as usize..end as usize)
+                                        };
+                                        let arr =
+                                            array_init::from_iter(data.iter().copied()).unwrap();
+                                        Ok(arr)
+                                    })
+                                    .transpose()
+                            })
+                            .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
+                            .transpose_into_fallible::<_, crate::DeserializationError>()
+                    }
+                };
+                let angle = {
+                    let data = &**arrays_by_name["angle"];
+
+                    crate::datatypes::Angle::try_from_arrow_opt(data)
+                        .unwrap()
+                        .into_iter()
+                        .map(Ok)
+                        .transpose_into_fallible::<_, crate::DeserializationError>()
+                };
+                crate::izip!(axis, angle)
+                    .enumerate()
+                    .map(move |(i, (axis, angle))| {
+                        is_valid(i)
+                            .then(|| {
+                                Ok(Self {
+                                    axis: axis
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.RotationAxisAngle#axis"
+                                                .into(),
+                                            source: Box::new(err),
+                                        })?,
+                                    angle: angle
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                        .map_err(|err| crate::DeserializationError::Context {
+                                            location: "rerun.datatypes.RotationAxisAngle#angle"
+                                                .into(),
+                                            source: Box::new(err),
+                                        })?,
+                                })
+                            })
+                            .transpose()
+                    })
+            }
+        }))
     }
 
     #[inline]

@@ -38,7 +38,12 @@ impl<'a> From<&'a KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
 impl crate::Loggable for KeypointId {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+    type Iter<'a> = Box<
+        dyn ::fallible_iterator::FallibleIterator<
+                Item = Self::Item<'a>,
+                Error = crate::DeserializationError,
+            > + 'a,
+    >;
     #[inline]
     fn name() -> Self::Name {
         "rerun.keypoint_id".into()
@@ -104,23 +109,27 @@ impl crate::Loggable for KeypointId {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(data
-            .as_any()
-            .downcast_ref::<UInt16Array>()
-            .unwrap()
-            .into_iter()
-            .map(|v| v.copied())
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok({
+            data.as_any()
+                .downcast_ref::<UInt16Array>()
+                .unwrap()
+                .into_iter()
+                .map(|v| v.copied())
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
                 })
-            })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.KeypointId#id".into(),
-                source: Box::new(err),
-            })?)
+                .map(|v| Ok(Some(Self(v))))
+                .collect::<Vec<Option<_>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.keypoint_id".into(),
+                    source: Box::new(err),
+                })?
+        })
     }
 
     #[inline]
@@ -130,7 +139,24 @@ impl crate::Loggable for KeypointId {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        use crate::Loggable as _;
+        use ::arrow2::{array::*, datatypes::*};
+        use ::fallible_iterator::{FallibleIterator as _, IteratorExt as _};
+        Ok(Box::new({
+            data.as_any()
+                .downcast_ref::<UInt16Array>()
+                .unwrap()
+                .into_iter()
+                .map(|v| v.copied())
+                .map(Ok)
+                .transpose_into_fallible::<_, crate::DeserializationError>()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                })
+                .map(|v| Ok(Some(Self(v))))
+        }))
     }
 
     #[inline]
