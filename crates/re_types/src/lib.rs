@@ -348,6 +348,8 @@ pub trait Archetype {
 
 // ---
 
+// TODO: need nicer err constructors (that add Context automatically?)
+
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
 // attempt to use nightly features.
 pub type _Backtrace = backtrace::Backtrace;

@@ -250,7 +250,7 @@ impl crate::Loggable for StringComponent {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let downcast = data
+            let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
                 .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
@@ -262,13 +262,37 @@ impl crate::Loggable for StringComponent {
                     location: "rerun.testing.components.StringComponent#value".into(),
                     source: Box::new(err),
                 })?;
-            let offsets = downcast.offsets();
+            let data_buf = data.values();
+            let offsets = data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                 offsets.iter().zip(offsets.lengths()),
-                downcast.validity(),
+                data.validity(),
             )
-            .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-            .map(|v| v.map(crate::ArrowString))
+            .map(|elem| {
+                elem.map(|(start, len)| {
+                    let start = *start as usize;
+                    let end = start + len;
+                    if end as usize > data_buf.len() {
+                        return Err(crate::DeserializationError::OffsetsMismatch {
+                            bounds: (start, end as usize),
+                            len: data_buf.len(),
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        });
+                    }
+
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    let data = unsafe { data_buf.clone().sliced_unchecked(start, len) };
+                    Ok(data)
+                })
+                .transpose()
+            })
+            .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.StringComponent#value".into(),
+                source: Box::new(err),
+            })?
+            .into_iter()
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {

@@ -175,48 +175,49 @@ impl crate::Loggable for AnnotationContext {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let bitmap = data.validity().cloned();
-                let offsets = {
-                    let offsets = data.offsets();
-                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                };
-                let data = &**data.values();
-                let data = crate::datatypes::ClassDescriptionMapElem::try_from_arrow_opt(data)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.components.AnnotationContext#class_map".into(),
-                        source: Box::new(err),
-                    })?
-                    .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| {
-                        bitmap
-                            .as_ref()
-                            .map_or(true, |bitmap| bitmap.get_bit(i))
-                            .then(|| {
-                                if end as usize > data.len() {
-                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    });
-                                }
-
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                let data = unsafe {
-                                    data.get_unchecked(start as usize..end as usize).to_vec()
-                                };
-                                Ok(data)
+                let data_inner = {
+                    let data_inner = &**data.values();
+                    crate::datatypes::ClassDescriptionMapElem::try_from_arrow_opt(data_inner)
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.components.AnnotationContext#class_map".into(),
+                            source: Box::new(err),
+                        })?
+                        .into_iter()
+                        .map(|v| {
+                            v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
                             })
-                            .transpose()
+                        })
+                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                };
+                let offsets = data.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    data.validity(),
+                )
+                .map(|elem| {
+                    elem.map(|(start, len)| {
+                        let start = *start as usize;
+                        let end = start + len;
+                        if end as usize > data_inner.len() {
+                            return Err(crate::DeserializationError::OffsetsMismatch {
+                                bounds: (start as usize, end as usize),
+                                len: data_inner.len(),
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            });
+                        }
+
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data = unsafe {
+                            data_inner
+                                .get_unchecked(start as usize..end as usize)
+                                .to_vec()
+                        };
+                        Ok(data)
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }
