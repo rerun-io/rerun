@@ -18,6 +18,7 @@ OFFICIAL_RERUN_DEVS = [
     "jondo2010",
     "jprochazk",
     "karimo87",
+    "martenbjork",
     "nikolausWest",
     "roym899",
     "teh-cmc",
@@ -104,7 +105,13 @@ def main() -> None:
         html_url = issue["html_url"]
         comments = issue["comments"]
         state = issue["state"]
-        if comments == 0 and state == "open" and author not in OFFICIAL_RERUN_DEVS:
+        labels = [label["name"] for label in issue["labels"]]
+
+        if "👀 needs triage" in labels:
+            print(f"{html_url} by {author} needs triage")
+        elif len(labels) == 0:
+            print(f"{html_url} by {author} has no labels")
+        elif comments == 0 and state == "open" and author not in OFFICIAL_RERUN_DEVS:
             print(f"{html_url} by {author} has {comments} comments")
 
 
