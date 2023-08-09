@@ -79,4 +79,5 @@
         "--config",
         "rerun_py/pyproject.toml"
     ],
+    "cmake.buildDirectory" : "${workspaceRoot}/build/"
 }
