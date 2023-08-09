@@ -2056,6 +2056,7 @@ fn quote_arrow_deserializer(
             &data_src,
         );
 
+        // TODO: this one shouldnt be an error but a default instead i guess then :/
         let quoted_unwrap = if obj_field.is_nullable {
             quote!(.map(Ok))
         } else {
@@ -2124,6 +2125,7 @@ fn quote_arrow_deserializer(
                     if obj_field.is_nullable {
                         quote!(#quoted_obj_field_name)
                     } else {
+                        // TODO: this one shouldnt be an error but a default instead i guess then :/
                         quote! {
                             #quoted_obj_field_name: #quoted_obj_field_name
                                 .ok_or_else(|| crate::DeserializationError::MissingData {
@@ -2252,6 +2254,8 @@ fn quote_arrow_deserializer(
                     let cast_as = quote!(::arrow2::array::UnionArray);
                     quote_array_downcast(obj_fqname, &data_src, &cast_as, datatype)
                 };
+
+                let quoted_expected = ArrowDataTypeTokenizer(datatype, false);
                 quote! {{
                     let #data_src = #quoted_downcast?;
                     if #data_src.is_empty() {
@@ -2261,10 +2265,30 @@ fn quote_arrow_deserializer(
                         // datastructures for all of our children.
                         Vec::new()
                     } else {
-                        let (#data_src_types, #data_src_arrays, #data_src_offsets) =
-                            // NOTE: unwrapping of offsets is safe because this is a dense union
-                            // TODO: no it's not
-                            (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
+                        let (#data_src_types, #data_src_arrays) = (#data_src.types(), #data_src.fields());
+
+                        let #data_src_offsets = #data_src.offsets()
+                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                                expected: #quoted_expected,
+                                got: #data_src.data_type().clone(),
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            })
+                            .map_err(|err| crate::DeserializationError::Context {
+                                location: #obj_fqname.into(),
+                                source: Box::new(err),
+                            })?;
+
+                        if #data_src_types.len() > #data_src_offsets.len() {
+                            return Err(crate::DeserializationError::OffsetsMismatch {
+                                bounds: (0, #data_src_types.len()),
+                                len: #data_src_offsets.len(),
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            })
+                            .map_err(|err| crate::DeserializationError::Context {
+                                location: #obj_fqname.into(),
+                                source: Box::new(err),
+                            });
+                        }
 
                         #(#quoted_field_deserializers;)*
 
@@ -2272,6 +2296,7 @@ fn quote_arrow_deserializer(
                             .iter()
                             .enumerate()
                             .map(|(i, typ)| {
+                                // NOTE: Array indexing is safe, checked above.
                                 let offset = #data_src_offsets[i];
 
                                 if *typ == 0 {
@@ -2368,6 +2393,7 @@ fn quote_arrow_field_deserializer(
         }
 
         DataType::Utf8 => {
+            // TODO: can we get a general unmapper with optional transparency?
             let quoted_transparent_unmapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
                 let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
@@ -2381,12 +2407,12 @@ fn quote_arrow_field_deserializer(
                     }
                 );
                 if is_tuple_struct {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type(crate::ArrowString(v)))))
+                    quote!(.map(|res| res.map(|opt| opt.map(|v| #quoted_inner_obj_type(crate::ArrowString(v))))))
                 } else {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type { #quoted_data_dst: crate::ArrowString(v) })))
+                    quote!(.map(|res| res.map(|opt| opt.map(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst: crate::ArrowString(v) }))))
                 }
             } else {
-                quote!(.map(|v| v.map(crate::ArrowString)))
+                quote!(.map(|res| res.map(|opt| opt.map(crate::ArrowString))))
             };
 
             let quoted_downcast = {
@@ -2394,26 +2420,59 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
+            let data_src_buf = format_ident!("{data_src}_buf");
+
             quote! {{
-                let downcast = #quoted_downcast?;
-                let offsets = downcast.offsets();
+                let #data_src = #quoted_downcast?;
+                let #data_src_buf = #data_src.values();
+
+                let offsets = #data_src.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     offsets.iter().zip(offsets.lengths()),
-                    downcast.validity(),
+                    #data_src.validity(),
                 )
-                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+                .map(|elem| elem.map(|(start, len)| {
+                        // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
+
+                        let start = *start as usize;
+                        let end = start + len;
+
+                        // NOTE: It is absolutely crucial we explicitly handle the
+                        // boundchecks manually first, otherwise rustc completely chokes
+                        // when slicing the data (as in: a 100x perf drop)!
+                        if end as usize > #data_src_buf.len() {
+                            return Err(crate::DeserializationError::OffsetsMismatch {
+                                bounds: (start, end as usize),
+                                len: #data_src_buf.len(),
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            });
+                        }
+                        // Safety: all checked above.
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        // NOTE: The `clone` is a `Buffer::clone`, which is just a refcount bump.
+                        let data = unsafe { #data_src_buf.clone().sliced_unchecked(start, len) };
+
+                        Ok(data)
+                    }).transpose()
+                )
                 #quoted_transparent_unmapping
+                // NOTE: implicit Vec<Result> to Result<Vec>
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: #obj_field_fqname.into(),
+                    source: Box::new(err),
+                })?.into_iter()
             }}
         }
 
         DataType::FixedSizeList(inner, length) => {
-            let inner_datatype = inner.data_type();
+            let data_src_inner = format_ident!("{data_src}_inner");
             let quoted_inner = quote_arrow_field_deserializer(
                 objects,
-                inner_datatype,
+                inner.data_type(),
                 inner.is_nullable,
                 obj_field_fqname,
-                data_src,
+                &data_src_inner,
             );
 
             let quoted_transparent_unmapping = if inner_is_arrow_transparent {
@@ -2451,36 +2510,42 @@ fn quote_arrow_field_deserializer(
                     // datastructures for all of our children.
                     Vec::new()
                 } else {
-                    let bitmap = #data_src.validity().cloned();
                     let offsets = (0..).step_by(#length).zip((#length..).step_by(#length).take(#data_src.len()));
 
-                    let #data_src = &**#data_src.values();
+                    let #data_src_inner = {
+                        let #data_src_inner = &**#data_src.values();
+                        #quoted_inner
+                            // TODO: hmmm... what's the deal here?
+                            .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            }))
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    };
 
-                    let data = #quoted_inner
-                        .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        }))
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                    arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, #data_src.validity())
+                        .map(|elem| elem.map(|(start, end)| {
+                                // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
+                                // We're manually generating our own offsets, then length must be correct.
+                                debug_assert!(end - start == #length);
+
                                 // NOTE: It is absolutely crucial we explicitly handle the
                                 // boundchecks manually first, otherwise rustc completely chokes
                                 // when slicing the data (as in: a 100x perf drop)!
-                                if end as usize > data.len() {
+                                if end as usize > #data_src_inner.len() {
                                     return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
-                                        len: data.len(),
+                                        len: #data_src_inner.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                                     });
                                 }
                                 // Safety: all checked above.
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                let data = unsafe { data.get_unchecked(start as usize .. end as usize) };
+                                let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
 
-                                let arr = array_init::from_iter(data.iter().copied()).unwrap(); // safe: checked above
+                                // NOTE: Unwrapping cannot fail: the length must be correct.
+                                let arr = array_init::from_iter(data.iter().copied()).unwrap();
 
                                 Ok(arr)
                             }).transpose()
@@ -2494,14 +2559,13 @@ fn quote_arrow_field_deserializer(
         }
 
         DataType::List(inner) => {
-            let inner_datatype = inner.data_type();
-
+            let data_src_inner = format_ident!("{data_src}_inner");
             let quoted_inner = quote_arrow_field_deserializer(
                 objects,
-                inner_datatype,
+                inner.data_type(),
                 inner.is_nullable,
                 obj_field_fqname,
-                data_src,
+                &data_src_inner,
             );
 
             let quoted_downcast = {
@@ -2518,43 +2582,47 @@ fn quote_arrow_field_deserializer(
                     // datastructures for all of our children.
                     Vec::new()
                 } else {
-                    let bitmap = #data_src.validity().cloned();
-                    let offsets = {
-                        let offsets = #data_src.offsets();
-                        offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                    let #data_src_inner = {
+                        let #data_src_inner = &**#data_src.values();
+                        #quoted_inner
+                            // TODO: hmmm... what's the deal here?
+                            .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            }))
+                            // NOTE: implicit Vec<Result> to Result<Vec>
+                            .collect::<crate::DeserializationResult<Vec<_>>>()?
                     };
 
-                    let #data_src = &**#data_src.values();
+                    let offsets = #data_src.offsets();
+                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                        offsets.iter().zip(offsets.lengths()),
+                        #data_src.validity(),
+                    )
+                    .map(|elem| elem.map(|(start, len)| {
+                            // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                    let data = #quoted_inner
-                        .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        }))
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            let start = *start as usize;
+                            let end = start + len;
 
-                    offsets
-                        .enumerate()
-                        .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                                // NOTE: It is absolutely crucial we explicitly handle the
-                                // boundchecks manually first, otherwise rustc completely chokes
-                                // when slicing the data (as in: a 100x perf drop)!
-                                if end as usize > data.len() {
-                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    });
-                                }
-                                // Safety: all checked above.
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                let data = unsafe { data.get_unchecked(start as usize .. end as usize).to_vec() };
+                            // NOTE: It is absolutely crucial we explicitly handle the
+                            // boundchecks manually first, otherwise rustc completely chokes
+                            // when slicing the data (as in: a 100x perf drop)!
+                            if end as usize > #data_src_inner.len() {
+                                return Err(crate::DeserializationError::OffsetsMismatch {
+                                    bounds: (start as usize, end as usize),
+                                    len: #data_src_inner.len(),
+                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                });
+                            }
+                            // Safety: all checked above.
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize).to_vec() };
 
-                                Ok(data)
-                            }).transpose()
-                        )
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                            Ok(data)
+                        }).transpose()
+                    )
+                    // NOTE: implicit Vec<Result> to Result<Vec>
+                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                 }
                 .into_iter()
             }}
@@ -2566,10 +2634,9 @@ fn quote_arrow_field_deserializer(
             quote! {
                 #fqname_use::try_from_arrow_opt(#data_src)
                     .map_err(|err| crate::DeserializationError::Context {
-                            location: #obj_field_fqname.into(),
-                            source: Box::new(err),
-                        })
-                    ?.into_iter()
+                        location: #obj_field_fqname.into(),
+                        source: Box::new(err),
+                    })?.into_iter()
             }
         }
 

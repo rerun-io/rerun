@@ -243,8 +243,52 @@ impl crate::Loggable for Angle {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_types, data_arrays, data_offsets) =
-                    (data.types(), data.fields(), data.offsets().unwrap());
+                let (data_types, data_arrays) = (data.types(), data.fields());
+                let data_offsets = data
+                    .offsets()
+                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                        expected: DataType::Union(
+                            vec![
+                                Field {
+                                    name: "_null_markers".to_owned(),
+                                    data_type: DataType::Null,
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "Radians".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "Degrees".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ],
+                            Some(vec![0i32, 1i32, 2i32]),
+                            UnionMode::Dense,
+                        ),
+                        got: data.data_type().clone(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.Angle".into(),
+                        source: Box::new(err),
+                    })?;
+                if data_types.len() > data_offsets.len() {
+                    return Err(crate::DeserializationError::OffsetsMismatch {
+                        bounds: (0, data_types.len()),
+                        len: data_offsets.len(),
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.Angle".into(),
+                        source: Box::new(err),
+                    });
+                }
                 let radians = {
                     let data = &*data_arrays[1usize];
                     data.as_any()
