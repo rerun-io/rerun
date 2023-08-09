@@ -262,10 +262,7 @@ impl crate::Loggable for LineStrip2D {
                                     .with_context("rerun.components.LineStrip2D#points")?
                                     .into_iter()
                                     .map(|v| v.copied())
-                                    .map(|v| {
-                                        v.ok_or_else(crate::DeserializationError::missing_data)
-                                    })
-                                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+                                    .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets,
@@ -285,7 +282,8 @@ impl crate::Loggable for LineStrip2D {
                                     let data = unsafe {
                                         data_inner_inner.get_unchecked(start as usize..end as usize)
                                     };
-                                    let arr = array_init::from_iter(data.iter().copied()).unwrap();
+                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                    let arr = array_init::from_iter(data).unwrap();
                                     Ok(arr)
                                 })
                                 .transpose()
@@ -295,8 +293,7 @@ impl crate::Loggable for LineStrip2D {
                         }
                         .into_iter()
                     }
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?
+                    .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -315,11 +312,13 @@ impl crate::Loggable for LineStrip2D {
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            data_inner
-                                .get_unchecked(start as usize..end as usize)
-                                .to_vec()
-                        };
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
                         Ok(data)
                     })
                     .transpose()

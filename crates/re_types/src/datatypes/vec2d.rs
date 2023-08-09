@@ -183,8 +183,7 @@ impl crate::Loggable for Vec2D {
                         .with_context("rerun.datatypes.Vec2D#xy")?
                         .into_iter()
                         .map(|v| v.copied())
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()?
+                        .collect::<Vec<_>>()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, data.validity())
                     .map(|elem| {
@@ -200,7 +199,8 @@ impl crate::Loggable for Vec2D {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             let data =
                                 unsafe { data_inner.get_unchecked(start as usize..end as usize) };
-                            let arr = array_init::from_iter(data.iter().copied()).unwrap();
+                            let data = data.iter().cloned().map(Option::unwrap_or_default);
+                            let arr = array_init::from_iter(data).unwrap();
                             Ok(arr)
                         })
                         .transpose()
