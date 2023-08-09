@@ -103,7 +103,15 @@ impl crate::Loggable for PrimitiveComponent {
         Ok(data
             .as_any()
             .downcast_ref::<UInt32Array>()
-            .unwrap()
+            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                expected: DataType::UInt32,
+                got: data.data_type().clone(),
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            })
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.testing.components.PrimitiveComponent#value".into(),
+                source: Box::new(err),
+            })?
             .into_iter()
             .map(|v| v.copied())
             .map(|v| {
@@ -242,7 +250,18 @@ impl crate::Loggable for StringComponent {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+            let downcast = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
+                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                    expected: DataType::Utf8,
+                    got: data.data_type().clone(),
+                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                })
+                .map_err(|err| crate::DeserializationError::Context {
+                    location: "rerun.testing.components.StringComponent#value".into(),
+                    source: Box::new(err),
+                })?;
             let offsets = downcast.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                 offsets.iter().zip(offsets.lengths()),

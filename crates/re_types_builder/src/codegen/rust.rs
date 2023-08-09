@@ -2016,6 +2016,10 @@ fn quote_arrow_field_serializer(
     }
 }
 
+/// The returned `TokenStream` always instantiates a `Vec<Option<T>>`.
+///
+/// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
+/// returns a `Result<_, DeserializationError>`!
 fn quote_arrow_deserializer(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
@@ -2133,20 +2137,12 @@ fn quote_arrow_deserializer(
                     }
                 });
 
+                let quoted_downcast = {
+                    let cast_as = quote!(::arrow2::array::StructArray);
+                    quote_array_downcast(obj_fqname, &data_src, cast_as, datatype)
+                };
                 quote! {{
-                    let #data_src = #data_src
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::StructArray>()
-                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                            expected: #data_src.data_type().clone(),
-                            got: #data_src.data_type().clone(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: #obj_fqname.into(),
-                            source: Box::new(err),
-                        })?;
-
+                    let #data_src = #quoted_downcast?;
                     if #data_src.is_empty() {
                         // NOTE: The outer container is empty and so we already know that the end result
                         // is also going to be an empty vec.
@@ -2252,20 +2248,12 @@ fn quote_arrow_deserializer(
                     }
                 });
 
+                let quoted_downcast = {
+                    let cast_as = quote!(::arrow2::array::UnionArray);
+                    quote_array_downcast(obj_fqname, &data_src, &cast_as, datatype)
+                };
                 quote! {{
-                    let #data_src = #data_src
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::UnionArray>()
-                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                            expected: #data_src.data_type().clone(),
-                            got: #data_src.data_type().clone(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: #obj_fqname.into(),
-                            source: Box::new(err),
-                        })?;
-
+                    let #data_src = #quoted_downcast?;
                     if #data_src.is_empty() {
                         // NOTE: The outer container is empty and so we already know that the end result
                         // is also going to be an empty vec.
@@ -2275,6 +2263,7 @@ fn quote_arrow_deserializer(
                     } else {
                         let (#data_src_types, #data_src_arrays, #data_src_offsets) =
                             // NOTE: unwrapping of offsets is safe because this is a dense union
+                            // TODO: no it's not
                             (#data_src.types(), #data_src.fields(), #data_src.offsets().unwrap());
 
                         #(#quoted_field_deserializers;)*
@@ -2309,6 +2298,10 @@ fn quote_arrow_deserializer(
     }
 }
 
+/// The returned `TokenStream` always instantiates a `Vec<Option<T>>`.
+///
+/// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
+/// returns a `Result<_, DeserializationError>`!
 fn quote_arrow_field_deserializer(
     objects: &Objects,
     datatype: &DataType,
@@ -2361,14 +2354,15 @@ fn quote_arrow_field_deserializer(
                 quote!(.map(|v| v.copied()))
             };
 
-            let arrow_type = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
-            let arrow_type = format_ident!("{arrow_type}Array");
+            let quoted_downcast = {
+                let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
+                let cast_as = format_ident!("{cast_as}Array");
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+            };
+
             quote! {
-                #data_src
-                    .as_any()
-                    .downcast_ref::<#arrow_type>()
-                    .unwrap() // safe
-                    .into_iter()
+                #quoted_downcast?
+                    .into_iter() // NOTE: automatically checks the bitmap on our behalf
                     #quoted_transparent_unmapping
             }
         }
@@ -2395,8 +2389,13 @@ fn quote_arrow_field_deserializer(
                 quote!(.map(|v| v.map(crate::ArrowString)))
             };
 
+            let quoted_downcast = {
+                let cast_as = quote!(::arrow2::array::Utf8Array<i32>);
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+            };
+
             quote! {{
-                let downcast = #data_src.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                let downcast = #quoted_downcast?;
                 let offsets = downcast.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     offsets.iter().zip(offsets.lengths()),
@@ -2438,12 +2437,13 @@ fn quote_arrow_field_deserializer(
                 quote!()
             };
 
-            quote! {{
-                let #data_src = #data_src
-                    .as_any()
-                    .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                    .unwrap(); // safe
+            let quoted_downcast = {
+                let cast_as = quote!(::arrow2::array::FixedSizeListArray);
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+            };
 
+            quote! {{
+                let #data_src = #quoted_downcast?;
                 if #data_src.is_empty() {
                     // NOTE: The outer container is empty and so we already know that the end result
                     // is also going to be an empty vec.
@@ -2504,12 +2504,13 @@ fn quote_arrow_field_deserializer(
                 data_src,
             );
 
-            quote! {{
-                let #data_src = #data_src
-                    .as_any()
-                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                    .unwrap(); // safe
+            let quoted_downcast = {
+                let cast_as = quote!(::arrow2::array::ListArray<i32>);
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+            };
 
+            quote! {{
+                let #data_src = #quoted_downcast?;
                 if #data_src.is_empty() {
                     // NOTE: The outer container is empty and so we already know that the end result
                     // is also going to be an empty vec.
@@ -2573,6 +2574,32 @@ fn quote_arrow_field_deserializer(
         }
 
         _ => unimplemented!("{datatype:#?}"),
+    }
+}
+
+/// Generates tokens that downcast the given array `arr` as `typ`, making sure to inject proper error handling.
+fn quote_array_downcast(
+    location: impl AsRef<str>,
+    arr: &proc_macro2::Ident,
+    cast_as: impl quote::ToTokens,
+    expected_datatype: &DataType,
+) -> TokenStream {
+    let location = location.as_ref();
+    let cast_as = cast_as.to_token_stream();
+    let expected = ArrowDataTypeTokenizer(expected_datatype, false);
+    quote! {
+        #arr
+            .as_any()
+            .downcast_ref::<#cast_as>()
+            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                expected: #expected,
+                got: #arr.data_type().clone(),
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            })
+            .map_err(|err| crate::DeserializationError::Context {
+                location: #location.into(),
+                source: Box::new(err),
+            })
     }
 }
 

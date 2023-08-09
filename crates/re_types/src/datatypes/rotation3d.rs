@@ -253,7 +253,31 @@ impl crate::Loggable for Rotation3D {
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
                 .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
+                    expected: DataType::Union(
+                        vec![
+                            Field {
+                                name: "_null_markers".to_owned(),
+                                data_type: DataType::Null,
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "Quaternion".to_owned(),
+                                data_type: <crate::datatypes::Quaternion>::to_arrow_datatype(),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "AxisAngle".to_owned(),
+                                data_type: <crate::datatypes::RotationAxisAngle>::to_arrow_datatype(
+                                ),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ],
+                        Some(vec![0i32, 1i32, 2i32]),
+                        UnionMode::Dense,
+                    ),
                     got: data.data_type().clone(),
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
@@ -272,7 +296,23 @@ impl crate::Loggable for Rotation3D {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .unwrap();
+                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                                expected: DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    4usize,
+                                ),
+                                got: data.data_type().clone(),
+                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            })
+                            .map_err(|err| crate::DeserializationError::Context {
+                                location: "rerun.datatypes.Rotation3D#Quaternion".into(),
+                                source: Box::new(err),
+                            })?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
@@ -284,7 +324,15 @@ impl crate::Loggable for Rotation3D {
                             let data = data
                                 .as_any()
                                 .downcast_ref::<Float32Array>()
-                                .unwrap()
+                                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                                    expected: DataType::Float32,
+                                    got: data.data_type().clone(),
+                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                })
+                                .map_err(|err| crate::DeserializationError::Context {
+                                    location: "rerun.datatypes.Rotation3D#Quaternion".into(),
+                                    source: Box::new(err),
+                                })?
                                 .into_iter()
                                 .map(|v| v.copied())
                                 .map(|v| {

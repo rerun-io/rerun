@@ -104,7 +104,15 @@ impl crate::Loggable for InstanceKey {
         Ok(data
             .as_any()
             .downcast_ref::<UInt64Array>()
-            .unwrap()
+            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                expected: DataType::UInt64,
+                got: data.data_type().clone(),
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            })
+            .map_err(|err| crate::DeserializationError::Context {
+                location: "rerun.components.InstanceKey#value".into(),
+                source: Box::new(err),
+            })?
             .into_iter()
             .map(|v| v.copied())
             .map(|v| {

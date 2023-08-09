@@ -189,7 +189,20 @@ impl crate::Loggable for KeypointPair {
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
+                    expected: DataType::Struct(vec![
+                        Field {
+                            name: "keypoint0".to_owned(),
+                            data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                        Field {
+                            name: "keypoint1".to_owned(),
+                            data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                    ]),
                     got: data.data_type().clone(),
                     backtrace: ::backtrace::Backtrace::new_unresolved(),
                 })
@@ -212,7 +225,15 @@ impl crate::Loggable for KeypointPair {
                     let data = &**arrays_by_name["keypoint0"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
-                        .unwrap()
+                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                            expected: DataType::UInt16,
+                            got: data.data_type().clone(),
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.KeypointPair#keypoint0".into(),
+                            source: Box::new(err),
+                        })?
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::KeypointId(*v)))
                 };
@@ -220,7 +241,15 @@ impl crate::Loggable for KeypointPair {
                     let data = &**arrays_by_name["keypoint1"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
-                        .unwrap()
+                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
+                            expected: DataType::UInt16,
+                            got: data.data_type().clone(),
+                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        })
+                        .map_err(|err| crate::DeserializationError::Context {
+                            location: "rerun.datatypes.KeypointPair#keypoint1".into(),
+                            source: Box::new(err),
+                        })?
                         .into_iter()
                         .map(|opt| opt.map(|v| crate::components::KeypointId(*v)))
                 };
