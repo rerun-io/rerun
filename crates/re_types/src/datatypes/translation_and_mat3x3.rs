@@ -397,7 +397,11 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                 })
                                 .transpose()
                             })
-                            .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec3D(v))
+                                })
+                            })
                             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
@@ -470,7 +474,11 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                 })
                                 .transpose()
                             })
-                            .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Mat3x3(v))))
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Mat3x3(v))
+                                })
+                            })
                             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()

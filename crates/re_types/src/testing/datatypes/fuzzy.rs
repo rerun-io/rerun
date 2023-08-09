@@ -931,7 +931,9 @@ impl crate::Loggable for AffixFuzzer1 {
                             })
                             .transpose()
                         })
-                        .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                        })
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
                         .with_context(
                             "rerun.testing.datatypes.AffixFuzzer1#single_string_required",
@@ -977,7 +979,9 @@ impl crate::Loggable for AffixFuzzer1 {
                             })
                             .transpose()
                         })
-                        .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                        })
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
                         .with_context(
                             "rerun.testing.datatypes.AffixFuzzer1#single_string_optional",
@@ -1123,7 +1127,10 @@ impl crate::Loggable for AffixFuzzer1 {
                                                 })
                                                 .transpose()
                                         })
-                                        .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+                                        .map(|res_or_opt| {
+                                            res_or_opt
+                                                .map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                                        })
                                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
                                         .with_context(
                                             "rerun.testing.datatypes.AffixFuzzer1#many_strings_required",
@@ -1233,7 +1240,10 @@ impl crate::Loggable for AffixFuzzer1 {
                                                 })
                                                 .transpose()
                                         })
-                                        .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+                                        .map(|res_or_opt| {
+                                            res_or_opt
+                                                .map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                                        })
                                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
                                         .with_context(
                                             "rerun.testing.datatypes.AffixFuzzer1#many_strings_optional",
@@ -3325,9 +3335,9 @@ impl crate::Loggable for AffixFuzzer20 {
                             })
                             .transpose()
                         })
-                        .map(|res| {
-                            res.map(|opt| {
-                                opt.map(|v| {
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| {
                                     crate::testing::components::StringComponent(crate::ArrowString(
                                         v,
                                     ))

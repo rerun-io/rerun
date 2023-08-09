@@ -305,7 +305,11 @@ impl crate::Loggable for RotationAxisAngle {
                                 })
                                 .transpose()
                             })
-                            .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec3D(v))
+                                })
+                            })
                             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()

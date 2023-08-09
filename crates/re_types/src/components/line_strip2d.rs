@@ -288,7 +288,11 @@ impl crate::Loggable for LineStrip2D {
                                 })
                                 .transpose()
                             })
-                            .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec2D(v))))
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec2D(v))
+                                })
+                            })
                             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()

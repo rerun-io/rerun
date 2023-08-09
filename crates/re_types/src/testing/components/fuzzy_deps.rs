@@ -274,7 +274,9 @@ impl crate::Loggable for StringComponent {
                 })
                 .transpose()
             })
-            .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
+            .map(|res_or_opt| {
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+            })
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.testing.components.StringComponent#value")?
             .into_iter()
