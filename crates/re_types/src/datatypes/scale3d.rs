@@ -275,7 +275,9 @@ impl crate::Loggable for Scale3D {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () ; let mut arr = [Default :: default () ; 3usize];
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
+
+ ; let mut arr = [Default :: default () ; 3usize];
 
  arr . copy_from_slice (data) ; Ok (arr) }
 
@@ -318,7 +320,10 @@ impl crate::Loggable for Scale3D {
                                         });
                                     }
 
-                                    three_d.get(offset as usize).unwrap().clone().unwrap()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { three_d.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .unwrap()
                                 }),
                                 2i8 => Scale3D::Uniform({
                                     if offset as usize >= uniform.len() {
@@ -333,7 +338,10 @@ impl crate::Loggable for Scale3D {
                                         });
                                     }
 
-                                    uniform.get(offset as usize).unwrap().clone().unwrap()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { uniform.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .unwrap()
                                 }),
                                 _ => unreachable!(),
                             }))

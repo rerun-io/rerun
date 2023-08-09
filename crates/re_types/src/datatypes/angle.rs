@@ -266,7 +266,10 @@ impl crate::Loggable for Angle {
                                         });
                                     }
 
-                                    radians.get(offset as usize).unwrap().clone().unwrap()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { radians.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .unwrap()
                                 }),
                                 2i8 => Angle::Degrees({
                                     if offset as usize >= degrees.len() {
@@ -281,7 +284,10 @@ impl crate::Loggable for Angle {
                                         });
                                     }
 
-                                    degrees.get(offset as usize).unwrap().clone().unwrap()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { degrees.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .unwrap()
                                 }),
                                 _ => unreachable!(),
                             }))

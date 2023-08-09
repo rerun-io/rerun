@@ -268,7 +268,9 @@ impl crate::Loggable for Transform3D {
 
 ) ; }
 
- translation_and_mat_3_x_3 . get (offset as usize) . unwrap () . clone () . unwrap () }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { translation_and_mat_3_x_3 . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
 
 ) , 2i8 => Transform3D :: TranslationRotationScale ({ if offset as usize >= translation_rotation_scale . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : translation_rotation_scale . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -276,7 +278,9 @@ impl crate::Loggable for Transform3D {
 
 ) ; }
 
- translation_rotation_scale . get (offset as usize) . unwrap () . clone () . unwrap () }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { translation_rotation_scale . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
 
 ) , _ => unreachable ! () , }
 

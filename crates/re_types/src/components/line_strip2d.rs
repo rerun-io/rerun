@@ -258,7 +258,10 @@ impl crate::Loggable for LineStrip2D {
                                             );
                                         }
 
-                                        let data = data.get(start as usize..end as usize).unwrap();
+                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data = unsafe {
+                                            data.get_unchecked(start as usize..end as usize)
+                                        };
                                         let mut arr = [Default::default(); 2usize];
 
                                         arr.copy_from_slice(data);
@@ -292,7 +295,10 @@ impl crate::Loggable for LineStrip2D {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
                                 Ok(data)
                             })
                             .transpose()

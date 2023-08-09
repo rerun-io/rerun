@@ -183,7 +183,9 @@ impl crate::Loggable for Mat3x3 {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data =
+                                    unsafe { data.get_unchecked(start as usize..end as usize) };
                                 let mut arr = [Default::default(); 9usize];
 
                                 arr.copy_from_slice(data);

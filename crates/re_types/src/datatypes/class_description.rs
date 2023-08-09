@@ -351,7 +351,9 @@ impl crate::Loggable for ClassDescription {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () . to_vec () ; Ok (data) }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -378,7 +380,9 @@ impl crate::Loggable for ClassDescription {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () . to_vec () ; Ok (data) }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 

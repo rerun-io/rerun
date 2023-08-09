@@ -2171,9 +2171,10 @@ fn quote_arrow_deserializer(
                                     source: Box::new(err),
                                 });
                             }
-                            #quoted_obj_field_name
-                                .get(offset as usize)
-                                .unwrap() // safe: checked above
+
+                            // Safety: all checked above.
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            unsafe { #quoted_obj_field_name.get_unchecked(offset as usize) }
                                 .clone()
                                 #quoted_unwrap
                         })
@@ -2406,7 +2407,9 @@ fn quote_arrow_field_deserializer(
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                                     });
                                 }
-                                let data = data.get(start as usize .. end as usize).unwrap(); // safe: checked above
+                                // Safety: all checked above.
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data.get_unchecked(start as usize .. end as usize) };
 
                                 let mut arr = [Default::default(); #length];
                                 arr.copy_from_slice(data);
@@ -2474,9 +2477,9 @@ fn quote_arrow_field_deserializer(
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
                                     });
                                 }
-                                let data = data.get(start as usize .. end as usize)
-                                    .unwrap() // safe: checked above
-                                    .to_vec();
+                                // Safety: all checked above.
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data.get_unchecked(start as usize .. end as usize).to_vec() };
 
                                 Ok(data)
                             }).transpose()

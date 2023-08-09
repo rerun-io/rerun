@@ -244,7 +244,9 @@ impl crate::Loggable for RotationAxisAngle {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () ; let mut arr = [Default :: default () ; 3usize];
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
+
+ ; let mut arr = [Default :: default () ; 3usize];
 
  arr . copy_from_slice (data) ; Ok (arr) }
 

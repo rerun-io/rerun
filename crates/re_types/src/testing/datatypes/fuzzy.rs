@@ -911,7 +911,9 @@ impl crate::Loggable for AffixFuzzer1 {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () . to_vec () ; Ok (data) }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -938,7 +940,9 @@ impl crate::Loggable for AffixFuzzer1 {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () . to_vec () ; Ok (data) }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -965,7 +969,9 @@ impl crate::Loggable for AffixFuzzer1 {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () . to_vec () ; Ok (data) }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -1411,7 +1417,9 @@ impl crate::Loggable for AffixFuzzer3 {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () . to_vec () ; Ok (data) }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -1430,7 +1438,9 @@ impl crate::Loggable for AffixFuzzer3 {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () ; let mut arr = [Default :: default () ; 3usize];
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
+
+ ; let mut arr = [Default :: default () ; 3usize];
 
  arr . copy_from_slice (data) ; Ok (arr) }
 
@@ -1450,7 +1460,9 @@ impl crate::Loggable for AffixFuzzer3 {
 
 ) ; }
 
- degrees . get (offset as usize) . unwrap () . clone () . unwrap () }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { degrees . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
 
 ) , 2i8 => AffixFuzzer3 :: Radians ({ if offset as usize >= radians . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : radians . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -1458,7 +1470,9 @@ impl crate::Loggable for AffixFuzzer3 {
 
 ) ; }
 
- radians . get (offset as usize) . unwrap () . clone () }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { radians . get_unchecked (offset as usize) }
+
+ . clone () }
 
 ) , 3i8 => AffixFuzzer3 :: Craziness ({ if offset as usize >= craziness . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : craziness . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -1466,7 +1480,9 @@ impl crate::Loggable for AffixFuzzer3 {
 
 ) ; }
 
- craziness . get (offset as usize) . unwrap () . clone () . unwrap () }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { craziness . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
 
 ) , 4i8 => AffixFuzzer3 :: FixedSizeShenanigans ({ if offset as usize >= fixed_size_shenanigans . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : fixed_size_shenanigans . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -1474,7 +1490,9 @@ impl crate::Loggable for AffixFuzzer3 {
 
 ) ; }
 
- fixed_size_shenanigans . get (offset as usize) . unwrap () . clone () . unwrap () }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { fixed_size_shenanigans . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
 
 ) , _ => unreachable ! () , }
 
@@ -1722,7 +1740,9 @@ impl crate::Loggable for AffixFuzzer4 {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () . to_vec () ; Ok (data) }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -1745,7 +1765,9 @@ impl crate::Loggable for AffixFuzzer4 {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () . to_vec () ; Ok (data) }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
+
+ ; Ok (data) }
 
 ) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
 
@@ -1763,7 +1785,9 @@ impl crate::Loggable for AffixFuzzer4 {
 
 ) ; }
 
- single_required . get (offset as usize) . unwrap () . clone () . unwrap () }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { single_required . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
 
 ) , 2i8 => AffixFuzzer4 :: ManyRequired ({ if offset as usize >= many_required . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_required . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -1771,7 +1795,9 @@ impl crate::Loggable for AffixFuzzer4 {
 
 ) ; }
 
- many_required . get (offset as usize) . unwrap () . clone () . unwrap () }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { many_required . get_unchecked (offset as usize) }
+
+ . clone () . unwrap () }
 
 ) , 3i8 => AffixFuzzer4 :: ManyOptional ({ if offset as usize >= many_optional . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (offset as usize , offset as usize) , len : many_optional . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
@@ -1779,7 +1805,9 @@ impl crate::Loggable for AffixFuzzer4 {
 
 ) ; }
 
- many_optional . get (offset as usize) . unwrap () . clone () }
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] unsafe { many_optional . get_unchecked (offset as usize) }
+
+ . clone () }
 
 ) , _ => unreachable ! () , }
 

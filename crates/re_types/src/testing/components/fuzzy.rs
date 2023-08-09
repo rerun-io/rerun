@@ -1344,7 +1344,10 @@ impl crate::Loggable for AffixFuzzer7 {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
                                 Ok(data)
                             })
                             .transpose()
@@ -1958,7 +1961,10 @@ impl crate::Loggable for AffixFuzzer11 {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
                                 Ok(data)
                             })
                             .transpose()
@@ -2186,7 +2192,10 @@ impl crate::Loggable for AffixFuzzer12 {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
                                 Ok(data)
                             })
                             .transpose()
@@ -2420,7 +2429,10 @@ impl crate::Loggable for AffixFuzzer13 {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
                                 Ok(data)
                             })
                             .transpose()
@@ -2971,7 +2983,10 @@ impl crate::Loggable for AffixFuzzer16 {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
                                 Ok(data)
                             })
                             .transpose()
@@ -3186,7 +3201,10 @@ impl crate::Loggable for AffixFuzzer17 {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
                                 Ok(data)
                             })
                             .transpose()
@@ -3397,7 +3415,10 @@ impl crate::Loggable for AffixFuzzer18 {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
                                 Ok(data)
                             })
                             .transpose()

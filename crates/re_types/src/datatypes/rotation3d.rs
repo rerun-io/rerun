@@ -278,7 +278,9 @@ impl crate::Loggable for Rotation3D {
 
 ) ; }
 
- let data = data . get (start as usize .. end as usize) . unwrap () ; let mut arr = [Default :: default () ; 4usize];
+ # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
+
+ ; let mut arr = [Default :: default () ; 4usize];
 
  arr . copy_from_slice (data) ; Ok (arr) }
 
@@ -323,7 +325,10 @@ impl crate::Loggable for Rotation3D {
                                         });
                                     }
 
-                                    quaternion.get(offset as usize).unwrap().clone().unwrap()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { quaternion.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .unwrap()
                                 }),
                                 2i8 => Rotation3D::AxisAngle({
                                     if offset as usize >= axis_angle.len() {
@@ -338,7 +343,10 @@ impl crate::Loggable for Rotation3D {
                                         });
                                     }
 
-                                    axis_angle.get(offset as usize).unwrap().clone().unwrap()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { axis_angle.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .unwrap()
                                 }),
                                 _ => unreachable!(),
                             }))

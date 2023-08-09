@@ -169,7 +169,10 @@ impl crate::Loggable for AnnotationContext {
                                     });
                                 }
 
-                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe {
+                                    data.get_unchecked(start as usize..end as usize).to_vec()
+                                };
                                 Ok(data)
                             })
                             .transpose()
