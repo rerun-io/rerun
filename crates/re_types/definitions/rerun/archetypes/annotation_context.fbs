@@ -26,6 +26,12 @@ namespace rerun.archetypes;
 /// \rs ```ignore
 /// \rs \include:../../../../../docs/code-examples/annotation_context_rects.rs
 /// \rs ```
+///
+/// \cpp ## Example
+/// \cpp
+/// \cpp ```
+/// \cpp \include:../../../../../docs/code-examples/annotation_context_arrows_v2.cpp
+/// \cpp ```
 table AnnotationContext (
   "attr.rust.derive": "Eq, PartialEq",
   order: 100
