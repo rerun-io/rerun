@@ -42,8 +42,11 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
                 } else {
                     "<UNKNOWN>".to_owned()
                 };
-                if ui
-                    .radio(active_recording == Some(store_db.store_id()), info)
+                if ctx
+                    .re_ui
+                    .list_item(info)
+                    .selected(active_recording == Some(store_db.store_id()))
+                    .show(ui)
                     .clicked()
                 {
                     command_sender

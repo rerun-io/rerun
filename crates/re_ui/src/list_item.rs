@@ -1,5 +1,5 @@
 use crate::{Icon, ReUi};
-use egui::{Response, Shape, Ui};
+use egui::{NumExt, Response, Shape, Ui};
 
 #[allow(clippy::type_complexity)]
 pub struct ListItem<'a> {
@@ -45,6 +45,10 @@ impl<'a> ListItem<'a> {
         self.buttons = Some(Box::new(buttons));
         self
     }
+
+    pub fn show(self, ui: &mut Ui) -> Response {
+        ui.add(self)
+    }
 }
 
 impl egui::Widget for ListItem<'_> {
@@ -64,7 +68,8 @@ impl egui::Widget for ListItem<'_> {
                 .clone()
                 .into_galley(ui, Some(false), wrap_width, egui::TextStyle::Button);
 
-        let desired_size = egui::vec2(ui.available_width(), ReUi::list_item_height());
+        let desired_size = (padding_extra + text.size() + egui::vec2(icon_extra, 0.0))
+            .at_least(egui::vec2(ui.available_width(), ReUi::list_item_height()));
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
 
         response.widget_info(|| {
