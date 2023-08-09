@@ -26,16 +26,6 @@ namespace rerun {
             AnnotationInfo(uint16_t _id, components::Color _color)
                 : id(_id), label(std::nullopt), color(_color) {}
 
-            AnnotationInfo(std::pair<uint16_t, std::string> id_and_label)
-                : id(id_and_label.first),
-                  label(std::move(id_and_label.second)),
-                  color(std::nullopt) {}
-
-            AnnotationInfo(std::pair<uint16_t, components::Color> id_and_color)
-                : id(id_and_color.first),
-                  label(std::nullopt),
-                  color(std::move(id_and_color.second)) {}
-
             // [CODEGEN COPY TO HEADER END]
         };
 #endif
