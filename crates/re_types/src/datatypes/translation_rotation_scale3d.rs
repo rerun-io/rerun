@@ -328,6 +328,38 @@ impl crate::Loggable for TranslationRotationScale3D {
                     .zip(data_arrays)
                     .collect();
                 let translation = {
+                    if !arrays_by_name.contains_key("translation") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "translation".to_owned(),
+                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "rotation".to_owned(),
+                                    data_type: <crate::datatypes::Rotation3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "scale".to_owned(),
+                                    data_type: <crate::datatypes::Scale3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "from_parent".to_owned(),
+                                    data_type: DataType::Boolean,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "translation",
+                        ))
+                        .with_context("rerun.datatypes.TranslationRotationScale3D");
+                    }
                     let data = &**arrays_by_name["translation"];
                     {
                         let data = data
@@ -370,7 +402,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                                         "rerun.datatypes.TranslationRotationScale3D#translation",
                                     )?
                                     .into_iter()
-                                    .map(|opt| opt.map(|v| *v))
+                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                                 };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -408,18 +440,114 @@ impl crate::Loggable for TranslationRotationScale3D {
                     }
                 };
                 let rotation = {
+                    if !arrays_by_name.contains_key("rotation") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "translation".to_owned(),
+                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "rotation".to_owned(),
+                                    data_type: <crate::datatypes::Rotation3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "scale".to_owned(),
+                                    data_type: <crate::datatypes::Scale3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "from_parent".to_owned(),
+                                    data_type: DataType::Boolean,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "rotation",
+                        ))
+                        .with_context("rerun.datatypes.TranslationRotationScale3D");
+                    }
                     let data = &**arrays_by_name["rotation"];
                     crate::datatypes::Rotation3D::try_from_arrow_opt(data)
                         .with_context("rerun.datatypes.TranslationRotationScale3D#rotation")?
                         .into_iter()
                 };
                 let scale = {
+                    if !arrays_by_name.contains_key("scale") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "translation".to_owned(),
+                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "rotation".to_owned(),
+                                    data_type: <crate::datatypes::Rotation3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "scale".to_owned(),
+                                    data_type: <crate::datatypes::Scale3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "from_parent".to_owned(),
+                                    data_type: DataType::Boolean,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "scale",
+                        ))
+                        .with_context("rerun.datatypes.TranslationRotationScale3D");
+                    }
                     let data = &**arrays_by_name["scale"];
                     crate::datatypes::Scale3D::try_from_arrow_opt(data)
                         .with_context("rerun.datatypes.TranslationRotationScale3D#scale")?
                         .into_iter()
                 };
                 let from_parent = {
+                    if !arrays_by_name.contains_key("from_parent") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "translation".to_owned(),
+                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "rotation".to_owned(),
+                                    data_type: <crate::datatypes::Rotation3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "scale".to_owned(),
+                                    data_type: <crate::datatypes::Scale3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "from_parent".to_owned(),
+                                    data_type: DataType::Boolean,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "from_parent",
+                        ))
+                        .with_context("rerun.datatypes.TranslationRotationScale3D");
+                    }
                     let data = &**arrays_by_name["from_parent"];
                     data.as_any()
                         .downcast_ref::<BooleanArray>()

@@ -153,6 +153,18 @@ impl crate::Loggable for FlattenedScalar {
                     .zip(data_arrays)
                     .collect();
                 let value = {
+                    if !arrays_by_name.contains_key("value") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![Field {
+                                name: "value".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            }]),
+                            "value",
+                        ))
+                        .with_context("rerun.testing.datatypes.FlattenedScalar");
+                    }
                     let data = &**arrays_by_name["value"];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
@@ -164,7 +176,7 @@ impl crate::Loggable for FlattenedScalar {
                         })
                         .with_context("rerun.testing.datatypes.FlattenedScalar#value")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(value),
@@ -880,6 +892,47 @@ impl crate::Loggable for AffixFuzzer1 {
                     .zip(data_arrays)
                     .collect();
                 let single_float_optional = {
+                    if !arrays_by_name.contains_key("single_float_optional") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "single_float_optional",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["single_float_optional"];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
@@ -891,9 +944,50 @@ impl crate::Loggable for AffixFuzzer1 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer1#single_float_optional")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                 };
                 let single_string_required = {
+                    if !arrays_by_name.contains_key("single_string_required") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "single_string_required",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["single_string_required"];
                     {
                         let data = data
@@ -942,6 +1036,47 @@ impl crate::Loggable for AffixFuzzer1 {
                     }
                 };
                 let single_string_optional = {
+                    if !arrays_by_name.contains_key("single_string_optional") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "single_string_optional",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["single_string_optional"];
                     {
                         let data = data
@@ -990,6 +1125,47 @@ impl crate::Loggable for AffixFuzzer1 {
                     }
                 };
                 let many_floats_optional = {
+                    if !arrays_by_name.contains_key("many_floats_optional") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "many_floats_optional",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["many_floats_optional"];
                     {
                         let data = data
@@ -1026,7 +1202,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                         "rerun.testing.datatypes.AffixFuzzer1#many_floats_optional",
                                     )?
                                     .into_iter()
-                                    .map(|opt| opt.map(|v| *v))
+                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                                 };
                             let offsets = data.offsets();
@@ -1064,6 +1240,47 @@ impl crate::Loggable for AffixFuzzer1 {
                     }
                 };
                 let many_strings_required = {
+                    if !arrays_by_name.contains_key("many_strings_required") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "many_strings_required",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["many_strings_required"];
                     {
                         let data = data
@@ -1177,6 +1394,47 @@ impl crate::Loggable for AffixFuzzer1 {
                     }
                 };
                 let many_strings_optional = {
+                    if !arrays_by_name.contains_key("many_strings_optional") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "many_strings_optional",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["many_strings_optional"];
                     {
                         let data = data
@@ -1290,6 +1548,47 @@ impl crate::Loggable for AffixFuzzer1 {
                     }
                 };
                 let flattened_scalar = {
+                    if !arrays_by_name.contains_key("flattened_scalar") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "flattened_scalar",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["flattened_scalar"];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
@@ -1301,9 +1600,50 @@ impl crate::Loggable for AffixFuzzer1 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer1#flattened_scalar")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                 };
                 let almost_flattened_scalar = {
+                    if !arrays_by_name.contains_key("almost_flattened_scalar") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "almost_flattened_scalar",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["almost_flattened_scalar"];
                     crate::testing::datatypes::FlattenedScalar::try_from_arrow_opt(data)
                         .with_context(
@@ -1312,6 +1652,47 @@ impl crate::Loggable for AffixFuzzer1 {
                         .into_iter()
                 };
                 let from_parent = {
+                    if !arrays_by_name.contains_key("from_parent") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "from_parent",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["from_parent"];
                     data.as_any()
                         .downcast_ref::<BooleanArray>()
@@ -1500,7 +1881,7 @@ impl crate::Loggable for AffixFuzzer2 {
             })
             .with_context("rerun.testing.datatypes.AffixFuzzer2#single_float_optional")?
             .into_iter()
-            .map(|opt| opt.map(|v| *v))
+            .map(|opt| opt.copied())
             .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
@@ -1969,7 +2350,7 @@ impl crate::Loggable for AffixFuzzer3 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer3#degrees")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 let radians = {
@@ -1984,7 +2365,7 @@ impl crate::Loggable for AffixFuzzer3 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer3#radians")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 let craziness = {
@@ -2099,7 +2480,7 @@ impl crate::Loggable for AffixFuzzer3 {
                                         "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
                                     )?
                                     .into_iter()
-                                    .map(|opt| opt.map(|v| *v))
+                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -3026,6 +3407,19 @@ impl crate::Loggable for AffixFuzzer5 {
                     .zip(data_arrays)
                     .collect();
                 let single_optional_union = {
+                    if !arrays_by_name.contains_key("single_optional_union") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![Field {
+                                name: "single_optional_union".to_owned(),
+                                data_type:
+                                    <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            }]),
+                            "single_optional_union",
+                        ))
+                        .with_context("rerun.testing.datatypes.AffixFuzzer5");
+                    }
                     let data = &**arrays_by_name["single_optional_union"];
                     crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
                         .with_context("rerun.testing.datatypes.AffixFuzzer5#single_optional_union")?
@@ -3286,6 +3680,25 @@ impl crate::Loggable for AffixFuzzer20 {
                     .zip(data_arrays)
                     .collect();
                 let p = {
+                    if !arrays_by_name.contains_key("p") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "p".to_owned(), data_type : < crate
+                                            ::testing::components::PrimitiveComponent >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "s".to_owned(), data_type : <
+                                            crate ::testing::components::StringComponent >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), },
+                                        ],
+                                    ),
+                                    "p",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer20");
+                    }
                     let data = &**arrays_by_name["p"];
                     data.as_any()
                         .downcast_ref::<UInt32Array>()
@@ -3297,12 +3710,31 @@ impl crate::Loggable for AffixFuzzer20 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer20#p")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .map(|res_or_opt| {
                             res_or_opt.map(|v| crate::testing::components::PrimitiveComponent(v))
                         })
                 };
                 let s = {
+                    if !arrays_by_name.contains_key("s") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "p".to_owned(), data_type : < crate
+                                            ::testing::components::PrimitiveComponent >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "s".to_owned(), data_type : <
+                                            crate ::testing::components::StringComponent >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), },
+                                        ],
+                                    ),
+                                    "s",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer20");
+                    }
                     let data = &**arrays_by_name["s"];
                     {
                         let data = data

@@ -239,6 +239,26 @@ impl crate::Loggable for RotationAxisAngle {
                     .zip(data_arrays)
                     .collect();
                 let axis = {
+                    if !arrays_by_name.contains_key("axis") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "axis".to_owned(),
+                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "angle".to_owned(),
+                                    data_type: <crate::datatypes::Angle>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "axis",
+                        ))
+                        .with_context("rerun.datatypes.RotationAxisAngle");
+                    }
                     let data = &**arrays_by_name["axis"];
                     {
                         let data = data
@@ -278,7 +298,7 @@ impl crate::Loggable for RotationAxisAngle {
                                     })
                                     .with_context("rerun.datatypes.RotationAxisAngle#axis")?
                                     .into_iter()
-                                    .map(|opt| opt.map(|v| *v))
+                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -316,6 +336,26 @@ impl crate::Loggable for RotationAxisAngle {
                     }
                 };
                 let angle = {
+                    if !arrays_by_name.contains_key("angle") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "axis".to_owned(),
+                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "angle".to_owned(),
+                                    data_type: <crate::datatypes::Angle>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "angle",
+                        ))
+                        .with_context("rerun.datatypes.RotationAxisAngle");
+                    }
                     let data = &**arrays_by_name["angle"];
                     crate::datatypes::Angle::try_from_arrow_opt(data)
                         .with_context("rerun.datatypes.RotationAxisAngle#angle")?

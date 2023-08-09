@@ -329,6 +329,32 @@ impl crate::Loggable for TranslationAndMat3x3 {
                     .zip(data_arrays)
                     .collect();
                 let translation = {
+                    if !arrays_by_name.contains_key("translation") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "translation".to_owned(),
+                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "matrix".to_owned(),
+                                    data_type: <crate::datatypes::Mat3x3>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "from_parent".to_owned(),
+                                    data_type: DataType::Boolean,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "translation",
+                        ))
+                        .with_context("rerun.datatypes.TranslationAndMat3x3");
+                    }
                     let data = &**arrays_by_name["translation"];
                     {
                         let data = data
@@ -370,7 +396,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                         "rerun.datatypes.TranslationAndMat3x3#translation",
                                     )?
                                     .into_iter()
-                                    .map(|opt| opt.map(|v| *v))
+                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -408,6 +434,32 @@ impl crate::Loggable for TranslationAndMat3x3 {
                     }
                 };
                 let matrix = {
+                    if !arrays_by_name.contains_key("matrix") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "translation".to_owned(),
+                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "matrix".to_owned(),
+                                    data_type: <crate::datatypes::Mat3x3>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "from_parent".to_owned(),
+                                    data_type: DataType::Boolean,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "matrix",
+                        ))
+                        .with_context("rerun.datatypes.TranslationAndMat3x3");
+                    }
                     let data = &**arrays_by_name["matrix"];
                     {
                         let data = data
@@ -447,7 +499,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                     })
                                     .with_context("rerun.datatypes.TranslationAndMat3x3#matrix")?
                                     .into_iter()
-                                    .map(|opt| opt.map(|v| *v))
+                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -485,6 +537,32 @@ impl crate::Loggable for TranslationAndMat3x3 {
                     }
                 };
                 let from_parent = {
+                    if !arrays_by_name.contains_key("from_parent") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "translation".to_owned(),
+                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "matrix".to_owned(),
+                                    data_type: <crate::datatypes::Mat3x3>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "from_parent".to_owned(),
+                                    data_type: DataType::Boolean,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "from_parent",
+                        ))
+                        .with_context("rerun.datatypes.TranslationAndMat3x3");
+                    }
                     let data = &**arrays_by_name["from_parent"];
                     data.as_any()
                         .downcast_ref::<BooleanArray>()

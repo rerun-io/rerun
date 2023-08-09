@@ -218,6 +218,26 @@ impl crate::Loggable for KeypointPair {
                     .zip(data_arrays)
                     .collect();
                 let keypoint0 = {
+                    if !arrays_by_name.contains_key("keypoint0") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "keypoint0".to_owned(),
+                                    data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "keypoint1".to_owned(),
+                                    data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "keypoint0",
+                        ))
+                        .with_context("rerun.datatypes.KeypointPair");
+                    }
                     let data = &**arrays_by_name["keypoint0"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
@@ -229,10 +249,30 @@ impl crate::Loggable for KeypointPair {
                         })
                         .with_context("rerun.datatypes.KeypointPair#keypoint0")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(|v| crate::components::KeypointId(v)))
                 };
                 let keypoint1 = {
+                    if !arrays_by_name.contains_key("keypoint1") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "keypoint0".to_owned(),
+                                    data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "keypoint1".to_owned(),
+                                    data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "keypoint1",
+                        ))
+                        .with_context("rerun.datatypes.KeypointPair");
+                    }
                     let data = &**arrays_by_name["keypoint1"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
@@ -244,7 +284,7 @@ impl crate::Loggable for KeypointPair {
                         })
                         .with_context("rerun.datatypes.KeypointPair#keypoint1")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(|v| crate::components::KeypointId(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(

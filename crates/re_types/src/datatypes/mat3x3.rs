@@ -182,7 +182,7 @@ impl crate::Loggable for Mat3x3 {
                         })
                         .with_context("rerun.datatypes.Mat3x3#coeffs")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, data.validity())

@@ -362,7 +362,7 @@ impl crate::Loggable for Scale3D {
                                     })
                                     .with_context("rerun.datatypes.Scale3D#ThreeD")?
                                     .into_iter()
-                                    .map(|opt| opt.map(|v| *v))
+                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -412,7 +412,7 @@ impl crate::Loggable for Scale3D {
                         })
                         .with_context("rerun.datatypes.Scale3D#Uniform")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 data_types

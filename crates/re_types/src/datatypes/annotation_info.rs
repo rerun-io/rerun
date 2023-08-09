@@ -287,6 +287,32 @@ impl crate::Loggable for AnnotationInfo {
                     .zip(data_arrays)
                     .collect();
                 let id = {
+                    if !arrays_by_name.contains_key("id") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "id".to_owned(),
+                                    data_type: DataType::UInt16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "label".to_owned(),
+                                    data_type: <crate::components::Label>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "color".to_owned(),
+                                    data_type: <crate::components::Color>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "id",
+                        ))
+                        .with_context("rerun.datatypes.AnnotationInfo");
+                    }
                     let data = &**arrays_by_name["id"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
@@ -298,9 +324,35 @@ impl crate::Loggable for AnnotationInfo {
                         })
                         .with_context("rerun.datatypes.AnnotationInfo#id")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                 };
                 let label = {
+                    if !arrays_by_name.contains_key("label") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "id".to_owned(),
+                                    data_type: DataType::UInt16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "label".to_owned(),
+                                    data_type: <crate::components::Label>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "color".to_owned(),
+                                    data_type: <crate::components::Color>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "label",
+                        ))
+                        .with_context("rerun.datatypes.AnnotationInfo");
+                    }
                     let data = &**arrays_by_name["label"];
                     {
                         let data = data
@@ -347,6 +399,32 @@ impl crate::Loggable for AnnotationInfo {
                     }
                 };
                 let color = {
+                    if !arrays_by_name.contains_key("color") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "id".to_owned(),
+                                    data_type: DataType::UInt16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "label".to_owned(),
+                                    data_type: <crate::components::Label>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "color".to_owned(),
+                                    data_type: <crate::components::Color>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "color",
+                        ))
+                        .with_context("rerun.datatypes.AnnotationInfo");
+                    }
                     let data = &**arrays_by_name["color"];
                     data.as_any()
                         .downcast_ref::<UInt32Array>()
@@ -358,7 +436,7 @@ impl crate::Loggable for AnnotationInfo {
                         })
                         .with_context("rerun.datatypes.AnnotationInfo#color")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(|v| crate::components::Color(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
