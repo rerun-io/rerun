@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct FlattenedScalar {
     pub value: f32,
 }
@@ -207,7 +207,7 @@ impl crate::Loggable for FlattenedScalar {
 
 impl crate::Datatype for FlattenedScalar {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
     pub single_string_required: crate::ArrowString,
@@ -1396,7 +1396,7 @@ impl crate::Loggable for AffixFuzzer1 {
 
 impl crate::Datatype for AffixFuzzer1 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer2(pub Option<f32>);
 
 impl<'a> From<AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
@@ -2867,7 +2867,7 @@ impl crate::Loggable for AffixFuzzer4 {
 
 impl crate::Datatype for AffixFuzzer4 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::testing::datatypes::AffixFuzzer4>,
 }
@@ -3064,7 +3064,7 @@ impl crate::Loggable for AffixFuzzer5 {
 
 impl crate::Datatype for AffixFuzzer5 {}
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AffixFuzzer20 {
     pub p: crate::testing::components::PrimitiveComponent,
     pub s: crate::testing::components::StringComponent,

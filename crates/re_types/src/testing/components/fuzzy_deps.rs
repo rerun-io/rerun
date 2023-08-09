@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct PrimitiveComponent(pub u32);
 
@@ -136,7 +136,7 @@ impl crate::Loggable for PrimitiveComponent {
 
 impl crate::Component for PrimitiveComponent {}
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct StringComponent(pub crate::ArrowString);
 
