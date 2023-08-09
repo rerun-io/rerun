@@ -1,3 +1,5 @@
+use itertools::Itertools as _;
+
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
@@ -125,6 +127,7 @@ impl Points2DPart {
                 arch_view
                     .iter_required_component::<Point2D>()?
                     .map(|pt| pt.into())
+                    .collect_vec()
             };
 
             let picking_instance_ids = arch_view
@@ -133,7 +136,7 @@ impl Points2DPart {
 
             let mut point_range_builder = point_batch.add_points_2d(
                 arch_view.num_instances(),
-                point_positions,
+                point_positions.iter().copied(),
                 radii,
                 colors,
                 picking_instance_ids,
@@ -156,16 +159,14 @@ impl Points2DPart {
                     }
                 }
             }
+
+            self.data.extend_bounding_box_with_points(
+                point_positions.iter().map(|p| p.extend(0.0)), // 2D->3D with Z=0
+                ent_context.world_from_obj,
+            );
         };
 
-        load_keypoint_connections(ent_context, ent_path, keypoints);
-
-        self.data.extend_bounding_box_with_points(
-            arch_view
-                .iter_required_component::<Point2D>()?
-                .map(|pt| pt.into()),
-            ent_context.world_from_obj,
-        );
+        load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         Ok(())
     }

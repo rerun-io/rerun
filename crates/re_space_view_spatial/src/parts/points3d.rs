@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
@@ -124,6 +125,7 @@ impl Points3DPart {
                 arch_view
                     .iter_required_component::<Point3D>()?
                     .map(glam::Vec3::from)
+                    .collect_vec()
             };
 
             let picking_instance_ids = arch_view
@@ -131,7 +133,7 @@ impl Points3DPart {
                 .map(picking_id_from_instance_key);
             let mut point_range_builder = point_batch.add_points(
                 arch_view.num_instances(),
-                point_positions,
+                point_positions.iter().copied(),
                 radii,
                 colors,
                 picking_instance_ids,
@@ -154,16 +156,14 @@ impl Points3DPart {
                     }
                 }
             }
+
+            self.data.extend_bounding_box_with_points(
+                point_positions.iter().copied(),
+                ent_context.world_from_obj,
+            );
         }
 
-        load_keypoint_connections(ent_context, ent_path, keypoints);
-
-        self.data.extend_bounding_box_with_points(
-            arch_view
-                .iter_required_component::<Point3D>()?
-                .map(glam::Vec3::from),
-            ent_context.world_from_obj,
-        );
+        load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         Ok(())
     }
