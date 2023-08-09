@@ -56,6 +56,7 @@ impl crate::Loggable for ClassDescription {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.ClassDescription".into()
@@ -323,7 +324,6 @@ impl crate::Loggable for ClassDescription {
                     .collect();
                 let info = {
                     let data = &**arrays_by_name["info"];
-
                     crate::datatypes::AnnotationInfo::try_from_arrow_opt(data)
                         .map_err(|err| crate::DeserializationError::Context {
                             location: "rerun.datatypes.ClassDescription#info".into(),
@@ -333,79 +333,163 @@ impl crate::Loggable for ClassDescription {
                 };
                 let keypoint_annotations = {
                     let data = &**arrays_by_name["keypoint_annotations"];
-
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .unwrap();
-                        if data . is_empty () { Vec :: new () }
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = crate::datatypes::AnnotationInfo::try_from_arrow_opt(
+                                    data,
+                                )
+                                .map_err(|err| crate::DeserializationError::Context {
+                                    location: "rerun.datatypes.ClassDescription#keypoint_annotations"
+                                        .into(),
+                                    source: Box::new(err),
+                                })?
+                                .into_iter()
+                                .map(|v| {
+                                    v
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                })
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            if end as usize > data.len() {
+                                                return Err(crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                                });
+                                            }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
-
- ; let data = & * * data . values () ; let data = crate :: datatypes :: AnnotationInfo :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#keypoint_annotations" . into () , source : Box :: new (err) , }
-
-) ? . into_iter () . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ; }
-
- # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
-
- ; Ok (data) }
-
-) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter ()
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                data.get_unchecked(start as usize..end as usize).to_vec()
+                                            };
+                                            Ok(data)
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                            .into_iter()
                     }
                 };
                 let keypoint_connections = {
                     let data = &**arrays_by_name["keypoint_connections"];
-
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .unwrap();
-                        if data . is_empty () { Vec :: new () }
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = {
+                                let offsets = data.offsets();
+                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            };
+                            let data = &**data.values();
+                            let data = crate::datatypes::KeypointPair::try_from_arrow_opt(
+                                    data,
+                                )
+                                .map_err(|err| crate::DeserializationError::Context {
+                                    location: "rerun.datatypes.ClassDescription#keypoint_connections"
+                                        .into(),
+                                    source: Box::new(err),
+                                })?
+                                .into_iter()
+                                .map(|v| {
+                                    v
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                })
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            if end as usize > data.len() {
+                                                return Err(crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                                });
+                                            }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = { let offsets = data . offsets () ; offsets . iter () . copied () . zip (offsets . iter () . copied () . skip (1)) }
-
- ; let data = & * * data . values () ; let data = crate :: datatypes :: KeypointPair :: try_from_arrow_opt (data) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#keypoint_connections" . into () , source : Box :: new (err) , }
-
-) ? . into_iter () . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ; }
-
- # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) . to_vec () }
-
- ; Ok (data) }
-
-) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter ()
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                data.get_unchecked(start as usize..end as usize).to_vec()
+                                            };
+                                            Ok(data)
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                            .into_iter()
                     }
                 };
-                :: itertools :: izip ! (info , keypoint_annotations , keypoint_connections) . enumerate () . map (| (i , (info , keypoint_annotations , keypoint_connections)) | is_valid (i) . then (|| Ok (Self { info : info . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#info" . into () , source : Box :: new (err) , }
-
-) ? , keypoint_annotations : keypoint_annotations . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#keypoint_annotations" . into () , source : Box :: new (err) , }
-
-) ? , keypoint_connections : keypoint_connections . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription#keypoint_connections" . into () , source : Box :: new (err) , }
-
-) ? , }
-
-)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescription" . into () , source : Box :: new (err) , }
-
-) ?
+                ::itertools::izip!(info, keypoint_annotations, keypoint_connections)
+                    .enumerate()
+                    .map(|(i, (info, keypoint_annotations, keypoint_connections))| {
+                        is_valid(i)
+                            .then(|| Ok(Self {
+                                info: info
+                                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| crate::DeserializationError::Context {
+                                        location: "rerun.datatypes.ClassDescription#info".into(),
+                                        source: Box::new(err),
+                                    })?,
+                                keypoint_annotations: keypoint_annotations
+                                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| crate::DeserializationError::Context {
+                                        location: "rerun.datatypes.ClassDescription#keypoint_annotations"
+                                            .into(),
+                                        source: Box::new(err),
+                                    })?,
+                                keypoint_connections: keypoint_connections
+                                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| crate::DeserializationError::Context {
+                                        location: "rerun.datatypes.ClassDescription#keypoint_connections"
+                                            .into(),
+                                        source: Box::new(err),
+                                    })?,
+                            }))
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.ClassDescription".into(),
+                        source: Box::new(err),
+                    })?
             }
         })
     }

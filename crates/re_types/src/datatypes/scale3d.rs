@@ -40,6 +40,7 @@ impl crate::Loggable for Scale3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Scale3D".into()
@@ -217,13 +218,11 @@ impl crate::Loggable for Scale3D {
                                 nulls_offset += 1;
                                 offset
                             }
-
                             Some(Scale3D::ThreeD(_)) => {
                                 let offset = three_d_offset;
                                 three_d_offset += 1;
                                 offset
                             }
-
                             Some(Scale3D::Uniform(_)) => {
                                 let offset = uniform_offset;
                                 uniform_offset += 1;
@@ -266,28 +265,68 @@ impl crate::Loggable for Scale3D {
                     (data.types(), data.fields(), data.offsets().unwrap());
                 let three_d = {
                     let data = &*data_arrays[1usize];
+                    {
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .unwrap();
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = (0..)
+                                .step_by(3usize)
+                                .zip((3usize..).step_by(3usize).take(data.len()));
+                            let data = &**data.values();
+                            let data = data
+                                .as_any()
+                                .downcast_ref::<Float32Array>()
+                                .unwrap()
+                                .into_iter()
+                                .map(|v| v.copied())
+                                .map(|v| {
+                                    v
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                })
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            if end as usize > data.len() {
+                                                return Err(crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                                });
+                                            }
 
-                    { let data = data . as_any () . downcast_ref :: < :: arrow2 :: array :: FixedSizeListArray > () . unwrap () ; if data . is_empty () { Vec :: new () }
-
- else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ; }
-
- # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
-
- ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
-
-) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter () }
-
- . collect :: < Vec < _ >> ()
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                data.get_unchecked(start as usize..end as usize)
+                                            };
+                                            let arr = array_init::from_iter(data.iter().copied())
+                                                .unwrap();
+                                            Ok(arr)
+                                        })
+                                        .transpose()
+                                })
+                                .map(|res| {
+                                    res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v)))
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                            .into_iter()
+                    }
+                        .collect::<Vec<_>>()
                 };
                 let uniform = {
                     let data = &*data_arrays[2usize];
-
                     data.as_any()
                         .downcast_ref::<Float32Array>()
                         .unwrap()
@@ -300,7 +339,6 @@ impl crate::Loggable for Scale3D {
                     .enumerate()
                     .map(|(i, typ)| {
                         let offset = data_offsets[i];
-
                         if *typ == 0 {
                             Ok(None)
                         } else {

@@ -37,6 +37,7 @@ impl crate::Loggable for Angle {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Angle".into()
@@ -176,13 +177,11 @@ impl crate::Loggable for Angle {
                                 nulls_offset += 1;
                                 offset
                             }
-
                             Some(Angle::Radians(_)) => {
                                 let offset = radians_offset;
                                 radians_offset += 1;
                                 offset
                             }
-
                             Some(Angle::Degrees(_)) => {
                                 let offset = degrees_offset;
                                 degrees_offset += 1;
@@ -225,7 +224,6 @@ impl crate::Loggable for Angle {
                     (data.types(), data.fields(), data.offsets().unwrap());
                 let radians = {
                     let data = &*data_arrays[1usize];
-
                     data.as_any()
                         .downcast_ref::<Float32Array>()
                         .unwrap()
@@ -235,7 +233,6 @@ impl crate::Loggable for Angle {
                 };
                 let degrees = {
                     let data = &*data_arrays[2usize];
-
                     data.as_any()
                         .downcast_ref::<Float32Array>()
                         .unwrap()
@@ -248,7 +245,6 @@ impl crate::Loggable for Angle {
                     .enumerate()
                     .map(|(i, typ)| {
                         let offset = data_offsets[i];
-
                         if *typ == 0 {
                             Ok(None)
                         } else {

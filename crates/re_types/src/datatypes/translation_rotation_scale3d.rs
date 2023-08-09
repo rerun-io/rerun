@@ -49,6 +49,7 @@ impl crate::Loggable for TranslationRotationScale3D {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.TranslationRotationScale3D".into()
@@ -307,32 +308,67 @@ impl crate::Loggable for TranslationRotationScale3D {
                     .collect();
                 let translation = {
                     let data = &**arrays_by_name["translation"];
-
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                             .unwrap();
-                        if data . is_empty () { Vec :: new () }
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = (0..)
+                                .step_by(3usize)
+                                .zip((3usize..).step_by(3usize).take(data.len()));
+                            let data = &**data.values();
+                            let data = data
+                                .as_any()
+                                .downcast_ref::<Float32Array>()
+                                .unwrap()
+                                .into_iter()
+                                .map(|v| v.copied())
+                                .map(|v| {
+                                    v
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                })
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            if end as usize > data.len() {
+                                                return Err(crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                                });
+                                            }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ; }
-
- # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
-
- ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
-
-) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter ()
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                data.get_unchecked(start as usize..end as usize)
+                                            };
+                                            let arr = array_init::from_iter(data.iter().copied())
+                                                .unwrap();
+                                            Ok(arr)
+                                        })
+                                        .transpose()
+                                })
+                                .map(|res| {
+                                    res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v)))
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                            .into_iter()
                     }
                 };
                 let rotation = {
                     let data = &**arrays_by_name["rotation"];
-
                     crate::datatypes::Rotation3D::try_from_arrow_opt(data)
                         .map_err(|err| crate::DeserializationError::Context {
                             location: "rerun.datatypes.TranslationRotationScale3D#rotation".into(),
@@ -342,7 +378,6 @@ impl crate::Loggable for TranslationRotationScale3D {
                 };
                 let scale = {
                     let data = &**arrays_by_name["scale"];
-
                     crate::datatypes::Scale3D::try_from_arrow_opt(data)
                         .map_err(|err| crate::DeserializationError::Context {
                             location: "rerun.datatypes.TranslationRotationScale3D#scale".into(),
@@ -352,21 +387,36 @@ impl crate::Loggable for TranslationRotationScale3D {
                 };
                 let from_parent = {
                     let data = &**arrays_by_name["from_parent"];
-
                     data.as_any()
                         .downcast_ref::<BooleanArray>()
                         .unwrap()
                         .into_iter()
                 };
-                :: itertools :: izip ! (translation , rotation , scale , from_parent) . enumerate () . map (| (i , (translation , rotation , scale , from_parent)) | is_valid (i) . then (|| Ok (Self { translation , rotation , scale , from_parent : from_parent . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.TranslationRotationScale3D#from_parent" . into () , source : Box :: new (err) , }
-
-) ? , }
-
-)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.TranslationRotationScale3D" . into () , source : Box :: new (err) , }
-
-) ?
+                ::itertools::izip!(translation, rotation, scale, from_parent)
+                    .enumerate()
+                    .map(|(i, (translation, rotation, scale, from_parent))| {
+                        is_valid(i)
+                            .then(|| Ok(Self {
+                                translation,
+                                rotation,
+                                scale,
+                                from_parent: from_parent
+                                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| crate::DeserializationError::Context {
+                                        location: "rerun.datatypes.TranslationRotationScale3D#from_parent"
+                                            .into(),
+                                        source: Box::new(err),
+                                    })?,
+                            }))
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.TranslationRotationScale3D".into(),
+                        source: Box::new(err),
+                    })?
             }
         })
     }

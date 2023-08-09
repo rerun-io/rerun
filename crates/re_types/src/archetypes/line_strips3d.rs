@@ -107,8 +107,10 @@ pub struct LineStrips3D {
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.linestrip3d".into()]);
+
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.radius".into(), "rerun.colorrgba".into()]);
+
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
@@ -117,6 +119,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]
             "rerun.instance_key".into(),
         ]
     });
+
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [

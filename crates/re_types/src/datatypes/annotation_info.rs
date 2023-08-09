@@ -46,6 +46,7 @@ impl crate::Loggable for AnnotationInfo {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.AnnotationInfo".into()
@@ -176,6 +177,7 @@ impl crate::Loggable for AnnotationInfo {
                             )
                             .unwrap()
                             .into();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
@@ -271,7 +273,6 @@ impl crate::Loggable for AnnotationInfo {
                     .collect();
                 let id = {
                     let data = &**arrays_by_name["id"];
-
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
                         .unwrap()
@@ -280,7 +281,6 @@ impl crate::Loggable for AnnotationInfo {
                 };
                 let label = {
                     let data = &**arrays_by_name["label"];
-
                     {
                         let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
                         let offsets = downcast.offsets();
@@ -294,7 +294,6 @@ impl crate::Loggable for AnnotationInfo {
                 };
                 let color = {
                     let data = &**arrays_by_name["color"];
-
                     data.as_any()
                         .downcast_ref::<UInt32Array>()
                         .unwrap()

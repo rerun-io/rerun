@@ -65,8 +65,10 @@ pub struct Points3D {
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.point3d".into()]);
+
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.radius".into(), "rerun.colorrgba".into()]);
+
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
@@ -76,6 +78,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]
             "rerun.instance_key".into(),
         ]
     });
+
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
