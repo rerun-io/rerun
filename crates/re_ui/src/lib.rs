@@ -6,6 +6,7 @@ mod design_tokens;
 pub mod egui_helpers;
 pub mod icons;
 mod layout_job_builder;
+pub mod list_item;
 mod static_image_cache;
 pub mod toasts;
 mod toggle_switch;
@@ -50,6 +51,7 @@ use std::{ops::RangeInclusive, sync::Arc};
 
 use parking_lot::Mutex;
 
+use crate::list_item::ListItem;
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
@@ -132,6 +134,10 @@ impl ReUi {
     /// as well as the tab bar height in the viewport view.
     pub fn title_bar_height() -> f32 {
         28.0 // from figma 2022-02-03
+    }
+
+    pub fn list_item_height() -> f32 {
+        24.0
     }
 
     pub fn native_window_rounding() -> f32 {
@@ -647,6 +653,11 @@ impl ReUi {
             texture_id: Default::default(),
         };
         ui.painter().add(shadow);
+    }
+
+    /// Convenience function to create a [`ListItem`] with the given text.
+    pub fn list_item(&self, text: impl Into<egui::WidgetText>) -> ListItem<'_> {
+        ListItem::new(self, text)
     }
 
     pub fn selectable_label_with_icon(

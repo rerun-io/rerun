@@ -1,3 +1,4 @@
+use egui::Widget;
 use re_ui::{toasts, CommandPalette, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.
@@ -73,6 +74,8 @@ pub struct ExampleApp {
     right_panel: bool,
     bottom_panel: bool,
 
+    selected_list_item: Option<usize>,
+
     dummy_bool: bool,
 
     cmd_palette: CommandPalette,
@@ -102,6 +105,8 @@ impl ExampleApp {
             left_panel: true,
             right_panel: true,
             bottom_panel: true,
+
+            selected_list_item: None,
 
             dummy_bool: true,
 
@@ -257,10 +262,37 @@ impl eframe::App for ExampleApp {
                             selection_buttons(ui);
                         });
 
-                    // second section
-                    self.re_ui.panel_title_bar(ui, "Another section", None);
-                    ui.label("Some data here");
-                    ui.label("Some data there");
+                    // Second section. It's a list of `list_items`, so we need to remove the default
+                    // spacing.
+                    ui.scope(|ui| {
+                        ui.spacing_mut().item_spacing.y = 0.0;
+
+                        self.re_ui.panel_title_bar(ui, "Another section", None);
+
+                        for i in 0..10 {
+                            let label = if i == 4 {
+                                "That's one heck of a loooooooong label!".to_owned()
+                            } else {
+                                format!("Some item {}", i)
+                            };
+
+                            if self
+                                .re_ui
+                                .list_item(label)
+                                .selected(Some(i) == self.selected_list_item)
+                                .active(i != 3)
+                                .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                                .with_buttons(|re_ui, ui| {
+                                    re_ui.small_icon_button(ui, &re_ui::icons::ADD)
+                                        | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
+                                })
+                                .ui(ui)
+                                .clicked()
+                            {
+                                self.selected_list_item = Some(i);
+                            }
+                        }
+                    })
                 });
             });
 
