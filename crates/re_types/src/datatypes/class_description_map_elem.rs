@@ -205,9 +205,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -233,28 +231,27 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_description")?
                         .into_iter()
                 };
-                ::itertools::izip!(class_id, class_description)
-                    .enumerate()
-                    .map(|(i, (class_id, class_description))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                class_id: class_id
-                                    .ok_or_else(crate::DeserializationError::missing_data)
-                                    .with_context(
-                                        "rerun.datatypes.ClassDescriptionMapElem#class_id",
-                                    )?,
-                                class_description: class_description
-                                    .ok_or_else(crate::DeserializationError::missing_data)
-                                    .with_context(
-                                        "rerun.datatypes.ClassDescriptionMapElem#class_description",
-                                    )?,
-                            })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(class_id, class_description),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(class_id, class_description)| {
+                        Ok(Self {
+                            class_id: class_id
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.ClassDescriptionMapElem#class_id")?,
+                            class_description: class_description
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context(
+                                    "rerun.datatypes.ClassDescriptionMapElem#class_description",
+                                )?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.datatypes.ClassDescriptionMapElem")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.ClassDescriptionMapElem")?
             }
         })
     }

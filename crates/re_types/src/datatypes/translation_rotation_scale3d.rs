@@ -321,9 +321,7 @@ impl crate::Loggable for TranslationRotationScale3D {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -430,26 +428,27 @@ impl crate::Loggable for TranslationRotationScale3D {
                         .with_context("rerun.datatypes.TranslationRotationScale3D#from_parent")?
                         .into_iter()
                 };
-                ::itertools::izip!(translation, rotation, scale, from_parent)
-                    .enumerate()
-                    .map(|(i, (translation, rotation, scale, from_parent))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                translation,
-                                rotation,
-                                scale,
-                                from_parent: from_parent
-                                    .ok_or_else(crate::DeserializationError::missing_data)
-                                    .with_context(
-                                        "rerun.datatypes.TranslationRotationScale3D#from_parent",
-                                    )?,
-                            })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(translation, rotation, scale, from_parent),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(translation, rotation, scale, from_parent)| {
+                        Ok(Self {
+                            translation,
+                            rotation,
+                            scale,
+                            from_parent: from_parent
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context(
+                                    "rerun.datatypes.TranslationRotationScale3D#from_parent",
+                                )?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.datatypes.TranslationRotationScale3D")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.TranslationRotationScale3D")?
             }
         })
     }

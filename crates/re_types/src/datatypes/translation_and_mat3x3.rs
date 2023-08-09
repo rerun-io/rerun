@@ -322,9 +322,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -491,25 +489,24 @@ impl crate::Loggable for TranslationAndMat3x3 {
                         .with_context("rerun.datatypes.TranslationAndMat3x3#from_parent")?
                         .into_iter()
                 };
-                ::itertools::izip!(translation, matrix, from_parent)
-                    .enumerate()
-                    .map(|(i, (translation, matrix, from_parent))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    translation,
-                                    matrix,
-                                    from_parent: from_parent
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context(
-                                            "rerun.datatypes.TranslationAndMat3x3#from_parent",
-                                        )?,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(translation, matrix, from_parent),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(translation, matrix, from_parent)| {
+                        Ok(Self {
+                            translation,
+                            matrix,
+                            from_parent: from_parent
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.TranslationAndMat3x3#from_parent")?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.datatypes.TranslationAndMat3x3")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.TranslationAndMat3x3")?
             }
         })
     }

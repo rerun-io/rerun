@@ -146,9 +146,7 @@ impl crate::Loggable for FlattenedScalar {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -168,23 +166,22 @@ impl crate::Loggable for FlattenedScalar {
                         .into_iter()
                         .map(|v| v.copied())
                 };
-                ::itertools::izip!(value)
-                    .enumerate()
-                    .map(|(i, (value))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    value: value
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context(
-                                            "rerun.testing.datatypes.FlattenedScalar#value",
-                                        )?,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(value),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(value)| {
+                        Ok(Self {
+                            value: value
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.testing.datatypes.FlattenedScalar#value")?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.datatypes.FlattenedScalar")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.datatypes.FlattenedScalar")?
             }
         })
     }
@@ -876,9 +873,7 @@ impl crate::Loggable for AffixFuzzer1 {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -1319,31 +1314,30 @@ impl crate::Loggable for AffixFuzzer1 {
                         .with_context("rerun.testing.datatypes.AffixFuzzer1#from_parent")?
                         .into_iter()
                 };
-                ::itertools::izip!(
-                    single_float_optional, single_string_required,
-                    single_string_optional, many_floats_optional, many_strings_required,
-                    many_strings_optional, flattened_scalar, almost_flattened_scalar,
-                    from_parent
-                )
-                    .enumerate()
-                    .map(|
-                        (
-                            i,
-                            (
-                                single_float_optional,
-                                single_string_required,
-                                single_string_optional,
-                                many_floats_optional,
-                                many_strings_required,
-                                many_strings_optional,
-                                flattened_scalar,
-                                almost_flattened_scalar,
-                                from_parent,
-                            ),
-                        )|
-                    {
-                        is_valid(i)
-                            .then(|| Ok(Self {
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                        ::itertools::izip!(
+                            single_float_optional, single_string_required,
+                            single_string_optional, many_floats_optional,
+                            many_strings_required, many_strings_optional,
+                            flattened_scalar, almost_flattened_scalar, from_parent
+                        ),
+                        data.validity(),
+                    )
+                    .map(|opt| {
+                        opt
+                            .map(|
+                                (
+                                    single_float_optional,
+                                    single_string_required,
+                                    single_string_optional,
+                                    many_floats_optional,
+                                    many_strings_required,
+                                    many_strings_optional,
+                                    flattened_scalar,
+                                    almost_flattened_scalar,
+                                    from_parent,
+                                )|
+                            Ok(Self {
                                 single_float_optional,
                                 single_string_required: single_string_required
                                     .ok_or_else(crate::DeserializationError::missing_data)
@@ -3015,9 +3009,7 @@ impl crate::Loggable for AffixFuzzer5 {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -3029,19 +3021,20 @@ impl crate::Loggable for AffixFuzzer5 {
                         .with_context("rerun.testing.datatypes.AffixFuzzer5#single_optional_union")?
                         .into_iter()
                 };
-                ::itertools::izip!(single_optional_union)
-                    .enumerate()
-                    .map(|(i, (single_optional_union))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    single_optional_union,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(single_optional_union),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(single_optional_union)| {
+                        Ok(Self {
+                            single_optional_union,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.datatypes.AffixFuzzer5")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.datatypes.AffixFuzzer5")?
             }
         })
     }
@@ -3276,9 +3269,7 @@ impl crate::Loggable for AffixFuzzer20 {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -3348,22 +3339,23 @@ impl crate::Loggable for AffixFuzzer20 {
                         .into_iter()
                     }
                 };
-                ::itertools::izip!(p, s)
-                    .enumerate()
-                    .map(|(i, (p, s))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    p: p.ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.testing.datatypes.AffixFuzzer20#p")?,
-                                    s: s.ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(p, s),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(p, s)| {
+                        Ok(Self {
+                            p: p.ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.testing.datatypes.AffixFuzzer20#p")?,
+                            s: s.ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.datatypes.AffixFuzzer20")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.datatypes.AffixFuzzer20")?
             }
         })
     }

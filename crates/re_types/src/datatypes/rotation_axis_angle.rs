@@ -232,9 +232,7 @@ impl crate::Loggable for RotationAxisAngle {
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
@@ -319,24 +317,25 @@ impl crate::Loggable for RotationAxisAngle {
                         .with_context("rerun.datatypes.RotationAxisAngle#angle")?
                         .into_iter()
                 };
-                ::itertools::izip!(axis, angle)
-                    .enumerate()
-                    .map(|(i, (axis, angle))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    axis: axis
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.RotationAxisAngle#axis")?,
-                                    angle: angle
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.RotationAxisAngle#angle")?,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(axis, angle),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(axis, angle)| {
+                        Ok(Self {
+                            axis: axis
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.RotationAxisAngle#axis")?,
+                            angle: angle
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.RotationAxisAngle#angle")?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.datatypes.RotationAxisAngle")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.RotationAxisAngle")?
             }
         })
     }
