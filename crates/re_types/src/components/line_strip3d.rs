@@ -77,7 +77,7 @@ impl crate::Loggable for LineStrip3D {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -200,26 +200,24 @@ impl crate::Loggable for LineStrip3D {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        })),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.components.LineStrip3D#points".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.components.LineStrip3D#points")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -229,23 +227,21 @@ impl crate::Loggable for LineStrip3D {
                         let data_inner = data_inner
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                expected: DataType::FixedSizeList(
-                                    Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                    3usize,
-                                ),
-                                got: data_inner.data_type().clone(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    ),
+                                    data_inner.data_type().clone(),
+                                )
                             })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location: "rerun.components.LineStrip3D#points".into(),
-                                source: Box::new(err),
-                            })?;
+                            .with_context("rerun.components.LineStrip3D#points")?;
                         if data_inner.is_empty() {
                             Vec::new()
                         } else {
@@ -257,21 +253,17 @@ impl crate::Loggable for LineStrip3D {
                                 data_inner_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                        expected: DataType::Float32,
-                                        got: data_inner_inner.data_type().clone(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    .ok_or_else(|| {
+                                        crate::DeserializationError::datatype_mismatch(
+                                            DataType::Float32,
+                                            data_inner_inner.data_type().clone(),
+                                        )
                                     })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.components.LineStrip3D#points".into(),
-                                        source: Box::new(err),
-                                    })?
+                                    .with_context("rerun.components.LineStrip3D#points")?
                                     .into_iter()
                                     .map(|v| v.copied())
                                     .map(|v| {
-                                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
+                                        v.ok_or_else(crate::DeserializationError::missing_data)
                                     })
                                     .collect::<crate::DeserializationResult<Vec<_>>>()?
                             };
@@ -283,11 +275,10 @@ impl crate::Loggable for LineStrip3D {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 3usize);
                                     if end as usize > data_inner_inner.len() {
-                                        return Err(crate::DeserializationError::OffsetsMismatch {
-                                            bounds: (start as usize, end as usize),
-                                            len: data_inner_inner.len(),
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        });
+                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                            (start, end),
+                                            data_inner_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -304,11 +295,7 @@ impl crate::Loggable for LineStrip3D {
                         }
                         .into_iter()
                     }
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()?
                 };
                 let offsets = data.offsets();
@@ -321,11 +308,10 @@ impl crate::Loggable for LineStrip3D {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data_inner.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (start, end),
+                                data_inner.len(),
+                            ));
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -342,17 +328,10 @@ impl crate::Loggable for LineStrip3D {
             }
             .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-        })
+        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.components.LineStrip3D#points".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.components.LineStrip3D#points")?)
     }
 
     #[inline]

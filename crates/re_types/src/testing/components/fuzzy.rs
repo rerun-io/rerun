@@ -130,7 +130,7 @@ impl crate::Loggable for AffixFuzzer1 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -166,26 +166,16 @@ impl crate::Loggable for AffixFuzzer1 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer1#single_required")?
                 .into_iter()
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                })
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer1#single_required".into(),
-                    source: Box::new(err),
-                })?,
+                .with_context("rerun.testing.components.AffixFuzzer1#single_required")?,
         )
     }
 
@@ -325,7 +315,7 @@ impl crate::Loggable for AffixFuzzer2 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -361,26 +351,16 @@ impl crate::Loggable for AffixFuzzer2 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer2#single_required")?
                 .into_iter()
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                })
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer2#single_required".into(),
-                    source: Box::new(err),
-                })?,
+                .with_context("rerun.testing.components.AffixFuzzer2#single_required")?,
         )
     }
 
@@ -520,7 +500,7 @@ impl crate::Loggable for AffixFuzzer3 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -556,26 +536,16 @@ impl crate::Loggable for AffixFuzzer3 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer3#single_required")?
                 .into_iter()
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                })
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer3#single_required".into(),
-                    source: Box::new(err),
-                })?,
+                .with_context("rerun.testing.components.AffixFuzzer3#single_required")?,
         )
     }
 
@@ -715,7 +685,7 @@ impl crate::Loggable for AffixFuzzer4 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -753,22 +723,16 @@ impl crate::Loggable for AffixFuzzer4 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer4#single_optional")?
                 .into_iter()
                 .map(Ok)
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer4#single_optional".into(),
-                    source: Box::new(err),
-                })?,
+                .with_context("rerun.testing.components.AffixFuzzer4#single_optional")?,
         )
     }
 
@@ -908,7 +872,7 @@ impl crate::Loggable for AffixFuzzer5 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -946,22 +910,16 @@ impl crate::Loggable for AffixFuzzer5 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer5#single_optional")?
                 .into_iter()
                 .map(Ok)
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer5#single_optional".into(),
-                    source: Box::new(err),
-                })?,
+                .with_context("rerun.testing.components.AffixFuzzer5#single_optional")?,
         )
     }
 
@@ -1101,7 +1059,7 @@ impl crate::Loggable for AffixFuzzer6 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -1139,22 +1097,16 @@ impl crate::Loggable for AffixFuzzer6 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer6#single_optional")?
                 .into_iter()
                 .map(Ok)
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer6#single_optional".into(),
-                    source: Box::new(err),
-                })?,
+                .with_context("rerun.testing.components.AffixFuzzer6#single_optional")?,
         )
     }
 
@@ -1231,7 +1183,7 @@ impl crate::Loggable for AffixFuzzer7 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -1308,42 +1260,34 @@ impl crate::Loggable for AffixFuzzer7 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
-                        is_nullable: true,
-                        metadata: [].into(),
-                    })),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(
+                            ),
+                            is_nullable: true,
+                            metadata: [].into(),
+                        })),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.components.AffixFuzzer7#many_optional")?;
             if data.is_empty() {
                 Vec::new()
             } else {
                 let data_inner = {
                     let data_inner = &**data.values();
                     crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(data_inner)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.testing.components.AffixFuzzer7#many_optional")?
                         .into_iter()
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            })
-                        })
+                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                         .collect::<crate::DeserializationResult<Vec<_>>>()?
                 };
                 let offsets = data.offsets();
@@ -1356,11 +1300,10 @@ impl crate::Loggable for AffixFuzzer7 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data_inner.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (start, end),
+                                data_inner.len(),
+                            ));
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1380,10 +1323,7 @@ impl crate::Loggable for AffixFuzzer7 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer7#many_optional".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.testing.components.AffixFuzzer7#many_optional")?)
     }
 
     #[inline]
@@ -1446,7 +1386,7 @@ impl crate::Loggable for AffixFuzzer8 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -1491,29 +1431,24 @@ impl crate::Loggable for AffixFuzzer8 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<Float32Array>()
-            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                expected: DataType::Float32,
-                got: data.data_type().clone(),
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            .ok_or_else(|| {
+                crate::DeserializationError::datatype_mismatch(
+                    DataType::Float32,
+                    data.data_type().clone(),
+                )
             })
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer8#single_float_optional".into(),
-                source: Box::new(err),
-            })?
+            .with_context("rerun.testing.components.AffixFuzzer8#single_float_optional")?
             .into_iter()
             .map(|v| v.copied())
             .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer8#single_float_optional".into(),
-                source: Box::new(err),
-            })?)
+            .with_context("rerun.testing.components.AffixFuzzer8#single_float_optional")?)
     }
 
     #[inline]
@@ -1576,7 +1511,7 @@ impl crate::Loggable for AffixFuzzer9 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -1635,21 +1570,19 @@ impl crate::Loggable for AffixFuzzer9 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::Utf8,
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Utf8,
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer9#single_string_required".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.components.AffixFuzzer9#single_string_required")?;
             let data_buf = data.values();
             let offsets = data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -1661,11 +1594,10 @@ impl crate::Loggable for AffixFuzzer9 {
                     let start = *start as usize;
                     let end = start + len;
                     if end as usize > data_buf.len() {
-                        return Err(crate::DeserializationError::OffsetsMismatch {
-                            bounds: (start, end as usize),
-                            len: data_buf.len(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        });
+                        return Err(crate::DeserializationError::offsets_mismatch(
+                            (start, end),
+                            data_buf.len(),
+                        ));
                     }
 
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1676,23 +1608,13 @@ impl crate::Loggable for AffixFuzzer9 {
             })
             .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer9#single_string_required".into(),
-                source: Box::new(err),
-            })?
+            .with_context("rerun.testing.components.AffixFuzzer9#single_string_required")?
             .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-        })
+        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer9#single_string_required".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.testing.components.AffixFuzzer9#single_string_required")?)
     }
 
     #[inline]
@@ -1755,7 +1677,7 @@ impl crate::Loggable for AffixFuzzer10 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -1816,22 +1738,19 @@ impl crate::Loggable for AffixFuzzer10 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::Utf8,
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Utf8,
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer10#single_string_optional"
-                        .into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.components.AffixFuzzer10#single_string_optional")?;
             let data_buf = data.values();
             let offsets = data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -1843,11 +1762,10 @@ impl crate::Loggable for AffixFuzzer10 {
                     let start = *start as usize;
                     let end = start + len;
                     if end as usize > data_buf.len() {
-                        return Err(crate::DeserializationError::OffsetsMismatch {
-                            bounds: (start, end as usize),
-                            len: data_buf.len(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        });
+                        return Err(crate::DeserializationError::offsets_mismatch(
+                            (start, end),
+                            data_buf.len(),
+                        ));
                     }
 
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1858,19 +1776,13 @@ impl crate::Loggable for AffixFuzzer10 {
             })
             .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.components.AffixFuzzer10#single_string_optional".into(),
-                source: Box::new(err),
-            })?
+            .with_context("rerun.testing.components.AffixFuzzer10#single_string_optional")?
             .into_iter()
         }
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer10#single_string_optional".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.testing.components.AffixFuzzer10#single_string_optional")?)
     }
 
     #[inline]
@@ -1938,7 +1850,7 @@ impl crate::Loggable for AffixFuzzer11 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -2024,26 +1936,24 @@ impl crate::Loggable for AffixFuzzer11 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: true,
-                        metadata: [].into(),
-                    })),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::Float32,
+                            is_nullable: true,
+                            metadata: [].into(),
+                        })),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer11#many_floats_optional".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.components.AffixFuzzer11#many_floats_optional")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -2052,23 +1962,18 @@ impl crate::Loggable for AffixFuzzer11 {
                     data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                            expected: DataType::Float32,
-                            got: data_inner.data_type().clone(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data_inner.data_type().clone(),
+                            )
                         })
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.testing.components.AffixFuzzer11#many_floats_optional"
-                                .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context(
+                            "rerun.testing.components.AffixFuzzer11#many_floats_optional",
+                        )?
                         .into_iter()
                         .map(|v| v.copied())
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            })
-                        })
+                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                         .collect::<crate::DeserializationResult<Vec<_>>>()?
                 };
                 let offsets = data.offsets();
@@ -2081,11 +1986,10 @@ impl crate::Loggable for AffixFuzzer11 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data_inner.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (start, end),
+                                data_inner.len(),
+                            ));
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2105,10 +2009,7 @@ impl crate::Loggable for AffixFuzzer11 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer11#many_floats_optional".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.testing.components.AffixFuzzer11#many_floats_optional")?)
     }
 
     #[inline]
@@ -2176,7 +2077,7 @@ impl crate::Loggable for AffixFuzzer12 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -2276,26 +2177,24 @@ impl crate::Loggable for AffixFuzzer12 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Utf8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::Utf8,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        })),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer12#many_strings_required".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.components.AffixFuzzer12#many_strings_required")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -2305,17 +2204,15 @@ impl crate::Loggable for AffixFuzzer12 {
                         let data_inner = data_inner
                             .as_any()
                             .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
-                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                expected: DataType::Utf8,
-                                got: data_inner.data_type().clone(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::Utf8,
+                                    data_inner.data_type().clone(),
+                                )
                             })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location:
-                                    "rerun.testing.components.AffixFuzzer12#many_strings_required"
-                                        .into(),
-                                source: Box::new(err),
-                            })?;
+                            .with_context(
+                                "rerun.testing.components.AffixFuzzer12#many_strings_required",
+                            )?;
                         let data_inner_buf = data_inner.values();
                         let offsets = data_inner.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -2327,11 +2224,10 @@ impl crate::Loggable for AffixFuzzer12 {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > data_inner_buf.len() {
-                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start, end as usize),
-                                        len: data_inner_buf.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    });
+                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                        (start, end),
+                                        data_inner_buf.len(),
+                                    ));
                                 }
 
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2343,19 +2239,12 @@ impl crate::Loggable for AffixFuzzer12 {
                         })
                         .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location:
-                                "rerun.testing.components.AffixFuzzer12#many_strings_required"
-                                    .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context(
+                            "rerun.testing.components.AffixFuzzer12#many_strings_required",
+                        )?
                         .into_iter()
                     }
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()?
                 };
                 let offsets = data.offsets();
@@ -2368,11 +2257,10 @@ impl crate::Loggable for AffixFuzzer12 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data_inner.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (start, end),
+                                data_inner.len(),
+                            ));
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2389,17 +2277,10 @@ impl crate::Loggable for AffixFuzzer12 {
             }
             .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-        })
+        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer12#many_strings_required".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.testing.components.AffixFuzzer12#many_strings_required")?)
     }
 
     #[inline]
@@ -2467,7 +2348,7 @@ impl crate::Loggable for AffixFuzzer13 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -2569,26 +2450,24 @@ impl crate::Loggable for AffixFuzzer13 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Utf8,
-                        is_nullable: true,
-                        metadata: [].into(),
-                    })),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::Utf8,
+                            is_nullable: true,
+                            metadata: [].into(),
+                        })),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer13#many_strings_optional".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.components.AffixFuzzer13#many_strings_optional")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -2598,17 +2477,15 @@ impl crate::Loggable for AffixFuzzer13 {
                         let data_inner = data_inner
                             .as_any()
                             .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
-                            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                                expected: DataType::Utf8,
-                                got: data_inner.data_type().clone(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::Utf8,
+                                    data_inner.data_type().clone(),
+                                )
                             })
-                            .map_err(|err| crate::DeserializationError::Context {
-                                location:
-                                    "rerun.testing.components.AffixFuzzer13#many_strings_optional"
-                                        .into(),
-                                source: Box::new(err),
-                            })?;
+                            .with_context(
+                                "rerun.testing.components.AffixFuzzer13#many_strings_optional",
+                            )?;
                         let data_inner_buf = data_inner.values();
                         let offsets = data_inner.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -2620,11 +2497,10 @@ impl crate::Loggable for AffixFuzzer13 {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > data_inner_buf.len() {
-                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start, end as usize),
-                                        len: data_inner_buf.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    });
+                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                        (start, end),
+                                        data_inner_buf.len(),
+                                    ));
                                 }
 
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2636,19 +2512,12 @@ impl crate::Loggable for AffixFuzzer13 {
                         })
                         .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location:
-                                "rerun.testing.components.AffixFuzzer13#many_strings_optional"
-                                    .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context(
+                            "rerun.testing.components.AffixFuzzer13#many_strings_optional",
+                        )?
                         .into_iter()
                     }
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()?
                 };
                 let offsets = data.offsets();
@@ -2661,11 +2530,10 @@ impl crate::Loggable for AffixFuzzer13 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data_inner.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (start, end),
+                                data_inner.len(),
+                            ));
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2685,10 +2553,7 @@ impl crate::Loggable for AffixFuzzer13 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer13#many_strings_optional".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.testing.components.AffixFuzzer13#many_strings_optional")?)
     }
 
     #[inline]
@@ -2805,7 +2670,7 @@ impl crate::Loggable for AffixFuzzer14 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -2841,26 +2706,16 @@ impl crate::Loggable for AffixFuzzer14 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer14#single_required_union")?
                 .into_iter()
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                })
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer14#single_required_union".into(),
-                    source: Box::new(err),
-                })?,
+                .with_context("rerun.testing.components.AffixFuzzer14#single_required_union")?,
         )
     }
 
@@ -2978,7 +2833,7 @@ impl crate::Loggable for AffixFuzzer15 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -3016,22 +2871,16 @@ impl crate::Loggable for AffixFuzzer15 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer15#single_optional_union")?
                 .into_iter()
                 .map(Ok)
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer15#single_optional_union".into(),
-                    source: Box::new(err),
-                })?,
+                .with_context("rerun.testing.components.AffixFuzzer15#single_optional_union")?,
         )
     }
 
@@ -3108,7 +2957,7 @@ impl crate::Loggable for AffixFuzzer16 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -3183,43 +3032,36 @@ impl crate::Loggable for AffixFuzzer16 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(
+                            ),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        })),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer16#many_required_unions".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.components.AffixFuzzer16#many_required_unions")?;
             if data.is_empty() {
                 Vec::new()
             } else {
                 let data_inner = {
                     let data_inner = &**data.values();
                     crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data_inner)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.testing.components.AffixFuzzer16#many_required_unions"
-                                .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context(
+                            "rerun.testing.components.AffixFuzzer16#many_required_unions",
+                        )?
                         .into_iter()
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            })
-                        })
+                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                         .collect::<crate::DeserializationResult<Vec<_>>>()?
                 };
                 let offsets = data.offsets();
@@ -3232,11 +3074,10 @@ impl crate::Loggable for AffixFuzzer16 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data_inner.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (start, end),
+                                data_inner.len(),
+                            ));
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -3253,17 +3094,10 @@ impl crate::Loggable for AffixFuzzer16 {
             }
             .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-        })
+        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer16#many_required_unions".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.testing.components.AffixFuzzer16#many_required_unions")?)
     }
 
     #[inline]
@@ -3339,7 +3173,7 @@ impl crate::Loggable for AffixFuzzer17 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -3416,43 +3250,36 @@ impl crate::Loggable for AffixFuzzer17 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
-                        is_nullable: true,
-                        metadata: [].into(),
-                    })),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(
+                            ),
+                            is_nullable: true,
+                            metadata: [].into(),
+                        })),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer17#many_optional_unions".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.components.AffixFuzzer17#many_optional_unions")?;
             if data.is_empty() {
                 Vec::new()
             } else {
                 let data_inner = {
                     let data_inner = &**data.values();
                     crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data_inner)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.testing.components.AffixFuzzer17#many_optional_unions"
-                                .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context(
+                            "rerun.testing.components.AffixFuzzer17#many_optional_unions",
+                        )?
                         .into_iter()
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            })
-                        })
+                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                         .collect::<crate::DeserializationResult<Vec<_>>>()?
                 };
                 let offsets = data.offsets();
@@ -3465,11 +3292,10 @@ impl crate::Loggable for AffixFuzzer17 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data_inner.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (start, end),
+                                data_inner.len(),
+                            ));
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -3489,10 +3315,7 @@ impl crate::Loggable for AffixFuzzer17 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer17#many_optional_unions".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.testing.components.AffixFuzzer17#many_optional_unions")?)
     }
 
     #[inline]
@@ -3568,7 +3391,7 @@ impl crate::Loggable for AffixFuzzer18 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -3645,43 +3468,36 @@ impl crate::Loggable for AffixFuzzer18 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
-                        is_nullable: true,
-                        metadata: [].into(),
-                    })),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(
+                            ),
+                            is_nullable: true,
+                            metadata: [].into(),
+                        })),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer18#many_optional_unions".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.components.AffixFuzzer18#many_optional_unions")?;
             if data.is_empty() {
                 Vec::new()
             } else {
                 let data_inner = {
                     let data_inner = &**data.values();
                     crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(data_inner)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.testing.components.AffixFuzzer18#many_optional_unions"
-                                .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context(
+                            "rerun.testing.components.AffixFuzzer18#many_optional_unions",
+                        )?
                         .into_iter()
-                        .map(|v| {
-                            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            })
-                        })
+                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                         .collect::<crate::DeserializationResult<Vec<_>>>()?
                 };
                 let offsets = data.offsets();
@@ -3694,11 +3510,10 @@ impl crate::Loggable for AffixFuzzer18 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::OffsetsMismatch {
-                                bounds: (start as usize, end as usize),
-                                len: data_inner.len(),
-                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                            });
+                            return Err(crate::DeserializationError::offsets_mismatch(
+                                (start, end),
+                                data_inner.len(),
+                            ));
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -3718,10 +3533,7 @@ impl crate::Loggable for AffixFuzzer18 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.testing.components.AffixFuzzer18#many_optional_unions".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.testing.components.AffixFuzzer18#many_optional_unions")?)
     }
 
     #[inline]
@@ -3795,7 +3607,7 @@ impl crate::Loggable for AffixFuzzer19 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -3831,28 +3643,18 @@ impl crate::Loggable for AffixFuzzer19 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer5::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
-                        .into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady")?
                 .into_iter()
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                })
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady"
-                        .into(),
-                    source: Box::new(err),
-                })?,
+                .with_context(
+                    "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady",
+                )?,
         )
     }
 
@@ -3935,7 +3737,7 @@ impl crate::Loggable for AffixFuzzer20 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -3971,26 +3773,16 @@ impl crate::Loggable for AffixFuzzer20 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer20::try_from_arrow_opt(data)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer20#nested_transparent".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.testing.components.AffixFuzzer20#nested_transparent")?
                 .into_iter()
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                })
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.components.AffixFuzzer20#nested_transparent".into(),
-                    source: Box::new(err),
-                })?,
+                .with_context("rerun.testing.components.AffixFuzzer20#nested_transparent")?,
         )
     }
 

@@ -348,8 +348,6 @@ pub trait Archetype {
 
 // ---
 
-// TODO: need nicer err constructors (that add Context automatically?)
-
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
 // attempt to use nightly features.
 pub type _Backtrace = backtrace::Backtrace;
@@ -407,16 +405,6 @@ pub enum DeserializationError {
         backtrace: _Backtrace,
     },
 
-    #[error("Expected array of length {expected} but found a length of {got:#?} instead")]
-    ArrayLengthMismatch {
-        expected: usize,
-        got: usize,
-        backtrace: _Backtrace,
-    },
-
-    #[error("Expected single-instanced component but found {got} instances instead")]
-    MonoMismatch { got: usize, backtrace: _Backtrace },
-
     #[error("arrow2-convert deserialization Failed: {0}")]
     ArrowConvertFailure(String),
 
@@ -425,9 +413,38 @@ pub enum DeserializationError {
 }
 
 impl DeserializationError {
+    #[inline]
+    pub fn missing_data() -> Self {
+        Self::MissingData {
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
+    #[inline]
+    pub fn datatype_mismatch(
+        expected: arrow2::datatypes::DataType,
+        got: arrow2::datatypes::DataType,
+    ) -> Self {
+        Self::DatatypeMismatch {
+            expected,
+            got,
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
+    #[inline]
+    pub fn offsets_mismatch(bounds: (usize, usize), len: usize) -> Self {
+        Self::OffsetsMismatch {
+            bounds,
+            len,
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
     /// Returns the _unresolved_ backtrace associated with this error, if it exists.
     ///
     /// Call `resolve()` on the returned [`_Backtrace`] to resolve it (costly!).
+    #[inline]
     pub fn backtrace(&self) -> Option<_Backtrace> {
         match self {
             DeserializationError::Context {
@@ -436,9 +453,7 @@ impl DeserializationError {
             } => source.backtrace(),
             DeserializationError::MissingData { backtrace }
             | DeserializationError::DatatypeMismatch { backtrace, .. }
-            | DeserializationError::OffsetsMismatch { backtrace, .. }
-            | DeserializationError::ArrayLengthMismatch { backtrace, .. }
-            | DeserializationError::MonoMismatch { backtrace, .. } => Some(backtrace.clone()),
+            | DeserializationError::OffsetsMismatch { backtrace, .. } => Some(backtrace.clone()),
             DeserializationError::ArrowConvertFailure(_)
             | DeserializationError::DataCellError(_) => None,
         }
@@ -448,10 +463,19 @@ impl DeserializationError {
 pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;
 
 trait ResultExt<T> {
+    fn with_context(self, location: impl AsRef<str>) -> Self;
     fn detailed_unwrap(self) -> T;
 }
 
 impl<T> ResultExt<T> for SerializationResult<T> {
+    #[inline]
+    fn with_context(self, location: impl AsRef<str>) -> Self {
+        self.map_err(|err| SerializationError::Context {
+            location: location.as_ref().into(),
+            source: Box::new(err),
+        })
+    }
+
     fn detailed_unwrap(self) -> T {
         match self {
             Ok(v) => v,
@@ -473,6 +497,14 @@ impl<T> ResultExt<T> for SerializationResult<T> {
 }
 
 impl<T> ResultExt<T> for DeserializationResult<T> {
+    #[inline]
+    fn with_context(self, location: impl AsRef<str>) -> Self {
+        self.map_err(|err| DeserializationError::Context {
+            location: location.as_ref().into(),
+            source: Box::new(err),
+        })
+    }
+
     fn detailed_unwrap(self) -> T {
         match self {
             Ok(v) => v,

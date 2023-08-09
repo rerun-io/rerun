@@ -102,7 +102,7 @@ impl crate::Archetype for DisconnectedSpace {
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         Ok([{
             Some({
                 let array = <crate::components::DisconnectedSpace>::try_to_arrow(
@@ -122,10 +122,7 @@ impl crate::Archetype for DisconnectedSpace {
                 })
             })
             .transpose()
-            .map_err(|err| crate::SerializationError::Context {
-                location: "rerun.archetypes.DisconnectedSpace#disconnected_space".into(),
-                source: Box::new(err),
-            })?
+            .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
         }]
         .into_iter()
         .flatten()
@@ -136,7 +133,7 @@ impl crate::Archetype for DisconnectedSpace {
     fn try_from_arrow(
         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     ) -> crate::DeserializationResult<Self> {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -144,28 +141,15 @@ impl crate::Archetype for DisconnectedSpace {
         let disconnected_space = {
             let array = arrays_by_name
                 .get("disconnected_space")
-                .ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.DisconnectedSpace#disconnected_space".into(),
-                    source: Box::new(err),
-                })?;
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?;
             <crate::components::DisconnectedSpace>::try_from_arrow_opt(&**array)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.DisconnectedSpace#disconnected_space".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.DisconnectedSpace#disconnected_space".into(),
-                    source: Box::new(err),
-                })?
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
         };
         Ok(Self { disconnected_space })
     }

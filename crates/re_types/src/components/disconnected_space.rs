@@ -59,7 +59,7 @@ impl crate::Loggable for DisconnectedSpace {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -102,32 +102,23 @@ impl crate::Loggable for DisconnectedSpace {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<BooleanArray>()
-            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                expected: DataType::Boolean,
-                got: data.data_type().clone(),
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            .ok_or_else(|| {
+                crate::DeserializationError::datatype_mismatch(
+                    DataType::Boolean,
+                    data.data_type().clone(),
+                )
             })
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.DisconnectedSpace#is_disconnected".into(),
-                source: Box::new(err),
-            })?
+            .with_context("rerun.components.DisconnectedSpace#is_disconnected")?
             .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
+            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.DisconnectedSpace#is_disconnected".into(),
-                source: Box::new(err),
-            })?)
+            .with_context("rerun.components.DisconnectedSpace#is_disconnected")?)
     }
 
     #[inline]

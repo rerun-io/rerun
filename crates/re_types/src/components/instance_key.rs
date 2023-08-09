@@ -56,7 +56,7 @@ impl crate::Loggable for InstanceKey {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -99,33 +99,24 @@ impl crate::Loggable for InstanceKey {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<UInt64Array>()
-            .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                expected: DataType::UInt64,
-                got: data.data_type().clone(),
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            .ok_or_else(|| {
+                crate::DeserializationError::datatype_mismatch(
+                    DataType::UInt64,
+                    data.data_type().clone(),
+                )
             })
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.InstanceKey#value".into(),
-                source: Box::new(err),
-            })?
+            .with_context("rerun.components.InstanceKey#value")?
             .into_iter()
             .map(|v| v.copied())
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
+            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.InstanceKey#value".into(),
-                source: Box::new(err),
-            })?)
+            .with_context("rerun.components.InstanceKey#value")?)
     }
 
     #[inline]

@@ -56,7 +56,7 @@ impl crate::Loggable for Label {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -115,21 +115,19 @@ impl crate::Loggable for Label {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: DataType::Utf8,
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Utf8,
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.components.Label#value".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.components.Label#value")?;
             let data_buf = data.values();
             let offsets = data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -141,11 +139,10 @@ impl crate::Loggable for Label {
                     let start = *start as usize;
                     let end = start + len;
                     if end as usize > data_buf.len() {
-                        return Err(crate::DeserializationError::OffsetsMismatch {
-                            bounds: (start, end as usize),
-                            len: data_buf.len(),
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        });
+                        return Err(crate::DeserializationError::offsets_mismatch(
+                            (start, end),
+                            data_buf.len(),
+                        ));
                     }
 
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -156,23 +153,13 @@ impl crate::Loggable for Label {
             })
             .map(|res| res.map(|opt| opt.map(crate::ArrowString)))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Label#value".into(),
-                source: Box::new(err),
-            })?
+            .with_context("rerun.components.Label#value")?
             .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-        })
+        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.components.Label#value".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.components.Label#value")?)
     }
 
     #[inline]
