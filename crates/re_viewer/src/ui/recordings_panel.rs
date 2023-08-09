@@ -27,23 +27,30 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     let active_recording = store_context.recording.map(|rec| rec.store_id());
 
     ui.style_mut().wrap = Some(false);
-    for store_db in &store_dbs {
-        let info = if let Some(store_info) = store_db.store_info() {
-            format!(
-                "{} - {}",
-                store_info.application_id,
-                store_info.started.format()
-            )
-        } else {
-            "<UNKNOWN>".to_owned()
-        };
-        if ui
-            .radio(active_recording == Some(store_db.store_id()), info)
-            .clicked()
-        {
-            command_sender.send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
-        }
-    }
+
+    egui::ScrollArea::both()
+        .id_source("recordings_scroll_area")
+        .auto_shrink([false, true])
+        .show(ui, |ui| {
+            for store_db in &store_dbs {
+                let info = if let Some(store_info) = store_db.store_info() {
+                    format!(
+                        "{} - {}",
+                        store_info.application_id,
+                        store_info.started.format()
+                    )
+                } else {
+                    "<UNKNOWN>".to_owned()
+                };
+                if ui
+                    .radio(active_recording == Some(store_db.store_id()), info)
+                    .clicked()
+                {
+                    command_sender
+                        .send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
+                }
+            }
+        });
 }
 
 fn add_button_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
