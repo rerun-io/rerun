@@ -24,6 +24,7 @@ pub fn quote_arrow_deserializer(
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
+    let quoted_datatype = ArrowDataTypeTokenizer(datatype, false);
 
     let obj_fqname = obj.fqname.as_str();
     let is_arrow_transparent = obj.datatype.is_none();
@@ -96,7 +97,13 @@ pub fn quote_arrow_deserializer(
 
                     quote! {
                         let #data_dst = {
-                            // TODO: is this safe? if so, why?
+                            if !arrays_by_name.contains_key(#field_name) {
+                                return Err(crate::DeserializationError::missing_struct_field(
+                                    #quoted_datatype, #field_name,
+                                )).with_context(#obj_fqname);
+                            }
+
+                            // NOTE: The indexing by name is safe: checked above
                             let #data_src = &**arrays_by_name[#field_name];
                              #quoted_deserializer
                         }
@@ -230,7 +237,6 @@ pub fn quote_arrow_deserializer(
                     quote_array_downcast(obj_fqname, &data_src, &cast_as, datatype)
                 };
 
-                let expected_datatype = ArrowDataTypeTokenizer(datatype, false);
                 quote! {{
                     let #data_src = #quoted_downcast?;
                     if #data_src.is_empty() {
@@ -244,7 +250,7 @@ pub fn quote_arrow_deserializer(
 
                         let #data_src_offsets = #data_src.offsets()
                             .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
-                                #expected_datatype, #data_src.data_type().clone(),
+                                #quoted_datatype, #data_src.data_type().clone(),
                             )).with_context(#obj_fqname)?;
 
                         if #data_src_types.len() > #data_src_offsets.len() {
@@ -314,7 +320,7 @@ fn quote_arrow_field_deserializer(
             let quoted_unmapping = if *datatype.to_logical_type() == DataType::Boolean {
                 quoted_unmapping
             } else {
-                quote!(.map(|opt| opt.map(|v| *v)) #quoted_unmapping)
+                quote!(.map(|opt| opt.copied()) #quoted_unmapping)
             };
 
             let quoted_downcast = {

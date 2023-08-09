@@ -356,7 +356,7 @@ impl crate::Loggable for Rotation3D {
                                     })
                                     .with_context("rerun.datatypes.Rotation3D#Quaternion")?
                                     .into_iter()
-                                    .map(|opt| opt.map(|v| *v))
+                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(

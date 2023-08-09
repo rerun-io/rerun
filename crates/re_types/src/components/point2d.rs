@@ -194,7 +194,7 @@ impl crate::Loggable for Point2D {
                         })
                         .with_context("rerun.components.Point2D#xy")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, data.validity())

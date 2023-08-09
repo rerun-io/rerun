@@ -389,6 +389,13 @@ pub enum DeserializationError {
     #[error("Expected non-nullable data but didn't find any")]
     MissingData { backtrace: _Backtrace },
 
+    #[error("Expected field {field_name:?} to be present in {datatype:#?}")]
+    MissingStructField {
+        datatype: ::arrow2::datatypes::DataType,
+        field_name: String,
+        backtrace: _Backtrace,
+    },
+
     #[error("Expected {expected:#?} but found {got:#?} instead")]
     DatatypeMismatch {
         expected: ::arrow2::datatypes::DataType,
@@ -416,6 +423,18 @@ impl DeserializationError {
     #[inline]
     pub fn missing_data() -> Self {
         Self::MissingData {
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
+    #[inline]
+    pub fn missing_struct_field(
+        datatype: arrow2::datatypes::DataType,
+        field_name: impl AsRef<str>,
+    ) -> Self {
+        Self::MissingStructField {
+            datatype,
+            field_name: field_name.as_ref().into(),
             backtrace: ::backtrace::Backtrace::new_unresolved(),
         }
     }
@@ -451,7 +470,8 @@ impl DeserializationError {
                 location: _,
                 source,
             } => source.backtrace(),
-            DeserializationError::MissingData { backtrace }
+            DeserializationError::MissingStructField { backtrace, .. }
+            | DeserializationError::MissingData { backtrace }
             | DeserializationError::DatatypeMismatch { backtrace, .. }
             | DeserializationError::OffsetsMismatch { backtrace, .. } => Some(backtrace.clone()),
             DeserializationError::ArrowConvertFailure(_)

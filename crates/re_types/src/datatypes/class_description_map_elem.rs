@@ -212,6 +212,27 @@ impl crate::Loggable for ClassDescriptionMapElem {
                     .zip(data_arrays)
                     .collect();
                 let class_id = {
+                    if !arrays_by_name.contains_key("class_id") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "class_id".to_owned(),
+                                    data_type: <crate::components::ClassId>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "class_description".to_owned(),
+                                    data_type:
+                                        <crate::datatypes::ClassDescription>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "class_id",
+                        ))
+                        .with_context("rerun.datatypes.ClassDescriptionMapElem");
+                    }
                     let data = &**arrays_by_name["class_id"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
@@ -223,10 +244,31 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         })
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_id")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| *v))
+                        .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(|v| crate::components::ClassId(v)))
                 };
                 let class_description = {
+                    if !arrays_by_name.contains_key("class_description") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "class_id".to_owned(),
+                                    data_type: <crate::components::ClassId>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "class_description".to_owned(),
+                                    data_type:
+                                        <crate::datatypes::ClassDescription>::to_arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "class_description",
+                        ))
+                        .with_context("rerun.datatypes.ClassDescriptionMapElem");
+                    }
                     let data = &**arrays_by_name["class_description"];
                     crate::datatypes::ClassDescription::try_from_arrow_opt(data)
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_description")?

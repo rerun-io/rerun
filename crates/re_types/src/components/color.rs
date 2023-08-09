@@ -123,7 +123,7 @@ impl crate::Loggable for Color {
             })
             .with_context("rerun.components.Color#rgba")?
             .into_iter()
-            .map(|opt| opt.map(|v| *v))
+            .map(|opt| opt.copied())
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
