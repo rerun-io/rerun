@@ -247,13 +247,18 @@ impl crate::Loggable for LineStrip2D {
                                     .as_ref()
                                     .map_or(true, |bitmap| bitmap.get_bit(i))
                                     .then(|| {
-                                        let data = data.get(start as usize..end as usize).ok_or(
-                                            crate::DeserializationError::OffsetsMismatch {
-                                                bounds: (start as usize, end as usize),
-                                                len: data.len(),
-                                                backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                            },
-                                        )?;
+                                        if end as usize > data.len() {
+                                            return Err(
+                                                crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace:
+                                                        ::backtrace::Backtrace::new_unresolved(),
+                                                },
+                                            );
+                                        }
+
+                                        let data = data.get(start as usize..end as usize).unwrap();
                                         let mut arr = [Default::default(); 2usize];
 
                                         arr.copy_from_slice(data);
@@ -279,14 +284,16 @@ impl crate::Loggable for LineStrip2D {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                Ok(data)
                             })
                             .transpose()
                     })

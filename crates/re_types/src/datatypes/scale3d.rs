@@ -271,9 +271,11 @@ impl crate::Loggable for Scale3D {
 
  else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { let data = data . get (start as usize .. end as usize) . ok_or (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
+)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
 
-) ? ; let mut arr = [Default :: default () ; 3usize];
+) ; }
+
+ let data = data . get (start as usize .. end as usize) . unwrap () ; let mut arr = [Default :: default () ; 3usize];
 
  arr . copy_from_slice (data) ; Ok (arr) }
 
@@ -303,10 +305,9 @@ impl crate::Loggable for Scale3D {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Scale3D::ThreeD(
-                                    three_d
-                                        .get(offset as usize)
-                                        .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                1i8 => Scale3D::ThreeD({
+                                    if offset as usize >= three_d.len() {
+                                        return Err(crate::DeserializationError::OffsetsMismatch {
                                             bounds: (offset as usize, offset as usize),
                                             len: three_d.len(),
                                             backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -314,14 +315,14 @@ impl crate::Loggable for Scale3D {
                                         .map_err(|err| crate::DeserializationError::Context {
                                             location: "rerun.datatypes.Scale3D#ThreeD".into(),
                                             source: Box::new(err),
-                                        })?
-                                        .clone()
-                                        .unwrap(),
-                                ),
-                                2i8 => Scale3D::Uniform(
-                                    uniform
-                                        .get(offset as usize)
-                                        .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                        });
+                                    }
+
+                                    three_d.get(offset as usize).unwrap().clone().unwrap()
+                                }),
+                                2i8 => Scale3D::Uniform({
+                                    if offset as usize >= uniform.len() {
+                                        return Err(crate::DeserializationError::OffsetsMismatch {
                                             bounds: (offset as usize, offset as usize),
                                             len: uniform.len(),
                                             backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -329,10 +330,11 @@ impl crate::Loggable for Scale3D {
                                         .map_err(|err| crate::DeserializationError::Context {
                                             location: "rerun.datatypes.Scale3D#Uniform".into(),
                                             source: Box::new(err),
-                                        })?
-                                        .clone()
-                                        .unwrap(),
-                                ),
+                                        });
+                                    }
+
+                                    uniform.get(offset as usize).unwrap().clone().unwrap()
+                                }),
                                 _ => unreachable!(),
                             }))
                         }

@@ -1336,14 +1336,16 @@ impl crate::Loggable for AffixFuzzer7 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -1948,14 +1950,16 @@ impl crate::Loggable for AffixFuzzer11 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -2174,14 +2178,16 @@ impl crate::Loggable for AffixFuzzer12 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -2406,14 +2412,16 @@ impl crate::Loggable for AffixFuzzer13 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -2955,14 +2963,16 @@ impl crate::Loggable for AffixFuzzer16 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -3168,14 +3178,16 @@ impl crate::Loggable for AffixFuzzer17 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                Ok(data)
                             })
                             .transpose()
                     })
@@ -3377,14 +3389,16 @@ impl crate::Loggable for AffixFuzzer18 {
                             .as_ref()
                             .map_or(true, |bitmap| bitmap.get_bit(i))
                             .then(|| {
-                                Ok(data
-                                    .get(start as usize..end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec())
+                                    });
+                                }
+
+                                let data = data.get(start as usize..end as usize).unwrap().to_vec();
+                                Ok(data)
                             })
                             .transpose()
                     })
