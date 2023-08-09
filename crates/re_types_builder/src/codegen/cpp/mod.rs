@@ -105,10 +105,12 @@ impl CppCodeGenerator {
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
             let filename = obj.snake_case_name();
-            let extension_filename = folder_path.join(format!("{filename}_ext.cpp"));
-            let hpp_type_extensions = hpp_type_extensions(&extension_filename);
 
-            let (hpp, cpp) = generate_hpp_cpp(objects, obj, &hpp_type_extensions);
+            let mut hpp_includes = Includes::default();
+            let hpp_type_extensions =
+                hpp_type_extensions(&folder_path, &filename, &mut hpp_includes);
+
+            let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions);
             for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
                 let string = string_from_token_stream(&tokens, obj.relative_filepath());
                 let filepath = folder_path.join(format!("{filename}.{extension}"));
@@ -166,10 +168,42 @@ impl crate::CodeGenerator for CppCodeGenerator {
 }
 
 /// Retrieves code from an extension cpp file that should go to the generated header.
-fn hpp_type_extensions(extension_file: &Utf8Path) -> TokenStream {
+///
+/// Additionally, picks up all includes files that aren't including the header itself.
+fn hpp_type_extensions(
+    folder_path: &Utf8Path,
+    filename: &str,
+    includes: &mut Includes,
+) -> TokenStream {
+    let extension_file = folder_path.join(format!("{filename}_ext.cpp"));
     let Ok(content) = std::fs::read_to_string(extension_file.as_std_path()) else {
         return quote! {};
     };
+
+    let target_header = format!("{filename}.hpp");
+    for line in content.lines() {
+        if line.starts_with("#include") {
+            if let Some(start) = line.find('\"') {
+                let end = line.rfind('\"').unwrap_or_else(|| {
+                    panic!("Expected to find '\"' include line {line} in file {extension_file:?}")
+                });
+
+                let include = &line[start + 1..end];
+                if include != target_header {
+                    includes.local.insert(include.to_owned());
+                }
+            } else if let Some(start) = line.find('<') {
+                let end = line.rfind('>').unwrap_or_else(|| {
+                    panic!(
+                        "Expected to find or '>' in include line {line} in file {extension_file:?}"
+                    )
+                });
+                includes.system.insert(line[start + 1..end].to_owned());
+            } else {
+                panic!("Expected to find '\"' or '<' in include line {line} in file {extension_file:?}");
+            }
+        }
+    }
 
     const COPY_TO_HEADER_START_MARKER: &str = "[CODEGEN COPY TO HEADER START]";
     const COPY_TO_HEADER_END_MARKER: &str = "[CODEGEN COPY TO HEADER END]";
@@ -204,9 +238,11 @@ fn hpp_type_extensions(extension_file: &Utf8Path) -> TokenStream {
 fn generate_hpp_cpp(
     objects: &Objects,
     obj: &Object,
+    hpp_includes: Includes,
     hpp_type_extensions: &TokenStream,
 ) -> (TokenStream, TokenStream) {
-    let QuotedObject { hpp, cpp } = QuotedObject::new(objects, obj, hpp_type_extensions);
+    let QuotedObject { hpp, cpp } =
+        QuotedObject::new(objects, obj, hpp_includes, hpp_type_extensions);
     let snake_case_name = obj.snake_case_name();
     let hash = quote! { # };
     let pragma_once = pragma_once();
@@ -237,11 +273,18 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
-    pub fn new(objects: &Objects, obj: &Object, hpp_type_extensions: &TokenStream) -> Self {
+    pub fn new(
+        objects: &Objects,
+        obj: &Object,
+        hpp_includes: Includes,
+        hpp_type_extensions: &TokenStream,
+    ) -> Self {
         match obj.specifics {
-            crate::ObjectSpecifics::Struct => Self::from_struct(objects, obj, hpp_type_extensions),
+            crate::ObjectSpecifics::Struct => {
+                Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
+            }
             crate::ObjectSpecifics::Union { .. } => {
-                Self::from_union(objects, obj, hpp_type_extensions)
+                Self::from_union(objects, obj, hpp_includes, hpp_type_extensions)
             }
         }
     }
@@ -249,6 +292,7 @@ impl QuotedObject {
     fn from_struct(
         objects: &Objects,
         obj: &Object,
+        mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
@@ -256,7 +300,6 @@ impl QuotedObject {
         let type_ident = format_ident!("{type_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
 
-        let mut hpp_includes = Includes::default();
         hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
 
         // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
@@ -564,6 +607,7 @@ impl QuotedObject {
     fn from_union(
         objects: &Objects,
         obj: &Object,
+        mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> QuotedObject {
         // We implement sum-types as tagged unions;
@@ -617,7 +661,6 @@ impl QuotedObject {
         }))
         .collect_vec();
 
-        let mut hpp_includes = Includes::default();
         hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
         hpp_includes.system.insert("utility".to_owned()); // std::move
         hpp_includes.system.insert("cstring".to_owned()); // std::memcpy

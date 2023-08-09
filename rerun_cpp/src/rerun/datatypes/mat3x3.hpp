@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "vec3d.hpp"
+
 #include <arrow/type_fwd.h>
 #include <cstdint>
 
@@ -11,6 +13,25 @@ namespace rerun {
         /// A 3x3 column-major Matrix.
         struct Mat3x3 {
             float coeffs[9];
+
+          public:
+            // Extensions to generated type defined in 'mat3x3_ext.cpp'
+
+            static const Mat3x3 IDENTITY;
+
+            /// Creates a new 3x3 matrix from 3 *columns* of 3 elements each.
+            Mat3x3(const Vec3D (&columns)[3])
+                : coeffs{
+                      columns[0].x(),
+                      columns[0].y(),
+                      columns[0].z(),
+                      columns[1].x(),
+                      columns[1].y(),
+                      columns[1].z(),
+                      columns[2].x(),
+                      columns[2].y(),
+                      columns[2].z(),
+                  } {}
 
           public:
             Mat3x3() = default;
