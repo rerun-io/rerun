@@ -261,7 +261,7 @@ impl crate::Loggable for LineStrip2D {
                                     })
                                     .with_context("rerun.components.LineStrip2D#points")?
                                     .into_iter()
-                                    .map(|v| v.copied())
+                                    .map(|opt| opt.map(|v| *v))
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(

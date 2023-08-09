@@ -370,7 +370,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                                         "rerun.datatypes.TranslationRotationScale3D#translation",
                                     )?
                                     .into_iter()
-                                    .map(|v| v.copied())
+                                    .map(|opt| opt.map(|v| *v))
                                     .collect::<Vec<_>>()
                                 };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(

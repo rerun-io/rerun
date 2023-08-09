@@ -370,7 +370,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                         "rerun.datatypes.TranslationAndMat3x3#translation",
                                     )?
                                     .into_iter()
-                                    .map(|v| v.copied())
+                                    .map(|opt| opt.map(|v| *v))
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -447,7 +447,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                     })
                                     .with_context("rerun.datatypes.TranslationAndMat3x3#matrix")?
                                     .into_iter()
-                                    .map(|v| v.copied())
+                                    .map(|opt| opt.map(|v| *v))
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(

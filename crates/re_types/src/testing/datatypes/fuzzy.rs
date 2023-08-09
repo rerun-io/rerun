@@ -164,7 +164,7 @@ impl crate::Loggable for FlattenedScalar {
                         })
                         .with_context("rerun.testing.datatypes.FlattenedScalar#value")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(value),
@@ -891,7 +891,7 @@ impl crate::Loggable for AffixFuzzer1 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer1#single_float_optional")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                 };
                 let single_string_required = {
                     let data = &**arrays_by_name["single_string_required"];
@@ -1026,7 +1026,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                         "rerun.testing.datatypes.AffixFuzzer1#many_floats_optional",
                                     )?
                                     .into_iter()
-                                    .map(|v| v.copied())
+                                    .map(|opt| opt.map(|v| *v))
                                     .collect::<Vec<_>>()
                                 };
                             let offsets = data.offsets();
@@ -1301,7 +1301,7 @@ impl crate::Loggable for AffixFuzzer1 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer1#flattened_scalar")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                 };
                 let almost_flattened_scalar = {
                     let data = &**arrays_by_name["almost_flattened_scalar"];
@@ -1500,7 +1500,7 @@ impl crate::Loggable for AffixFuzzer2 {
             })
             .with_context("rerun.testing.datatypes.AffixFuzzer2#single_float_optional")?
             .into_iter()
-            .map(|v| v.copied())
+            .map(|opt| opt.map(|v| *v))
             .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
@@ -1969,7 +1969,7 @@ impl crate::Loggable for AffixFuzzer3 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer3#degrees")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                         .collect::<Vec<_>>()
                 };
                 let radians = {
@@ -1984,7 +1984,7 @@ impl crate::Loggable for AffixFuzzer3 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer3#radians")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                         .collect::<Vec<_>>()
                 };
                 let craziness = {
@@ -2099,7 +2099,7 @@ impl crate::Loggable for AffixFuzzer3 {
                                         "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
                                     )?
                                     .into_iter()
-                                    .map(|v| v.copied())
+                                    .map(|opt| opt.map(|v| *v))
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -3297,7 +3297,10 @@ impl crate::Loggable for AffixFuzzer20 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer20#p")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| crate::testing::components::PrimitiveComponent(*v)))
+                        .map(|opt| opt.map(|v| *v))
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|v| crate::testing::components::PrimitiveComponent(v))
+                        })
                 };
                 let s = {
                     let data = &**arrays_by_name["s"];

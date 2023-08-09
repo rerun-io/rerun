@@ -111,7 +111,7 @@ impl crate::Loggable for PrimitiveComponent {
             })
             .with_context("rerun.testing.components.PrimitiveComponent#value")?
             .into_iter()
-            .map(|v| v.copied())
+            .map(|opt| opt.map(|v| *v))
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()

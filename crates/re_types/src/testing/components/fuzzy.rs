@@ -1445,7 +1445,7 @@ impl crate::Loggable for AffixFuzzer8 {
             })
             .with_context("rerun.testing.components.AffixFuzzer8#single_float_optional")?
             .into_iter()
-            .map(|v| v.copied())
+            .map(|opt| opt.map(|v| *v))
             .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
@@ -1977,7 +1977,7 @@ impl crate::Loggable for AffixFuzzer11 {
                             "rerun.testing.components.AffixFuzzer11#many_floats_optional",
                         )?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.map(|v| *v))
                         .collect::<Vec<_>>()
                 };
                 let offsets = data.offsets();

@@ -112,7 +112,7 @@ impl crate::Loggable for InstanceKey {
             })
             .with_context("rerun.components.InstanceKey#value")?
             .into_iter()
-            .map(|v| v.copied())
+            .map(|opt| opt.map(|v| *v))
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()

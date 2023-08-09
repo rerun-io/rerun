@@ -229,7 +229,8 @@ impl crate::Loggable for KeypointPair {
                         })
                         .with_context("rerun.datatypes.KeypointPair#keypoint0")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| crate::components::KeypointId(*v)))
+                        .map(|opt| opt.map(|v| *v))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::components::KeypointId(v)))
                 };
                 let keypoint1 = {
                     let data = &**arrays_by_name["keypoint1"];
@@ -243,7 +244,8 @@ impl crate::Loggable for KeypointPair {
                         })
                         .with_context("rerun.datatypes.KeypointPair#keypoint1")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| crate::components::KeypointId(*v)))
+                        .map(|opt| opt.map(|v| *v))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::components::KeypointId(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(keypoint0, keypoint1),
