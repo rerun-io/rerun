@@ -2395,8 +2395,7 @@ fn quote_arrow_field_deserializer(
                 quote!(.map(|v| v.map(crate::ArrowString)))
             };
 
-            quote! {
-                {
+            quote! {{
                 let downcast = #data_src.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
                 let offsets = downcast.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -2404,9 +2403,8 @@ fn quote_arrow_field_deserializer(
                     downcast.validity(),
                 )
                 .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-                    #quoted_transparent_unmapping
-                }
-            }
+                #quoted_transparent_unmapping
+            }}
         }
 
         DataType::FixedSizeList(inner, length) => {
