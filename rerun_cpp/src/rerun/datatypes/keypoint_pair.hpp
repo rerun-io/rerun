@@ -7,7 +7,6 @@
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
-#include <utility>
 
 namespace rerun {
     namespace datatypes {
@@ -16,15 +15,6 @@ namespace rerun {
             rerun::components::KeypointId keypoint0;
 
             rerun::components::KeypointId keypoint1;
-
-          public:
-            // Extensions to generated type defined in 'keypoint_pair_ext.cpp'
-
-            KeypointPair(uint16_t _keypoint0, uint16_t _keypoint1)
-                : keypoint0(_keypoint0), keypoint1(_keypoint1) {}
-
-            KeypointPair(std::pair<uint16_t, uint16_t> pair)
-                : keypoint0(pair.first), keypoint1(pair.second) {}
 
           public:
             KeypointPair() = default;
