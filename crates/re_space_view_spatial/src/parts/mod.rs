@@ -113,10 +113,10 @@ pub fn process_colors<'a, A: Archetype>(
     let default_color = DefaultColor::EntityPath(ent_path);
 
     Ok(itertools::izip!(
-        annotation_infos.iter(),
         arch_view.iter_optional_component::<Color>()?,
+        annotation_infos.iter().cycle(),
     )
-    .map(move |(annotation_info, color)| {
+    .map(move |(color, annotation_info)| {
         annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
     }))
 }
@@ -170,10 +170,7 @@ where
         let resolved_annotation = annotations
             .resolved_class_description(None)
             .annotation_info();
-        return Ok((
-            vec![resolved_annotation; arch_view.num_instances()],
-            keypoints,
-        ));
+        return Ok((vec![resolved_annotation; 1], keypoints));
     }
 
     let annotation_info = itertools::izip!(

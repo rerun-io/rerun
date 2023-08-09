@@ -319,21 +319,29 @@ impl<A: Archetype> ArchetypeView<A> {
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            let primary_instance_key_iter = self.iter_instance_keys();
-
-            let mut component_instance_key_iter = component.iter_instance_keys();
-
             let component_value_iter = component.iter_values()?;
 
-            let next_component_instance_key = component_instance_key_iter.next();
+            if component.len() == self.num_instances() {
+                Ok(itertools::Either::Left(itertools::Either::Left(
+                    component_value_iter,
+                )))
+            } else {
+                let primary_instance_key_iter = self.iter_instance_keys();
 
-            Ok(itertools::Either::Left(ComponentJoinedIterator {
-                primary_instance_key_iter,
-                component_instance_key_iter,
-                component_value_iter,
-                next_component_instance_key,
-                splatted_component_value: None,
-            }))
+                let mut component_instance_key_iter = component.iter_instance_keys();
+
+                let next_component_instance_key = component_instance_key_iter.next();
+
+                Ok(itertools::Either::Left(itertools::Either::Right(
+                    ComponentJoinedIterator {
+                        primary_instance_key_iter,
+                        component_instance_key_iter,
+                        component_value_iter,
+                        next_component_instance_key,
+                        splatted_component_value: None,
+                    },
+                )))
+            }
         } else {
             let primary = self.required_comp();
             let nulls = (0..primary.len()).map(|_| None);

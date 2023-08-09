@@ -45,15 +45,15 @@ impl Arrows3DPart {
         world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
-            annotation_infos.iter(),
             arch_view.iter_required_component::<Vector3D>()?,
             arch_view.iter_optional_component::<Origin3D>()?,
             arch_view.iter_optional_component::<Label>()?,
             colors,
             instance_path_hashes,
+            annotation_infos.iter().cycle(),
         )
         .filter_map(
-            move |(annotation_info, vector, origin, label, color, labeled_instance)| {
+            move |(vector, origin, label, color, labeled_instance, annotation_info)| {
                 let origin = origin.unwrap_or_default();
                 let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
                 match (vector, label) {
