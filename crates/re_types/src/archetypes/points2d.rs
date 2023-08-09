@@ -80,8 +80,10 @@ pub struct Points2D {
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.point2d".into()]);
+
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.radius".into(), "rerun.colorrgba".into()]);
+
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
@@ -92,6 +94,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]
             "rerun.instance_key".into(),
         ]
     });
+
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [

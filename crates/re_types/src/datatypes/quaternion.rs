@@ -34,6 +34,7 @@ impl crate::Loggable for Quaternion {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Quaternion".into()

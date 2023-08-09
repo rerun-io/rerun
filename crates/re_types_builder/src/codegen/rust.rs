@@ -177,13 +177,7 @@ fn create_files(
                 match &token {
                     // If this is a doc-comment block, be smart about it.
                     proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
-                        let tokens_str = acc
-                            .to_string()
-                            .replace('}', "}\n\n")
-                            .replace("] ;", "];\n\n")
-                            .replace("# [doc", "\n\n# [doc")
-                            .replace("impl ", "\n\nimpl ");
-                        code.push_text(tokens_str, 1, 0);
+                        code.push_text(string_from_quoted(&acc), 1, 0);
                         acc = TokenStream::new();
 
                         acc.extend([token, tokens.next().unwrap()]);
@@ -196,14 +190,7 @@ fn create_files(
                 }
             }
 
-            let tokens_str = acc
-                .to_string()
-                .replace('}', "}\n\n")
-                .replace("] ;", "];\n\n")
-                .replace("# [doc", "\n\n# [doc")
-                .replace("impl ", "\n\nimpl ");
-
-            code.push_text(tokens_str, 1, 0);
+            code.push_text(string_from_quoted(&acc), 1, 0);
         }
 
         code = replace_doc_attrb_with_doc_comment(&code);
@@ -249,6 +236,88 @@ fn create_files(
     files_to_write
 }
 
+fn string_from_quoted(acc: &TokenStream) -> String {
+    re_tracing::profile_function!();
+
+    // We format using `prettyplease` because there are situations with
+    // very long lines that `cargo fmt` fails on.
+    // See https://github.com/dtolnay/prettyplease for more info.
+    let string = prettyplease::unparse(
+        &syn::parse_file(&acc.to_string()).expect("Generated Rust code did not parse"),
+    );
+
+    // `prettyplease` formats docstrings weirdly, like so:
+    //
+    // struct Foo {
+    //     ///No leading space
+    //     bar: i32,
+    //     ///And no empty space before the first line
+    //     ///of the doscstring
+    //     baz: f64,
+    // }
+    //
+    // We fix that here,
+    // while also adding blank lines before functions and `impl` blocks.
+
+    let mut output = String::default();
+    let mut is_in_docstring = false;
+    let mut prev_line_was_attr = false;
+
+    for line in string.split('\n') {
+        if let Some(slashes) = line.find("///") {
+            let leading_spaces = &line[..slashes];
+            if leading_spaces.trim().is_empty() {
+                // This is a docstring
+
+                if !is_in_docstring {
+                    output.push('\n');
+                }
+                let comment = &line[slashes + 3..];
+                output.push_str(leading_spaces);
+                output.push_str("///");
+                if !comment.is_empty() {
+                    output.push(' ');
+                    output.push_str(comment);
+                }
+                output.push('\n');
+
+                prev_line_was_attr = false;
+                is_in_docstring = true;
+
+                continue;
+            }
+        }
+
+        is_in_docstring = false;
+
+        // Insert some extra newlines before functions and `impl` blocks:
+        let trimmed = line.trim_start();
+
+        let line_is_attr = trimmed.starts_with("#[allow(") || trimmed.starts_with("#[inline]");
+
+        if !prev_line_was_attr && line_is_attr {
+            output.push('\n');
+        }
+
+        if !prev_line_was_attr
+            && (trimmed.starts_with("const ")
+                || trimmed.starts_with("fn ")
+                || trimmed.starts_with("impl ")
+                || trimmed.starts_with("impl<")
+                || trimmed.starts_with("pub fn ")
+                || trimmed.starts_with("static "))
+        {
+            output.push('\n');
+        }
+
+        output.push_str(line);
+        output.push('\n');
+        prev_line_was_attr = line_is_attr;
+    }
+
+    output
+}
+
 fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
     re_tracing::profile_function!();
     // TODO(emilk): running `cargo fmt` once for each file is very slow.
@@ -262,8 +331,10 @@ fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
 fn write_file(filepath: &Utf8PathBuf, mut code: String) {
     re_tracing::profile_function!();
 
-    // We need to run `cago fmt` several times because it is not idempotent!
-    // See https://github.com/rust-lang/rustfmt/issues/5824
+    // Even though we already have used `prettyplease` we also
+    // need to run `cargo fmt`, since it catches some things `prettyplease` missed.
+    // We need to run `cago fmt` several times because it is not idempotent;
+    // see https://github.com/rust-lang/rustfmt/issues/5824
     for _ in 0..2 {
         // NOTE: We're purposefully ignoring the error here.
         //

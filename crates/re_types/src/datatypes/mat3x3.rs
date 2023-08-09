@@ -34,6 +34,7 @@ impl crate::Loggable for Mat3x3 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Mat3x3".into()

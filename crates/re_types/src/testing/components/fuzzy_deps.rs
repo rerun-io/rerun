@@ -34,6 +34,7 @@ impl crate::Loggable for PrimitiveComponent {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.PrimitiveComponent".into()
@@ -158,6 +159,7 @@ impl crate::Loggable for StringComponent {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.testing.components.StringComponent".into()
@@ -206,6 +208,7 @@ impl crate::Loggable for StringComponent {
                 )
                 .unwrap()
                 .into();
+
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {
                     Utf8Array::<i32>::new_unchecked(

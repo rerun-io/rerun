@@ -46,6 +46,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.TranslationAndMat3x3".into()
@@ -314,57 +315,128 @@ impl crate::Loggable for TranslationAndMat3x3 {
                     .collect();
                 let translation = {
                     let data = &**arrays_by_name["translation"];
-
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                             .unwrap();
-                        if data . is_empty () { Vec :: new () }
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = (0..)
+                                .step_by(3usize)
+                                .zip((3usize..).step_by(3usize).take(data.len()));
+                            let data = &**data.values();
+                            let data = data
+                                .as_any()
+                                .downcast_ref::<Float32Array>()
+                                .unwrap()
+                                .into_iter()
+                                .map(|v| v.copied())
+                                .map(|v| {
+                                    v
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                })
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            if end as usize > data.len() {
+                                                return Err(crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                                });
+                                            }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (3usize) . zip ((3usize ..) . step_by (3usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ; }
-
- # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
-
- ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
-
-) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Vec3D (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter ()
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                data.get_unchecked(start as usize..end as usize)
+                                            };
+                                            let arr = array_init::from_iter(data.iter().copied())
+                                                .unwrap();
+                                            Ok(arr)
+                                        })
+                                        .transpose()
+                                })
+                                .map(|res| {
+                                    res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v)))
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                            .into_iter()
                     }
                 };
                 let matrix = {
                     let data = &**arrays_by_name["matrix"];
-
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                             .unwrap();
-                        if data . is_empty () { Vec :: new () }
+                        if data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let bitmap = data.validity().cloned();
+                            let offsets = (0..)
+                                .step_by(9usize)
+                                .zip((9usize..).step_by(9usize).take(data.len()));
+                            let data = &**data.values();
+                            let data = data
+                                .as_any()
+                                .downcast_ref::<Float32Array>()
+                                .unwrap()
+                                .into_iter()
+                                .map(|v| v.copied())
+                                .map(|v| {
+                                    v
+                                        .ok_or_else(|| crate::DeserializationError::MissingData {
+                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                        })
+                                })
+                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            offsets
+                                .enumerate()
+                                .map(move |(i, (start, end))| {
+                                    bitmap
+                                        .as_ref()
+                                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                                        .then(|| {
+                                            if end as usize > data.len() {
+                                                return Err(crate::DeserializationError::OffsetsMismatch {
+                                                    bounds: (start as usize, end as usize),
+                                                    len: data.len(),
+                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                                });
+                                            }
 
- else { let bitmap = data . validity () . cloned () ; let offsets = (0 ..) . step_by (9usize) . zip ((9usize ..) . step_by (9usize) . take (data . len ())) ; let data = & * * data . values () ; let data = data . as_any () . downcast_ref :: < Float32Array > () . unwrap () . into_iter () . map (| v | v . copied ()) . map (| v | v . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-)) . collect :: < crate :: DeserializationResult < Vec < _ >> > () ? ; offsets . enumerate () . map (move | (i , (start , end)) | bitmap . as_ref () . map_or (true , | bitmap | bitmap . get_bit (i)) . then (|| { if end as usize > data . len () { return Err (crate :: DeserializationError :: OffsetsMismatch { bounds : (start as usize , end as usize) , len : data . len () , backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) ; }
-
- # [allow (unsafe_code , clippy :: undocumented_unsafe_blocks)] let data = unsafe { data . get_unchecked (start as usize .. end as usize) }
-
- ; let arr = array_init :: from_iter (data . iter () . copied ()) . unwrap () ; Ok (arr) }
-
-) . transpose ()) . map (| res | res . map (| opt | opt . map (| v | crate :: datatypes :: Mat3x3 (v)))) . collect :: < crate :: DeserializationResult < Vec < Option < _ >> >> () ? }
-
- . into_iter ()
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                data.get_unchecked(start as usize..end as usize)
+                                            };
+                                            let arr = array_init::from_iter(data.iter().copied())
+                                                .unwrap();
+                                            Ok(arr)
+                                        })
+                                        .transpose()
+                                })
+                                .map(|res| {
+                                    res.map(|opt| opt.map(|v| crate::datatypes::Mat3x3(v)))
+                                })
+                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                            .into_iter()
                     }
                 };
                 let from_parent = {
                     let data = &**arrays_by_name["from_parent"];
-
                     data.as_any()
                         .downcast_ref::<BooleanArray>()
                         .unwrap()

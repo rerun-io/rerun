@@ -34,6 +34,7 @@ impl crate::Loggable for Radius {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.radius".into()

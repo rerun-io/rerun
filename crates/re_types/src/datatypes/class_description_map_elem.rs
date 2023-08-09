@@ -39,6 +39,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.ClassDescriptionMapElem".into()
@@ -202,7 +203,6 @@ impl crate::Loggable for ClassDescriptionMapElem {
                     .collect();
                 let class_id = {
                     let data = &**arrays_by_name["class_id"];
-
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
                         .unwrap()
@@ -211,7 +211,6 @@ impl crate::Loggable for ClassDescriptionMapElem {
                 };
                 let class_description = {
                     let data = &**arrays_by_name["class_description"];
-
                     crate::datatypes::ClassDescription::try_from_arrow_opt(data)
                         .map_err(|err| crate::DeserializationError::Context {
                             location: "rerun.datatypes.ClassDescriptionMapElem#class_description"
@@ -220,19 +219,37 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         })?
                         .into_iter()
                 };
-                :: itertools :: izip ! (class_id , class_description) . enumerate () . map (| (i , (class_id , class_description)) | is_valid (i) . then (|| Ok (Self { class_id : class_id . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescriptionMapElem#class_id" . into () , source : Box :: new (err) , }
-
-) ? , class_description : class_description . ok_or_else (|| crate :: DeserializationError :: MissingData { backtrace : :: backtrace :: Backtrace :: new_unresolved () , }
-
-) . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescriptionMapElem#class_description" . into () , source : Box :: new (err) , }
-
-) ? , }
-
-)) . transpose ()) . collect :: < crate :: DeserializationResult < Vec < _ >> > () . map_err (| err | crate :: DeserializationError :: Context { location : "rerun.datatypes.ClassDescriptionMapElem" . into () , source : Box :: new (err) , }
-
-) ?
+                ::itertools::izip!(class_id, class_description)
+                    .enumerate()
+                    .map(|(i, (class_id, class_description))| {
+                        is_valid(i)
+                            .then(|| Ok(Self {
+                                class_id: class_id
+                                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| crate::DeserializationError::Context {
+                                        location: "rerun.datatypes.ClassDescriptionMapElem#class_id"
+                                            .into(),
+                                        source: Box::new(err),
+                                    })?,
+                                class_description: class_description
+                                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    })
+                                    .map_err(|err| crate::DeserializationError::Context {
+                                        location: "rerun.datatypes.ClassDescriptionMapElem#class_description"
+                                            .into(),
+                                        source: Box::new(err),
+                                    })?,
+                            }))
+                            .transpose()
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map_err(|err| crate::DeserializationError::Context {
+                        location: "rerun.datatypes.ClassDescriptionMapElem".into(),
+                        source: Box::new(err),
+                    })?
             }
         })
     }

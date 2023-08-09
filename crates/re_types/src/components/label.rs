@@ -35,6 +35,7 @@ impl crate::Loggable for Label {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.label".into()
@@ -83,6 +84,7 @@ impl crate::Loggable for Label {
                 )
                 .unwrap()
                 .into();
+
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {
                     Utf8Array::<i32>::new_unchecked(

@@ -37,6 +37,7 @@ impl crate::Loggable for KeypointPair {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.KeypointPair".into()
@@ -209,7 +210,6 @@ impl crate::Loggable for KeypointPair {
                     .collect();
                 let keypoint0 = {
                     let data = &**arrays_by_name["keypoint0"];
-
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
                         .unwrap()
@@ -218,7 +218,6 @@ impl crate::Loggable for KeypointPair {
                 };
                 let keypoint1 = {
                     let data = &**arrays_by_name["keypoint1"];
-
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
                         .unwrap()

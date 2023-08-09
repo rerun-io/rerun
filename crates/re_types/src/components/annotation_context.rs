@@ -48,6 +48,7 @@ impl crate::Loggable for AnnotationContext {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.annotation_context".into()
@@ -108,13 +109,38 @@ impl crate::Loggable for AnnotationContext {
                 )
                 .unwrap()
                 .into();
-                ListArray :: new ({ _ = extension_wrapper ; DataType :: Extension ("rerun.components.AnnotationContext" . to_owned () , Box :: new (DataType :: List (Box :: new (Field { name : "item" . to_owned () , data_type : < crate :: datatypes :: ClassDescriptionMapElem > :: to_arrow_datatype () , is_nullable : false , metadata : [] . into () , }
-
-))) , None) . to_logical_type () . clone () }
-
- , offsets , { _ = data0_inner_bitmap ; _ = extension_wrapper ; crate :: datatypes :: ClassDescriptionMapElem :: try_to_arrow_opt (data0_inner_data , Some ("rerun.components.AnnotationContext")) ? }
-
- , data0_bitmap ,) . boxed ()
+                ListArray::new(
+                        {
+                            _ = extension_wrapper;
+                            DataType::Extension(
+                                    "rerun.components.AnnotationContext".to_owned(),
+                                    Box::new(
+                                        DataType::List(
+                                            Box::new(Field {
+                                                name: "item".to_owned(),
+                                                data_type: <crate::datatypes::ClassDescriptionMapElem>::to_arrow_datatype(),
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            }),
+                                        ),
+                                    ),
+                                    None,
+                                )
+                                .to_logical_type()
+                                .clone()
+                        },
+                        offsets,
+                        {
+                            _ = data0_inner_bitmap;
+                            _ = extension_wrapper;
+                            crate::datatypes::ClassDescriptionMapElem::try_to_arrow_opt(
+                                data0_inner_data,
+                                Some("rerun.components.AnnotationContext"),
+                            )?
+                        },
+                        data0_bitmap,
+                    )
+                    .boxed()
             }
         })
     }

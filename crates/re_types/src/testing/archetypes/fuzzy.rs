@@ -133,8 +133,10 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 38usize
             "rerun.testing.components.AffixFuzzer18".into(),
         ]
     });
+
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
+
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 36usize]> =
     once_cell::sync::Lazy::new(|| {
         [
@@ -176,6 +178,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 36usize
             "rerun.testing.components.AffixFuzzer18".into(),
         ]
     });
+
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 74usize]> =
     once_cell::sync::Lazy::new(|| {
         [
