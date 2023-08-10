@@ -1245,7 +1245,10 @@ fn quote_fill_arrow_array_builder(
         let field = &obj.fields[0];
         if let Type::Object(fqname) = &field.typ {
             if field.is_nullable {
-                quote!(return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));)
+                quote! {
+                    (void)num_elements;
+                    return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));
+                }
             } else {
                 // Trivial forwarding to inner type.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
@@ -1315,7 +1318,7 @@ fn quote_fill_arrow_array_builder(
                 quote! {
                     #NEWLINE_TOKEN
                     ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
-                    for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& union_instance = elements[elem_idx];
                         ARROW_RETURN_NOT_OK(#builder->Append(static_cast<int8_t>(union_instance._tag)));
                         #NEWLINE_TOKEN
@@ -1408,7 +1411,7 @@ fn quote_append_field_to_builder(
             if field.is_nullable {
                 quote! {
                     #setup
-                    for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
                         if (element.#field_name.has_value()) {
                             ARROW_RETURN_NOT_OK(#builder->Append());
@@ -1421,7 +1424,7 @@ fn quote_append_field_to_builder(
             } else {
                 quote! {
                     #setup
-                    for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
                         ARROW_RETURN_NOT_OK(#builder->Append());
                         #append_value
@@ -1443,7 +1446,7 @@ fn quote_append_field_to_builder(
             quote_append_single_field_to_builder(field, builder, &element_accessor, includes);
         quote! {
             ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 #single_append
             }
         }
