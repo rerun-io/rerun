@@ -32,11 +32,11 @@ namespace rerun {
 
             AnnotationInfo(
                 uint16_t _id, std::optional<std::string> _label = std::nullopt,
-                std::optional<components::Color> _color = std::nullopt
+                std::optional<datatypes::Color> _color = std::nullopt
             )
                 : id(_id), label(std::move(_label)), color(_color) {}
 
-            AnnotationInfo(uint16_t _id, components::Color _color)
+            AnnotationInfo(uint16_t _id, datatypes::Color _color)
                 : id(_id), label(std::nullopt), color(_color) {}
 
           public:
