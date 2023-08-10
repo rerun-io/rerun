@@ -794,6 +794,8 @@ impl QuotedObject {
                 quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
                     switch (other._tag) {
                         #(#copy_match_arms)*
+
+                        case detail::#tag_typename::NONE:
                         #(#default_match_arms)*
                             memcpy(&this->_data, &other._data, sizeof(detail::#data_typename));
                             break;
