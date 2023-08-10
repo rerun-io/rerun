@@ -34,7 +34,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                 }
             });
 
-            let id = self.0.into();
+            let id = self.0;
             match verbosity {
                 UiVerbosity::Small => {
                     if !class.keypoint_connections.is_empty()
@@ -64,7 +64,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
         entity_path: &re_log_types::EntityPath,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        if let Some(info) = annotation_info(ctx, entity_path, query, (*self).into()) {
+        if let Some(info) = annotation_info(ctx, entity_path, query, self.0) {
             ui.horizontal(|ui| {
                 // Color first, to keep subsequent rows of the same things aligned
                 small_color_ui(ui, &info);

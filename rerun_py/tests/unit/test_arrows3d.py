@@ -46,9 +46,9 @@ def test_arrows3d() -> None:
         vectors = cast(rrd.Vec3DArrayLike, vectors)
         origins = cast(Optional[rrd.Vec3DArrayLike], origins)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrc.ColorArrayLike], colors)
-        labels = cast(Optional[rrc.LabelArrayLike], labels)
-        class_ids = cast(Optional[rrc.ClassIdArrayLike], class_ids)
+        colors = cast(Optional[rrd.ColorArrayLike], colors)
+        labels = cast(Optional[rrd.LabelArrayLike], labels)
+        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
 
         print(

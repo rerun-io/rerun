@@ -22,12 +22,12 @@ fn roundtrip() {
             components::Label::from("friend"), //
         ]),
         class_ids: Some(vec![
-            components::ClassId(126), //
-            components::ClassId(127), //
+            components::ClassId::new(126), //
+            components::ClassId::new(127), //
         ]),
         keypoint_ids: Some(vec![
-            components::KeypointId(2), //
-            components::KeypointId(3), //
+            components::KeypointId::new(2), //
+            components::KeypointId::new(3), //
         ]),
         instance_keys: Some(vec![
             components::InstanceKey(u64::MAX - 1), //

@@ -2,53 +2,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
-
-import pyarrow as pa
-from attrs import define, field
-
+from .. import datatypes
 from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
+    BaseDelegatingExtensionArray,
+    BaseDelegatingExtensionType,
 )
-from ._overrides import label_native_to_pa_array  # noqa: F401
 
-__all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
-
-
-@define
-class Label:
-    """A String label component."""
-
-    value: str = field(converter=str)
-
-    def __str__(self) -> str:
-        return str(self.value)
+__all__ = ["LabelArray", "LabelType"]
 
 
-if TYPE_CHECKING:
-    LabelLike = Union[Label, str]
-else:
-    LabelLike = Any
-
-LabelArrayLike = Union[Label, Sequence[LabelLike], str, Sequence[str]]
+class LabelType(BaseDelegatingExtensionType):
+    _TYPE_NAME = "rerun.label"
+    _DELEGATED_EXTENSION_TYPE = datatypes.LabelType
 
 
-# --- Arrow support ---
-
-
-class LabelType(BaseExtensionType):
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.utf8(), "rerun.label")
-
-
-class LabelArray(BaseExtensionArray[LabelArrayLike]):
+class LabelArray(BaseDelegatingExtensionArray[datatypes.LabelArrayLike]):
     _EXTENSION_NAME = "rerun.label"
     _EXTENSION_TYPE = LabelType
-
-    @staticmethod
-    def _native_to_pa_array(data: LabelArrayLike, data_type: pa.DataType) -> pa.Array:
-        return label_native_to_pa_array(data, data_type)
+    _DELEGATED_ARRAY_TYPE = datatypes.LabelArray
 
 
 LabelType._ARRAY_TYPE = LabelArray

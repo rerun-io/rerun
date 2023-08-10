@@ -186,8 +186,8 @@ where
             keypoints
                 .entry((class_id, query.latest_at.as_i64()))
                 .or_insert_with(Default::default)
-                .insert(keypoint_id.into(), primary_into_position(&primary));
-            class_description.annotation_info_with_keypoint(keypoint_id.into())
+                .insert(keypoint_id.0, primary_into_position(&primary));
+            class_description.annotation_info_with_keypoint(keypoint_id.0)
         } else {
             class_description.annotation_info()
         }

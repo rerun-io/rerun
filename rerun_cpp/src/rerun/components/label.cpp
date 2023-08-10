@@ -4,30 +4,33 @@
 #include "label.hpp"
 
 #include "../arrow.hpp"
+#include "../datatypes/label.hpp"
 
 #include <arrow/api.h>
 
 namespace rerun {
     namespace components {
-        const char* Label::NAME = "rerun.label";
+        const char *Label::NAME = "rerun.label";
 
-        const std::shared_ptr<arrow::DataType>& Label::to_arrow_datatype() {
-            static const auto datatype = arrow::utf8();
+        const std::shared_ptr<arrow::DataType> &Label::to_arrow_datatype() {
+            static const auto datatype = rerun::datatypes::Label::to_arrow_datatype();
             return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StringBuilder>> Label::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
+            arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::StringBuilder>(memory_pool));
+            return arrow::Result(
+                rerun::datatypes::Label::new_arrow_array_builder(memory_pool).ValueOrDie()
+            );
         }
 
         arrow::Status Label::fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const Label* elements, size_t num_elements
+            arrow::StringBuilder *builder, const Label *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -36,19 +39,21 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
-            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                ARROW_RETURN_NOT_OK(builder->Append(elements[elem_idx].value));
-            }
+            static_assert(sizeof(rerun::datatypes::Label) == sizeof(Label));
+            ARROW_RETURN_NOT_OK(rerun::datatypes::Label::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::Label *>(elements),
+                num_elements
+            ));
 
             return arrow::Status::OK();
         }
 
         arrow::Result<rerun::DataCell> Label::to_data_cell(
-            const Label* instances, size_t num_instances
+            const Label *instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool* pool = arrow::default_memory_pool();
+            arrow::MemoryPool *pool = arrow::default_memory_pool();
 
             ARROW_ASSIGN_OR_RAISE(auto builder, Label::new_arrow_array_builder(pool));
             if (instances && num_instances > 0) {

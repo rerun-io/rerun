@@ -10,7 +10,7 @@ use re_query::query_archetype;
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Label, Point2D},
-    Loggable as _,
+    datatypes, Loggable as _,
 };
 
 // ---
@@ -56,7 +56,9 @@ pub fn build_some_point2d(len: usize) -> Vec<Point2D> {
 
 /// Create `len` dummy colors
 pub fn build_some_colors(len: usize) -> Vec<Color> {
-    (0..len).map(|i| Color(i as u32)).collect()
+    (0..len)
+        .map(|i| datatypes::Color(i as u32).into())
+        .collect()
 }
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`re_log_types::TimePoint`].

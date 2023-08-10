@@ -7,13 +7,6 @@ impl Label {
     }
 }
 
-impl From<crate::components::Label> for Label {
-    #[inline]
-    fn from(l: crate::components::Label) -> Self {
-        Self(l.0)
-    }
-}
-
 impl From<String> for Label {
     #[inline]
     fn from(value: String) -> Self {

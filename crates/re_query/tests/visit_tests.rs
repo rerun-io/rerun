@@ -34,9 +34,9 @@ fn implicit_joined_iter() {
     ];
 
     let colors = [
-        Color(0), //
-        Color(1),
-        Color(2),
+        Color::from_rgb(0, 0, 0), //
+        Color::from_rgb(1, 0, 0),
+        Color::from_rgb(2, 0, 0),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -45,9 +45,9 @@ fn implicit_joined_iter() {
     );
 
     let expected_colors = [
-        Some(Color(0)), //
-        Some(Color(1)),
-        Some(Color(2)),
+        Some(Color::from_rgb(0, 0, 0)), //
+        Some(Color::from_rgb(1, 0, 0)),
+        Some(Color::from_rgb(2, 0, 0)),
     ];
 
     let results = itertools::izip!(
@@ -76,8 +76,8 @@ fn implicit_primary_joined_iter() {
     ];
 
     let colors = [
-        Color(1), //
-        Color(2),
+        Color::from_rgb(1, 0, 0), //
+        Color::from_rgb(2, 0, 0),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -87,8 +87,8 @@ fn implicit_primary_joined_iter() {
 
     let expected_colors = vec![
         None, //
-        Some(Color(1)),
-        Some(Color(2)),
+        Some(Color::from_rgb(1, 0, 0)),
+        Some(Color::from_rgb(2, 0, 0)),
     ];
 
     let results = itertools::izip!(
@@ -118,11 +118,11 @@ fn implicit_component_joined_iter() {
     let color_ids = InstanceKey::from_iter(0..5);
 
     let colors = [
-        Color(0), //
-        Color(1),
-        Color(2),
-        Color(3),
-        Color(4),
+        Color::from_rgb(0, 0, 0), //
+        Color::from_rgb(1, 0, 0),
+        Color::from_rgb(2, 0, 0),
+        Color::from_rgb(3, 0, 0),
+        Color::from_rgb(4, 0, 0),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -131,9 +131,9 @@ fn implicit_component_joined_iter() {
     );
 
     let expected_colors = vec![
-        Some(Color(0)), //
-        Some(Color(2)),
-        Some(Color(4)),
+        Some(Color::from_rgb(0, 0, 0)), //
+        Some(Color::from_rgb(2, 0, 0)),
+        Some(Color::from_rgb(4, 0, 0)),
     ];
 
     let results = itertools::izip!(
@@ -171,11 +171,11 @@ fn complex_joined_iter() {
     ];
 
     let colors = vec![
-        Color(17), //
-        Color(19),
-        Color(44),
-        Color(96),
-        Color(254),
+        Color::from_rgb(17, 0, 0), //
+        Color::from_rgb(19, 0, 0),
+        Color::from_rgb(44, 0, 0),
+        Color::from_rgb(96, 0, 0),
+        Color::from_rgb(254, 0, 0),
     ];
 
     let entity_view = EntityView::from_native2(
@@ -185,9 +185,9 @@ fn complex_joined_iter() {
 
     let expected_colors = vec![
         None,
-        Some(Color(17)), //
+        Some(Color::from_rgb(17, 0, 0)), //
         None,
-        Some(Color(96)),
+        Some(Color::from_rgb(96, 0, 0)),
     ];
 
     let results = itertools::izip!(
@@ -240,8 +240,8 @@ fn joint_visit() {
     let point_ids = InstanceKey::from_iter(0..5);
 
     let colors = vec![
-        Color(0xff000000), //
-        Color(0x00ff0000),
+        Color::from_rgb(255, 0, 0), //
+        Color::from_rgb(0, 255, 0),
     ];
 
     let color_ids = vec![
@@ -268,9 +268,9 @@ fn joint_visit() {
     let expected_colors = vec![
         None,
         None,
-        Some(Color(0xff000000)),
+        Some(Color::from_rgb(255, 0, 0)),
         None,
-        Some(Color(0x00ff0000)),
+        Some(Color::from_rgb(0, 255, 0)),
     ];
 
     assert_eq!(points, points_out);

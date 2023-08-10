@@ -29,13 +29,6 @@ impl From<u32> for Color {
     }
 }
 
-impl From<crate::components::Color> for Color {
-    #[inline]
-    fn from(c: crate::components::Color) -> Self {
-        Self(c.0)
-    }
-}
-
 impl From<[u8; 4]> for Color {
     #[inline]
     fn from(bytes: [u8; 4]) -> Self {

@@ -7,9 +7,9 @@ impl From<u16> for KeypointId {
     }
 }
 
-impl From<crate::components::KeypointId> for KeypointId {
+impl std::fmt::Display for KeypointId {
     #[inline]
-    fn from(id: crate::components::KeypointId) -> Self {
-        Self(id.0)
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }

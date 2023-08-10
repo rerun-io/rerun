@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../data_cell.hpp"
+#include "../datatypes/keypoint_id.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -13,7 +14,7 @@ namespace rerun {
     namespace components {
         /// A 16-bit ID representing a type of semantic keypoint within a class.
         struct KeypointId {
-            uint16_t id;
+            rerun::datatypes::KeypointId id;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
@@ -21,9 +22,9 @@ namespace rerun {
           public:
             KeypointId() = default;
 
-            KeypointId(uint16_t _id) : id(std::move(_id)) {}
+            KeypointId(rerun::datatypes::KeypointId _id) : id(std::move(_id)) {}
 
-            KeypointId& operator=(uint16_t _id) {
+            KeypointId& operator=(rerun::datatypes::KeypointId _id) {
                 id = std::move(_id);
                 return *this;
             }

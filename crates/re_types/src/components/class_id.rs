@@ -18,7 +18,13 @@
 #[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct ClassId(pub u16);
+pub struct ClassId(pub crate::datatypes::ClassId);
+
+impl<T: Into<crate::datatypes::ClassId>> From<T> for ClassId {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
 
 impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
     #[inline]
@@ -88,7 +94,17 @@ impl crate::Loggable for ClassId {
                     .to_logical_type()
                     .clone()
                 },
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0
+                    .into_iter()
+                    .map(|datum| {
+                        datum
+                            .map(|datum| {
+                                let crate::datatypes::ClassId(data0) = datum;
+                                data0
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect(),
                 data0_bitmap,
             )
             .boxed()
@@ -109,7 +125,7 @@ impl crate::Loggable for ClassId {
             .downcast_ref::<UInt16Array>()
             .unwrap()
             .into_iter()
-            .map(|v| v.copied())
+            .map(|opt| opt.map(|v| crate::datatypes::ClassId(*v)))
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
                     backtrace: ::backtrace::Backtrace::new_unresolved(),

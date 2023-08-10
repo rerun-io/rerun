@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../data_cell.hpp"
+#include "../datatypes/color.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -14,7 +15,7 @@ namespace rerun {
         /// An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear
         /// alpha.
         struct Color {
-            uint32_t rgba;
+            rerun::datatypes::Color rgba;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
@@ -51,9 +52,9 @@ namespace rerun {
           public:
             Color() = default;
 
-            Color(uint32_t _rgba) : rgba(std::move(_rgba)) {}
+            Color(rerun::datatypes::Color _rgba) : rgba(std::move(_rgba)) {}
 
-            Color& operator=(uint32_t _rgba) {
+            Color& operator=(rerun::datatypes::Color _rgba) {
                 rgba = std::move(_rgba);
                 return *this;
             }

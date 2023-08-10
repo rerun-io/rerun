@@ -19,5 +19,5 @@ table Label (
   "attr.rust.repr": "transparent",
   order: 100
 ) {
-  value: rerun.datatypes.Label (order: 100, transparent);
+  value: rerun.datatypes.Label (order: 100);
 }

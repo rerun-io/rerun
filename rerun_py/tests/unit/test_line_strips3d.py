@@ -78,9 +78,9 @@ def test_line_strips3d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         strips = cast(rrc.LineStrip3DArrayLike, strips)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrc.ColorArrayLike], colors)
-        labels = cast(Optional[rrc.LabelArrayLike], labels)
-        class_ids = cast(Optional[rrc.ClassIdArrayLike], class_ids)
+        colors = cast(Optional[rrd.ColorArrayLike], colors)
+        labels = cast(Optional[rrd.LabelArrayLike], labels)
+        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
 
         print(

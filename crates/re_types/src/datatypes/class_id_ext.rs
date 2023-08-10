@@ -7,9 +7,9 @@ impl From<u16> for ClassId {
     }
 }
 
-impl From<crate::components::ClassId> for ClassId {
+impl std::fmt::Display for ClassId {
     #[inline]
-    fn from(id: crate::components::ClassId) -> Self {
-        Self(id.0)
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }

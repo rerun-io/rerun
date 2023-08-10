@@ -23,5 +23,5 @@ table Color (
   "attr.rust.repr": "transparent",
   order: 100
 ) {
-  rgba: rerun.datatypes.Color (order: 100, transparent);
+  rgba: rerun.datatypes.Color (order: 100);
 }

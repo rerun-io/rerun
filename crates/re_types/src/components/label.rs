@@ -15,7 +15,13 @@
 /// A String label component.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Label(pub crate::ArrowString);
+pub struct Label(pub crate::datatypes::Label);
+
+impl<T: Into<crate::datatypes::Label>> From<T> for Label {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
 
 impl<'a> From<Label> for ::std::borrow::Cow<'a, Label> {
     #[inline]
@@ -75,15 +81,25 @@ impl crate::Loggable for Label {
                 any_nones.then(|| somes.into())
             };
             {
-                let inner_data: ::arrow2::buffer::Buffer<u8> =
-                    data0.iter().flatten().flat_map(|s| s.0.clone()).collect();
-                let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    data0
-                        .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
-                )
-                .unwrap()
-                .into();
+                let inner_data: ::arrow2::buffer::Buffer<u8> = data0
+                    .iter()
+                    .flatten()
+                    .flat_map(|datum| {
+                        let crate::datatypes::Label(data0) = datum;
+                        data0.0.clone()
+                    })
+                    .collect();
+                let offsets =
+                    ::arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
+                        opt.as_ref()
+                            .map(|datum| {
+                                let crate::datatypes::Label(data0) = datum;
+                                data0.0.len()
+                            })
+                            .unwrap_or_default()
+                    }))
+                    .unwrap()
+                    .into();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {
@@ -125,7 +141,7 @@ impl crate::Loggable for Label {
                 downcast.validity(),
             )
             .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-            .map(|v| v.map(crate::ArrowString))
+            .map(|opt| opt.map(|v| crate::datatypes::Label(crate::ArrowString(v))))
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {

@@ -4,30 +4,33 @@
 #include "keypoint_id.hpp"
 
 #include "../arrow.hpp"
+#include "../datatypes/keypoint_id.hpp"
 
 #include <arrow/api.h>
 
 namespace rerun {
     namespace components {
-        const char* KeypointId::NAME = "rerun.keypoint_id";
+        const char *KeypointId::NAME = "rerun.keypoint_id";
 
-        const std::shared_ptr<arrow::DataType>& KeypointId::to_arrow_datatype() {
-            static const auto datatype = arrow::uint16();
+        const std::shared_ptr<arrow::DataType> &KeypointId::to_arrow_datatype() {
+            static const auto datatype = rerun::datatypes::KeypointId::to_arrow_datatype();
             return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::UInt16Builder>> KeypointId::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
+            arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::UInt16Builder>(memory_pool));
+            return arrow::Result(
+                rerun::datatypes::KeypointId::new_arrow_array_builder(memory_pool).ValueOrDie()
+            );
         }
 
         arrow::Status KeypointId::fill_arrow_array_builder(
-            arrow::UInt16Builder* builder, const KeypointId* elements, size_t num_elements
+            arrow::UInt16Builder *builder, const KeypointId *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -36,17 +39,21 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(*elements) == sizeof(elements->id));
-            ARROW_RETURN_NOT_OK(builder->AppendValues(&elements->id, num_elements));
+            static_assert(sizeof(rerun::datatypes::KeypointId) == sizeof(KeypointId));
+            ARROW_RETURN_NOT_OK(rerun::datatypes::KeypointId::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::KeypointId *>(elements),
+                num_elements
+            ));
 
             return arrow::Status::OK();
         }
 
         arrow::Result<rerun::DataCell> KeypointId::to_data_cell(
-            const KeypointId* instances, size_t num_instances
+            const KeypointId *instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool* pool = arrow::default_memory_pool();
+            arrow::MemoryPool *pool = arrow::default_memory_pool();
 
             ARROW_ASSIGN_OR_RAISE(auto builder, KeypointId::new_arrow_array_builder(pool));
             if (instances && num_instances > 0) {

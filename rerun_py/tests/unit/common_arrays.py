@@ -97,7 +97,7 @@ def radii_expected(empty: bool) -> Any:
     return rrc.RadiusArray.from_similar([] if empty else [1, 10])
 
 
-colors_arrays: list[rrc.ColorArrayLike | None] = [
+colors_arrays: list[rrd.ColorArrayLike | None] = [
     None,
     [],
     np.array([]),
@@ -108,8 +108,8 @@ colors_arrays: list[rrc.ColorArrayLike | None] = [
     ],
     # ColorArrayLike: Sequence[ColorLike]: Color
     [
-        rrc.Color(0xAA0000CC),
-        rrc.Color(0x00BB00DD),
+        rrd.Color(0xAA0000CC),
+        rrd.Color(0x00BB00DD),
     ],
     # ColorArrayLike: Sequence[ColorLike]: npt.NDArray[np.uint8]
     np.array(
@@ -200,15 +200,15 @@ def colors_expected(empty: bool) -> Any:
     return rrc.ColorArray.from_similar([] if empty else [0xAA0000CC, 0x00BB00DD])
 
 
-labels_arrays: list[rrc.LabelArrayLike | None] = [
+labels_arrays: list[rrd.LabelArrayLike | None] = [
     None,
     [],
     # LabelArrayLike: Sequence[LabelLike]: str
     ["hello", "friend"],
     # LabelArrayLike: Sequence[LabelLike]: Label
     [
-        rrc.Label("hello"),
-        rrc.Label("friend"),
+        rrd.Label("hello"),
+        rrd.Label("friend"),
     ],
 ]
 
@@ -236,7 +236,7 @@ class_ids_arrays = [
     # ClassIdArrayLike: Sequence[ClassIdLike]: int
     [126, 127],
     # ClassIdArrayLike: Sequence[ClassIdLike]: ClassId
-    [rrc.ClassId(126), rrc.ClassId(127)],
+    [rrd.ClassId(126), rrd.ClassId(127)],
     # ClassIdArrayLike: np.NDArray[np.uint8]
     np.array([126, 127], dtype=np.uint8),
     # ClassIdArrayLike: np.NDArray[np.uint16]
@@ -258,7 +258,7 @@ keypoint_ids_arrays = [
     # KeypointIdArrayLike: Sequence[KeypointIdLike]: int
     [2, 3],
     # KeypointIdArrayLike: Sequence[KeypointIdLike]: KeypointId
-    [rrc.KeypointId(2), rrc.KeypointId(3)],
+    [rrd.KeypointId(2), rrd.KeypointId(3)],
     # KeypointIdArrayLike: np.NDArray[np.uint8]
     np.array([2, 3], dtype=np.uint8),
     # KeypointIdArrayLike: np.NDArray[np.uint16]

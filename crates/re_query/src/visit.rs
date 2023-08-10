@@ -18,9 +18,9 @@
 //! ];
 //!
 //! let colors = [
-//!     Color(0),
-//!     Color(1),
-//!     Color(2),
+//!     Color::from_rgb(0, 0, 0),
+//!     Color::from_rgb(1, 0, 0),
+//!     Color::from_rgb(2, 0, 0),
 //! ];
 //!
 //! let entity_view = EntityView::from_native2(

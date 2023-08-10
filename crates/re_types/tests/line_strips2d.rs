@@ -28,8 +28,8 @@ fn roundtrip() {
         ]),
         draw_order: Some(DrawOrder(300.0)),
         class_ids: Some(vec![
-            ClassId(126), //
-            ClassId(127), //
+            ClassId::new(126), //
+            ClassId::new(127), //
         ]),
         instance_keys: Some(vec![
             InstanceKey(u64::MAX - 1), //
