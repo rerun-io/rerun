@@ -5,11 +5,31 @@ script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path/../../.."
 set -x
 
+WERROR=false
+
+while test $# -gt 0; do
+  case "$1" in
+    --werror)
+      shift
+      WERROR=true
+      ;;
+
+    *)
+      break
+      ;;
+  esac
+done
+
+
 num_threads=$(getconf _NPROCESSORS_ONLN)
 
 mkdir -p build
 pushd build
-    cmake -DCMAKE_BUILD_TYPE=Debug ..
+    if [ ${WERROR} = true ]; then
+        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_COMPILE_WARNING_AS_ERROR=ON ..
+    else
+        cmake -DCMAKE_BUILD_TYPE=Debug ..
+    fi
     cmake --build . --config Debug --target rerun_example -j ${num_threads}
 popd
 
