@@ -1,0 +1,44 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+include "rerun/datatypes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A rectangle in 2D space.
+struct Rect2D (
+  "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float, float, float]",
+  "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
+  "attr.rerun.legacy_fqname": "rerun.rect2d",
+  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  order: 100
+) {
+  values: rerun.datatypes.Vec4D (order: 100);
+}
+
+enum Rect2DFormat: byte (
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord",
+  order: 100
+) {
+    /// [x, y, w, h], with x,y = left,top.
+    XYWH,
+
+    /// [y, x, h, w], with x,y = left,top.
+    YXHW,
+
+    /// [x0, y0, x1, y1], with x0,y0 = left,top and x1,y1 = right,bottom.
+    XYXY,
+
+    /// [y0, x0, y1, x1], with x0,y0 = left,top and x1,y1 = right,bottom.
+    YXYX,
+
+    /// [x_center, y_center, width, height].
+    XCYCWH,
+
+    /// [x_center, y_center, width/2, height/2].
+    XCYCW2H2,
+}

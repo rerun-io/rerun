@@ -7,7 +7,7 @@ use crate::{ElementType, Object, ObjectKind, Type, ATTR_RUST_TUPLE_STRUCT};
 // ---
 
 pub fn is_tuple_struct_from_obj(obj: &Object) -> bool {
-    let is_tuple_struct = obj.kind == ObjectKind::Component
+    let is_tuple_struct = (obj.kind == ObjectKind::Component && !obj.is_enum())
         || (obj.is_struct() && obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some());
 
     assert!(
@@ -26,6 +26,7 @@ pub fn iter_archetype_components<'a>(
 ) -> impl Iterator<Item = String> + 'a {
     assert_eq!(ObjectKind::Archetype, obj.kind);
     obj.fields.iter().filter_map(move |field| {
+        dbg!(&field);
         field
             .try_get_attr::<String>(requirement_attr_value)
             .map(|_| match &field.typ {

@@ -1,0 +1,54 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// A batch of 2D rectangles with optional colors, radii, labels, etc.
+// TODO: examples
+table Rects2D (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  // --- Required ---
+
+  /// The respective formats for all rectangles in the batch.
+  ///
+  /// The specified `values` will be interpreted based on these.
+  formats: [rerun.components.Rect2DFormat] ("attr.rerun.component_required", order: 1000);
+
+  /// All the actual 2D rectangle data that make up the batch.
+  ///
+  /// These values are interpreted based on the specified `formats`.
+  values: [rerun.components.Rect2D] ("attr.rerun.component_required", order: 1100);
+
+  // --- Recommended ---
+
+  /// Optional stroke width for the rectangles.
+  stroke_widths: [rerun.components.StrokeWidth] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Optional colors for the rectangles.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  // --- Optional ---
+
+  /// Optional text labels for the rectangles.
+  labels: [rerun.components.Label] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// An optional floating point value that specifies the 2D drawing order.
+  /// Objects with higher values are drawn on top of those with lower values.
+  ///
+  /// The default for 2D rectangles is 30.0.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional class Ids for the rectangles.
+  ///
+  /// The class ID provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Unique identifiers for each individual rectangle in the batch.
+  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
+}

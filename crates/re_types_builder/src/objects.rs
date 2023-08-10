@@ -517,7 +517,7 @@ impl Object {
             .map(|val| ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val))
             .collect();
 
-        if kind == ObjectKind::Component {
+        if kind == ObjectKind::Component && enm.is_union() {
             assert!(
                 fields.len() == 1,
                 "components must have exactly 1 field, but {fqname} has {}",
@@ -579,6 +579,9 @@ impl Object {
     }
 
     pub fn is_arrow_transparent(&self) -> bool {
+        if self.is_enum() {
+            return false;
+        }
         self.kind == ObjectKind::Component
             || self
                 .try_get_attr::<String>(crate::ATTR_ARROW_TRANSPARENT)
