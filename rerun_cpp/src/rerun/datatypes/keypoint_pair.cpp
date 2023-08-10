@@ -3,7 +3,7 @@
 
 #include "keypoint_pair.hpp"
 
-#include "../components/keypoint_id.hpp"
+#include "../datatypes/keypoint_id.hpp"
 
 #include <arrow/api.h>
 
@@ -11,16 +11,8 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &KeypointPair::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field(
-                    "keypoint0",
-                    rerun::components::KeypointId::to_arrow_datatype(),
-                    false
-                ),
-                arrow::field(
-                    "keypoint1",
-                    rerun::components::KeypointId::to_arrow_datatype(),
-                    false
-                ),
+                arrow::field("keypoint0", rerun::datatypes::KeypointId::to_arrow_datatype(), false),
+                arrow::field("keypoint1", rerun::datatypes::KeypointId::to_arrow_datatype(), false),
             });
             return datatype;
         }
@@ -36,10 +28,8 @@ namespace rerun {
                 to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rerun::components::KeypointId::new_arrow_array_builder(memory_pool)
-                        .ValueOrDie(),
-                    rerun::components::KeypointId::new_arrow_array_builder(memory_pool)
-                        .ValueOrDie(),
+                    rerun::datatypes::KeypointId::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::KeypointId::new_arrow_array_builder(memory_pool).ValueOrDie(),
                 })
             ));
         }
@@ -58,7 +48,7 @@ namespace rerun {
                 auto field_builder = static_cast<arrow::UInt16Builder *>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(rerun::components::KeypointId::fill_arrow_array_builder(
+                    ARROW_RETURN_NOT_OK(rerun::datatypes::KeypointId::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].keypoint0,
                         1
@@ -69,7 +59,7 @@ namespace rerun {
                 auto field_builder = static_cast<arrow::UInt16Builder *>(builder->field_builder(1));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(rerun::components::KeypointId::fill_arrow_array_builder(
+                    ARROW_RETURN_NOT_OK(rerun::datatypes::KeypointId::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].keypoint1,
                         1

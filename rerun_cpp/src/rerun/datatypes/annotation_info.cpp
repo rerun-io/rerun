@@ -3,8 +3,8 @@
 
 #include "annotation_info.hpp"
 
-#include "../components/color.hpp"
-#include "../components/label.hpp"
+#include "../datatypes/color.hpp"
+#include "../datatypes/label.hpp"
 
 #include <arrow/api.h>
 
@@ -13,8 +13,8 @@ namespace rerun {
         const std::shared_ptr<arrow::DataType> &AnnotationInfo::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("id", arrow::uint16(), false),
-                arrow::field("label", rerun::components::Label::to_arrow_datatype(), true),
-                arrow::field("color", rerun::components::Color::to_arrow_datatype(), true),
+                arrow::field("label", rerun::datatypes::Label::to_arrow_datatype(), true),
+                arrow::field("color", rerun::datatypes::Color::to_arrow_datatype(), true),
             });
             return datatype;
         }
@@ -30,8 +30,8 @@ namespace rerun {
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::UInt16Builder>(memory_pool),
-                    rerun::components::Label::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rerun::components::Color::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Label::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Color::new_arrow_array_builder(memory_pool).ValueOrDie(),
                 })
             ));
         }
@@ -59,7 +59,7 @@ namespace rerun {
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.label.has_value()) {
-                        ARROW_RETURN_NOT_OK(rerun::components::Label::fill_arrow_array_builder(
+                        ARROW_RETURN_NOT_OK(rerun::datatypes::Label::fill_arrow_array_builder(
                             field_builder,
                             &element.label.value(),
                             1
@@ -75,7 +75,7 @@ namespace rerun {
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.color.has_value()) {
-                        ARROW_RETURN_NOT_OK(rerun::components::Color::fill_arrow_array_builder(
+                        ARROW_RETURN_NOT_OK(rerun::datatypes::Color::fill_arrow_array_builder(
                             field_builder,
                             &element.color.value(),
                             1

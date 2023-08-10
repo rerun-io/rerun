@@ -35,13 +35,13 @@ impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
 }
 
 impl crate::Loggable for ClassId {
-    type Name = crate::ComponentName;
+    type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.components.ClassId".into()
+        "rerun.datatypes.ClassId".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -81,7 +81,7 @@ impl crate::Loggable for ClassId {
                 {
                     _ = extension_wrapper;
                     DataType::Extension(
-                        "rerun.components.ClassId".to_owned(),
+                        "rerun.datatypes.ClassId".to_owned(),
                         Box::new(DataType::UInt16),
                         None,
                     )
@@ -118,7 +118,7 @@ impl crate::Loggable for ClassId {
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.ClassId#id".into(),
+                location: "rerun.datatypes.ClassId#id".into(),
                 source: Box::new(err),
             })?)
     }
@@ -139,4 +139,4 @@ impl crate::Loggable for ClassId {
     }
 }
 
-impl crate::Component for ClassId {}
+impl crate::Datatype for ClassId {}

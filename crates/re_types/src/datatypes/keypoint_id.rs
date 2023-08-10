@@ -12,36 +12,38 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 16-bit ID representing a type of semantic class.
+/// A 16-bit ID representing a type of semantic keypoint within a class.
 ///
-/// Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
+/// `KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`.
+///
+/// Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`.
 #[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct ClassId(pub u16);
+pub struct KeypointId(pub u16);
 
-impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
     #[inline]
-    fn from(value: ClassId) -> Self {
+    fn from(value: KeypointId) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'a> From<&'a KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
     #[inline]
-    fn from(value: &'a ClassId) -> Self {
+    fn from(value: &'a KeypointId) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for ClassId {
-    type Name = crate::ComponentName;
+impl crate::Loggable for KeypointId {
+    type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.components.ClassId".into()
+        "rerun.datatypes.KeypointId".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -81,7 +83,7 @@ impl crate::Loggable for ClassId {
                 {
                     _ = extension_wrapper;
                     DataType::Extension(
-                        "rerun.components.ClassId".to_owned(),
+                        "rerun.datatypes.KeypointId".to_owned(),
                         Box::new(DataType::UInt16),
                         None,
                     )
@@ -118,7 +120,7 @@ impl crate::Loggable for ClassId {
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.ClassId#id".into(),
+                location: "rerun.datatypes.KeypointId#id".into(),
                 source: Box::new(err),
             })?)
     }
@@ -139,4 +141,4 @@ impl crate::Loggable for ClassId {
     }
 }
 
-impl crate::Component for ClassId {}
+impl crate::Datatype for KeypointId {}

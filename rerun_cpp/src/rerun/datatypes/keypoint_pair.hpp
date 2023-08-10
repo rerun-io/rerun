@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../components/keypoint_id.hpp"
+#include "../datatypes/keypoint_id.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -13,9 +13,9 @@ namespace rerun {
     namespace datatypes {
         /// A connection between two `Keypoints`.
         struct KeypointPair {
-            rerun::components::KeypointId keypoint0;
+            rerun::datatypes::KeypointId keypoint0;
 
-            rerun::components::KeypointId keypoint1;
+            rerun::datatypes::KeypointId keypoint1;
 
           public:
             // Extensions to generated type defined in 'keypoint_pair_ext.cpp'

@@ -59,11 +59,11 @@ KeypointIdArrayLike = Union[
 
 class KeypointIdType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.keypoint_id")
+        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.datatypes.KeypointId")
 
 
 class KeypointIdArray(BaseExtensionArray[KeypointIdArrayLike]):
-    _EXTENSION_NAME = "rerun.keypoint_id"
+    _EXTENSION_NAME = "rerun.datatypes.KeypointId"
     _EXTENSION_TYPE = KeypointIdType
 
     @staticmethod

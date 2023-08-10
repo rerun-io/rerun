@@ -24,6 +24,8 @@ from .class_description_map_elem import (
     ClassDescriptionMapElemLike,
     ClassDescriptionMapElemType,
 )
+from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
+from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
 from .fuzzy import (
     AffixFuzzer1,
     AffixFuzzer1Array,
@@ -61,7 +63,21 @@ from .fuzzy import (
     FlattenedScalarLike,
     FlattenedScalarType,
 )
+from .fuzzy_deps import (
+    PrimitiveComponent,
+    PrimitiveComponentArray,
+    PrimitiveComponentArrayLike,
+    PrimitiveComponentLike,
+    PrimitiveComponentType,
+    StringComponent,
+    StringComponentArray,
+    StringComponentArrayLike,
+    StringComponentLike,
+    StringComponentType,
+)
+from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArray, KeypointPairArrayLike, KeypointPairLike, KeypointPairType
+from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
 from .mat3x3 import Mat3x3, Mat3x3Array, Mat3x3ArrayLike, Mat3x3Like, Mat3x3Type
 from .mat4x4 import Mat4x4, Mat4x4Array, Mat4x4ArrayLike, Mat4x4Like, Mat4x4Type
 from .quaternion import Quaternion, QuaternionArray, QuaternionArrayLike, QuaternionLike, QuaternionType
@@ -144,16 +160,36 @@ __all__ = [
     "ClassDescriptionMapElemLike",
     "ClassDescriptionMapElemType",
     "ClassDescriptionType",
+    "ClassId",
+    "ClassIdArray",
+    "ClassIdArrayLike",
+    "ClassIdLike",
+    "ClassIdType",
+    "Color",
+    "ColorArray",
+    "ColorArrayLike",
+    "ColorLike",
+    "ColorType",
     "FlattenedScalar",
     "FlattenedScalarArray",
     "FlattenedScalarArrayLike",
     "FlattenedScalarLike",
     "FlattenedScalarType",
+    "KeypointId",
+    "KeypointIdArray",
+    "KeypointIdArrayLike",
+    "KeypointIdLike",
+    "KeypointIdType",
     "KeypointPair",
     "KeypointPairArray",
     "KeypointPairArrayLike",
     "KeypointPairLike",
     "KeypointPairType",
+    "Label",
+    "LabelArray",
+    "LabelArrayLike",
+    "LabelLike",
+    "LabelType",
     "Mat3x3",
     "Mat3x3Array",
     "Mat3x3ArrayLike",
@@ -164,6 +200,11 @@ __all__ = [
     "Mat4x4ArrayLike",
     "Mat4x4Like",
     "Mat4x4Type",
+    "PrimitiveComponent",
+    "PrimitiveComponentArray",
+    "PrimitiveComponentArrayLike",
+    "PrimitiveComponentLike",
+    "PrimitiveComponentType",
     "Quaternion",
     "QuaternionArray",
     "QuaternionArrayLike",
@@ -184,6 +225,11 @@ __all__ = [
     "Scale3DArrayLike",
     "Scale3DLike",
     "Scale3DType",
+    "StringComponent",
+    "StringComponentArray",
+    "StringComponentArrayLike",
+    "StringComponentLike",
+    "StringComponentType",
     "Transform3D",
     "Transform3DArray",
     "Transform3DArrayLike",

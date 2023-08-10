@@ -3648,13 +3648,13 @@ impl crate::Loggable for AffixFuzzer20 {
         DataType::Struct(vec![
             Field {
                 name: "p".to_owned(),
-                data_type: <crate::testing::components::PrimitiveComponent>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::PrimitiveComponent>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
             Field {
                 name: "s".to_owned(),
-                data_type: <crate::testing::components::StringComponent>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::StringComponent>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },

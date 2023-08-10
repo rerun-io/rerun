@@ -3,19 +3,14 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
-
 #include <arrow/type_fwd.h>
 #include <cstdint>
 #include <utility>
 
 namespace rerun {
-    namespace components {
+    namespace datatypes {
         struct PrimitiveComponent {
             uint32_t value;
-
-            /// Name of the component, used for serialization.
-            static const char* NAME;
 
           public:
             PrimitiveComponent() = default;
@@ -40,11 +35,6 @@ namespace rerun {
                 arrow::UInt32Builder* builder, const PrimitiveComponent* elements,
                 size_t num_elements
             );
-
-            /// Creates a Rerun DataCell from an array of PrimitiveComponent components.
-            static arrow::Result<rerun::DataCell> to_data_cell(
-                const PrimitiveComponent* instances, size_t num_instances
-            );
         };
-    } // namespace components
+    } // namespace datatypes
 } // namespace rerun

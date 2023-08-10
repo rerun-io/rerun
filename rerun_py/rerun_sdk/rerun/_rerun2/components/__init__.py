@@ -91,18 +91,6 @@ from .fuzzy import (
     AffixFuzzer20Array,
     AffixFuzzer20Type,
 )
-from .fuzzy_deps import (
-    PrimitiveComponent,
-    PrimitiveComponentArray,
-    PrimitiveComponentArrayLike,
-    PrimitiveComponentLike,
-    PrimitiveComponentType,
-    StringComponent,
-    StringComponentArray,
-    StringComponentArrayLike,
-    StringComponentLike,
-    StringComponentType,
-)
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
 from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
@@ -242,21 +230,11 @@ __all__ = [
     "Point2DType",
     "Point3DArray",
     "Point3DType",
-    "PrimitiveComponent",
-    "PrimitiveComponentArray",
-    "PrimitiveComponentArrayLike",
-    "PrimitiveComponentLike",
-    "PrimitiveComponentType",
     "Radius",
     "RadiusArray",
     "RadiusArrayLike",
     "RadiusLike",
     "RadiusType",
-    "StringComponent",
-    "StringComponentArray",
-    "StringComponentArrayLike",
-    "StringComponentLike",
-    "StringComponentType",
     "Transform3DArray",
     "Transform3DType",
     "Vector3DArray",

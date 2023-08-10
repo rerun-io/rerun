@@ -12,43 +12,51 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 16-bit ID representing a type of semantic class.
-///
-/// Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    bytemuck :: Pod,
+    bytemuck :: Zeroable,
+)]
 #[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct ClassId(pub u16);
+pub struct Color(pub u32);
 
-impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'a> From<Color> for ::std::borrow::Cow<'a, Color> {
     #[inline]
-    fn from(value: ClassId) -> Self {
+    fn from(value: Color) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'a> From<&'a Color> for ::std::borrow::Cow<'a, Color> {
     #[inline]
-    fn from(value: &'a ClassId) -> Self {
+    fn from(value: &'a Color) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for ClassId {
-    type Name = crate::ComponentName;
+impl crate::Loggable for Color {
+    type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.components.ClassId".into()
+        "rerun.datatypes.Color".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt16
+        DataType::UInt32
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -81,8 +89,8 @@ impl crate::Loggable for ClassId {
                 {
                     _ = extension_wrapper;
                     DataType::Extension(
-                        "rerun.components.ClassId".to_owned(),
-                        Box::new(DataType::UInt16),
+                        "rerun.datatypes.Color".to_owned(),
+                        Box::new(DataType::UInt32),
                         None,
                     )
                     .to_logical_type()
@@ -106,7 +114,7 @@ impl crate::Loggable for ClassId {
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
-            .downcast_ref::<UInt16Array>()
+            .downcast_ref::<UInt32Array>()
             .unwrap()
             .into_iter()
             .map(|v| v.copied())
@@ -118,7 +126,7 @@ impl crate::Loggable for ClassId {
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.ClassId#id".into(),
+                location: "rerun.datatypes.Color#rgba".into(),
                 source: Box::new(err),
             })?)
     }
@@ -139,4 +147,4 @@ impl crate::Loggable for ClassId {
     }
 }
 
-impl crate::Component for ClassId {}
+impl crate::Datatype for Color {}

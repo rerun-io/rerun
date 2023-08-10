@@ -3,14 +3,10 @@
 
 #include "primitive_component.hpp"
 
-#include "../arrow.hpp"
-
 #include <arrow/api.h>
 
 namespace rerun {
-    namespace components {
-        const char* PrimitiveComponent::NAME = "rerun.testing.components.PrimitiveComponent";
-
+    namespace datatypes {
         const std::shared_ptr<arrow::DataType>& PrimitiveComponent::to_arrow_datatype() {
             static const auto datatype = arrow::uint32();
             return datatype;
@@ -40,38 +36,5 @@ namespace rerun {
 
             return arrow::Status::OK();
         }
-
-        arrow::Result<rerun::DataCell> PrimitiveComponent::to_data_cell(
-            const PrimitiveComponent* instances, size_t num_instances
-        ) {
-            // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool* pool = arrow::default_memory_pool();
-
-            ARROW_ASSIGN_OR_RAISE(auto builder, PrimitiveComponent::new_arrow_array_builder(pool));
-            if (instances && num_instances > 0) {
-                ARROW_RETURN_NOT_OK(PrimitiveComponent::fill_arrow_array_builder(
-                    builder.get(),
-                    instances,
-                    num_instances
-                ));
-            }
-            std::shared_ptr<arrow::Array> array;
-            ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-            auto schema = arrow::schema({arrow::field(
-                PrimitiveComponent::NAME,
-                PrimitiveComponent::to_arrow_datatype(),
-                false
-            )});
-
-            rerun::DataCell cell;
-            cell.component_name = PrimitiveComponent::NAME;
-            ARROW_ASSIGN_OR_RAISE(
-                cell.buffer,
-                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
-            );
-
-            return cell;
-        }
-    } // namespace components
+    } // namespace datatypes
 } // namespace rerun

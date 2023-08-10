@@ -52,11 +52,11 @@ ClassIdArrayLike = Union[
 
 class ClassIdType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.ClassId")
+        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.datatypes.ClassId")
 
 
 class ClassIdArray(BaseExtensionArray[ClassIdArrayLike]):
-    _EXTENSION_NAME = "rerun.components.ClassId"
+    _EXTENSION_NAME = "rerun.datatypes.ClassId"
     _EXTENSION_TYPE = ClassIdType
 
     @staticmethod

@@ -3,8 +3,8 @@
 
 #include "class_description_map_elem.hpp"
 
-#include "../components/class_id.hpp"
 #include "../datatypes/class_description.hpp"
+#include "../datatypes/class_id.hpp"
 
 #include <arrow/api.h>
 
@@ -12,7 +12,7 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &ClassDescriptionMapElem::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field("class_id", rerun::components::ClassId::to_arrow_datatype(), false),
+                arrow::field("class_id", rerun::datatypes::ClassId::to_arrow_datatype(), false),
                 arrow::field(
                     "class_description",
                     rerun::datatypes::ClassDescription::to_arrow_datatype(),
@@ -32,7 +32,7 @@ namespace rerun {
                 to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rerun::components::ClassId::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::ClassId::new_arrow_array_builder(memory_pool).ValueOrDie(),
                     rerun::datatypes::ClassDescription::new_arrow_array_builder(memory_pool)
                         .ValueOrDie(),
                 })
@@ -54,7 +54,7 @@ namespace rerun {
                 auto field_builder = static_cast<arrow::UInt16Builder *>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(rerun::components::ClassId::fill_arrow_array_builder(
+                    ARROW_RETURN_NOT_OK(rerun::datatypes::ClassId::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].class_id,
                         1

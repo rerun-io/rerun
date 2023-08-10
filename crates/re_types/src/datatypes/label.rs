@@ -12,43 +12,40 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 16-bit ID representing a type of semantic class.
-///
-/// Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// A String label datatype.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct ClassId(pub u16);
+pub struct Label(pub crate::ArrowString);
 
-impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'a> From<Label> for ::std::borrow::Cow<'a, Label> {
     #[inline]
-    fn from(value: ClassId) -> Self {
+    fn from(value: Label) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
+impl<'a> From<&'a Label> for ::std::borrow::Cow<'a, Label> {
     #[inline]
-    fn from(value: &'a ClassId) -> Self {
+    fn from(value: &'a Label) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for ClassId {
-    type Name = crate::ComponentName;
+impl crate::Loggable for Label {
+    type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.components.ClassId".into()
+        "rerun.label".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt16
+        DataType::Utf8
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -77,21 +74,37 @@ impl crate::Loggable for ClassId {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            PrimitiveArray::new(
-                {
-                    _ = extension_wrapper;
-                    DataType::Extension(
-                        "rerun.components.ClassId".to_owned(),
-                        Box::new(DataType::UInt16),
-                        None,
+            {
+                let inner_data: ::arrow2::buffer::Buffer<u8> =
+                    data0.iter().flatten().flat_map(|s| s.0.clone()).collect();
+                let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
+                )
+                .unwrap()
+                .into();
+
+                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                unsafe {
+                    Utf8Array::<i32>::new_unchecked(
+                        {
+                            _ = extension_wrapper;
+                            DataType::Extension(
+                                "rerun.datatypes.Label".to_owned(),
+                                Box::new(DataType::Utf8),
+                                None,
+                            )
+                            .to_logical_type()
+                            .clone()
+                        },
+                        offsets,
+                        inner_data,
+                        data0_bitmap,
                     )
-                    .to_logical_type()
-                    .clone()
-                },
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                data0_bitmap,
-            )
-            .boxed()
+                }
+                .boxed()
+            }
         })
     }
 
@@ -104,23 +117,27 @@ impl crate::Loggable for ClassId {
     {
         use crate::Loggable as _;
         use ::arrow2::{array::*, datatypes::*};
-        Ok(data
-            .as_any()
-            .downcast_ref::<UInt16Array>()
-            .unwrap()
-            .into_iter()
-            .map(|v| v.copied())
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
+        Ok({
+            let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+            let offsets = downcast.offsets();
+            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                offsets.iter().zip(offsets.lengths()),
+                downcast.validity(),
+            )
+            .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
+            .map(|v| v.map(crate::ArrowString))
+        }
+        .map(|v| {
+            v.ok_or_else(|| crate::DeserializationError::MissingData {
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.ClassId#id".into(),
-                source: Box::new(err),
-            })?)
+        })
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .map_err(|err| crate::DeserializationError::Context {
+            location: "rerun.datatypes.Label#value".into(),
+            source: Box::new(err),
+        })?)
     }
 
     #[inline]
@@ -139,4 +156,4 @@ impl crate::Loggable for ClassId {
     }
 }
 
-impl crate::Component for ClassId {}
+impl crate::Datatype for Label {}

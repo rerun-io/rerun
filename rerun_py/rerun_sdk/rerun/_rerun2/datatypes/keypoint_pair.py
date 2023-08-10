@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components
+from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
@@ -17,30 +17,30 @@ from ._overrides import keypointpair_native_to_pa_array  # noqa: F401
 __all__ = ["KeypointPair", "KeypointPairArray", "KeypointPairArrayLike", "KeypointPairLike", "KeypointPairType"]
 
 
-def _keypointpair_keypoint0_converter(x: components.KeypointIdLike) -> components.KeypointId:
-    if isinstance(x, components.KeypointId):
+def _keypointpair_keypoint0_converter(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
+    if isinstance(x, datatypes.KeypointId):
         return x
     else:
-        return components.KeypointId(x)
+        return datatypes.KeypointId(x)
 
 
-def _keypointpair_keypoint1_converter(x: components.KeypointIdLike) -> components.KeypointId:
-    if isinstance(x, components.KeypointId):
+def _keypointpair_keypoint1_converter(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
+    if isinstance(x, datatypes.KeypointId):
         return x
     else:
-        return components.KeypointId(x)
+        return datatypes.KeypointId(x)
 
 
 @define
 class KeypointPair:
     """A connection between two `Keypoints`."""
 
-    keypoint0: components.KeypointId = field(converter=_keypointpair_keypoint0_converter)
-    keypoint1: components.KeypointId = field(converter=_keypointpair_keypoint1_converter)
+    keypoint0: datatypes.KeypointId = field(converter=_keypointpair_keypoint0_converter)
+    keypoint1: datatypes.KeypointId = field(converter=_keypointpair_keypoint1_converter)
 
 
 if TYPE_CHECKING:
-    KeypointPairLike = Union[KeypointPair, Sequence[components.KeypointIdLike]]
+    KeypointPairLike = Union[KeypointPair, Sequence[datatypes.KeypointIdLike]]
 else:
     KeypointPairLike = Any
 

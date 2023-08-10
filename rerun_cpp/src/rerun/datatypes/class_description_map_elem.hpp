@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../components/class_id.hpp"
 #include "../datatypes/class_description.hpp"
+#include "../datatypes/class_id.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -16,7 +16,7 @@ namespace rerun {
         ///
         /// This is internal to the `AnnotationContext` structure.
         struct ClassDescriptionMapElem {
-            rerun::components::ClassId class_id;
+            rerun::datatypes::ClassId class_id;
 
             rerun::datatypes::ClassDescription class_description;
 

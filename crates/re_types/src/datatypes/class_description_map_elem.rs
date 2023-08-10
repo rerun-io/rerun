@@ -17,7 +17,7 @@
 /// This is internal to the `AnnotationContext` structure.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ClassDescriptionMapElem {
-    pub class_id: crate::components::ClassId,
+    pub class_id: crate::datatypes::ClassId,
     pub class_description: crate::datatypes::ClassDescription,
 }
 
@@ -52,7 +52,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
         DataType::Struct(vec![
             Field {
                 name: "class_id".to_owned(),
-                data_type: <crate::components::ClassId>::to_arrow_datatype(),
+                data_type: <crate::datatypes::ClassId>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -125,7 +125,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::components::ClassId(data0) = datum;
+                                            let crate::datatypes::ClassId(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()
@@ -207,7 +207,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         .downcast_ref::<UInt16Array>()
                         .unwrap()
                         .into_iter()
-                        .map(|opt| opt.map(|v| crate::components::ClassId(*v)))
+                        .map(|opt| opt.map(|v| crate::datatypes::ClassId(*v)))
                 };
                 let class_description = {
                     let data = &**arrays_by_name["class_description"];
