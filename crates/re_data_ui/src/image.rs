@@ -3,7 +3,6 @@ use itertools::Itertools as _;
 
 use re_components::{DecodedTensor, Tensor, TensorDataMeaning, TensorElement};
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components::ClassId;
 use re_ui::ReUi;
 use re_viewer_context::{
     gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiVerbosity,
@@ -541,7 +540,7 @@ fn tensor_pixel_value_ui(
                     ui.label("Label:");
                     ui.label(
                         annotations
-                            .resolved_class_description(Some(ClassId(u16_val)))
+                            .resolved_class_description(Some(u16_val.into()))
                             .annotation_info()
                             .label(None)
                             .unwrap_or_else(|| u16_val.to_string()),

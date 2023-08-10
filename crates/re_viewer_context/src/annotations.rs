@@ -9,8 +9,7 @@ use re_data_store::EntityPath;
 use re_log_types::RowId;
 use re_query::{query_archetype, ArchetypeView};
 use re_types::archetypes::AnnotationContext;
-use re_types::components::{ClassId, KeypointId};
-use re_types::datatypes::{AnnotationInfo, ClassDescription};
+use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId};
 
 use super::{auto_color, ViewerContext};
 use crate::DefaultColor;
@@ -46,11 +45,11 @@ impl Annotations {
     #[inline]
     pub fn resolved_class_description(
         &self,
-        class_id: Option<ClassId>,
+        class_id: Option<re_types::components::ClassId>,
     ) -> ResolvedClassDescription<'_> {
-        let found = class_id.and_then(|class_id| self.class_map.get(&class_id));
+        let found = class_id.and_then(|class_id| self.class_map.get(&class_id.into()));
         ResolvedClassDescription {
-            class_id,
+            class_id: class_id.map(|id| id.into()),
             class_description: found.map(|f| &f.class_description),
             keypoint_map: found.map(|f| &f.keypoint_map),
         }
@@ -99,7 +98,10 @@ impl<'a> ResolvedClassDescription<'a> {
     }
 
     /// Merges class annotation info with keypoint annotation info (if existing respectively).
-    pub fn annotation_info_with_keypoint(&self, keypoint_id: KeypointId) -> ResolvedAnnotationInfo {
+    pub fn annotation_info_with_keypoint(
+        &self,
+        keypoint_id: re_types::datatypes::KeypointId,
+    ) -> ResolvedAnnotationInfo {
         if let (Some(desc), Some(keypoint_map)) = (self.class_description, self.keypoint_map) {
             // Assuming that keypoint annotation is the rarer case, merging the entire annotation ahead of time
             // is cheaper than doing it lazily (which would cause more branches down the line for callsites without keypoints)

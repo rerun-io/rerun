@@ -1,8 +1,8 @@
 //! Log rectangles with different colors and labels using annotation context
 use rerun::{
     archetypes::AnnotationContext,
-    components::{ClassId, Color, Label, Rect2D},
-    datatypes::{AnnotationInfo, Vec4D},
+    components::{ClassId, Rect2D},
+    datatypes::{AnnotationInfo, Color, Label, Vec4D},
     MsgSender, RecordingStreamBuilder,
 };
 

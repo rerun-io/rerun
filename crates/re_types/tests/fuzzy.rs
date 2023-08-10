@@ -200,8 +200,8 @@ fn roundtrip() {
     });
 
     let fuzzy20 = components::AffixFuzzer20(datatypes::AffixFuzzer20 {
-        p: components::PrimitiveComponent(17),
-        s: components::StringComponent("fuzz".to_owned().into()),
+        p: datatypes::PrimitiveComponent(17),
+        s: datatypes::StringComponent("fuzz".to_owned().into()),
     });
 
     let arch = AffixFuzzer1::new(

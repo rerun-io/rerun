@@ -1,15 +1,13 @@
 include "arrow/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
-
-include "rerun/datatypes.fbs";
 include "rerun/attributes.fbs";
 
-namespace rerun.components;
+namespace rerun.datatypes;
 
 // ---
 
-/// A String label component.
+/// A String label datatype.
 table Label (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
@@ -17,7 +15,8 @@ table Label (
   "attr.rerun.legacy_fqname": "rerun.label",
   "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct",
   order: 100
 ) {
-  value: rerun.datatypes.Label (order: 100, transparent);
+  value: string (order: 100);
 }

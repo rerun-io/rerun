@@ -94,6 +94,6 @@ table AffixFuzzer20 (
   "attr.rust.derive": "Eq, PartialEq",
   order: 600
 ) {
-  p: rerun.testing.components.PrimitiveComponent  (order: 100);
-  s: rerun.testing.components.StringComponent  (order: 200);
+  p: rerun.testing.datatypes.PrimitiveComponent  (order: 100);
+  s: rerun.testing.datatypes.StringComponent  (order: 200);
 }

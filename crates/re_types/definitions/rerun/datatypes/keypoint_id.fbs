@@ -4,7 +4,7 @@ include "rust/attributes.fbs";
 
 include "rerun/attributes.fbs";
 
-namespace rerun.components;
+namespace rerun.datatypes;
 
 // ---
 
@@ -20,13 +20,14 @@ namespace rerun.components;
 /// \rs Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`.
 struct KeypointId (
   "attr.arrow.transparent",
-  "attr.rerun.legacy_fqname": "rerun.keypoint_id",
   "attr.python.aliases": "int",
   "attr.python.array_aliases": "int, npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32], npt.NDArray[np.uint64]",
   "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct",
   "attr.rust.custom_clause":
     'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))',
   order: 200
 ) {
-  id: rerun.datatypes.KeypointId (order: 100, transparent);
+  id: ushort (order: 100);
 }

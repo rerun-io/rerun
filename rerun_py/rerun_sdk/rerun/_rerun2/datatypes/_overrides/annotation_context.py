@@ -117,8 +117,7 @@ def classdescription_keypoint_connections_converter(
 
 
 def keypointpair_native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
-    from ...components import KeypointIdArray
-    from .. import KeypointPair
+    from .. import KeypointIdArray, KeypointPair
 
     if isinstance(data, KeypointPair):
         data = [data]
@@ -138,8 +137,7 @@ def keypointpair_native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.D
 
 
 def annotationinfo_native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
-    from ...components import ColorType, LabelType
-    from .. import AnnotationInfo
+    from .. import ColorType, LabelType, AnnotationInfo
 
     if isinstance(data, AnnotationInfo):
         data = [data]
@@ -218,8 +216,7 @@ def classdescription_native_to_pa_array(data: ClassDescriptionArrayLike, data_ty
 def classdescriptionmapelem_native_to_pa_array(
     data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType
 ) -> pa.Array:
-    from ...components import ClassIdArray
-    from .. import ClassDescriptionArray, ClassDescriptionMapElem
+    from .. import ClassIdArray, ClassDescriptionArray, ClassDescriptionMapElem
 
     if isinstance(data, ClassDescriptionMapElem):
         data = [data]

@@ -1,8 +1,7 @@
 //! Log some very simple points.
 
 use rerun::archetypes::{AnnotationContext, Points3D};
-use rerun::components::{Color, Label};
-use rerun::datatypes::{AnnotationInfo, ClassDescription, KeypointPair};
+use rerun::datatypes::{AnnotationInfo, ClassDescription, Color, KeypointPair, Label};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,9 +1,9 @@
 use egui::{color_picker, Vec2};
 use itertools::Itertools;
 
-use re_types::components::{AnnotationContext, ClassId, KeypointId};
+use re_types::components::AnnotationContext;
 use re_types::datatypes::{
-    AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointPair,
+    AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
 };
 use re_viewer_context::{auto_color, UiVerbosity, ViewerContext};
 
@@ -11,7 +11,7 @@ use super::DataUi;
 
 const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
-impl crate::EntityDataUi for ClassId {
+impl crate::EntityDataUi for re_types::components::ClassId {
     fn entity_data_ui(
         &self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
@@ -34,18 +34,19 @@ impl crate::EntityDataUi for ClassId {
                 }
             });
 
+            let id = self.0.into();
             match verbosity {
                 UiVerbosity::Small => {
                     if !class.keypoint_connections.is_empty()
                         || !class.keypoint_annotations.is_empty()
                     {
                         response.response.on_hover_ui(|ui| {
-                            class_description_ui(ui, class, *self);
+                            class_description_ui(ui, class, id);
                         });
                     }
                 }
                 UiVerbosity::Reduced | UiVerbosity::All => {
-                    class_description_ui(ui, class, *self);
+                    class_description_ui(ui, class, id);
                 }
             }
         } else {
@@ -63,7 +64,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
         entity_path: &re_log_types::EntityPath,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        if let Some(info) = annotation_info(ctx, entity_path, query, self) {
+        if let Some(info) = annotation_info(ctx, entity_path, query, (*self).into()) {
             ui.horizontal(|ui| {
                 // Color first, to keep subsequent rows of the same things aligned
                 small_color_ui(ui, &info);
@@ -82,16 +83,16 @@ fn annotation_info(
     ctx: &mut re_viewer_context::ViewerContext<'_>,
     entity_path: &re_log_types::EntityPath,
     query: &re_arrow_store::LatestAtQuery,
-    keypoint_id: &re_types::components::KeypointId,
+    keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
     let class_id = ctx
         .store_db
         .entity_db
         .data_store
-        .query_latest_component::<ClassId>(entity_path, query)?;
+        .query_latest_component::<re_types::components::ClassId>(entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);
     let class = annotations.resolved_class_description(Some(class_id));
-    class.keypoint_map?.get(keypoint_id).cloned()
+    class.keypoint_map?.get(&keypoint_id).cloned()
 }
 
 impl DataUi for AnnotationContext {
@@ -129,7 +130,11 @@ impl DataUi for AnnotationContext {
     }
 }
 
-fn class_description_ui(ui: &mut egui::Ui, class: &ClassDescription, id: ClassId) {
+fn class_description_ui(
+    ui: &mut egui::Ui,
+    class: &ClassDescription,
+    id: re_types::datatypes::ClassId,
+) {
     if class.keypoint_connections.is_empty() && class.keypoint_annotations.is_empty() {
         return;
     }

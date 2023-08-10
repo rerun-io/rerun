@@ -17,10 +17,6 @@ mod transform3d_arrows;
 pub use cameras::CamerasPart;
 pub use images::Image;
 pub use images::ImagesPart;
-use re_types::components::Color;
-use re_types::components::InstanceKey;
-use re_types::datatypes::KeypointPair;
-use re_types::Archetype;
 pub use spatial_view_part::SpatialViewPartData;
 pub use transform3d_arrows::add_axis_arrows;
 
@@ -28,7 +24,9 @@ use ahash::HashMap;
 use std::sync::Arc;
 
 use re_data_store::{EntityPath, InstancePathHash};
-use re_types::components::{ClassId, KeypointId};
+use re_types::components::{Color, InstanceKey};
+use re_types::datatypes::{KeypointId, KeypointPair};
+use re_types::Archetype;
 use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
     auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewSystemRegistry,
@@ -38,7 +36,7 @@ use re_viewer_context::{
 use super::contexts::SpatialSceneEntityContext;
 
 /// Collection of keypoints for annotation context.
-pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
+pub type Keypoints = HashMap<(re_types::components::ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 pub const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
@@ -188,8 +186,8 @@ where
             keypoints
                 .entry((class_id, query.latest_at.as_i64()))
                 .or_insert_with(Default::default)
-                .insert(keypoint_id, primary_into_position(&primary));
-            class_description.annotation_info_with_keypoint(keypoint_id)
+                .insert(keypoint_id.into(), primary_into_position(&primary));
+            class_description.annotation_info_with_keypoint(keypoint_id.into())
         } else {
             class_description.annotation_info()
         }

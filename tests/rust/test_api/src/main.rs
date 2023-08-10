@@ -22,7 +22,9 @@ use rerun::{
         TensorDataMeaning, TextEntry, ViewCoordinates,
     },
     coordinates::SignedAxis3,
-    datatypes::{Angle, AnnotationInfo, RotationAxisAngle, TranslationRotationScale3D, Vec3D},
+    datatypes::{
+        self, Angle, AnnotationInfo, RotationAxisAngle, TranslationRotationScale3D, Vec3D,
+    },
     external::{
         re_log, re_log_types,
         re_log_types::external::{arrow2, arrow2_convert},
@@ -444,9 +446,9 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::from_archetype(
         "seg_test",
         &AnnotationContext::new([
-            (13, "label1", Color::from_rgb(255, 0, 0)),
-            (42, "label2", Color::from_rgb(0, 255, 0)),
-            (99, "label3", Color::from_rgb(0, 0, 255)),
+            (13, "label1", datatypes::Color::from_rgb(255, 0, 0)),
+            (42, "label2", datatypes::Color::from_rgb(0, 255, 0)),
+            (99, "label3", datatypes::Color::from_rgb(0, 0, 255)),
         ]),
     )?
     .send(rec_stream)?;
@@ -461,9 +463,9 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             AnnotationInfo {
                 id: 13,
                 label: None,
-                color: Some(Color::from_rgb(255, 0, 0)),
+                color: Some(datatypes::Color::from_rgb(255, 0, 0)),
             },
-            (42, "label2", Color::from_rgb(0, 255, 0)).into(),
+            (42, "label2", datatypes::Color::from_rgb(0, 255, 0)).into(),
             (99, "label3").into(),
         ]),
     )?

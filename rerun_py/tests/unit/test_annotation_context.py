@@ -8,8 +8,8 @@ from rerun.experimental import cmp as rr_cmp
 from rerun.experimental import dt as rr_dt
 
 ANNOTATION_INFO_INPUTS: list[rr_dt.AnnotationInfoLike] = [
-    rr_dt.AnnotationInfo(1, "label", rr_cmp.Color([1, 2, 3])),
-    rr_dt.AnnotationInfo(1, color=rr_cmp.Color([1, 2, 3])),
+    rr_dt.AnnotationInfo(1, "label", rr_dt.Color([1, 2, 3])),
+    rr_dt.AnnotationInfo(1, color=rr_dt.Color([1, 2, 3])),
     (1, "label"),
     (1, "label", [1, 2, 3]),
 ]
@@ -26,8 +26,8 @@ KEYPOINT_MAP_INPUTS: list[Sequence[rr_dt.AnnotationInfoLike] | None] = [
         (2, "label2", [4, 5, 6]),
     ],
     [
-        rr_dt.AnnotationInfo(1, "label1", rr_cmp.Color([1, 2, 3])),
-        rr_dt.AnnotationInfo(2, "label2", rr_cmp.Color([4, 5, 6])),
+        rr_dt.AnnotationInfo(1, "label1", rr_dt.Color([1, 2, 3])),
+        rr_dt.AnnotationInfo(2, "label2", rr_dt.Color([4, 5, 6])),
     ],
 ]
 
@@ -49,13 +49,13 @@ KEYPOINT_CONNECTIONS_INPUTS: list[Sequence[rr_dt.KeypointPairLike] | None] = [
 def assert_correct_class_description(desc: rr_dt.ClassDescription) -> None:
     assert desc.info.id == 1
     if desc.info.label:
-        assert desc.info.label == rr_cmp.Label("label")
+        assert desc.info.label == rr_dt.Label("label")
     if desc.info.color:
-        assert desc.info.color == rr_cmp.Color([1, 2, 3])
+        assert desc.info.color == rr_dt.Color([1, 2, 3])
     if desc.keypoint_annotations:
         expected_annotations = [
-            rr_dt.AnnotationInfo(1, "label1", rr_cmp.Color([1, 2, 3])),
-            rr_dt.AnnotationInfo(2, "label2", rr_cmp.Color([4, 5, 6])),
+            rr_dt.AnnotationInfo(1, "label1", rr_dt.Color([1, 2, 3])),
+            rr_dt.AnnotationInfo(2, "label2", rr_dt.Color([4, 5, 6])),
         ]
         for i, kp in enumerate(desc.keypoint_annotations):
             assert kp.id == expected_annotations[i].id

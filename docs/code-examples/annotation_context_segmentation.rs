@@ -1,7 +1,7 @@
 //! Log a segmentation image with annotations.
 use ndarray::{s, Array, ShapeBuilder};
-use rerun::components::{AnnotationContext, Color, Label, Tensor, TensorDataMeaning};
-use rerun::datatypes::{AnnotationInfo, ClassDescription};
+use rerun::components::{AnnotationContext, Tensor, TensorDataMeaning};
+use rerun::datatypes::{AnnotationInfo, ClassDescription, Color, Label};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

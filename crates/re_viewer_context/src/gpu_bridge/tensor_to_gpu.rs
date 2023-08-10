@@ -15,7 +15,6 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
-use re_types::components::ClassId;
 
 use crate::{Annotations, DefaultColor, TensorStats};
 
@@ -177,7 +176,7 @@ fn class_id_tensor_to_gpu(
             let data: Vec<u8> = (0..(colormap_width * colormap_height))
                 .flat_map(|id| {
                     let color = annotations
-                        .resolved_class_description(Some(ClassId(id as u16)))
+                        .resolved_class_description(Some((id as u16).into()))
                         .annotation_info()
                         .color(None, DefaultColor::TransparentBlack);
                     color.to_array() // premultiplied!

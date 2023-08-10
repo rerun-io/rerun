@@ -1,8 +1,4 @@
-use crate::components::Color;
-
-use super::AnnotationInfo;
-use super::ClassDescription;
-use super::ClassDescriptionMapElem;
+use super::{AnnotationInfo, ClassDescription, ClassDescriptionMapElem, Color};
 
 impl From<(u16, &str)> for ClassDescriptionMapElem {
     fn from(value: (u16, &str)) -> Self {
