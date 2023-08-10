@@ -282,6 +282,37 @@ impl crate::Loggable for Angle {
                     .with_context("rerun.datatypes.Angle");
                 }
                 let radians = {
+                    if 1usize >= data_arrays.len() {
+                        return Err(crate::DeserializationError::missing_union_arm(
+                            DataType::Union(
+                                vec![
+                                    Field {
+                                        name: "_null_markers".to_owned(),
+                                        data_type: DataType::Null,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "Radians".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "Degrees".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                ],
+                                Some(vec![0i32, 1i32, 2i32]),
+                                UnionMode::Dense,
+                            ),
+                            "rerun.datatypes.Angle#Radians",
+                            1usize,
+                        ))
+                        .with_context("rerun.datatypes.Angle");
+                    }
                     let data = &*data_arrays[1usize];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
@@ -297,6 +328,37 @@ impl crate::Loggable for Angle {
                         .collect::<Vec<_>>()
                 };
                 let degrees = {
+                    if 2usize >= data_arrays.len() {
+                        return Err(crate::DeserializationError::missing_union_arm(
+                            DataType::Union(
+                                vec![
+                                    Field {
+                                        name: "_null_markers".to_owned(),
+                                        data_type: DataType::Null,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "Radians".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "Degrees".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                ],
+                                Some(vec![0i32, 1i32, 2i32]),
+                                UnionMode::Dense,
+                            ),
+                            "rerun.datatypes.Angle#Degrees",
+                            2usize,
+                        ))
+                        .with_context("rerun.datatypes.Angle");
+                    }
                     let data = &*data_arrays[2usize];
                     data.as_any()
                         .downcast_ref::<Float32Array>()

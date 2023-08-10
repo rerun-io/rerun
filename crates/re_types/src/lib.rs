@@ -396,6 +396,14 @@ pub enum DeserializationError {
         backtrace: _Backtrace,
     },
 
+    #[error("Expected union arm {arm_name:?} (#{arm_index}) to be present in {datatype:#?}")]
+    MissingUnionArm {
+        datatype: ::arrow2::datatypes::DataType,
+        arm_name: String,
+        arm_index: usize,
+        backtrace: _Backtrace,
+    },
+
     #[error("Expected {expected:#?} but found {got:#?} instead")]
     DatatypeMismatch {
         expected: ::arrow2::datatypes::DataType,
@@ -440,6 +448,20 @@ impl DeserializationError {
     }
 
     #[inline]
+    pub fn missing_union_arm(
+        datatype: arrow2::datatypes::DataType,
+        arm_name: impl AsRef<str>,
+        arm_index: usize,
+    ) -> Self {
+        Self::MissingUnionArm {
+            datatype,
+            arm_name: arm_name.as_ref().into(),
+            arm_index,
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
+    #[inline]
     pub fn datatype_mismatch(
         expected: arrow2::datatypes::DataType,
         got: arrow2::datatypes::DataType,
@@ -471,6 +493,7 @@ impl DeserializationError {
                 source,
             } => source.backtrace(),
             DeserializationError::MissingStructField { backtrace, .. }
+            | DeserializationError::MissingUnionArm { backtrace, .. }
             | DeserializationError::MissingData { backtrace }
             | DeserializationError::DatatypeMismatch { backtrace, .. }
             | DeserializationError::OffsetsMismatch { backtrace, .. } => Some(backtrace.clone()),
