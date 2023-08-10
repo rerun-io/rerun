@@ -11,6 +11,5 @@ endif()
 
 add_executable(rerun_example main.cpp)
 
-# TODO(andreas): Fix warnings and enable this.
-# set_default_warning_settings(rerun_example)
+set_default_warning_settings(rerun_example)
 target_link_libraries(rerun_example PRIVATE loguru::loguru rerun_sdk)
