@@ -764,26 +764,28 @@ impl QuotedObject {
         };
 
         let copy_constructor = {
-            let copy_match_arms = obj
-                .fields
-                .iter()
-                .filter_map(|obj_field| {
-                    // Inferring from trivial destructability that we don't need to call the copy constructor is a little bit wonky,
-                    // but is typically the reason why we need to do this in the first place - if we'd always memcpy we'd get double-free errors.
-                    // (As with swap, we generously assume that objects are rellocatable)
-                    (!obj_field.typ.has_default_destructor(objects)).then(|| {
-                        let tag_ident = format_ident!("{}", obj_field.name);
-                        let field_ident =
-                            format_ident!("{}", crate::to_snake_case(&obj_field.name));
-                        Some(quote! {
-                            case detail::#tag_typename::#tag_ident: {
-                                _data.#field_ident = other._data.#field_ident;
-                                break;
-                            }
-                        })
-                    })
-                })
-                .collect_vec();
+            // Note that `switch` on an enum without handling all cases causes `-Wswitch-enum` warning!
+            let mut copy_match_arms = Vec::new();
+            let mut default_match_arms = Vec::new();
+            for obj_field in &obj.fields {
+                let tag_ident = format_ident!("{}", obj_field.name);
+                let case = quote!(case detail::#tag_typename::#tag_ident:);
+
+                // Inferring from trivial destructability that we don't need to call the copy constructor is a little bit wonky,
+                // but is typically the reason why we need to do this in the first place - if we'd always memcpy we'd get double-free errors.
+                // (As with swap, we generously assume that objects are rellocatable)
+                if obj_field.typ.has_default_destructor(objects) {
+                    default_match_arms.push(case);
+                } else {
+                    let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                    copy_match_arms.push(quote! {
+                        #case {
+                            _data.#field_ident = other._data.#field_ident;
+                            break;
+                        }
+                    });
+                }
+            }
             if copy_match_arms.is_empty() {
                 quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
                     memcpy(&this->_data, &other._data, sizeof(detail::#data_typename));
@@ -792,7 +794,7 @@ impl QuotedObject {
                 quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
                     switch (other._tag) {
                         #(#copy_match_arms)*
-                        default:
+                        #(#default_match_arms)*
                             memcpy(&this->_data, &other._data, sizeof(detail::#data_typename));
                             break;
                     }
