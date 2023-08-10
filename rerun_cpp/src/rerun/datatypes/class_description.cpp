@@ -91,12 +91,16 @@ namespace rerun {
 
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
-                    ARROW_RETURN_NOT_OK(rerun::datatypes::AnnotationInfo::fill_arrow_array_builder(
-                        value_builder,
-                        element.keypoint_annotations.data(),
-                        element.keypoint_annotations.size()
-                    ));
                     ARROW_RETURN_NOT_OK(field_builder->Append());
+                    if (element.keypoint_annotations.data()) {
+                        ARROW_RETURN_NOT_OK(
+                            rerun::datatypes::AnnotationInfo::fill_arrow_array_builder(
+                                value_builder,
+                                element.keypoint_annotations.data(),
+                                element.keypoint_annotations.size()
+                            )
+                        );
+                    }
                 }
             }
             {
@@ -108,12 +112,16 @@ namespace rerun {
 
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
-                    ARROW_RETURN_NOT_OK(rerun::datatypes::KeypointPair::fill_arrow_array_builder(
-                        value_builder,
-                        element.keypoint_connections.data(),
-                        element.keypoint_connections.size()
-                    ));
                     ARROW_RETURN_NOT_OK(field_builder->Append());
+                    if (element.keypoint_connections.data()) {
+                        ARROW_RETURN_NOT_OK(
+                            rerun::datatypes::KeypointPair::fill_arrow_array_builder(
+                                value_builder,
+                                element.keypoint_connections.data(),
+                                element.keypoint_connections.size()
+                            )
+                        );
+                    }
                 }
             }
             ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));

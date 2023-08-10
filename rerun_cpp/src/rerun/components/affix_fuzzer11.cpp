@@ -46,12 +46,12 @@ namespace rerun {
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto &element = elements[elem_idx];
                 if (element.many_floats_optional.has_value()) {
+                    ARROW_RETURN_NOT_OK(builder->Append());
                     ARROW_RETURN_NOT_OK(value_builder->AppendValues(
                         element.many_floats_optional.value().data(),
                         element.many_floats_optional.value().size(),
                         nullptr
                     ));
-                    ARROW_RETURN_NOT_OK(builder->Append());
                 } else {
                     ARROW_RETURN_NOT_OK(builder->AppendNull());
                 }

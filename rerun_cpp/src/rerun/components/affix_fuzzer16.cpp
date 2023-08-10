@@ -48,12 +48,14 @@ namespace rerun {
 
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto &element = elements[elem_idx];
-                ARROW_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
-                    value_builder,
-                    element.many_required_unions.data(),
-                    element.many_required_unions.size()
-                ));
                 ARROW_RETURN_NOT_OK(builder->Append());
+                if (element.many_required_unions.data()) {
+                    ARROW_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
+                        value_builder,
+                        element.many_required_unions.data(),
+                        element.many_required_unions.size()
+                    ));
+                }
             }
 
             return arrow::Status::OK();

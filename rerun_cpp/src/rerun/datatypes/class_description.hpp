@@ -37,6 +37,17 @@ namespace rerun {
             std::vector<rerun::datatypes::KeypointPair> keypoint_connections;
 
           public:
+            // Extensions to generated type defined in 'class_description_ext.cpp'
+
+            ClassDescription(
+                AnnotationInfo _info, std::vector<AnnotationInfo> _keypoint_annotations = {},
+                std::vector<KeypointPair> _keypoint_connections = {}
+            )
+                : info(std::move(_info)),
+                  keypoint_annotations(std::move(_keypoint_annotations)),
+                  keypoint_connections(std::move(_keypoint_connections)) {}
+
+          public:
             ClassDescription() = default;
 
             /// Returns the arrow data type this type corresponds to.

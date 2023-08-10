@@ -9,6 +9,7 @@
 #include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
+#include <utility>
 
 namespace rerun {
     namespace datatypes {
@@ -25,6 +26,18 @@ namespace rerun {
 
             /// The color that will be applied to the annotated entity.
             std::optional<rerun::components::Color> color;
+
+          public:
+            // Extensions to generated type defined in 'annotation_info_ext.cpp'
+
+            AnnotationInfo(
+                uint16_t _id, std::optional<std::string> _label = std::nullopt,
+                std::optional<components::Color> _color = std::nullopt
+            )
+                : id(_id), label(std::move(_label)), color(_color) {}
+
+            AnnotationInfo(uint16_t _id, components::Color _color)
+                : id(_id), label(std::nullopt), color(_color) {}
 
           public:
             AnnotationInfo() = default;

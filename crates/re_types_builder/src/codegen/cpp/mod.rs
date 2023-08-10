@@ -1304,9 +1304,9 @@ fn quote_append_field_to_builder(
             quote! {
                 auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
+                ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
                 static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
                 ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, num_elements * #num_items_per_value, nullptr));
-                ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
             }
         } else {
             let value_reserve_factor = match &field.typ {
@@ -1348,8 +1348,8 @@ fn quote_append_field_to_builder(
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
                         if (element.#field_name.has_value()) {
-                            #append_value
                             ARROW_RETURN_NOT_OK(#builder->Append());
+                            #append_value
                         } else {
                             ARROW_RETURN_NOT_OK(#builder->AppendNull());
                         }
@@ -1360,8 +1360,8 @@ fn quote_append_field_to_builder(
                     #setup
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& element = elements[elem_idx];
-                        #append_value
                         ARROW_RETURN_NOT_OK(#builder->Append());
+                        #append_value
                     }
                 }
             }
@@ -1477,7 +1477,9 @@ fn quote_append_single_value_to_builder(
                     let fqname = quote_fqname_as_type_path(includes, fqname);
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
-                        ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
+                        if (#field_ptr_accessor) {
+                            ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
+                        }
                     }
                 }
             }

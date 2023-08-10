@@ -50,14 +50,16 @@ namespace rerun {
 
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto &element = elements[elem_idx];
-                ARROW_RETURN_NOT_OK(
-                    rerun::datatypes::ClassDescriptionMapElem::fill_arrow_array_builder(
-                        value_builder,
-                        element.class_map.data(),
-                        element.class_map.size()
-                    )
-                );
                 ARROW_RETURN_NOT_OK(builder->Append());
+                if (element.class_map.data()) {
+                    ARROW_RETURN_NOT_OK(
+                        rerun::datatypes::ClassDescriptionMapElem::fill_arrow_array_builder(
+                            value_builder,
+                            element.class_map.data(),
+                            element.class_map.size()
+                        )
+                    );
+                }
             }
 
             return arrow::Status::OK();
