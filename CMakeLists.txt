@@ -17,14 +17,20 @@ function(set_default_warning_settings target)
             -Wmissing-include-dirs
             -Wnull-dereference
             -Wpointer-arith
-            -Wshadow-all
+            -Wshadow
             -Wswitch-enum
             -Wvla
             -Wold-style-cast
-            -Wnon-gcc
-            -Wgnu
-            -Wc++17-compat-pedantic
         )
+
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
+            target_compile_options(${target} PRIVATE
+                -Wc++17-compat-pedantic
+                -Wshadow-all
+                -Wnon-gcc
+                -Wgnu
+            )
+        endif()
 
         # Disabled warnings
         # arrow has a bunch of unused parameters in its headers.
