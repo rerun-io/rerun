@@ -1280,7 +1280,7 @@ fn quote_fill_arrow_array_builder(
                 quote! {
                     #(#fill_fields)*
                     #NEWLINE_TOKEN
-                    ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+                    ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
                 }
             }
             ObjectSpecifics::Union { .. } => {
@@ -1294,7 +1294,10 @@ fn quote_fill_arrow_array_builder(
                     let variant_name = format_ident!("{}", variant.name);
 
                     let variant_append = if variant.typ.is_plural() {
-                        quote! { return arrow::Status::NotImplemented("TODO(andreas): list types in unions are not yet supported");}
+                        quote! {
+                            (void)#variant_builder;
+                            return arrow::Status::NotImplemented("TODO(andreas): list types in unions are not yet supported");
+                        }
                     } else {
                         let variant_accessor = quote!(union_instance._data);
                         quote_append_single_field_to_builder(variant, &variant_builder, &variant_accessor, includes)
@@ -1311,10 +1314,10 @@ fn quote_fill_arrow_array_builder(
 
                 quote! {
                     #NEWLINE_TOKEN
-                    ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+                    ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
                     for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& union_instance = elements[elem_idx];
-                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(union_instance._tag)));
+                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<int8_t>(union_instance._tag)));
                         #NEWLINE_TOKEN
                         #NEWLINE_TOKEN
                         auto variant_index = static_cast<int>(union_instance._tag);
@@ -1360,9 +1363,13 @@ fn quote_append_field_to_builder(
             quote! {
                 auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
-                ARROW_RETURN_NOT_OK(#builder->AppendValues(num_elements));
+                ARROW_RETURN_NOT_OK(#builder->AppendValues(static_cast<int64_t>(num_elements)));
                 static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
-                ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, num_elements * #num_items_per_value, nullptr));
+                ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
+                    #field_ptr_accessor,
+                    static_cast<int64_t>(num_elements * #num_items_per_value),
+                    nullptr)
+                );
             }
         } else {
             let value_reserve_factor = match &field.typ {
@@ -1380,8 +1387,8 @@ fn quote_append_field_to_builder(
 
             let setup = quote! {
                 auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
-                ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(#value_builder->Reserve(num_elements * #value_reserve_factor));
+                ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
+                ARROW_RETURN_NOT_OK(#value_builder->Reserve(static_cast<int64_t>(num_elements * #value_reserve_factor)));
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
             };
 
@@ -1428,14 +1435,14 @@ fn quote_append_field_to_builder(
         let field_ptr_accessor = quote_field_ptr_access(&field.typ, quote!(elements->#field_name));
         quote! {
             static_assert(sizeof(*elements) == sizeof(elements->#field_name));
-            ARROW_RETURN_NOT_OK(#builder->AppendValues(#field_ptr_accessor, num_elements));
+            ARROW_RETURN_NOT_OK(#builder->AppendValues(#field_ptr_accessor, static_cast<int64_t>(num_elements)));
         }
     } else {
         let element_accessor = quote!(elements[elem_idx]);
         let single_append =
             quote_append_single_field_to_builder(field, builder, &element_accessor, includes);
         quote! {
-            ARROW_RETURN_NOT_OK(#builder->Reserve(num_elements));
+            ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 #single_append
             }
@@ -1519,12 +1526,12 @@ fn quote_append_single_value_to_builder(
                 | ElementType::Float64 => {
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
-                        ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, #num_items_per_element, nullptr));
+                        ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, static_cast<int64_t>(#num_items_per_element), nullptr));
                     }
                 }
                 ElementType::String => {
                     quote! {
-                        for (auto item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
+                        for (size_t item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
                             ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access[item_idx]));
                         }
                     }
@@ -1732,26 +1739,31 @@ fn static_constructor_for_enum_type(
         // We need special casing for constructing arrays:
         let length = proc_macro2::Literal::usize_unsuffixed(*length);
 
-        let element_assignment = if elem_type.has_default_destructor(objects) {
+        let (element_assignment, typedef) = if elem_type.has_default_destructor(objects) {
             // Generate simpoler code for simple types:
-            quote! {
-                self._data.#snake_case_ident[i] = std::move(#snake_case_ident[i]);
-            }
+            (
+                quote! {
+                    self._data.#snake_case_ident[i] = std::move(#snake_case_ident[i]);
+                },
+                quote!(),
+            )
         } else {
             // We need to use placement-new since the union is in an uninitialized state here:
             hpp_includes.system.insert("new".to_owned()); // placement-new
-            quote! {
-                new (&self._data.#snake_case_ident[i]) TypeAlias(std::move(#snake_case_ident[i]));
-            }
+            let elem_type = quote_element_type(hpp_includes, elem_type);
+            (
+                quote! {
+                    new (&self._data.#snake_case_ident[i]) #elem_type(std::move(#snake_case_ident[i]));
+                },
+                quote!(typedef #elem_type TypeAlias;),
+            )
         };
-
-        let elem_type = quote_element_type(hpp_includes, elem_type);
 
         Method {
             docs,
             declaration,
             definition_body: quote! {
-                typedef #elem_type TypeAlias;
+                #typedef
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 for (size_t i = 0; i < #length; i += 1) {
