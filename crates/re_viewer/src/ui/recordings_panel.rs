@@ -1,3 +1,4 @@
+use re_ui::UICommandSender;
 use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
 
 /// Show the Recordings section of the left panel
@@ -8,6 +9,7 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
             "Recordings",
             Some("These are the Recordings currently loaded in the Viewer"),
             |ui| {
+                #[cfg(not(target_arch = "wasm32"))]
                 add_button_ui(ctx, ui);
             },
         );
@@ -70,13 +72,14 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn add_button_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     if ctx
         .re_ui
         .small_icon_button(ui, &re_ui::icons::ADD)
-        .on_hover_text("Load a Recording from disk")
+        .on_hover_text(re_ui::UICommand::Open.text_and_tooltip().1)
         .clicked()
     {
-        //TODO(ab)
+        ctx.command_sender.send_ui(re_ui::UICommand::Open);
     }
 }
