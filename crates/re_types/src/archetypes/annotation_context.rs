@@ -56,7 +56,7 @@
 ///            Rect2D::XYWH(Vec4D([-2., -2., 3., 3.]).into()),
 ///            Rect2D::XYWH(Vec4D([0., 0., 2., 2.]).into()),
 ///        ])?
-///        .with_component(&[ClassId::new(1), ClassId::new(2)])?
+///        .with_component(&[ClassId::from(1), ClassId::from(2)])?
 ///        .send(&rec_stream)?;
 ///
 ///    // Log an extra rect to set the view bounds

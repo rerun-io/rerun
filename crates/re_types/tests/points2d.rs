@@ -23,12 +23,12 @@ fn roundtrip() {
         ]),
         draw_order: Some(components::DrawOrder(300.0)),
         class_ids: Some(vec![
-            components::ClassId::new(126), //
-            components::ClassId::new(127), //
+            components::ClassId::from(126), //
+            components::ClassId::from(127), //
         ]),
         keypoint_ids: Some(vec![
-            components::KeypointId::new(2), //
-            components::KeypointId::new(3), //
+            components::KeypointId::from(2), //
+            components::KeypointId::from(3), //
         ]),
         instance_keys: Some(vec![
             components::InstanceKey(u64::MAX - 1), //

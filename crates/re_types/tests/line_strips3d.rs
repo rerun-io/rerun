@@ -27,8 +27,8 @@ fn roundtrip() {
             Label("friend".into()), //
         ]),
         class_ids: Some(vec![
-            ClassId::new(126), //
-            ClassId::new(127), //
+            ClassId::from(126), //
+            ClassId::from(127), //
         ]),
         instance_keys: Some(vec![
             InstanceKey(u64::MAX - 1), //
