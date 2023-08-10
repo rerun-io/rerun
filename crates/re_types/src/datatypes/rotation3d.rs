@@ -317,6 +317,29 @@ impl crate::Loggable for Rotation3D {
                     .with_context("rerun.datatypes.Rotation3D");
                 }
                 let quaternion = {
+                    if 1usize >= data_arrays.len() {
+                        return Err(
+                                crate::DeserializationError::missing_union_arm(
+                                    DataType::Union(
+                                        vec![
+                                            Field { name : "_null_markers".to_owned(), data_type :
+                                            DataType::Null, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "Quaternion".to_owned(), data_type : < crate
+                                            ::datatypes::Quaternion > ::to_arrow_datatype(), is_nullable
+                                            : false, metadata : [].into(), }, Field { name : "AxisAngle"
+                                            .to_owned(), data_type : < crate
+                                            ::datatypes::RotationAxisAngle > ::to_arrow_datatype(),
+                                            is_nullable : false, metadata : [].into(), },
+                                        ],
+                                        Some(vec![0i32, 1i32, 2i32,]),
+                                        UnionMode::Dense,
+                                    ),
+                                    "rerun.datatypes.Rotation3D#Quaternion",
+                                    1usize,
+                                ),
+                            )
+                            .with_context("rerun.datatypes.Rotation3D");
+                    }
                     let data = &*data_arrays[1usize];
                     {
                         let data = data
@@ -395,6 +418,29 @@ impl crate::Loggable for Rotation3D {
                     .collect::<Vec<_>>()
                 };
                 let axis_angle = {
+                    if 2usize >= data_arrays.len() {
+                        return Err(
+                                crate::DeserializationError::missing_union_arm(
+                                    DataType::Union(
+                                        vec![
+                                            Field { name : "_null_markers".to_owned(), data_type :
+                                            DataType::Null, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "Quaternion".to_owned(), data_type : < crate
+                                            ::datatypes::Quaternion > ::to_arrow_datatype(), is_nullable
+                                            : false, metadata : [].into(), }, Field { name : "AxisAngle"
+                                            .to_owned(), data_type : < crate
+                                            ::datatypes::RotationAxisAngle > ::to_arrow_datatype(),
+                                            is_nullable : false, metadata : [].into(), },
+                                        ],
+                                        Some(vec![0i32, 1i32, 2i32,]),
+                                        UnionMode::Dense,
+                                    ),
+                                    "rerun.datatypes.Rotation3D#AxisAngle",
+                                    2usize,
+                                ),
+                            )
+                            .with_context("rerun.datatypes.Rotation3D");
+                    }
                     let data = &*data_arrays[2usize];
                     crate::datatypes::RotationAxisAngle::try_from_arrow_opt(data)
                         .with_context("rerun.datatypes.Rotation3D#AxisAngle")?

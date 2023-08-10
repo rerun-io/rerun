@@ -57,6 +57,7 @@ pub fn quote_arrow_deserializer(
         let quoted_unwrapping = if obj_field.is_nullable {
             quote!(.map(Ok))
         } else {
+            // error context is appended below
             quote!(.map(|v| v.ok_or_else(crate::DeserializationError::missing_data)))
         };
 
@@ -97,13 +98,17 @@ pub fn quote_arrow_deserializer(
 
                     quote! {
                         let #data_dst = {
+                            // NOTE: `arrays_by_name` is a runtime collection of all of the input's
+                            // payload's struct fields, while `#field_name` is the field we're
+                            // looking for at comptime... there's no guarantee it's actually there at
+                            // runtime!
                             if !arrays_by_name.contains_key(#field_name) {
                                 return Err(crate::DeserializationError::missing_struct_field(
                                     #quoted_datatype, #field_name,
                                 )).with_context(#obj_fqname);
                             }
 
-                            // NOTE: The indexing by name is safe: checked above
+                            // NOTE: The indexing by name is safe: checked above.
                             let #data_src = &**arrays_by_name[#field_name];
                              #quoted_deserializer
                         }
@@ -123,7 +128,6 @@ pub fn quote_arrow_deserializer(
                     if obj_field.is_nullable {
                         quote!(#quoted_obj_field_name)
                     } else {
-                        // TODO: this one shouldnt be an error but a default instead i guess then :/
                         quote! {
                             #quoted_obj_field_name: #quoted_obj_field_name
                                 .ok_or_else(crate::DeserializationError::missing_data)
@@ -174,6 +178,7 @@ pub fn quote_arrow_deserializer(
 
                 let quoted_field_deserializers =
                     obj.fields.iter().enumerate().map(|(i, obj_field)| {
+                        let obj_field_fqname = &obj_field.fqname;
                         let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
 
                         let quoted_deserializer = quote_arrow_field_deserializer(
@@ -188,6 +193,17 @@ pub fn quote_arrow_deserializer(
 
                         quote! {
                             let #data_dst = {
+                                // NOTE: `data_src_arrays` is a runtime collection of all of the
+                                // input's payload's union arms, while `#i` is our comptime union
+                                // arm counter... there's no guarantee it's actually there at
+                                // runtime!
+                                if #i >= #data_src_arrays.len() {
+                                    return Err(crate::DeserializationError::missing_union_arm(
+                                        #quoted_datatype, #obj_field_fqname, #i,
+                                    )).with_context(#obj_fqname);
+                                }
+
+                                // NOTE: The array indexing is safe: checked above.
                                 let #data_src = &*#data_src_arrays[#i];
                                  #quoted_deserializer.collect::<Vec<_>>()
                             }
