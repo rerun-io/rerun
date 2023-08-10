@@ -27,6 +27,18 @@ namespace rerun {
             static const char* NAME;
 
           public:
+            // Extensions to generated type defined in 'annotation_context_ext.cpp'
+
+            AnnotationContext(
+                std::initializer_list<rerun::datatypes::ClassDescription> class_descriptions
+            ) {
+                class_map.reserve(class_descriptions.size());
+                for (const auto& class_description : class_descriptions) {
+                    class_map.emplace_back(std::move(class_description));
+                }
+            }
+
+          public:
             AnnotationContext() = default;
 
             AnnotationContext(std::vector<rerun::datatypes::ClassDescriptionMapElem> _class_map)

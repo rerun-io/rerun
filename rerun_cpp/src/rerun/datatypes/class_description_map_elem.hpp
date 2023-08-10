@@ -8,6 +8,7 @@
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
+#include <utility>
 
 namespace rerun {
     namespace datatypes {
@@ -18,6 +19,13 @@ namespace rerun {
             rerun::components::ClassId class_id;
 
             rerun::datatypes::ClassDescription class_description;
+
+          public:
+            // Extensions to generated type defined in 'class_description_map_elem_ext.cpp'
+
+            ClassDescriptionMapElem(ClassDescription _class_description)
+                : class_id(_class_description.info.id),
+                  class_description(std::move(_class_description)) {}
 
           public:
             ClassDescriptionMapElem() = default;

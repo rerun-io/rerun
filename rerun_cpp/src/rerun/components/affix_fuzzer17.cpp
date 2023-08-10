@@ -49,12 +49,16 @@ namespace rerun {
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto &element = elements[elem_idx];
                 if (element.many_optional_unions.has_value()) {
-                    ARROW_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
-                        value_builder,
-                        element.many_optional_unions.value().data(),
-                        element.many_optional_unions.value().size()
-                    ));
                     ARROW_RETURN_NOT_OK(builder->Append());
+                    if (element.many_optional_unions.value().data()) {
+                        ARROW_RETURN_NOT_OK(
+                            rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
+                                value_builder,
+                                element.many_optional_unions.value().data(),
+                                element.many_optional_unions.value().size()
+                            )
+                        );
+                    }
                 } else {
                     ARROW_RETURN_NOT_OK(builder->AppendNull());
                 }
