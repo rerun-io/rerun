@@ -49,12 +49,14 @@ namespace rerun {
 
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto &element = elements[elem_idx];
-                ARROW_RETURN_NOT_OK(rerun::datatypes::Vec2D::fill_arrow_array_builder(
-                    value_builder,
-                    element.points.data(),
-                    element.points.size()
-                ));
                 ARROW_RETURN_NOT_OK(builder->Append());
+                if (element.points.data()) {
+                    ARROW_RETURN_NOT_OK(rerun::datatypes::Vec2D::fill_arrow_array_builder(
+                        value_builder,
+                        element.points.data(),
+                        element.points.size()
+                    ));
+                }
             }
 
             return arrow::Status::OK();

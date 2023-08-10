@@ -131,12 +131,12 @@ namespace rerun {
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.many_floats_optional.has_value()) {
+                        ARROW_RETURN_NOT_OK(field_builder->Append());
                         ARROW_RETURN_NOT_OK(value_builder->AppendValues(
                             element.many_floats_optional.value().data(),
                             element.many_floats_optional.value().size(),
                             nullptr
                         ));
-                        ARROW_RETURN_NOT_OK(field_builder->Append());
                     } else {
                         ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                     }
@@ -151,13 +151,13 @@ namespace rerun {
 
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
+                    ARROW_RETURN_NOT_OK(field_builder->Append());
                     for (auto item_idx = 0; item_idx < element.many_strings_required.size();
                          item_idx += 1) {
                         ARROW_RETURN_NOT_OK(
                             value_builder->Append(element.many_strings_required[item_idx])
                         );
                     }
-                    ARROW_RETURN_NOT_OK(field_builder->Append());
                 }
             }
             {
@@ -170,6 +170,7 @@ namespace rerun {
                 for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.many_strings_optional.has_value()) {
+                        ARROW_RETURN_NOT_OK(field_builder->Append());
                         for (auto item_idx = 0;
                              item_idx < element.many_strings_optional.value().size();
                              item_idx += 1) {
@@ -177,7 +178,6 @@ namespace rerun {
                                 element.many_strings_optional.value()[item_idx]
                             ));
                         }
-                        ARROW_RETURN_NOT_OK(field_builder->Append());
                     } else {
                         ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                     }
