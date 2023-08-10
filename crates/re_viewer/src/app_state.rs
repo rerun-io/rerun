@@ -165,12 +165,19 @@ impl AppState {
                         // doesn't have inner margins.
                         ui.set_clip_rect(ui.max_rect());
 
+                        // TODO(ab): this might be promoted higher in the hierarchy once list item are
+                        //  used in the blueprint panel section
+                        ui.scope(|ui| {
+                            ui.spacing_mut().item_spacing.y = 0.0;
+                            recordings_panel_ui(&mut ctx, ui);
+                        });
+
+                        // TODO(ab): remove this frame once the blueprint tree uses list items
                         egui::Frame {
                             inner_margin: re_ui::ReUi::panel_margin(),
                             ..Default::default()
                         }
                         .show(ui, |ui| {
-                            recordings_panel_ui(&mut ctx, ui);
                             blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
                         });
                     },

@@ -7,8 +7,9 @@ pub struct ListItem<'a> {
     re_ui: &'a ReUi,
     active: bool,
     selected: bool,
-    icon: Option<&'a Icon>,
-    buttons: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
+    icon_fn:
+        Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
+    buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
 }
 
 impl<'a> ListItem<'a> {
@@ -18,8 +19,8 @@ impl<'a> ListItem<'a> {
             re_ui,
             active: true,
             selected: false,
-            icon: None,
-            buttons: None,
+            icon_fn: None,
+            buttons_fn: None,
         }
     }
 
@@ -33,8 +34,26 @@ impl<'a> ListItem<'a> {
         self
     }
 
-    pub fn with_icon(mut self, icon: &'a Icon) -> Self {
-        self.icon = Some(icon);
+    pub fn with_icon(self, icon: &'a Icon) -> Self {
+        self.with_icon_fn(|re_ui, ui, rect, visuals| {
+            let image = re_ui.icon_image(icon);
+            let texture_id = image.texture_id(ui.ctx());
+            let tint = visuals.fg_stroke.color;
+
+            ui.painter().image(
+                texture_id,
+                rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                tint,
+            );
+        })
+    }
+
+    pub fn with_icon_fn(
+        mut self,
+        icon_fn: impl FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
+    ) -> Self {
+        self.icon_fn = Some(Box::new(icon_fn));
         self
     }
 
@@ -42,7 +61,7 @@ impl<'a> ListItem<'a> {
         mut self,
         buttons: impl FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a,
     ) -> Self {
-        self.buttons = Some(Box::new(buttons));
+        self.buttons_fn = Some(Box::new(buttons));
         self
     }
 
@@ -55,7 +74,7 @@ impl egui::Widget for ListItem<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let button_padding = ui.spacing().button_padding;
         let icon_width_plus_padding = ReUi::small_icon_size().x + ReUi::text_to_icon_padding();
-        let icon_extra = if self.icon.is_some() {
+        let icon_extra = if self.icon_fn.is_some() {
             icon_width_plus_padding
         } else {
             0.0
@@ -98,19 +117,9 @@ impl egui::Widget for ListItem<'_> {
             ));
 
             // Draw icon
-            if let Some(icon) = self.icon {
+            if let Some(icon_fn) = self.icon_fn {
                 let icon_rect = egui::Rect::from_min_size(min_pos, ReUi::small_icon_size());
-
-                let image = self.re_ui.icon_image(icon);
-                let texture_id = image.texture_id(ui.ctx());
-                let tint = visuals.fg_stroke.color;
-
-                ui.painter().image(
-                    texture_id,
-                    icon_rect,
-                    egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                    tint,
-                );
+                icon_fn(self.re_ui, ui, icon_rect, visuals);
             }
 
             // Draw text next to the icon.
@@ -125,7 +134,7 @@ impl egui::Widget for ListItem<'_> {
             // Handle buttons
             let button_hovered =
                 if self.active && ui.interact(rect, ui.id(), egui::Sense::hover()).hovered() {
-                    if let Some(buttons) = self.buttons {
+                    if let Some(buttons) = self.buttons_fn {
                         let mut ui =
                             ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::Center));
                         buttons(self.re_ui, &mut ui).hovered()

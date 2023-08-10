@@ -454,6 +454,19 @@ impl ReUi {
         response
     }
 
+    pub fn panel_content<R>(
+        &self,
+        ui: &mut egui::Ui,
+        add_contents: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
+    ) -> R {
+        egui::Frame {
+            inner_margin: Self::panel_margin(),
+            ..Default::default()
+        }
+        .show(ui, |ui| add_contents(self, ui))
+        .inner
+    }
+
     /// Static title bar used to separate panels into section.
     ///
     /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle

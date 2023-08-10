@@ -228,9 +228,13 @@ impl eframe::App for ExampleApp {
         //
         // This is the "idiomatic" panel structure for Rerun:
         // - A top-level `SidePanel` without inner margins and which sets the clip rectangle.
-        // - A `Frame` is immediately nested with proper inner margins (`ReUi::panel_margins()`).
-        // - All the content (titles, etc.) go inside that nest `Frame`, and use the clip rectangle
-        //   for full-span highlighting.
+        // - Every piece of content (title bar, lists, etc.) are wrapped in a `Frame` with inner
+        //   margins set to `ReUi::panel_margins()`. That can be done with `ReUi::panel_content()`.
+        // - If/when a scroll area is used, it must be applied without margin and outside of the
+        //   `Frame`.
+        //
+        // This way, the content (titles, etc.) is properly inset and benefits from a properly set
+        // clip rectangle for full-span behaviour, without interference from the scroll areas.
 
         let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,
@@ -242,57 +246,71 @@ impl eframe::App for ExampleApp {
             .show_animated(egui_ctx, self.right_panel, |ui| {
                 ui.set_clip_rect(ui.max_rect());
 
-                // inner frame
-                egui::Frame {
-                    inner_margin: re_ui::ReUi::panel_margin(),
-                    ..Default::default()
-                }
-                .show(ui, |ui| {
-                    // first section
-                    self.re_ui.panel_title_bar(
+                // first section - no scroll area, so a global Frame can be used.
+                self.re_ui.panel_content(ui, |re_ui, ui| {
+                    re_ui.panel_title_bar(
                         ui,
                         "Right panel",
                         Some("This is the title of the right panel"),
                     );
-                    self.re_ui
-                        .large_collapsing_header(ui, "Large Collapsing Header", true, |ui| {
-                            ui.label("Some data here");
-                            ui.label("Some data there");
+                    re_ui.large_collapsing_header(ui, "Large Collapsing Header", true, |ui| {
+                        ui.label("Some data here");
+                        ui.label("Some data there");
 
-                            selection_buttons(ui);
+                        selection_buttons(ui);
+                    });
+                });
+
+                // Second section. It's a list of `list_items`, so we need to remove the default
+                // spacing. Also, it uses a scroll area, so we must use several `Frame`s.
+                ui.scope(|ui| {
+                    ui.spacing_mut().item_spacing.y = 0.0;
+
+                    self.re_ui.panel_content(ui, |re_ui, ui| {
+                        re_ui.panel_title_bar(ui, "Another section", None);
+                    });
+
+                    egui::ScrollArea::both()
+                        .id_source("example_right_panel")
+                        .auto_shrink([false, true])
+                        .show(ui, |ui| {
+                            self.re_ui.panel_content(ui, |re_ui, ui| {
+                                for i in 0..10 {
+                                    let label = if i == 4 {
+                                        "That's one heck of a loooooooong label!".to_owned()
+                                    } else {
+                                        format!("Some item {}", i)
+                                    };
+
+                                    let mut item = re_ui
+                                        .list_item(label)
+                                        .selected(Some(i) == self.selected_list_item)
+                                        .active(i != 3)
+                                        .with_buttons(|re_ui, ui| {
+                                            re_ui.small_icon_button(ui, &re_ui::icons::ADD)
+                                                | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
+                                        });
+
+                                    // demo custom icon
+                                    item = if i == 6 {
+                                        item.with_icon_fn(|_re_ui, ui, rect, visuals| {
+                                            ui.painter().circle(
+                                                rect.center(),
+                                                rect.width() / 2.0,
+                                                visuals.fg_stroke.color,
+                                                egui::Stroke::NONE,
+                                            );
+                                        })
+                                    } else {
+                                        item.with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                                    };
+
+                                    if item.ui(ui).clicked() {
+                                        self.selected_list_item = Some(i);
+                                    }
+                                }
+                            });
                         });
-
-                    // Second section. It's a list of `list_items`, so we need to remove the default
-                    // spacing.
-                    ui.scope(|ui| {
-                        ui.spacing_mut().item_spacing.y = 0.0;
-
-                        self.re_ui.panel_title_bar(ui, "Another section", None);
-
-                        for i in 0..10 {
-                            let label = if i == 4 {
-                                "That's one heck of a loooooooong label!".to_owned()
-                            } else {
-                                format!("Some item {}", i)
-                            };
-
-                            if self
-                                .re_ui
-                                .list_item(label)
-                                .selected(Some(i) == self.selected_list_item)
-                                .active(i != 3)
-                                .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
-                                .with_buttons(|re_ui, ui| {
-                                    re_ui.small_icon_button(ui, &re_ui::icons::ADD)
-                                        | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
-                                })
-                                .ui(ui)
-                                .clicked()
-                            {
-                                self.selected_list_item = Some(i);
-                            }
-                        }
-                    })
                 });
             });
 
