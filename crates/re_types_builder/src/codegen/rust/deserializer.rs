@@ -221,18 +221,20 @@ pub fn quote_arrow_deserializer(
                     let quoted_obj_field_type =
                         format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
 
-                    // TODO: uh-oh
                     let quoted_unwrap = if obj_field.is_nullable {
                         quote!()
                     } else {
-                        quote!(.unwrap())
+                        quote! {
+                            .ok_or_else(crate::DeserializationError::missing_data)
+                            .with_context(#obj_field_fqname)?
+                        }
                     };
 
                     quote! {
                         #i => #quoted_obj_name::#quoted_obj_field_type({
                             // NOTE: It is absolutely crucial we explicitly handle the
                             // boundchecks manually first, otherwise rustc completely chokes
-                            // when slicing the data (as in: a 100x perf drop)!
+                            // when indexing the data (as in: a 100x perf drop)!
                             if offset as usize >= #quoted_obj_field_name.len() {
                                 return Err(crate::DeserializationError::offsets_mismatch(
                                     (offset as _, offset as _), #quoted_obj_field_name.len()

@@ -468,7 +468,8 @@ impl crate::Loggable for Rotation3D {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { quaternion.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.Rotation3D#Quaternion")?
                                 }),
                                 2i8 => Rotation3D::AxisAngle({
                                     if offset as usize >= axis_angle.len() {
@@ -482,7 +483,8 @@ impl crate::Loggable for Rotation3D {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { axis_angle.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.Rotation3D#AxisAngle")?
                                 }),
                                 _ => unreachable!(),
                             }))

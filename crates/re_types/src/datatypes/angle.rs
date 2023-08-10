@@ -394,7 +394,8 @@ impl crate::Loggable for Angle {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { radians.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.Angle#Radians")?
                                 }),
                                 2i8 => Angle::Degrees({
                                     if offset as usize >= degrees.len() {
@@ -408,7 +409,8 @@ impl crate::Loggable for Angle {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { degrees.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.Angle#Degrees")?
                                 }),
                                 _ => unreachable!(),
                             }))

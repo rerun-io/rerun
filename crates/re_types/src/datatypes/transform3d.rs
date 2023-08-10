@@ -367,7 +367,10 @@ impl crate::Loggable for Transform3D {
                                         translation_and_mat_3_x_3.get_unchecked(offset as usize)
                                     }
                                     .clone()
-                                    .unwrap()
+                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.datatypes.Transform3D#TranslationAndMat3x3",
+                                    )?
                                 }),
                                 2i8 => Transform3D::TranslationRotationScale({
                                     if offset as usize >= translation_rotation_scale.len() {
@@ -385,7 +388,10 @@ impl crate::Loggable for Transform3D {
                                         translation_rotation_scale.get_unchecked(offset as usize)
                                     }
                                     .clone()
-                                    .unwrap()
+                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.datatypes.Transform3D#TranslationRotationScale",
+                                    )?
                                 }),
                                 _ => unreachable!(),
                             }))
