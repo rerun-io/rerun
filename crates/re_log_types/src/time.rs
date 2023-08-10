@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 use time::OffsetDateTime;
 
 /// A date-time represented as nanoseconds since unix epoch
-#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Default, PartialOrd, Ord, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Time(i64);
 

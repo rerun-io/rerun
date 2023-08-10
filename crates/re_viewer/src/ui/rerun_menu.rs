@@ -10,7 +10,7 @@ use crate::App;
 impl App {
     pub fn rerun_menu_button_ui(
         &mut self,
-        store_context: Option<&StoreContext<'_>>,
+        #[allow(unused_variables)] store_context: Option<&StoreContext<'_>>,
         ui: &mut egui::Ui,
         frame: &mut eframe::Frame,
     ) {

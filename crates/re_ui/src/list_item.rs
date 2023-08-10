@@ -1,6 +1,26 @@
 use crate::{Icon, ReUi};
 use egui::{NumExt, Response, Shape, Ui};
 
+/// Generic widget for use in lists.
+///
+/// Features:
+/// - selectable
+/// - full span highlighting
+/// - optional icon
+/// - optional on-hover buttons on the right
+///
+/// This widget relies on the clip rectangle to be properly set as it use it for the shape if its
+/// background highlighting. This has a significant impact on the hierarchy of the UI. This is
+/// typically how things should be laid out:
+///
+/// ```text
+/// Panel (no margin, set the clip rectangle)
+/// └── ScrollArea (no margin)
+///     └── Frame (with inner margin)
+///         └── ListItem
+/// ```
+///
+/// See [`ReUi::panel_content`] for an helper to build the [`egui::Frame`] with proper margins.
 #[allow(clippy::type_complexity)]
 pub struct ListItem<'a> {
     text: egui::WidgetText,
@@ -13,6 +33,7 @@ pub struct ListItem<'a> {
 }
 
 impl<'a> ListItem<'a> {
+    /// Create a new [`ListItem`] with the given label.
     pub fn new(re_ui: &'a ReUi, text: impl Into<egui::WidgetText>) -> Self {
         Self {
             text: text.into(),
@@ -24,16 +45,19 @@ impl<'a> ListItem<'a> {
         }
     }
 
+    /// Set the active state the item.
     pub fn active(mut self, active: bool) -> Self {
         self.active = active;
         self
     }
 
+    /// Set the selected state of the item.
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
         self
     }
 
+    /// Provide an [`Icon`] to be displayed on the left of the item.
     pub fn with_icon(self, icon: &'a Icon) -> Self {
         self.with_icon_fn(|re_ui, ui, rect, visuals| {
             let image = re_ui.icon_image(icon);
@@ -49,6 +73,7 @@ impl<'a> ListItem<'a> {
         })
     }
 
+    /// Provide a custom closure to draw an icon on the left of the item.
     pub fn with_icon_fn(
         mut self,
         icon_fn: impl FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
@@ -57,6 +82,7 @@ impl<'a> ListItem<'a> {
         self
     }
 
+    /// Provide a closure to display on-hover buttons on the right of the item.
     pub fn with_buttons(
         mut self,
         buttons: impl FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a,
@@ -65,6 +91,7 @@ impl<'a> ListItem<'a> {
         self
     }
 
+    /// Draw the item.
     pub fn show(self, ui: &mut Ui) -> Response {
         ui.add(self)
     }

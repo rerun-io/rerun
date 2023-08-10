@@ -1,5 +1,10 @@
-use re_ui::UICommandSender;
+use re_data_store::StoreDb;
+use re_log_types::Time;
 use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
+use time::macros::format_description;
+
+#[cfg(not(target_arch = "wasm32"))]
+use re_ui::UICommandSender;
 
 /// Show the Recordings section of the left panel
 pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -8,6 +13,7 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
             ui,
             "Recordings",
             Some("These are the Recordings currently loaded in the Viewer"),
+            #[allow(unused_variables)]
             |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
                 add_button_ui(ctx, ui);
@@ -18,6 +24,7 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     egui::ScrollArea::both()
         .id_source("recordings_scroll_area")
         .auto_shrink([false, true])
+        .max_height(300.)
         .show(ui, |ui| {
             ctx.re_ui
                 .panel_content(ui, |_re_ui, ui| recording_list_ui(ctx, ui));
@@ -32,20 +39,32 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ..
     } = ctx;
 
-    let store_dbs = store_context.alternate_recordings.clone();
-
+    let mut store_dbs = store_context.alternate_recordings.clone();
     if store_dbs.is_empty() {
         return;
     }
 
+    fn store_db_key(store_db: &StoreDb) -> (&str, Time) {
+        store_db.store_info().map_or(("", Time::default()), |info| {
+            (info.application_id.0.as_str(), info.started)
+        })
+    }
+
+    store_dbs.sort_by_key(|store_db| store_db_key(store_db));
+
     let active_recording = store_context.recording.map(|rec| rec.store_id());
 
+    let desc = format_description!(version = 2, "[hour]:[minute]:[second]");
     for store_db in &store_dbs {
         let info = if let Some(store_info) = store_db.store_info() {
             format!(
                 "{} - {}",
                 store_info.application_id,
-                store_info.started.format()
+                store_info
+                    .started
+                    .to_datetime()
+                    .and_then(|dt| dt.format(&desc).ok())
+                    .unwrap_or("<unknown>".to_owned())
             )
         } else {
             "<UNKNOWN>".to_owned()

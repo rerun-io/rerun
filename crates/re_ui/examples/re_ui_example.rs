@@ -279,7 +279,7 @@ impl eframe::App for ExampleApp {
                                     let label = if i == 4 {
                                         "That's one heck of a loooooooong label!".to_owned()
                                     } else {
-                                        format!("Some item {}", i)
+                                        format!("Some item {i}")
                                     };
 
                                     let mut item = re_ui
