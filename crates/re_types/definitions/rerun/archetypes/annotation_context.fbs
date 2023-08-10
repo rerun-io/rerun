@@ -30,6 +30,7 @@ namespace rerun.archetypes;
 /// \cpp ## Example
 /// \cpp
 /// \cpp ```
+//  \cpp TODO(#2786): implement Rect2D cpp example and link it here instead.
 /// \cpp \include:../../../../../docs/code-examples/annotation_context_arrows_v2.cpp
 /// \cpp ```
 table AnnotationContext (
