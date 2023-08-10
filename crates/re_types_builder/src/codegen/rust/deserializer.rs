@@ -490,6 +490,14 @@ fn quote_arrow_field_deserializer(
                                 //
                                 // TODO(#2875): use MaybeUninit rather than requiring a default impl
                                 let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                // The following would be the correct thing to do, but costs us way
+                                // too much performance-wise for something that only applies to
+                                // malformed inputs.
+                                //
+                                // // NOTE: We don't support nullable inner elements in our IDL, so
+                                // // this can only be a case of malformed data.
+                                // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
+                                // .collect::<crate::DeserializationResult<Vec<_>>>()?;
 
                                 // NOTE: Unwrapping cannot fail: the length must be correct.
                                 let arr = array_init::from_iter(data).unwrap();
@@ -579,6 +587,14 @@ fn quote_arrow_field_deserializer(
                             //
                             // TODO(#2875): use MaybeUninit rather than requiring a default impl
                             let data = data.iter().cloned().map(Option::unwrap_or_default).collect();
+                                // The following would be the correct thing to do, but costs us way
+                                // too much performance-wise for something that only applies to
+                                // malformed inputs.
+                                //
+                                // // NOTE: We don't support nullable inner elements in our IDL, so
+                                // // this can only be a case of malformed data.
+                                // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
+                                // .collect::<crate::DeserializationResult<Vec<_>>>()?;
 
                             Ok(data)
                         }).transpose()
