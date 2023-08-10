@@ -30,9 +30,6 @@ function(set_default_warning_settings target)
         # arrow has a bunch of unused parameters in its headers.
         target_compile_options(${target} PRIVATE -Wno-unused-parameter)
     endif()
-
-    # Enable this to fail on warnings.
-    # set_property(TARGET ${target} PROPERTY COMPILE_WARNING_AS_ERROR ON)
 endfunction()
 
 # Use makefiles on linux, otherwise it might use Ninja which isn't installed by default.

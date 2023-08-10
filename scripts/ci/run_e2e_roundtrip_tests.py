@@ -69,10 +69,10 @@ def main() -> None:
         print("Build rerun_c & rerun_cpp…")
         start_time = time.time()
         os.makedirs("build", exist_ok=True)
+        build_type = "Debug"
         if args.release:
-            configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."]
-        else:
-            configure_args = ["cmake", "-DCMAKE_BUILD_TYPE=Debug", ".."]
+            build_type = "Release"
+        configure_args = ["cmake", f"-DCMAKE_BUILD_TYPE={build_type}", "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON", ".."]
         print(subprocess.list2cmdline(configure_args))
         returncode = subprocess.Popen(
             configure_args,
