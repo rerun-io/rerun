@@ -4,7 +4,7 @@
 namespace rr = rerun;
 
 int main(int argc, char** argv) {
-    auto rec_stream = rr::RecordingStream("roundtrip_arrows3d");
+    auto rec_stream = rr::RecordingStream("roundtrip_annotation_context");
     rec_stream.save(argv[1]);
 
     rec_stream.log(
