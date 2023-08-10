@@ -271,8 +271,8 @@ impl crate::Loggable for Transform3D {
                         )
                     })
                     .with_context("rerun.datatypes.Transform3D")?;
-                if data_types.len() > data_offsets.len() {
-                    return Err(crate::DeserializationError::offsets_mismatch(
+                if data_types.len() != data_offsets.len() {
+                    return Err(crate::DeserializationError::offset_slice_oob(
                         (0, data_types.len()),
                         data_offsets.len(),
                     ))
@@ -353,8 +353,8 @@ impl crate::Loggable for Transform3D {
                             Ok(Some(match typ {
                                 1i8 => Transform3D::TranslationAndMat3X3({
                                     if offset as usize >= translation_and_mat_3_x_3.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             translation_and_mat_3_x_3.len(),
                                         ))
                                         .with_context(
@@ -374,8 +374,8 @@ impl crate::Loggable for Transform3D {
                                 }),
                                 2i8 => Transform3D::TranslationRotationScale({
                                     if offset as usize >= translation_rotation_scale.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             translation_rotation_scale.len(),
                                         ))
                                         .with_context(

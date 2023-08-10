@@ -175,7 +175,8 @@ impl crate::Loggable for AffixFuzzer1 {
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer1#single_required")?,
+                .with_context("rerun.testing.components.AffixFuzzer1#single_required")
+                .with_context("rerun.testing.components.AffixFuzzer1")?,
         )
     }
 
@@ -360,7 +361,8 @@ impl crate::Loggable for AffixFuzzer2 {
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer2#single_required")?,
+                .with_context("rerun.testing.components.AffixFuzzer2#single_required")
+                .with_context("rerun.testing.components.AffixFuzzer2")?,
         )
     }
 
@@ -545,7 +547,8 @@ impl crate::Loggable for AffixFuzzer3 {
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer3#single_required")?,
+                .with_context("rerun.testing.components.AffixFuzzer3#single_required")
+                .with_context("rerun.testing.components.AffixFuzzer3")?,
         )
     }
 
@@ -732,7 +735,8 @@ impl crate::Loggable for AffixFuzzer4 {
                 .map(Ok)
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer4#single_optional")?,
+                .with_context("rerun.testing.components.AffixFuzzer4#single_optional")
+                .with_context("rerun.testing.components.AffixFuzzer4")?,
         )
     }
 
@@ -919,7 +923,8 @@ impl crate::Loggable for AffixFuzzer5 {
                 .map(Ok)
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer5#single_optional")?,
+                .with_context("rerun.testing.components.AffixFuzzer5#single_optional")
+                .with_context("rerun.testing.components.AffixFuzzer5")?,
         )
     }
 
@@ -1106,7 +1111,8 @@ impl crate::Loggable for AffixFuzzer6 {
                 .map(Ok)
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer6#single_optional")?,
+                .with_context("rerun.testing.components.AffixFuzzer6#single_optional")
+                .with_context("rerun.testing.components.AffixFuzzer6")?,
         )
     }
 
@@ -1299,7 +1305,7 @@ impl crate::Loggable for AffixFuzzer7 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 data_inner.len(),
                             ));
@@ -1324,7 +1330,8 @@ impl crate::Loggable for AffixFuzzer7 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.components.AffixFuzzer7#many_optional")?)
+        .with_context("rerun.testing.components.AffixFuzzer7#many_optional")
+        .with_context("rerun.testing.components.AffixFuzzer7")?)
     }
 
     #[inline]
@@ -1449,7 +1456,8 @@ impl crate::Loggable for AffixFuzzer8 {
             .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.testing.components.AffixFuzzer8#single_float_optional")?)
+            .with_context("rerun.testing.components.AffixFuzzer8#single_float_optional")
+            .with_context("rerun.testing.components.AffixFuzzer8")?)
     }
 
     #[inline]
@@ -1595,7 +1603,7 @@ impl crate::Loggable for AffixFuzzer9 {
                     let start = *start as usize;
                     let end = start + len;
                     if end as usize > data_buf.len() {
-                        return Err(crate::DeserializationError::offsets_mismatch(
+                        return Err(crate::DeserializationError::offset_slice_oob(
                             (start, end),
                             data_buf.len(),
                         ));
@@ -1617,7 +1625,8 @@ impl crate::Loggable for AffixFuzzer9 {
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.components.AffixFuzzer9#single_string_required")?)
+        .with_context("rerun.testing.components.AffixFuzzer9#single_string_required")
+        .with_context("rerun.testing.components.AffixFuzzer9")?)
     }
 
     #[inline]
@@ -1765,7 +1774,7 @@ impl crate::Loggable for AffixFuzzer10 {
                     let start = *start as usize;
                     let end = start + len;
                     if end as usize > data_buf.len() {
-                        return Err(crate::DeserializationError::offsets_mismatch(
+                        return Err(crate::DeserializationError::offset_slice_oob(
                             (start, end),
                             data_buf.len(),
                         ));
@@ -1787,7 +1796,8 @@ impl crate::Loggable for AffixFuzzer10 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.components.AffixFuzzer10#single_string_optional")?)
+        .with_context("rerun.testing.components.AffixFuzzer10#single_string_optional")
+        .with_context("rerun.testing.components.AffixFuzzer10")?)
     }
 
     #[inline]
@@ -1990,7 +2000,7 @@ impl crate::Loggable for AffixFuzzer11 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 data_inner.len(),
                             ));
@@ -2015,7 +2025,8 @@ impl crate::Loggable for AffixFuzzer11 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.components.AffixFuzzer11#many_floats_optional")?)
+        .with_context("rerun.testing.components.AffixFuzzer11#many_floats_optional")
+        .with_context("rerun.testing.components.AffixFuzzer11")?)
     }
 
     #[inline]
@@ -2230,7 +2241,7 @@ impl crate::Loggable for AffixFuzzer12 {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > data_inner_buf.len() {
-                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                    return Err(crate::DeserializationError::offset_slice_oob(
                                         (start, end),
                                         data_inner_buf.len(),
                                     ));
@@ -2264,7 +2275,7 @@ impl crate::Loggable for AffixFuzzer12 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 data_inner.len(),
                             ));
@@ -2289,7 +2300,8 @@ impl crate::Loggable for AffixFuzzer12 {
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.components.AffixFuzzer12#many_strings_required")?)
+        .with_context("rerun.testing.components.AffixFuzzer12#many_strings_required")
+        .with_context("rerun.testing.components.AffixFuzzer12")?)
     }
 
     #[inline]
@@ -2506,7 +2518,7 @@ impl crate::Loggable for AffixFuzzer13 {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > data_inner_buf.len() {
-                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                    return Err(crate::DeserializationError::offset_slice_oob(
                                         (start, end),
                                         data_inner_buf.len(),
                                     ));
@@ -2540,7 +2552,7 @@ impl crate::Loggable for AffixFuzzer13 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 data_inner.len(),
                             ));
@@ -2565,7 +2577,8 @@ impl crate::Loggable for AffixFuzzer13 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.components.AffixFuzzer13#many_strings_optional")?)
+        .with_context("rerun.testing.components.AffixFuzzer13#many_strings_optional")
+        .with_context("rerun.testing.components.AffixFuzzer13")?)
     }
 
     #[inline]
@@ -2727,7 +2740,8 @@ impl crate::Loggable for AffixFuzzer14 {
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer14#single_required_union")?,
+                .with_context("rerun.testing.components.AffixFuzzer14#single_required_union")
+                .with_context("rerun.testing.components.AffixFuzzer14")?,
         )
     }
 
@@ -2892,7 +2906,8 @@ impl crate::Loggable for AffixFuzzer15 {
                 .map(Ok)
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer15#single_optional_union")?,
+                .with_context("rerun.testing.components.AffixFuzzer15#single_optional_union")
+                .with_context("rerun.testing.components.AffixFuzzer15")?,
         )
     }
 
@@ -3085,7 +3100,7 @@ impl crate::Loggable for AffixFuzzer16 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 data_inner.len(),
                             ));
@@ -3110,7 +3125,8 @@ impl crate::Loggable for AffixFuzzer16 {
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.components.AffixFuzzer16#many_required_unions")?)
+        .with_context("rerun.testing.components.AffixFuzzer16#many_required_unions")
+        .with_context("rerun.testing.components.AffixFuzzer16")?)
     }
 
     #[inline]
@@ -3304,7 +3320,7 @@ impl crate::Loggable for AffixFuzzer17 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 data_inner.len(),
                             ));
@@ -3329,7 +3345,8 @@ impl crate::Loggable for AffixFuzzer17 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.components.AffixFuzzer17#many_optional_unions")?)
+        .with_context("rerun.testing.components.AffixFuzzer17#many_optional_unions")
+        .with_context("rerun.testing.components.AffixFuzzer17")?)
     }
 
     #[inline]
@@ -3523,7 +3540,7 @@ impl crate::Loggable for AffixFuzzer18 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 data_inner.len(),
                             ));
@@ -3548,7 +3565,8 @@ impl crate::Loggable for AffixFuzzer18 {
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.testing.components.AffixFuzzer18#many_optional_unions")?)
+        .with_context("rerun.testing.components.AffixFuzzer18#many_optional_unions")
+        .with_context("rerun.testing.components.AffixFuzzer18")?)
     }
 
     #[inline]
@@ -3667,9 +3685,8 @@ impl crate::Loggable for AffixFuzzer19 {
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context(
-                    "rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady",
-                )?,
+                .with_context("rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady")
+                .with_context("rerun.testing.components.AffixFuzzer19")?,
         )
     }
 
@@ -3797,7 +3814,8 @@ impl crate::Loggable for AffixFuzzer20 {
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer20#nested_transparent")?,
+                .with_context("rerun.testing.components.AffixFuzzer20#nested_transparent")
+                .with_context("rerun.testing.components.AffixFuzzer20")?,
         )
     }
 

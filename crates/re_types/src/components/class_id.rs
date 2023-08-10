@@ -118,7 +118,8 @@ impl crate::Loggable for ClassId {
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.ClassId#id")?)
+            .with_context("rerun.components.ClassId#id")
+            .with_context("rerun.components.ClassId")?)
     }
 
     #[inline]

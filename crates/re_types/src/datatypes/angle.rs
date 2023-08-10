@@ -274,8 +274,8 @@ impl crate::Loggable for Angle {
                         )
                     })
                     .with_context("rerun.datatypes.Angle")?;
-                if data_types.len() > data_offsets.len() {
-                    return Err(crate::DeserializationError::offsets_mismatch(
+                if data_types.len() != data_offsets.len() {
+                    return Err(crate::DeserializationError::offset_slice_oob(
                         (0, data_types.len()),
                         data_offsets.len(),
                     ))
@@ -384,8 +384,8 @@ impl crate::Loggable for Angle {
                             Ok(Some(match typ {
                                 1i8 => Angle::Radians({
                                     if offset as usize >= radians.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             radians.len(),
                                         ))
                                         .with_context("rerun.datatypes.Angle#Radians");
@@ -399,8 +399,8 @@ impl crate::Loggable for Angle {
                                 }),
                                 2i8 => Angle::Degrees({
                                     if offset as usize >= degrees.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             degrees.len(),
                                         ))
                                         .with_context("rerun.datatypes.Angle#Degrees");

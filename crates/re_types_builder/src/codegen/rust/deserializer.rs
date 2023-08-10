@@ -57,7 +57,7 @@ pub fn quote_arrow_deserializer(
         let quoted_unwrapping = if obj_field.is_nullable {
             quote!(.map(Ok))
         } else {
-            // error context is appended below
+            // error context is appended below during final collection
             quote!(.map(|v| v.ok_or_else(crate::DeserializationError::missing_data)))
         };
 
@@ -73,7 +73,10 @@ pub fn quote_arrow_deserializer(
             #quoted_remapping
             // NOTE: implicit Vec<Result> to Result<Vec>
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context(#obj_field_fqname)?
+            // NOTE: double context so the user can see the transparent shenanigans going on in the
+            // error.
+            .with_context(#obj_field_fqname)
+            .with_context(#obj_fqname)?
         }
     } else {
         let data_src = data_src.clone();
@@ -236,8 +239,8 @@ pub fn quote_arrow_deserializer(
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when indexing the data (as in: a 100x perf drop)!
                             if offset as usize >= #quoted_obj_field_name.len() {
-                                return Err(crate::DeserializationError::offsets_mismatch(
-                                    (offset as _, offset as _), #quoted_obj_field_name.len()
+                                return Err(crate::DeserializationError::offset_oob(
+                                    offset as _, #quoted_obj_field_name.len()
                                 )).with_context(#obj_field_fqname);
                             }
 
@@ -267,12 +270,14 @@ pub fn quote_arrow_deserializer(
                         let (#data_src_types, #data_src_arrays) = (#data_src.types(), #data_src.fields());
 
                         let #data_src_offsets = #data_src.offsets()
+                            // NOTE: expected dense union, got a sparse one instead
                             .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
                                 #quoted_datatype, #data_src.data_type().clone(),
                             )).with_context(#obj_fqname)?;
 
-                        if #data_src_types.len() > #data_src_offsets.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                        if #data_src_types.len() != #data_src_offsets.len() {
+                            // NOTE: need one offset array per union arm!
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (0, #data_src_types.len()), #data_src_offsets.len(),
                             )).with_context(#obj_fqname);
                         }
@@ -388,7 +393,8 @@ fn quote_arrow_field_deserializer(
                         // boundchecks manually first, otherwise rustc completely chokes
                         // when slicing the data (as in: a 100x perf drop)!
                         if end as usize > #data_src_buf.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                            // error context is appended below during final collection
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end), #data_src_buf.len(),
                             ));
                         }
@@ -446,14 +452,16 @@ fn quote_arrow_field_deserializer(
                         .map(|elem| elem.map(|(start, end)| {
                                 // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                                // We're manually generating our own offsets, then length must be correct.
+                                // We're manually generating our own offsets in this case, thus length
+                                // must be correct.
                                 debug_assert!(end - start == #length);
 
                                 // NOTE: It is absolutely crucial we explicitly handle the
                                 // boundchecks manually first, otherwise rustc completely chokes
                                 // when slicing the data (as in: a 100x perf drop)!
                                 if end as usize > #data_src_inner.len() {
-                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                    // error context is appended below during final collection
+                                    return Err(crate::DeserializationError::offset_slice_oob(
                                         (start, end), #data_src_inner.len(),
                                     ));
                                 }
@@ -541,7 +549,8 @@ fn quote_arrow_field_deserializer(
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when slicing the data (as in: a 100x perf drop)!
                             if end as usize > #data_src_inner.len() {
-                                return Err(crate::DeserializationError::offsets_mismatch(
+                                // error context is appended below during final collection
+                                return Err(crate::DeserializationError::offset_slice_oob(
                                     (start, end), #data_src_inner.len(),
                                 ));
                             }
@@ -551,7 +560,7 @@ fn quote_arrow_field_deserializer(
 
                             // NOTE: The call to `Option::unwrap_or_default` is very important here.
                             //
-                            // Since we can only get here if the outer entry is marked as
+                            // Since we can only get here if the outer oob is marked as
                             // non-null, the only possible reason for the default() path
                             // to be taken is because the inner field itself is nullable and
                             // happens to have one or more nullable values in the referenced

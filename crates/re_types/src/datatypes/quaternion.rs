@@ -190,7 +190,7 @@ impl crate::Loggable for Quaternion {
                         elem.map(|(start, end)| {
                             debug_assert!(end - start == 4usize);
                             if end as usize > data_inner.len() {
-                                return Err(crate::DeserializationError::offsets_mismatch(
+                                return Err(crate::DeserializationError::offset_slice_oob(
                                     (start, end),
                                     data_inner.len(),
                                 ));
@@ -212,7 +212,8 @@ impl crate::Loggable for Quaternion {
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.datatypes.Quaternion#xyzw")?)
+        .with_context("rerun.datatypes.Quaternion#xyzw")
+        .with_context("rerun.datatypes.Quaternion")?)
     }
 
     #[inline]

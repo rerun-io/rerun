@@ -376,7 +376,7 @@ impl crate::Loggable for AnnotationInfo {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > data_buf.len() {
-                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                    return Err(crate::DeserializationError::offset_slice_oob(
                                         (start, end),
                                         data_buf.len(),
                                     ));

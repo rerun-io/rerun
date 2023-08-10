@@ -1013,7 +1013,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > data_buf.len() {
-                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                    return Err(crate::DeserializationError::offset_slice_oob(
                                         (start, end),
                                         data_buf.len(),
                                     ));
@@ -1102,7 +1102,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > data_buf.len() {
-                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                    return Err(crate::DeserializationError::offset_slice_oob(
                                         (start, end),
                                         data_buf.len(),
                                     ));
@@ -1215,7 +1215,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > data_inner.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                        return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
                                             data_inner.len(),
                                         ));
@@ -1329,7 +1329,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                                     let end = start + len;
                                                     if end as usize > data_inner_buf.len() {
                                                         return Err(
-                                                            crate::DeserializationError::offsets_mismatch(
+                                                            crate::DeserializationError::offset_slice_oob(
                                                                 (start, end),
                                                                 data_inner_buf.len(),
                                                             ),
@@ -1368,7 +1368,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                             let end = start + len;
                                             if end as usize > data_inner.len() {
                                                 return Err(
-                                                    crate::DeserializationError::offsets_mismatch(
+                                                    crate::DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         data_inner.len(),
                                                     ),
@@ -1483,7 +1483,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                                     let end = start + len;
                                                     if end as usize > data_inner_buf.len() {
                                                         return Err(
-                                                            crate::DeserializationError::offsets_mismatch(
+                                                            crate::DeserializationError::offset_slice_oob(
                                                                 (start, end),
                                                                 data_inner_buf.len(),
                                                             ),
@@ -1522,7 +1522,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                             let end = start + len;
                                             if end as usize > data_inner.len() {
                                                 return Err(
-                                                    crate::DeserializationError::offsets_mismatch(
+                                                    crate::DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         data_inner.len(),
                                                     ),
@@ -1885,7 +1885,8 @@ impl crate::Loggable for AffixFuzzer2 {
             .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.testing.datatypes.AffixFuzzer2#single_float_optional")?)
+            .with_context("rerun.testing.datatypes.AffixFuzzer2#single_float_optional")
+            .with_context("rerun.testing.datatypes.AffixFuzzer2")?)
     }
 
     #[inline]
@@ -2331,8 +2332,8 @@ impl crate::Loggable for AffixFuzzer3 {
                         )
                     })
                     .with_context("rerun.testing.datatypes.AffixFuzzer3")?;
-                if data_types.len() > data_offsets.len() {
-                    return Err(crate::DeserializationError::offsets_mismatch(
+                if data_types.len() != data_offsets.len() {
+                    return Err(crate::DeserializationError::offset_slice_oob(
                         (0, data_types.len()),
                         data_offsets.len(),
                     ))
@@ -2507,7 +2508,7 @@ impl crate::Loggable for AffixFuzzer3 {
                                             let end = start + len;
                                             if end as usize > data_inner.len() {
                                                 return Err(
-                                                    crate::DeserializationError::offsets_mismatch(
+                                                    crate::DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         data_inner.len(),
                                                     ),
@@ -2617,7 +2618,7 @@ impl crate::Loggable for AffixFuzzer3 {
                                             debug_assert!(end - start == 3usize);
                                             if end as usize > data_inner.len() {
                                                 return Err(
-                                                    crate::DeserializationError::offsets_mismatch(
+                                                    crate::DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         data_inner.len(),
                                                     ),
@@ -2658,8 +2659,8 @@ impl crate::Loggable for AffixFuzzer3 {
                                             AffixFuzzer3::Degrees({
                                                 if offset as usize >= degrees.len() {
                                                     return Err(
-                                                            crate::DeserializationError::offsets_mismatch(
-                                                                (offset as _, offset as _),
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
                                                                 degrees.len(),
                                                             ),
                                                         )
@@ -2681,8 +2682,8 @@ impl crate::Loggable for AffixFuzzer3 {
                                             AffixFuzzer3::Radians({
                                                 if offset as usize >= radians.len() {
                                                     return Err(
-                                                            crate::DeserializationError::offsets_mismatch(
-                                                                (offset as _, offset as _),
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
                                                                 radians.len(),
                                                             ),
                                                         )
@@ -2699,8 +2700,8 @@ impl crate::Loggable for AffixFuzzer3 {
                                             AffixFuzzer3::Craziness({
                                                 if offset as usize >= craziness.len() {
                                                     return Err(
-                                                            crate::DeserializationError::offsets_mismatch(
-                                                                (offset as _, offset as _),
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
                                                                 craziness.len(),
                                                             ),
                                                         )
@@ -2722,8 +2723,8 @@ impl crate::Loggable for AffixFuzzer3 {
                                             AffixFuzzer3::FixedSizeShenanigans({
                                                 if offset as usize >= fixed_size_shenanigans.len() {
                                                     return Err(
-                                                            crate::DeserializationError::offsets_mismatch(
-                                                                (offset as _, offset as _),
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
                                                                 fixed_size_shenanigans.len(),
                                                             ),
                                                         )
@@ -3144,8 +3145,8 @@ impl crate::Loggable for AffixFuzzer4 {
                         )
                     })
                     .with_context("rerun.testing.datatypes.AffixFuzzer4")?;
-                if data_types.len() > data_offsets.len() {
-                    return Err(crate::DeserializationError::offsets_mismatch(
+                if data_types.len() != data_offsets.len() {
+                    return Err(crate::DeserializationError::offset_slice_oob(
                         (0, data_types.len()),
                         data_offsets.len(),
                     ))
@@ -3266,7 +3267,7 @@ impl crate::Loggable for AffixFuzzer4 {
                                             let end = start + len;
                                             if end as usize > data_inner.len() {
                                                 return Err(
-                                                    crate::DeserializationError::offsets_mismatch(
+                                                    crate::DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         data_inner.len(),
                                                     ),
@@ -3369,7 +3370,7 @@ impl crate::Loggable for AffixFuzzer4 {
                                             let end = start + len;
                                             if end as usize > data_inner.len() {
                                                 return Err(
-                                                    crate::DeserializationError::offsets_mismatch(
+                                                    crate::DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         data_inner.len(),
                                                     ),
@@ -3406,8 +3407,8 @@ impl crate::Loggable for AffixFuzzer4 {
                             Ok(Some(match typ {
                                 1i8 => AffixFuzzer4::SingleRequired({
                                     if offset as usize >= single_required.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             single_required.len(),
                                         ))
                                         .with_context(
@@ -3425,8 +3426,8 @@ impl crate::Loggable for AffixFuzzer4 {
                                 }),
                                 2i8 => AffixFuzzer4::ManyRequired({
                                     if offset as usize >= many_required.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             many_required.len(),
                                         ))
                                         .with_context(
@@ -3444,8 +3445,8 @@ impl crate::Loggable for AffixFuzzer4 {
                                 }),
                                 3i8 => AffixFuzzer4::ManyOptional({
                                     if offset as usize >= many_optional.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             many_optional.len(),
                                         ))
                                         .with_context(
@@ -3990,7 +3991,7 @@ impl crate::Loggable for AffixFuzzer20 {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > data_buf.len() {
-                                    return Err(crate::DeserializationError::offsets_mismatch(
+                                    return Err(crate::DeserializationError::offset_slice_oob(
                                         (start, end),
                                         data_buf.len(),
                                     ));
