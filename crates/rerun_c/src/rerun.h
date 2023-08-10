@@ -64,7 +64,7 @@ struct rr_data_cell {
 
     /// The number of bytes in the `bytes` field.
     /// Must be a multiple of 8.
-    const uint64_t num_bytes;
+    uint64_t num_bytes;
 
     /// Data in the Arrow IPC encapsulated message format.
     ///

@@ -78,22 +78,19 @@ namespace rerun {
         const DataCell* data_cells
     ) {
         // Map to C API:
-        std::vector<rr_data_cell> c_data_cells;
-        c_data_cells.reserve(num_data_cells);
-        for (size_t i = 0; i < num_data_cells; ++i) {
-            c_data_cells.push_back({
-                .component_name = data_cells[i].component_name,
-                .num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size()),
-                .bytes = data_cells[i].buffer->data(),
-            });
+        std::unique_ptr<rr_data_cell[]> c_data_cells =
+            std::make_unique<rr_data_cell[]>(num_data_cells);
+        for (size_t i = 0; i < num_data_cells; i++) {
+            c_data_cells[i].component_name = data_cells[i].component_name;
+            c_data_cells[i].num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size());
+            c_data_cells[i].bytes = data_cells[i].buffer->data();
         }
 
-        const rr_data_row c_data_row = {
-            .entity_path = entity_path,
-            .num_instances = static_cast<uint32_t>(num_instances),
-            .num_data_cells = static_cast<uint32_t>(num_data_cells),
-            .data_cells = c_data_cells.data(),
-        };
+        rr_data_row c_data_row;
+        c_data_row.entity_path = entity_path,
+        c_data_row.num_instances = static_cast<uint32_t>(num_instances);
+        c_data_row.num_data_cells = static_cast<uint32_t>(num_data_cells);
+        c_data_row.data_cells = c_data_cells.get();
 
         rr_log(_id, &c_data_row, true);
     }
