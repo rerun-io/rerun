@@ -498,7 +498,8 @@ impl crate::Loggable for Scale3D {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { three_d.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.Scale3D#ThreeD")?
                                 }),
                                 2i8 => Scale3D::Uniform({
                                     if offset as usize >= uniform.len() {
@@ -512,7 +513,8 @@ impl crate::Loggable for Scale3D {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { uniform.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.Scale3D#Uniform")?
                                 }),
                                 _ => unreachable!(),
                             }))

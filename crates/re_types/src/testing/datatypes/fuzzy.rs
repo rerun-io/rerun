@@ -2671,7 +2671,10 @@ impl crate::Loggable for AffixFuzzer3 {
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                                 unsafe { degrees.get_unchecked(offset as usize) }
                                                     .clone()
-                                                    .unwrap()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer3#degrees",
+                                                    )?
                                             })
                                         }
                                         2i8 => {
@@ -2709,7 +2712,10 @@ impl crate::Loggable for AffixFuzzer3 {
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                                 unsafe { craziness.get_unchecked(offset as usize) }
                                                     .clone()
-                                                    .unwrap()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer3#craziness",
+                                                    )?
                                             })
                                         }
                                         4i8 => {
@@ -2731,7 +2737,10 @@ impl crate::Loggable for AffixFuzzer3 {
                                                     fixed_size_shenanigans.get_unchecked(offset as usize)
                                                 }
                                                     .clone()
-                                                    .unwrap()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
+                                                    )?
                                             })
                                         }
                                         _ => unreachable!(),
@@ -3409,7 +3418,10 @@ impl crate::Loggable for AffixFuzzer4 {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { single_required.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context(
+                                            "rerun.testing.datatypes.AffixFuzzer4#single_required",
+                                        )?
                                 }),
                                 2i8 => AffixFuzzer4::ManyRequired({
                                     if offset as usize >= many_required.len() {
@@ -3425,7 +3437,10 @@ impl crate::Loggable for AffixFuzzer4 {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { many_required.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context(
+                                            "rerun.testing.datatypes.AffixFuzzer4#many_required",
+                                        )?
                                 }),
                                 3i8 => AffixFuzzer4::ManyOptional({
                                     if offset as usize >= many_optional.len() {
