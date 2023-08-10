@@ -309,8 +309,8 @@ impl crate::Loggable for Rotation3D {
                             )
                         })
                         .with_context("rerun.datatypes.Rotation3D")?;
-                if data_types.len() > data_offsets.len() {
-                    return Err(crate::DeserializationError::offsets_mismatch(
+                if data_types.len() != data_offsets.len() {
+                    return Err(crate::DeserializationError::offset_slice_oob(
                         (0, data_types.len()),
                         data_offsets.len(),
                     ))
@@ -390,7 +390,7 @@ impl crate::Loggable for Rotation3D {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 4usize);
                                     if end as usize > data_inner.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                        return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
                                             data_inner.len(),
                                         ));
@@ -458,8 +458,8 @@ impl crate::Loggable for Rotation3D {
                             Ok(Some(match typ {
                                 1i8 => Rotation3D::Quaternion({
                                     if offset as usize >= quaternion.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             quaternion.len(),
                                         ))
                                         .with_context("rerun.datatypes.Rotation3D#Quaternion");
@@ -473,8 +473,8 @@ impl crate::Loggable for Rotation3D {
                                 }),
                                 2i8 => Rotation3D::AxisAngle({
                                     if offset as usize >= axis_angle.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             axis_angle.len(),
                                         ))
                                         .with_context("rerun.datatypes.Rotation3D#AxisAngle");

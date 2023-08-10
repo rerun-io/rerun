@@ -118,7 +118,8 @@ impl crate::Loggable for DisconnectedSpace {
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.DisconnectedSpace#is_disconnected")?)
+            .with_context("rerun.components.DisconnectedSpace#is_disconnected")
+            .with_context("rerun.components.DisconnectedSpace")?)
     }
 
     #[inline]

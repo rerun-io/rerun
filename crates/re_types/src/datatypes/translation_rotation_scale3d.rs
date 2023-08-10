@@ -413,7 +413,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 3usize);
                                     if end as usize > data_inner.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                        return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
                                             data_inner.len(),
                                         ));

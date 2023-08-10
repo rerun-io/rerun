@@ -272,7 +272,7 @@ impl crate::Loggable for LineStrip3D {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 3usize);
                                     if end as usize > data_inner_inner.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                        return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
                                             data_inner_inner.len(),
                                         ));
@@ -309,7 +309,7 @@ impl crate::Loggable for LineStrip3D {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > data_inner.len() {
-                            return Err(crate::DeserializationError::offsets_mismatch(
+                            return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 data_inner.len(),
                             ));
@@ -334,7 +334,8 @@ impl crate::Loggable for LineStrip3D {
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.components.LineStrip3D#points")?)
+        .with_context("rerun.components.LineStrip3D#points")
+        .with_context("rerun.components.LineStrip3D")?)
     }
 
     #[inline]

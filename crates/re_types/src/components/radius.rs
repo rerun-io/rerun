@@ -115,7 +115,8 @@ impl crate::Loggable for Radius {
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.Radius#value")?)
+            .with_context("rerun.components.Radius#value")
+            .with_context("rerun.components.Radius")?)
     }
 
     #[inline]

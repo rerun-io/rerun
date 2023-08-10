@@ -411,11 +411,19 @@ pub enum DeserializationError {
         backtrace: _Backtrace,
     },
 
+    #[error("Offset ouf of bounds: trying to read at offset #{offset} in an array of size {len}")]
+    OffsetOutOfBounds {
+        offset: usize,
+        len: usize,
+        backtrace: _Backtrace,
+    },
+
     #[error(
-        "Offsets were ouf of bounds, trying to read from {bounds:?} in an array of size {len}"
+        "Offset slice ouf of bounds: trying to read offset slice at [#{from}..#{to}] in an array of size {len}"
     )]
-    OffsetsMismatch {
-        bounds: (usize, usize),
+    OffsetSliceOutOfBounds {
+        from: usize,
+        to: usize,
         len: usize,
         backtrace: _Backtrace,
     },
@@ -474,9 +482,19 @@ impl DeserializationError {
     }
 
     #[inline]
-    pub fn offsets_mismatch(bounds: (usize, usize), len: usize) -> Self {
-        Self::OffsetsMismatch {
-            bounds,
+    pub fn offset_oob(offset: usize, len: usize) -> Self {
+        Self::OffsetOutOfBounds {
+            offset,
+            len,
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
+    #[inline]
+    pub fn offset_slice_oob((from, to): (usize, usize), len: usize) -> Self {
+        Self::OffsetSliceOutOfBounds {
+            from,
+            to,
             len,
             backtrace: ::backtrace::Backtrace::new_unresolved(),
         }
@@ -496,7 +514,10 @@ impl DeserializationError {
             | DeserializationError::MissingUnionArm { backtrace, .. }
             | DeserializationError::MissingData { backtrace }
             | DeserializationError::DatatypeMismatch { backtrace, .. }
-            | DeserializationError::OffsetsMismatch { backtrace, .. } => Some(backtrace.clone()),
+            | DeserializationError::OffsetOutOfBounds { backtrace, .. }
+            | DeserializationError::OffsetSliceOutOfBounds { backtrace, .. } => {
+                Some(backtrace.clone())
+            }
             DeserializationError::ArrowConvertFailure(_)
             | DeserializationError::DataCellError(_) => None,
         }

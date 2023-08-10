@@ -315,8 +315,8 @@ impl crate::Loggable for Scale3D {
                         )
                     })
                     .with_context("rerun.datatypes.Scale3D")?;
-                if data_types.len() > data_offsets.len() {
-                    return Err(crate::DeserializationError::offsets_mismatch(
+                if data_types.len() != data_offsets.len() {
+                    return Err(crate::DeserializationError::offset_slice_oob(
                         (0, data_types.len()),
                         data_offsets.len(),
                     ))
@@ -404,7 +404,7 @@ impl crate::Loggable for Scale3D {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 3usize);
                                     if end as usize > data_inner.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                        return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
                                             data_inner.len(),
                                         ));
@@ -488,8 +488,8 @@ impl crate::Loggable for Scale3D {
                             Ok(Some(match typ {
                                 1i8 => Scale3D::ThreeD({
                                     if offset as usize >= three_d.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             three_d.len(),
                                         ))
                                         .with_context("rerun.datatypes.Scale3D#ThreeD");
@@ -503,8 +503,8 @@ impl crate::Loggable for Scale3D {
                                 }),
                                 2i8 => Scale3D::Uniform({
                                     if offset as usize >= uniform.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
-                                            (offset as _, offset as _),
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
                                             uniform.len(),
                                         ))
                                         .with_context("rerun.datatypes.Scale3D#Uniform");

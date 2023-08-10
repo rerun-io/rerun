@@ -131,7 +131,8 @@ impl crate::Loggable for Transform3D {
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.Transform3D#repr")?)
+            .with_context("rerun.components.Transform3D#repr")
+            .with_context("rerun.components.Transform3D")?)
     }
 
     #[inline]

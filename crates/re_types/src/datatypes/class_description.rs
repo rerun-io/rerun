@@ -476,7 +476,7 @@ impl crate::Loggable for ClassDescription {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > data_inner.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                        return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
                                             data_inner.len(),
                                         ));
@@ -582,7 +582,7 @@ impl crate::Loggable for ClassDescription {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > data_inner.len() {
-                                        return Err(crate::DeserializationError::offsets_mismatch(
+                                        return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
                                             data_inner.len(),
                                         ));
