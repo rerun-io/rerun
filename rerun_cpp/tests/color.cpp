@@ -4,7 +4,7 @@
 
 using namespace rerun::components;
 
-#define TEST_TAG "[color]"
+#define TEST_TAG "[color][archetypes]"
 
 TEST_CASE("Construct Color in different ways", TEST_TAG) {
     SECTION("Default constructor") {

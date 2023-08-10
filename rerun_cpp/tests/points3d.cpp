@@ -4,7 +4,7 @@
 
 using namespace rerun::archetypes;
 
-#define TEST_TAG "[points3d]"
+#define TEST_TAG "[points3d][archetypes]"
 
 SCENARIO(
     "Points3D archetype can be serialized with the same result for manually built instances and "

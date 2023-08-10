@@ -4,7 +4,7 @@
 
 using namespace rerun::archetypes;
 
-#define TEST_TAG "[points2d]"
+#define TEST_TAG "[points2d][archetypes]"
 
 SCENARIO(
     "Points2D archetype can be serialized with the same result for manually built instances and "

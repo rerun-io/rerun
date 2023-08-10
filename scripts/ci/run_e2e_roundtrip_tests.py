@@ -22,9 +22,8 @@ ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 
 # TODO(andreas): Remove these
 cpp_opt_out = [
-    "line_strips2d",
-    "line_strips3d",
-    "points2d",
+    "line_strips2d",  # TODO(#2786): Needs rect
+    "points2d",  # TODO(#2786): Needs rect
 ]
 
 
