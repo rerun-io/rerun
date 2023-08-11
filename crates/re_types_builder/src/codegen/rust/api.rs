@@ -619,6 +619,8 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Vector { elem_type } => {
                 if *unwrap {
                     quote!(#elem_type)
+                } else if elem_type.is_primitive() {
+                    quote!(crate::ArrowBuffer<#elem_type>)
                 } else {
                     quote!(Vec<#elem_type>)
                 }
@@ -774,7 +776,7 @@ fn quote_trait_impls_from_obj(
                     fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized {
-                        use ::arrow2::{datatypes::*, array::*};
+                        use ::arrow2::{datatypes::*, array::*, buffer::*};
                         use crate::{Loggable as _, ResultExt as _};
                         Ok(#quoted_deserializer)
                     }

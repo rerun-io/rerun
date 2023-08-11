@@ -1086,6 +1086,24 @@ impl ElementType {
             Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
         }
     }
+
+    pub fn is_primitive(&self) -> bool {
+        match self {
+            Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Bool
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64 => true,
+            Self::Object(_) | Self::String => false,
+        }
+    }
 }
 
 // --- Common ---
