@@ -3,7 +3,7 @@
 #include <rerun/components/color.hpp>
 #include <rerun/datatypes/color.hpp>
 
-#define TEST_TAG "[color]"
+#define TEST_TAG "[color][archetypes]"
 
 template <typename Color>
 void test() {

@@ -22,6 +22,7 @@ impl ViewportBlueprint<'_> {
         re_tracing::profile_function!();
 
         egui::ScrollArea::both()
+            .id_source("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 if let Some(root) = self.tree.root() {

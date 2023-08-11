@@ -6,6 +6,7 @@ mod design_tokens;
 pub mod egui_helpers;
 pub mod icons;
 mod layout_job_builder;
+pub mod list_item;
 mod static_image_cache;
 pub mod toasts;
 mod toggle_switch;
@@ -50,6 +51,8 @@ use std::{ops::RangeInclusive, sync::Arc};
 
 use parking_lot::Mutex;
 
+use crate::list_item::ListItem;
+use egui::emath::Rot2;
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
@@ -91,6 +94,10 @@ impl ReUi {
         12.0
     }
 
+    pub fn panel_margin() -> egui::Margin {
+        egui::Margin::symmetric(Self::view_padding(), 0.0)
+    }
+
     pub fn window_rounding() -> f32 {
         12.0
     }
@@ -128,6 +135,10 @@ impl ReUi {
     /// as well as the tab bar height in the viewport view.
     pub fn title_bar_height() -> f32 {
         28.0 // from figma 2022-02-03
+    }
+
+    pub fn list_item_height() -> f32 {
+        24.0
     }
 
     pub fn native_window_rounding() -> f32 {
@@ -444,6 +455,72 @@ impl ReUi {
         response
     }
 
+    pub fn panel_content<R>(
+        &self,
+        ui: &mut egui::Ui,
+        add_contents: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
+    ) -> R {
+        egui::Frame {
+            inner_margin: Self::panel_margin(),
+            ..Default::default()
+        }
+        .show(ui, |ui| add_contents(self, ui))
+        .inner
+    }
+
+    /// Static title bar used to separate panels into section.
+    ///
+    /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
+    /// set.
+    ///
+    /// Use [`ReUi::panel_title_bar_with_buttons`] to display buttons in the title bar.
+    pub fn panel_title_bar(&self, ui: &mut egui::Ui, label: &str, hover_text: Option<&str>) {
+        self.panel_title_bar_with_buttons(ui, label, hover_text, |_ui| {});
+    }
+
+    /// Static title bar used to separate panels into section with custom buttons when hovered.
+    ///
+    /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
+    /// set.
+    #[allow(clippy::unused_self)]
+    pub fn panel_title_bar_with_buttons<R>(
+        &self,
+        ui: &mut egui::Ui,
+        label: &str,
+        hover_text: Option<&str>,
+        add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
+        ui.allocate_ui_with_layout(
+            egui::vec2(ui.available_width(), Self::title_bar_height()),
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                // draw horizontal separator lines
+                let mut rect = ui.available_rect_before_wrap();
+                let hline_stroke = ui.style().visuals.widgets.noninteractive.bg_stroke;
+                rect.extend_with_x(ui.clip_rect().right());
+                rect.extend_with_x(ui.clip_rect().left());
+                ui.painter().hline(rect.x_range(), rect.top(), hline_stroke);
+                ui.painter()
+                    .hline(rect.x_range(), rect.bottom(), hline_stroke);
+
+                // draw label
+                let resp = ui.strong(label);
+                if let Some(hover_text) = hover_text {
+                    resp.on_hover_text(hover_text);
+                }
+
+                // draw hover buttons
+                ui.allocate_ui_with_layout(
+                    ui.available_size(),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    add_right_buttons,
+                )
+                .inner
+            },
+        )
+        .inner
+    }
+
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
     ///
     /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
@@ -500,12 +577,16 @@ impl ReUi {
                     egui::Vec2::splat(icon_width),
                 );
                 let icon_response = header_response.clone().with_new_rect(icon_rect);
-                egui::collapsing_header::paint_default_icon(ui, openness, &icon_response);
+                Self::paint_collapsing_triangle(ui, openness, &icon_response);
 
                 let visuals = ui.style().interact(&header_response);
 
+                let optical_vertical_alignment = 0.5; // improves perceived vertical alignment
                 let text_pos = icon_response.rect.right_center()
-                    + egui::vec2(space_after_icon, -0.5 * galley.size().y);
+                    + egui::vec2(
+                        space_after_icon,
+                        -0.5 * galley.size().y + optical_vertical_alignment,
+                    );
                 ui.painter()
                     .galley_with_color(text_pos, galley, visuals.text_color());
 
@@ -529,6 +610,46 @@ impl ReUi {
             add_body(ui);
             ui.add_space(4.0); // Same here
         });
+    }
+
+    /// Paint a collapsing triangle with rounded corners.
+    ///
+    /// Alternative to [`egui::collapsing_header::paint_default_icon`].
+    pub fn paint_collapsing_triangle(ui: &mut egui::Ui, openness: f32, response: &egui::Response) {
+        let visuals = ui.style().interact(response);
+
+        let rect = response.rect;
+        let extent = response.rect.width().min(response.rect.height());
+
+        // Normalised in [0, 1]^2 space.
+        // Note on how these coords have been computed: https://github.com/rerun-io/rerun/pull/2920
+        // Discussion on the future of icons:  https://github.com/rerun-io/rerun/issues/2960
+        let mut points = vec![
+            pos2(0.80387, 0.470537),
+            pos2(0.816074, 0.5),
+            pos2(0.80387, 0.529463),
+            pos2(0.316248, 1.017085),
+            pos2(0.286141, 1.029362),
+            pos2(0.257726, 1.017592),
+            pos2(0.245118, 0.987622),
+            pos2(0.245118, 0.012378),
+            pos2(0.257726, -0.017592),
+            pos2(0.286141, -0.029362),
+            pos2(0.316248, -0.017085),
+            pos2(0.80387, 0.470537),
+        ];
+
+        use std::f32::consts::TAU;
+        let rotation = Rot2::from_angle(egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0));
+        for p in &mut points {
+            *p = rect.center() + rotation * (*p - pos2(0.5, 0.5)) * extent;
+        }
+
+        ui.painter().add(Shape::convex_polygon(
+            points,
+            visuals.fg_stroke.color,
+            egui::Stroke::NONE,
+        ));
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
@@ -592,6 +713,11 @@ impl ReUi {
         ui.painter().add(shadow);
     }
 
+    /// Convenience function to create a [`ListItem`] with the given text.
+    pub fn list_item(&self, text: impl Into<egui::WidgetText>) -> ListItem<'_> {
+        ListItem::new(self, text)
+    }
+
     pub fn selectable_label_with_icon(
         &self,
         ui: &mut egui::Ui,
@@ -642,7 +768,7 @@ impl ReUi {
             let image_rect = egui::Rect::from_min_size(
                 ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x.ceil(),
-                    ((rect.min.y + rect.max.y - Self::small_icon_size().y) * 0.5).ceil(),
+                    (rect.center().y - 0.5 * ReUi::small_icon_size().y).ceil(),
                 )),
                 Self::small_icon_size(),
             );

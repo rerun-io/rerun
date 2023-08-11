@@ -11,7 +11,7 @@ namespace rerun.testing.datatypes;
 
 struct PrimitiveComponent (
   "attr.arrow.transparent",
-  "attr.rust.derive": "Eq, PartialEq",
+  "attr.rust.derive": "Default, Eq, PartialEq",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",
   order: 001
@@ -21,7 +21,7 @@ struct PrimitiveComponent (
 
 table StringComponent (
   "attr.arrow.transparent",
-  "attr.rust.derive": "Eq, PartialEq",
+  "attr.rust.derive": "Default, Eq, PartialEq",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",
   order: 002

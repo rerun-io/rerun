@@ -8,7 +8,7 @@ namespace rerun.testing.datatypes;
 
 // ---
 
-table FlattenedScalar ("attr.rust.derive": "PartialEq", order: 001) {
+table FlattenedScalar ("attr.rust.derive": "Default, PartialEq", order: 001) {
   value: float (order: 100);
 }
 
@@ -29,7 +29,7 @@ struct ArrayOfFloats (transparent, order: 001) {
 }
 
 table AffixFuzzer1 (
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "Default, PartialEq",
   order: 100
 ) {
   single_float_optional: float (nullable, order: 101);
@@ -49,7 +49,7 @@ table __AffixFuzzer1Vec (transparent, order: 0) {
 
 table AffixFuzzer2 (
   "attr.arrow.transparent",
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "Default, PartialEq",
   "attr.rust.tuple_struct",
   order: 200
 ) {
@@ -84,14 +84,14 @@ union AffixFuzzer4 (
 }
 
 table AffixFuzzer5 (
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "Default, PartialEq",
   order: 500
 ) {
   single_optional_union: AffixFuzzer4 (order: 100, nullable);
 }
 
 table AffixFuzzer20 (
-  "attr.rust.derive": "Eq, PartialEq",
+  "attr.rust.derive": "Default, Eq, PartialEq",
   order: 600
 ) {
   p: rerun.testing.datatypes.PrimitiveComponent  (order: 100);

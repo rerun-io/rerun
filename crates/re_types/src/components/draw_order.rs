@@ -62,7 +62,7 @@ impl crate::Loggable for DrawOrder {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -105,25 +105,25 @@ impl crate::Loggable for DrawOrder {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<Float32Array>()
-            .unwrap()
-            .into_iter()
-            .map(|v| v.copied())
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
+            .ok_or_else(|| {
+                crate::DeserializationError::datatype_mismatch(
+                    DataType::Float32,
+                    data.data_type().clone(),
+                )
             })
+            .with_context("rerun.components.DrawOrder#value")?
+            .into_iter()
+            .map(|opt| opt.copied())
+            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.DrawOrder#value".into(),
-                source: Box::new(err),
-            })?)
+            .with_context("rerun.components.DrawOrder#value")
+            .with_context("rerun.components.DrawOrder")?)
     }
 
     #[inline]

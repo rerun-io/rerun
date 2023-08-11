@@ -62,7 +62,7 @@ impl crate::Loggable for Label {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -131,29 +131,56 @@ impl crate::Loggable for Label {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
-            let offsets = downcast.offsets();
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Utf8,
+                        data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.Label#value")?;
+            let data_buf = data.values();
+            let offsets = data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                 offsets.iter().zip(offsets.lengths()),
-                downcast.validity(),
+                data.validity(),
             )
-            .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-            .map(|opt| opt.map(|v| crate::datatypes::Label(crate::ArrowString(v))))
-        }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            .map(|elem| {
+                elem.map(|(start, len)| {
+                    let start = *start as usize;
+                    let end = start + len;
+                    if end as usize > data_buf.len() {
+                        return Err(crate::DeserializationError::offset_slice_oob(
+                            (start, end),
+                            data_buf.len(),
+                        ));
+                    }
+
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    let data = unsafe { data_buf.clone().sliced_unchecked(start, len) };
+                    Ok(data)
+                })
+                .transpose()
             })
-        })
+            .map(|res_or_opt| {
+                res_or_opt.map(|res_or_opt| {
+                    res_or_opt.map(|v| crate::datatypes::Label(crate::ArrowString(v)))
+                })
+            })
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.components.Label#value")?
+            .into_iter()
+        }
+        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.components.Label#value".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.components.Label#value")
+        .with_context("rerun.components.Label")?)
     }
 
     #[inline]

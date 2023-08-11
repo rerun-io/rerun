@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct FlattenedScalar {
     pub value: f32,
 }
@@ -61,7 +61,7 @@ impl crate::Loggable for FlattenedScalar {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -125,65 +125,75 @@ impl crate::Loggable for FlattenedScalar {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Struct(vec![Field {
+                            name: "value".to_owned(),
+                            data_type: DataType::Float32,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        }]),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.datatypes.FlattenedScalar".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.datatypes.FlattenedScalar")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
                     .zip(data_arrays)
                     .collect();
                 let value = {
+                    if !arrays_by_name.contains_key("value") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![Field {
+                                name: "value".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            }]),
+                            "value",
+                        ))
+                        .with_context("rerun.testing.datatypes.FlattenedScalar");
+                    }
                     let data = &**arrays_by_name["value"];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.testing.datatypes.FlattenedScalar#value")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.copied())
                 };
-                ::itertools::izip!(value)
-                    .enumerate()
-                    .map(|(i, (value))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    value: value
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                        .map_err(|err| crate::DeserializationError::Context {
-                                            location:
-                                                "rerun.testing.datatypes.FlattenedScalar#value"
-                                                    .into(),
-                                            source: Box::new(err),
-                                        })?,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(value),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(value)| {
+                        Ok(Self {
+                            value: value
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.testing.datatypes.FlattenedScalar#value")?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.datatypes.FlattenedScalar".into(),
-                        source: Box::new(err),
-                    })?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.datatypes.FlattenedScalar")?
             }
         })
     }
@@ -206,7 +216,7 @@ impl crate::Loggable for FlattenedScalar {
 
 impl crate::Datatype for FlattenedScalar {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
     pub single_string_required: crate::ArrowString,
@@ -328,7 +338,7 @@ impl crate::Loggable for AffixFuzzer1 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -831,181 +841,549 @@ impl crate::Loggable for AffixFuzzer1 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.datatypes.AffixFuzzer1".into(),
-                    source: Box::new(err),
-                })?;
+            let data =
+                data.as_any()
+                    .downcast_ref::<::arrow2::array::StructArray>()
+                    .ok_or_else(|| {
+                        crate::DeserializationError::datatype_mismatch(
+                            DataType::Struct(vec![
+                            Field { name : "single_float_optional".to_owned(), data_type
+                            : DataType::Float32, is_nullable : true, metadata : []
+                            .into(), }, Field { name : "single_string_required"
+                            .to_owned(), data_type : DataType::Utf8, is_nullable : false,
+                            metadata : [].into(), }, Field { name :
+                            "single_string_optional".to_owned(), data_type :
+                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                            Field { name : "many_floats_optional".to_owned(), data_type :
+                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                            data_type : DataType::Float32, is_nullable : true, metadata :
+                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                            Field { name : "many_strings_required".to_owned(), data_type
+                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                            data_type : DataType::Utf8, is_nullable : false, metadata :
+                            [].into(), })), is_nullable : false, metadata : [].into(), },
+                            Field { name : "many_strings_optional".to_owned(), data_type
+                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                            data_type : DataType::Utf8, is_nullable : true, metadata : []
+                            .into(), })), is_nullable : true, metadata : [].into(), },
+                            Field { name : "flattened_scalar".to_owned(), data_type :
+                            DataType::Float32, is_nullable : false, metadata : [].into(),
+                            }, Field { name : "almost_flattened_scalar".to_owned(),
+                            data_type : < crate ::testing::datatypes::FlattenedScalar >
+                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            .into(), }, Field { name : "from_parent".to_owned(),
+                            data_type : DataType::Boolean, is_nullable : true, metadata :
+                            [].into(), },
+                        ]),
+                            data.data_type().clone(),
+                        )
+                    })
+                    .with_context("rerun.testing.datatypes.AffixFuzzer1")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
                     .zip(data_arrays)
                     .collect();
                 let single_float_optional = {
+                    if !arrays_by_name.contains_key("single_float_optional") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "single_float_optional",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["single_float_optional"];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.testing.datatypes.AffixFuzzer1#single_float_optional")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.copied())
                 };
                 let single_string_required = {
+                    if !arrays_by_name.contains_key("single_string_required") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "single_string_required",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["single_string_required"];
                     {
-                        let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
-                        let offsets = downcast.offsets();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::Utf8,
+                                    data.data_type().clone(),
+                                )
+                            })
+                            .with_context(
+                                "rerun.testing.datatypes.AffixFuzzer1#single_string_required",
+                            )?;
+                        let data_buf = data.values();
+                        let offsets = data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
                             offsets.iter().zip(offsets.lengths()),
-                            downcast.validity(),
+                            data.validity(),
                         )
-                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-                        .map(|v| v.map(crate::ArrowString))
+                        .map(|elem| {
+                            elem.map(|(start, len)| {
+                                let start = *start as usize;
+                                let end = start + len;
+                                if end as usize > data_buf.len() {
+                                    return Err(crate::DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        data_buf.len(),
+                                    ));
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data_buf.clone().sliced_unchecked(start, len) };
+                                Ok(data)
+                            })
+                            .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                        })
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                        .with_context(
+                            "rerun.testing.datatypes.AffixFuzzer1#single_string_required",
+                        )?
+                        .into_iter()
                     }
                 };
                 let single_string_optional = {
+                    if !arrays_by_name.contains_key("single_string_optional") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "single_string_optional",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["single_string_optional"];
                     {
-                        let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
-                        let offsets = downcast.offsets();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::Utf8,
+                                    data.data_type().clone(),
+                                )
+                            })
+                            .with_context(
+                                "rerun.testing.datatypes.AffixFuzzer1#single_string_optional",
+                            )?;
+                        let data_buf = data.values();
+                        let offsets = data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
                             offsets.iter().zip(offsets.lengths()),
-                            downcast.validity(),
+                            data.validity(),
                         )
-                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-                        .map(|v| v.map(crate::ArrowString))
+                        .map(|elem| {
+                            elem.map(|(start, len)| {
+                                let start = *start as usize;
+                                let end = start + len;
+                                if end as usize > data_buf.len() {
+                                    return Err(crate::DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        data_buf.len(),
+                                    ));
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data_buf.clone().sliced_unchecked(start, len) };
+                                Ok(data)
+                            })
+                            .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                        })
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                        .with_context(
+                            "rerun.testing.datatypes.AffixFuzzer1#single_string_optional",
+                        )?
+                        .into_iter()
                     }
                 };
                 let many_floats_optional = {
+                    if !arrays_by_name.contains_key("many_floats_optional") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "many_floats_optional",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["many_floats_optional"];
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .unwrap();
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    })),
+                                    data.data_type().clone(),
+                                )
+                            })
+                            .with_context(
+                                "rerun.testing.datatypes.AffixFuzzer1#many_floats_optional",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
-                            let bitmap = data.validity().cloned();
-                            let offsets = {
-                                let offsets = data.offsets();
-                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                            };
-                            let data = &**data.values();
-                            let data = data
-                                .as_any()
-                                .downcast_ref::<Float32Array>()
-                                .unwrap()
-                                .into_iter()
-                                .map(|v| v.copied())
-                                .map(|v| {
-                                    v
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                })
-                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                            offsets
-                                .enumerate()
-                                .map(move |(i, (start, end))| {
-                                    bitmap
-                                        .as_ref()
-                                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                                        .then(|| {
-                                            if end as usize > data.len() {
-                                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                                    bounds: (start as usize, end as usize),
-                                                    len: data.len(),
-                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                });
-                                            }
+                            let data_inner =
+                                {
+                                    let data_inner = &**data.values();
+                                    data_inner
+                                    .as_any()
+                                    .downcast_ref::<Float32Array>()
+                                    .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                        DataType::Float32,
+                                        data_inner.data_type().clone(),
+                                    ))
+                                    .with_context(
+                                        "rerun.testing.datatypes.AffixFuzzer1#many_floats_optional",
+                                    )?
+                                    .into_iter()
+                                    .map(|opt| opt.copied())
+                                    .collect::<Vec<_>>()
+                                };
+                            let offsets = data.offsets();
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > data_inner.len() {
+                                        return Err(crate::DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            data_inner.len(),
+                                        ));
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                data.get_unchecked(start as usize..end as usize).to_vec()
-                                            };
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        data_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data
+                                        .iter()
+                                        .cloned()
+                                        .map(Option::unwrap_or_default)
+                                        .collect();
+                                    Ok(data)
                                 })
-                                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                                .transpose()
+                            })
+                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
                 let many_strings_required = {
+                    if !arrays_by_name.contains_key("many_strings_required") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "many_strings_required",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["many_strings_required"];
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .unwrap();
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Utf8,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    })),
+                                    data.data_type().clone(),
+                                )
+                            })
+                            .with_context(
+                                "rerun.testing.datatypes.AffixFuzzer1#many_strings_required",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
-                            let bitmap = data.validity().cloned();
-                            let offsets = {
-                                let offsets = data.offsets();
-                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                            };
-                            let data = &**data.values();
-                            let data = {
-                                let downcast = data
-                                    .as_any()
-                                    .downcast_ref::<Utf8Array<i32>>()
-                                    .unwrap();
-                                let offsets = downcast.offsets();
-                                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                        offsets.iter().zip(offsets.lengths()),
-                                        downcast.validity(),
-                                    )
-                                    .map(|elem| {
-                                        elem
-                                            .map(|(o, l)| downcast.values().clone().sliced(*o as _, l))
-                                    })
-                                    .map(|v| v.map(crate::ArrowString))
-                            }
-                                .map(|v| {
-                                    v
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            let data_inner = {
+                                let data_inner = &**data.values();
+                                {
+                                    let data_inner = data_inner
+                                        .as_any()
+                                        .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
+                                        .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                            DataType::Utf8,
+                                            data_inner.data_type().clone(),
+                                        ))
+                                        .with_context(
+                                            "rerun.testing.datatypes.AffixFuzzer1#many_strings_required",
+                                        )?;
+                                    let data_inner_buf = data_inner.values();
+                                    let offsets = data_inner.offsets();
+                                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                            offsets.iter().zip(offsets.lengths()),
+                                            data_inner.validity(),
+                                        )
+                                        .map(|elem| {
+                                            elem
+                                                .map(|(start, len)| {
+                                                    let start = *start as usize;
+                                                    let end = start + len;
+                                                    if end as usize > data_inner_buf.len() {
+                                                        return Err(
+                                                            crate::DeserializationError::offset_slice_oob(
+                                                                (start, end),
+                                                                data_inner_buf.len(),
+                                                            ),
+                                                        );
+                                                    }
+
+                                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                    let data = unsafe {
+                                                        data_inner_buf.clone().sliced_unchecked(start, len)
+                                                    };
+                                                    Ok(data)
+                                                })
+                                                .transpose()
                                         })
-                                })
-                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                            offsets
-                                .enumerate()
-                                .map(move |(i, (start, end))| {
-                                    bitmap
-                                        .as_ref()
-                                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                                        .then(|| {
-                                            if end as usize > data.len() {
-                                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                                    bounds: (start as usize, end as usize),
-                                                    len: data.len(),
-                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                });
+                                        .map(|res_or_opt| {
+                                            res_or_opt
+                                                .map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                                        })
+                                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                                        .with_context(
+                                            "rerun.testing.datatypes.AffixFuzzer1#many_strings_required",
+                                        )?
+                                        .into_iter()
+                                }
+                                    .collect::<Vec<_>>()
+                            };
+                            let offsets = data.offsets();
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                    offsets.iter().zip(offsets.lengths()),
+                                    data.validity(),
+                                )
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, len)| {
+                                            let start = *start as usize;
+                                            let end = start + len;
+                                            if end as usize > data_inner.len() {
+                                                return Err(
+                                                    crate::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        data_inner.len(),
+                                                    ),
+                                                );
                                             }
 
                                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                             let data = unsafe {
-                                                data.get_unchecked(start as usize..end as usize).to_vec()
+                                                data_inner.get_unchecked(start as usize..end as usize)
                                             };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default)
+                                                .collect();
                                             Ok(data)
                                         })
                                         .transpose()
@@ -1016,63 +1394,150 @@ impl crate::Loggable for AffixFuzzer1 {
                     }
                 };
                 let many_strings_optional = {
+                    if !arrays_by_name.contains_key("many_strings_optional") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "many_strings_optional",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["many_strings_optional"];
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .unwrap();
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Utf8,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    })),
+                                    data.data_type().clone(),
+                                )
+                            })
+                            .with_context(
+                                "rerun.testing.datatypes.AffixFuzzer1#many_strings_optional",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
-                            let bitmap = data.validity().cloned();
-                            let offsets = {
-                                let offsets = data.offsets();
-                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                            };
-                            let data = &**data.values();
-                            let data = {
-                                let downcast = data
-                                    .as_any()
-                                    .downcast_ref::<Utf8Array<i32>>()
-                                    .unwrap();
-                                let offsets = downcast.offsets();
-                                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                        offsets.iter().zip(offsets.lengths()),
-                                        downcast.validity(),
-                                    )
-                                    .map(|elem| {
-                                        elem
-                                            .map(|(o, l)| downcast.values().clone().sliced(*o as _, l))
-                                    })
-                                    .map(|v| v.map(crate::ArrowString))
-                            }
-                                .map(|v| {
-                                    v
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            let data_inner = {
+                                let data_inner = &**data.values();
+                                {
+                                    let data_inner = data_inner
+                                        .as_any()
+                                        .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
+                                        .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                            DataType::Utf8,
+                                            data_inner.data_type().clone(),
+                                        ))
+                                        .with_context(
+                                            "rerun.testing.datatypes.AffixFuzzer1#many_strings_optional",
+                                        )?;
+                                    let data_inner_buf = data_inner.values();
+                                    let offsets = data_inner.offsets();
+                                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                            offsets.iter().zip(offsets.lengths()),
+                                            data_inner.validity(),
+                                        )
+                                        .map(|elem| {
+                                            elem
+                                                .map(|(start, len)| {
+                                                    let start = *start as usize;
+                                                    let end = start + len;
+                                                    if end as usize > data_inner_buf.len() {
+                                                        return Err(
+                                                            crate::DeserializationError::offset_slice_oob(
+                                                                (start, end),
+                                                                data_inner_buf.len(),
+                                                            ),
+                                                        );
+                                                    }
+
+                                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                    let data = unsafe {
+                                                        data_inner_buf.clone().sliced_unchecked(start, len)
+                                                    };
+                                                    Ok(data)
+                                                })
+                                                .transpose()
                                         })
-                                })
-                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                            offsets
-                                .enumerate()
-                                .map(move |(i, (start, end))| {
-                                    bitmap
-                                        .as_ref()
-                                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                                        .then(|| {
-                                            if end as usize > data.len() {
-                                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                                    bounds: (start as usize, end as usize),
-                                                    len: data.len(),
-                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                });
+                                        .map(|res_or_opt| {
+                                            res_or_opt
+                                                .map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                                        })
+                                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                                        .with_context(
+                                            "rerun.testing.datatypes.AffixFuzzer1#many_strings_optional",
+                                        )?
+                                        .into_iter()
+                                }
+                                    .collect::<Vec<_>>()
+                            };
+                            let offsets = data.offsets();
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                    offsets.iter().zip(offsets.lengths()),
+                                    data.validity(),
+                                )
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, len)| {
+                                            let start = *start as usize;
+                                            let end = start + len;
+                                            if end as usize > data_inner.len() {
+                                                return Err(
+                                                    crate::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        data_inner.len(),
+                                                    ),
+                                                );
                                             }
 
                                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                             let data = unsafe {
-                                                data.get_unchecked(start as usize..end as usize).to_vec()
+                                                data_inner.get_unchecked(start as usize..end as usize)
                                             };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default)
+                                                .collect();
                                             Ok(data)
                                         })
                                         .transpose()
@@ -1083,105 +1548,217 @@ impl crate::Loggable for AffixFuzzer1 {
                     }
                 };
                 let flattened_scalar = {
+                    if !arrays_by_name.contains_key("flattened_scalar") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "flattened_scalar",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["flattened_scalar"];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.testing.datatypes.AffixFuzzer1#flattened_scalar")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.copied())
                 };
                 let almost_flattened_scalar = {
+                    if !arrays_by_name.contains_key("almost_flattened_scalar") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "almost_flattened_scalar",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["almost_flattened_scalar"];
                     crate::testing::datatypes::FlattenedScalar::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location:
-                                "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar"
-                                    .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context(
+                            "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar",
+                        )?
                         .into_iter()
                 };
                 let from_parent = {
+                    if !arrays_by_name.contains_key("from_parent") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "single_float_optional".to_owned(), data_type
+                                            : DataType::Float32, is_nullable : true, metadata : []
+                                            .into(), }, Field { name : "single_string_required"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), }, Field { name :
+                                            "single_string_optional".to_owned(), data_type :
+                                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
+                                            Field { name : "many_floats_optional".to_owned(), data_type
+                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Float32, is_nullable : true, metadata
+                                            : [].into(), })), is_nullable : true, metadata : [].into(),
+                                            }, Field { name : "many_strings_required".to_owned(),
+                                            data_type : DataType::List(Box::new(Field { name : "item"
+                                            .to_owned(), data_type : DataType::Utf8, is_nullable :
+                                            false, metadata : [].into(), })), is_nullable : false,
+                                            metadata : [].into(), }, Field { name :
+                                            "many_strings_optional".to_owned(), data_type :
+                                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                                            data_type : DataType::Utf8, is_nullable : true, metadata :
+                                            [].into(), })), is_nullable : true, metadata : [].into(), },
+                                            Field { name : "flattened_scalar".to_owned(), data_type :
+                                            DataType::Float32, is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "almost_flattened_scalar"
+                                            .to_owned(), data_type : < crate
+                                            ::testing::datatypes::FlattenedScalar >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "from_parent".to_owned(),
+                                            data_type : DataType::Boolean, is_nullable : true, metadata
+                                            : [].into(), },
+                                        ],
+                                    ),
+                                    "from_parent",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer1");
+                    }
                     let data = &**arrays_by_name["from_parent"];
                     data.as_any()
                         .downcast_ref::<BooleanArray>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Boolean,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.testing.datatypes.AffixFuzzer1#from_parent")?
                         .into_iter()
                 };
-                ::itertools::izip!(
-                    single_float_optional, single_string_required,
-                    single_string_optional, many_floats_optional, many_strings_required,
-                    many_strings_optional, flattened_scalar, almost_flattened_scalar,
-                    from_parent
-                )
-                    .enumerate()
-                    .map(|
-                        (
-                            i,
-                            (
-                                single_float_optional,
-                                single_string_required,
-                                single_string_optional,
-                                many_floats_optional,
-                                many_strings_required,
-                                many_strings_optional,
-                                flattened_scalar,
-                                almost_flattened_scalar,
-                                from_parent,
-                            ),
-                        )|
-                    {
-                        is_valid(i)
-                            .then(|| Ok(Self {
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                        ::itertools::izip!(
+                            single_float_optional, single_string_required,
+                            single_string_optional, many_floats_optional,
+                            many_strings_required, many_strings_optional,
+                            flattened_scalar, almost_flattened_scalar, from_parent
+                        ),
+                        data.validity(),
+                    )
+                    .map(|opt| {
+                        opt
+                            .map(|
+                                (
+                                    single_float_optional,
+                                    single_string_required,
+                                    single_string_optional,
+                                    many_floats_optional,
+                                    many_strings_required,
+                                    many_strings_optional,
+                                    flattened_scalar,
+                                    almost_flattened_scalar,
+                                    from_parent,
+                                )|
+                            Ok(Self {
                                 single_float_optional,
                                 single_string_required: single_string_required
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.testing.datatypes.AffixFuzzer1#single_string_required"
-                                            .into(),
-                                        source: Box::new(err),
-                                    })?,
+                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.testing.datatypes.AffixFuzzer1#single_string_required",
+                                    )?,
                                 single_string_optional,
                                 many_floats_optional,
                                 many_strings_required: many_strings_required
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.testing.datatypes.AffixFuzzer1#many_strings_required"
-                                            .into(),
-                                        source: Box::new(err),
-                                    })?,
+                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.testing.datatypes.AffixFuzzer1#many_strings_required",
+                                    )?,
                                 many_strings_optional,
                                 flattened_scalar: flattened_scalar
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar"
-                                            .into(),
-                                        source: Box::new(err),
-                                    })?,
+                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.testing.datatypes.AffixFuzzer1#flattened_scalar",
+                                    )?,
                                 almost_flattened_scalar: almost_flattened_scalar
-                                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| crate::DeserializationError::Context {
-                                        location: "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar"
-                                            .into(),
-                                        source: Box::new(err),
-                                    })?,
+                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar",
+                                    )?,
                                 from_parent,
                             }))
                             .transpose()
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.datatypes.AffixFuzzer1".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.testing.datatypes.AffixFuzzer1")?
             }
         })
     }
@@ -1204,7 +1781,7 @@ impl crate::Loggable for AffixFuzzer1 {
 
 impl crate::Datatype for AffixFuzzer1 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer2(pub Option<f32>);
 
 impl<'a> From<AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
@@ -1246,7 +1823,7 @@ impl crate::Loggable for AffixFuzzer2 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -1291,21 +1868,25 @@ impl crate::Loggable for AffixFuzzer2 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<Float32Array>()
-            .unwrap()
+            .ok_or_else(|| {
+                crate::DeserializationError::datatype_mismatch(
+                    DataType::Float32,
+                    data.data_type().clone(),
+                )
+            })
+            .with_context("rerun.testing.datatypes.AffixFuzzer2#single_float_optional")?
             .into_iter()
-            .map(|v| v.copied())
+            .map(|opt| opt.copied())
             .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.testing.datatypes.AffixFuzzer2#single_float_optional".into(),
-                source: Box::new(err),
-            })?)
+            .with_context("rerun.testing.datatypes.AffixFuzzer2#single_float_optional")
+            .with_context("rerun.testing.datatypes.AffixFuzzer2")?)
     }
 
     #[inline]
@@ -1421,7 +2002,7 @@ impl crate::Loggable for AffixFuzzer3 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -1683,95 +2264,182 @@ impl crate::Loggable for AffixFuzzer3 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Union(
+                            vec![
+                            Field { name : "_null_markers".to_owned(), data_type :
+                            DataType::Null, is_nullable : true, metadata : [].into(), },
+                            Field { name : "degrees".to_owned(), data_type :
+                            DataType::Float32, is_nullable : false, metadata : [].into(),
+                            }, Field { name : "radians".to_owned(), data_type :
+                            DataType::Float32, is_nullable : false, metadata : [].into(),
+                            }, Field { name : "craziness".to_owned(), data_type :
+                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                            data_type : < crate ::testing::datatypes::AffixFuzzer1 >
+                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            .into(), })), is_nullable : false, metadata : [].into(), },
+                            Field { name : "fixed_size_shenanigans".to_owned(), data_type
+                            : DataType::FixedSizeList(Box::new(Field { name : "item"
+                            .to_owned(), data_type : DataType::Float32, is_nullable :
+                            false, metadata : [].into(), }), 3usize), is_nullable :
+                            false, metadata : [].into(), },
+                        ],
+                            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
+                            UnionMode::Dense,
+                        ),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.datatypes.AffixFuzzer3".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.datatypes.AffixFuzzer3")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_types, data_arrays, data_offsets) =
-                    (data.types(), data.fields(), data.offsets().unwrap());
+                let (data_types, data_arrays) = (data.types(), data.fields());
+                let data_offsets = data
+                    .offsets()
+                    .ok_or_else(|| {
+                        crate::DeserializationError::datatype_mismatch(
+                            DataType::Union(
+                                vec![
+                                Field { name : "_null_markers".to_owned(), data_type :
+                                DataType::Null, is_nullable : true, metadata : [].into(), },
+                                Field { name : "degrees".to_owned(), data_type :
+                                DataType::Float32, is_nullable : false, metadata : []
+                                .into(), }, Field { name : "radians".to_owned(), data_type :
+                                DataType::Float32, is_nullable : false, metadata : []
+                                .into(), }, Field { name : "craziness".to_owned(), data_type
+                                : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                data_type : < crate ::testing::datatypes::AffixFuzzer1 >
+                                ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                .into(), })), is_nullable : false, metadata : [].into(), },
+                                Field { name : "fixed_size_shenanigans".to_owned(),
+                                data_type : DataType::FixedSizeList(Box::new(Field { name :
+                                "item".to_owned(), data_type : DataType::Float32,
+                                is_nullable : false, metadata : [].into(), }), 3usize),
+                                is_nullable : false, metadata : [].into(), },
+                            ],
+                                Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
+                                UnionMode::Dense,
+                            ),
+                            data.data_type().clone(),
+                        )
+                    })
+                    .with_context("rerun.testing.datatypes.AffixFuzzer3")?;
+                if data_types.len() != data_offsets.len() {
+                    return Err(crate::DeserializationError::offset_slice_oob(
+                        (0, data_types.len()),
+                        data_offsets.len(),
+                    ))
+                    .with_context("rerun.testing.datatypes.AffixFuzzer3");
+                }
                 let degrees = {
+                    if 1usize >= data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
                     let data = &*data_arrays[1usize];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.testing.datatypes.AffixFuzzer3#degrees")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 let radians = {
+                    if 2usize >= data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
                     let data = &*data_arrays[2usize];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.testing.datatypes.AffixFuzzer3#radians")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 let craziness = {
+                    if 3usize >= data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
                     let data = &*data_arrays[3usize];
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .unwrap();
+                            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                DataType::List(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                ),
+                                data.data_type().clone(),
+                            ))
+                            .with_context(
+                                "rerun.testing.datatypes.AffixFuzzer3#craziness",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
-                            let bitmap = data.validity().cloned();
-                            let offsets = {
-                                let offsets = data.offsets();
-                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            let data_inner = {
+                                let data_inner = &**data.values();
+                                crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(
+                                        data_inner,
+                                    )
+                                    .with_context(
+                                        "rerun.testing.datatypes.AffixFuzzer3#craziness",
+                                    )?
+                                    .into_iter()
+                                    .collect::<Vec<_>>()
                             };
-                            let data = &**data.values();
-                            let data = crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(
-                                    data,
+                            let offsets = data.offsets();
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                    offsets.iter().zip(offsets.lengths()),
+                                    data.validity(),
                                 )
-                                .map_err(|err| crate::DeserializationError::Context {
-                                    location: "rerun.testing.datatypes.AffixFuzzer3#craziness"
-                                        .into(),
-                                    source: Box::new(err),
-                                })?
-                                .into_iter()
-                                .map(|v| {
-                                    v
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                })
-                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                            offsets
-                                .enumerate()
-                                .map(move |(i, (start, end))| {
-                                    bitmap
-                                        .as_ref()
-                                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                                        .then(|| {
-                                            if end as usize > data.len() {
-                                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                                    bounds: (start as usize, end as usize),
-                                                    len: data.len(),
-                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                });
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, len)| {
+                                            let start = *start as usize;
+                                            let end = start + len;
+                                            if end as usize > data_inner.len() {
+                                                return Err(
+                                                    crate::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        data_inner.len(),
+                                                    ),
+                                                );
                                             }
 
                                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                             let data = unsafe {
-                                                data.get_unchecked(start as usize..end as usize).to_vec()
+                                                data_inner.get_unchecked(start as usize..end as usize)
                                             };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default)
+                                                .collect();
                                             Ok(data)
                                         })
                                         .transpose()
@@ -1783,54 +2451,77 @@ impl crate::Loggable for AffixFuzzer3 {
                         .collect::<Vec<_>>()
                 };
                 let fixed_size_shenanigans = {
+                    if 4usize >= data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
                     let data = &*data_arrays[4usize];
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .unwrap();
+                            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    3usize,
+                                ),
+                                data.data_type().clone(),
+                            ))
+                            .with_context(
+                                "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
-                            let bitmap = data.validity().cloned();
                             let offsets = (0..)
                                 .step_by(3usize)
                                 .zip((3usize..).step_by(3usize).take(data.len()));
-                            let data = &**data.values();
-                            let data = data
-                                .as_any()
-                                .downcast_ref::<Float32Array>()
-                                .unwrap()
-                                .into_iter()
-                                .map(|v| v.copied())
-                                .map(|v| {
-                                    v
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                })
-                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                            offsets
-                                .enumerate()
-                                .map(move |(i, (start, end))| {
-                                    bitmap
-                                        .as_ref()
-                                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                                        .then(|| {
-                                            if end as usize > data.len() {
-                                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                                    bounds: (start as usize, end as usize),
-                                                    len: data.len(),
-                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                });
+                            let data_inner = {
+                                let data_inner = &**data.values();
+                                data_inner
+                                    .as_any()
+                                    .downcast_ref::<Float32Array>()
+                                    .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                        DataType::Float32,
+                                        data_inner.data_type().clone(),
+                                    ))
+                                    .with_context(
+                                        "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
+                                    )?
+                                    .into_iter()
+                                    .map(|opt| opt.copied())
+                                    .collect::<Vec<_>>()
+                            };
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                    offsets,
+                                    data.validity(),
+                                )
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, end)| {
+                                            debug_assert!(end - start == 3usize);
+                                            if end as usize > data_inner.len() {
+                                                return Err(
+                                                    crate::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        data_inner.len(),
+                                                    ),
+                                                );
                                             }
 
                                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                             let data = unsafe {
-                                                data.get_unchecked(start as usize..end as usize)
+                                                data_inner.get_unchecked(start as usize..end as usize)
                                             };
-                                            let arr = array_init::from_iter(data.iter().copied())
-                                                .unwrap();
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default);
+                                            let arr = array_init::from_iter(data).unwrap();
                                             Ok(arr)
                                         })
                                         .transpose()
@@ -1855,37 +2546,38 @@ impl crate::Loggable for AffixFuzzer3 {
                                         1i8 => {
                                             AffixFuzzer3::Degrees({
                                                 if offset as usize >= degrees.len() {
-                                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                                            bounds: (offset as usize, offset as usize),
-                                                            len: degrees.len(),
-                                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                        })
-                                                        .map_err(|err| crate::DeserializationError::Context {
-                                                            location: "rerun.testing.datatypes.AffixFuzzer3#degrees"
-                                                                .into(),
-                                                            source: Box::new(err),
-                                                        });
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                degrees.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer3#degrees",
+                                                        );
                                                 }
 
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                                 unsafe { degrees.get_unchecked(offset as usize) }
                                                     .clone()
-                                                    .unwrap()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer3#degrees",
+                                                    )?
                                             })
                                         }
                                         2i8 => {
                                             AffixFuzzer3::Radians({
                                                 if offset as usize >= radians.len() {
-                                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                                            bounds: (offset as usize, offset as usize),
-                                                            len: radians.len(),
-                                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                        })
-                                                        .map_err(|err| crate::DeserializationError::Context {
-                                                            location: "rerun.testing.datatypes.AffixFuzzer3#radians"
-                                                                .into(),
-                                                            source: Box::new(err),
-                                                        });
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                radians.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer3#radians",
+                                                        );
                                                 }
 
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1895,37 +2587,38 @@ impl crate::Loggable for AffixFuzzer3 {
                                         3i8 => {
                                             AffixFuzzer3::Craziness({
                                                 if offset as usize >= craziness.len() {
-                                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                                            bounds: (offset as usize, offset as usize),
-                                                            len: craziness.len(),
-                                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                        })
-                                                        .map_err(|err| crate::DeserializationError::Context {
-                                                            location: "rerun.testing.datatypes.AffixFuzzer3#craziness"
-                                                                .into(),
-                                                            source: Box::new(err),
-                                                        });
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                craziness.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer3#craziness",
+                                                        );
                                                 }
 
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                                 unsafe { craziness.get_unchecked(offset as usize) }
                                                     .clone()
-                                                    .unwrap()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer3#craziness",
+                                                    )?
                                             })
                                         }
                                         4i8 => {
                                             AffixFuzzer3::FixedSizeShenanigans({
                                                 if offset as usize >= fixed_size_shenanigans.len() {
-                                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                                            bounds: (offset as usize, offset as usize),
-                                                            len: fixed_size_shenanigans.len(),
-                                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                        })
-                                                        .map_err(|err| crate::DeserializationError::Context {
-                                                            location: "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans"
-                                                                .into(),
-                                                            source: Box::new(err),
-                                                        });
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                fixed_size_shenanigans.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
+                                                        );
                                                 }
 
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1933,20 +2626,50 @@ impl crate::Loggable for AffixFuzzer3 {
                                                     fixed_size_shenanigans.get_unchecked(offset as usize)
                                                 }
                                                     .clone()
-                                                    .unwrap()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
+                                                    )?
                                             })
                                         }
-                                        _ => unreachable!(),
+                                        _ => {
+                                            return Err(
+                                                    crate::DeserializationError::missing_union_arm(
+                                                        DataType::Union(
+                                                            vec![
+                                                                Field { name : "_null_markers".to_owned(), data_type :
+                                                                DataType::Null, is_nullable : true, metadata : [].into(), },
+                                                                Field { name : "degrees".to_owned(), data_type :
+                                                                DataType::Float32, is_nullable : false, metadata : []
+                                                                .into(), }, Field { name : "radians".to_owned(), data_type :
+                                                                DataType::Float32, is_nullable : false, metadata : []
+                                                                .into(), }, Field { name : "craziness".to_owned(), data_type
+                                                                : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                                                data_type : < crate ::testing::datatypes::AffixFuzzer1 >
+                                                                ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                                                .into(), })), is_nullable : false, metadata : [].into(), },
+                                                                Field { name : "fixed_size_shenanigans".to_owned(),
+                                                                data_type : DataType::FixedSizeList(Box::new(Field { name :
+                                                                "item".to_owned(), data_type : DataType::Float32,
+                                                                is_nullable : false, metadata : [].into(), }), 3usize),
+                                                                is_nullable : false, metadata : [].into(), },
+                                                            ],
+                                                            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32,]),
+                                                            UnionMode::Dense,
+                                                        ),
+                                                        "<invalid>",
+                                                        *typ as _,
+                                                    ),
+                                                )
+                                                .with_context("rerun.testing.datatypes.AffixFuzzer3");
+                                        }
                                     },
                                 ),
                             )
                         }
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.datatypes.AffixFuzzer3".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.testing.datatypes.AffixFuzzer3")?
             }
         })
     }
@@ -2054,7 +2777,7 @@ impl crate::Loggable for AffixFuzzer4 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -2272,87 +2995,156 @@ impl crate::Loggable for AffixFuzzer4 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Union(
+                            vec![
+                            Field { name : "_null_markers".to_owned(), data_type :
+                            DataType::Null, is_nullable : true, metadata : [].into(), },
+                            Field { name : "single_required".to_owned(), data_type : <
+                            crate ::testing::datatypes::AffixFuzzer3 >
+                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            .into(), }, Field { name : "many_required".to_owned(),
+                            data_type : DataType::List(Box::new(Field { name : "item"
+                            .to_owned(), data_type : < crate
+                            ::testing::datatypes::AffixFuzzer3 > ::to_arrow_datatype(),
+                            is_nullable : false, metadata : [].into(), })), is_nullable :
+                            false, metadata : [].into(), }, Field { name :
+                            "many_optional".to_owned(), data_type :
+                            DataType::List(Box::new(Field { name : "item".to_owned(),
+                            data_type : < crate ::testing::datatypes::AffixFuzzer3 >
+                            ::to_arrow_datatype(), is_nullable : true, metadata : []
+                            .into(), })), is_nullable : false, metadata : [].into(), },
+                        ],
+                            Some(vec![0i32, 1i32, 2i32, 3i32]),
+                            UnionMode::Dense,
+                        ),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.datatypes.AffixFuzzer4".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.datatypes.AffixFuzzer4")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_types, data_arrays, data_offsets) =
-                    (data.types(), data.fields(), data.offsets().unwrap());
+                let (data_types, data_arrays) = (data.types(), data.fields());
+                let data_offsets = data
+                    .offsets()
+                    .ok_or_else(|| {
+                        crate::DeserializationError::datatype_mismatch(
+                            DataType::Union(
+                                vec![
+                                Field { name : "_null_markers".to_owned(), data_type :
+                                DataType::Null, is_nullable : true, metadata : [].into(), },
+                                Field { name : "single_required".to_owned(), data_type : <
+                                crate ::testing::datatypes::AffixFuzzer3 >
+                                ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                .into(), }, Field { name : "many_required".to_owned(),
+                                data_type : DataType::List(Box::new(Field { name : "item"
+                                .to_owned(), data_type : < crate
+                                ::testing::datatypes::AffixFuzzer3 > ::to_arrow_datatype(),
+                                is_nullable : false, metadata : [].into(), })), is_nullable
+                                : false, metadata : [].into(), }, Field { name :
+                                "many_optional".to_owned(), data_type :
+                                DataType::List(Box::new(Field { name : "item".to_owned(),
+                                data_type : < crate ::testing::datatypes::AffixFuzzer3 >
+                                ::to_arrow_datatype(), is_nullable : true, metadata : []
+                                .into(), })), is_nullable : false, metadata : [].into(), },
+                            ],
+                                Some(vec![0i32, 1i32, 2i32, 3i32]),
+                                UnionMode::Dense,
+                            ),
+                            data.data_type().clone(),
+                        )
+                    })
+                    .with_context("rerun.testing.datatypes.AffixFuzzer4")?;
+                if data_types.len() != data_offsets.len() {
+                    return Err(crate::DeserializationError::offset_slice_oob(
+                        (0, data_types.len()),
+                        data_offsets.len(),
+                    ))
+                    .with_context("rerun.testing.datatypes.AffixFuzzer4");
+                }
                 let single_required = {
+                    if 1usize >= data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
                     let data = &*data_arrays[1usize];
                     crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.testing.datatypes.AffixFuzzer4#single_required".into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.testing.datatypes.AffixFuzzer4#single_required")?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
                 let many_required = {
+                    if 2usize >= data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
                     let data = &*data_arrays[2usize];
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .unwrap();
+                            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                DataType::List(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                ),
+                                data.data_type().clone(),
+                            ))
+                            .with_context(
+                                "rerun.testing.datatypes.AffixFuzzer4#many_required",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
-                            let bitmap = data.validity().cloned();
-                            let offsets = {
-                                let offsets = data.offsets();
-                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            let data_inner = {
+                                let data_inner = &**data.values();
+                                crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(
+                                        data_inner,
+                                    )
+                                    .with_context(
+                                        "rerun.testing.datatypes.AffixFuzzer4#many_required",
+                                    )?
+                                    .into_iter()
+                                    .collect::<Vec<_>>()
                             };
-                            let data = &**data.values();
-                            let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(
-                                    data,
+                            let offsets = data.offsets();
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                    offsets.iter().zip(offsets.lengths()),
+                                    data.validity(),
                                 )
-                                .map_err(|err| crate::DeserializationError::Context {
-                                    location: "rerun.testing.datatypes.AffixFuzzer4#many_required"
-                                        .into(),
-                                    source: Box::new(err),
-                                })?
-                                .into_iter()
-                                .map(|v| {
-                                    v
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                })
-                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                            offsets
-                                .enumerate()
-                                .map(move |(i, (start, end))| {
-                                    bitmap
-                                        .as_ref()
-                                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                                        .then(|| {
-                                            if end as usize > data.len() {
-                                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                                    bounds: (start as usize, end as usize),
-                                                    len: data.len(),
-                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                });
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, len)| {
+                                            let start = *start as usize;
+                                            let end = start + len;
+                                            if end as usize > data_inner.len() {
+                                                return Err(
+                                                    crate::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        data_inner.len(),
+                                                    ),
+                                                );
                                             }
 
                                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                             let data = unsafe {
-                                                data.get_unchecked(start as usize..end as usize).to_vec()
+                                                data_inner.get_unchecked(start as usize..end as usize)
                                             };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default)
+                                                .collect();
                                             Ok(data)
                                         })
                                         .transpose()
@@ -2364,56 +3156,70 @@ impl crate::Loggable for AffixFuzzer4 {
                         .collect::<Vec<_>>()
                 };
                 let many_optional = {
+                    if 3usize >= data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
                     let data = &*data_arrays[3usize];
                     {
                         let data = data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .unwrap();
+                            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                DataType::List(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    }),
+                                ),
+                                data.data_type().clone(),
+                            ))
+                            .with_context(
+                                "rerun.testing.datatypes.AffixFuzzer4#many_optional",
+                            )?;
                         if data.is_empty() {
                             Vec::new()
                         } else {
-                            let bitmap = data.validity().cloned();
-                            let offsets = {
-                                let offsets = data.offsets();
-                                offsets.iter().copied().zip(offsets.iter().copied().skip(1))
+                            let data_inner = {
+                                let data_inner = &**data.values();
+                                crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(
+                                        data_inner,
+                                    )
+                                    .with_context(
+                                        "rerun.testing.datatypes.AffixFuzzer4#many_optional",
+                                    )?
+                                    .into_iter()
+                                    .collect::<Vec<_>>()
                             };
-                            let data = &**data.values();
-                            let data = crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(
-                                    data,
+                            let offsets = data.offsets();
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                    offsets.iter().zip(offsets.lengths()),
+                                    data.validity(),
                                 )
-                                .map_err(|err| crate::DeserializationError::Context {
-                                    location: "rerun.testing.datatypes.AffixFuzzer4#many_optional"
-                                        .into(),
-                                    source: Box::new(err),
-                                })?
-                                .into_iter()
-                                .map(|v| {
-                                    v
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                })
-                                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                            offsets
-                                .enumerate()
-                                .map(move |(i, (start, end))| {
-                                    bitmap
-                                        .as_ref()
-                                        .map_or(true, |bitmap| bitmap.get_bit(i))
-                                        .then(|| {
-                                            if end as usize > data.len() {
-                                                return Err(crate::DeserializationError::OffsetsMismatch {
-                                                    bounds: (start as usize, end as usize),
-                                                    len: data.len(),
-                                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                });
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, len)| {
+                                            let start = *start as usize;
+                                            let end = start + len;
+                                            if end as usize > data_inner.len() {
+                                                return Err(
+                                                    crate::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        data_inner.len(),
+                                                    ),
+                                                );
                                             }
 
                                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                             let data = unsafe {
-                                                data.get_unchecked(start as usize..end as usize).to_vec()
+                                                data_inner.get_unchecked(start as usize..end as usize)
                                             };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default)
+                                                .collect();
                                             Ok(data)
                                         })
                                         .transpose()
@@ -2438,58 +3244,61 @@ impl crate::Loggable for AffixFuzzer4 {
                                         1i8 => {
                                             AffixFuzzer4::SingleRequired({
                                                 if offset as usize >= single_required.len() {
-                                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                                            bounds: (offset as usize, offset as usize),
-                                                            len: single_required.len(),
-                                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                        })
-                                                        .map_err(|err| crate::DeserializationError::Context {
-                                                            location: "rerun.testing.datatypes.AffixFuzzer4#single_required"
-                                                                .into(),
-                                                            source: Box::new(err),
-                                                        });
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                single_required.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer4#single_required",
+                                                        );
                                                 }
 
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                                 unsafe { single_required.get_unchecked(offset as usize) }
                                                     .clone()
-                                                    .unwrap()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer4#single_required",
+                                                    )?
                                             })
                                         }
                                         2i8 => {
                                             AffixFuzzer4::ManyRequired({
                                                 if offset as usize >= many_required.len() {
-                                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                                            bounds: (offset as usize, offset as usize),
-                                                            len: many_required.len(),
-                                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                        })
-                                                        .map_err(|err| crate::DeserializationError::Context {
-                                                            location: "rerun.testing.datatypes.AffixFuzzer4#many_required"
-                                                                .into(),
-                                                            source: Box::new(err),
-                                                        });
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                many_required.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer4#many_required",
+                                                        );
                                                 }
 
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                                 unsafe { many_required.get_unchecked(offset as usize) }
                                                     .clone()
-                                                    .unwrap()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer4#many_required",
+                                                    )?
                                             })
                                         }
                                         3i8 => {
                                             AffixFuzzer4::ManyOptional({
                                                 if offset as usize >= many_optional.len() {
-                                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                                            bounds: (offset as usize, offset as usize),
-                                                            len: many_optional.len(),
-                                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                                        })
-                                                        .map_err(|err| crate::DeserializationError::Context {
-                                                            location: "rerun.testing.datatypes.AffixFuzzer4#many_optional"
-                                                                .into(),
-                                                            source: Box::new(err),
-                                                        });
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                many_optional.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer4#many_optional",
+                                                        );
                                                 }
 
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2497,17 +3306,44 @@ impl crate::Loggable for AffixFuzzer4 {
                                                     .clone()
                                             })
                                         }
-                                        _ => unreachable!(),
+                                        _ => {
+                                            return Err(
+                                                    crate::DeserializationError::missing_union_arm(
+                                                        DataType::Union(
+                                                            vec![
+                                                                Field { name : "_null_markers".to_owned(), data_type :
+                                                                DataType::Null, is_nullable : true, metadata : [].into(), },
+                                                                Field { name : "single_required".to_owned(), data_type : <
+                                                                crate ::testing::datatypes::AffixFuzzer3 >
+                                                                ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                                                .into(), }, Field { name : "many_required".to_owned(),
+                                                                data_type : DataType::List(Box::new(Field { name : "item"
+                                                                .to_owned(), data_type : < crate
+                                                                ::testing::datatypes::AffixFuzzer3 > ::to_arrow_datatype(),
+                                                                is_nullable : false, metadata : [].into(), })), is_nullable
+                                                                : false, metadata : [].into(), }, Field { name :
+                                                                "many_optional".to_owned(), data_type :
+                                                                DataType::List(Box::new(Field { name : "item".to_owned(),
+                                                                data_type : < crate ::testing::datatypes::AffixFuzzer3 >
+                                                                ::to_arrow_datatype(), is_nullable : true, metadata : []
+                                                                .into(), })), is_nullable : false, metadata : [].into(), },
+                                                            ],
+                                                            Some(vec![0i32, 1i32, 2i32, 3i32,]),
+                                                            UnionMode::Dense,
+                                                        ),
+                                                        "<invalid>",
+                                                        *typ as _,
+                                                    ),
+                                                )
+                                                .with_context("rerun.testing.datatypes.AffixFuzzer4");
+                                        }
                                     },
                                 ),
                             )
                         }
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.datatypes.AffixFuzzer4".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.testing.datatypes.AffixFuzzer4")?
             }
         })
     }
@@ -2530,7 +3366,7 @@ impl crate::Loggable for AffixFuzzer4 {
 
 impl crate::Datatype for AffixFuzzer4 {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::testing::datatypes::AffixFuzzer4>,
 }
@@ -2587,7 +3423,7 @@ impl crate::Loggable for AffixFuzzer5 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -2656,58 +3492,67 @@ impl crate::Loggable for AffixFuzzer5 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Struct(vec![Field {
+                            name: "single_optional_union".to_owned(),
+                            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(
+                            ),
+                            is_nullable: true,
+                            metadata: [].into(),
+                        }]),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.datatypes.AffixFuzzer5".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.datatypes.AffixFuzzer5")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
                     .zip(data_arrays)
                     .collect();
                 let single_optional_union = {
+                    if !arrays_by_name.contains_key("single_optional_union") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![Field {
+                                name: "single_optional_union".to_owned(),
+                                data_type:
+                                    <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            }]),
+                            "single_optional_union",
+                        ))
+                        .with_context("rerun.testing.datatypes.AffixFuzzer5");
+                    }
                     let data = &**arrays_by_name["single_optional_union"];
                     crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(data)
-                        .map_err(|err| crate::DeserializationError::Context {
-                            location: "rerun.testing.datatypes.AffixFuzzer5#single_optional_union"
-                                .into(),
-                            source: Box::new(err),
-                        })?
+                        .with_context("rerun.testing.datatypes.AffixFuzzer5#single_optional_union")?
                         .into_iter()
                 };
-                ::itertools::izip!(single_optional_union)
-                    .enumerate()
-                    .map(|(i, (single_optional_union))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    single_optional_union,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(single_optional_union),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(single_optional_union)| {
+                        Ok(Self {
+                            single_optional_union,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.datatypes.AffixFuzzer5".into(),
-                        source: Box::new(err),
-                    })?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.datatypes.AffixFuzzer5")?
             }
         })
     }
@@ -2730,7 +3575,7 @@ impl crate::Loggable for AffixFuzzer5 {
 
 impl crate::Datatype for AffixFuzzer5 {}
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AffixFuzzer20 {
     pub p: crate::testing::datatypes::PrimitiveComponent,
     pub s: crate::testing::datatypes::StringComponent,
@@ -2788,7 +3633,7 @@ impl crate::Loggable for AffixFuzzer20 {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -2918,92 +3763,158 @@ impl crate::Loggable for AffixFuzzer20 {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Struct(vec![
+                            Field { name : "p".to_owned(), data_type : < crate
+                            ::testing::datatypes::PrimitiveComponent >
+                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            .into(), }, Field { name : "s".to_owned(), data_type : <
+                            crate ::testing::datatypes::StringComponent >
+                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            .into(), },
+                        ]),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.testing.datatypes.AffixFuzzer20".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.testing.datatypes.AffixFuzzer20")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
                     .zip(data_arrays)
                     .collect();
                 let p = {
+                    if !arrays_by_name.contains_key("p") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "p".to_owned(), data_type : < crate
+                                            ::testing::datatypes::PrimitiveComponent >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "s".to_owned(), data_type : <
+                                            crate ::testing::datatypes::StringComponent >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), },
+                                        ],
+                                    ),
+                                    "p",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer20");
+                    }
                     let data = &**arrays_by_name["p"];
                     data.as_any()
                         .downcast_ref::<UInt32Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::UInt32,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.testing.datatypes.AffixFuzzer20#p")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| crate::testing::datatypes::PrimitiveComponent(*v)))
+                        .map(|opt| opt.copied())
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|v| crate::testing::datatypes::PrimitiveComponent(v))
+                        })
                 };
                 let s = {
+                    if !arrays_by_name.contains_key("s") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "p".to_owned(), data_type : < crate
+                                            ::testing::datatypes::PrimitiveComponent >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), }, Field { name : "s".to_owned(), data_type : <
+                                            crate ::testing::datatypes::StringComponent >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), },
+                                        ],
+                                    ),
+                                    "s",
+                                ),
+                            )
+                            .with_context("rerun.testing.datatypes.AffixFuzzer20");
+                    }
                     let data = &**arrays_by_name["s"];
                     {
-                        let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
-                        let offsets = downcast.offsets();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::Utf8,
+                                    data.data_type().clone(),
+                                )
+                            })
+                            .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?;
+                        let data_buf = data.values();
+                        let offsets = data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
                             offsets.iter().zip(offsets.lengths()),
-                            downcast.validity(),
+                            data.validity(),
                         )
-                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-                        .map(|opt| {
-                            opt.map(|v| {
-                                crate::testing::datatypes::StringComponent(crate::ArrowString(v))
-                            })
-                        })
-                    }
-                };
-                ::itertools::izip!(p, s)
-                    .enumerate()
-                    .map(|(i, (p, s))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    p: p.ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| {
-                                        crate::DeserializationError::Context {
-                                            location: "rerun.testing.datatypes.AffixFuzzer20#p"
-                                                .into(),
-                                            source: Box::new(err),
-                                        }
-                                    })?,
-                                    s: s.ok_or_else(|| crate::DeserializationError::MissingData {
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })
-                                    .map_err(|err| {
-                                        crate::DeserializationError::Context {
-                                            location: "rerun.testing.datatypes.AffixFuzzer20#s"
-                                                .into(),
-                                            source: Box::new(err),
-                                        }
-                                    })?,
-                                })
+                        .map(|elem| {
+                            elem.map(|(start, len)| {
+                                let start = *start as usize;
+                                let end = start + len;
+                                if end as usize > data_buf.len() {
+                                    return Err(crate::DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        data_buf.len(),
+                                    ));
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data_buf.clone().sliced_unchecked(start, len) };
+                                Ok(data)
                             })
                             .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| {
+                                    crate::testing::datatypes::StringComponent(crate::ArrowString(
+                                        v,
+                                    ))
+                                })
+                            })
+                        })
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                        .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?
+                        .into_iter()
+                    }
+                };
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(p, s),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(p, s)| {
+                        Ok(Self {
+                            p: p.ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.testing.datatypes.AffixFuzzer20#p")?,
+                            s: s.ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.testing.datatypes.AffixFuzzer20".into(),
-                        source: Box::new(err),
-                    })?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.datatypes.AffixFuzzer20")?
             }
         })
     }

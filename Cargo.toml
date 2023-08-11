@@ -129,6 +129,9 @@ wgpu-core = { version = "0.16.1" }
 opt-level = 1   # Make debug builds run faster
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
+[profile.dev.build-override]
+debug = true # enable debug symbols for build scripts when building in dev (codegen backtraces!)
+
 # Optimize all dependencies even in debug builds (does not affect workspace packages):
 [profile.dev.package."*"]
 opt-level = 2

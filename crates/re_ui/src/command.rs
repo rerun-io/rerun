@@ -284,6 +284,14 @@ impl UICommand {
             Default::default()
         }
     }
+
+    pub fn tooltip_with_shortcut(self, egui_ctx: &egui::Context) -> String {
+        format!(
+            "{}{}",
+            self.tooltip(),
+            self.format_shortcut_tooltip_suffix(egui_ctx)
+        )
+    }
 }
 
 #[test]

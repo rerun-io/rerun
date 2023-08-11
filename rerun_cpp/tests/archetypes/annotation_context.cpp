@@ -5,7 +5,7 @@
 namespace rr = rerun;
 using namespace rr::archetypes;
 
-#define TEST_TAG "[annotation_context]"
+#define TEST_TAG "[annotation_context][archetypes]"
 
 SCENARIO(
     "AnnotationContext archetype's class descriptions can be constructed in various ways and "

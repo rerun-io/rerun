@@ -81,7 +81,7 @@ impl crate::Loggable for Angle {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
@@ -202,42 +202,119 @@ impl crate::Loggable for Angle {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Union(
+                            vec![
+                                Field {
+                                    name: "_null_markers".to_owned(),
+                                    data_type: DataType::Null,
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "Radians".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "Degrees".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                            ],
+                            Some(vec![0i32, 1i32, 2i32]),
+                            UnionMode::Dense,
+                        ),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.Angle".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.datatypes.Angle")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_types, data_arrays, data_offsets) =
-                    (data.types(), data.fields(), data.offsets().unwrap());
+                let (data_types, data_arrays) = (data.types(), data.fields());
+                let data_offsets = data
+                    .offsets()
+                    .ok_or_else(|| {
+                        crate::DeserializationError::datatype_mismatch(
+                            DataType::Union(
+                                vec![
+                                    Field {
+                                        name: "_null_markers".to_owned(),
+                                        data_type: DataType::Null,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "Radians".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "Degrees".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                ],
+                                Some(vec![0i32, 1i32, 2i32]),
+                                UnionMode::Dense,
+                            ),
+                            data.data_type().clone(),
+                        )
+                    })
+                    .with_context("rerun.datatypes.Angle")?;
+                if data_types.len() != data_offsets.len() {
+                    return Err(crate::DeserializationError::offset_slice_oob(
+                        (0, data_types.len()),
+                        data_offsets.len(),
+                    ))
+                    .with_context("rerun.datatypes.Angle");
+                }
                 let radians = {
+                    if 1usize >= data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
                     let data = &*data_arrays[1usize];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.datatypes.Angle#Radians")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 let degrees = {
+                    if 2usize >= data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
                     let data = &*data_arrays[2usize];
                     data.as_any()
                         .downcast_ref::<Float32Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.datatypes.Angle#Degrees")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 data_types
@@ -251,49 +328,70 @@ impl crate::Loggable for Angle {
                             Ok(Some(match typ {
                                 1i8 => Angle::Radians({
                                     if offset as usize >= radians.len() {
-                                        return Err(crate::DeserializationError::OffsetsMismatch {
-                                            bounds: (offset as usize, offset as usize),
-                                            len: radians.len(),
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                        .map_err(|err| crate::DeserializationError::Context {
-                                            location: "rerun.datatypes.Angle#Radians".into(),
-                                            source: Box::new(err),
-                                        });
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
+                                            radians.len(),
+                                        ))
+                                        .with_context("rerun.datatypes.Angle#Radians");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { radians.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.Angle#Radians")?
                                 }),
                                 2i8 => Angle::Degrees({
                                     if offset as usize >= degrees.len() {
-                                        return Err(crate::DeserializationError::OffsetsMismatch {
-                                            bounds: (offset as usize, offset as usize),
-                                            len: degrees.len(),
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                        .map_err(|err| crate::DeserializationError::Context {
-                                            location: "rerun.datatypes.Angle#Degrees".into(),
-                                            source: Box::new(err),
-                                        });
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
+                                            degrees.len(),
+                                        ))
+                                        .with_context("rerun.datatypes.Angle#Degrees");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { degrees.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.Angle#Degrees")?
                                 }),
-                                _ => unreachable!(),
+                                _ => {
+                                    return Err(crate::DeserializationError::missing_union_arm(
+                                        DataType::Union(
+                                            vec![
+                                                Field {
+                                                    name: "_null_markers".to_owned(),
+                                                    data_type: DataType::Null,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "Radians".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "Degrees".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                            ],
+                                            Some(vec![0i32, 1i32, 2i32]),
+                                            UnionMode::Dense,
+                                        ),
+                                        "<invalid>",
+                                        *typ as _,
+                                    ))
+                                    .with_context("rerun.datatypes.Angle");
+                                }
                             }))
                         }
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.Angle".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.datatypes.Angle")?
             }
         })
     }

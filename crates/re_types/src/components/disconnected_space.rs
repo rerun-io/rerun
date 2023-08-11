@@ -59,7 +59,7 @@ impl crate::Loggable for DisconnectedSpace {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -102,24 +102,24 @@ impl crate::Loggable for DisconnectedSpace {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<BooleanArray>()
-            .unwrap()
-            .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
+            .ok_or_else(|| {
+                crate::DeserializationError::datatype_mismatch(
+                    DataType::Boolean,
+                    data.data_type().clone(),
+                )
             })
+            .with_context("rerun.components.DisconnectedSpace#is_disconnected")?
+            .into_iter()
+            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.DisconnectedSpace#is_disconnected".into(),
-                source: Box::new(err),
-            })?)
+            .with_context("rerun.components.DisconnectedSpace#is_disconnected")
+            .with_context("rerun.components.DisconnectedSpace")?)
     }
 
     #[inline]

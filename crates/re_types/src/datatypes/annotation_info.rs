@@ -86,7 +86,7 @@ impl crate::Loggable for AnnotationInfo {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -245,86 +245,218 @@ impl crate::Loggable for AnnotationInfo {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::DatatypeMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Struct(vec![
+                            Field {
+                                name: "id".to_owned(),
+                                data_type: DataType::UInt16,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "label".to_owned(),
+                                data_type: <crate::datatypes::Label>::to_arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "color".to_owned(),
+                                data_type: <crate::datatypes::Color>::to_arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                        ]),
+                        data.data_type().clone(),
+                    )
                 })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.datatypes.AnnotationInfo".into(),
-                    source: Box::new(err),
-                })?;
+                .with_context("rerun.datatypes.AnnotationInfo")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays, data_bitmap) =
-                    (data.fields(), data.values(), data.validity());
-                let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+                let (data_fields, data_arrays) = (data.fields(), data.values());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
                     .iter()
                     .map(|field| field.name.as_str())
                     .zip(data_arrays)
                     .collect();
                 let id = {
+                    if !arrays_by_name.contains_key("id") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "id".to_owned(),
+                                    data_type: DataType::UInt16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "label".to_owned(),
+                                    data_type: <crate::datatypes::Label>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "color".to_owned(),
+                                    data_type: <crate::datatypes::Color>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "id",
+                        ))
+                        .with_context("rerun.datatypes.AnnotationInfo");
+                    }
                     let data = &**arrays_by_name["id"];
                     data.as_any()
                         .downcast_ref::<UInt16Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::UInt16,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.datatypes.AnnotationInfo#id")?
                         .into_iter()
-                        .map(|v| v.copied())
+                        .map(|opt| opt.copied())
                 };
                 let label = {
+                    if !arrays_by_name.contains_key("label") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "id".to_owned(),
+                                    data_type: DataType::UInt16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "label".to_owned(),
+                                    data_type: <crate::datatypes::Label>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "color".to_owned(),
+                                    data_type: <crate::datatypes::Color>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "label",
+                        ))
+                        .with_context("rerun.datatypes.AnnotationInfo");
+                    }
                     let data = &**arrays_by_name["label"];
                     {
-                        let downcast = data.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
-                        let offsets = downcast.offsets();
+                        let data = data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::Utf8,
+                                    data.data_type().clone(),
+                                )
+                            })
+                            .with_context("rerun.datatypes.AnnotationInfo#label")?;
+                        let data_buf = data.values();
+                        let offsets = data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
                             offsets.iter().zip(offsets.lengths()),
-                            downcast.validity(),
+                            data.validity(),
                         )
-                        .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
-                        .map(|opt| opt.map(|v| crate::datatypes::Label(crate::ArrowString(v))))
+                        .map(|elem| {
+                            elem.map(|(start, len)| {
+                                let start = *start as usize;
+                                let end = start + len;
+                                if end as usize > data_buf.len() {
+                                    return Err(crate::DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        data_buf.len(),
+                                    ));
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data_buf.clone().sliced_unchecked(start, len) };
+                                Ok(data)
+                            })
+                            .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| crate::datatypes::Label(crate::ArrowString(v)))
+                            })
+                        })
+                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                        .with_context("rerun.datatypes.AnnotationInfo#label")?
+                        .into_iter()
                     }
                 };
                 let color = {
+                    if !arrays_by_name.contains_key("color") {
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            DataType::Struct(vec![
+                                Field {
+                                    name: "id".to_owned(),
+                                    data_type: DataType::UInt16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "label".to_owned(),
+                                    data_type: <crate::datatypes::Label>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "color".to_owned(),
+                                    data_type: <crate::datatypes::Color>::to_arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                },
+                            ]),
+                            "color",
+                        ))
+                        .with_context("rerun.datatypes.AnnotationInfo");
+                    }
                     let data = &**arrays_by_name["color"];
                     data.as_any()
                         .downcast_ref::<UInt32Array>()
-                        .unwrap()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::UInt32,
+                                data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.datatypes.AnnotationInfo#color")?
                         .into_iter()
-                        .map(|opt| opt.map(|v| crate::datatypes::Color(*v)))
+                        .map(|opt| opt.copied())
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Color(v)))
                 };
-                ::itertools::izip!(id, label, color)
-                    .enumerate()
-                    .map(|(i, (id, label, color))| {
-                        is_valid(i)
-                            .then(|| {
-                                Ok(Self {
-                                    id: id
-                                        .ok_or_else(|| crate::DeserializationError::MissingData {
-                                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                        })
-                                        .map_err(|err| crate::DeserializationError::Context {
-                                            location: "rerun.datatypes.AnnotationInfo#id".into(),
-                                            source: Box::new(err),
-                                        })?,
-                                    label,
-                                    color,
-                                })
-                            })
-                            .transpose()
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(id, label, color),
+                    data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(id, label, color)| {
+                        Ok(Self {
+                            id: id
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.AnnotationInfo#id")?,
+                            label,
+                            color,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.datatypes.AnnotationInfo".into(),
-                        source: Box::new(err),
-                    })?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.AnnotationInfo")?
             }
         })
     }
