@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
 """
-Summarizes recent PRs based on their GitHub labels.
+Summarizes PRs since `latest` tag, grouping them based on their GitHub labels.
 
-The result can be copy-pasted into CHANGELOG.md, though it often needs some manual editing too.
+If the result is not satisfactory, you can edit the orginal PR titles and labels.
+You can add the `exclude from changelog` label to minor PRs that are not of interest to our users.
+
+Finally, copy-paste the output into `CHANGELOG.md` and add a high-level summary to the top.
 """
 from __future__ import annotations
 
@@ -165,6 +168,9 @@ def main() -> None:
         else:
             title = pr_info.pr_title if pr_info else title  # We prefer the PR title if available
             labels = pr_info.labels if pr_info else []
+
+            if "exclude from changelog" in labels:
+                continue
 
             summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
 
