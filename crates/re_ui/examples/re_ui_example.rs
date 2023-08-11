@@ -246,7 +246,7 @@ impl eframe::App for ExampleApp {
             .show_animated(egui_ctx, self.right_panel, |ui| {
                 ui.set_clip_rect(ui.max_rect());
 
-                // first section - no scroll area, so a global Frame can be used.
+                // first section - no scroll area, so a single outer "panel_content" can be used.
                 self.re_ui.panel_content(ui, |re_ui, ui| {
                     re_ui.panel_title_bar(
                         ui,
@@ -262,7 +262,7 @@ impl eframe::App for ExampleApp {
                 });
 
                 // Second section. It's a list of `list_items`, so we need to remove the default
-                // spacing. Also, it uses a scroll area, so we must use several `Frame`s.
+                // spacing. Also, it uses a scroll area, so we must use several "panel_content".
                 ui.scope(|ui| {
                     ui.spacing_mut().item_spacing.y = 0.0;
 

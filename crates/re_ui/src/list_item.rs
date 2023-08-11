@@ -1,7 +1,18 @@
 use crate::{Icon, ReUi};
-use egui::{NumExt, Response, Shape, Ui};
+use egui::{Align2, NumExt, Response, Shape, Ui};
 
 /// Generic widget for use in lists.
+///
+/// Layout:
+/// ```text
+/// ┌───────────────────────────────────────────────────┐
+/// │┌──────┐                           ┌──────┐┌──────┐│
+/// ││      │                           │      ││      ││
+/// ││ icon │  label                    │ btns ││ btns ││
+/// ││      │                           │      ││      ││
+/// │└──────┘                           └──────┘└──────┘│
+/// └───────────────────────────────────────────────────┘
+/// ```
 ///
 /// Features:
 /// - selectable
@@ -83,6 +94,8 @@ impl<'a> ListItem<'a> {
     }
 
     /// Provide a closure to display on-hover buttons on the right of the item.
+    ///
+    /// Note that the a right to left layout is used, so the right-most button must be added first.
     pub fn with_buttons(
         mut self,
         buttons: impl FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a,
@@ -100,9 +113,8 @@ impl<'a> ListItem<'a> {
 impl egui::Widget for ListItem<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let button_padding = ui.spacing().button_padding;
-        let icon_width_plus_padding = ReUi::small_icon_size().x + ReUi::text_to_icon_padding();
         let icon_extra = if self.icon_fn.is_some() {
-            icon_width_plus_padding
+            ReUi::small_icon_size().x + ReUi::text_to_icon_padding()
         } else {
             0.0
         };
@@ -114,7 +126,7 @@ impl egui::Widget for ListItem<'_> {
                 .clone()
                 .into_galley(ui, Some(false), wrap_width, egui::TextStyle::Button);
 
-        let desired_size = (padding_extra + text.size() + egui::vec2(icon_extra, 0.0))
+        let desired_size = (padding_extra + egui::vec2(icon_extra, 0.0) + text.size())
             .at_least(egui::vec2(ui.available_width(), ReUi::list_item_height()));
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
 
@@ -138,22 +150,22 @@ impl egui::Widget for ListItem<'_> {
             bg_rect.extend_with_x(ui.clip_rect().left());
             let background_frame = ui.painter().add(egui::Shape::Noop);
 
-            let min_pos = ui.painter().round_pos_to_pixels(egui::pos2(
-                rect.min.x.ceil(),
-                ((rect.min.y + rect.max.y - ReUi::small_icon_size().y) * 0.5).ceil(),
-            ));
+            let leftmost_x_pos = rect.min.x.ceil();
 
             // Draw icon
             if let Some(icon_fn) = self.icon_fn {
-                let icon_rect = egui::Rect::from_min_size(min_pos, ReUi::small_icon_size());
+                let icon_pos = ui.painter().round_pos_to_pixels(egui::pos2(
+                    leftmost_x_pos,
+                    (rect.center().y - 0.5 * ReUi::small_icon_size().y).ceil(),
+                ));
+                let icon_rect = egui::Rect::from_min_size(icon_pos, ReUi::small_icon_size());
                 icon_fn(self.re_ui, ui, icon_rect, visuals);
             }
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x = min_pos.x + icon_extra;
-            let text_pos = ui
-                .layout()
+            text_rect.min.x = leftmost_x_pos + icon_extra;
+            let text_pos = Align2::LEFT_CENTER
                 .align_size_within_rect(text.size(), text_rect)
                 .min;
             text.paint_with_visuals(ui.painter(), text_pos, &visuals);

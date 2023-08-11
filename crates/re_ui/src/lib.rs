@@ -512,7 +512,7 @@ impl ReUi {
                 ui.allocate_ui_with_layout(
                     ui.available_size(),
                     egui::Layout::right_to_left(egui::Align::Center),
-                    |ui| add_right_buttons(ui),
+                    add_right_buttons,
                 )
                 .inner
             },
@@ -723,7 +723,7 @@ impl ReUi {
             let image_rect = egui::Rect::from_min_size(
                 ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x.ceil(),
-                    ((rect.min.y + rect.max.y - Self::small_icon_size().y) * 0.5).ceil(),
+                    (rect.center().y - 0.5 * ReUi::small_icon_size().y).ceil(),
                 )),
                 Self::small_icon_size(),
             );

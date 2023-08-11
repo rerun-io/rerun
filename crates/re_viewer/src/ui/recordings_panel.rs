@@ -1,22 +1,17 @@
 use re_data_store::StoreDb;
-use re_log_types::Time;
 use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
 use time::macros::format_description;
 
-#[cfg(not(target_arch = "wasm32"))]
-use re_ui::UICommandSender;
-
-/// Show the Recordings section of the left panel
+/// Show the currently open Recordings in a selectable list.
 pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ctx.re_ui.panel_content(ui, |re_ui, ui| {
         re_ui.panel_title_bar_with_buttons(
             ui,
             "Recordings",
             Some("These are the Recordings currently loaded in the Viewer"),
-            #[allow(unused_variables)]
-            |ui| {
+            |_ui| {
                 #[cfg(not(target_arch = "wasm32"))]
-                add_button_ui(ctx, ui);
+                add_button_ui(ctx, _ui);
             },
         );
     });
@@ -44,17 +39,17 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         return;
     }
 
-    fn store_db_key(store_db: &StoreDb) -> (&str, Time) {
-        store_db.store_info().map_or(("", Time::default()), |info| {
-            (info.application_id.0.as_str(), info.started)
-        })
+    fn store_db_key(store_db: &StoreDb) -> impl Ord + '_ {
+        store_db
+            .store_info()
+            .map(|info| (info.application_id.0.as_str(), info.started))
     }
 
     store_dbs.sort_by_key(|store_db| store_db_key(store_db));
 
     let active_recording = store_context.recording.map(|rec| rec.store_id());
 
-    let desc = format_description!(version = 2, "[hour]:[minute]:[second]");
+    let desc = format_description!(version = 2, "[hour]:[minute]:[second]Z");
     for store_db in &store_dbs {
         let info = if let Some(store_info) = store_db.store_info() {
             format!(
@@ -93,10 +88,12 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn add_button_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    use re_ui::UICommandSender;
+
     if ctx
         .re_ui
         .small_icon_button(ui, &re_ui::icons::ADD)
-        .on_hover_text(re_ui::UICommand::Open.text_and_tooltip().1)
+        .on_hover_text(re_ui::UICommand::Open.tooltip_with_shortcut(ui.ctx()))
         .clicked()
     {
         ctx.command_sender.send_ui(re_ui::UICommand::Open);

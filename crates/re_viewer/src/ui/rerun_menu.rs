@@ -10,7 +10,7 @@ use crate::App;
 impl App {
     pub fn rerun_menu_button_ui(
         &mut self,
-        #[allow(unused_variables)] store_context: Option<&StoreContext<'_>>,
+        _store_context: Option<&StoreContext<'_>>,
         ui: &mut egui::Ui,
         frame: &mut eframe::Frame,
     ) {
@@ -38,7 +38,7 @@ impl App {
             {
                 UICommand::Open.menu_button_ui(ui, &self.command_sender);
 
-                self.save_buttons_ui(ui, store_context);
+                self.save_buttons_ui(ui, _store_context);
 
                 ui.add_space(spacing);
 
