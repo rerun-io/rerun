@@ -52,24 +52,18 @@
 ///
 /// Many individual segments:
 /// ```ignore
-/// //! Log a simple line segment.
+/// //! Log a couple 2D line segments using 2D line strips.
+///
 /// use rerun::{
-///    components::{LineStrip2D, Rect2D},
-///    datatypes::Vec4D,
-///    MsgSender, RecordingStreamBuilder,
+///    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, MsgSender,
+///    RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
 ///
-///    let points = vec![[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
-///    MsgSender::new("simple")
-///        .with_component(
-///            &points
-///                .chunks(2)
-///                .map(|p| LineStrip2D(vec![p[0].into(), p[1].into()]))
-///                .collect::<Vec<_>>(),
-///        )?
+///    let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
+///    MsgSender::from_archetype("segments", &LineStrips2D::new(points.chunks(2)))?
 ///        .send(&rec_stream)?;
 ///
 ///    // Log an extra rect to set the view bounds

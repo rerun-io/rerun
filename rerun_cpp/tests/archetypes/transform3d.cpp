@@ -8,7 +8,7 @@ namespace rr = rerun;
 namespace rrd = rr::datatypes;
 using namespace rr::archetypes;
 
-#define TEST_TAG "[transform3d]"
+#define TEST_TAG "[transform3d][archetypes]"
 
 SCENARIO(
     "The various utilities of Transform3D archetype produce the same data as manually constructed "
