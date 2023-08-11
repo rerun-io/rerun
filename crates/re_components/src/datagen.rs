@@ -15,7 +15,7 @@ pub fn build_some_rects(len: usize) -> Vec<crate::Rect2D> {
 /// Create `len` dummy colors
 pub fn build_some_colors(len: usize) -> Vec<re_types::components::Color> {
     (0..len)
-        .map(|i| re_types::datatypes::Color(i as u32).into())
+        .map(|i| re_types::components::Color::from(i as u32))
         .collect()
 }
 

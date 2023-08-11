@@ -1,6 +1,7 @@
 //! Upload [`Tensor`] to [`re_renderer`].
 
 use anyhow::Context;
+use re_types::components::ClassId;
 
 use std::borrow::Cow;
 
@@ -176,7 +177,7 @@ fn class_id_tensor_to_gpu(
             let data: Vec<u8> = (0..(colormap_width * colormap_height))
                 .flat_map(|id| {
                     let color = annotations
-                        .resolved_class_description(Some((id as u16).into()))
+                        .resolved_class_description(Some(ClassId::from(id as u16)))
                         .annotation_info()
                         .color(None, DefaultColor::TransparentBlack);
                     color.to_array() // premultiplied!
