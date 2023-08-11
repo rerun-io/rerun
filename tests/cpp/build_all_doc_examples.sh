@@ -16,7 +16,8 @@ while test $# -gt 0; do
       ;;
 
     *)
-      break
+      echo "Unknown option: $1"
+      exit 1
       ;;
   esac
 done
