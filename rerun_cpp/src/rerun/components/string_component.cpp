@@ -36,7 +36,7 @@ namespace rerun {
             }
 
             ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 ARROW_RETURN_NOT_OK(builder->Append(elements[elem_idx].value));
             }
 

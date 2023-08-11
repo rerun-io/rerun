@@ -51,7 +51,6 @@ __all__ = [
     "log_meshes",
     "log_obb",
     "log_obbs",
-    "log_path",
     "log_pinhole",
     "log_point",
     "log_points",
@@ -99,7 +98,7 @@ from .log.clear import log_cleared
 from .log.extension_components import log_extension_components
 from .log.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
 from .log.image import log_depth_image, log_image, log_segmentation_image
-from .log.lines import log_line_segments, log_line_strip, log_line_strips_2d, log_line_strips_3d, log_path
+from .log.lines import log_line_segments, log_line_strip, log_line_strips_2d, log_line_strips_3d
 from .log.mesh import log_mesh, log_meshes
 from .log.points import log_point, log_points
 from .log.rects import RectFormat, log_rect, log_rects

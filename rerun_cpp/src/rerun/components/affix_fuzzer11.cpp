@@ -12,8 +12,7 @@ namespace rerun {
         const char *AffixFuzzer11::NAME = "rerun.testing.components.AffixFuzzer11";
 
         const std::shared_ptr<arrow::DataType> &AffixFuzzer11::to_arrow_datatype() {
-            static const auto datatype =
-                arrow::list(arrow::field("item", arrow::float32(), true, nullptr));
+            static const auto datatype = arrow::list(arrow::field("item", arrow::float32(), false));
             return datatype;
         }
 
@@ -47,12 +46,12 @@ namespace rerun {
             for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto &element = elements[elem_idx];
                 if (element.many_floats_optional.has_value()) {
+                    ARROW_RETURN_NOT_OK(builder->Append());
                     ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                        &element.many_floats_optional.value()[0],
+                        element.many_floats_optional.value().data(),
                         element.many_floats_optional.value().size(),
                         nullptr
                     ));
-                    ARROW_RETURN_NOT_OK(builder->Append());
                 } else {
                     ARROW_RETURN_NOT_OK(builder->AppendNull());
                 }

@@ -10,21 +10,21 @@ impl Label {
 impl From<String> for Label {
     #[inline]
     fn from(value: String) -> Self {
-        Self(value)
+        Self(value.into())
     }
 }
 
 impl From<&str> for Label {
     #[inline]
     fn from(value: &str) -> Self {
-        Self(value.to_owned())
+        Self(value.into())
     }
 }
 
 impl From<Label> for String {
     #[inline]
     fn from(value: Label) -> Self {
-        value.0
+        value.as_str().to_owned()
     }
 }
 

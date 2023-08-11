@@ -9,7 +9,7 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &FlattenedScalar::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field("value", arrow::float32(), false, nullptr),
+                arrow::field("value", arrow::float32(), false),
             });
             return datatype;
         }
@@ -40,11 +40,10 @@ namespace rerun {
             }
 
             {
-                auto element_builder =
-                    static_cast<arrow::FloatBuilder *>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(element_builder->Append(elements[elem_idx].value));
+                auto field_builder = static_cast<arrow::FloatBuilder *>(builder->field_builder(0));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].value));
                 }
             }
             ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));

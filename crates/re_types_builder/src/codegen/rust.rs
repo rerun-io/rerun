@@ -177,13 +177,7 @@ fn create_files(
                 match &token {
                     // If this is a doc-comment block, be smart about it.
                     proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
-                        let tokens_str = acc
-                            .to_string()
-                            .replace('}', "}\n\n")
-                            .replace("] ;", "];\n\n")
-                            .replace("# [doc", "\n\n# [doc")
-                            .replace("impl ", "\n\nimpl ");
-                        code.push_text(tokens_str, 1, 0);
+                        code.push_text(string_from_quoted(&acc), 1, 0);
                         acc = TokenStream::new();
 
                         acc.extend([token, tokens.next().unwrap()]);
@@ -196,14 +190,7 @@ fn create_files(
                 }
             }
 
-            let tokens_str = acc
-                .to_string()
-                .replace('}', "}\n\n")
-                .replace("] ;", "];\n\n")
-                .replace("# [doc", "\n\n# [doc")
-                .replace("impl ", "\n\nimpl ");
-
-            code.push_text(tokens_str, 1, 0);
+            code.push_text(string_from_quoted(&acc), 1, 0);
         }
 
         code = replace_doc_attrb_with_doc_comment(&code);
@@ -249,6 +236,88 @@ fn create_files(
     files_to_write
 }
 
+fn string_from_quoted(acc: &TokenStream) -> String {
+    re_tracing::profile_function!();
+
+    // We format using `prettyplease` because there are situations with
+    // very long lines that `cargo fmt` fails on.
+    // See https://github.com/dtolnay/prettyplease for more info.
+    let string = prettyplease::unparse(
+        &syn::parse_file(&acc.to_string()).expect("Generated Rust code did not parse"),
+    );
+
+    // `prettyplease` formats docstrings weirdly, like so:
+    //
+    // struct Foo {
+    //     ///No leading space
+    //     bar: i32,
+    //     ///And no empty space before the first line
+    //     ///of the doscstring
+    //     baz: f64,
+    // }
+    //
+    // We fix that here,
+    // while also adding blank lines before functions and `impl` blocks.
+
+    let mut output = String::default();
+    let mut is_in_docstring = false;
+    let mut prev_line_was_attr = false;
+
+    for line in string.split('\n') {
+        if let Some(slashes) = line.find("///") {
+            let leading_spaces = &line[..slashes];
+            if leading_spaces.trim().is_empty() {
+                // This is a docstring
+
+                if !is_in_docstring {
+                    output.push('\n');
+                }
+                let comment = &line[slashes + 3..];
+                output.push_str(leading_spaces);
+                output.push_str("///");
+                if !comment.is_empty() {
+                    output.push(' ');
+                    output.push_str(comment);
+                }
+                output.push('\n');
+
+                prev_line_was_attr = false;
+                is_in_docstring = true;
+
+                continue;
+            }
+        }
+
+        is_in_docstring = false;
+
+        // Insert some extra newlines before functions and `impl` blocks:
+        let trimmed = line.trim_start();
+
+        let line_is_attr = trimmed.starts_with("#[allow(") || trimmed.starts_with("#[inline]");
+
+        if !prev_line_was_attr && line_is_attr {
+            output.push('\n');
+        }
+
+        if !prev_line_was_attr
+            && (trimmed.starts_with("const ")
+                || trimmed.starts_with("fn ")
+                || trimmed.starts_with("impl ")
+                || trimmed.starts_with("impl<")
+                || trimmed.starts_with("pub fn ")
+                || trimmed.starts_with("static "))
+        {
+            output.push('\n');
+        }
+
+        output.push_str(line);
+        output.push('\n');
+        prev_line_was_attr = line_is_attr;
+    }
+
+    output
+}
+
 fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
     re_tracing::profile_function!();
     // TODO(emilk): running `cargo fmt` once for each file is very slow.
@@ -262,8 +331,10 @@ fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
 fn write_file(filepath: &Utf8PathBuf, mut code: String) {
     re_tracing::profile_function!();
 
-    // We need to run `cago fmt` several times because it is not idempotent!
-    // See https://github.com/rust-lang/rustfmt/issues/5824
+    // Even though we already have used `prettyplease` we also
+    // need to run `cargo fmt`, since it catches some things `prettyplease` missed.
+    // We need to run `cago fmt` several times because it is not idempotent;
+    // see https://github.com/rust-lang/rustfmt/issues/5824
     for _ in 0..2 {
         // NOTE: We're purposefully ignoring the error here.
         //
@@ -612,7 +683,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Float16 => unimplemented!("{typ:#?}"),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
-            Type::String => quote!(String),
+            Type::String => quote!(crate::ArrowString),
             Type::Array { elem_type, length } => {
                 if *unwrap {
                     quote!(#elem_type)
@@ -648,7 +719,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Float16 => unimplemented!("{self:#?}"),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
-            ElementType::String => quote!(String),
+            ElementType::String => quote!(crate::ArrowString),
             ElementType::Object(fqname) => quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
@@ -746,7 +817,7 @@ fn quote_trait_impls_from_obj(
                 impl crate::Loggable for #name {
                     type Name = crate::#kind_name;
                     type Item<'a> = Option<Self>;
-                    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+                    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
                     #[inline]
                     fn name() -> Self::Name {
@@ -792,7 +863,7 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized,
                     {
-                        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+                        Ok(Self::try_from_arrow_opt(data)?.into_iter())
                     }
 
                     #[inline]
@@ -1791,23 +1862,25 @@ fn quote_arrow_field_serializer(
                         quote! {
                             .flat_map(|datum| {
                                 let #quoted_binding = datum;
-                                #quoted_data_dst .bytes()
+                                // NOTE: `Buffer::clone`, which is just a ref-count bump
+                                #quoted_data_dst .0.clone()
                             })
                         },
                         quote! {
                             .map(|datum| {
                                 let #quoted_binding = datum;
-                                #quoted_data_dst.len()
+                                #quoted_data_dst.0.len()
                             }).unwrap_or_default()
                         },
                     )
                 } else {
                     (
                         quote! {
-                            .flat_map(|s| s.bytes())
+                            // NOTE: `Buffer::clone`, which is just a ref-count bump
+                            .flat_map(|s| s.0.clone())
                         },
                         quote! {
-                            .map(|datum| datum.len()).unwrap_or_default()
+                            .map(|datum| datum.0.len()).unwrap_or_default()
                         },
                     )
                 };
@@ -2154,10 +2227,12 @@ fn quote_arrow_deserializer(
                     };
 
                     quote! {
-                        #i => #quoted_obj_name::#quoted_obj_field_type(
-                            #quoted_obj_field_name
-                                .get(offset as usize)
-                                .ok_or(crate::DeserializationError::OffsetsMismatch {
+                        #i => #quoted_obj_name::#quoted_obj_field_type({
+                            // NOTE: It is absolutely crucial we explicitly handle the
+                            // boundchecks manually first, otherwise rustc completely chokes
+                            // when slicing the data (as in: a 100x perf drop)!
+                            if offset as usize >= #quoted_obj_field_name.len() {
+                                return Err(crate::DeserializationError::OffsetsMismatch {
                                     bounds: (offset as usize, offset as usize),
                                     len: #quoted_obj_field_name.len(),
                                     backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -2165,10 +2240,15 @@ fn quote_arrow_deserializer(
                                 .map_err(|err| crate::DeserializationError::Context {
                                     location: #obj_field_fqname.into(),
                                     source: Box::new(err),
-                                })?
+                                });
+                            }
+
+                            // Safety: all checked above.
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            unsafe { #quoted_obj_field_name.get_unchecked(offset as usize) }
                                 .clone()
                                 #quoted_unwrap
-                        )
+                        })
                     }
                 });
 
@@ -2307,21 +2387,25 @@ fn quote_arrow_field_deserializer(
                     }
                 );
                 if is_tuple_struct {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type(v.to_owned()))))
+                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type(crate::ArrowString(v)))))
                 } else {
-                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type { #quoted_data_dst: v.to_owned() })))
+                    quote!(.map(|opt| opt.map(|v| #quoted_inner_obj_type { #quoted_data_dst: crate::ArrowString(v) })))
                 }
             } else {
-                quote!(.map(|v| v.map(ToOwned::to_owned)))
+                quote!(.map(|v| v.map(crate::ArrowString)))
             };
 
             quote! {
-                #data_src
-                    .as_any()
-                    .downcast_ref::<Utf8Array<i32>>()
-                    .unwrap() // safe
-                    .into_iter()
+                {
+                let downcast = #data_src.as_any().downcast_ref::<Utf8Array<i32>>().unwrap();
+                let offsets = downcast.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    downcast.validity(),
+                )
+                .map(|elem| elem.map(|(o, l)| downcast.values().clone().sliced(*o as _, l)))
                     #quoted_transparent_unmapping
+                }
             }
         }
 
@@ -2384,19 +2468,23 @@ fn quote_arrow_field_deserializer(
                     offsets
                         .enumerate()
                         .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                            data.get(start as usize .. end as usize)
-                                .ok_or(crate::DeserializationError::OffsetsMismatch {
-                                    bounds: (start as usize, end as usize),
-                                    len: data.len(),
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                })?
-                                .to_vec()
-                                .try_into()
-                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
-                                    expected: #length,
-                                    got: (end - start) as usize,
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                })
+                                // NOTE: It is absolutely crucial we explicitly handle the
+                                // boundchecks manually first, otherwise rustc completely chokes
+                                // when slicing the data (as in: a 100x perf drop)!
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
+                                        bounds: (start as usize, end as usize),
+                                        len: data.len(),
+                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                                    });
+                                }
+                                // Safety: all checked above.
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data.get_unchecked(start as usize .. end as usize) };
+
+                                let arr = array_init::from_iter(data.iter().copied()).unwrap(); // safe: checked above
+
+                                Ok(arr)
                             }).transpose()
                         )
                         #quoted_transparent_unmapping
@@ -2449,14 +2537,21 @@ fn quote_arrow_field_deserializer(
                     offsets
                         .enumerate()
                         .map(move |(i, (start, end))| bitmap.as_ref().map_or(true, |bitmap| bitmap.get_bit(i)).then(|| {
-                                Ok(data.get(start as usize .. end as usize)
-                                    .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                // NOTE: It is absolutely crucial we explicitly handle the
+                                // boundchecks manually first, otherwise rustc completely chokes
+                                // when slicing the data (as in: a 100x perf drop)!
+                                if end as usize > data.len() {
+                                    return Err(crate::DeserializationError::OffsetsMismatch {
                                         bounds: (start as usize, end as usize),
                                         len: data.len(),
                                         backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    })?
-                                    .to_vec()
-                                )
+                                    });
+                                }
+                                // Safety: all checked above.
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = unsafe { data.get_unchecked(start as usize .. end as usize).to_vec() };
+
+                                Ok(data)
                             }).transpose()
                         )
                         // NOTE: implicit Vec<Result> to Result<Vec>

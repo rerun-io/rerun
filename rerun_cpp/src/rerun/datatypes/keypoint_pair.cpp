@@ -9,26 +9,24 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& KeypointPair::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &KeypointPair::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
                     "keypoint0",
                     rerun::components::KeypointId::to_arrow_datatype(),
-                    false,
-                    nullptr
+                    false
                 ),
                 arrow::field(
                     "keypoint1",
                     rerun::components::KeypointId::to_arrow_datatype(),
-                    false,
-                    nullptr
+                    false
                 ),
             });
             return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::StructBuilder>> KeypointPair::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
+            arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
@@ -47,7 +45,7 @@ namespace rerun {
         }
 
         arrow::Status KeypointPair::fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const KeypointPair* elements, size_t num_elements
+            arrow::StructBuilder *builder, const KeypointPair *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -56,12 +54,28 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            return arrow::Status::NotImplemented(
-                "TODO(andreas): extensions in structs are not yet supported"
-            );
-            return arrow::Status::NotImplemented(
-                "TODO(andreas): extensions in structs are not yet supported"
-            );
+            {
+                auto field_builder = static_cast<arrow::UInt16Builder *>(builder->field_builder(0));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(rerun::components::KeypointId::fill_arrow_array_builder(
+                        field_builder,
+                        &elements[elem_idx].keypoint0,
+                        1
+                    ));
+                }
+            }
+            {
+                auto field_builder = static_cast<arrow::UInt16Builder *>(builder->field_builder(1));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(rerun::components::KeypointId::fill_arrow_array_builder(
+                        field_builder,
+                        &elements[elem_idx].keypoint1,
+                        1
+                    ));
+                }
+            }
             ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
 
             return arrow::Status::OK();

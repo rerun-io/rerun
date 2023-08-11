@@ -439,7 +439,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2101(rerun::components::AffixFuzzer1 _fuzz2101) {
-                fuzz2101 = std::move(std::vector(1, std::move(_fuzz2101)));
+                fuzz2101 = std::vector(1, std::move(_fuzz2101));
                 return *this;
             }
 
@@ -449,7 +449,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2102(rerun::components::AffixFuzzer2 _fuzz2102) {
-                fuzz2102 = std::move(std::vector(1, std::move(_fuzz2102)));
+                fuzz2102 = std::vector(1, std::move(_fuzz2102));
                 return *this;
             }
 
@@ -459,7 +459,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2103(rerun::components::AffixFuzzer3 _fuzz2103) {
-                fuzz2103 = std::move(std::vector(1, std::move(_fuzz2103)));
+                fuzz2103 = std::vector(1, std::move(_fuzz2103));
                 return *this;
             }
 
@@ -469,7 +469,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2104(rerun::components::AffixFuzzer4 _fuzz2104) {
-                fuzz2104 = std::move(std::vector(1, std::move(_fuzz2104)));
+                fuzz2104 = std::vector(1, std::move(_fuzz2104));
                 return *this;
             }
 
@@ -479,7 +479,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2105(rerun::components::AffixFuzzer5 _fuzz2105) {
-                fuzz2105 = std::move(std::vector(1, std::move(_fuzz2105)));
+                fuzz2105 = std::vector(1, std::move(_fuzz2105));
                 return *this;
             }
 
@@ -489,7 +489,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2106(rerun::components::AffixFuzzer6 _fuzz2106) {
-                fuzz2106 = std::move(std::vector(1, std::move(_fuzz2106)));
+                fuzz2106 = std::vector(1, std::move(_fuzz2106));
                 return *this;
             }
 
@@ -499,7 +499,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2107(rerun::components::AffixFuzzer7 _fuzz2107) {
-                fuzz2107 = std::move(std::vector(1, std::move(_fuzz2107)));
+                fuzz2107 = std::vector(1, std::move(_fuzz2107));
                 return *this;
             }
 
@@ -509,7 +509,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2108(rerun::components::AffixFuzzer8 _fuzz2108) {
-                fuzz2108 = std::move(std::vector(1, std::move(_fuzz2108)));
+                fuzz2108 = std::vector(1, std::move(_fuzz2108));
                 return *this;
             }
 
@@ -519,7 +519,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2109(rerun::components::AffixFuzzer9 _fuzz2109) {
-                fuzz2109 = std::move(std::vector(1, std::move(_fuzz2109)));
+                fuzz2109 = std::vector(1, std::move(_fuzz2109));
                 return *this;
             }
 
@@ -529,7 +529,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2110(rerun::components::AffixFuzzer10 _fuzz2110) {
-                fuzz2110 = std::move(std::vector(1, std::move(_fuzz2110)));
+                fuzz2110 = std::vector(1, std::move(_fuzz2110));
                 return *this;
             }
 
@@ -539,7 +539,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2111(rerun::components::AffixFuzzer11 _fuzz2111) {
-                fuzz2111 = std::move(std::vector(1, std::move(_fuzz2111)));
+                fuzz2111 = std::vector(1, std::move(_fuzz2111));
                 return *this;
             }
 
@@ -549,7 +549,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2112(rerun::components::AffixFuzzer12 _fuzz2112) {
-                fuzz2112 = std::move(std::vector(1, std::move(_fuzz2112)));
+                fuzz2112 = std::vector(1, std::move(_fuzz2112));
                 return *this;
             }
 
@@ -559,7 +559,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2113(rerun::components::AffixFuzzer13 _fuzz2113) {
-                fuzz2113 = std::move(std::vector(1, std::move(_fuzz2113)));
+                fuzz2113 = std::vector(1, std::move(_fuzz2113));
                 return *this;
             }
 
@@ -569,7 +569,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2114(rerun::components::AffixFuzzer14 _fuzz2114) {
-                fuzz2114 = std::move(std::vector(1, std::move(_fuzz2114)));
+                fuzz2114 = std::vector(1, std::move(_fuzz2114));
                 return *this;
             }
 
@@ -579,7 +579,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2115(rerun::components::AffixFuzzer15 _fuzz2115) {
-                fuzz2115 = std::move(std::vector(1, std::move(_fuzz2115)));
+                fuzz2115 = std::vector(1, std::move(_fuzz2115));
                 return *this;
             }
 
@@ -589,7 +589,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2116(rerun::components::AffixFuzzer16 _fuzz2116) {
-                fuzz2116 = std::move(std::vector(1, std::move(_fuzz2116)));
+                fuzz2116 = std::vector(1, std::move(_fuzz2116));
                 return *this;
             }
 
@@ -599,7 +599,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2117(rerun::components::AffixFuzzer17 _fuzz2117) {
-                fuzz2117 = std::move(std::vector(1, std::move(_fuzz2117)));
+                fuzz2117 = std::vector(1, std::move(_fuzz2117));
                 return *this;
             }
 
@@ -609,7 +609,7 @@ namespace rerun {
             }
 
             AffixFuzzer1& with_fuzz2118(rerun::components::AffixFuzzer18 _fuzz2118) {
-                fuzz2118 = std::move(std::vector(1, std::move(_fuzz2118)));
+                fuzz2118 = std::vector(1, std::move(_fuzz2118));
                 return *this;
             }
 

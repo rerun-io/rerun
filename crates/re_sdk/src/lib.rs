@@ -72,13 +72,13 @@ pub mod time {
 /// and can be used in [`MsgSender::with_component`].
 pub mod components {
     pub use re_components::{
-        Box3D, EncodedMesh3D, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, MeshId, Pinhole,
-        Quaternion, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor, TensorData,
-        TensorDataMeaning, TensorDimension, TensorId, TextEntry, ViewCoordinates,
+        Box3D, EncodedMesh3D, Mesh3D, MeshFormat, MeshId, Pinhole, Quaternion, RawMesh3D, Rect2D,
+        Scalar, ScalarPlotProps, Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId,
+        TextEntry, ViewCoordinates,
     };
     pub use re_types::components::{
         AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
-        Label, Origin3D, Point2D, Point3D, Radius, Transform3D, Vector3D,
+        Label, LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, Transform3D, Vector3D,
     };
 }
 

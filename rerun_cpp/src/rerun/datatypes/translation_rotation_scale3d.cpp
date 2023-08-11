@@ -13,25 +13,10 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &TranslationRotationScale3D::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field(
-                    "translation",
-                    rerun::datatypes::Vec3D::to_arrow_datatype(),
-                    true,
-                    nullptr
-                ),
-                arrow::field(
-                    "rotation",
-                    rerun::datatypes::Rotation3D::to_arrow_datatype(),
-                    true,
-                    nullptr
-                ),
-                arrow::field(
-                    "scale",
-                    rerun::datatypes::Scale3D::to_arrow_datatype(),
-                    true,
-                    nullptr
-                ),
-                arrow::field("from_parent", arrow::boolean(), false, nullptr),
+                arrow::field("translation", rerun::datatypes::Vec3D::to_arrow_datatype(), true),
+                arrow::field("rotation", rerun::datatypes::Rotation3D::to_arrow_datatype(), true),
+                arrow::field("scale", rerun::datatypes::Scale3D::to_arrow_datatype(), true),
+                arrow::field("from_parent", arrow::boolean(), false),
             });
             return datatype;
         }
@@ -65,21 +50,63 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            return arrow::Status::NotImplemented(
-                "TODO(andreas): extensions in structs are not yet supported"
-            );
-            return arrow::Status::NotImplemented(
-                "TODO(andreas): extensions in structs are not yet supported"
-            );
-            return arrow::Status::NotImplemented(
-                "TODO(andreas): extensions in structs are not yet supported"
-            );
             {
-                auto element_builder =
+                auto field_builder =
+                    static_cast<arrow::FixedSizeListBuilder *>(builder->field_builder(0));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto &element = elements[elem_idx];
+                    if (element.translation.has_value()) {
+                        ARROW_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
+                            field_builder,
+                            &element.translation.value(),
+                            1
+                        ));
+                    } else {
+                        ARROW_RETURN_NOT_OK(field_builder->AppendNull());
+                    }
+                }
+            }
+            {
+                auto field_builder =
+                    static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(1));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto &element = elements[elem_idx];
+                    if (element.rotation.has_value()) {
+                        ARROW_RETURN_NOT_OK(rerun::datatypes::Rotation3D::fill_arrow_array_builder(
+                            field_builder,
+                            &element.rotation.value(),
+                            1
+                        ));
+                    } else {
+                        ARROW_RETURN_NOT_OK(field_builder->AppendNull());
+                    }
+                }
+            }
+            {
+                auto field_builder =
+                    static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(2));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto &element = elements[elem_idx];
+                    if (element.scale.has_value()) {
+                        ARROW_RETURN_NOT_OK(rerun::datatypes::Scale3D::fill_arrow_array_builder(
+                            field_builder,
+                            &element.scale.value(),
+                            1
+                        ));
+                    } else {
+                        ARROW_RETURN_NOT_OK(field_builder->AppendNull());
+                    }
+                }
+            }
+            {
+                auto field_builder =
                     static_cast<arrow::BooleanBuilder *>(builder->field_builder(3));
-                ARROW_RETURN_NOT_OK(element_builder->Reserve(num_elements));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(element_builder->Append(elements[elem_idx].from_parent));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
+                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].from_parent));
                 }
             }
             ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));

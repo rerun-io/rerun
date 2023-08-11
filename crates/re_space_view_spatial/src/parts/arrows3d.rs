@@ -55,7 +55,7 @@ impl Arrows3DPart {
         .filter_map(
             move |(annotation_info, vector, origin, label, color, labeled_instance)| {
                 let origin = origin.unwrap_or_default();
-                let label = annotation_info.label(label.map(|l| l.0).as_ref());
+                let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
                 match (vector, label) {
                     (vector, Some(label)) => {
                         let midpoint =

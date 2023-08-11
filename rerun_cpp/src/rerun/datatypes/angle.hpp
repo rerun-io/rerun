@@ -11,7 +11,7 @@
 namespace rerun {
     namespace datatypes {
         namespace detail {
-            enum class AngleTag {
+            enum class AngleTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We
                 /// need to be able to leave the object in a state which we can run the destructor
                 /// on.
@@ -74,14 +74,14 @@ namespace rerun {
                 Angle self;
                 self._tag = detail::AngleTag::Radians;
                 self._data.radians = std::move(radians);
-                return std::move(self);
+                return self;
             }
 
             static Angle degrees(float degrees) {
                 Angle self;
                 self._tag = detail::AngleTag::Degrees;
                 self._data.degrees = std::move(degrees);
-                return std::move(self);
+                return self;
             }
 
             /// Returns the arrow data type this type corresponds to.

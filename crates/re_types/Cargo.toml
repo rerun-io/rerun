@@ -43,12 +43,13 @@ testing = []
 re_error.workspace = true
 
 # External
+anyhow.workspace = true
+array-init = "2.1"
 arrow2 = { workspace = true, features = [
   "io_ipc",
   "io_print",
   "compute_concatenate",
 ] }
-anyhow.workspace = true
 arrow2_convert.workspace = true
 backtrace = "0.3"
 bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }

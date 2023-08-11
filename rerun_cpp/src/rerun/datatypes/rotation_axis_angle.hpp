@@ -24,6 +24,12 @@ namespace rerun {
             rerun::datatypes::Angle angle;
 
           public:
+            // Extensions to generated type defined in 'rotation_axis_angle_ext.cpp'
+
+            RotationAxisAngle(const Vec3D& _axis, const Angle& _angle)
+                : axis(_axis), angle(_angle) {}
+
+          public:
             RotationAxisAngle() = default;
 
             /// Returns the arrow data type this type corresponds to.

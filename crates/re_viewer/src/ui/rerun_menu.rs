@@ -66,6 +66,9 @@ impl App {
                 UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
 
                 UICommand::ToggleMemoryPanel.menu_button_ui(ui, &self.command_sender);
+
+                #[cfg(debug_assertions)]
+                UICommand::ToggleStylePanel.menu_button_ui(ui, &self.command_sender);
             }
 
             ui.add_space(spacing);

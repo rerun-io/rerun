@@ -16,7 +16,7 @@
 namespace rerun {
     namespace datatypes {
         namespace detail {
-            enum class AffixFuzzer3Tag {
+            enum class AffixFuzzer3Tag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We
                 /// need to be able to leave the object in a state which we can run the destructor
                 /// on.
@@ -114,14 +114,14 @@ namespace rerun {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::degrees;
                 self._data.degrees = std::move(degrees);
-                return std::move(self);
+                return self;
             }
 
             static AffixFuzzer3 radians(std::optional<float> radians) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::radians;
                 self._data.radians = std::move(radians);
-                return std::move(self);
+                return self;
             }
 
             static AffixFuzzer3 craziness(std::vector<rerun::datatypes::AffixFuzzer1> craziness) {
@@ -129,7 +129,7 @@ namespace rerun {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::craziness;
                 new (&self._data.craziness) TypeAlias(std::move(craziness));
-                return std::move(self);
+                return self;
             }
 
             static AffixFuzzer3 fixed_size_shenanigans(float fixed_size_shenanigans[3]) {
@@ -139,7 +139,7 @@ namespace rerun {
                 for (size_t i = 0; i < 3; i += 1) {
                     self._data.fixed_size_shenanigans[i] = std::move(fixed_size_shenanigans[i]);
                 }
-                return std::move(self);
+                return self;
             }
 
             /// Returns the arrow data type this type corresponds to.

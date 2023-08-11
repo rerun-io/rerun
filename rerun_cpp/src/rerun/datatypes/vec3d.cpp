@@ -9,7 +9,7 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &Vec3D::to_arrow_datatype() {
             static const auto datatype =
-                arrow::fixed_size_list(arrow::field("item", arrow::float32(), false, nullptr), 3);
+                arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 3);
             return datatype;
         }
 
@@ -39,11 +39,11 @@ namespace rerun {
 
             auto value_builder = static_cast<arrow::FloatBuilder *>(builder->value_builder());
 
+            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements));
             static_assert(sizeof(elements[0].xyz) == sizeof(elements[0]));
             ARROW_RETURN_NOT_OK(
                 value_builder->AppendValues(elements[0].xyz, num_elements * 3, nullptr)
             );
-            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements));
 
             return arrow::Status::OK();
         }

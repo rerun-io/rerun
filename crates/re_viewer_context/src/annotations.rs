@@ -159,13 +159,13 @@ impl ResolvedAnnotationInfo {
         }
     }
 
-    pub fn label(&self, label: Option<&String>) -> Option<String> {
+    pub fn label(&self, label: Option<&str>) -> Option<String> {
         if let Some(label) = label {
-            Some(label.clone())
+            Some(label.to_owned())
         } else {
             self.annotation_info
                 .as_ref()
-                .and_then(|info| info.label.as_ref().map(|label| label.0.clone()))
+                .and_then(|info| info.label.as_ref().map(|label| label.0.as_str().to_owned()))
         }
     }
 }

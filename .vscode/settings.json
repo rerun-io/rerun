@@ -79,4 +79,6 @@
         "--config",
         "rerun_py/pyproject.toml"
     ],
+    "cmake.buildDirectory": "${workspaceRoot}/build/",
+    "C_Cpp.autoAddFileAssociations": false
 }

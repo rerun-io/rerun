@@ -16,12 +16,13 @@ use std::{collections::HashSet, f32::consts::TAU};
 
 use itertools::Itertools;
 use rerun::{
+    archetypes::{AnnotationContext, LineStrips2D, LineStrips3D, Points2D, Transform3D},
     components::{
-        Box3D, Color, DrawOrder, Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D,
-        Tensor, TensorDataMeaning, TextEntry, ViewCoordinates,
+        Box3D, Color, DrawOrder, Label, Point2D, Point3D, Radius, Rect2D, Tensor,
+        TensorDataMeaning, TextEntry, ViewCoordinates,
     },
     coordinates::SignedAxis3,
-    datatypes::{AnnotationInfo, TranslationRotationScale3D, Vec2D, Vec3D},
+    datatypes::{Angle, AnnotationInfo, RotationAxisAngle, TranslationRotationScale3D, Vec3D},
     external::{
         re_log, re_log_types,
         re_log_types::external::{arrow2, arrow2_convert},
@@ -38,14 +39,11 @@ fn test_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Color::from_rgb(0, 255, 0)])?
         .with_component(&[Radius(0.005)])?
-        .with_component(&[Label("box/t0".to_owned())])?
+        .with_component(&[Label("box/t0".into())])?
         .send(rec_stream)?;
     MsgSender::from_archetype(
         "bbox_test/bbox",
-        &rerun::archetypes::Transform3D::new(rerun::datatypes::RotationAxisAngle::new(
-            glam::Vec3::Z,
-            rerun::datatypes::Angle::Degrees(180.0),
-        )),
+        &Transform3D::new(RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0))),
     )?
     .send(rec_stream)?;
 
@@ -54,13 +52,13 @@ fn test_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Color::from_rgb(255, 255, 0)])?
         .with_component(&[Radius(0.01)])?
-        .with_component(&[Label("box/t1".to_owned())])?
+        .with_component(&[Label("box/t1".into())])?
         .send(rec_stream)?;
     MsgSender::from_archetype(
         "bbox_test/bbox",
-        &rerun::archetypes::Transform3D::new(rerun::datatypes::RotationAxisAngle::new(
+        &Transform3D::new(RotationAxisAngle::new(
             [1.0, 0.0, 0.0],
-            rerun::datatypes::Angle::Degrees(180.0),
+            Angle::Degrees(180.0),
         )),
     )?
     .send(rec_stream)?;
@@ -209,7 +207,7 @@ fn test_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
     MsgSender::new("3d_points/single_point_labeled")
         .with_component(&[Point3D::new(0.0, 0.0, 0.0)])?
-        .with_component(&[Label("labeled point".to_owned())])?
+        .with_component(&[Label("labeled point".into())])?
         .send(rec_stream)?;
 
     fn create_points(
@@ -224,7 +222,7 @@ fn test_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             let i = i as f32;
             let t = 1.0 - i / (n - 1) as f32;
             (
-                Label(i.to_string()),
+                Label(i.to_string().into()),
                 Point3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
                 Radius(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
                 Color::from_rgb(rng.gen(), rng.gen(), rng.gen()),
@@ -343,17 +341,14 @@ fn test_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .send(rec_stream)?;
 
     // Lines behind the rectangle.
-    MsgSender::new("2d_layering/lines_behind_rect")
-        .with_component(&[LineStrip2D(
-            (0..20)
-                .map(|i| Vec2D([(i * 20) as f32, (i % 2 * 100 + 100) as f32]).into())
-                .collect(),
-        )])?
-        .with_component(&[DrawOrder(1.25)])?
-        .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "2d_layering/lines_behind_rect",
+        &LineStrips2D::new([(0..20).map(|i| ((i * 20) as f32, (i % 2 * 100 + 100) as f32))])
+            .with_draw_order(1.25),
+    )?
+    .send(rec_stream)?;
 
     // And some points in front of the rectangle.
-    use rerun::archetypes::Points2D;
     MsgSender::from_archetype(
         "2d_layering/points_between_top_and_middle",
         &Points2D::new(
@@ -395,7 +390,6 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .send(rec_stream)?;
 
     // Log a bunch of classified 2D points
-    use rerun::archetypes::Points2D;
     MsgSender::from_archetype(
         "seg_test/single_point",
         &Points2D::new([(64.0, 64.0)]).with_class_ids([13]),
@@ -433,7 +427,6 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
     rec_stream.set_time_seconds("sim_time", 2f64);
 
-    use rerun::archetypes::AnnotationContext;
     MsgSender::from_archetype(
         "seg_test",
         &AnnotationContext::new([(13, "label1"), (42, "label2"), (99, "label3")]),
@@ -580,21 +573,21 @@ fn test_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
     // paths where the planet & moon move
     let create_path = |distance: f32| {
-        LineStrip3D(
-            (0..=100)
-                .map(|i| {
-                    let angle = i as f32 * 0.01 * TAU;
-                    Vec3D::new(angle.sin() * distance, angle.cos() * distance, 0.0).into()
-                })
-                .collect(),
-        )
+        LineStrips3D::new([(0..=100).map(|i| {
+            let angle = i as f32 * 0.01 * TAU;
+            (angle.sin() * distance, angle.cos() * distance, 0.0)
+        })])
     };
-    MsgSender::new("transforms3d/sun/planet_path")
-        .with_component(&[create_path(sun_to_planet_distance)])?
-        .send(rec_stream)?;
-    MsgSender::new("transforms3d/sun/planet/moon_path")
-        .with_component(&[create_path(planet_to_moon_distance)])?
-        .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "transforms3d/sun/planet_path",
+        &create_path(sun_to_planet_distance),
+    )?
+    .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "transforms3d/sun/planet/moon_path",
+        &create_path(planet_to_moon_distance),
+    )?
+    .send(rec_stream)?;
 
     for i in 0..6 * 120 {
         let time = i as f32 / 120.0;
@@ -603,25 +596,20 @@ fn test_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
         MsgSender::from_archetype(
             "transforms3d/sun/planet",
-            &rerun::archetypes::Transform3D::new(
-                rerun::datatypes::TranslationRotationScale3D::rigid(
-                    [
-                        (time * rotation_speed_planet).sin() * sun_to_planet_distance,
-                        (time * rotation_speed_planet).cos() * sun_to_planet_distance,
-                        0.0,
-                    ],
-                    rerun::datatypes::RotationAxisAngle::new(
-                        glam::Vec3::X,
-                        rerun::datatypes::Angle::Degrees(20.0),
-                    ),
-                ),
-            ),
+            &Transform3D::new(rerun::datatypes::TranslationRotationScale3D::rigid(
+                [
+                    (time * rotation_speed_planet).sin() * sun_to_planet_distance,
+                    (time * rotation_speed_planet).cos() * sun_to_planet_distance,
+                    0.0,
+                ],
+                RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
+            )),
         )?
         .send(rec_stream)?;
 
         MsgSender::from_archetype(
             "transforms3d/sun/planet/moon",
-            &rerun::archetypes::Transform3D::new(
+            &Transform3D::new(
                 TranslationRotationScale3D::from(Vec3D::new(
                     (time * rotation_speed_moon).cos() * planet_to_moon_distance,
                     (time * rotation_speed_moon).sin() * planet_to_moon_distance,

@@ -87,41 +87,40 @@ def log_point(
     """
     from rerun.experimental import Points2D, Points3D, log
 
+    if position is None:
+        raise ValueError("`position` argument must be set")
+
     recording = RecordingStream.to_native(recording)
 
     if keypoint_id is not None and class_id is None:
         class_id = 0
-    if position is not None:
-        position = np.require(position, dtype="float32")
-    else:
-        raise ValueError("`position` argument must be set")
 
-    if position is not None:
-        if position.size == 2:
-            points2d = Points2D(
-                points=position,
-                radii=radius,
-                colors=color,
-                labels=label,
-                draw_order=draw_order,
-                class_ids=class_id,
-                keypoint_ids=keypoint_id,
-            )
-            return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
-        elif position.size == 3:
-            if draw_order is not None:
-                raise ValueError("`draw_order` is only supported for 3D points")
-            points3d = Points3D(
-                points=position,
-                radii=radius,
-                colors=color,
-                labels=label,
-                class_ids=class_id,
-                keypoint_ids=keypoint_id,
-            )
-            return log(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
-        else:
-            raise TypeError("Position must have a total size of 2 or 3")
+    position = np.require(position, dtype="float32")
+    if position.size == 2:
+        points2d = Points2D(
+            points=position,
+            radii=radius,
+            colors=color,
+            labels=label,
+            draw_order=draw_order,
+            class_ids=class_id,
+            keypoint_ids=keypoint_id,
+        )
+        return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
+    elif position.size == 3:
+        if draw_order is not None:
+            raise ValueError("`draw_order` is only supported for 3D points")
+        points3d = Points3D(
+            points=position,
+            radii=radius,
+            colors=color,
+            labels=label,
+            class_ids=class_id,
+            keypoint_ids=keypoint_id,
+        )
+        return log(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
+    else:
+        raise TypeError("Position must have a total size of 2 or 3")
 
 
 @log_decorator
@@ -198,14 +197,15 @@ def log_points(
     """
     from rerun.experimental import Points2D, Points3D, log
 
+    if positions is None:
+        raise ValueError("`positions` argument must be set")
+
     recording = RecordingStream.to_native(recording)
 
     if keypoint_ids is not None and class_ids is None:
         class_ids = 0
-    if positions is None:
-        raise ValueError("`positions` argument must be set")
-    else:
-        positions = np.require(positions, dtype="float32")
+
+    positions = np.require(positions, dtype="float32")
 
     identifiers_np = np.array((), dtype="uint64")
     if identifiers is not None:
@@ -214,32 +214,31 @@ def log_points(
         except ValueError:
             _send_warning("Only integer identifiers supported", 1)
 
-    if positions.any():
-        if positions.shape[1] == 2:
-            points2d = Points2D(
-                points=positions,
-                radii=radii,
-                colors=colors,
-                labels=labels,
-                draw_order=draw_order,
-                class_ids=class_ids,
-                keypoint_ids=keypoint_ids,
-                instance_keys=identifiers_np,
-            )
-            return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
-        elif positions.shape[1] == 3:
-            if draw_order is not None:
-                raise ValueError("`draw_order` is only supported for 3D points")
+    if positions.shape[1] == 2:
+        points2d = Points2D(
+            points=positions,
+            radii=radii,
+            colors=colors,
+            labels=labels,
+            draw_order=draw_order,
+            class_ids=class_ids,
+            keypoint_ids=keypoint_ids,
+            instance_keys=identifiers_np,
+        )
+        return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
+    elif positions.shape[1] == 3:
+        if draw_order is not None:
+            raise ValueError("`draw_order` is only supported for 3D points")
 
-            points3d = Points3D(
-                points=positions,
-                radii=radii,
-                colors=colors,
-                labels=labels,
-                class_ids=class_ids,
-                keypoint_ids=keypoint_ids,
-                instance_keys=identifiers_np,
-            )
-            return log(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
-        else:
-            raise TypeError("Positions should be Nx2 or Nx3")
+        points3d = Points3D(
+            points=positions,
+            radii=radii,
+            colors=colors,
+            labels=labels,
+            class_ids=class_ids,
+            keypoint_ids=keypoint_ids,
+            instance_keys=identifiers_np,
+        )
+        return log(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
+    else:
+        raise TypeError("Positions should be Nx2 or Nx3")

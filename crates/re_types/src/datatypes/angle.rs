@@ -36,7 +36,8 @@ impl<'a> From<&'a Angle> for ::std::borrow::Cow<'a, Angle> {
 impl crate::Loggable for Angle {
     type Name = crate::DatatypeName;
     type Item<'a> = Option<Self>;
-    type Iter<'a> = Box<dyn Iterator<Item = Self::Item<'a>> + 'a>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Angle".into()
@@ -176,13 +177,11 @@ impl crate::Loggable for Angle {
                                 nulls_offset += 1;
                                 offset
                             }
-
                             Some(Angle::Radians(_)) => {
                                 let offset = radians_offset;
                                 radians_offset += 1;
                                 offset
                             }
-
                             Some(Angle::Degrees(_)) => {
                                 let offset = degrees_offset;
                                 degrees_offset += 1;
@@ -225,7 +224,6 @@ impl crate::Loggable for Angle {
                     (data.types(), data.fields(), data.offsets().unwrap());
                 let radians = {
                     let data = &*data_arrays[1usize];
-
                     data.as_any()
                         .downcast_ref::<Float32Array>()
                         .unwrap()
@@ -235,7 +233,6 @@ impl crate::Loggable for Angle {
                 };
                 let degrees = {
                     let data = &*data_arrays[2usize];
-
                     data.as_any()
                         .downcast_ref::<Float32Array>()
                         .unwrap()
@@ -248,15 +245,13 @@ impl crate::Loggable for Angle {
                     .enumerate()
                     .map(|(i, typ)| {
                         let offset = data_offsets[i];
-
                         if *typ == 0 {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Angle::Radians(
-                                    radians
-                                        .get(offset as usize)
-                                        .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                1i8 => Angle::Radians({
+                                    if offset as usize >= radians.len() {
+                                        return Err(crate::DeserializationError::OffsetsMismatch {
                                             bounds: (offset as usize, offset as usize),
                                             len: radians.len(),
                                             backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -264,14 +259,17 @@ impl crate::Loggable for Angle {
                                         .map_err(|err| crate::DeserializationError::Context {
                                             location: "rerun.datatypes.Angle#Radians".into(),
                                             source: Box::new(err),
-                                        })?
+                                        });
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { radians.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap(),
-                                ),
-                                2i8 => Angle::Degrees(
-                                    degrees
-                                        .get(offset as usize)
-                                        .ok_or(crate::DeserializationError::OffsetsMismatch {
+                                        .unwrap()
+                                }),
+                                2i8 => Angle::Degrees({
+                                    if offset as usize >= degrees.len() {
+                                        return Err(crate::DeserializationError::OffsetsMismatch {
                                             bounds: (offset as usize, offset as usize),
                                             len: degrees.len(),
                                             backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -279,10 +277,14 @@ impl crate::Loggable for Angle {
                                         .map_err(|err| crate::DeserializationError::Context {
                                             location: "rerun.datatypes.Angle#Degrees".into(),
                                             source: Box::new(err),
-                                        })?
+                                        });
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { degrees.get_unchecked(offset as usize) }
                                         .clone()
-                                        .unwrap(),
-                                ),
+                                        .unwrap()
+                                }),
                                 _ => unreachable!(),
                             }))
                         }
@@ -303,7 +305,7 @@ impl crate::Loggable for Angle {
     where
         Self: Sized,
     {
-        Ok(Box::new(Self::try_from_arrow_opt(data)?.into_iter()))
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
     }
 
     #[inline]

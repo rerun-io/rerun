@@ -445,6 +445,9 @@ impl ReUi {
         response
     }
 
+    /// Show a prominent collapsing header to be used as section delimitation in side panels.
+    ///
+    /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
     #[allow(clippy::unused_self)]
     pub fn large_collapsing_header<R>(
         &self,
@@ -512,7 +515,10 @@ impl ReUi {
                     .galley_with_color(text_pos, galley, visuals.text_color());
 
                 // Let the rect cover the full panel width:
-                let bg_rect = rect.expand2(egui::vec2(1000.0, 0.0));
+                let mut bg_rect = rect;
+                bg_rect.extend_with_x(ui.clip_rect().right());
+                bg_rect.extend_with_x(ui.clip_rect().left());
+
                 ui.painter().set(
                     background_frame,
                     Shape::rect_filled(bg_rect, 0.0, visuals.bg_fill),

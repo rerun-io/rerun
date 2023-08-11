@@ -13,7 +13,23 @@ namespace rerun {
             float xy[2];
 
           public:
+            // Extensions to generated type defined in 'vec2d_ext.cpp'
+
+            /// Construct Vec2D from x/y values.
+            Vec2D(float x, float y) : xy{x, y} {}
+
+            float x() const {
+                return xy[0];
+            }
+
+            float y() const {
+                return xy[1];
+            }
+
+          public:
             Vec2D() = default;
+
+            Vec2D(const float (&_xy)[2]) : xy{_xy[0], _xy[1]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

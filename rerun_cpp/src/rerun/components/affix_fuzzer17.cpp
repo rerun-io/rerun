@@ -10,20 +10,17 @@
 
 namespace rerun {
     namespace components {
-        const char* AffixFuzzer17::NAME = "rerun.testing.components.AffixFuzzer17";
+        const char *AffixFuzzer17::NAME = "rerun.testing.components.AffixFuzzer17";
 
-        const std::shared_ptr<arrow::DataType>& AffixFuzzer17::to_arrow_datatype() {
-            static const auto datatype = arrow::list(arrow::field(
-                "item",
-                rerun::datatypes::AffixFuzzer3::to_arrow_datatype(),
-                true,
-                nullptr
-            ));
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer17::to_arrow_datatype() {
+            static const auto datatype = arrow::list(
+                arrow::field("item", rerun::datatypes::AffixFuzzer3::to_arrow_datatype(), false)
+            );
             return datatype;
         }
 
         arrow::Result<std::shared_ptr<arrow::ListBuilder>> AffixFuzzer17::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
+            arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
@@ -36,7 +33,7 @@ namespace rerun {
         }
 
         arrow::Status AffixFuzzer17::fill_arrow_array_builder(
-            arrow::ListBuilder* builder, const AffixFuzzer17* elements, size_t num_elements
+            arrow::ListBuilder *builder, const AffixFuzzer17 *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -45,18 +42,36 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            return arrow::Status::NotImplemented(
-                "TODO(andreas): custom data types in lists/fixedsizelist are not yet implemented"
-            );
+            auto value_builder = static_cast<arrow::DenseUnionBuilder *>(builder->value_builder());
+            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 1));
+
+            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto &element = elements[elem_idx];
+                if (element.many_optional_unions.has_value()) {
+                    ARROW_RETURN_NOT_OK(builder->Append());
+                    if (element.many_optional_unions.value().data()) {
+                        ARROW_RETURN_NOT_OK(
+                            rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
+                                value_builder,
+                                element.many_optional_unions.value().data(),
+                                element.many_optional_unions.value().size()
+                            )
+                        );
+                    }
+                } else {
+                    ARROW_RETURN_NOT_OK(builder->AppendNull());
+                }
+            }
 
             return arrow::Status::OK();
         }
 
         arrow::Result<rerun::DataCell> AffixFuzzer17::to_data_cell(
-            const AffixFuzzer17* instances, size_t num_instances
+            const AffixFuzzer17 *instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool* pool = arrow::default_memory_pool();
+            arrow::MemoryPool *pool = arrow::default_memory_pool();
 
             ARROW_ASSIGN_OR_RAISE(auto builder, AffixFuzzer17::new_arrow_array_builder(pool));
             if (instances && num_instances > 0) {

@@ -10,13 +10,13 @@ impl Level {
 impl From<String> for Level {
     #[inline]
     fn from(value: String) -> Self {
-        Self(value)
+        Self(value.into())
     }
 }
 
 impl From<&str> for Level {
     #[inline]
     fn from(value: &str) -> Self {
-        Self(value.to_owned())
+        Self(value.into())
     }
 }

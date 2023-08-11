@@ -1,4 +1,5 @@
 //! Log a simple line strip.
+
 use rerun::{
     components::{LineStrip2D, Rect2D},
     datatypes::Vec4D,

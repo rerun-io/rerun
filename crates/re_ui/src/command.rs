@@ -32,6 +32,9 @@ pub enum UICommand {
     ToggleSelectionPanel,
     ToggleTimePanel,
 
+    #[cfg(debug_assertions)]
+    ToggleStylePanel,
+
     #[cfg(not(target_arch = "wasm32"))]
     ToggleFullscreen,
     #[cfg(not(target_arch = "wasm32"))]
@@ -104,6 +107,12 @@ impl UICommand {
             UICommand::ToggleBlueprintPanel => ("Toggle Blueprint Panel", "Toggle the left panel"),
             UICommand::ToggleSelectionPanel => ("Toggle Selection Panel", "Toggle the right panel"),
             UICommand::ToggleTimePanel => ("Toggle Time Panel", "Toggle the bottom panel"),
+
+            #[cfg(debug_assertions)]
+            UICommand::ToggleStylePanel => (
+                "Toggle Style Panel",
+                "View and change global egui style settings",
+            ),
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => (
@@ -191,6 +200,9 @@ impl UICommand {
             UICommand::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             UICommand::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             UICommand::ToggleTimePanel => Some(ctrl_shift(Key::T)),
+
+            #[cfg(debug_assertions)]
+            UICommand::ToggleStylePanel => Some(ctrl_shift(Key::U)),
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => Some(key(Key::F11)),
