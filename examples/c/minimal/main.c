@@ -4,7 +4,7 @@
 int main(void) {
     printf("Rerun C SDK Version: %s\n", rr_version_string());
 
-    const struct rr_store_info store_info = {
+    const rr_store_info store_info = {
         .application_id = "c-example-app",
         .store_kind = RERUN_STORE_KIND_RECORDING,
     };

@@ -10,11 +10,20 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+// C99 compliant static assertion macro.
+
+#define STATIC_ASSERT(COND, MSG) typedef char static_assertion_##MSG[(COND) ? 1 : -1]
+
 // ----------------------------------------------------------------------------
 // Types:
 
-#define RERUN_STORE_KIND_RECORDING 1
-#define RERUN_STORE_KIND_BLUEPRINT 2
+/// Type of store log messages are sent to.
+typedef int32_t rr_store_kind;
+
+enum {
+    RERUN_STORE_KIND_RECORDING = 1,
+    RERUN_STORE_KIND_BLUEPRINT = 2,
+};
 
 /// Special value for `rr_recording_stream` methods to indicate the most appropriate
 /// globally available recording stream for recordings.
@@ -50,16 +59,16 @@ extern "C" {
 /// set it as a the global.
 typedef uint32_t rr_recording_stream;
 
-struct rr_store_info {
+typedef struct {
     /// The user-chosen name of the application doing the logging.
     const char* application_id;
 
     /// `RERUN_STORE_KIND_RECORDING` or `RERUN_STORE_KIND_BLUEPRINT`
-    int32_t store_kind;
-};
+    rr_store_kind store_kind;
+} rr_store_info;
 
 /// Arrow-encoded data of a single component for a single entity.
-struct rr_data_cell {
+typedef struct {
     const char* component_name;
 
     /// The number of bytes in the `bytes` field.
@@ -73,11 +82,11 @@ struct rr_data_cell {
     /// * <https://arrow.apache.org/docs/format/Columnar.html#format-ipc>
     /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
     const uint8_t* bytes;
-};
+} rr_data_cell;
 
 /// Arrow-encoded log data for a single entity.
 /// May contain many components.
-struct rr_data_row {
+typedef struct {
     /// Where to log to, e.g. `world/camera`.
     const char* entity_path;
 
@@ -89,8 +98,8 @@ struct rr_data_row {
     uint32_t num_data_cells;
 
     /// One for each component.
-    const struct rr_data_cell* data_cells;
-};
+    const rr_data_cell* data_cells;
+} rr_data_row;
 
 // ----------------------------------------------------------------------------
 // Functions:
@@ -105,7 +114,7 @@ extern const char* rr_version_string(void);
 /// Usually you only have one recording stream, so you can call
 /// `rr_recording_stream_set_global` afterwards once to make it available globally via
 /// `RERUN_REC_STREAM_CURRENT_RECORDING` and `RERUN_REC_STREAM_CURRENT_BLUEPRINT` respectively.
-extern rr_recording_stream rr_recording_stream_new(const struct rr_store_info* store_info);
+extern rr_recording_stream rr_recording_stream_new(const rr_store_info* store_info);
 
 /// Free the given recording stream. The handle will be invalid after this.
 ///
@@ -118,11 +127,13 @@ extern void rr_recording_stream_free(rr_recording_stream stream);
 
 /// Replaces the currently active recording of the specified type in the global scope with
 /// the specified one.
-extern void rr_recording_stream_set_global(rr_recording_stream stream, int32_t store_kind);
+extern void rr_recording_stream_set_global(rr_recording_stream stream, rr_store_kind store_kind);
 
 /// Replaces the currently active recording of the specified type in the thread-local scope
 /// with the specified one.
-extern void rr_recording_stream_set_thread_local(rr_recording_stream stream, int32_t store_kind);
+extern void rr_recording_stream_set_thread_local(
+    rr_recording_stream stream, rr_store_kind store_kind
+);
 
 /// Connect to a remote Rerun Viewer on the given ip:port.
 ///
@@ -157,9 +168,7 @@ extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 /// overridden using the recording streams internal clock.
 ///
 /// No-op for destroyed/non-existing streams.
-extern void rr_log(
-    rr_recording_stream stream, const struct rr_data_row* data_row, bool inject_time
-);
+extern void rr_log(rr_recording_stream stream, const rr_data_row* data_row, bool inject_time);
 
 // ----------------------------------------------------------------------------
 
