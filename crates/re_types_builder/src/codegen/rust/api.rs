@@ -713,8 +713,7 @@ fn quote_trait_impls_from_obj(
 
             let quoted_serializer =
                 quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
-            let quoted_deserializer =
-                quote_arrow_deserializer(arrow_registry, objects, obj, &format_ident!("data"));
+            let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
 
             let into_cow = quote! {
                 // NOTE: We need these so end-user code can effortlessly serialize both iterators

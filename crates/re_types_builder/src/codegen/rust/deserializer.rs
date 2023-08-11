@@ -13,16 +13,46 @@ use crate::{
 
 // ---
 
-/// The returned `TokenStream` always instantiates a `Vec<Option<T>>`.
+/// This generates code that deserializes a runtime Arrow payload into the specified `obj`, taking
+/// Arrow-transparency into account.
 ///
 /// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
 /// returns a `Result<_, DeserializationError>`!
+///
+/// There is a 1:1 relationship between `quote_arrow_deserializer` and `Loggable::try_from_arrow_opt`:
+/// ```ignore
+/// fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>> {
+///     Ok(#quoted_deserializer)
+/// }
+/// ```
+///
+/// This tells you two things:
+/// - The runtime Arrow payload is always held in a variable `data`, identified as `data_src` below.
+/// - The returned `TokenStream` must always instantiates a `Vec<Option<Self>>`.
+///
+/// ## Understanding datatypes
+///
+/// There are three (!) datatypes involved in the deserialization process:
+/// - The object's native Rust type, which was derived from its IDL definition by the codegen
+///   framework.
+/// - The object's Arrow datatype, which was also derived from its IDL definition.
+/// - The runtime payload's advertised Arrow datatype.
+///
+/// The deserialization process is _entirely_ driven by our own compile-time IDL-derived definitions:
+/// the runtime payload's advertised Arrow datatype is only ever used as a mean of checking whether
+/// the data we receive can be coerced one way or another into something that fit our schema.
+///
+/// In some places that coercion can be very strict (if the data doesn't match exactly, we abort
+/// with a runtime error) while in other it might be more relaxed for performance reasons
+/// (e.g. ignore the fact that the data has a bitmap altogether).
 pub fn quote_arrow_deserializer(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     obj: &Object,
-    data_src: &proc_macro2::Ident,
 ) -> TokenStream {
+    // Runtime indentifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
+    let data_src = format_ident!("data");
+
     let datatype = &arrow_registry.get(&obj.fqname);
     let quoted_datatype = ArrowDataTypeTokenizer(datatype, false);
 
@@ -36,7 +66,6 @@ pub fn quote_arrow_deserializer(
         let obj_field = &obj.fields[0];
         let obj_field_fqname = obj_field.fqname.as_str();
 
-        let data_src = data_src.clone();
         let data_dst = format_ident!(
             "{}",
             if is_tuple_struct {
@@ -79,8 +108,6 @@ pub fn quote_arrow_deserializer(
             .with_context(#obj_fqname)?
         }
     } else {
-        let data_src = data_src.clone();
-
         // NOTE: This can only be struct or union/enum at this point.
         match datatype.to_logical_type() {
             DataType::Struct(_) => {
@@ -312,6 +339,13 @@ pub fn quote_arrow_deserializer(
     }
 }
 
+/// This generates code that deserializes a runtime Arrow payload according to the specified `datatype`.
+///
+/// The `datatype` comes from our compile-time Arrow registry, not from the runtime payload!
+/// If the datatype happens to be a struct or union, this will merely inject a runtime call to
+/// `Loggable::try_from_arrow_opt` and call it a day, preventing code bloat.
+///
+/// `data_src` is the runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
 /// The returned `TokenStream` always instantiates a `Vec<Option<T>>`.
 ///
 /// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
@@ -321,7 +355,7 @@ fn quote_arrow_field_deserializer(
     datatype: &DataType,
     is_nullable: bool,
     obj_field_fqname: &str,
-    data_src: &proc_macro2::Ident,
+    data_src: &proc_macro2::Ident, // &dyn ::arrow2::array::Array
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
 
@@ -616,7 +650,8 @@ fn quote_arrow_field_deserializer(
     }
 }
 
-/// Generates tokens that downcast the given array `arr` as `typ`, making sure to inject proper error handling.
+/// Generates tokens that downcast the runtime Arrow array identifier by `arr` as `cast_as`, making sure
+/// to inject proper error handling.
 fn quote_array_downcast(
     location: impl AsRef<str>,
     arr: &proc_macro2::Ident,
@@ -638,10 +673,15 @@ fn quote_array_downcast(
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
 enum IteratorKind {
+    /// `Iterator<Item = DeserializationResult<Option<T>>>`.
     ResultOptionValue,
+    /// `Iterator<Item = Option<DeserializationResult<T>>>`.
     OptionResultValue,
+    /// `Iterator<Item = Option<T>>`.
     OptionValue,
+    /// `Iterator<Item = DeserializationResult<T>>`.
     ResultValue,
+    /// `Iterator<Item = T>`.
     Value,
 }
 
