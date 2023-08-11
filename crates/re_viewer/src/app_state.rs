@@ -9,6 +9,7 @@ use re_viewer_context::{
 };
 use re_viewport::{SpaceInfoCollection, Viewport, ViewportState};
 
+use crate::ui::recordings_panel_ui;
 use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -146,12 +147,40 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show_inside(ui, |ui| {
-                blueprint_panel_ui(
-                    &mut viewport.blueprint,
-                    &mut ctx,
+                let left_panel = egui::SidePanel::left("blueprint_panel")
+                    .resizable(true)
+                    .frame(egui::Frame {
+                        fill: ui.visuals().panel_fill,
+                        ..Default::default()
+                    })
+                    .min_width(120.0)
+                    .default_width((0.35 * ui.ctx().screen_rect().width()).min(200.0).round());
+
+                left_panel.show_animated_inside(
                     ui,
-                    &spaces_info,
                     app_blueprint.blueprint_panel_expanded,
+                    |ui: &mut egui::Ui| {
+                        // Set the clip rectangle to the panel for the benefit of nested, "full span" widgets like
+                        // large collapsing headers. Here, no need to extend `ui.max_rect()` as the enclosing frame
+                        // doesn't have inner margins.
+                        ui.set_clip_rect(ui.max_rect());
+
+                        // TODO(ab): this might be promoted higher in the hierarchy once list item are
+                        // used in the blueprint panel section.
+                        ui.scope(|ui| {
+                            ui.spacing_mut().item_spacing.y = 0.0;
+                            recordings_panel_ui(&mut ctx, ui);
+                        });
+
+                        // TODO(ab): remove this frame once the blueprint tree uses list items
+                        egui::Frame {
+                            inner_margin: re_ui::ReUi::panel_margin(),
+                            ..Default::default()
+                        }
+                        .show(ui, |ui| {
+                            blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
+                        });
+                    },
                 );
 
                 let viewport_frame = egui::Frame {

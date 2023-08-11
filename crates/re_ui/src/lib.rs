@@ -6,6 +6,7 @@ mod design_tokens;
 pub mod egui_helpers;
 pub mod icons;
 mod layout_job_builder;
+pub mod list_item;
 mod static_image_cache;
 pub mod toasts;
 mod toggle_switch;
@@ -50,6 +51,7 @@ use std::{ops::RangeInclusive, sync::Arc};
 
 use parking_lot::Mutex;
 
+use crate::list_item::ListItem;
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
@@ -91,6 +93,10 @@ impl ReUi {
         12.0
     }
 
+    pub fn panel_margin() -> egui::Margin {
+        egui::Margin::symmetric(Self::view_padding(), 0.0)
+    }
+
     pub fn window_rounding() -> f32 {
         12.0
     }
@@ -128,6 +134,10 @@ impl ReUi {
     /// as well as the tab bar height in the viewport view.
     pub fn title_bar_height() -> f32 {
         28.0 // from figma 2022-02-03
+    }
+
+    pub fn list_item_height() -> f32 {
+        24.0
     }
 
     pub fn native_window_rounding() -> f32 {
@@ -444,6 +454,72 @@ impl ReUi {
         response
     }
 
+    pub fn panel_content<R>(
+        &self,
+        ui: &mut egui::Ui,
+        add_contents: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
+    ) -> R {
+        egui::Frame {
+            inner_margin: Self::panel_margin(),
+            ..Default::default()
+        }
+        .show(ui, |ui| add_contents(self, ui))
+        .inner
+    }
+
+    /// Static title bar used to separate panels into section.
+    ///
+    /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
+    /// set.
+    ///
+    /// Use [`ReUi::panel_title_bar_with_buttons`] to display buttons in the title bar.
+    pub fn panel_title_bar(&self, ui: &mut egui::Ui, label: &str, hover_text: Option<&str>) {
+        self.panel_title_bar_with_buttons(ui, label, hover_text, |_ui| {});
+    }
+
+    /// Static title bar used to separate panels into section with custom buttons when hovered.
+    ///
+    /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
+    /// set.
+    #[allow(clippy::unused_self)]
+    pub fn panel_title_bar_with_buttons<R>(
+        &self,
+        ui: &mut egui::Ui,
+        label: &str,
+        hover_text: Option<&str>,
+        add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
+        ui.allocate_ui_with_layout(
+            egui::vec2(ui.available_width(), Self::title_bar_height()),
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                // draw horizontal separator lines
+                let mut rect = ui.available_rect_before_wrap();
+                let hline_stroke = ui.style().visuals.widgets.noninteractive.bg_stroke;
+                rect.extend_with_x(ui.clip_rect().right());
+                rect.extend_with_x(ui.clip_rect().left());
+                ui.painter().hline(rect.x_range(), rect.top(), hline_stroke);
+                ui.painter()
+                    .hline(rect.x_range(), rect.bottom(), hline_stroke);
+
+                // draw label
+                let resp = ui.strong(label);
+                if let Some(hover_text) = hover_text {
+                    resp.on_hover_text(hover_text);
+                }
+
+                // draw hover buttons
+                ui.allocate_ui_with_layout(
+                    ui.available_size(),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    add_right_buttons,
+                )
+                .inner
+            },
+        )
+        .inner
+    }
+
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
     ///
     /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
@@ -592,6 +668,11 @@ impl ReUi {
         ui.painter().add(shadow);
     }
 
+    /// Convenience function to create a [`ListItem`] with the given text.
+    pub fn list_item(&self, text: impl Into<egui::WidgetText>) -> ListItem<'_> {
+        ListItem::new(self, text)
+    }
+
     pub fn selectable_label_with_icon(
         &self,
         ui: &mut egui::Ui,
@@ -642,7 +723,7 @@ impl ReUi {
             let image_rect = egui::Rect::from_min_size(
                 ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x.ceil(),
-                    ((rect.min.y + rect.max.y - Self::small_icon_size().y) * 0.5).ceil(),
+                    (rect.center().y - 0.5 * ReUi::small_icon_size().y).ceil(),
                 )),
                 Self::small_icon_size(),
             );
