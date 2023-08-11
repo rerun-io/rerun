@@ -346,60 +346,12 @@ impl QuotedObject {
         match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
                 if obj.fields.len() == 1 {
-                    // Single-field struct - it is a newtype wrapper.
-                    // Create a implicit constructor and assignment from its own field-type.
-                    let obj_field = &obj.fields[0];
-
-                    let field_ident = format_ident!("{}", obj_field.name);
-                    let param_ident = format_ident!("_{}", obj_field.name);
-
-                    if let Type::Array { elem_type, length } = &obj_field.typ {
-                        // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
-                        // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
-                        let length_quoted = quote_integer(length);
-                        let element_type = quote_element_type(&mut hpp_includes, elem_type);
-                        let element_assignments = (0..*length).map(|i| {
-                            let i = quote_integer(i);
-                            quote!(#param_ident[#i])
-                        });
-                        methods.push(Method {
-                            declaration: MethodDeclaration::constructor(quote! {
-                                #type_ident(const #element_type (&#param_ident)[#length_quoted]) : #field_ident{#(#element_assignments),*}
-                            }),
-                            ..Method::default()
-                        });
-
-                        // No assignment operator for arrays since c arrays aren't typically assignable anyways.
-                        // Note that creating an std::array overload would make initializer_list based construction ambiguous.
-                        // Assignment operator for std::array could make sense though?
-                    } else {
-                        // Pass by value:
-                        // If it was a temporary it gets moved into the value and then moved again into the field.
-                        // If it was a lvalue it gets copied into the value and then moved into the field.
-                        let parameter_declaration =
-                            quote_variable(&mut hpp_includes, obj_field, &param_ident);
-                        hpp_includes.system.insert("utility".to_owned()); // std::move
-                        methods.push(Method {
-                                declaration: MethodDeclaration::constructor(quote! {
-                                    #type_ident(#parameter_declaration) : #field_ident(std::move(#param_ident))
-                                }),
-                                ..Method::default()
-                            });
-                        methods.push(Method {
-                            declaration: MethodDeclaration {
-                                is_static: false,
-                                return_type: quote!(#type_ident&),
-                                name_and_parameters: quote! {
-                                    operator=(#parameter_declaration)
-                                },
-                            },
-                            definition_body: quote! {
-                                #field_ident = std::move(#param_ident);
-                                return *this;
-                            },
-                            ..Method::default()
-                        });
-                    }
+                    methods.extend(single_field_constructor_methods(
+                        obj,
+                        &mut hpp_includes,
+                        &type_ident,
+                        objects,
+                    ));
                 };
 
                 // Arrow serialization methods.
@@ -948,6 +900,105 @@ impl QuotedObject {
 
         Self { hpp, cpp }
     }
+}
+
+fn single_field_constructor_methods(
+    obj: &Object,
+    hpp_includes: &mut Includes,
+    type_ident: &Ident,
+    objects: &Objects,
+) -> Vec<Method> {
+    let mut methods = Vec::new();
+
+    // Single-field struct - it is a newtype wrapper.
+    // Create a implicit constructor and assignment from its own field-type.
+    let obj_field = &obj.fields[0];
+
+    let field_ident = format_ident!("{}", obj_field.name);
+    let param_ident = format_ident!("_{}", obj_field.name);
+
+    if let Type::Array { elem_type, length } = &obj_field.typ {
+        // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
+        // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
+        let length_quoted = quote_integer(length);
+        let element_type = quote_element_type(hpp_includes, elem_type);
+        let element_assignments = (0..*length).map(|i| {
+            let i = quote_integer(i);
+            quote!(#param_ident[#i])
+        });
+        methods.push(Method {
+            declaration: MethodDeclaration::constructor(quote! {
+                #type_ident(const #element_type (&#param_ident)[#length_quoted]) : #field_ident{#(#element_assignments),*}
+            }),
+            ..Method::default()
+        });
+
+        // No assignment operator for arrays since c arrays aren't typically assignable anyways.
+        // Note that creating an std::array overload would make initializer_list based construction ambiguous.
+        // Assignment operator for std::array could make sense though?
+    } else {
+        // Pass by value:
+        // If it was a temporary it gets moved into the value and then moved again into the field.
+        // If it was a lvalue it gets copied into the value and then moved into the field.
+        let parameter_declaration = quote_variable(hpp_includes, obj_field, &param_ident);
+        hpp_includes.system.insert("utility".to_owned()); // std::move
+        methods.push(Method {
+            declaration: MethodDeclaration::constructor(quote! {
+                #type_ident(#parameter_declaration) : #field_ident(std::move(#param_ident))
+            }),
+            ..Method::default()
+        });
+        methods.push(Method {
+            declaration: MethodDeclaration {
+                is_static: false,
+                return_type: quote!(#type_ident&),
+                name_and_parameters: quote! {
+                    operator=(#parameter_declaration)
+                },
+            },
+            definition_body: quote! {
+                #field_ident = std::move(#param_ident);
+                return *this;
+            },
+            ..Method::default()
+        });
+
+        // If the field is a custom type as well which in turn has only a single field,
+        // provide a constructor for that single field as well.
+        //
+        // Note that we previously we tried to do a general forwarding constructor via variadic templates,
+        // but ran into some issues when init archetypes with initializer lists.
+        if let Type::Object(field_type_fqname) = &obj_field.typ {
+            let field_type_obj = &objects[field_type_fqname];
+            if field_type_obj.fields.len() == 1 {
+                let inner_field = &field_type_obj.fields[0];
+                let arg_name = format_ident!("arg");
+
+                if let Type::Array { elem_type, length } = &inner_field.typ {
+                    // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
+                    // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
+                    let length_quoted = quote_integer(length);
+                    let element_type = quote_element_type(hpp_includes, elem_type);
+                    methods.push(Method {
+                        declaration: MethodDeclaration::constructor(quote! {
+                            #type_ident(const #element_type (&#arg_name)[#length_quoted]) : #field_ident(#arg_name)
+                        }),
+                        ..Method::default()
+                    });
+                } else {
+                    let argument = quote_variable(hpp_includes, inner_field, &arg_name);
+                    methods.push(Method {
+                        declaration: MethodDeclaration::constructor(quote! {
+                            #type_ident(#argument) : #field_ident(std::move(#arg_name))
+                        }),
+                        ..Method::default()
+                    });
+                }
+            }
+        }
+    }
+
+    methods
 }
 
 fn arrow_data_type_method(obj: &Object, objects: &Objects, cpp_includes: &mut Includes) -> Method {
