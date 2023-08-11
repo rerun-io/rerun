@@ -150,13 +150,11 @@ impl egui::Widget for ListItem<'_> {
             bg_rect.extend_with_x(ui.clip_rect().left());
             let background_frame = ui.painter().add(egui::Shape::Noop);
 
-            let leftmost_x_pos = rect.min.x.ceil();
-
             // Draw icon
             if let Some(icon_fn) = self.icon_fn {
                 let icon_pos = ui.painter().round_pos_to_pixels(egui::pos2(
-                    leftmost_x_pos,
-                    (rect.center().y - 0.5 * ReUi::small_icon_size().y).ceil(),
+                    rect.min.x,
+                    rect.center().y - 0.5 * ReUi::small_icon_size().y,
                 ));
                 let icon_rect = egui::Rect::from_min_size(icon_pos, ReUi::small_icon_size());
                 icon_fn(self.re_ui, ui, icon_rect, visuals);
@@ -164,7 +162,7 @@ impl egui::Widget for ListItem<'_> {
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x = leftmost_x_pos + icon_extra;
+            text_rect.min.x += icon_extra;
             let text_pos = Align2::LEFT_CENTER
                 .align_size_within_rect(text.size(), text_rect)
                 .min;
