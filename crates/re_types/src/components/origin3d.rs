@@ -69,7 +69,7 @@ impl crate::Loggable for Origin3D {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -154,72 +154,81 @@ impl crate::Loggable for Origin3D {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                .unwrap();
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            Box::new(Field {
+                                name: "item".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            }),
+                            3usize,
+                        ),
+                        data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.Origin3D#origin")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let bitmap = data.validity().cloned();
                 let offsets = (0..)
                     .step_by(3usize)
                     .zip((3usize..).step_by(3usize).take(data.len()));
-                let data = &**data.values();
-                let data = data
-                    .as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
+                let data_inner = {
+                    let data_inner = &**data.values();
+                    data_inner
+                        .as_any()
+                        .downcast_ref::<Float32Array>()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                data_inner.data_type().clone(),
+                            )
                         })
-                    })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| {
-                        bitmap
-                            .as_ref()
-                            .map_or(true, |bitmap| bitmap.get_bit(i))
-                            .then(|| {
-                                if end as usize > data.len() {
-                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    });
-                                }
+                        .with_context("rerun.components.Origin3D#origin")?
+                        .into_iter()
+                        .map(|opt| opt.copied())
+                        .collect::<Vec<_>>()
+                };
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, data.validity())
+                    .map(|elem| {
+                        elem.map(|(start, end)| {
+                            debug_assert!(end - start == 3usize);
+                            if end as usize > data_inner.len() {
+                                return Err(crate::DeserializationError::offset_slice_oob(
+                                    (start, end),
+                                    data_inner.len(),
+                                ));
+                            }
 
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                let data =
-                                    unsafe { data.get_unchecked(start as usize..end as usize) };
-                                let arr = array_init::from_iter(data.iter().copied()).unwrap();
-                                Ok(arr)
-                            })
-                            .transpose()
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            let data =
+                                unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                            let data = data.iter().cloned().map(Option::unwrap_or_default);
+                            let arr = array_init::from_iter(data).unwrap();
+                            Ok(arr)
+                        })
+                        .transpose()
                     })
-                    .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec3D(v))))
+                    .map(|res_or_opt| {
+                        res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Vec3D(v)))
+                    })
                     .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-        })
+        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.components.Origin3D#origin".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.components.Origin3D#origin")
+        .with_context("rerun.components.Origin3D")?)
     }
 
     #[inline]

@@ -21,8 +21,8 @@ namespace rerun {
         /// The points will be connected in order, like so:
         ///```text
         ///        2------3     5
-        ///       /        \\   /
-        /// 0----1          \\ /
+        ///       /        \   /
+        /// 0----1          \ /
         ///                  4
         ///```
         struct LineStrip2D {

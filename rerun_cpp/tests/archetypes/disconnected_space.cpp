@@ -4,7 +4,7 @@
 
 using namespace rerun::archetypes;
 
-#define TEST_TAG "[disconnected_space]"
+#define TEST_TAG "[disconnected_space][archetypes]"
 
 SCENARIO("disconnected_space archetype can be serialized" TEST_TAG) {
     GIVEN("Constructed from builder and manually") {

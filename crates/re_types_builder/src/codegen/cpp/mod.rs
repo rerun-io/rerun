@@ -82,6 +82,7 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
         let comment_end = comment_start + generated_code[comment_start..].find('\n').unwrap();
         let comment = &generated_code[comment_start..comment_end];
         let comment = comment.replace("\\\"", "\"");
+        let comment = comment.replace("\\\\", "\\");
         code.push_str(&comment);
         last_comment_end = comment_end;
     }

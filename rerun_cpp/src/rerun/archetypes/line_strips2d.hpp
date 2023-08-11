@@ -21,6 +21,51 @@
 namespace rerun {
     namespace archetypes {
         /// A batch of line strips with positions and optional colors, radii, labels, etc.
+        ///
+        /// ## Example
+        ///
+        /// Many strips:
+        ///```ignore
+        ///// Log a batch of 2d line strips.
+        ///
+        /// #include <rerun.hpp>
+        ///
+        /// namespace rr = rerun;
+        ///
+        /// int main() {
+        ///    auto rr_stream = rr::RecordingStream("line_strip2d");
+        ///    rr_stream.connect("127.0.0.1:9876");
+        ///
+        ///    std::vector<rr::datatypes::Vec2D> strip1 = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},
+        ///    {6.f, 0.f}}; std::vector<rr::datatypes::Vec2D> strip2 =
+        ///        {{0.f, 3.f}, {1.f, 4.f}, {2.f, 2.f}, {3.f, 4.f}, {4.f, 2.f}, {5.f, 4.f},
+        ///        {6.f, 3.f}};
+        ///    rr_stream.log(
+        ///        "strips",
+        ///        rr::archetypes::LineStrips2D({strip1, strip2})
+        ///            .with_colors({0xFF0000FF, 0x00FF00FF})
+        ///            .with_radii({0.025f, 0.005f})
+        ///            .with_labels({"one strip here", "and one strip there"})
+        ///    );
+        /// }
+        ///```
+        ///
+        /// Many individual segments:
+        ///```ignore
+        ///// Log a couple 2D line segments using 2D line strips.
+        ///
+        /// #include <rerun.hpp>
+        ///
+        /// namespace rr = rerun;
+        ///
+        /// int main() {
+        ///    auto rr_stream = rr::RecordingStream("line_segments2d");
+        ///    rr_stream.connect("127.0.0.1:9876");
+        ///
+        ///    std::vector<rr::datatypes::Vec2D> points = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},
+        ///    {6.f, 0.f}}; rr_stream.log("strips", rr::archetypes::LineStrips2D(points));
+        /// }
+        ///```
         struct LineStrips2D {
             /// All the actual 2D line strips that make up the batch.
             std::vector<rerun::components::LineStrip2D> strips;

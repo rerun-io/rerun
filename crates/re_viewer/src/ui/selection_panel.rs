@@ -45,35 +45,31 @@ impl SelectionPanel {
             // enclosing frame doesn't have inner margins.
             ui.set_clip_rect(ui.max_rect());
 
-            egui::TopBottomPanel::top("selection_panel_title_bar")
-                .exact_height(re_ui::ReUi::title_bar_height())
-                .frame(egui::Frame {
-                    inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
-                    ..Default::default()
-                })
-                .show_inside(ui, |ui| {
-                    if let Some(selection) = self.selection_state_ui.selection_ui(
-                        ctx.re_ui,
-                        ui,
-                        &viewport.blueprint,
-                        &mut ctx.selection_state_mut().history,
-                    ) {
-                        ctx.selection_state_mut()
-                            .set_selection(selection.iter().cloned());
-                    }
-                });
+            egui::Frame {
+                inner_margin: re_ui::ReUi::panel_margin(),
+                ..Default::default()
+            }
+            .show(ui, |ui| {
+                let hover = "The Selection View contains information and options about the currently selected object(s)";
+                ctx.re_ui
+                    .panel_title_bar_with_buttons(ui, "Selection", Some(hover), |ui| {
+                        if let Some(selection) = self.selection_state_ui.selection_ui(
+                            ctx.re_ui,
+                            ui,
+                            &viewport.blueprint,
+                            &mut ctx.selection_state_mut().history,
+                        ) {
+                            ctx.selection_state_mut()
+                                .set_selection(selection.iter().cloned());
+                        }
+                    });
 
-            egui::ScrollArea::both()
-                .auto_shrink([false; 2])
-                .show(ui, |ui| {
-                    egui::Frame {
-                        inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
-                        ..Default::default()
-                    }
+                egui::ScrollArea::both()
+                    .auto_shrink([false; 2])
                     .show(ui, |ui| {
                         self.contents(ctx, ui, viewport);
                     });
-                });
+            });
         });
     }
 

@@ -17,19 +17,9 @@ impl SelectionHistoryUi {
         blueprint: &ViewportBlueprint<'_>,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
-        ui.horizontal_centered(|ui| {
-            ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s)");
-
-            // TODO(emilk): an egui helper for right-to-left
-            ui.allocate_ui_with_layout(
-                ui.available_size_before_wrap(),
-                egui::Layout::right_to_left(egui::Align::Center),
-                |ui| {
-                    let next = self.next_button_ui(re_ui, ui, blueprint, history);
-                    let prev = self.prev_button_ui(re_ui, ui, blueprint, history);
-                    prev.or(next)
-                }).inner
-        }).inner
+        let next = self.next_button_ui(re_ui, ui, blueprint, history);
+        let prev = self.prev_button_ui(re_ui, ui, blueprint, history);
+        prev.or(next)
     }
 
     fn prev_button_ui(

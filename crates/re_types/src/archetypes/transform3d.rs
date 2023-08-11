@@ -120,7 +120,7 @@ impl crate::Archetype for Transform3D {
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         Ok([{
             Some({
                 let array = <crate::components::Transform3D>::try_to_arrow([&self.transform], None);
@@ -137,10 +137,7 @@ impl crate::Archetype for Transform3D {
                 })
             })
             .transpose()
-            .map_err(|err| crate::SerializationError::Context {
-                location: "rerun.archetypes.Transform3D#transform".into(),
-                source: Box::new(err),
-            })?
+            .with_context("rerun.archetypes.Transform3D#transform")?
         }]
         .into_iter()
         .flatten()
@@ -151,7 +148,7 @@ impl crate::Archetype for Transform3D {
     fn try_from_arrow(
         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     ) -> crate::DeserializationResult<Self> {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -159,28 +156,15 @@ impl crate::Archetype for Transform3D {
         let transform = {
             let array = arrays_by_name
                 .get("transform")
-                .ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.Transform3D#transform".into(),
-                    source: Box::new(err),
-                })?;
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Transform3D#transform")?;
             <crate::components::Transform3D>::try_from_arrow_opt(&**array)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.Transform3D#transform".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.archetypes.Transform3D#transform")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.Transform3D#transform".into(),
-                    source: Box::new(err),
-                })?
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Transform3D#transform")?
         };
         Ok(Self { transform })
     }
