@@ -247,8 +247,8 @@ pub fn quote_arrow_deserializer(
 
                 let obj_fqname = obj.fqname.as_str();
                 let quoted_obj_name = format_ident!("{}", obj.name);
-                let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                    let i = i as i8 + 1; // NOTE: +1 to account for `nulls` virtual arm
+                let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
+                    let typ = typ as i8 + 1; // NOTE: +1 to account for `nulls` virtual arm
 
                     let obj_field_fqname = obj_field.fqname.as_str();
                     let quoted_obj_field_name =
@@ -266,7 +266,7 @@ pub fn quote_arrow_deserializer(
                     };
 
                     quote! {
-                        #i => #quoted_obj_name::#quoted_obj_field_type({
+                        #typ => #quoted_obj_name::#quoted_obj_field_type({
                             // NOTE: It is absolutely crucial we explicitly handle the
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when indexing the data (as in: a 100x perf drop)!
@@ -328,7 +328,11 @@ pub fn quote_arrow_deserializer(
                                 } else {
                                     Ok(Some(match typ {
                                         #(#quoted_branches,)*
-                                        _ => unreachable!(),
+                                        _ => {
+                                            return Err(crate::DeserializationError::missing_union_arm(
+                                                #quoted_datatype, "<invalid>", *typ as _,
+                                            )).with_context(#obj_fqname);
+                                        }
                                     }))
                                 }
                             })

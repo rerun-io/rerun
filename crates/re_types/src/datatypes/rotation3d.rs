@@ -415,39 +415,73 @@ impl crate::Loggable for Rotation3D {
                         if *typ == 0 {
                             Ok(None)
                         } else {
-                            Ok(Some(match typ {
-                                1i8 => Rotation3D::Quaternion({
-                                    if offset as usize >= quaternion.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            quaternion.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.Rotation3D#Quaternion");
-                                    }
+                            Ok(
+                                Some(
+                                    match typ {
+                                        1i8 => {
+                                            Rotation3D::Quaternion({
+                                                if offset as usize >= quaternion.len() {
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                quaternion.len(),
+                                                            ),
+                                                        )
+                                                        .with_context("rerun.datatypes.Rotation3D#Quaternion");
+                                                }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { quaternion.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.Rotation3D#Quaternion")?
-                                }),
-                                2i8 => Rotation3D::AxisAngle({
-                                    if offset as usize >= axis_angle.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            axis_angle.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.Rotation3D#AxisAngle");
-                                    }
+                                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                unsafe { quaternion.get_unchecked(offset as usize) }
+                                                    .clone()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context("rerun.datatypes.Rotation3D#Quaternion")?
+                                            })
+                                        }
+                                        2i8 => {
+                                            Rotation3D::AxisAngle({
+                                                if offset as usize >= axis_angle.len() {
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                axis_angle.len(),
+                                                            ),
+                                                        )
+                                                        .with_context("rerun.datatypes.Rotation3D#AxisAngle");
+                                                }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { axis_angle.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.Rotation3D#AxisAngle")?
-                                }),
-                                _ => unreachable!(),
-                            }))
+                                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                unsafe { axis_angle.get_unchecked(offset as usize) }
+                                                    .clone()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context("rerun.datatypes.Rotation3D#AxisAngle")?
+                                            })
+                                        }
+                                        _ => {
+                                            return Err(
+                                                    crate::DeserializationError::missing_union_arm(
+                                                        DataType::Union(
+                                                            vec![
+                                                                Field { name : "_null_markers".to_owned(), data_type :
+                                                                DataType::Null, is_nullable : true, metadata : [].into(), },
+                                                                Field { name : "Quaternion".to_owned(), data_type : < crate
+                                                                ::datatypes::Quaternion > ::to_arrow_datatype(), is_nullable
+                                                                : false, metadata : [].into(), }, Field { name : "AxisAngle"
+                                                                .to_owned(), data_type : < crate
+                                                                ::datatypes::RotationAxisAngle > ::to_arrow_datatype(),
+                                                                is_nullable : false, metadata : [].into(), },
+                                                            ],
+                                                            Some(vec![0i32, 1i32, 2i32,]),
+                                                            UnionMode::Dense,
+                                                        ),
+                                                        "<invalid>",
+                                                        *typ as _,
+                                                    ),
+                                                )
+                                                .with_context("rerun.datatypes.Rotation3D");
+                                        }
+                                    },
+                                ),
+                            )
                         }
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()

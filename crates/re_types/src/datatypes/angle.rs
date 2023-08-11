@@ -356,7 +356,37 @@ impl crate::Loggable for Angle {
                                         .ok_or_else(crate::DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Angle#Degrees")?
                                 }),
-                                _ => unreachable!(),
+                                _ => {
+                                    return Err(crate::DeserializationError::missing_union_arm(
+                                        DataType::Union(
+                                            vec![
+                                                Field {
+                                                    name: "_null_markers".to_owned(),
+                                                    data_type: DataType::Null,
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "Radians".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "Degrees".to_owned(),
+                                                    data_type: DataType::Float32,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                            ],
+                                            Some(vec![0i32, 1i32, 2i32]),
+                                            UnionMode::Dense,
+                                        ),
+                                        "<invalid>",
+                                        *typ as _,
+                                    ))
+                                    .with_context("rerun.datatypes.Angle");
+                                }
                             }))
                         }
                     })

@@ -2632,7 +2632,37 @@ impl crate::Loggable for AffixFuzzer3 {
                                                     )?
                                             })
                                         }
-                                        _ => unreachable!(),
+                                        _ => {
+                                            return Err(
+                                                    crate::DeserializationError::missing_union_arm(
+                                                        DataType::Union(
+                                                            vec![
+                                                                Field { name : "_null_markers".to_owned(), data_type :
+                                                                DataType::Null, is_nullable : true, metadata : [].into(), },
+                                                                Field { name : "degrees".to_owned(), data_type :
+                                                                DataType::Float32, is_nullable : false, metadata : []
+                                                                .into(), }, Field { name : "radians".to_owned(), data_type :
+                                                                DataType::Float32, is_nullable : false, metadata : []
+                                                                .into(), }, Field { name : "craziness".to_owned(), data_type
+                                                                : DataType::List(Box::new(Field { name : "item".to_owned(),
+                                                                data_type : < crate ::testing::datatypes::AffixFuzzer1 >
+                                                                ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                                                .into(), })), is_nullable : false, metadata : [].into(), },
+                                                                Field { name : "fixed_size_shenanigans".to_owned(),
+                                                                data_type : DataType::FixedSizeList(Box::new(Field { name :
+                                                                "item".to_owned(), data_type : DataType::Float32,
+                                                                is_nullable : false, metadata : [].into(), }), 3usize),
+                                                                is_nullable : false, metadata : [].into(), },
+                                                            ],
+                                                            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32,]),
+                                                            UnionMode::Dense,
+                                                        ),
+                                                        "<invalid>",
+                                                        *typ as _,
+                                                    ),
+                                                )
+                                                .with_context("rerun.testing.datatypes.AffixFuzzer3");
+                                        }
                                     },
                                 ),
                             )
@@ -3208,61 +3238,108 @@ impl crate::Loggable for AffixFuzzer4 {
                         if *typ == 0 {
                             Ok(None)
                         } else {
-                            Ok(Some(match typ {
-                                1i8 => AffixFuzzer4::SingleRequired({
-                                    if offset as usize >= single_required.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            single_required.len(),
-                                        ))
-                                        .with_context(
-                                            "rerun.testing.datatypes.AffixFuzzer4#single_required",
-                                        );
-                                    }
+                            Ok(
+                                Some(
+                                    match typ {
+                                        1i8 => {
+                                            AffixFuzzer4::SingleRequired({
+                                                if offset as usize >= single_required.len() {
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                single_required.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer4#single_required",
+                                                        );
+                                                }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { single_required.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context(
-                                            "rerun.testing.datatypes.AffixFuzzer4#single_required",
-                                        )?
-                                }),
-                                2i8 => AffixFuzzer4::ManyRequired({
-                                    if offset as usize >= many_required.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            many_required.len(),
-                                        ))
-                                        .with_context(
-                                            "rerun.testing.datatypes.AffixFuzzer4#many_required",
-                                        );
-                                    }
+                                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                unsafe { single_required.get_unchecked(offset as usize) }
+                                                    .clone()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer4#single_required",
+                                                    )?
+                                            })
+                                        }
+                                        2i8 => {
+                                            AffixFuzzer4::ManyRequired({
+                                                if offset as usize >= many_required.len() {
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                many_required.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer4#many_required",
+                                                        );
+                                                }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { many_required.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context(
-                                            "rerun.testing.datatypes.AffixFuzzer4#many_required",
-                                        )?
-                                }),
-                                3i8 => AffixFuzzer4::ManyOptional({
-                                    if offset as usize >= many_optional.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            many_optional.len(),
-                                        ))
-                                        .with_context(
-                                            "rerun.testing.datatypes.AffixFuzzer4#many_optional",
-                                        );
-                                    }
+                                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                unsafe { many_required.get_unchecked(offset as usize) }
+                                                    .clone()
+                                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                                    .with_context(
+                                                        "rerun.testing.datatypes.AffixFuzzer4#many_required",
+                                                    )?
+                                            })
+                                        }
+                                        3i8 => {
+                                            AffixFuzzer4::ManyOptional({
+                                                if offset as usize >= many_optional.len() {
+                                                    return Err(
+                                                            crate::DeserializationError::offset_oob(
+                                                                offset as _,
+                                                                many_optional.len(),
+                                                            ),
+                                                        )
+                                                        .with_context(
+                                                            "rerun.testing.datatypes.AffixFuzzer4#many_optional",
+                                                        );
+                                                }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { many_optional.get_unchecked(offset as usize) }.clone()
-                                }),
-                                _ => unreachable!(),
-                            }))
+                                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                unsafe { many_optional.get_unchecked(offset as usize) }
+                                                    .clone()
+                                            })
+                                        }
+                                        _ => {
+                                            return Err(
+                                                    crate::DeserializationError::missing_union_arm(
+                                                        DataType::Union(
+                                                            vec![
+                                                                Field { name : "_null_markers".to_owned(), data_type :
+                                                                DataType::Null, is_nullable : true, metadata : [].into(), },
+                                                                Field { name : "single_required".to_owned(), data_type : <
+                                                                crate ::testing::datatypes::AffixFuzzer3 >
+                                                                ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                                                .into(), }, Field { name : "many_required".to_owned(),
+                                                                data_type : DataType::List(Box::new(Field { name : "item"
+                                                                .to_owned(), data_type : < crate
+                                                                ::testing::datatypes::AffixFuzzer3 > ::to_arrow_datatype(),
+                                                                is_nullable : false, metadata : [].into(), })), is_nullable
+                                                                : false, metadata : [].into(), }, Field { name :
+                                                                "many_optional".to_owned(), data_type :
+                                                                DataType::List(Box::new(Field { name : "item".to_owned(),
+                                                                data_type : < crate ::testing::datatypes::AffixFuzzer3 >
+                                                                ::to_arrow_datatype(), is_nullable : true, metadata : []
+                                                                .into(), })), is_nullable : false, metadata : [].into(), },
+                                                            ],
+                                                            Some(vec![0i32, 1i32, 2i32, 3i32,]),
+                                                            UnionMode::Dense,
+                                                        ),
+                                                        "<invalid>",
+                                                        *typ as _,
+                                                    ),
+                                                )
+                                                .with_context("rerun.testing.datatypes.AffixFuzzer4");
+                                        }
+                                    },
+                                ),
+                            )
                         }
                     })
                     .collect::<crate::DeserializationResult<Vec<_>>>()
