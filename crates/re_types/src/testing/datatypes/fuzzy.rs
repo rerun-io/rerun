@@ -1199,9 +1199,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                     .with_context(
                                         "rerun.testing.datatypes.AffixFuzzer1#many_floats_optional",
                                     )?
-                                    .into_iter()
-                                    .map(|opt| opt.copied())
-                                    .collect::<Vec<_>>()
+                                    .values()
                                 };
                             let offsets = data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -1221,13 +1219,11 @@ impl crate::Loggable for AffixFuzzer1 {
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner.get_unchecked(start as usize..end as usize)
+                                        data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = data
-                                        .iter()
-                                        .cloned()
-                                        .map(Option::unwrap_or_default)
-                                        .collect();
+                                    let data = crate::ArrowBuffer(data);
                                     Ok(data)
                                 })
                                 .transpose()

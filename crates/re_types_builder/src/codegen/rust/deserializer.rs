@@ -81,6 +81,7 @@ pub fn quote_arrow_deserializer(
             obj_field.is_nullable,
             obj_field_fqname,
             &data_src,
+            false,
         );
 
         let quoted_unwrapping = if obj_field.is_nullable {
@@ -124,6 +125,7 @@ pub fn quote_arrow_deserializer(
                         obj_field.is_nullable,
                         obj_field.fqname.as_str(),
                         &data_src,
+                        false,
                     );
 
                     quote! {
@@ -216,6 +218,7 @@ pub fn quote_arrow_deserializer(
                             obj_field.is_nullable,
                             obj_field.fqname.as_str(),
                             &data_src,
+                            false,
                         );
 
                         let i = i + 1; // NOTE: +1 to account for `nulls` virtual arm
@@ -365,6 +368,7 @@ fn quote_arrow_field_deserializer(
     is_nullable: bool,
     obj_field_fqname: &str,
     data_src: &proc_macro2::Ident, // &dyn ::arrow2::array::Array
+    is_list_inner: bool,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
 
@@ -395,10 +399,17 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            quote! {
-                #quoted_downcast?
-                    .into_iter() // NOTE: automatically checks the bitmap on our behalf
-                    #quoted_iter_transparency
+            if is_list_inner {
+                quote! {
+                    #quoted_downcast?
+                    .values()
+                }
+            } else {
+                quote! {
+                    #quoted_downcast?
+                        .into_iter() // NOTE: automatically checks the bitmap on our behalf
+                        #quoted_iter_transparency
+                }
             }
         }
 
@@ -465,6 +476,7 @@ fn quote_arrow_field_deserializer(
                 inner.is_nullable,
                 obj_field_fqname,
                 &data_src_inner,
+                false,
             );
 
             let quoted_downcast = {
@@ -562,17 +574,73 @@ fn quote_arrow_field_deserializer(
 
         DataType::List(inner) => {
             let data_src_inner = format_ident!("{data_src}_inner");
+
+            let inner_is_primitive = matches!(
+                inner.data_type(),
+                DataType::UInt8 | DataType::UInt16 | DataType::Float32
+            );
+
             let quoted_inner = quote_arrow_field_deserializer(
                 objects,
                 inner.data_type(),
                 inner.is_nullable,
                 obj_field_fqname,
                 &data_src_inner,
+                inner_is_primitive,
             );
 
             let quoted_downcast = {
                 let cast_as = quote!(::arrow2::array::ListArray<i32>);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+            };
+
+            let quoted_collect_inner = if inner_is_primitive {
+                quote!()
+            } else {
+                quote!(.collect::<Vec<_>>())
+            };
+
+            let quoted_inner_data_range = if inner_is_primitive {
+                quote! {
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
+                    let data = crate::ArrowBuffer(data);
+                }
+            } else {
+                quote! {
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
+
+                    // NOTE: The call to `Option::unwrap_or_default` is very important here.
+                    //
+                    // Since we can only get here if the outer oob is marked as
+                    // non-null, the only possible reason for the default() path
+                    // to be taken is because the inner field itself is nullable and
+                    // happens to have one or more nullable values in the referenced
+                    // slice.
+                    // This is perfectly fine, and when it happens, we need to fill the
+                    // resulting vec with some data, hence default().
+                    //
+                    // This does have a subtle implication though!
+                    // Since we never even look at the inner field's data when the outer
+                    // entry is null, it means we won't notice it if illegal/malformed/corrupt
+                    // in any way.
+                    // It is important that we turn a blind eye here, because most SDKs in
+                    // the ecosystem will put illegal data (e.g. null entries in an array of
+                    // non-null floats) in the inner buffer if the outer entry itself
+                    // is null.
+                    //
+                    // TODO(#2875): use MaybeUninit rather than requiring a default impl
+                    let data = data.iter().cloned().map(Option::unwrap_or_default).collect();
+                        // The following would be the correct thing to do, but costs us way
+                        // too much performance-wise for something that only applies to
+                        // malformed inputs.
+                        //
+                        // // NOTE: We don't support nullable inner elements in our IDL, so
+                        // // this can only be a case of malformed data.
+                        // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
+                        // .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                }
             };
 
             quote! {{
@@ -586,7 +654,7 @@ fn quote_arrow_field_deserializer(
                 } else {
                     let #data_src_inner = {
                         let #data_src_inner = &**#data_src.values();
-                        #quoted_inner.collect::<Vec<_>>()
+                        #quoted_inner #quoted_collect_inner
                     };
 
                     let offsets = #data_src.offsets();
@@ -609,39 +677,8 @@ fn quote_arrow_field_deserializer(
                                     (start, end), #data_src_inner.len(),
                                 ));
                             }
-                            // Safety: all checked above.
-                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
 
-                            // NOTE: The call to `Option::unwrap_or_default` is very important here.
-                            //
-                            // Since we can only get here if the outer oob is marked as
-                            // non-null, the only possible reason for the default() path
-                            // to be taken is because the inner field itself is nullable and
-                            // happens to have one or more nullable values in the referenced
-                            // slice.
-                            // This is perfectly fine, and when it happens, we need to fill the
-                            // resulting vec with some data, hence default().
-                            //
-                            // This does have a subtle implication though!
-                            // Since we never even look at the inner field's data when the outer
-                            // entry is null, it means we won't notice it if illegal/malformed/corrupt
-                            // in any way.
-                            // It is important that we turn a blind eye here, because most SDKs in
-                            // the ecosystem will put illegal data (e.g. null entries in an array of
-                            // non-null floats) in the inner buffer if the outer entry itself
-                            // is null.
-                            //
-                            // TODO(#2875): use MaybeUninit rather than requiring a default impl
-                            let data = data.iter().cloned().map(Option::unwrap_or_default).collect();
-                                // The following would be the correct thing to do, but costs us way
-                                // too much performance-wise for something that only applies to
-                                // malformed inputs.
-                                //
-                                // // NOTE: We don't support nullable inner elements in our IDL, so
-                                // // this can only be a case of malformed data.
-                                // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
-                                // .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            #quoted_inner_data_range
 
                             Ok(data)
                         }).transpose()
