@@ -175,7 +175,7 @@ impl crate::Archetype for LineStrips2D {
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         Ok([
             {
                 Some({
@@ -194,10 +194,7 @@ impl crate::Archetype for LineStrips2D {
                     })
                 })
                 .transpose()
-                .map_err(|err| crate::SerializationError::Context {
-                    location: "rerun.archetypes.LineStrips2D#strips".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.archetypes.LineStrips2D#strips")?
             },
             {
                 self.radii
@@ -217,10 +214,7 @@ impl crate::Archetype for LineStrips2D {
                         })
                     })
                     .transpose()
-                    .map_err(|err| crate::SerializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#radii".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#radii")?
             },
             {
                 self.colors
@@ -240,10 +234,7 @@ impl crate::Archetype for LineStrips2D {
                         })
                     })
                     .transpose()
-                    .map_err(|err| crate::SerializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#colors".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#colors")?
             },
             {
                 self.labels
@@ -263,10 +254,7 @@ impl crate::Archetype for LineStrips2D {
                         })
                     })
                     .transpose()
-                    .map_err(|err| crate::SerializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#labels".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#labels")?
             },
             {
                 self.draw_order
@@ -286,10 +274,7 @@ impl crate::Archetype for LineStrips2D {
                         })
                     })
                     .transpose()
-                    .map_err(|err| crate::SerializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#draw_order".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#draw_order")?
             },
             {
                 self.class_ids
@@ -309,10 +294,7 @@ impl crate::Archetype for LineStrips2D {
                         })
                     })
                     .transpose()
-                    .map_err(|err| crate::SerializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#class_ids".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#class_ids")?
             },
             {
                 self.instance_keys
@@ -333,10 +315,7 @@ impl crate::Archetype for LineStrips2D {
                         })
                     })
                     .transpose()
-                    .map_err(|err| crate::SerializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#instance_keys".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#instance_keys")?
             },
         ]
         .into_iter()
@@ -348,7 +327,7 @@ impl crate::Archetype for LineStrips2D {
     fn try_from_arrow(
         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     ) -> crate::DeserializationResult<Self> {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -356,158 +335,85 @@ impl crate::Archetype for LineStrips2D {
         let strips = {
             let array = arrays_by_name
                 .get("strips")
-                .ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.LineStrips2D#strips".into(),
-                    source: Box::new(err),
-                })?;
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.LineStrips2D#strips")?;
             <crate::components::LineStrip2D>::try_from_arrow_opt(&**array)
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.LineStrips2D#strips".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.archetypes.LineStrips2D#strips")?
                 .into_iter()
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                })
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .collect::<crate::DeserializationResult<Vec<_>>>()
-                .map_err(|err| crate::DeserializationError::Context {
-                    location: "rerun.archetypes.LineStrips2D#strips".into(),
-                    source: Box::new(err),
-                })?
+                .with_context("rerun.archetypes.LineStrips2D#strips")?
         };
         let radii = if let Some(array) = arrays_by_name.get("radii") {
-            Some(
+            Some({
                 <crate::components::Radius>::try_from_arrow_opt(&**array)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#radii".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#radii")?
                     .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#radii".into(),
-                        source: Box::new(err),
-                    })?,
-            )
+                    .with_context("rerun.archetypes.LineStrips2D#radii")?
+            })
         } else {
             None
         };
         let colors = if let Some(array) = arrays_by_name.get("colors") {
-            Some(
+            Some({
                 <crate::components::Color>::try_from_arrow_opt(&**array)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#colors".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#colors")?
                     .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#colors".into(),
-                        source: Box::new(err),
-                    })?,
-            )
+                    .with_context("rerun.archetypes.LineStrips2D#colors")?
+            })
         } else {
             None
         };
         let labels = if let Some(array) = arrays_by_name.get("labels") {
-            Some(
+            Some({
                 <crate::components::Label>::try_from_arrow_opt(&**array)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#labels".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#labels")?
                     .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#labels".into(),
-                        source: Box::new(err),
-                    })?,
-            )
+                    .with_context("rerun.archetypes.LineStrips2D#labels")?
+            })
         } else {
             None
         };
         let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
-            Some(
+            Some({
                 <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#draw_order".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#draw_order")?
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#draw_order".into(),
-                        source: Box::new(err),
-                    })?,
-            )
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.LineStrips2D#draw_order")?
+            })
         } else {
             None
         };
         let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
-            Some(
+            Some({
                 <crate::components::ClassId>::try_from_arrow_opt(&**array)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#class_ids".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#class_ids")?
                     .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#class_ids".into(),
-                        source: Box::new(err),
-                    })?,
-            )
+                    .with_context("rerun.archetypes.LineStrips2D#class_ids")?
+            })
         } else {
             None
         };
         let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
-            Some(
+            Some({
                 <crate::components::InstanceKey>::try_from_arrow_opt(&**array)
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#instance_keys".into(),
-                        source: Box::new(err),
-                    })?
+                    .with_context("rerun.archetypes.LineStrips2D#instance_keys")?
                     .into_iter()
-                    .map(|v| {
-                        v.ok_or_else(|| crate::DeserializationError::MissingData {
-                            backtrace: ::backtrace::Backtrace::new_unresolved(),
-                        })
-                    })
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .map_err(|err| crate::DeserializationError::Context {
-                        location: "rerun.archetypes.LineStrips2D#instance_keys".into(),
-                        source: Box::new(err),
-                    })?,
-            )
+                    .with_context("rerun.archetypes.LineStrips2D#instance_keys")?
+            })
         } else {
             None
         };

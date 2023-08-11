@@ -87,7 +87,7 @@ impl crate::Loggable for Transform3D {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -123,25 +123,16 @@ impl crate::Loggable for Transform3D {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok(crate::datatypes::Transform3D::try_from_arrow_opt(data)
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Transform3D#repr".into(),
-                source: Box::new(err),
-            })?
+            .with_context("rerun.components.Transform3D#repr")?
             .into_iter()
-            .map(|v| {
-                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
+            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .map_err(|err| crate::DeserializationError::Context {
-                location: "rerun.components.Transform3D#repr".into(),
-                source: Box::new(err),
-            })?)
+            .with_context("rerun.components.Transform3D#repr")
+            .with_context("rerun.components.Transform3D")?)
     }
 
     #[inline]

@@ -77,7 +77,7 @@ impl crate::Loggable for LineStrip2D {
     where
         Self: Clone + 'a,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -200,124 +200,142 @@ impl crate::Loggable for LineStrip2D {
     where
         Self: Sized,
     {
-        use crate::Loggable as _;
+        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                .unwrap();
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: <crate::datatypes::Vec2D>::to_arrow_datatype(),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        })),
+                        data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.LineStrip2D#points")?;
             if data.is_empty() {
                 Vec::new()
             } else {
-                let bitmap = data.validity().cloned();
-                let offsets = {
-                    let offsets = data.offsets();
-                    offsets.iter().copied().zip(offsets.iter().copied().skip(1))
-                };
-                let data = &**data.values();
-                let data = {
-                    let data = data
-                        .as_any()
-                        .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                        .unwrap();
-                    if data.is_empty() {
-                        Vec::new()
-                    } else {
-                        let bitmap = data.validity().cloned();
-                        let offsets = (0..)
-                            .step_by(2usize)
-                            .zip((2usize..).step_by(2usize).take(data.len()));
-                        let data = &**data.values();
-                        let data = data
+                let data_inner = {
+                    let data_inner = &**data.values();
+                    {
+                        let data_inner = data_inner
                             .as_any()
-                            .downcast_ref::<Float32Array>()
-                            .unwrap()
-                            .into_iter()
-                            .map(|v| v.copied())
-                            .map(|v| {
-                                v.ok_or_else(|| crate::DeserializationError::MissingData {
-                                    backtrace: ::backtrace::Backtrace::new_unresolved(),
+                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        2usize,
+                                    ),
+                                    data_inner.data_type().clone(),
+                                )
+                            })
+                            .with_context("rerun.components.LineStrip2D#points")?;
+                        if data_inner.is_empty() {
+                            Vec::new()
+                        } else {
+                            let offsets = (0..)
+                                .step_by(2usize)
+                                .zip((2usize..).step_by(2usize).take(data_inner.len()));
+                            let data_inner_inner = {
+                                let data_inner_inner = &**data_inner.values();
+                                data_inner_inner
+                                    .as_any()
+                                    .downcast_ref::<Float32Array>()
+                                    .ok_or_else(|| {
+                                        crate::DeserializationError::datatype_mismatch(
+                                            DataType::Float32,
+                                            data_inner_inner.data_type().clone(),
+                                        )
+                                    })
+                                    .with_context("rerun.components.LineStrip2D#points")?
+                                    .into_iter()
+                                    .map(|opt| opt.copied())
+                                    .collect::<Vec<_>>()
+                            };
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets,
+                                data_inner.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, end)| {
+                                    debug_assert!(end - start == 2usize);
+                                    if end as usize > data_inner_inner.len() {
+                                        return Err(crate::DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            data_inner_inner.len(),
+                                        ));
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        data_inner_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                    let arr = array_init::from_iter(data).unwrap();
+                                    Ok(arr)
+                                })
+                                .transpose()
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec2D(v))
                                 })
                             })
-                            .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                        offsets
-                            .enumerate()
-                            .map(move |(i, (start, end))| {
-                                bitmap
-                                    .as_ref()
-                                    .map_or(true, |bitmap| bitmap.get_bit(i))
-                                    .then(|| {
-                                        if end as usize > data.len() {
-                                            return Err(
-                                                crate::DeserializationError::OffsetsMismatch {
-                                                    bounds: (start as usize, end as usize),
-                                                    len: data.len(),
-                                                    backtrace:
-                                                        ::backtrace::Backtrace::new_unresolved(),
-                                                },
-                                            );
-                                        }
-
-                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                        let data = unsafe {
-                                            data.get_unchecked(start as usize..end as usize)
-                                        };
-                                        let arr =
-                                            array_init::from_iter(data.iter().copied()).unwrap();
-                                        Ok(arr)
-                                    })
-                                    .transpose()
-                            })
-                            .map(|res| res.map(|opt| opt.map(|v| crate::datatypes::Vec2D(v))))
                             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
                     }
-                    .into_iter()
-                }
-                .map(|v| {
-                    v.ok_or_else(|| crate::DeserializationError::MissingData {
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
-                })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                offsets
-                    .enumerate()
-                    .map(move |(i, (start, end))| {
-                        bitmap
-                            .as_ref()
-                            .map_or(true, |bitmap| bitmap.get_bit(i))
-                            .then(|| {
-                                if end as usize > data.len() {
-                                    return Err(crate::DeserializationError::OffsetsMismatch {
-                                        bounds: (start as usize, end as usize),
-                                        len: data.len(),
-                                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                                    });
-                                }
+                    .collect::<Vec<_>>()
+                };
+                let offsets = data.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    data.validity(),
+                )
+                .map(|elem| {
+                    elem.map(|(start, len)| {
+                        let start = *start as usize;
+                        let end = start + len;
+                        if end as usize > data_inner.len() {
+                            return Err(crate::DeserializationError::offset_slice_oob(
+                                (start, end),
+                                data_inner.len(),
+                            ));
+                        }
 
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                let data = unsafe {
-                                    data.get_unchecked(start as usize..end as usize).to_vec()
-                                };
-                                Ok(data)
-                            })
-                            .transpose()
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data =
+                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
+                        Ok(data)
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }
-        .map(|v| {
-            v.ok_or_else(|| crate::DeserializationError::MissingData {
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
-        })
+        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .map_err(|err| crate::DeserializationError::Context {
-            location: "rerun.components.LineStrip2D#points".into(),
-            source: Box::new(err),
-        })?)
+        .with_context("rerun.components.LineStrip2D#points")
+        .with_context("rerun.components.LineStrip2D")?)
     }
 
     #[inline]
