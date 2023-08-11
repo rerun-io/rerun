@@ -51,8 +51,8 @@ use std::{ops::RangeInclusive, sync::Arc};
 
 use parking_lot::Mutex;
 
-use egui::emath::Rot2;
 use crate::list_item::ListItem;
+use egui::emath::Rot2;
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
