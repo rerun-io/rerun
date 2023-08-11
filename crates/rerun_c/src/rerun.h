@@ -18,7 +18,7 @@ extern "C" {
 // Types:
 
 /// Type of store log messages are sent to.
-typedef int32_t rr_store_kind;
+typedef uint32_t rr_store_kind;
 
 enum {
     RERUN_STORE_KIND_RECORDING = 1,
@@ -101,6 +101,33 @@ typedef struct {
     const rr_data_cell* data_cells;
 } rr_data_row;
 
+/// Error codes returned by the Rerun C SDK as part of `rr_error`.
+typedef uint32_t rr_error_code;
+
+enum {
+    RERUN_ERROR_CODE_OK = 0,
+
+    // Invalid argument errors.
+    _RERUN_ERROR_CODE_CATEGORY_ARGUMENT = 0x010000000,
+    RERUN_ERROR_CODE_UNEXPECTED_NULL_ARGUMENT,
+    RERUN_ERROR_CODE_UTF8_ENCODING_ERROR,
+
+    // Generic errors.
+    RERUN_ERROR_CODE_UNKNOWN,
+};
+
+/// Error information filled out by APIs that support it.
+///
+/// Passing this error struct is always optional, and you can pass `NULL` if you don't care about
+/// the error in which case failure will be silent.
+typedef struct {
+    /// Error code indicating the type of error.
+    rr_error_code code;
+
+    /// Human readable description of the error, if any.
+    char description[512];
+} rr_error;
+
 // ----------------------------------------------------------------------------
 // Functions:
 
@@ -114,7 +141,11 @@ extern const char* rr_version_string(void);
 /// Usually you only have one recording stream, so you can call
 /// `rr_recording_stream_set_global` afterwards once to make it available globally via
 /// `RERUN_REC_STREAM_CURRENT_RECORDING` and `RERUN_REC_STREAM_CURRENT_BLUEPRINT` respectively.
-extern rr_recording_stream rr_recording_stream_new(const rr_store_info* store_info);
+///
+/// @return A handle to the recording stream, or null if an error occurred.
+extern rr_recording_stream rr_recording_stream_new(
+    const rr_store_info* store_info, rr_error* error
+);
 
 /// Free the given recording stream. The handle will be invalid after this.
 ///

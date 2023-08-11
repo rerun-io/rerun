@@ -22,7 +22,7 @@ use re_sdk::{
 
 type CRecStreamId = u32;
 
-#[repr(i32)]
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CStoreKind {
     /// A recording of user-data.
@@ -68,6 +68,119 @@ pub struct CDataRow {
     pub num_instances: u32,
     pub num_data_cells: u32,
     pub data_cells: *const CDataCell,
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CErrorCode {
+    Ok = 0,
+    CategoryArgument = 0x010000000,
+    UnexpectedNullArgument,
+
+    Unknown = 0xFFFFFFFF,
+}
+
+#[repr(C)]
+pub struct CError {
+    pub code: CErrorCode,
+    pub message: [c_char; 512],
+}
+
+impl CError {
+    fn write_error(error: *mut CError, code: CErrorCode, message: &str) {
+        #[allow(unsafe_code)]
+        let error = unsafe { error.as_mut() };
+        let Some(error) = error else {
+            return;
+        };
+
+        let bytes = message.bytes();
+
+        // String length excluding nulltermination.
+        let message_byte_length_excluding_null = bytes.len().min(error.message.len() - 1);
+
+        // If we have to truncate the error message log a warning.
+        // (we don't know how critical it is, but we can't just swallow this silently!)
+        if bytes.len() < message_byte_length_excluding_null {
+            re_log::warn_once!("CError message was too long. Full message\n{message}");
+        }
+
+        // Copy over string and null out the rest.
+        for (left, right) in error.message.iter_mut().zip(
+            message
+                .bytes()
+                .take(message_byte_length_excluding_null)
+                .chain(std::iter::repeat(0)),
+        ) {
+            *left = right as c_char;
+        }
+    }
+
+    fn unexpected_null(error: *mut CError, argument_name: &str) {
+        Self::write_error(
+            error,
+            CErrorCode::UnexpectedNullArgument,
+            &format!("Unexpected null passed for argument '{argument_name:?}'"),
+        );
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Ptr conversion utilities:
+
+#[allow(unsafe_code)]
+fn ptr_as_ref<T>(ptr: *const T, error: *mut CError, argument_name: &str) -> Option<&T> {
+    let ptr = unsafe { ptr.as_ref() };
+    if let Some(ptr) = ptr {
+        Some(ptr)
+    } else {
+        CError::unexpected_null(error, argument_name);
+        None
+    }
+}
+
+#[allow(unsafe_code)]
+fn ptr_as_mut<T>(ptr: *mut T, error: *mut CError, argument_name: &str) -> Option<&T> {
+    let ptr = unsafe { ptr.as_mut() };
+    if let Some(ptr) = ptr {
+        Some(ptr)
+    } else {
+        CError::unexpected_null(error, argument_name);
+        None
+    }
+}
+
+#[allow(unsafe_code)]
+fn optional_utf8_from_ptr(ptr: *const c_char, error: *mut CError, argument_name: &str) -> Option<&CStr> {
+    if ptr.is_null() {
+        return None;
+    } else {
+        CStr::from_ptr(ptr)
+
+        CError::unexpected_null(error, argument_name);
+    }
+
+
+    let ptr = unsafe { ptr.as_mut() };
+    if let Some(ptr) = ptr {
+        Some(ptr)
+    } else {
+        None
+    }
+}
+
+#[allow(unsafe_code)]
+fn cstr_from_ptr(ptr: *const c_char, error: *mut CError, argument_name: &str) -> Option<&CStr> {
+
+    CError::unexpected_null(error, argument_name);
+
+
+    let ptr = unsafe { ptr.as_mut() };
+    if let Some(ptr) = ptr {
+        Some(ptr)
+    } else {
+        None
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -125,15 +238,27 @@ pub extern "C" fn rr_version_string() -> *const c_char {
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_recording_stream_new(cstore_info: *const CStoreInfo) -> CRecStreamId {
+pub unsafe extern "C" fn rr_recording_stream_new(
+    store_info: *const CStoreInfo,
+    error: *mut CError,
+) -> CRecStreamId {
     initialize_logging();
 
-    let cstore_info = unsafe { &*cstore_info };
+    let store_info = unsafe { store_info.as_ref() };
+    let Some(store_info) = store_info else {
+        CError::unexpected_null(error, "store_info");
+        return 0;
+    };
 
     let CStoreInfo {
         application_id,
         store_kind,
-    } = *cstore_info;
+    } = *store_info;
+
+    if application_id.is_null() {
+        CError::unexpected_null(error, "rr_store_info::application_id");
+        return 0;
+    }
     let application_id = unsafe { CStr::from_ptr(application_id) };
 
     let mut rec_stream_builder =
