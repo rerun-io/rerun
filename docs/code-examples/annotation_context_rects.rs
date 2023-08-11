@@ -14,12 +14,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         AnnotationInfo {
             id: 1,
             label: Some(Label("red".into())),
-            color: Some(Color::from_rgb(255, 0, 0)),
+            color: Some(Color::from(0xff000000)),
         },
         AnnotationInfo {
             id: 2,
             label: Some(Label("green".into())),
-            color: Some(Color::from_rgb(0, 255, 0)),
+            color: Some(Color::from(0x00ff0000)),
         },
     ]);
 

@@ -224,8 +224,8 @@ fn test_df_builder() {
 
     let colors = vec![
         None,
-        Some(Color::from_rgb(255, 0, 0)),
-        Some(Color::from_rgb(0, 255, 0)),
+        Some(Color::from(0xff000000)),
+        Some(Color::from(0x00ff0000)),
         None,
     ];
 

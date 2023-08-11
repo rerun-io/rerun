@@ -24,7 +24,7 @@ fn simple_query() {
 
     // Assign one of them a color with an explicit instance
     let color_instances = vec![InstanceKey(1)];
-    let colors = vec![Color::from_rgb(255, 0, 0)];
+    let colors = vec![Color::from(0xff000000)];
     let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
@@ -57,7 +57,7 @@ fn simple_query() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -86,7 +86,7 @@ fn timeless_query() {
 
     // Assign one of them a color with an explicit instance.. timelessly!
     let color_instances = vec![InstanceKey(1)];
-    let colors = vec![Color::from_rgb(255, 0, 0)];
+    let colors = vec![Color::from(0xff000000)];
     let row =
         DataRow::from_cells2_sized(RowId::random(), ent_path, [], 1, (color_instances, colors));
     store.insert_row(&row).unwrap();
@@ -114,7 +114,7 @@ fn timeless_query() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -142,7 +142,7 @@ fn no_instance_join_query() {
     store.insert_row(&row).unwrap();
 
     // Assign them colors with explicit instances
-    let colors = vec![Color::from_rgb(255, 0, 0), Color::from_rgb(0, 255, 0)];
+    let colors = vec![Color::from(0xff000000), Color::from(0x00ff0000)];
     let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, colors);
     store.insert_row(&row).unwrap();
 
@@ -169,10 +169,7 @@ fn no_instance_join_query() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![
-            Some(Color::from_rgb(255, 0, 0)),
-            Some(Color::from_rgb(0, 255, 0)),
-        ];
+        let colors = vec![Some(Color::from(0xff000000)), Some(Color::from(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -250,7 +247,7 @@ fn splatted_query() {
 
     // Assign all of them a color via splat
     let color_instances = vec![InstanceKey::SPLAT];
-    let colors = vec![Color::from_rgb(255, 0, 0)];
+    let colors = vec![Color::from(0xff000000)];
     let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
@@ -283,10 +280,7 @@ fn splatted_query() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![
-            Some(Color::from_rgb(255, 0, 0)),
-            Some(Color::from_rgb(255, 0, 0)),
-        ];
+        let colors = vec![Some(Color::from(0xff000000)), Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");

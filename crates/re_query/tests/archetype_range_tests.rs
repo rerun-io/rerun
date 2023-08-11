@@ -26,7 +26,7 @@ fn simple_range() {
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
-        let colors = vec![Color::from_rgb(255, 0, 0)];
+        let colors = vec![Color::from(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -41,7 +41,7 @@ fn simple_range() {
     {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
-        let colors = vec![Color::from_rgb(255, 0, 0)];
+        let colors = vec![Color::from(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -107,7 +107,7 @@ fn simple_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -127,7 +127,7 @@ fn simple_range() {
             Some(Point2D::new(10.0, 20.0)),
             Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
+        let colors = vec![Some(Color::from(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -208,7 +208,7 @@ fn simple_range() {
             Some(Point2D::new(10.0, 20.0)),
             Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
+        let colors = vec![Some(Color::from(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -245,7 +245,7 @@ fn timeless_range() {
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
-        let colors = vec![Color::from_rgb(255, 0, 0)];
+        let colors = vec![Color::from(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -270,7 +270,7 @@ fn timeless_range() {
     {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
-        let colors = vec![Color::from_rgb(255, 0, 0)];
+        let colors = vec![Color::from(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -370,7 +370,7 @@ fn timeless_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -390,7 +390,7 @@ fn timeless_range() {
             Some(Point2D::new(10.0, 20.0)),
             Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
+        let colors = vec![Some(Color::from(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -463,7 +463,7 @@ fn timeless_range() {
             Some(Point2D::new(10.0, 20.0)),
             Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -480,7 +480,7 @@ fn timeless_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -500,7 +500,7 @@ fn timeless_range() {
             Some(Point2D::new(10.0, 20.0)),
             Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
+        let colors = vec![Some(Color::from(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -595,7 +595,7 @@ fn timeless_range() {
             Some(Point2D::new(10.0, 20.0)),
             Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -612,7 +612,7 @@ fn timeless_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -632,7 +632,7 @@ fn timeless_range() {
             Some(Point2D::new(10.0, 20.0)),
             Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
+        let colors = vec![Some(Color::from(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -664,7 +664,7 @@ fn simple_splatted_range() {
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
-        let colors = vec![Color::from_rgb(255, 0, 0)];
+        let colors = vec![Color::from(0xff000000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -679,7 +679,7 @@ fn simple_splatted_range() {
     {
         // Assign one of them a color with a splatted instance
         let color_instances = vec![InstanceKey::SPLAT];
-        let colors = vec![Color::from_rgb(0, 255, 0)];
+        let colors = vec![Color::from(0x00ff0000)];
         let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
@@ -747,7 +747,7 @@ fn simple_splatted_range() {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
@@ -767,10 +767,7 @@ fn simple_splatted_range() {
             Some(Point2D::new(10.0, 20.0)),
             Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![
-            Some(Color::from_rgb(0, 255, 0)),
-            Some(Color::from_rgb(0, 255, 0)),
-        ];
+        let colors = vec![Some(Color::from(0x00ff0000)), Some(Color::from(0x00ff0000))];
 
         let df = ent_view.as_df2::<Point2D, Color>().unwrap();
         let expected = df_builder3(&instances, &points, &colors).unwrap();
@@ -853,10 +850,7 @@ fn simple_splatted_range() {
             Some(Point2D::new(10.0, 20.0)),
             Some(Point2D::new(30.0, 40.0)),
         ];
-        let colors = vec![
-            Some(Color::from_rgb(0, 255, 0)),
-            Some(Color::from_rgb(0, 255, 0)),
-        ];
+        let colors = vec![Some(Color::from(0x00ff0000)), Some(Color::from(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
