@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "data_cell.hpp"
+#include "status.hpp"
 
 // TODO(#2873): Should avoid leaking arrow headers.
 #include <arrow/result.h>
@@ -47,13 +48,14 @@ namespace rerun {
         RecordingStream(const char* app_id, StoreKind store_kind = StoreKind::Recording);
         ~RecordingStream();
 
+        RecordingStream(RecordingStream&& other);
+
         // TODO(andreas): We could easily make the recording stream trivial to copy by bumping Rusts
         // ref counter by adding a copy of the recording stream to the list of C recording streams.
         // Doing it this way would likely yield the most consistent behavior when interacting with
         // global streams (and especially when interacting with different languages in the same
         // application).
         RecordingStream(const RecordingStream&) = delete;
-        RecordingStream(RecordingStream&&) = delete;
         RecordingStream() = delete;
 
         // -----------------------------------------------------------------------------------------

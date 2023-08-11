@@ -29,11 +29,22 @@ namespace rerun {
 
         rr_status status = {};
         this->_id = rr_recording_stream_new(&store_info, &status);
-        // TODO: Handle error.
+        Status(status).log_error_on_failure();
+    }
+
+    RecordingStream::RecordingStream(RecordingStream&& other)
+        : _id(other._id), _store_kind(other._store_kind) {
+        // Set to `RERUN_REC_STREAM_CURRENT_RECORDING` since it's a no-op on destruction.
+        other._id = RERUN_REC_STREAM_CURRENT_RECORDING;
     }
 
     RecordingStream::~RecordingStream() {
-        rr_recording_stream_free(this->_id);
+        // C-Api already specifies that the current constants are not destroyed, but we repeat this
+        // here, since we rely on this invariant in the move concstructor.
+        if (_id != RERUN_REC_STREAM_CURRENT_RECORDING &&
+            _id != RERUN_REC_STREAM_CURRENT_BLUEPRINT) {
+            rr_recording_stream_free(this->_id);
+        }
     }
 
     void RecordingStream::set_global() {

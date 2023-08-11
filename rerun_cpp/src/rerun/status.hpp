@@ -22,6 +22,9 @@ namespace rerun {
         Unknown = 0xFFFFFFFF,
     };
 
+    /// Callback function type for log handlers.
+    using StatusLogHandler = void (*)(const class Status& status, void* userdata);
+
     /// Status outcome object (success or error) returned for fallible operations.
     ///
     /// Converts to `true` for success, `false` for failure.
@@ -34,11 +37,37 @@ namespace rerun {
         std::string description;
 
       public:
+        Status() = default;
+
         /// Construct from a C status object.
         Status(const rr_status& status);
 
         operator bool() const {
-            return code != StatusCode::Ok;
+            return code == StatusCode::Ok;
+        }
+
+        /// Sets global log handler called for `log_error` and `log_error_on_failure`.
+        ///
+        /// The default will log to stderr.
+        ///
+        /// @param handler The handler to call, or `nullptr` to reset to the default.
+        /// @param userdata Userdata pointer that will be passed to each invocation of the handler.
+        ///
+        /// @see log_error, log_error_on_failure
+        static void set_log_handler(StatusLogHandler handler, void* userdata = nullptr);
+
+        /// Logs this status via the global log handler.
+        ///
+        /// @see set_log_handler
+        void log_error();
+
+        /// Logs this status if failed via the global log handler.
+        ///
+        /// @see set_log_handler
+        void log_error_on_failure() {
+            if (!*this) {
+                log_error();
+            }
         }
 
 #ifdef __cpp_exceptions

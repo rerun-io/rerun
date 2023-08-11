@@ -1,4 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+
+#include "status_check.hpp"
 
 #include <rerun/archetypes/points2d.hpp>
 #include <rerun/components/point2d.hpp>
@@ -33,14 +36,36 @@ namespace rerun {
 } // namespace rerun
 
 SCENARIO("RecordingStream can be created, destroyed and lists correct properties", TEST_TAG) {
-    for (auto kind : std::array{rr::StoreKind::Recording, rr::StoreKind::Blueprint}) {
-        GIVEN("a new RecordingStream of kind" << kind) {
-            rr::RecordingStream stream("test", kind);
+    const auto kind = GENERATE(rr::StoreKind::Recording, rr::StoreKind::Blueprint);
 
-            THEN("it does not crash on destruction") {}
+    GIVEN("recording stream kind" << kind) {
+        AND_GIVEN("a valid application id") {
+            THEN("creating a new stream does not log an error") {
+                rr::RecordingStream stream =
+                    check_logged_status([&] { return rr::RecordingStream("test", kind); });
 
-            THEN("it reports the correct kind") {
-                CHECK(stream.kind() == kind);
+                AND_THEN("it does not crash on destruction") {}
+
+                AND_THEN("it reports the correct kind") {
+                    CHECK(stream.kind() == kind);
+                }
+            }
+        }
+
+        AND_GIVEN("a nullptr for the application id") {
+            THEN("creating a new stream logs a null argument error") {
+                check_logged_status(
+                    [&] { rr::RecordingStream stream(nullptr, kind); },
+                    rr::StatusCode::UnexpectedNullArgument
+                );
+            }
+        }
+        AND_GIVEN("invalid utf8 character sequence for the application id") {
+            THEN("creating a new stream logs an invalid string argument error") {
+                check_logged_status(
+                    [&] { rr::RecordingStream stream("\xc3\x28", kind); },
+                    rr::StatusCode::InvalidStringArgument
+                );
             }
         }
     }
