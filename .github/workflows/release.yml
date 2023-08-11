@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-version:
+        description: "Release version number"
+        type: string
+        required: true
+      release-type:
+        description: "Is this a pre-release or a final release?"
+        type: choice
+        options:
+          - prerelease
+          - release
+        required: true
+
+jobs:
+  version:
+    name: "Versioning"
+    runs-on: ubuntu-latest
+
+    permissions: # wants to push commits and create a PR
+      contents: write
+      id-token: "write"
+
+    outputs:
+      prerelease: ${{ steps.update-crate-versions.outputs.prerelease }}
+      finalized: ${{ steps.update-crate-versions.outputs.finalized }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install deps
+        run: |
+          python3 -m pip install -r ./scripts/ci/requirements.txt
+
+      - name: Update crate versions
+        id: update-crate-versions
+        run: |
+          current_version=$(python3 scripts/ci/crates.py get-version --finalize)
+          if [ $current_version != ${{ inputs.release-version }} ]; then
+            python3 scripts/ci/crates.py version --exact ${{ inputs.release-version }}
+          fi
+
+          if [ ${{ inputs.release-type }} = "prerelease" ]; then
+            python3 scripts/ci/crates.py version --bump prerelease --pre-id=rc
+          fi
+
+          echo "prerelease=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+          echo "finalized=$(python3 scripts/ci/crates.py get-version --finalize)" >> "$GITHUB_OUTPUT"
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v5.0.2
+        with:
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
+          branch: ${{ github.ref_name }}
+          commit-message: "Bump crate versions to `${{ inputs.release-version }}`"
+          title: "Release ${{ inputs.release-version }}"
+          labels: "⛴ release"
+          committer: "Rerun Bot <bot@rerun.io>"
+          author: "Rerun Bot <bot@rerun.io>"
+          body: |
+            TODO(jprochazk): fill in the full checklist here
+
+  update-docs:
+    name: "Update Docs"
+    needs: [version]
+    uses: ./.github/workflows/reusable_deploy_docs.yml
+    with:
+      CONCURRENCY: pre-release-${{ github.ref_name }}
+      PY_DOCS_VERSION_NAME: "HEAD"
+      UPDATE_LATEST: false
+    secrets: inherit
+
+  publish-crates:
+    name: "Publish Crates"
+    needs: [version]
+    uses: ./.github/workflows/reusable_release_crates.yml
+    with:
+      CONCURRENCY: pre-release-${{ github.ref_name }}
+    secrets: inherit
+
+  build-and-publish-wheels:
+    name: "Build and Publish Wheels"
+    needs: [version]
+    uses: ./.github/workflows/reusable_build_and_publish_wheels.yml
+    with:
+      RELEASE_VERSION: ${{ inputs.release-type == 'prerelease' && needs.version.outputs.prerelease || needs.version.outputs.finalized }}
+      CONCURRENCY: pre-release-${{ github.ref_name }}
+    secrets: inherit
+
