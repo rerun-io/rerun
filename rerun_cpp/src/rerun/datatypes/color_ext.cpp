@@ -25,19 +25,19 @@ namespace rerun {
             Color(const uint8_t (&_rgb)[3]) : Color(_rgb[0], _rgb[1], _rgb[2]) {}
 
             uint8_t r() const {
-                return (rgba >> 24) & 0xFF;
+                return static_cast<uint8_t>((rgba >> 24) & 0xFF);
             }
 
             uint8_t g() const {
-                return (rgba >> 16) & 0xFF;
+                return static_cast<uint8_t>((rgba >> 16) & 0xFF);
             }
 
             uint8_t b() const {
-                return (rgba >> 8) & 0xFF;
+                return static_cast<uint8_t>((rgba >> 8) & 0xFF);
             }
 
             uint8_t a() const {
-                return rgba & 0xFF;
+                return static_cast<uint8_t>(rgba & 0xFF);
             }
 
             // [CODEGEN COPY TO HEADER END]
