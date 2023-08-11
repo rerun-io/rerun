@@ -11,7 +11,10 @@ use crate::{
     codegen::{
         rust::{
             arrow::ArrowDataTypeTokenizer,
-            deserializer::{quote_arrow_deserializer, should_optimize_deserialize},
+            deserializer::{
+                quote_arrow_deserializer, quote_arrow_deserializer_non_nullable,
+                should_optimize_deserialize,
+            },
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components},
         },
@@ -713,8 +716,7 @@ fn quote_trait_impls_from_obj(
             // by archetypes and as such should never be nullible.
             // TODO(jleibs): we should always code-gen both version of this and dispatch to
             // the right one based on the stored data instead.
-            let optimize_non_nullable =
-                *kind == ObjectKind::Component && should_optimize_deserialize(&datatype);
+            let optimize_non_nullable = should_optimize_deserialize(&obj, &arrow_registry);
 
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
@@ -779,6 +781,24 @@ fn quote_trait_impls_from_obj(
                 quote!(try_from_arrow_opt)
             };
 
+            let quoted_try_from_arrow = if optimize_non_nullable {
+                let quoted_deserializer =
+                    quote_arrow_deserializer_non_nullable(arrow_registry, objects, obj);
+                quote! {
+                    #[allow(unused_imports, clippy::wildcard_imports)]
+                    #[inline]
+                    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+                    where
+                        Self: Sized {
+                        use ::arrow2::{datatypes::*, array::*, buffer::*};
+                        use crate::{Loggable as _, ResultExt as _};
+                        Ok(#quoted_deserializer)
+                    }
+                }
+            } else {
+                quote!()
+            };
+
             quote! {
                 #into_cow
 
@@ -822,6 +842,8 @@ fn quote_trait_impls_from_obj(
                         use crate::{Loggable as _, ResultExt as _};
                         Ok(#quoted_deserializer)
                     }
+
+                    #quoted_try_from_arrow
 
                     #[inline]
                     fn try_iter_from_arrow(
