@@ -786,9 +786,16 @@ impl QuotedObject {
                     });
                 }
             }
+
+            let trivial_memcpy = quote! {
+                const void *otherbytes = reinterpret_cast<const void *>(&other._data);
+                void *thisbytes = reinterpret_cast<void *>(&this->_data);
+                std::memcpy(thisbytes, otherbytes, sizeof(detail::#data_typename));
+            };
+
             if copy_match_arms.is_empty() {
                 quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
-                    memcpy(&this->_data, &other._data, sizeof(detail::#data_typename));
+                    #trivial_memcpy
                 })
             } else {
                 quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
@@ -797,7 +804,7 @@ impl QuotedObject {
 
                         case detail::#tag_typename::NONE:
                         #(#default_match_arms)*
-                            memcpy(&this->_data, &other._data, sizeof(detail::#data_typename));
+                        #trivial_memcpy
                             break;
                     }
                 })
