@@ -6,10 +6,10 @@
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
 
-use std::{
-    ffi::{c_char, CStr, CString},
-    str::Utf8Error,
-};
+mod error;
+mod ptr;
+
+use std::ffi::{c_char, CStr, CString};
 
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -94,98 +94,6 @@ pub struct CError {
     pub message: [c_char; 512],
 }
 
-impl CError {
-    fn write_error(error: *mut CError, code: CErrorCode, message: &str) {
-        #[allow(unsafe_code)]
-        let error = unsafe { error.as_mut() };
-        let Some(error) = error else {
-            return;
-        };
-
-        error.code = code;
-
-        let bytes = message.bytes();
-        let message_byte_length_excluding_null = bytes.len().min(error.message.len() - 1);
-
-        // If we have to truncate the error message log a warning.
-        // (we don't know how critical it is, but we can't just swallow this silently!)
-        if bytes.len() < message_byte_length_excluding_null {
-            re_log::warn_once!("CError message was too long. Full message\n{message}");
-        }
-
-        // Copy over string and null out the rest.
-        for (left, right) in error.message.iter_mut().zip(
-            message
-                .bytes()
-                .take(message_byte_length_excluding_null)
-                .chain(std::iter::repeat(0)),
-        ) {
-            *left = right as c_char;
-        }
-    }
-
-    fn unexpected_null(error: *mut CError, argument_name: &str) {
-        Self::write_error(
-            error,
-            CErrorCode::UnexpectedNullArgument,
-            &format!("Unexpected null passed for argument '{argument_name:?}'"),
-        );
-    }
-
-    fn invalid_str_argument(error: *mut CError, argument_name: &str, utf8_error: Utf8Error) {
-        CError::write_error(
-            error,
-            CErrorCode::InvalidStringArgument,
-            &format!("Failed to interpret argument '{argument_name:?}' as a UTF-8: {utf8_error}",),
-        );
-    }
-}
-
-// ----------------------------------------------------------------------------
-// Ptr conversion utilities:
-
-#[allow(unsafe_code)]
-fn try_ptr_as_ref<T>(ptr: *const T, error: *mut CError, argument_name: &str) -> Option<&T> {
-    let ptr = unsafe { ptr.as_ref() };
-    if let Some(ptr) = ptr {
-        Some(ptr)
-    } else {
-        CError::unexpected_null(error, argument_name);
-        None
-    }
-}
-
-#[allow(unsafe_code)]
-fn try_ptr_as_mut<T>(ptr: *mut T, error: *mut CError, argument_name: &str) -> Option<&T> {
-    let ptr = unsafe { ptr.as_mut() };
-    if let Some(ptr) = ptr {
-        Some(ptr)
-    } else {
-        CError::unexpected_null(error, argument_name);
-        None
-    }
-}
-
-/// Tries to convert a c_char pointer to a string, raises an error if the pointer is null or it can't be converted to a string.
-#[allow(unsafe_code)]
-fn try_char_ptr_as_str(
-    ptr: *const c_char,
-    error: *mut CError,
-    argument_name: &str,
-) -> Option<&str> {
-    if try_ptr_as_ref(ptr, error, argument_name).is_some() {
-        match unsafe { CStr::from_ptr(ptr) }.to_str() {
-            Ok(str) => Some(str),
-            Err(utf8_error) => {
-                CError::invalid_str_argument(error, argument_name, utf8_error);
-                None
-            }
-        }
-    } else {
-        None
-    }
-}
-
 // ----------------------------------------------------------------------------
 // Global data:
 
@@ -247,7 +155,7 @@ pub extern "C" fn rr_recording_stream_new(
 ) -> CRecStreamId {
     initialize_logging();
 
-    let Some(store_info) = try_ptr_as_ref(store_info, error, "store_info") else {
+    let Some(store_info) = ptr::try_ptr_as_ref(store_info, error, "store_info") else {
         return 0;
     };
 
@@ -256,7 +164,7 @@ pub extern "C" fn rr_recording_stream_new(
         store_kind,
     } = *store_info;
 
-    let Some(application_id) = try_char_ptr_as_str(application_id, error, "store_info.application_id") else {
+    let Some(application_id) = ptr::try_char_ptr_as_str(application_id, error, "store_info.application_id") else {
         return 0;
     };
 
@@ -270,7 +178,10 @@ pub extern "C" fn rr_recording_stream_new(
     }
 
     match rec_stream_builder.buffered() {
-        Ok(rec_stream) => RECORDING_STREAMS.lock().insert(rec_stream),
+        Ok(rec_stream) => {
+            CError::set_ok(error);
+            RECORDING_STREAMS.lock().insert(rec_stream)
+        }
         Err(err) => {
             CError::write_error(
                 error,
