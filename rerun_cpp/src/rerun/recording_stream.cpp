@@ -6,7 +6,7 @@
 #include <vector>
 
 namespace rerun {
-    static int32_t store_kind_to_c(StoreKind store_kind) {
+    static rr_store_kind store_kind_to_c(StoreKind store_kind) {
         switch (store_kind) {
             case StoreKind::Recording:
                 return RERUN_STORE_KIND_RECORDING;
@@ -27,7 +27,9 @@ namespace rerun {
         store_info.application_id = app_id;
         store_info.store_kind = store_kind_to_c(store_kind);
 
-        this->_id = rr_recording_stream_new(&store_info);
+        rr_status status = {};
+        this->_id = rr_recording_stream_new(&store_info, &status);
+        // TODO: Handle error.
     }
 
     RecordingStream::~RecordingStream() {

@@ -9,3 +9,4 @@
 // Rerun API.
 #include "rerun/recording_stream.hpp"
 #include "rerun/sdk_info.hpp"
+#include "rerun/status.hpp"

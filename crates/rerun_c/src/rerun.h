@@ -59,7 +59,7 @@ enum {
 /// set it as a the global.
 typedef uint32_t rr_recording_stream;
 
-typedef struct {
+typedef struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
     const char* application_id;
 
@@ -68,7 +68,7 @@ typedef struct {
 } rr_store_info;
 
 /// Arrow-encoded data of a single component for a single entity.
-typedef struct {
+typedef struct rr_data_cell {
     const char* component_name;
 
     /// The number of bytes in the `bytes` field.
@@ -101,8 +101,10 @@ typedef struct {
     const rr_data_cell* data_cells;
 } rr_data_row;
 
-/// Error codes returned by the Rerun C SDK as part of `rr_error`.
-typedef uint32_t rr_error_code;
+/// Status codes returned by the Rerun C SDK as part of `rr_status`.
+///
+/// Category codes are used to group errors together, but are never returned directly.
+typedef uint32_t rr_status_code;
 
 enum {
     RERUN_ERROR_CODE_OK = 0,
@@ -120,17 +122,17 @@ enum {
     RERUN_ERROR_CODE_UNKNOWN,
 };
 
-/// Error information filled out by APIs that support it.
+/// Status outcome object (success or error) that may be filled for fallible operations.
 ///
 /// Passing this error struct is always optional, and you can pass `NULL` if you don't care about
 /// the error in which case failure will be silent.
-typedef struct {
+typedef struct rr_status {
     /// Error code indicating the type of error.
-    rr_error_code code;
+    rr_status_code code;
 
     /// Human readable description of the error, if any.
     char description[512];
-} rr_error;
+} rr_status;
 
 // ----------------------------------------------------------------------------
 // Functions:
@@ -148,7 +150,7 @@ extern const char* rr_version_string(void);
 ///
 /// @return A handle to the recording stream, or null if an error occurred.
 extern rr_recording_stream rr_recording_stream_new(
-    const rr_store_info* store_info, rr_error* error
+    const rr_store_info* store_info, rr_status* status
 );
 
 /// Free the given recording stream. The handle will be invalid after this.
