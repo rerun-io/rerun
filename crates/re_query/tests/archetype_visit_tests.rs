@@ -36,9 +36,9 @@ fn directly_joined_iter() {
     ];
 
     let colors = [
-        Color::from_rgb(0, 0, 0), //
-        Color::from_rgb(1, 0, 0),
-        Color::from_rgb(2, 0, 0),
+        Color::from(0), //
+        Color::from(1),
+        Color::from(2),
     ];
 
     let points_comp = ComponentWithInstances::from_native(instance_keys.clone(), points);
@@ -48,9 +48,9 @@ fn directly_joined_iter() {
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [points_comp, colors_comp]);
 
     let expected_colors = [
-        Some(Color::from_rgb(0, 0, 0)),
-        Some(Color::from_rgb(1, 0, 0)),
-        Some(Color::from_rgb(2, 0, 0)),
+        Some(Color::from(0)),
+        Some(Color::from(1)),
+        Some(Color::from(2)),
     ];
 
     let results = itertools::izip!(
@@ -79,8 +79,8 @@ fn joined_iter_dense_primary() {
     ];
 
     let colors = [
-        Color::from_rgb(1, 0, 0), //
-        Color::from_rgb(2, 0, 0),
+        Color::from(1), //
+        Color::from(2),
     ];
 
     let points_comp = ComponentWithInstances::from_native(point_ids, points);
@@ -91,8 +91,8 @@ fn joined_iter_dense_primary() {
 
     let expected_colors = vec![
         None, //
-        Some(Color::from_rgb(1, 0, 0)),
-        Some(Color::from_rgb(2, 0, 0)),
+        Some(Color::from(1)),
+        Some(Color::from(2)),
     ];
 
     let results = itertools::izip!(
@@ -122,11 +122,11 @@ fn joined_iter_dense_secondary() {
     let color_ids = InstanceKey::from_iter(0..5);
 
     let colors = [
-        Color::from_rgb(0, 0, 0), //
-        Color::from_rgb(1, 0, 0),
-        Color::from_rgb(2, 0, 0),
-        Color::from_rgb(3, 0, 0),
-        Color::from_rgb(4, 0, 0),
+        Color::from(0), //
+        Color::from(1),
+        Color::from(2),
+        Color::from(3),
+        Color::from(4),
     ];
 
     let points_comp = ComponentWithInstances::from_native(point_ids, points);
@@ -136,9 +136,9 @@ fn joined_iter_dense_secondary() {
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [points_comp, colors_comp]);
 
     let expected_colors = vec![
-        Some(Color::from_rgb(0, 0, 0)), //
-        Some(Color::from_rgb(2, 0, 0)),
-        Some(Color::from_rgb(4, 0, 0)),
+        Some(Color::from(0)), //
+        Some(Color::from(2)),
+        Some(Color::from(4)),
     ];
 
     let results = itertools::izip!(
@@ -176,11 +176,11 @@ fn complex_joined_iter() {
     ];
 
     let colors = vec![
-        Color::from_rgb(17, 0, 0), //
-        Color::from_rgb(19, 0, 0),
-        Color::from_rgb(44, 0, 0),
-        Color::from_rgb(96, 0, 0),
-        Color::from_rgb(254, 0, 0),
+        Color::from(17), //
+        Color::from(19),
+        Color::from(44),
+        Color::from(96),
+        Color::from(254),
     ];
 
     let points_comp = ComponentWithInstances::from_native(point_ids, points);
@@ -191,9 +191,9 @@ fn complex_joined_iter() {
 
     let expected_colors = vec![
         None,
-        Some(Color::from_rgb(17, 0, 0)), //
+        Some(Color::from(17)), //
         None,
-        Some(Color::from_rgb(96, 0, 0)),
+        Some(Color::from(96)),
     ];
 
     let results = itertools::izip!(
@@ -249,8 +249,8 @@ fn joint_visit() {
     let point_ids = InstanceKey::from_iter(0..5);
 
     let colors = vec![
-        Color::from_rgb(255, 0, 0), //
-        Color::from_rgb(0, 255, 0),
+        Color::from(0xff000000), //
+        Color::from(0x00ff0000),
     ];
 
     let color_ids = vec![
@@ -279,9 +279,9 @@ fn joint_visit() {
     let expected_colors = vec![
         None,
         None,
-        Some(Color::from_rgb(255, 0, 0)),
+        Some(Color::from(0xff000000)),
         None,
-        Some(Color::from_rgb(0, 255, 0)),
+        Some(Color::from(0x00ff0000)),
     ];
 
     assert_eq!(points, points_out);

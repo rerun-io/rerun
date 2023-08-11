@@ -1,5 +1,5 @@
 """
-Overrides for `Color` component.
+Overrides for `Color` datatype.
 
 Possible input for `Color`:
 - Sequence[int]: interpreted as rgb or rgba values in 0-255 range

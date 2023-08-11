@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../data_cell.hpp"
+#include "../datatypes/class_id.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -13,7 +14,7 @@ namespace rerun {
     namespace components {
         /// A 16-bit ID representing a type of semantic class.
         struct ClassId {
-            uint16_t id;
+            rerun::datatypes::ClassId id;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
@@ -21,12 +22,14 @@ namespace rerun {
           public:
             ClassId() = default;
 
-            ClassId(uint16_t _id) : id(std::move(_id)) {}
+            ClassId(rerun::datatypes::ClassId _id) : id(std::move(_id)) {}
 
-            ClassId& operator=(uint16_t _id) {
+            ClassId& operator=(rerun::datatypes::ClassId _id) {
                 id = std::move(_id);
                 return *this;
             }
+
+            ClassId(uint16_t arg) : id(std::move(arg)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

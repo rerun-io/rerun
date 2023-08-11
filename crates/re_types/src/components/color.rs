@@ -26,7 +26,13 @@
     bytemuck :: Zeroable,
 )]
 #[repr(transparent)]
-pub struct Color(pub u32);
+pub struct Color(pub crate::datatypes::Color);
+
+impl<T: Into<crate::datatypes::Color>> From<T> for Color {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
 
 impl<'a> From<Color> for ::std::borrow::Cow<'a, Color> {
     #[inline]
@@ -96,7 +102,17 @@ impl crate::Loggable for Color {
                     .to_logical_type()
                     .clone()
                 },
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0
+                    .into_iter()
+                    .map(|datum| {
+                        datum
+                            .map(|datum| {
+                                let crate::datatypes::Color(data0) = datum;
+                                data0
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect(),
                 data0_bitmap,
             )
             .boxed()
@@ -124,6 +140,7 @@ impl crate::Loggable for Color {
             .with_context("rerun.components.Color#rgba")?
             .into_iter()
             .map(|opt| opt.copied())
+            .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Color(v)))
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()

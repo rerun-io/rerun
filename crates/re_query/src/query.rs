@@ -266,7 +266,7 @@ pub fn __populate_example_store() -> DataStore {
     store.insert_row(&row).unwrap();
 
     let instances = vec![InstanceKey(96)];
-    let colors = vec![Color(0xff000000)];
+    let colors = vec![Color::from(0xff000000)];
 
     let row = DataRow::from_cells2_sized(
         RowId::random(),
@@ -336,7 +336,7 @@ fn simple_query_entity() {
 
         let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
         let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
-        let colors = vec![None, Some(Color(0xff000000))];
+        let colors = vec![None, Some(Color::from(0xff000000))];
 
         let expected = crate::dataframe_util::df_builder3(&instances, &points, &colors).unwrap();
         assert_eq!(expected, df);

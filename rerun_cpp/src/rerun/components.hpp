@@ -35,8 +35,6 @@
 #include "components/origin3d.hpp"
 #include "components/point2d.hpp"
 #include "components/point3d.hpp"
-#include "components/primitive_component.hpp"
 #include "components/radius.hpp"
-#include "components/string_component.hpp"
 #include "components/transform3d.hpp"
 #include "components/vector3d.hpp"

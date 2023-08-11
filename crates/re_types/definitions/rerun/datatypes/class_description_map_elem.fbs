@@ -2,7 +2,6 @@ include "arrow/attributes.fbs";
 include "fbs/attributes.fbs";
 
 include "rerun/datatypes.fbs";
-include "rerun/components/class_id.fbs";
 
 namespace rerun.datatypes;
 
@@ -16,6 +15,6 @@ table ClassDescriptionMapElem (
   "attr.rust.derive": "Default, Eq, PartialEq",
   order: 100
 ) {
-  class_id: rerun.components.ClassId (order: 100);
+  class_id: rerun.datatypes.ClassId (order: 100);
   class_description: rerun.datatypes.ClassDescription (order: 200);
 }

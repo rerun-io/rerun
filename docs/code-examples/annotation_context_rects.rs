@@ -1,8 +1,8 @@
 //! Log rectangles with different colors and labels using annotation context
 use rerun::{
     archetypes::AnnotationContext,
-    components::{ClassId, Color, Label, Rect2D},
-    datatypes::{AnnotationInfo, Vec4D},
+    components::{ClassId, Rect2D},
+    datatypes::{AnnotationInfo, Color, Label, Vec4D},
     MsgSender, RecordingStreamBuilder,
 };
 
@@ -14,12 +14,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         AnnotationInfo {
             id: 1,
             label: Some(Label("red".into())),
-            color: Some(Color::from_rgb(255, 0, 0)),
+            color: Some(Color::from(0xff000000)),
         },
         AnnotationInfo {
             id: 2,
             label: Some(Label("green".into())),
-            color: Some(Color::from_rgb(0, 255, 0)),
+            color: Some(Color::from(0x00ff0000)),
         },
     ]);
 
@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Rect2D::XYWH(Vec4D([-2., -2., 3., 3.]).into()),
             Rect2D::XYWH(Vec4D([0., 0., 2., 2.]).into()),
         ])?
-        .with_component(&[ClassId(1), ClassId(2)])?
+        .with_component(&[ClassId::from(1), ClassId::from(2)])?
         .send(&rec_stream)?;
 
     // Log an extra rect to set the view bounds

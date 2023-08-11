@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../components/primitive_component.hpp"
-#include "../components/string_component.hpp"
+#include "../datatypes/primitive_component.hpp"
+#include "../datatypes/string_component.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -12,9 +12,9 @@
 namespace rerun {
     namespace datatypes {
         struct AffixFuzzer20 {
-            rerun::components::PrimitiveComponent p;
+            rerun::datatypes::PrimitiveComponent p;
 
-            rerun::components::StringComponent s;
+            rerun::datatypes::StringComponent s;
 
           public:
             AffixFuzzer20() = default;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../data_cell.hpp"
+#include "../datatypes/label.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -14,7 +15,7 @@ namespace rerun {
     namespace components {
         /// A String label component.
         struct Label {
-            std::string value;
+            rerun::datatypes::Label value;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
@@ -32,12 +33,14 @@ namespace rerun {
           public:
             Label() = default;
 
-            Label(std::string _value) : value(std::move(_value)) {}
+            Label(rerun::datatypes::Label _value) : value(std::move(_value)) {}
 
-            Label& operator=(std::string _value) {
+            Label& operator=(rerun::datatypes::Label _value) {
                 value = std::move(_value);
                 return *this;
             }
+
+            Label(std::string arg) : value(std::move(arg)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

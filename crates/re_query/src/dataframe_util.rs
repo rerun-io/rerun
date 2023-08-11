@@ -222,7 +222,12 @@ fn test_df_builder() {
         Some(Radius::new(7.0)),
     ];
 
-    let colors = vec![None, Some(Color(0xff000000)), Some(Color(0x00ff0000)), None];
+    let colors = vec![
+        None,
+        Some(Color::from(0xff000000)),
+        Some(Color::from(0x00ff0000)),
+        None,
+    ];
 
     let df = df_builder2(&radii, &colors).unwrap();
     eprintln!("{df:?}");

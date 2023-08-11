@@ -80,10 +80,10 @@ def test_line_strips2d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         strips = cast(rrc.LineStrip2DArrayLike, strips)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrc.ColorArrayLike], colors)
-        labels = cast(Optional[rrc.LabelArrayLike], labels)
+        colors = cast(Optional[rrd.ColorArrayLike], colors)
+        labels = cast(Optional[rrd.LabelArrayLike], labels)
         draw_order = cast(Optional[rrc.DrawOrderArrayLike], draw_order)
-        class_ids = cast(Optional[rrc.ClassIdArrayLike], class_ids)
+        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
 
         print(

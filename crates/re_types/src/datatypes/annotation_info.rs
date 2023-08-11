@@ -22,10 +22,10 @@ pub struct AnnotationInfo {
     pub id: u16,
 
     /// The label that will be shown in the UI.
-    pub label: Option<crate::components::Label>,
+    pub label: Option<crate::datatypes::Label>,
 
     /// The color that will be applied to the annotated entity.
-    pub color: Option<crate::components::Color>,
+    pub color: Option<crate::datatypes::Color>,
 }
 
 impl<'a> From<AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
@@ -65,13 +65,13 @@ impl crate::Loggable for AnnotationInfo {
             },
             Field {
                 name: "label".to_owned(),
-                data_type: <crate::components::Label>::to_arrow_datatype(),
+                data_type: <crate::datatypes::Label>::to_arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
             Field {
                 name: "color".to_owned(),
-                data_type: <crate::components::Color>::to_arrow_datatype(),
+                data_type: <crate::datatypes::Color>::to_arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
@@ -161,7 +161,7 @@ impl crate::Loggable for AnnotationInfo {
                                 .iter()
                                 .flatten()
                                 .flat_map(|datum| {
-                                    let crate::components::Label(data0) = datum;
+                                    let crate::datatypes::Label(data0) = datum;
                                     data0.0.clone()
                                 })
                                 .collect();
@@ -169,7 +169,7 @@ impl crate::Loggable for AnnotationInfo {
                                 label.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| {
-                                            let crate::components::Label(data0) = datum;
+                                            let crate::datatypes::Label(data0) = datum;
                                             data0.0.len()
                                         })
                                         .unwrap_or_default()
@@ -221,7 +221,7 @@ impl crate::Loggable for AnnotationInfo {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::components::Color(data0) = datum;
+                                            let crate::datatypes::Color(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()
@@ -262,13 +262,13 @@ impl crate::Loggable for AnnotationInfo {
                             },
                             Field {
                                 name: "label".to_owned(),
-                                data_type: <crate::components::Label>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::Label>::to_arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             },
                             Field {
                                 name: "color".to_owned(),
-                                data_type: <crate::components::Color>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::Color>::to_arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             },
@@ -298,13 +298,13 @@ impl crate::Loggable for AnnotationInfo {
                                 },
                                 Field {
                                     name: "label".to_owned(),
-                                    data_type: <crate::components::Label>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::Label>::to_arrow_datatype(),
                                     is_nullable: true,
                                     metadata: [].into(),
                                 },
                                 Field {
                                     name: "color".to_owned(),
-                                    data_type: <crate::components::Color>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::Color>::to_arrow_datatype(),
                                     is_nullable: true,
                                     metadata: [].into(),
                                 },
@@ -338,13 +338,13 @@ impl crate::Loggable for AnnotationInfo {
                                 },
                                 Field {
                                     name: "label".to_owned(),
-                                    data_type: <crate::components::Label>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::Label>::to_arrow_datatype(),
                                     is_nullable: true,
                                     metadata: [].into(),
                                 },
                                 Field {
                                     name: "color".to_owned(),
-                                    data_type: <crate::components::Color>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::Color>::to_arrow_datatype(),
                                     is_nullable: true,
                                     metadata: [].into(),
                                 },
@@ -390,7 +390,7 @@ impl crate::Loggable for AnnotationInfo {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| crate::components::Label(crate::ArrowString(v)))
+                                res_or_opt.map(|v| crate::datatypes::Label(crate::ArrowString(v)))
                             })
                         })
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
@@ -410,13 +410,13 @@ impl crate::Loggable for AnnotationInfo {
                                 },
                                 Field {
                                     name: "label".to_owned(),
-                                    data_type: <crate::components::Label>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::Label>::to_arrow_datatype(),
                                     is_nullable: true,
                                     metadata: [].into(),
                                 },
                                 Field {
                                     name: "color".to_owned(),
-                                    data_type: <crate::components::Color>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::Color>::to_arrow_datatype(),
                                     is_nullable: true,
                                     metadata: [].into(),
                                 },
@@ -437,7 +437,7 @@ impl crate::Loggable for AnnotationInfo {
                         .with_context("rerun.datatypes.AnnotationInfo#color")?
                         .into_iter()
                         .map(|opt| opt.copied())
-                        .map(|res_or_opt| res_or_opt.map(|v| crate::components::Color(v)))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Color(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(id, label, color),

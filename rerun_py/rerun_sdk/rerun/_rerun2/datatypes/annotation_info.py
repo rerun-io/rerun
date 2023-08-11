@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Sequence, Tuple, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components
+from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
@@ -23,22 +23,22 @@ __all__ = [
 ]
 
 
-def _annotationinfo_label_converter(x: components.LabelLike | None) -> components.Label | None:
+def _annotationinfo_label_converter(x: datatypes.LabelLike | None) -> datatypes.Label | None:
     if x is None:
         return None
-    elif isinstance(x, components.Label):
+    elif isinstance(x, datatypes.Label):
         return x
     else:
-        return components.Label(x)
+        return datatypes.Label(x)
 
 
-def _annotationinfo_color_converter(x: components.ColorLike | None) -> components.Color | None:
+def _annotationinfo_color_converter(x: datatypes.ColorLike | None) -> datatypes.Color | None:
     if x is None:
         return None
-    elif isinstance(x, components.Color):
+    elif isinstance(x, datatypes.Color):
         return x
     else:
-        return components.Color(x)
+        return datatypes.Color(x)
 
 
 @define
@@ -55,19 +55,19 @@ class AnnotationInfo:
     `ClassId` or `KeypointId` to which this annotation info belongs.
     """
 
-    label: components.Label | None = field(default=None, converter=_annotationinfo_label_converter)
+    label: datatypes.Label | None = field(default=None, converter=_annotationinfo_label_converter)
     """
     The label that will be shown in the UI.
     """
 
-    color: components.Color | None = field(default=None, converter=_annotationinfo_color_converter)
+    color: datatypes.Color | None = field(default=None, converter=_annotationinfo_color_converter)
     """
     The color that will be applied to the annotated entity.
     """
 
 
 if TYPE_CHECKING:
-    AnnotationInfoLike = Union[AnnotationInfo, Tuple[int, str], Tuple[int, str, components.ColorLike]]
+    AnnotationInfoLike = Union[AnnotationInfo, Tuple[int, str], Tuple[int, str, datatypes.ColorLike]]
 else:
     AnnotationInfoLike = Any
 

@@ -1,6 +1,5 @@
 use re_components::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
 use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
-use re_types::components::Color;
 
 pub struct LoadedMesh {
     name: String,
@@ -116,7 +115,9 @@ impl LoadedMesh {
         let vertex_colors = if let Some(vertex_colors) = vertex_colors {
             vertex_colors
                 .iter()
-                .map(|c| Rgba32Unmul::from_rgba_unmul_array(Color(*c).to_array()))
+                .map(|c| {
+                    Rgba32Unmul::from_rgba_unmul_array(re_types::datatypes::Color(*c).to_array())
+                })
                 .collect()
         } else {
             std::iter::repeat(Rgba32Unmul::WHITE)

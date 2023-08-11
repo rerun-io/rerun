@@ -22,7 +22,9 @@ use rerun::{
         TensorDataMeaning, TextEntry, ViewCoordinates,
     },
     coordinates::SignedAxis3,
-    datatypes::{Angle, AnnotationInfo, RotationAxisAngle, TranslationRotationScale3D, Vec3D},
+    datatypes::{
+        self, Angle, AnnotationInfo, RotationAxisAngle, TranslationRotationScale3D, Vec3D,
+    },
     external::{
         re_log, re_log_types,
         re_log_types::external::{arrow2, arrow2_convert},
@@ -37,7 +39,7 @@ fn test_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("bbox_test/bbox")
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Color::from_rgb(0, 255, 0)])?
+        .with_component(&[Color::from(0x00ff0000)])?
         .with_component(&[Radius(0.005)])?
         .with_component(&[Label("box/t0".into())])?
         .send(rec_stream)?;
@@ -98,7 +100,7 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("extension_components/point")
         .with_component(&[Point2D::new(64.0, 64.0)])?
-        .with_component(&[Color::from_rgb(255, 0, 0)])?
+        .with_component(&[Color::from(0xff000000)])?
         .with_component(&[Confidence(0.9)])?
         .send(rec_stream)?;
 
@@ -147,7 +149,7 @@ fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
             Point2D::new(96.0, 32.0),
             Point2D::new(96.0, 96.0),
         ])?
-        .with_splat(Color::from_rgb(0, 255, 0))?
+        .with_splat(Color::from(0x00ff0000))?
         .with_component(&[
             Corner("upper left".into()),
             Corner("lower left".into()),
@@ -170,12 +172,12 @@ fn test_log_cleared(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("null_test/rect/0")
         .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
-        .with_component(&[Color::from_rgb(255, 0, 0)])?
+        .with_component(&[Color::from(0xff000000)])?
         .with_component(&[Label("Rect1".into())])?
         .send(rec_stream)?;
     MsgSender::new("null_test/rect/1")
         .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
-        .with_component(&[Color::from_rgb(0, 255, 0)])?
+        .with_component(&[Color::from(0x00ff0000)])?
         .with_component(&[Label("Rect2".into())])?
         .send(rec_stream)?;
 
@@ -444,9 +446,9 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::from_archetype(
         "seg_test",
         &AnnotationContext::new([
-            (13, "label1", Color::from_rgb(255, 0, 0)),
-            (42, "label2", Color::from_rgb(0, 255, 0)),
-            (99, "label3", Color::from_rgb(0, 0, 255)),
+            (13, "label1", datatypes::Color::from(0xff000000)),
+            (42, "label2", datatypes::Color::from(0x00ff0000)),
+            (99, "label3", datatypes::Color::from_rgb(0, 0, 255)),
         ]),
     )?
     .send(rec_stream)?;
@@ -461,9 +463,9 @@ fn test_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             AnnotationInfo {
                 id: 13,
                 label: None,
-                color: Some(Color::from_rgb(255, 0, 0)),
+                color: Some(datatypes::Color::from(0xff000000)),
             },
-            (42, "label2", Color::from_rgb(0, 255, 0)).into(),
+            (42, "label2", datatypes::Color::from(0x00ff0000)).into(),
             (99, "label3").into(),
         ]),
     )?

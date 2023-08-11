@@ -15,8 +15,8 @@
 /// A connection between two `Keypoints`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct KeypointPair {
-    pub keypoint0: crate::components::KeypointId,
-    pub keypoint1: crate::components::KeypointId,
+    pub keypoint0: crate::datatypes::KeypointId,
+    pub keypoint1: crate::datatypes::KeypointId,
 }
 
 impl<'a> From<KeypointPair> for ::std::borrow::Cow<'a, KeypointPair> {
@@ -50,13 +50,13 @@ impl crate::Loggable for KeypointPair {
         DataType::Struct(vec![
             Field {
                 name: "keypoint0".to_owned(),
-                data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
             Field {
                 name: "keypoint1".to_owned(),
-                data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -123,7 +123,7 @@ impl crate::Loggable for KeypointPair {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::components::KeypointId(data0) = datum;
+                                            let crate::datatypes::KeypointId(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()
@@ -158,7 +158,7 @@ impl crate::Loggable for KeypointPair {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::components::KeypointId(data0) = datum;
+                                            let crate::datatypes::KeypointId(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()
@@ -193,13 +193,13 @@ impl crate::Loggable for KeypointPair {
                         DataType::Struct(vec![
                             Field {
                                 name: "keypoint0".to_owned(),
-                                data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
                             Field {
                                 name: "keypoint1".to_owned(),
-                                data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
@@ -223,13 +223,13 @@ impl crate::Loggable for KeypointPair {
                             DataType::Struct(vec![
                                 Field {
                                     name: "keypoint0".to_owned(),
-                                    data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
                                 Field {
                                     name: "keypoint1".to_owned(),
-                                    data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
@@ -250,7 +250,7 @@ impl crate::Loggable for KeypointPair {
                         .with_context("rerun.datatypes.KeypointPair#keypoint0")?
                         .into_iter()
                         .map(|opt| opt.copied())
-                        .map(|res_or_opt| res_or_opt.map(|v| crate::components::KeypointId(v)))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::KeypointId(v)))
                 };
                 let keypoint1 = {
                     if !arrays_by_name.contains_key("keypoint1") {
@@ -258,13 +258,13 @@ impl crate::Loggable for KeypointPair {
                             DataType::Struct(vec![
                                 Field {
                                     name: "keypoint0".to_owned(),
-                                    data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
                                 Field {
                                     name: "keypoint1".to_owned(),
-                                    data_type: <crate::components::KeypointId>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
@@ -285,7 +285,7 @@ impl crate::Loggable for KeypointPair {
                         .with_context("rerun.datatypes.KeypointPair#keypoint1")?
                         .into_iter()
                         .map(|opt| opt.copied())
-                        .map(|res_or_opt| res_or_opt.map(|v| crate::components::KeypointId(v)))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::KeypointId(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(keypoint0, keypoint1),

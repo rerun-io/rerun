@@ -43,6 +43,8 @@ namespace rerun {
                 return *this;
             }
 
+            Point2D(const float (&arg)[2]) : xy(arg) {}
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 

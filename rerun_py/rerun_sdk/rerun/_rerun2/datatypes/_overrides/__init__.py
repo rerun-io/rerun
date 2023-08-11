@@ -11,6 +11,10 @@ from .annotation_context import (
     classdescriptionmapelem_native_to_pa_array,
     keypointpair_native_to_pa_array,
 )
+from .class_id import classid_native_to_pa_array
+from .color import color_native_to_pa_array, color_rgba_converter
+from .keypoint_id import keypointid_native_to_pa_array
+from .label import label_native_to_pa_array
 from .matnxn import mat3x3_coeffs_converter, mat4x4_coeffs_converter
 from .quaternion import quaternion_init
 from .rotation3d import rotation3d_inner_converter

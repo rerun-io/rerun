@@ -7,20 +7,6 @@ impl Label {
     }
 }
 
-impl From<String> for Label {
-    #[inline]
-    fn from(value: String) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<&str> for Label {
-    #[inline]
-    fn from(value: &str) -> Self {
-        Self(value.into())
-    }
-}
-
 impl From<Label> for String {
     #[inline]
     fn from(value: Label) -> Self {

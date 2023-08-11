@@ -1,9 +1,7 @@
 include "arrow/attributes.fbs";
 include "fbs/attributes.fbs";
 
-// Include components directly to avoid circular dependencies.
-include "rerun/components/label.fbs";
-include "rerun/components/color.fbs";
+include "rerun/datatypes.fbs";
 
 namespace rerun.datatypes;
 
@@ -14,7 +12,7 @@ namespace rerun.datatypes;
 /// Color and label will be used to annotate entities/keypoints which reference the id.
 /// The id refers either to a class or key-point id
 table AnnotationInfo (
-  "attr.python.aliases": "Tuple[int, str], Tuple[int, str, components.ColorLike]",
+  "attr.python.aliases": "Tuple[int, str], Tuple[int, str, datatypes.ColorLike]",
   "attr.rust.derive": "Default, Eq, PartialEq",
   order: 500
 ) {
@@ -22,7 +20,7 @@ table AnnotationInfo (
   // TODO(jleibs): make this typed
   id: ushort (order: 100);
   /// The label that will be shown in the UI.
-  label: rerun.components.Label (nullable, order: 200);
+  label: rerun.datatypes.Label (nullable, order: 200);
   /// The color that will be applied to the annotated entity.
-  color: rerun.components.Color (nullable, order: 300);
+  color: rerun.datatypes.Color (nullable, order: 300);
 }

@@ -2,8 +2,7 @@
 
 use rerun::{
     archetypes::AnnotationContext,
-    components::Color,
-    datatypes::{ClassDescription, KeypointPair},
+    datatypes::{ClassDescription, Color, KeypointPair},
     external::re_log,
     MsgSender, RecordingStream,
 };

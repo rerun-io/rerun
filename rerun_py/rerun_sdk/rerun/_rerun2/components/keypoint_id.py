@@ -2,67 +2,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
-
-import numpy as np
-import numpy.typing as npt
-import pyarrow as pa
-from attrs import define, field
-
+from .. import datatypes
 from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
+    BaseDelegatingExtensionArray,
+    BaseDelegatingExtensionType,
 )
-from ._overrides import keypointid_native_to_pa_array  # noqa: F401
 
-__all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
-
-
-@define
-class KeypointId:
-    """
-    A 16-bit ID representing a type of semantic keypoint within a class.
-
-    `KeypointId`s are only meaningful within the context of a [`rerun.components.ClassDescription`][].
-
-    Used to look up an [`rerun.components.AnnotationInfo`][] for a Keypoint within the
-    [`rerun.components.AnnotationContext`].
-    """
-
-    id: int = field(converter=int)
-
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        return np.asarray(self.id, dtype=dtype)
-
-    def __int__(self) -> int:
-        return int(self.id)
+__all__ = ["KeypointIdArray", "KeypointIdType"]
 
 
-if TYPE_CHECKING:
-    KeypointIdLike = Union[KeypointId, float]
-else:
-    KeypointIdLike = Any
-
-KeypointIdArrayLike = Union[
-    KeypointId, Sequence[KeypointIdLike], float, npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
-]
+class KeypointIdType(BaseDelegatingExtensionType):
+    _TYPE_NAME = "rerun.keypoint_id"
+    _DELEGATED_EXTENSION_TYPE = datatypes.KeypointIdType
 
 
-# --- Arrow support ---
-
-
-class KeypointIdType(BaseExtensionType):
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.keypoint_id")
-
-
-class KeypointIdArray(BaseExtensionArray[KeypointIdArrayLike]):
+class KeypointIdArray(BaseDelegatingExtensionArray[datatypes.KeypointIdArrayLike]):
     _EXTENSION_NAME = "rerun.keypoint_id"
     _EXTENSION_TYPE = KeypointIdType
-
-    @staticmethod
-    def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        return keypointid_native_to_pa_array(data, data_type)
+    _DELEGATED_ARRAY_TYPE = datatypes.KeypointIdArray
 
 
 KeypointIdType._ARRAY_TYPE = KeypointIdArray

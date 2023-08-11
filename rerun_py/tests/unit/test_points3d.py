@@ -49,10 +49,10 @@ def test_points3d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         points = cast(rrd.Vec3DArrayLike, points)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrc.ColorArrayLike], colors)
-        labels = cast(Optional[rrc.LabelArrayLike], labels)
-        class_ids = cast(Optional[rrc.ClassIdArrayLike], class_ids)
-        keypoint_ids = cast(Optional[rrc.KeypointIdArrayLike], keypoint_ids)
+        colors = cast(Optional[rrd.ColorArrayLike], colors)
+        labels = cast(Optional[rrd.LabelArrayLike], labels)
+        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
+        keypoint_ids = cast(Optional[rrd.KeypointIdArrayLike], keypoint_ids)
         instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
 
         print(
@@ -96,10 +96,10 @@ def test_points3d() -> None:
         np.array((0.0, 0.5, 0.0, 1.0)),
     ],
 )
-def test_point3d_single_color(data: rrc.ColorArrayLike) -> None:
+def test_point3d_single_color(data: rrd.ColorArrayLike) -> None:
     pts = rr2.Points3D(points=np.zeros((5, 3)), colors=data)
 
-    assert pts.colors == rrc.ColorArray.from_similar(rrc.Color([0, 128, 0, 255]))
+    assert pts.colors == rrc.ColorArray.from_similar(rrd.Color([0, 128, 0, 255]))
 
 
 @pytest.mark.parametrize(
@@ -122,13 +122,13 @@ def test_point3d_single_color(data: rrc.ColorArrayLike) -> None:
         [8388863, 2147483903],
     ],
 )
-def test_point3d_multiple_colors(data: rrc.ColorArrayLike) -> None:
+def test_point3d_multiple_colors(data: rrd.ColorArrayLike) -> None:
     pts = rr2.Points3D(points=np.zeros((5, 3)), colors=data)
 
     assert pts.colors == rrc.ColorArray.from_similar(
         [
-            rrc.Color([0, 128, 0, 255]),
-            rrc.Color([128, 0, 0, 255]),
+            rrd.Color([0, 128, 0, 255]),
+            rrd.Color([128, 0, 0, 255]),
         ]
     )
 

@@ -14,30 +14,18 @@ impl Color {
     #[inline]
     pub fn to_array(self) -> [u8; 4] {
         [
-            (self.0 >> 24) as u8,
-            (self.0 >> 16) as u8,
-            (self.0 >> 8) as u8,
-            self.0 as u8,
+            (self.0 .0 >> 24) as u8,
+            (self.0 .0 >> 16) as u8,
+            (self.0 .0 >> 8) as u8,
+            self.0 .0 as u8,
         ]
     }
 }
 
-impl From<u32> for Color {
+impl Color {
     #[inline]
-    fn from(c: u32) -> Self {
-        Self(c)
-    }
-}
-
-impl From<[u8; 4]> for Color {
-    #[inline]
-    fn from(bytes: [u8; 4]) -> Self {
-        Self(
-            (bytes[0] as u32) << 24
-                | (bytes[1] as u32) << 16
-                | (bytes[2] as u32) << 8
-                | (bytes[3] as u32),
-        )
+    pub fn new(value: impl Into<crate::datatypes::Color>) -> Self {
+        Self(value.into())
     }
 }
 

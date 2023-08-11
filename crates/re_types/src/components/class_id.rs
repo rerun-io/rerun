@@ -14,10 +14,17 @@
 
 /// A 16-bit ID representing a type of semantic class.
 ///
-/// Used to look up a `crate::components::ClassDescription` within the `crate::components::AnnotationContext`.
+/// Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
 #[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct ClassId(pub u16);
+pub struct ClassId(pub crate::datatypes::ClassId);
+
+impl<T: Into<crate::datatypes::ClassId>> From<T> for ClassId {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
 
 impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
     #[inline]
@@ -40,7 +47,7 @@ impl crate::Loggable for ClassId {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.class_id".into()
+        "rerun.components.ClassId".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -87,7 +94,17 @@ impl crate::Loggable for ClassId {
                     .to_logical_type()
                     .clone()
                 },
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0
+                    .into_iter()
+                    .map(|datum| {
+                        datum
+                            .map(|datum| {
+                                let crate::datatypes::ClassId(data0) = datum;
+                                data0
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect(),
                 data0_bitmap,
             )
             .boxed()
@@ -115,6 +132,7 @@ impl crate::Loggable for ClassId {
             .with_context("rerun.components.ClassId#id")?
             .into_iter()
             .map(|opt| opt.copied())
+            .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::ClassId(v)))
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()

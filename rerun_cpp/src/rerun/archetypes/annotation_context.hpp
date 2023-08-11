@@ -37,8 +37,8 @@ namespace rerun {
         ///    rr_stream.log(
         ///        "/",
         ///        rr::archetypes::AnnotationContext({
-        ///            rr::datatypes::AnnotationInfo(1, "red", rr::components::Color(255, 0, 0)),
-        ///            rr::datatypes::AnnotationInfo(2, "green", rr::components::Color(0, 255, 0)),
+        ///            rr::datatypes::AnnotationInfo(1, "red", rr::datatypes::Color(255, 0, 0)),
+        ///            rr::datatypes::AnnotationInfo(2, "green", rr::datatypes::Color(0, 255, 0)),
         ///        })
         ///    );
         ///

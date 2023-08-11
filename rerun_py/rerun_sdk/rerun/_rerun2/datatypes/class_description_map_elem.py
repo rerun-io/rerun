@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
@@ -23,11 +23,11 @@ __all__ = [
 ]
 
 
-def _classdescriptionmapelem_class_id_converter(x: components.ClassIdLike) -> components.ClassId:
-    if isinstance(x, components.ClassId):
+def _classdescriptionmapelem_class_id_converter(x: datatypes.ClassIdLike) -> datatypes.ClassId:
+    if isinstance(x, datatypes.ClassId):
         return x
     else:
-        return components.ClassId(x)
+        return datatypes.ClassId(x)
 
 
 @define
@@ -38,7 +38,7 @@ class ClassDescriptionMapElem:
     This is internal to the `AnnotationContext` structure.
     """
 
-    class_id: components.ClassId = field(converter=_classdescriptionmapelem_class_id_converter)
+    class_id: datatypes.ClassId = field(converter=_classdescriptionmapelem_class_id_converter)
     class_description: datatypes.ClassDescription = field()
 
 

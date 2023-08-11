@@ -1,8 +1,8 @@
 //! Create and log a segmentation image.
 use ndarray::{s, Array, ShapeBuilder};
 use rerun::archetypes::AnnotationContext;
-use rerun::components::{Color, Label, Tensor, TensorDataMeaning};
-use rerun::datatypes::{AnnotationInfo, ClassDescription};
+use rerun::components::{Tensor, TensorDataMeaning};
+use rerun::datatypes::{AnnotationInfo, ClassDescription, Color, Label};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             info: AnnotationInfo {
                 id: 1,
                 label: Some(Label("red".into())),
-                color: Some(Color::from_rgb(255, 0, 0)),
+                color: Some(Color::from(0xff000000)),
             },
             ..Default::default()
         },
@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             info: AnnotationInfo {
                 id: 2,
                 label: Some(Label("green".into())),
-                color: Some(Color::from_rgb(0, 255, 0)),
+                color: Some(Color::from(0x00ff0000)),
             },
             ..Default::default()
         },

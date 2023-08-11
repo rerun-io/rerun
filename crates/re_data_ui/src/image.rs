@@ -541,7 +541,7 @@ fn tensor_pixel_value_ui(
                     ui.label("Label:");
                     ui.label(
                         annotations
-                            .resolved_class_description(Some(ClassId(u16_val)))
+                            .resolved_class_description(Some(ClassId::from(u16_val)))
                             .annotation_info()
                             .label(None)
                             .unwrap_or_else(|| u16_val.to_string()),

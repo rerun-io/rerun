@@ -1,6 +1,4 @@
-use crate::components::KeypointId;
-
-use super::KeypointPair;
+use super::{KeypointId, KeypointPair};
 
 impl From<(u16, u16)> for KeypointPair {
     fn from(value: (u16, u16)) -> Self {

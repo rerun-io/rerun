@@ -1,8 +1,7 @@
 //! Log some very simple points.
 
 use rerun::archetypes::{AnnotationContext, Points3D};
-use rerun::components::{Color, Label};
-use rerun::datatypes::{AnnotationInfo, ClassDescription, KeypointPair};
+use rerun::datatypes::{AnnotationInfo, ClassDescription, Color, KeypointPair, Label};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -16,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             info: AnnotationInfo {
                 id: 0,
                 label: Some(Label("zero".into())),
-                color: Some(Color::from_rgb(255, 0, 0)),
+                color: Some(Color::from(0xff000000)),
             },
             keypoint_connections: KeypointPair::vec_from([(0, 2), (1, 2), (2, 3)]),
             ..Default::default()
@@ -24,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         AnnotationInfo {
             id: 1,
             label: Some(Label("one".into())),
-            color: Some(Color::from_rgb(0, 255, 0)),
+            color: Some(Color::from(0x00ff0000)),
         }
         .into(),
         AnnotationInfo {

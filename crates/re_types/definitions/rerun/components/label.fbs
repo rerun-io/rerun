@@ -11,6 +11,7 @@ namespace rerun.components;
 
 /// A String label component.
 table Label (
+  "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
   "attr.rerun.legacy_fqname": "rerun.label",
@@ -18,5 +19,5 @@ table Label (
   "attr.rust.repr": "transparent",
   order: 100
 ) {
-  value: string (order: 100);
+  value: rerun.datatypes.Label (order: 100);
 }

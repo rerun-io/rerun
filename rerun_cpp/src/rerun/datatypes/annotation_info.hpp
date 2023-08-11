@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../components/color.hpp"
-#include "../components/label.hpp"
+#include "../datatypes/color.hpp"
+#include "../datatypes/label.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -22,21 +22,21 @@ namespace rerun {
             uint16_t id;
 
             /// The label that will be shown in the UI.
-            std::optional<rerun::components::Label> label;
+            std::optional<rerun::datatypes::Label> label;
 
             /// The color that will be applied to the annotated entity.
-            std::optional<rerun::components::Color> color;
+            std::optional<rerun::datatypes::Color> color;
 
           public:
             // Extensions to generated type defined in 'annotation_info_ext.cpp'
 
             AnnotationInfo(
                 uint16_t _id, std::optional<std::string> _label = std::nullopt,
-                std::optional<components::Color> _color = std::nullopt
+                std::optional<datatypes::Color> _color = std::nullopt
             )
                 : id(_id), label(std::move(_label)), color(_color) {}
 
-            AnnotationInfo(uint16_t _id, components::Color _color)
+            AnnotationInfo(uint16_t _id, datatypes::Color _color)
                 : id(_id), label(std::nullopt), color(_color) {}
 
           public:

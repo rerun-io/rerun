@@ -2,70 +2,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
-
-import numpy as np
-import numpy.typing as npt
-import pyarrow as pa
-from attrs import define, field
-
+from .. import datatypes
 from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
+    BaseDelegatingExtensionArray,
+    BaseDelegatingExtensionType,
 )
-from ._overrides import color_native_to_pa_array, color_rgba_converter  # noqa: F401
 
-__all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
-
-
-@define
-class Color:
-    """
-    An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
-
-    Float colors are assumed to be in 0-1 gamma sRGB space.
-    All other colors are assumed to be in 0-255 gamma sRGB space.
-    If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
-    """
-
-    rgba: int = field(converter=color_rgba_converter)
-
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        return np.asarray(self.rgba, dtype=dtype)
-
-    def __int__(self) -> int:
-        return int(self.rgba)
+__all__ = ["ColorArray", "ColorType"]
 
 
-if TYPE_CHECKING:
-    ColorLike = Union[Color, int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]
-else:
-    ColorLike = Any
-
-ColorArrayLike = Union[
-    Color,
-    Sequence[ColorLike],
-    int,
-    Sequence[Sequence[int]],
-    npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]],
-]
+class ColorType(BaseDelegatingExtensionType):
+    _TYPE_NAME = "rerun.colorrgba"
+    _DELEGATED_EXTENSION_TYPE = datatypes.ColorType
 
 
-# --- Arrow support ---
-
-
-class ColorType(BaseExtensionType):
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint32(), "rerun.colorrgba")
-
-
-class ColorArray(BaseExtensionArray[ColorArrayLike]):
+class ColorArray(BaseDelegatingExtensionArray[datatypes.ColorArrayLike]):
     _EXTENSION_NAME = "rerun.colorrgba"
     _EXTENSION_TYPE = ColorType
-
-    @staticmethod
-    def _native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
-        return color_native_to_pa_array(data, data_type)
+    _DELEGATED_ARRAY_TYPE = datatypes.ColorArray
 
 
 ColorType._ARRAY_TYPE = ColorArray

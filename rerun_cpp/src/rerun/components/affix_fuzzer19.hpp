@@ -4,10 +4,12 @@
 #pragma once
 
 #include "../data_cell.hpp"
+#include "../datatypes/affix_fuzzer4.hpp"
 #include "../datatypes/affix_fuzzer5.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
+#include <optional>
 #include <utility>
 
 namespace rerun {
@@ -28,6 +30,9 @@ namespace rerun {
                 just_a_table_nothing_shady = std::move(_just_a_table_nothing_shady);
                 return *this;
             }
+
+            AffixFuzzer19(std::optional<rerun::datatypes::AffixFuzzer4> arg)
+                : just_a_table_nothing_shady(std::move(arg)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

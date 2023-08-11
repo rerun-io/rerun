@@ -1,8 +1,7 @@
 include "arrow/attributes.fbs";
 include "fbs/attributes.fbs";
 
-// Include components directly to avoid circular dependencies.
-include "rerun/components/keypoint_id.fbs";
+include "rerun/datatypes.fbs";
 
 namespace rerun.datatypes;
 
@@ -10,10 +9,10 @@ namespace rerun.datatypes;
 
 /// A connection between two `Keypoints`.
 table KeypointPair (
-  "attr.python.aliases": "Sequence[components.KeypointIdLike]",
+  "attr.python.aliases": "Sequence[datatypes.KeypointIdLike]",
   "attr.rust.derive": "Default, Eq, PartialEq",
   order: 100
 ) {
-  keypoint0: rerun.components.KeypointId (order: 100);
-  keypoint1: rerun.components.KeypointId (order: 200);
+  keypoint0: rerun.datatypes.KeypointId (order: 100);
+  keypoint1: rerun.datatypes.KeypointId (order: 200);
 }

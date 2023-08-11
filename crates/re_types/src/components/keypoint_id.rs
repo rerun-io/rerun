@@ -19,7 +19,13 @@
 /// Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`.
 #[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct KeypointId(pub u16);
+pub struct KeypointId(pub crate::datatypes::KeypointId);
+
+impl<T: Into<crate::datatypes::KeypointId>> From<T> for KeypointId {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
 
 impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
     #[inline]
@@ -89,7 +95,17 @@ impl crate::Loggable for KeypointId {
                     .to_logical_type()
                     .clone()
                 },
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0
+                    .into_iter()
+                    .map(|datum| {
+                        datum
+                            .map(|datum| {
+                                let crate::datatypes::KeypointId(data0) = datum;
+                                data0
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect(),
                 data0_bitmap,
             )
             .boxed()
@@ -117,6 +133,7 @@ impl crate::Loggable for KeypointId {
             .with_context("rerun.components.KeypointId#id")?
             .into_iter()
             .map(|opt| opt.copied())
+            .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::KeypointId(v)))
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()

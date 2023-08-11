@@ -1,7 +1,7 @@
 #include "label.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
-#define EDIT_EXTENSION
+// #define EDIT_EXTENSION
 
 namespace rerun {
     namespace components {

@@ -109,7 +109,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.label".into(),
-            "rerun.class_id".into(),
+            "rerun.components.ClassId".into(),
             "rerun.instance_key".into(),
         ]
     });
@@ -121,7 +121,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 6usize]> =
             "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.label".into(),
-            "rerun.class_id".into(),
+            "rerun.components.ClassId".into(),
             "rerun.instance_key".into(),
         ]
     });
@@ -252,7 +252,7 @@ impl crate::Archetype for LineStrips3D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.ClassId".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.class_id".into()),
+                                Some("rerun.components.ClassId".into()),
                             );
                             (
                                 ::arrow2::datatypes::Field::new("class_ids", datatype, false),

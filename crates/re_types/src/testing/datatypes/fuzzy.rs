@@ -3577,8 +3577,8 @@ impl crate::Datatype for AffixFuzzer5 {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AffixFuzzer20 {
-    pub p: crate::testing::components::PrimitiveComponent,
-    pub s: crate::testing::components::StringComponent,
+    pub p: crate::testing::datatypes::PrimitiveComponent,
+    pub s: crate::testing::datatypes::StringComponent,
 }
 
 impl<'a> From<AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
@@ -3612,13 +3612,13 @@ impl crate::Loggable for AffixFuzzer20 {
         DataType::Struct(vec![
             Field {
                 name: "p".to_owned(),
-                data_type: <crate::testing::components::PrimitiveComponent>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::PrimitiveComponent>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
             Field {
                 name: "s".to_owned(),
-                data_type: <crate::testing::components::StringComponent>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::StringComponent>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -3684,7 +3684,7 @@ impl crate::Loggable for AffixFuzzer20 {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::testing::components::PrimitiveComponent(
+                                            let crate::testing::datatypes::PrimitiveComponent(
                                                 data0,
                                             ) = datum;
                                             data0
@@ -3716,7 +3716,7 @@ impl crate::Loggable for AffixFuzzer20 {
                                 .iter()
                                 .flatten()
                                 .flat_map(|datum| {
-                                    let crate::testing::components::StringComponent(data0) = datum;
+                                    let crate::testing::datatypes::StringComponent(data0) = datum;
                                     data0.0.clone()
                                 })
                                 .collect();
@@ -3724,7 +3724,7 @@ impl crate::Loggable for AffixFuzzer20 {
                                 s.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| {
-                                            let crate::testing::components::StringComponent(data0) =
+                                            let crate::testing::datatypes::StringComponent(data0) =
                                                 datum;
                                             data0.0.len()
                                         })
@@ -3773,10 +3773,10 @@ impl crate::Loggable for AffixFuzzer20 {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
                             Field { name : "p".to_owned(), data_type : < crate
-                            ::testing::components::PrimitiveComponent >
+                            ::testing::datatypes::PrimitiveComponent >
                             ::to_arrow_datatype(), is_nullable : false, metadata : []
                             .into(), }, Field { name : "s".to_owned(), data_type : <
-                            crate ::testing::components::StringComponent >
+                            crate ::testing::datatypes::StringComponent >
                             ::to_arrow_datatype(), is_nullable : false, metadata : []
                             .into(), },
                         ]),
@@ -3800,10 +3800,10 @@ impl crate::Loggable for AffixFuzzer20 {
                                     DataType::Struct(
                                         vec![
                                             Field { name : "p".to_owned(), data_type : < crate
-                                            ::testing::components::PrimitiveComponent >
+                                            ::testing::datatypes::PrimitiveComponent >
                                             ::to_arrow_datatype(), is_nullable : false, metadata : []
                                             .into(), }, Field { name : "s".to_owned(), data_type : <
-                                            crate ::testing::components::StringComponent >
+                                            crate ::testing::datatypes::StringComponent >
                                             ::to_arrow_datatype(), is_nullable : false, metadata : []
                                             .into(), },
                                         ],
@@ -3826,7 +3826,7 @@ impl crate::Loggable for AffixFuzzer20 {
                         .into_iter()
                         .map(|opt| opt.copied())
                         .map(|res_or_opt| {
-                            res_or_opt.map(|v| crate::testing::components::PrimitiveComponent(v))
+                            res_or_opt.map(|v| crate::testing::datatypes::PrimitiveComponent(v))
                         })
                 };
                 let s = {
@@ -3836,10 +3836,10 @@ impl crate::Loggable for AffixFuzzer20 {
                                     DataType::Struct(
                                         vec![
                                             Field { name : "p".to_owned(), data_type : < crate
-                                            ::testing::components::PrimitiveComponent >
+                                            ::testing::datatypes::PrimitiveComponent >
                                             ::to_arrow_datatype(), is_nullable : false, metadata : []
                                             .into(), }, Field { name : "s".to_owned(), data_type : <
-                                            crate ::testing::components::StringComponent >
+                                            crate ::testing::datatypes::StringComponent >
                                             ::to_arrow_datatype(), is_nullable : false, metadata : []
                                             .into(), },
                                         ],
@@ -3887,7 +3887,7 @@ impl crate::Loggable for AffixFuzzer20 {
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
                                 res_or_opt.map(|v| {
-                                    crate::testing::components::StringComponent(crate::ArrowString(
+                                    crate::testing::datatypes::StringComponent(crate::ArrowString(
                                         v,
                                     ))
                                 })

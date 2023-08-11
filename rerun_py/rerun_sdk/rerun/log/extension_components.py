@@ -51,9 +51,7 @@ def _add_extension_components(
                 EXT_COMPONENT_TYPES[name] = (np_value.dtype, pa_value.type)
         except Exception as ex:
             rerun.log.error_utils._send_warning(
-                "Error converting extension data to arrow for component {}. Dropping.\n{}: {}".format(
-                    name, type(ex).__name__, ex
-                ),
+                f"Error converting extension data to arrow for component {name}. Dropping.\n{type(ex).__name__}: {ex}",
                 1,
             )
             continue

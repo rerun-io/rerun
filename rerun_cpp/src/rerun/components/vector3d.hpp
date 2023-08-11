@@ -47,6 +47,8 @@ namespace rerun {
                 return *this;
             }
 
+            Vector3D(const float (&arg)[3]) : vector(arg) {}
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 

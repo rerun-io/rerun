@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::AnnotationContext,
-    components::{self, Color},
-    datatypes::{ClassDescription, KeypointPair},
+    components,
+    datatypes::{ClassDescription, Color, KeypointPair},
     Archetype as _,
 };
 

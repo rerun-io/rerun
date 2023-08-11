@@ -59,6 +59,31 @@ impl Objects {
             objects: resolved_enums.into_iter().chain(resolved_objs).collect(),
         };
 
+        // Validate fields types: Archetype consist of components, everything else consists of datatypes.
+        for obj in this.objects.values() {
+            for field in &obj.fields {
+                if let Some(target_fqname) = field.typ.fqname() {
+                    let target_obj = &this[target_fqname];
+                    if obj.kind == ObjectKind::Archetype {
+                        assert!(target_obj.kind == ObjectKind::Component,
+                            "Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
+                            field.fqname, target_fqname
+                        );
+                    } else {
+                        assert!(target_obj.kind == ObjectKind::Datatype,
+                            "Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
+                            field.fqname, target_fqname
+                        );
+                    }
+                } else {
+                    // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
+                    assert!(obj.kind != ObjectKind::Archetype,
+                        "Field {:?} is a primitive field which is part of an Archetype. Only Components are allowed on Archetypes.",
+                        field.fqname);
+                }
+            }
+        }
+
         // Resolve field-level semantic transparency recursively.
         let mut done = false;
         while !done {
