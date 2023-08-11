@@ -50,7 +50,7 @@ pub fn quote_arrow_deserializer(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
-    // Runtime indentifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
+    // Runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
     let data_src = format_ident!("data");
 
     let datatype = &arrow_registry.get(&obj.fqname);
@@ -688,12 +688,16 @@ fn quote_array_downcast(
 enum IteratorKind {
     /// `Iterator<Item = DeserializationResult<Option<T>>>`.
     ResultOptionValue,
+
     /// `Iterator<Item = Option<DeserializationResult<T>>>`.
     OptionResultValue,
+
     /// `Iterator<Item = Option<T>>`.
     OptionValue,
+
     /// `Iterator<Item = DeserializationResult<T>>`.
     ResultValue,
+
     /// `Iterator<Item = T>`.
     Value,
 }
