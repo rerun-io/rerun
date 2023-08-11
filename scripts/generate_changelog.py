@@ -3,7 +3,7 @@
 """
 Summarizes PRs since `latest` tag, grouping them based on their GitHub labels.
 
-If the result is not satisfactory, you can edit the orginal PR titles and labels.
+If the result is not satisfactory, you can edit the original PR titles and labels.
 You can add the `exclude from changelog` label to minor PRs that are not of interest to our users.
 
 Finally, copy-paste the output into `CHANGELOG.md` and add a high-level summary to the top.
