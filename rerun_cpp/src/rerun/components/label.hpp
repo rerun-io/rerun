@@ -8,6 +8,7 @@
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
+#include <string>
 #include <utility>
 
 namespace rerun {
@@ -38,6 +39,8 @@ namespace rerun {
                 value = std::move(_value);
                 return *this;
             }
+
+            Label(std::string arg) : value(std::move(arg)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

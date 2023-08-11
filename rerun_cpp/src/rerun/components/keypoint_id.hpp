@@ -29,6 +29,8 @@ namespace rerun {
                 return *this;
             }
 
+            KeypointId(uint16_t arg) : id(std::move(arg)) {}
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 

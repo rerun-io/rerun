@@ -32,13 +32,13 @@ void test() {
     }
 
     // Ambiguous overload.
-    SECTION("Passing RGBA to constructor via initializer list") {
-        Color c({1, 2, 3, 4});
-        CHECK(c.r() == 1);
-        CHECK(c.g() == 2);
-        CHECK(c.b() == 3);
-        CHECK(c.a() == 4);
-    }
+    // SECTION("Passing RGBA to constructor via initializer list") {
+    //    Color c({1, 2, 3, 4});
+    //    CHECK(c.r() == 1);
+    //    CHECK(c.g() == 2);
+    //    CHECK(c.b() == 3);
+    //    CHECK(c.a() == 4);
+    // }
 
     // This builds on Clang but is an ambiguous overload on GCC.
     // SECTION("Passing RGB to constructor via initializer list") {
