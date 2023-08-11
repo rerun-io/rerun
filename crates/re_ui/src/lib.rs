@@ -536,6 +536,9 @@ impl ReUi {
         });
     }
 
+    /// Paint a collapsing triangle with rounded corners.
+    ///
+    /// Alternative to [`egui::collapsing_header::paint_default_icon`].
     pub fn paint_collapsing_triangle(ui: &mut egui::Ui, openness: f32, response: &egui::Response) {
         let visuals = ui.style().interact(response);
 
