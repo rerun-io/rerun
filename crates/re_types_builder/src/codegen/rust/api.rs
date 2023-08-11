@@ -11,7 +11,7 @@ use crate::{
     codegen::{
         rust::{
             arrow::ArrowDataTypeTokenizer,
-            deserializer::quote_arrow_deserializer,
+            deserializer::{quote_arrow_deserializer, should_optimize_deserialize},
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components},
         },
@@ -699,14 +699,23 @@ fn quote_trait_impls_from_obj(
 
     match kind {
         ObjectKind::Datatype | ObjectKind::Component => {
-            let kind = if *kind == ObjectKind::Datatype {
+            let quoted_kind = if *kind == ObjectKind::Datatype {
                 quote!(Datatype)
             } else {
                 quote!(Component)
             };
-            let kind_name = format_ident!("{kind}Name");
+            let kind_name = format_ident!("{quoted_kind}Name");
 
             let datatype = arrow_registry.get(fqname);
+
+            // Nullabillity is kind of weird since it's technically a property of the field
+            // rather than the datatype. However, we know that Components can only be used
+            // by archetypes and as such should never be nullible.
+            // TODO(jleibs): we should always code-gen both version of this and dispatch to
+            // the right one based on the stored data instead.
+            let optimize_non_nullable =
+                *kind == ObjectKind::Component && should_optimize_deserialize(&datatype);
+
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
             let legacy_fqname = obj
@@ -737,12 +746,45 @@ fn quote_trait_impls_from_obj(
                 }
             };
 
+            let quoted_item = if optimize_non_nullable {
+                quote!(Self)
+            } else {
+                quote!(Option<Self>)
+            };
+
+            let quoted_item_converters = if optimize_non_nullable {
+                quote! {
+                    #[inline]
+                    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
+                        item
+                    }
+
+                    #[inline]
+                    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
+                        Some(item)
+                    }
+                }
+            } else {
+                quote! {
+                    #[inline]
+                    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
+                        item
+                    }
+                }
+            };
+
+            let quoted_iter_from_arrow_impl = if optimize_non_nullable {
+                quote!(try_from_arrow)
+            } else {
+                quote!(try_from_arrow_opt)
+            };
+
             quote! {
                 #into_cow
 
                 impl crate::Loggable for #name {
                     type Name = crate::#kind_name;
-                    type Item<'a> = Option<Self>;
+                    type Item<'a> = #quoted_item;
                     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
                     #[inline]
@@ -781,7 +823,6 @@ fn quote_trait_impls_from_obj(
                         Ok(#quoted_deserializer)
                     }
 
-
                     #[inline]
                     fn try_iter_from_arrow(
                         data: &dyn ::arrow2::array::Array,
@@ -789,16 +830,14 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized,
                     {
-                        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+                        Ok(Self:: #quoted_iter_from_arrow_impl (data)?.into_iter())
                     }
 
-                    #[inline]
-                    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-                        item
-                    }
+
+                    #quoted_item_converters
                 }
 
-                impl crate::#kind for #name {}
+                impl crate::#quoted_kind for #name {}
             }
         }
 

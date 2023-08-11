@@ -181,16 +181,7 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::try_from_arrow`].
     #[inline]
     fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
-        Self::try_iter_from_arrow(data)
-            .detailed_unwrap()
-            .map(Self::convert_item_to_opt_self)
-            .map(|v| {
-                v.ok_or_else(|| DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .detailed_unwrap()
-            })
-            .collect()
+        Self::try_from_arrow(data).detailed_unwrap()
     }
 
     /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
@@ -200,14 +191,9 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
-        Self::try_iter_from_arrow(data)?
-            .map(Self::convert_item_to_opt_self)
-            .map(|v| {
-                v.ok_or_else(|| DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
-            .collect()
+        Ok(Self::try_iter_from_arrow(data)?
+            .map(Self::convert_item_to_self)
+            .collect())
     }
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
@@ -256,6 +242,7 @@ pub trait Loggable: Sized {
     /// This is intended to be used with [`Loggable::try_iter_from_arrow`]
     #[inline]
     fn convert_item_to_self(item: Self::Item<'_>) -> Self {
+        // TODO(jleibs): This unwrap goes away when we remove the iterator abstraction
         Self::convert_item_to_opt_self(item).unwrap()
     }
 

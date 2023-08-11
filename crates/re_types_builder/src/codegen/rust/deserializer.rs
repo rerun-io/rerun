@@ -817,3 +817,24 @@ fn quote_iterator_transparency(
         }
     }
 }
+
+pub fn should_optimize_deserialize(typ: &DataType) -> bool {
+    match typ {
+        DataType::Null
+        | DataType::Boolean
+        | DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64
+        | DataType::Float16
+        | DataType::Float32
+        | DataType::Float64 => true,
+        DataType::Extension(_, typ, _) => should_optimize_deserialize(typ),
+        DataType::FixedSizeList(field, _) => should_optimize_deserialize(field.data_type()),
+        _ => false,
+    }
+}

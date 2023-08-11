@@ -50,7 +50,7 @@ impl<'a> From<&'a Color> for ::std::borrow::Cow<'a, Color> {
 
 impl crate::Loggable for Color {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
+    type Item<'a> = Self;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
@@ -155,12 +155,17 @@ impl crate::Loggable for Color {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        Ok(Self::try_from_arrow(data)?.into_iter())
+    }
+
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
+        item
     }
 
     #[inline]
     fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
+        Some(item)
     }
 }
 

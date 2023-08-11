@@ -38,7 +38,7 @@ impl<'a> From<&'a Origin3D> for ::std::borrow::Cow<'a, Origin3D> {
 
 impl crate::Loggable for Origin3D {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
+    type Item<'a> = Self;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
@@ -238,12 +238,17 @@ impl crate::Loggable for Origin3D {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        Ok(Self::try_from_arrow(data)?.into_iter())
+    }
+
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
+        item
     }
 
     #[inline]
     fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
+        Some(item)
     }
 }
 
