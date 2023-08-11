@@ -21,7 +21,6 @@ function(set_default_warning_settings target)
             -Wswitch-enum
             -Wvla
             -Wold-style-cast
-            -Wc99-extensions
         )
 
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
@@ -30,6 +29,7 @@ function(set_default_warning_settings target)
                 -Wshadow-all
                 -Wnon-gcc
                 -Wgnu
+                -Wc99-extensions
             )
         endif()
 
