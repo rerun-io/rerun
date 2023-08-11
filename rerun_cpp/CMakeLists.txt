@@ -67,9 +67,9 @@ elseif(UNIX) # if(LINUX) # CMake 3.25
     target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
     target_link_libraries(rerun_sdk PRIVATE "-lm")
 elseif(WIN32)
-    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
-
-    # TODO(andreas): Untested. Almost certainly gonna encounter issues here.
+    # TODO(andreas): Why not static linkage?
+    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/rerun_c.lib)
+    target_link_libraries(rerun_sdk PUBLIC ws2_32.dll Bcrypt.dll Userenv.dll)
 endif()
 
 # -----------------------------------------------------------------------------
