@@ -2341,35 +2341,7 @@ impl crate::Loggable for AffixFuzzer3 {
                 }
                 let degrees = {
                     if 1usize >= data_arrays.len() {
-                        return Err(
-                                crate::DeserializationError::missing_union_arm(
-                                    DataType::Union(
-                                        vec![
-                                            Field { name : "_null_markers".to_owned(), data_type :
-                                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                                            Field { name : "degrees".to_owned(), data_type :
-                                            DataType::Float32, is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "radians".to_owned(), data_type :
-                                            DataType::Float32, is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "craziness".to_owned(), data_type
-                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
-                                            data_type : < crate ::testing::datatypes::AffixFuzzer1 >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), })), is_nullable : false, metadata : [].into(), },
-                                            Field { name : "fixed_size_shenanigans".to_owned(),
-                                            data_type : DataType::FixedSizeList(Box::new(Field { name :
-                                            "item".to_owned(), data_type : DataType::Float32,
-                                            is_nullable : false, metadata : [].into(), }), 3usize),
-                                            is_nullable : false, metadata : [].into(), },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32, 3i32, 4i32,]),
-                                        UnionMode::Dense,
-                                    ),
-                                    "rerun.testing.datatypes.AffixFuzzer3#degrees",
-                                    1usize,
-                                ),
-                            )
-                            .with_context("rerun.testing.datatypes.AffixFuzzer3");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[1usize];
                     data.as_any()
@@ -2387,35 +2359,7 @@ impl crate::Loggable for AffixFuzzer3 {
                 };
                 let radians = {
                     if 2usize >= data_arrays.len() {
-                        return Err(
-                                crate::DeserializationError::missing_union_arm(
-                                    DataType::Union(
-                                        vec![
-                                            Field { name : "_null_markers".to_owned(), data_type :
-                                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                                            Field { name : "degrees".to_owned(), data_type :
-                                            DataType::Float32, is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "radians".to_owned(), data_type :
-                                            DataType::Float32, is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "craziness".to_owned(), data_type
-                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
-                                            data_type : < crate ::testing::datatypes::AffixFuzzer1 >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), })), is_nullable : false, metadata : [].into(), },
-                                            Field { name : "fixed_size_shenanigans".to_owned(),
-                                            data_type : DataType::FixedSizeList(Box::new(Field { name :
-                                            "item".to_owned(), data_type : DataType::Float32,
-                                            is_nullable : false, metadata : [].into(), }), 3usize),
-                                            is_nullable : false, metadata : [].into(), },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32, 3i32, 4i32,]),
-                                        UnionMode::Dense,
-                                    ),
-                                    "rerun.testing.datatypes.AffixFuzzer3#radians",
-                                    2usize,
-                                ),
-                            )
-                            .with_context("rerun.testing.datatypes.AffixFuzzer3");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[2usize];
                     data.as_any()
@@ -2433,35 +2377,7 @@ impl crate::Loggable for AffixFuzzer3 {
                 };
                 let craziness = {
                     if 3usize >= data_arrays.len() {
-                        return Err(
-                                crate::DeserializationError::missing_union_arm(
-                                    DataType::Union(
-                                        vec![
-                                            Field { name : "_null_markers".to_owned(), data_type :
-                                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                                            Field { name : "degrees".to_owned(), data_type :
-                                            DataType::Float32, is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "radians".to_owned(), data_type :
-                                            DataType::Float32, is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "craziness".to_owned(), data_type
-                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
-                                            data_type : < crate ::testing::datatypes::AffixFuzzer1 >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), })), is_nullable : false, metadata : [].into(), },
-                                            Field { name : "fixed_size_shenanigans".to_owned(),
-                                            data_type : DataType::FixedSizeList(Box::new(Field { name :
-                                            "item".to_owned(), data_type : DataType::Float32,
-                                            is_nullable : false, metadata : [].into(), }), 3usize),
-                                            is_nullable : false, metadata : [].into(), },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32, 3i32, 4i32,]),
-                                        UnionMode::Dense,
-                                    ),
-                                    "rerun.testing.datatypes.AffixFuzzer3#craziness",
-                                    3usize,
-                                ),
-                            )
-                            .with_context("rerun.testing.datatypes.AffixFuzzer3");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[3usize];
                     {
@@ -2536,35 +2452,7 @@ impl crate::Loggable for AffixFuzzer3 {
                 };
                 let fixed_size_shenanigans = {
                     if 4usize >= data_arrays.len() {
-                        return Err(
-                                crate::DeserializationError::missing_union_arm(
-                                    DataType::Union(
-                                        vec![
-                                            Field { name : "_null_markers".to_owned(), data_type :
-                                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                                            Field { name : "degrees".to_owned(), data_type :
-                                            DataType::Float32, is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "radians".to_owned(), data_type :
-                                            DataType::Float32, is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "craziness".to_owned(), data_type
-                                            : DataType::List(Box::new(Field { name : "item".to_owned(),
-                                            data_type : < crate ::testing::datatypes::AffixFuzzer1 >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), })), is_nullable : false, metadata : [].into(), },
-                                            Field { name : "fixed_size_shenanigans".to_owned(),
-                                            data_type : DataType::FixedSizeList(Box::new(Field { name :
-                                            "item".to_owned(), data_type : DataType::Float32,
-                                            is_nullable : false, metadata : [].into(), }), 3usize),
-                                            is_nullable : false, metadata : [].into(), },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32, 3i32, 4i32,]),
-                                        UnionMode::Dense,
-                                    ),
-                                    "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
-                                    4usize,
-                                ),
-                            )
-                            .with_context("rerun.testing.datatypes.AffixFuzzer3");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[4usize];
                     {
@@ -3154,35 +3042,7 @@ impl crate::Loggable for AffixFuzzer4 {
                 }
                 let single_required = {
                     if 1usize >= data_arrays.len() {
-                        return Err(
-                                crate::DeserializationError::missing_union_arm(
-                                    DataType::Union(
-                                        vec![
-                                            Field { name : "_null_markers".to_owned(), data_type :
-                                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                                            Field { name : "single_required".to_owned(), data_type : <
-                                            crate ::testing::datatypes::AffixFuzzer3 >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "many_required".to_owned(),
-                                            data_type : DataType::List(Box::new(Field { name : "item"
-                                            .to_owned(), data_type : < crate
-                                            ::testing::datatypes::AffixFuzzer3 > ::to_arrow_datatype(),
-                                            is_nullable : false, metadata : [].into(), })), is_nullable
-                                            : false, metadata : [].into(), }, Field { name :
-                                            "many_optional".to_owned(), data_type :
-                                            DataType::List(Box::new(Field { name : "item".to_owned(),
-                                            data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                                            ::to_arrow_datatype(), is_nullable : true, metadata : []
-                                            .into(), })), is_nullable : false, metadata : [].into(), },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32, 3i32,]),
-                                        UnionMode::Dense,
-                                    ),
-                                    "rerun.testing.datatypes.AffixFuzzer4#single_required",
-                                    1usize,
-                                ),
-                            )
-                            .with_context("rerun.testing.datatypes.AffixFuzzer4");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[1usize];
                     crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(data)
@@ -3192,35 +3052,7 @@ impl crate::Loggable for AffixFuzzer4 {
                 };
                 let many_required = {
                     if 2usize >= data_arrays.len() {
-                        return Err(
-                                crate::DeserializationError::missing_union_arm(
-                                    DataType::Union(
-                                        vec![
-                                            Field { name : "_null_markers".to_owned(), data_type :
-                                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                                            Field { name : "single_required".to_owned(), data_type : <
-                                            crate ::testing::datatypes::AffixFuzzer3 >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "many_required".to_owned(),
-                                            data_type : DataType::List(Box::new(Field { name : "item"
-                                            .to_owned(), data_type : < crate
-                                            ::testing::datatypes::AffixFuzzer3 > ::to_arrow_datatype(),
-                                            is_nullable : false, metadata : [].into(), })), is_nullable
-                                            : false, metadata : [].into(), }, Field { name :
-                                            "many_optional".to_owned(), data_type :
-                                            DataType::List(Box::new(Field { name : "item".to_owned(),
-                                            data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                                            ::to_arrow_datatype(), is_nullable : true, metadata : []
-                                            .into(), })), is_nullable : false, metadata : [].into(), },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32, 3i32,]),
-                                        UnionMode::Dense,
-                                    ),
-                                    "rerun.testing.datatypes.AffixFuzzer4#many_required",
-                                    2usize,
-                                ),
-                            )
-                            .with_context("rerun.testing.datatypes.AffixFuzzer4");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[2usize];
                     {
@@ -3295,35 +3127,7 @@ impl crate::Loggable for AffixFuzzer4 {
                 };
                 let many_optional = {
                     if 3usize >= data_arrays.len() {
-                        return Err(
-                                crate::DeserializationError::missing_union_arm(
-                                    DataType::Union(
-                                        vec![
-                                            Field { name : "_null_markers".to_owned(), data_type :
-                                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                                            Field { name : "single_required".to_owned(), data_type : <
-                                            crate ::testing::datatypes::AffixFuzzer3 >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "many_required".to_owned(),
-                                            data_type : DataType::List(Box::new(Field { name : "item"
-                                            .to_owned(), data_type : < crate
-                                            ::testing::datatypes::AffixFuzzer3 > ::to_arrow_datatype(),
-                                            is_nullable : false, metadata : [].into(), })), is_nullable
-                                            : false, metadata : [].into(), }, Field { name :
-                                            "many_optional".to_owned(), data_type :
-                                            DataType::List(Box::new(Field { name : "item".to_owned(),
-                                            data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                                            ::to_arrow_datatype(), is_nullable : true, metadata : []
-                                            .into(), })), is_nullable : false, metadata : [].into(), },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32, 3i32,]),
-                                        UnionMode::Dense,
-                                    ),
-                                    "rerun.testing.datatypes.AffixFuzzer4#many_optional",
-                                    3usize,
-                                ),
-                            )
-                            .with_context("rerun.testing.datatypes.AffixFuzzer4");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[3usize];
                     {

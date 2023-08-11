@@ -324,35 +324,7 @@ impl crate::Loggable for Scale3D {
                 }
                 let three_d = {
                     if 1usize >= data_arrays.len() {
-                        return Err(crate::DeserializationError::missing_union_arm(
-                            DataType::Union(
-                                vec![
-                                    Field {
-                                        name: "_null_markers".to_owned(),
-                                        data_type: DataType::Null,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "ThreeD".to_owned(),
-                                        data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Uniform".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                ],
-                                Some(vec![0i32, 1i32, 2i32]),
-                                UnionMode::Dense,
-                            ),
-                            "rerun.datatypes.Scale3D#ThreeD",
-                            1usize,
-                        ))
-                        .with_context("rerun.datatypes.Scale3D");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[1usize];
                     {
@@ -433,35 +405,7 @@ impl crate::Loggable for Scale3D {
                 };
                 let uniform = {
                     if 2usize >= data_arrays.len() {
-                        return Err(crate::DeserializationError::missing_union_arm(
-                            DataType::Union(
-                                vec![
-                                    Field {
-                                        name: "_null_markers".to_owned(),
-                                        data_type: DataType::Null,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "ThreeD".to_owned(),
-                                        data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Uniform".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                ],
-                                Some(vec![0i32, 1i32, 2i32]),
-                                UnionMode::Dense,
-                            ),
-                            "rerun.datatypes.Scale3D#Uniform",
-                            2usize,
-                        ))
-                        .with_context("rerun.datatypes.Scale3D");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[2usize];
                     data.as_any()

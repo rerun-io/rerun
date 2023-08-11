@@ -208,7 +208,6 @@ pub fn quote_arrow_deserializer(
 
                 let quoted_field_deserializers =
                     obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                        let obj_field_fqname = &obj_field.fqname;
                         let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
 
                         let quoted_deserializer = quote_arrow_field_deserializer(
@@ -228,9 +227,15 @@ pub fn quote_arrow_deserializer(
                                 // arm counter... there's no guarantee it's actually there at
                                 // runtime!
                                 if #i >= #data_src_arrays.len() {
-                                    return Err(crate::DeserializationError::missing_union_arm(
-                                        #quoted_datatype, #obj_field_fqname, #i,
-                                    )).with_context(#obj_fqname);
+                                    // By not returning an error but rather defaulting to an empty
+                                    // vector, we introduce some kind of light forwards compatibility:
+                                    // old clients that don't yet know about the new arms can still
+                                    // send data in.
+                                    return Ok(Vec::new());
+
+                                    // return Err(crate::DeserializationError::missing_union_arm(
+                                    //     #quoted_datatype, #obj_field_fqname, #i,
+                                    // )).with_context(#obj_fqname);
                                 }
 
                                 // NOTE: The array indexing is safe: checked above.

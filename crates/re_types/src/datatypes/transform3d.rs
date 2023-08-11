@@ -280,29 +280,7 @@ impl crate::Loggable for Transform3D {
                 }
                 let translation_and_mat_3_x_3 = {
                     if 1usize >= data_arrays.len() {
-                        return Err(
-                                crate::DeserializationError::missing_union_arm(
-                                    DataType::Union(
-                                        vec![
-                                            Field { name : "_null_markers".to_owned(), data_type :
-                                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                                            Field { name : "TranslationAndMat3x3".to_owned(), data_type
-                                            : < crate ::datatypes::TranslationAndMat3x3 >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "TranslationRotationScale"
-                                            .to_owned(), data_type : < crate
-                                            ::datatypes::TranslationRotationScale3D >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32,]),
-                                        UnionMode::Dense,
-                                    ),
-                                    "rerun.datatypes.Transform3D#TranslationAndMat3x3",
-                                    1usize,
-                                ),
-                            )
-                            .with_context("rerun.datatypes.Transform3D");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[1usize];
                     crate::datatypes::TranslationAndMat3x3::try_from_arrow_opt(data)
@@ -312,29 +290,7 @@ impl crate::Loggable for Transform3D {
                 };
                 let translation_rotation_scale = {
                     if 2usize >= data_arrays.len() {
-                        return Err(
-                                crate::DeserializationError::missing_union_arm(
-                                    DataType::Union(
-                                        vec![
-                                            Field { name : "_null_markers".to_owned(), data_type :
-                                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                                            Field { name : "TranslationAndMat3x3".to_owned(), data_type
-                                            : < crate ::datatypes::TranslationAndMat3x3 >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), }, Field { name : "TranslationRotationScale"
-                                            .to_owned(), data_type : < crate
-                                            ::datatypes::TranslationRotationScale3D >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), },
-                                        ],
-                                        Some(vec![0i32, 1i32, 2i32,]),
-                                        UnionMode::Dense,
-                                    ),
-                                    "rerun.datatypes.Transform3D#TranslationRotationScale",
-                                    2usize,
-                                ),
-                            )
-                            .with_context("rerun.datatypes.Transform3D");
+                        return Ok(Vec::new());
                     }
                     let data = &*data_arrays[2usize];
                     crate::datatypes::TranslationRotationScale3D::try_from_arrow_opt(data)
