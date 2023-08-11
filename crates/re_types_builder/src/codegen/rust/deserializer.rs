@@ -381,12 +381,12 @@ fn quote_arrow_field_deserializer(
         | DataType::Float32
         | DataType::Float64
         | DataType::Boolean => {
-            let quoted_unmapping =
-                quote_iterator_unmapper(objects, datatype, IteratorKind::OptionValue, None);
-            let quoted_unmapping = if *datatype.to_logical_type() == DataType::Boolean {
-                quoted_unmapping
+            let quoted_iter_transparency =
+                quote_iterator_transparency(objects, datatype, IteratorKind::OptionValue, None);
+            let quoted_iter_transparency = if *datatype.to_logical_type() == DataType::Boolean {
+                quoted_iter_transparency
             } else {
-                quote!(.map(|opt| opt.copied()) #quoted_unmapping)
+                quote!(.map(|opt| opt.copied()) #quoted_iter_transparency)
             };
 
             let quoted_downcast = {
@@ -398,7 +398,7 @@ fn quote_arrow_field_deserializer(
             quote! {
                 #quoted_downcast?
                     .into_iter() // NOTE: automatically checks the bitmap on our behalf
-                    #quoted_unmapping
+                    #quoted_iter_transparency
             }
         }
 
@@ -408,7 +408,7 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            let quoted_unmapping = quote_iterator_unmapper(
+            let quoted_iter_transparency = quote_iterator_transparency(
                 objects,
                 datatype,
                 IteratorKind::ResultOptionValue,
@@ -449,7 +449,7 @@ fn quote_arrow_field_deserializer(
                         Ok(data)
                     }).transpose()
                 )
-                #quoted_unmapping
+                #quoted_iter_transparency
                 // NOTE: implicit Vec<Result> to Result<Vec>
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
                 .with_context(#obj_field_fqname)?
@@ -472,8 +472,12 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            let quoted_unmapping =
-                quote_iterator_unmapper(objects, datatype, IteratorKind::ResultOptionValue, None);
+            let quoted_iter_transparency = quote_iterator_transparency(
+                objects,
+                datatype,
+                IteratorKind::ResultOptionValue,
+                None,
+            );
 
             quote! {{
                 let #data_src = #quoted_downcast?;
@@ -548,7 +552,7 @@ fn quote_arrow_field_deserializer(
                                 Ok(arr)
                             }).transpose()
                         )
-                        #quoted_unmapping
+                        #quoted_iter_transparency
                         // NOTE: implicit Vec<Result> to Result<Vec>
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                 }
@@ -694,9 +698,18 @@ enum IteratorKind {
     Value,
 }
 
-/// Generates code to unmap the data stuck within the depths of an iterator, no matter what.
+/// This generates code that maps the data in an iterator in order to apply the Arrow transparency
+/// rules to it, if necessary.
+///
+/// This can often become a very difficult job due to all the affixes that might be involved:
+/// fallibility, nullability, transparency, tuple structs...
+/// This function will just do the right thing.
+///
+/// If `extra_wrapper` is specified, this will also wrap the resulting data in `$extra_wrapper(data)`.
+///
+/// Have a look around in this file for examples of use.
 #[allow(clippy::collapsible_else_if)]
-fn quote_iterator_unmapper(
+fn quote_iterator_transparency(
     objects: &Objects,
     datatype: &DataType,
     iter_kind: IteratorKind,
