@@ -137,7 +137,7 @@ def keypointpair_native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.D
 
 
 def annotationinfo_native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
-    from .. import ColorType, LabelType, AnnotationInfo
+    from .. import AnnotationInfo, ColorType, LabelType
 
     if isinstance(data, AnnotationInfo):
         data = [data]
@@ -216,7 +216,7 @@ def classdescription_native_to_pa_array(data: ClassDescriptionArrayLike, data_ty
 def classdescriptionmapelem_native_to_pa_array(
     data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType
 ) -> pa.Array:
-    from .. import ClassIdArray, ClassDescriptionArray, ClassDescriptionMapElem
+    from .. import ClassDescriptionArray, ClassDescriptionMapElem, ClassIdArray
 
     if isinstance(data, ClassDescriptionMapElem):
         data = [data]

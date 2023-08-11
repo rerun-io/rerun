@@ -17,8 +17,8 @@ from .keypoint_id import keypointid_native_to_pa_array
 from .label import label_native_to_pa_array
 from .matnxn import mat3x3_coeffs_converter, mat4x4_coeffs_converter
 from .quaternion import quaternion_init
-from .rotation_axis_angle import rotationaxisangle_angle_converter
 from .rotation3d import rotation3d_inner_converter
+from .rotation_axis_angle import rotationaxisangle_angle_converter
 from .scale3d import scale3d_inner_converter
 from .transform3d import transform3d_native_to_pa_array
 from .translation_and_mat3x3 import translationandmat3x3_init
