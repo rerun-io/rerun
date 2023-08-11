@@ -831,9 +831,11 @@ impl QuotedObject {
                                 #NEWLINE_TOKEN
                                 #swap_comment
                                 char temp[sizeof(#data_typename)];
-                                std::memcpy(temp, this, sizeof(#data_typename));
-                                std::memcpy(this, &other, sizeof(#data_typename));
-                                std::memcpy(&other, temp, sizeof(#data_typename));
+                                void* otherbytes = reinterpret_cast<void*>(&other);
+                                void* thisbytes = reinterpret_cast<void*>(this);
+                                std::memcpy(temp, thisbytes, sizeof(#data_typename));
+                                std::memcpy(thisbytes, otherbytes, sizeof(#data_typename));
+                                std::memcpy(otherbytes, temp, sizeof(#data_typename));
                             }
                         };
 
