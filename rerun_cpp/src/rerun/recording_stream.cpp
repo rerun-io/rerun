@@ -14,6 +14,11 @@ namespace rerun {
             case StoreKind::Blueprint:
                 return RERUN_STORE_KIND_BLUEPRINT;
         }
+
+        // This should never happen since if we missed a switch case we'll get a warning on
+        // compilers which compiles as an error on CI. But let's play it safe regardless and default
+        // to recording.
+        return RERUN_STORE_KIND_RECORDING;
     }
 
     RecordingStream::RecordingStream(const char* app_id, StoreKind store_kind)
