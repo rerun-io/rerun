@@ -93,7 +93,7 @@ def log_rect(
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        instanced["rerun.class_id"] = rrd.ClassIdArray.from_similar(class_ids).storage
+        instanced["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids).storage
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
@@ -226,7 +226,7 @@ def log_rects(
 
     if len(class_ids):
         is_splat = len(class_ids) == 1
-        comps[is_splat]["rerun.class_id"] = rrd.ClassIdArray.from_similar(class_ids).storage
+        comps[is_splat]["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids).storage
 
     if draw_order is not None:
         comps[True]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
