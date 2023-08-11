@@ -99,7 +99,7 @@ impl crate::Loggable for PrimitiveComponent {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<UInt32Array>()
@@ -240,7 +240,7 @@ impl crate::Loggable for StringComponent {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()

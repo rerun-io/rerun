@@ -143,7 +143,7 @@ impl crate::Loggable for Mat4x4 {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
