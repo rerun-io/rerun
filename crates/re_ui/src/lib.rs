@@ -47,12 +47,12 @@ pub struct TopBarStyle {
 
 // ----------------------------------------------------------------------------
 
-use std::{ops::RangeInclusive, sync::Arc};
+use std::sync::Arc;
 
 use parking_lot::Mutex;
 
 use crate::list_item::ListItem;
-use egui::emath::Rot2;
+use egui::emath::{Rangef, Rot2};
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
@@ -816,11 +816,13 @@ impl ReUi {
         &self,
         painter: &egui::Painter,
         x: f32,
-        y: RangeInclusive<f32>,
+        y: Rangef,
         stroke: egui::Stroke,
     ) {
-        let y_min = *y.start();
-        let y_max = *y.end();
+        let Rangef {
+            min: y_min,
+            max: y_max,
+        } = y;
 
         let stroke = egui::Stroke {
             width: 1.5 * stroke.width,

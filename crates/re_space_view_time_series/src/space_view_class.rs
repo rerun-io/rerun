@@ -159,7 +159,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             response,
             transform,
         } = plot.show(ui, |plot_ui| {
-            if plot_ui.plot_secondary_clicked() {
+            if plot_ui.response().secondary_clicked() {
                 let timeline = ctx.rec_cfg.time_ctrl.timeline();
                 ctx.rec_cfg.time_ctrl.set_timeline_and_time(
                     *timeline,

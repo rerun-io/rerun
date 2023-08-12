@@ -6,6 +6,7 @@
 
 use std::ops::RangeInclusive;
 
+use egui::emath::Rangef;
 use egui::{lerp, remap, NumExt};
 use itertools::Itertools as _;
 
@@ -23,15 +24,14 @@ const MAX_GAP: f64 = 40.0;
 const GAP_EXPANSION_FRACTION: f64 = 1.0 / 4.0;
 
 /// Sze of the gap between time segments.
-pub fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f64 {
+pub fn gap_width(x_range: &Rangef, segments: &[TimeRange]) -> f64 {
     let num_gaps = segments.len().saturating_sub(1);
     if num_gaps == 0 {
         // gap width doesn't matter when there are no gaps
         MAX_GAP
     } else {
         // shrink gaps if there are a lot of them
-        let width = *x_range.end() - *x_range.start();
-        (width as f64 / (num_gaps as f64)).at_most(MAX_GAP)
+        (x_range.span() as f64 / (num_gaps as f64)).at_most(MAX_GAP)
     }
 }
 
@@ -93,14 +93,10 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
-    pub fn new(
-        x_range: RangeInclusive<f32>,
-        time_view: TimeView,
-        time_ranges: &[TimeRange],
-    ) -> Self {
+    pub fn new(x_range: Rangef, time_view: TimeView, time_ranges: &[TimeRange]) -> Self {
         re_tracing::profile_function!();
 
-        debug_assert!(x_range.start() < x_range.end());
+        debug_assert!(x_range.min < x_range.max);
 
         //        <------- time_view ------>
         //        <-------- x_range ------->
@@ -109,7 +105,7 @@ impl TimeRangesUi {
         //             ^ gap
 
         let gap_width_in_ui = gap_width(&x_range, time_ranges);
-        let x_range = (*x_range.start() as f64)..=(*x_range.end() as f64);
+        let x_range = (x_range.min as f64)..=(x_range.max as f64);
         let width_in_ui = *x_range.end() - *x_range.start();
         let points_per_time = width_in_ui / time_view.time_spanned;
         let points_per_time = if points_per_time > 0.0 && points_per_time.is_finite() {
@@ -384,7 +380,7 @@ impl TimeRangesUi {
 #[test]
 fn test_time_ranges_ui() {
     let time_range_ui = TimeRangesUi::new(
-        100.0..=1000.0,
+        Rangef::new(100.0, 1000.0),
         TimeView {
             min: TimeReal::from(0.5),
             time_spanned: 14.2,
@@ -426,7 +422,7 @@ fn test_time_ranges_ui() {
 #[test]
 fn test_time_ranges_ui_2() {
     let time_range_ui = TimeRangesUi::new(
-        0.0..=500.0,
+        Rangef::new(0.0, 500.0),
         TimeView {
             min: TimeReal::from(0),
             time_spanned: 50.0,
