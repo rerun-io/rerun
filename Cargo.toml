@@ -150,15 +150,15 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
+# Temporary patch until next egui release
+ecolor = { git = "https://github.com/emilk/egui", commit = "98087029e020a1b2d78a4eb840d0a8505340ecad" }
+eframe = { git = "https://github.com/emilk/egui", commit = "98087029e020a1b2d78a4eb840d0a8505340ecad" }
+egui-wgpu = { git = "https://github.com/emilk/egui", commit = "98087029e020a1b2d78a4eb840d0a8505340ecad" }
+egui-winit = { git = "https://github.com/emilk/egui", commit = "98087029e020a1b2d78a4eb840d0a8505340ecad" }
+egui = { git = "https://github.com/emilk/egui", commit = "98087029e020a1b2d78a4eb840d0a8505340ecad" }
+egui_extras = { git = "https://github.com/emilk/egui", commit = "98087029e020a1b2d78a4eb840d0a8505340ecad" }
+emath = { git = "https://github.com/emilk/egui", commit = "98087029e020a1b2d78a4eb840d0a8505340ecad" }
+epaint = { git = "https://github.com/emilk/egui", commit = "98087029e020a1b2d78a4eb840d0a8505340ecad" }
+
 # Temporary patch until next egui_tiles release
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", commit = "f835c4df1cc260a58122a8d37c7c3738902b9643" }
-
-# Temporary patch until next egui release
-ecolor = { git = "https://github.com/emilk/egui", commit="98087029e020a1b2d78a4eb840d0a8505340ecad" }
-eframe = { git = "https://github.com/emilk/egui", commit="98087029e020a1b2d78a4eb840d0a8505340ecad" }
-egui-wgpu = { git = "https://github.com/emilk/egui", commit="98087029e020a1b2d78a4eb840d0a8505340ecad" }
-egui-winit = { git = "https://github.com/emilk/egui", commit="98087029e020a1b2d78a4eb840d0a8505340ecad" }
-egui = { git = "https://github.com/emilk/egui", commit="98087029e020a1b2d78a4eb840d0a8505340ecad" }
-egui_extras = { git = "https://github.com/emilk/egui", commit="98087029e020a1b2d78a4eb840d0a8505340ecad" }
-emath = { git = "https://github.com/emilk/egui", commit="98087029e020a1b2d78a4eb840d0a8505340ecad" }
-epaint = { git = "https://github.com/emilk/egui", commit="98087029e020a1b2d78a4eb840d0a8505340ecad" }
