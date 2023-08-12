@@ -828,7 +828,6 @@ pub fn quote_arrow_deserializer_non_nullable(
 
     let datatype = &arrow_registry.get(&obj.fqname);
 
-    let obj_fqname = obj.fqname.as_str();
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
@@ -894,16 +893,11 @@ fn quote_arrow_field_deserializer_non_nullable(
         | DataType::UInt64
         | DataType::Float16
         | DataType::Float32
-        | DataType::Float64
-        | DataType::Boolean => {
+        | DataType::Float64 => {
             let quoted_iter_transparency =
                 quote_iterator_transparency(objects, datatype, IteratorKind::Value, None);
 
-            let quoted_iter_transparency = if *datatype.to_logical_type() == DataType::Boolean {
-                quoted_iter_transparency
-            } else {
-                quote!(.copied() #quoted_iter_transparency)
-            };
+            let quoted_iter_transparency = quote!(.copied() #quoted_iter_transparency);
 
             let quoted_downcast = {
                 let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
@@ -915,82 +909,32 @@ fn quote_arrow_field_deserializer_non_nullable(
                 quote! {
                     #quoted_downcast?
                     .values()
+                    .as_slice()
                 }
             } else {
                 quote! {
                     #quoted_downcast?
-                        .values()
-                        .as_slice()
-                        .iter()
-                        #quoted_iter_transparency
+                    .values()
+                    .as_slice()
+                    .iter()
+                    #quoted_iter_transparency
                 }
             }
         }
 
-        DataType::Utf8 => {
-            let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::Utf8Array<i32>);
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
-            };
-
-            let quoted_iter_transparency = quote_iterator_transparency(
-                objects,
-                datatype,
-                IteratorKind::ResultOptionValue,
-                quote!(crate::ArrowString).into(),
-            );
-
-            let data_src_buf = format_ident!("{data_src}_buf");
-
-            quote! {{
-                let #data_src = #quoted_downcast?;
-                let #data_src_buf = #data_src.values();
-
-                let offsets = #data_src.offsets();
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets.iter().zip(offsets.lengths()),
-                    #data_src.validity(),
-                )
-                .map(|elem| elem.map(|(start, len)| {
-                        // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
-
-                        let start = *start as usize;
-                        let end = start + len;
-
-                        // NOTE: It is absolutely crucial we explicitly handle the
-                        // boundchecks manually first, otherwise rustc completely chokes
-                        // when slicing the data (as in: a 100x perf drop)!
-                        if end as usize > #data_src_buf.len() {
-                            // error context is appended below during final collection
-                            return Err(crate::DeserializationError::offset_slice_oob(
-                                (start, end), #data_src_buf.len(),
-                            ));
-                        }
-                        // Safety: all checked above.
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        // NOTE: The `clone` is a `Buffer::clone`, which is just a refcount bump.
-                        let data = unsafe { #data_src_buf.clone().sliced_unchecked(start, len) };
-
-                        Ok(data)
-                    }).transpose()
-                )
-                #quoted_iter_transparency
-                // NOTE: implicit Vec<Result> to Result<Vec>
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context(#obj_field_fqname)?
-                .into_iter()
-            }}
-        }
-
         DataType::FixedSizeList(inner, length) => {
+            if is_list_inner {
+                // This implies a nested fixed-sized-array
+                unimplemented!("{datatype:#?}")
+            }
             let data_src_inner = format_ident!("{data_src}_inner");
-            let quoted_inner = quote_arrow_field_deserializer(
+            let quoted_inner = quote_arrow_field_deserializer_non_nullable(
                 objects,
                 inner.data_type(),
                 inner.is_nullable,
                 obj_field_fqname,
                 &data_src_inner,
-                false,
+                true,
             );
 
             let quoted_downcast = {
@@ -998,216 +942,18 @@ fn quote_arrow_field_deserializer_non_nullable(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            let quoted_iter_transparency = quote_iterator_transparency(
-                objects,
-                datatype,
-                IteratorKind::ResultOptionValue,
-                None,
-            );
+            let quoted_iter_transparency =
+                quote_iterator_transparency(objects, datatype, IteratorKind::Value, None);
+            let quoted_iter_transparency = quote!(.copied() #quoted_iter_transparency);
 
             quote! {{
                 let #data_src = #quoted_downcast?;
-                if #data_src.is_empty() {
-                    // NOTE: The outer container is empty and so we already know that the end result
-                    // is also going to be an empty vec.
-                    // Early out right now rather than waste time computing possibly many empty
-                    // datastructures for all of our children.
-                    Vec::new()
-                } else {
-                    let offsets = (0..).step_by(#length).zip((#length..).step_by(#length).take(#data_src.len()));
 
-                    let #data_src_inner = {
-                        let #data_src_inner = &**#data_src.values();
-                        #quoted_inner.collect::<Vec<_>>()
-                    };
-
-                    arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, #data_src.validity())
-                        .map(|elem| elem.map(|(start, end)| {
-                                // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
-
-                                // We're manually generating our own offsets in this case, thus length
-                                // must be correct.
-                                debug_assert!(end - start == #length);
-
-                                // NOTE: It is absolutely crucial we explicitly handle the
-                                // boundchecks manually first, otherwise rustc completely chokes
-                                // when slicing the data (as in: a 100x perf drop)!
-                                if end as usize > #data_src_inner.len() {
-                                    // error context is appended below during final collection
-                                    return Err(crate::DeserializationError::offset_slice_oob(
-                                        (start, end), #data_src_inner.len(),
-                                    ));
-                                }
-                                // Safety: all checked above.
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
-
-                                // NOTE: The call to `Option::unwrap_or_default` is very important here.
-                                //
-                                // Since we can only get here if the outer entry is marked as
-                                // non-null, the only possible reason for the default() path
-                                // to be taken is because the inner field itself is nullable and
-                                // happens to have one or more nullable values in the referenced
-                                // slice.
-                                // This is perfectly fine, and when it happens, we need to fill the
-                                // resulting vec with some data, hence default().
-                                //
-                                // This does have a subtle implication though!
-                                // Since we never even look at the inner field's data when the outer
-                                // entry is null, it means we won't notice it if illegal/malformed/corrupt
-                                // in any way.
-                                // It is important that we turn a blind eye here, because most SDKs in
-                                // the ecosystem will put illegal data (e.g. null entries in an array of
-                                // non-null floats) in the inner buffer if the outer entry itself
-                                // is null.
-                                //
-                                // TODO(#2875): use MaybeUninit rather than requiring a default impl
-                                let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                // The following would be the correct thing to do, but costs us way
-                                // too much performance-wise for something that only applies to
-                                // malformed inputs.
-                                //
-                                // // NOTE: We don't support nullable inner elements in our IDL, so
-                                // // this can only be a case of malformed data.
-                                // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
-                                // .collect::<crate::DeserializationResult<Vec<_>>>()?;
-
-                                // NOTE: Unwrapping cannot fail: the length must be correct.
-                                let arr = array_init::from_iter(data).unwrap();
-
-                                Ok(arr)
-                            }).transpose()
-                        )
-                        #quoted_iter_transparency
-                        // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                }
-                .into_iter()
+                let #data_src_inner = &**#data_src.values();
+                bytemuck::cast_slice::<_, [_; #length]>(#quoted_inner)
+                .iter()
+                #quoted_iter_transparency
             }}
-        }
-
-        DataType::List(inner) => {
-            let data_src_inner = format_ident!("{data_src}_inner");
-
-            let inner_is_primitive = matches!(
-                inner.data_type(),
-                DataType::UInt8 | DataType::UInt16 | DataType::Float32
-            );
-
-            let quoted_inner = quote_arrow_field_deserializer(
-                objects,
-                inner.data_type(),
-                inner.is_nullable,
-                obj_field_fqname,
-                &data_src_inner,
-                inner_is_primitive,
-            );
-
-            let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::ListArray<i32>);
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
-            };
-
-            let quoted_collect_inner = if inner_is_primitive {
-                quote!()
-            } else {
-                quote!(.collect::<Vec<_>>())
-            };
-
-            let quoted_inner_data_range = if inner_is_primitive {
-                quote! {
-                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                    let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
-                    let data = crate::ArrowBuffer(data);
-                }
-            } else {
-                quote! {
-                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                    let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
-
-                    // NOTE: The call to `Option::unwrap_or_default` is very important here.
-                    //
-                    // Since we can only get here if the outer oob is marked as
-                    // non-null, the only possible reason for the default() path
-                    // to be taken is because the inner field itself is nullable and
-                    // happens to have one or more nullable values in the referenced
-                    // slice.
-                    // This is perfectly fine, and when it happens, we need to fill the
-                    // resulting vec with some data, hence default().
-                    //
-                    // This does have a subtle implication though!
-                    // Since we never even look at the inner field's data when the outer
-                    // entry is null, it means we won't notice it if illegal/malformed/corrupt
-                    // in any way.
-                    // It is important that we turn a blind eye here, because most SDKs in
-                    // the ecosystem will put illegal data (e.g. null entries in an array of
-                    // non-null floats) in the inner buffer if the outer entry itself
-                    // is null.
-                    //
-                    // TODO(#2875): use MaybeUninit rather than requiring a default impl
-                    let data = data.iter().cloned().map(Option::unwrap_or_default).collect();
-                        // The following would be the correct thing to do, but costs us way
-                        // too much performance-wise for something that only applies to
-                        // malformed inputs.
-                        //
-                        // // NOTE: We don't support nullable inner elements in our IDL, so
-                        // // this can only be a case of malformed data.
-                        // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
-                        // .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                }
-            };
-
-            quote! {{
-                let #data_src = #quoted_downcast?;
-                if #data_src.is_empty() {
-                    // NOTE: The outer container is empty and so we already know that the end result
-                    // is also going to be an empty vec.
-                    // Early out right now rather than waste time computing possibly many empty
-                    // datastructures for all of our children.
-                    Vec::new()
-                } else {
-                    let #data_src_inner = {
-                        let #data_src_inner = &**#data_src.values();
-                        #quoted_inner #quoted_collect_inner
-                    };
-
-                    let offsets = #data_src.offsets();
-                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                        offsets.iter().zip(offsets.lengths()),
-                        #data_src.validity(),
-                    )
-                    .map(|elem| elem.map(|(start, len)| {
-                            // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
-
-                            let start = *start as usize;
-                            let end = start + len;
-
-                            // NOTE: It is absolutely crucial we explicitly handle the
-                            // boundchecks manually first, otherwise rustc completely chokes
-                            // when slicing the data (as in: a 100x perf drop)!
-                            if end as usize > #data_src_inner.len() {
-                                // error context is appended below during final collection
-                                return Err(crate::DeserializationError::offset_slice_oob(
-                                    (start, end), #data_src_inner.len(),
-                                ));
-                            }
-
-                            #quoted_inner_data_range
-
-                            Ok(data)
-                        }).transpose()
-                    )
-                    // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                }
-                .into_iter()
-            }}
-        }
-
-        DataType::Struct(_) | DataType::Union(_, _, _) => {
-            let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
-            let fqname_use = quote_fqname_as_type_path(fqname);
-            quote!(#fqname_use::try_from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
         }
 
         _ => unimplemented!("{datatype:#?}"),
@@ -1227,9 +973,7 @@ pub fn should_optimize_deserialize(obj: &Object, arrow_registry: &ArrowRegistry)
 
 pub fn should_optimize_deserialize_datatype(typ: &DataType) -> bool {
     match typ {
-        DataType::Null
-        | DataType::Boolean
-        | DataType::Int8
+        DataType::Int8
         | DataType::Int16
         | DataType::Int32
         | DataType::Int64

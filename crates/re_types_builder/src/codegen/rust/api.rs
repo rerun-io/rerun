@@ -716,7 +716,7 @@ fn quote_trait_impls_from_obj(
             // by archetypes and as such should never be nullible.
             // TODO(jleibs): we should always code-gen both version of this and dispatch to
             // the right one based on the stored data instead.
-            let optimize_non_nullable = should_optimize_deserialize(&obj, &arrow_registry);
+            let optimize_non_nullable = should_optimize_deserialize(obj, arrow_registry);
 
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
