@@ -120,6 +120,32 @@ impl crate::Loggable for InstanceKey {
             .with_context("rerun.components.InstanceKey")?)
     }
 
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        Ok(data
+            .as_any()
+            .downcast_ref::<UInt64Array>()
+            .ok_or_else(|| {
+                crate::DeserializationError::datatype_mismatch(
+                    DataType::UInt64,
+                    data.data_type().clone(),
+                )
+            })
+            .with_context("rerun.components.InstanceKey#value")?
+            .values()
+            .as_slice()
+            .iter()
+            .copied()
+            .map(|v| Self(v))
+            .collect::<Vec<_>>())
+    }
+
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,

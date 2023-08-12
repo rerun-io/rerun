@@ -148,6 +148,33 @@ impl crate::Loggable for Color {
             .with_context("rerun.components.Color")?)
     }
 
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        Ok(data
+            .as_any()
+            .downcast_ref::<UInt32Array>()
+            .ok_or_else(|| {
+                crate::DeserializationError::datatype_mismatch(
+                    DataType::UInt32,
+                    data.data_type().clone(),
+                )
+            })
+            .with_context("rerun.components.Color#rgba")?
+            .values()
+            .as_slice()
+            .iter()
+            .copied()
+            .map(|v| crate::datatypes::Color(v))
+            .map(|v| Self(v))
+            .collect::<Vec<_>>())
+    }
+
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,

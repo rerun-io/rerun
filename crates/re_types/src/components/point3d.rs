@@ -231,6 +231,56 @@ impl crate::Loggable for Point3D {
         .with_context("rerun.components.Point3D")?)
     }
 
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            Box::new(Field {
+                                name: "item".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            }),
+                            3usize,
+                        ),
+                        data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.Point3D#xyz")?;
+            let data_inner = &**data.values();
+            bytemuck::cast_slice::<_, [_; 3usize]>(
+                data_inner
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .ok_or_else(|| {
+                        crate::DeserializationError::datatype_mismatch(
+                            DataType::Float32,
+                            data_inner.data_type().clone(),
+                        )
+                    })
+                    .with_context("rerun.components.Point3D#xyz")?
+                    .values()
+                    .as_slice(),
+            )
+            .iter()
+            .copied()
+            .map(|v| crate::datatypes::Vec3D(v))
+        }
+        .map(|v| Self(v))
+        .collect::<Vec<_>>())
+    }
+
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
