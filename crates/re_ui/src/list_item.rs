@@ -125,7 +125,7 @@ impl<'a> ListItem<'a> {
     ) {
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
-            ui.make_persistent_id(self.text.text()),
+            ui.make_persistent_id(ui.id().with(self.text.text())),
             default_open,
         );
 
