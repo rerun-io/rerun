@@ -612,6 +612,13 @@ impl ReUi {
         });
     }
 
+    /// Size for the collapsing triangle icon.
+    ///
+    /// See [`ReUi::paint_collapsing_triangle`] for actually drawing the triangle.
+    pub fn collapsing_triangle_size() -> egui::Vec2 {
+        egui::Vec2::splat(8.0)
+    }
+
     /// Paint a collapsing triangle with rounded corners.
     ///
     /// Alternative to [`egui::collapsing_header::paint_default_icon`].

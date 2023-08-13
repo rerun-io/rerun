@@ -1,17 +1,22 @@
 use crate::{Icon, ReUi};
 use egui::{Align2, NumExt, Response, Shape, Ui};
 
+struct ListItemResponse {
+    response: Response,
+    collapse_response: Option<Response>,
+}
+
 /// Generic widget for use in lists.
 ///
 /// Layout:
 /// ```text
-/// ┌───────────────────────────────────────────────────┐
-/// │┌──────┐                           ┌──────┐┌──────┐│
-/// ││      │                           │      ││      ││
-/// ││ icon │  label                    │ btns ││ btns ││
-/// ││      │                           │      ││      ││
-/// │└──────┘                           └──────┘└──────┘│
-/// └───────────────────────────────────────────────────┘
+/// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+/// ┃┌──────┐ ┌──────┐                           ┌──────┐┌──────┐┃
+/// ┃│  __  │ │      │                           │      ││      │┃
+/// ┃│  \/  │ │ icon │  label                    │ btns ││ btns │┃
+/// ┃│      │ │      │                           │      ││      │┃
+/// ┃└──────┘ └──────┘                           └──────┘└──────┘┃
+/// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 /// ```
 ///
 /// Features:
@@ -19,6 +24,7 @@ use egui::{Align2, NumExt, Response, Shape, Ui};
 /// - full span highlighting
 /// - optional icon
 /// - optional on-hover buttons on the right
+/// - optional collapsing behavior for trees
 ///
 /// This widget relies on the clip rectangle to be properly set as it use it for the shape if its
 /// background highlighting. This has a significant impact on the hierarchy of the UI. This is
@@ -38,6 +44,7 @@ pub struct ListItem<'a> {
     re_ui: &'a ReUi,
     active: bool,
     selected: bool,
+    collapse_openness: Option<f32>,
     icon_fn:
         Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
     buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
@@ -51,6 +58,7 @@ impl<'a> ListItem<'a> {
             re_ui,
             active: true,
             selected: false,
+            collapse_openness: None,
             icon_fn: None,
             buttons_fn: None,
         }
@@ -106,28 +114,64 @@ impl<'a> ListItem<'a> {
 
     /// Draw the item.
     pub fn show(self, ui: &mut Ui) -> Response {
-        ui.add(self)
+        self.ui(ui).response
     }
-}
 
-impl egui::Widget for ListItem<'_> {
-    fn ui(self, ui: &mut Ui) -> Response {
+    pub fn show_collapsing<R>(
+        mut self,
+        ui: &mut Ui,
+        default_open: bool,
+        add_body: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
+    ) {
+        let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            ui.make_persistent_id(self.text.text()),
+            default_open,
+        );
+
+        // enable collapsing arrow
+        self.collapse_openness = Some(state.openness(ui.ctx()));
+
+        let re_ui = self.re_ui;
+        let response = self.ui(ui);
+
+        if let Some(collapse_response) = response.collapse_response {
+            if collapse_response.clicked() {
+                state.toggle(ui);
+            }
+        }
+
+        state.show_body_indented(&response.response, ui, |ui| {
+            ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
+            add_body(re_ui, ui);
+            ui.add_space(4.0); // Same here
+        });
+    }
+
+    fn ui(self, ui: &mut Ui) -> ListItemResponse {
         let button_padding = ui.spacing().button_padding;
+        let collapse_extra = if self.collapse_openness.is_some() {
+            ReUi::collapsing_triangle_size().x + ReUi::text_to_icon_padding()
+        } else {
+            0.0
+        };
         let icon_extra = if self.icon_fn.is_some() {
             ReUi::small_icon_size().x + ReUi::text_to_icon_padding()
         } else {
             0.0
         };
+
         let padding_extra = button_padding + button_padding;
-        let wrap_width = ui.available_width() - padding_extra.x - icon_extra;
+        let wrap_width = ui.available_width() - padding_extra.x - collapse_extra - icon_extra;
 
         let text =
             self.text
                 .clone()
                 .into_galley(ui, Some(false), wrap_width, egui::TextStyle::Button);
 
-        let desired_size = (padding_extra + egui::vec2(icon_extra, 0.0) + text.size())
-            .at_least(egui::vec2(ui.available_width(), ReUi::list_item_height()));
+        let desired_size =
+            (padding_extra + egui::vec2(collapse_extra + icon_extra, 0.0) + text.size())
+                .at_least(egui::vec2(ui.available_width(), ReUi::list_item_height()));
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
 
         response.widget_info(|| {
@@ -137,6 +181,8 @@ impl egui::Widget for ListItem<'_> {
                 text.text(),
             )
         });
+
+        let mut collapse_response = None;
 
         if ui.is_rect_visible(rect) {
             let visuals = if self.active {
@@ -150,10 +196,23 @@ impl egui::Widget for ListItem<'_> {
             bg_rect.extend_with_x(ui.clip_rect().left());
             let background_frame = ui.painter().add(egui::Shape::Noop);
 
+            // Draw collapsing triangle
+            if let Some(openness) = self.collapse_openness {
+                let triangle_pos = ui.painter().round_pos_to_pixels(egui::pos2(
+                    rect.min.x,
+                    rect.center().y - 0.5 * ReUi::collapsing_triangle_size().y,
+                ));
+                let triangle_rect =
+                    egui::Rect::from_min_size(triangle_pos, ReUi::collapsing_triangle_size());
+                let resp = ui.interact(triangle_rect, ui.id(), egui::Sense::click());
+                ReUi::paint_collapsing_triangle(ui, openness, &resp);
+                collapse_response = Some(resp);
+            }
+
             // Draw icon
             if let Some(icon_fn) = self.icon_fn {
                 let icon_pos = ui.painter().round_pos_to_pixels(egui::pos2(
-                    rect.min.x,
+                    rect.min.x + collapse_extra,
                     rect.center().y - 0.5 * ReUi::small_icon_size().y,
                 ));
                 let icon_rect = egui::Rect::from_min_size(icon_pos, ReUi::small_icon_size());
@@ -162,7 +221,7 @@ impl egui::Widget for ListItem<'_> {
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x += icon_extra;
+            text_rect.min.x += collapse_extra + icon_extra;
             let text_pos = Align2::LEFT_CENTER
                 .align_size_within_rect(text.size(), text_rect)
                 .min;
@@ -201,6 +260,9 @@ impl egui::Widget for ListItem<'_> {
             }
         }
 
-        response
+        ListItemResponse {
+            response,
+            collapse_response,
+        }
     }
 }
