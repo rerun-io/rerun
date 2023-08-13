@@ -88,7 +88,7 @@ log = "0.4"
 pollster = "0.3"
 rand = { workspace = true, features = ["std", "std_rng"] }
 web-time.workspace = true
-winit = "0.28.1"
+winit.workspace = true
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
 # For tests:

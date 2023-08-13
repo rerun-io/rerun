@@ -121,6 +121,7 @@ tokio = { version = "1.24", default-features = false }
 unindent = "0.1"
 vec1 = "1.8"
 web-time = "0.2.0"
+winit = "0.28.6"
 wgpu = { version = "0.16.3" }
 wgpu-core = { version = "0.16.1" }
 
