@@ -1383,7 +1383,7 @@ dependencies = [
  "objc",
  "percent-encoding",
  "pollster",
- "puffin 0.16.0",
+ "puffin",
  "raw-window-handle",
  "ron",
  "serde",
@@ -1419,7 +1419,7 @@ dependencies = [
  "bytemuck",
  "epaint",
  "log",
- "puffin 0.16.0",
+ "puffin",
  "thiserror",
  "type-map",
  "wgpu",
@@ -1435,7 +1435,7 @@ dependencies = [
  "egui",
  "instant",
  "log",
- "puffin 0.16.0",
+ "puffin",
  "raw-window-handle",
  "serde",
  "smithay-clipboard",
@@ -1464,7 +1464,7 @@ dependencies = [
  "glow",
  "log",
  "memoffset 0.6.5",
- "puffin 0.16.0",
+ "puffin",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -3704,44 +3704,31 @@ dependencies = [
 
 [[package]]
 name = "puffin"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f99b70359a44d98fceb167734e8cc19e232fe885a547f1b622e66d8099931b6"
-dependencies = [
- "anyhow",
- "bincode",
- "byteorder",
- "instant",
- "once_cell",
- "parking_lot 0.12.1",
- "ruzstd",
- "serde",
- "zstd",
-]
-
-[[package]]
-name = "puffin"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76425abd4e1a0ad4bd6995dd974b52f414fca9974171df8e3708b3e660d05a21"
 dependencies = [
  "anyhow",
+ "bincode",
  "byteorder",
  "cfg-if",
  "instant",
+ "lz4_flex",
  "once_cell",
+ "parking_lot 0.12.1",
+ "serde",
 ]
 
 [[package]]
 name = "puffin_http"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfbab9321f576e78566ac0986da3992ba8c3714056a12c6e92f4b5f71865cff7"
+checksum = "13bffc600c35913d282ae1e96a6ffcdf36dc7a7cdb9310e0ba15914d258c8193"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
  "log",
- "puffin 0.15.0",
+ "puffin",
 ]
 
 [[package]]
@@ -4537,7 +4524,7 @@ dependencies = [
 name = "re_tracing"
 version = "0.9.0-alpha.2"
 dependencies = [
- "puffin 0.15.0",
+ "puffin",
  "puffin_http",
  "re_log",
  "rfd",
@@ -4856,7 +4843,7 @@ dependencies = [
  "clap",
  "document-features",
  "itertools 0.11.0",
- "puffin 0.15.0",
+ "puffin",
  "rayon",
  "re_analytics",
  "re_build_info",
@@ -5150,17 +5137,6 @@ name = "rustversion"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f3208ce4d8448b3f3e7d168a73f5e0c43a61e32930de3bceeccedb388b6bf06"
-
-[[package]]
-name = "ruzstd"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a15e661f0f9dac21f3494fe5d23a6338c0ac116a2d22c2b63010acd89467ffe"
-dependencies = [
- "byteorder",
- "thiserror",
- "twox-hash",
-]
 
 [[package]]
 name = "ryu"
@@ -6981,36 +6957,6 @@ dependencies = [
  "crc32fast",
  "crossbeam-utils",
  "flate2",
-]
-
-[[package]]
-name = "zstd"
-version = "0.12.3+zstd.1.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76eea132fb024e0e13fd9c2f5d5d595d8a967aa72382ac2f9d39fcc95afd0806"
-dependencies = [
- "zstd-safe",
-]
-
-[[package]]
-name = "zstd-safe"
-version = "6.0.5+zstd.1.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d56d9e60b4b1758206c238a10165fbcae3ca37b01744e394c463463f6529d23b"
-dependencies = [
- "libc",
- "zstd-sys",
-]
-
-[[package]]
-name = "zstd-sys"
-version = "2.0.8+zstd.1.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5556e6ee25d32df2586c098bbfa278803692a20d0ab9565e049480d52707ec8c"
-dependencies = [
- "cc",
- "libc",
- "pkg-config",
 ]
 
 [[package]]
