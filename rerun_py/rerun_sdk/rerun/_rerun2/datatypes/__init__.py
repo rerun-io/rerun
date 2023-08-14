@@ -90,6 +90,7 @@ from .rotation_axis_angle import (
     RotationAxisAngleType,
 )
 from .scale3d import Scale3D, Scale3DArray, Scale3DArrayLike, Scale3DLike, Scale3DType
+from .tensor_data import TensorData, TensorDataArray, TensorDataArrayLike, TensorDataLike, TensorDataType
 from .transform3d import Transform3D, Transform3DArray, Transform3DArrayLike, Transform3DLike, Transform3DType
 from .translation_and_mat3x3 import (
     TranslationAndMat3x3,
@@ -230,6 +231,11 @@ __all__ = [
     "StringComponentArrayLike",
     "StringComponentLike",
     "StringComponentType",
+    "TensorData",
+    "TensorDataArray",
+    "TensorDataArrayLike",
+    "TensorDataLike",
+    "TensorDataType",
     "Transform3D",
     "Transform3DArray",
     "Transform3DArrayLike",

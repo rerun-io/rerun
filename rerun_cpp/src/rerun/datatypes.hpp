@@ -26,6 +26,7 @@
 #include "datatypes/rotation_axis_angle.hpp"
 #include "datatypes/scale3d.hpp"
 #include "datatypes/string_component.hpp"
+#include "datatypes/tensor_data.hpp"
 #include "datatypes/transform3d.hpp"
 #include "datatypes/translation_and_mat3x3.hpp"
 #include "datatypes/translation_rotation_scale3d.hpp"
