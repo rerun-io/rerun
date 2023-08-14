@@ -1890,10 +1890,9 @@ impl crate::Loggable for AffixFuzzer11 {
                 let data0_inner_data: Buffer<_> = data0
                     .iter()
                     .flatten()
-                    .map(|b| b.0.iter())
-                    .flatten()
-                    .cloned()
+                    .map(|b| b.0.as_slice())
                     .collect::<Vec<_>>()
+                    .concat()
                     .into();
                 let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                 let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(

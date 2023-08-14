@@ -520,10 +520,9 @@ impl crate::Loggable for AffixFuzzer1 {
                             let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.iter())
-                                .flatten()
-                                .cloned()
+                                .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
+                                .concat()
                                 .into();
                             let many_floats_optional_inner_bitmap: Option<
                                 ::arrow2::bitmap::Bitmap,
