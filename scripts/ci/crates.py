@@ -11,7 +11,10 @@ Use the script:
 
     # Update crate versions to the next prerelease version,
     # e.g. `0.8.0` -> `0.8.0-alpha.0`, `0.8.0-alpha.0` -> `0.8.0-alpha.1`
-    python3 scripts/ci/crates.py version prerelase --dry-run
+    python3 scripts/ci/crates.py version --bump prerelase --dry-run
+
+    # Update crate versions to an exact version
+    python3 scripts/ci/crates.py version --exact 0.10.1 --dry-run
 
     # Publish all crates in topological order
     python3 scripts/ci/publish.py --token <CRATES_IO_TOKEN>
@@ -36,6 +39,7 @@ from colorama import init as colorama_init
 from semver import VersionInfo
 
 CARGO_PATH = shutil.which("cargo") or "cargo"
+DEFAULT_PRE_ID = "alpha"
 
 
 def cargo(args: str, cwd: str | Path | None = None, env: dict[str, Any] = {}) -> Any:
@@ -139,14 +143,22 @@ class Bump(Enum):
     def __str__(self) -> str:
         return self.value
 
-
-bump_fn = {
-    Bump.MAJOR: VersionInfo.bump_major,
-    Bump.MINOR: VersionInfo.bump_minor,
-    Bump.PATCH: VersionInfo.bump_patch,
-    Bump.PRERELEASE: lambda v: VersionInfo.bump_prerelease(v, token="alpha"),
-    Bump.FINALIZE: VersionInfo.finalize_version,
-}
+    def apply(self, version: VersionInfo, pre_id: str) -> VersionInfo:
+        if self is Bump.MAJOR:
+            return version.bump_major()
+        elif self is Bump.MINOR:
+            return version.bump_minor()
+        elif self is Bump.PATCH:
+            return version.bump_patch()
+        elif self is Bump.PRERELEASE:
+            if version.prerelease != pre_id:
+                # reset the build number if the pre-id changes
+                # e.g. by going from `alpha` to `rc`
+                return version.finalize_version().bump_prerelease(token=pre_id)
+            else:
+                return version.bump_prerelease()
+        elif self is Bump.FINALIZE:
+            return version.finalize_version()
 
 
 def is_pinned(version: str) -> bool:
@@ -236,13 +248,16 @@ def bump_dependency_versions(
             info["version"] = update_to
 
 
-def version(dry_run: bool, bump: Bump) -> None:
+def version(dry_run: bool, bump: Bump | str, pre_id: str) -> None:
     ctx = Context()
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
     crates = get_workspace_crates(root)
     current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
-    new_version = bump_fn[bump](current_version)
+    if isinstance(bump, Bump):
+        new_version = bump.apply(current_version, pre_id)
+    else:
+        new_version = VersionInfo.parse(bump)
 
     # There are a few places where versions are set:
     # 1. In the root `Cargo.toml` under `workspace.package.version`.
@@ -334,9 +349,11 @@ def publish(dry_run: bool, token: str) -> None:
                 sleep(1 - elapsed_s)
 
 
-def get_version() -> None:
+def get_version(finalize: bool) -> None:
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
     current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
+    if finalize:
+        current_version = current_version.finalize_version()
 
     sys.stdout.write(str(current_version))
     sys.stdout.flush()
@@ -347,19 +364,28 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
     cmds_parser = parser.add_subparsers(title="cmds", dest="cmd")
     version_parser = cmds_parser.add_parser("version", help="Bump the crate versions")
-    version_parser.add_argument("bump", type=Bump, choices=list(Bump))
+    target_version_parser = version_parser.add_mutually_exclusive_group()
+    target_version_parser.add_argument("--bump", type=Bump, choices=list(Bump), help="Bump version according to semver")
+    target_version_parser.add_argument("--exact", type=str, help="Update version to an exact value")
     version_parser.add_argument("--dry-run", action="store_true", help="Display the execution plan")
+    version_parser.add_argument("--pre-id", type=str, default=DEFAULT_PRE_ID, help="Set the pre-release prefix")
     publish_parser = cmds_parser.add_parser("publish", help="Publish crates")
     publish_parser.add_argument("--token", type=str, help="crates.io token")
     publish_parser.add_argument("--dry-run", action="store_true", help="Display the execution plan")
     publish_parser.add_argument("--allow-dirty", action="store_true", help="Allow uncommitted changes")
-    cmds_parser.add_parser("get-version", help="Get the current crate version")
+    get_version_parser = cmds_parser.add_parser("get-version", help="Get the current crate version")
+    get_version_parser.add_argument(
+        "--finalize", action="store_true", help="Return version finalized if it is a pre-release"
+    )
     args = parser.parse_args()
 
     if args.cmd == "get-version":
-        get_version()
+        get_version(args.finalize)
     if args.cmd == "version":
-        version(args.dry_run, args.bump)
+        if args.bump:
+            version(args.dry_run, args.bump, args.pre_id)
+        else:
+            version(args.dry_run, args.exact, args.pre_id)
     if args.cmd == "publish":
         if not args.dry_run and not args.token:
             parser.error("`--token` is required when `--dry-run` is not set")
