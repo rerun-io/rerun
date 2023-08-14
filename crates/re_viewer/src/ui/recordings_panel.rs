@@ -107,9 +107,9 @@ fn recording_ui(
             .started
             .to_datetime()
             .and_then(|dt| dt.format(&TIME_FORMAT_DESCRIPTION).ok())
-            .unwrap_or("<unknown>".to_owned())
+            .unwrap_or("<unknown time>".to_owned())
     } else {
-        "<unknown>".to_owned()
+        "<unknown time>".to_owned()
     };
 
     re_ui
