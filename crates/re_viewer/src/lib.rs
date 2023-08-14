@@ -150,17 +150,25 @@ pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
     if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::{config::RenderContextConfig, RenderContext};
 
-        let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
+        let paint_callback_resources = &mut render_state
+            .renderer
+            .write()
+            .shared_paint_callback_resources;
 
-        paint_callback_resources.insert(RenderContext::new(
-            &render_state.adapter,
-            render_state.device.clone(),
-            render_state.queue.clone(),
-            RenderContextConfig {
-                output_format_color: render_state.target_format,
-                device_caps: re_renderer::config::DeviceCaps::from_adapter(&render_state.adapter),
-            },
-        ));
+        paint_callback_resources.insert(
+            re_viewer_context::gpu_bridge::EGUI_RENDER_CONTEXT_IDENTIFIER,
+            RenderContext::new(
+                &render_state.adapter,
+                render_state.device.clone(),
+                render_state.queue.clone(),
+                RenderContextConfig {
+                    output_format_color: render_state.target_format,
+                    device_caps: re_renderer::config::DeviceCaps::from_adapter(
+                        &render_state.adapter,
+                    ),
+                },
+            ),
+        );
     }
 
     re_ui::ReUi::load_and_apply(&cc.egui_ctx)

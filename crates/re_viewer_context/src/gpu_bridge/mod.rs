@@ -1,13 +1,14 @@
 //! Bridge to `re_renderer`
 
+mod re_renderer_callback;
 mod tensor_to_gpu;
+
+pub use re_renderer_callback::{new_egui_callback, EGUI_RENDER_CONTEXT_IDENTIFIER};
 pub use tensor_to_gpu::{depth_tensor_to_gpu, tensor_to_gpu};
 
 use crate::TensorStats;
 
 // ----------------------------------------------------------------------------
-
-use egui::mutex::Mutex;
 
 use re_renderer::{
     renderer::{ColormappedTexture, RectangleOptions},
@@ -111,62 +112,6 @@ pub fn get_or_create_texture<'a>(
     )
 }
 
-/// Render a `re_render` view using the given clip rectangle.
-pub fn renderer_paint_callback(
-    render_ctx: &mut re_renderer::RenderContext,
-    command_buffer: wgpu::CommandBuffer,
-    view_builder: re_renderer::ViewBuilder,
-    clip_rect: egui::Rect,
-    pixels_from_point: f32,
-) -> egui::PaintCallback {
-    re_tracing::profile_function!();
-
-    slotmap::new_key_type! { pub struct ViewBuilderHandle; }
-
-    type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
-
-    // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
-    let command_buffer = std::sync::Arc::new(Mutex::new(Some(command_buffer)));
-
-    let composition_view_builder_map = render_ctx
-        .active_frame
-        .per_frame_data_helper
-        .entry::<ViewBuilderMap>()
-        .or_insert_with(Default::default);
-    let view_builder_handle = composition_view_builder_map.insert(view_builder);
-
-    let screen_position = (clip_rect.min.to_vec2() * pixels_from_point).round();
-    let screen_position = glam::vec2(screen_position.x, screen_position.y);
-
-    egui::PaintCallback {
-        rect: clip_rect,
-        callback: std::sync::Arc::new(
-            egui_wgpu::CallbackFn::new()
-                .prepare(
-                    move |_device, _queue, _encoder, _paint_callback_resources| {
-                        let mut command_buffer = command_buffer.lock();
-                        vec![command_buffer
-                            .take()
-                            .expect("egui_wgpu prepare callback called more than once")]
-                    },
-                )
-                .paint(move |_info, render_pass, paint_callback_resources| {
-                    re_tracing::profile_scope!("paint");
-                    // TODO(andreas): This should work as well but doesn't work in the 3d view.
-                    //                  Looks like a bug in egui, but unclear what's going on.
-                    //let clip_rect = info.clip_rect_in_pixels();
-
-                    let ctx = paint_callback_resources.get::<RenderContext>().unwrap();
-                    ctx.active_frame
-                        .per_frame_data_helper
-                        .get::<ViewBuilderMap>()
-                        .unwrap()[view_builder_handle]
-                        .composite(ctx, render_pass, screen_position);
-                }),
-        ),
-    }
-}
-
 /// Render the given image, respecting the clip rectangle of the given painter.
 pub fn render_image(
     render_ctx: &mut re_renderer::RenderContext,
@@ -244,14 +189,11 @@ pub fn render_image(
         &[textured_rectangle],
     )?);
 
-    let command_buffer = view_builder.draw(render_ctx, re_renderer::Rgba::TRANSPARENT)?;
-
-    painter.add(renderer_paint_callback(
+    painter.add(new_egui_callback(
         render_ctx,
-        command_buffer,
         view_builder,
         clip_rect,
-        painter.ctx().pixels_per_point(),
+        re_renderer::Rgba::TRANSPARENT,
     ));
 
     Ok(())
