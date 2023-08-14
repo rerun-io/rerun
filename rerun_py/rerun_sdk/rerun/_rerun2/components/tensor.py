@@ -13,13 +13,13 @@ __all__ = ["TensorArray", "TensorType"]
 
 class TensorType(BaseDelegatingExtensionType):
     _TYPE_NAME = "rerun.components.Tensor"
-    _DELEGATED_EXTENSION_TYPE = datatypes.TensorDataType
+    _DELEGATED_EXTENSION_TYPE = datatypes.TensorType
 
 
-class TensorArray(BaseDelegatingExtensionArray[datatypes.TensorDataArrayLike]):
+class TensorArray(BaseDelegatingExtensionArray[datatypes.TensorArrayLike]):
     _EXTENSION_NAME = "rerun.components.Tensor"
     _EXTENSION_TYPE = TensorType
-    _DELEGATED_ARRAY_TYPE = datatypes.TensorDataArray
+    _DELEGATED_ARRAY_TYPE = datatypes.TensorArray
 
 
 TensorType._ARRAY_TYPE = TensorArray

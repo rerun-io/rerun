@@ -4,7 +4,7 @@
 #include "tensor.hpp"
 
 #include "../arrow.hpp"
-#include "../datatypes/tensor_data.hpp"
+#include "../datatypes/tensor.hpp"
 
 #include <arrow/api.h>
 
@@ -13,11 +13,11 @@ namespace rerun {
         const char *Tensor::NAME = "rerun.components.Tensor";
 
         const std::shared_ptr<arrow::DataType> &Tensor::to_arrow_datatype() {
-            static const auto datatype = rerun::datatypes::TensorData::to_arrow_datatype();
+            static const auto datatype = rerun::datatypes::Tensor::to_arrow_datatype();
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> Tensor::new_arrow_array_builder(
+        arrow::Result<std::shared_ptr<arrow::StructBuilder>> Tensor::new_arrow_array_builder(
             arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
@@ -25,12 +25,12 @@ namespace rerun {
             }
 
             return arrow::Result(
-                rerun::datatypes::TensorData::new_arrow_array_builder(memory_pool).ValueOrDie()
+                rerun::datatypes::Tensor::new_arrow_array_builder(memory_pool).ValueOrDie()
             );
         }
 
         arrow::Status Tensor::fill_arrow_array_builder(
-            arrow::DenseUnionBuilder *builder, const Tensor *elements, size_t num_elements
+            arrow::StructBuilder *builder, const Tensor *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -39,10 +39,10 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            static_assert(sizeof(rerun::datatypes::TensorData) == sizeof(Tensor));
-            ARROW_RETURN_NOT_OK(rerun::datatypes::TensorData::fill_arrow_array_builder(
+            static_assert(sizeof(rerun::datatypes::Tensor) == sizeof(Tensor));
+            ARROW_RETURN_NOT_OK(rerun::datatypes::Tensor::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::TensorData *>(elements),
+                reinterpret_cast<const rerun::datatypes::Tensor *>(elements),
                 num_elements
             ));
 

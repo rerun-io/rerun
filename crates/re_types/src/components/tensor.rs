@@ -13,9 +13,9 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Tensor(pub crate::datatypes::TensorData);
+pub struct Tensor(pub crate::datatypes::Tensor);
 
-impl<T: Into<crate::datatypes::TensorData>> From<T> for Tensor {
+impl<T: Into<crate::datatypes::Tensor>> From<T> for Tensor {
     fn from(v: T) -> Self {
         Self(v.into())
     }
@@ -49,152 +49,31 @@ impl crate::Loggable for Tensor {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Union(
-            vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "U8".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::UInt8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
+        DataType::Struct(vec![
+            Field {
+                name: "id".to_owned(),
+                data_type: <crate::datatypes::TensorId>::to_arrow_datatype(),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "shape".to_owned(),
+                data_type: DataType::List(Box::new(Field {
+                    name: "item".to_owned(),
+                    data_type: <crate::datatypes::TensorDimension>::to_arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
-                },
-                Field {
-                    name: "U16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::UInt16,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "U32".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::UInt32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "U64".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::UInt64,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "I8".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "I16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "I32".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "I64".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int64,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "F16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "F32".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "F64".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float64,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "JPEG".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-            ],
-            Some(vec![
-                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32, 12i32,
-            ]),
-            UnionMode::Dense,
-        )
+                })),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "data".to_owned(),
+                data_type: <crate::datatypes::TensorData>::to_arrow_datatype(),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+        ])
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -226,10 +105,7 @@ impl crate::Loggable for Tensor {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::TensorData::try_to_arrow_opt(
-                    data0,
-                    Some("rerun.components.Tensor"),
-                )?
+                crate::datatypes::Tensor::try_to_arrow_opt(data0, Some("rerun.components.Tensor"))?
             }
         })
     }
@@ -243,7 +119,7 @@ impl crate::Loggable for Tensor {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(crate::datatypes::TensorData::try_from_arrow_opt(data)
+        Ok(crate::datatypes::Tensor::try_from_arrow_opt(data)
             .with_context("rerun.components.Tensor#data")?
             .into_iter()
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
