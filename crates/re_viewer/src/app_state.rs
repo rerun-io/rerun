@@ -165,12 +165,13 @@ impl AppState {
                         // doesn't have inner margins.
                         ui.set_clip_rect(ui.max_rect());
 
-                        // TODO(ab): this might be promoted higher in the hierarchy once list item are
-                        // used in the blueprint panel section.
-                        ui.scope(|ui| {
-                            ui.spacing_mut().item_spacing.y = 0.0;
-                            recordings_panel_ui(&mut ctx, ui);
-                        });
+                        // ListItem don't need vertical spacing so we disable it, but restore it
+                        // before drawing the blueprint panel.
+                        // TODO(ab): remove this once the blueprint tree uses list items
+                        let v_space = ui.spacing().item_spacing.y;
+                        ui.spacing_mut().item_spacing.y = 0.0;
+
+                        recordings_panel_ui(&mut ctx, ui);
 
                         // TODO(ab): remove this frame once the blueprint tree uses list items
                         egui::Frame {
@@ -178,6 +179,7 @@ impl AppState {
                             ..Default::default()
                         }
                         .show(ui, |ui| {
+                            ui.spacing_mut().item_spacing.y = v_space;
                             blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
                         });
                     },

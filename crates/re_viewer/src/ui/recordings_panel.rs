@@ -1,5 +1,10 @@
 use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
+use std::collections::BTreeMap;
 use time::macros::format_description;
+
+static TIME_FORMAT_DESCRIPTION: once_cell::sync::Lazy<
+    &'static [time::format_description::FormatItem<'static>],
+> = once_cell::sync::Lazy::new(|| format_description!(version = 2, "[hour]:[minute]:[second]Z"));
 
 /// Show the currently open Recordings in a selectable list.
 pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -33,50 +38,86 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ..
     } = ctx;
 
-    let mut store_dbs = store_context.alternate_recordings.clone();
-    if store_dbs.is_empty() {
+    let mut store_dbs_map: BTreeMap<_, Vec<_>> = BTreeMap::new();
+    for store_db in &store_context.alternate_recordings {
+        let key = store_db
+            .store_info()
+            .map_or("<unknown>", |info| info.application_id.as_str());
+        store_dbs_map.entry(key).or_default().push(*store_db);
+    }
+
+    if store_dbs_map.is_empty() {
         return;
     }
 
-    store_dbs.sort_by_key(|store_db| store_db.sort_key());
+    for store_dbs in store_dbs_map.values_mut() {
+        store_dbs.sort_by_key(|store_db| store_db.store_info().map(|info| info.started));
+    }
 
     let active_recording = store_context.recording.map(|rec| rec.store_id());
 
-    let desc = format_description!(version = 2, "[hour]:[minute]:[second]Z");
-    for store_db in &store_dbs {
-        let info = if let Some(store_info) = store_db.store_info() {
-            format!(
-                "{} - {}",
-                store_info.application_id,
-                store_info
-                    .started
-                    .to_datetime()
-                    .and_then(|dt| dt.format(&desc).ok())
-                    .unwrap_or("<unknown>".to_owned())
-            )
+    for (app_id, store_dbs) in store_dbs_map {
+        if store_dbs.len() == 1 {
+            let store_db = store_dbs[0];
+            if recording_ui(ctx.re_ui, ui, store_db, Some(app_id), active_recording).clicked() {
+                command_sender
+                    .send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
+            }
         } else {
-            "<UNKNOWN>".to_owned()
-        };
-
-        if ctx
-            .re_ui
-            .list_item(info)
-            .with_icon_fn(|_re_ui, ui, rect, visuals| {
-                let color = if active_recording == Some(store_db.store_id()) {
-                    visuals.fg_stroke.color
-                } else {
-                    ui.visuals().widgets.noninteractive.fg_stroke.color
-                };
-
-                ui.painter()
-                    .circle(rect.center(), 4.0, color, egui::Stroke::NONE);
-            })
-            .show(ui)
-            .clicked()
-        {
-            command_sender.send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
+            ctx.re_ui
+                .list_item(app_id)
+                .active(false)
+                .show_collapsing(ui, true, |_, ui| {
+                    for store_db in store_dbs {
+                        if recording_ui(ctx.re_ui, ui, store_db, None, active_recording).clicked() {
+                            command_sender.send_system(SystemCommand::SetRecordingId(
+                                store_db.store_id().clone(),
+                            ));
+                        }
+                    }
+                });
         }
     }
+}
+
+/// Show the UI for a single recording.
+///
+/// If an `app_id_label` is provided, it will be shown in front of the recording time.
+fn recording_ui(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    store_db: &re_data_store::StoreDb,
+    app_id_label: Option<&str>,
+    active_recording: Option<&re_log_types::StoreId>,
+) -> egui::Response {
+    let prefix = if let Some(app_id_label) = app_id_label {
+        format!("{app_id_label} - ")
+    } else {
+        String::new()
+    };
+
+    let name = store_db
+        .store_info()
+        .and_then(|info| {
+            info.started
+                .to_datetime()
+                .and_then(|dt| dt.format(&TIME_FORMAT_DESCRIPTION).ok())
+        })
+        .unwrap_or("<unknown time>".to_owned());
+
+    re_ui
+        .list_item(format!("{prefix}{name}"))
+        .with_icon_fn(|_re_ui, ui, rect, visuals| {
+            let color = if active_recording == Some(store_db.store_id()) {
+                visuals.fg_stroke.color
+            } else {
+                ui.visuals().widgets.noninteractive.fg_stroke.color
+            };
+
+            ui.painter()
+                .circle(rect.center(), 4.0, color, egui::Stroke::NONE);
+        })
+        .show(ui)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
