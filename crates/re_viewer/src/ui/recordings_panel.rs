@@ -1,12 +1,10 @@
-use lazy_static::lazy_static;
 use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
 use std::collections::BTreeMap;
 use time::macros::format_description;
 
-lazy_static! {
-    static ref TIME_FORMAT_DESCRIPTION: &'static [time::format_description::FormatItem<'static>] =
-        format_description!(version = 2, "[hour]:[minute]:[second]Z");
-}
+static TIME_FORMAT_DESCRIPTION: once_cell::sync::Lazy<
+    &'static [time::format_description::FormatItem<'static>],
+> = once_cell::sync::Lazy::new(|| format_description!(version = 2, "[hour]:[minute]:[second]Z"));
 
 /// Show the currently open Recordings in a selectable list.
 pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -42,14 +40,10 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
 
     let mut store_dbs_map: BTreeMap<_, Vec<_>> = BTreeMap::new();
     for store_db in &store_context.alternate_recordings {
-        store_dbs_map
-            .entry(
-                store_db
-                    .store_info()
-                    .map_or("<unknown>", |info| info.application_id.as_str()),
-            )
-            .or_default()
-            .push(*store_db);
+        let key = store_db
+            .store_info()
+            .map_or("<unknown>", |info| info.application_id.as_str());
+        store_dbs_map.entry(key).or_default().push(*store_db);
     }
 
     if store_dbs_map.is_empty() {
@@ -102,15 +96,14 @@ fn recording_ui(
         String::new()
     };
 
-    let name = if let Some(store_info) = store_db.store_info() {
-        store_info
-            .started
-            .to_datetime()
-            .and_then(|dt| dt.format(&TIME_FORMAT_DESCRIPTION).ok())
-            .unwrap_or("<unknown time>".to_owned())
-    } else {
-        "<unknown time>".to_owned()
-    };
+    let name = store_db
+        .store_info()
+        .and_then(|info| {
+            info.started
+                .to_datetime()
+                .and_then(|dt| dt.format(&TIME_FORMAT_DESCRIPTION).ok())
+        })
+        .unwrap_or("<unknown time>".to_owned());
 
     re_ui
         .list_item(format!("{prefix}{name}"))
