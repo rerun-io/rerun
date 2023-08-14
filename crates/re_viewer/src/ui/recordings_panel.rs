@@ -73,7 +73,7 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
             ctx.re_ui
                 .list_item(app_id)
                 .active(false)
-                .show_collapsing(ui, true, |_re_ui, ui| {
+                .show_collapsing(ui, true, |_, ui| {
                     for store_db in store_dbs {
                         if recording_ui(ctx.re_ui, ui, store_db, None, active_recording).clicked() {
                             command_sender.send_system(SystemCommand::SetRecordingId(
