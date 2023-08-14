@@ -239,7 +239,8 @@ pub trait Loggable: Sized {
 
     /// Convert a [`Loggable::Item`] into a [`Loggable`]
     ///
-    /// This is intended to be used with [`Loggable::try_iter_from_arrow`]
+    /// This is intended to be used with [`Loggable::try_iter_from_arrow`] when the type
+    /// is known to be non-nullible.
     #[inline]
     fn convert_item_to_self(item: Self::Item<'_>) -> Self {
         // TODO(jleibs): This unwrap goes away when we remove the iterator abstraction
@@ -248,7 +249,7 @@ pub trait Loggable: Sized {
 
     /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
     ///
-    /// This is intended to be used with [`Loggable::try_iter_from_arrow_opt`]
+    /// This is intended to be used with [`Loggable::try_iter_from_arrow`]
     fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self>;
 }
 
