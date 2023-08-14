@@ -374,4 +374,10 @@ impl StoreDb {
 
         entity_db.purge(&cutoff_times, &drop_row_ids);
     }
+
+    /// Key used for sorting recordings in the UI.
+    pub fn sort_key(&self) -> impl Ord + '_ {
+        self.store_info()
+            .map(|info| (info.application_id.0.as_str(), info.started))
+    }
 }

@@ -290,6 +290,9 @@ impl App {
             SystemCommand::SetRecordingId(recording_id) => {
                 store_hub.set_recording_id(recording_id);
             }
+            SystemCommand::CloseRecordingId(recording_id) => {
+                store_hub.remove_recording_id(&recording_id);
+            }
             #[cfg(not(target_arch = "wasm32"))]
             SystemCommand::LoadRrd(path) => {
                 let with_notification = true;
@@ -341,6 +344,15 @@ impl App {
                 if let Some(rrd_file) = open_rrd_dialog() {
                     self.command_sender
                         .send_system(SystemCommand::LoadRrd(rrd_file));
+                }
+            }
+            UICommand::CloseCurrentRecording => {
+                let cur_rec = store_context
+                    .and_then(|ctx| ctx.recording)
+                    .map(|rec| rec.store_id());
+                if let Some(cur_rec) = cur_rec {
+                    self.command_sender
+                        .send_system(SystemCommand::CloseRecordingId(cur_rec.clone()));
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
