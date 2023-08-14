@@ -8,7 +8,7 @@ namespace rerun.datatypes;
 /// Storage for a `Tensor`
 table TensorDimension (
   order: 100,
-  "attr.rust.derive": "PartialEq"
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   size: long (order: 100);
   name: string (order: 200, nullable);

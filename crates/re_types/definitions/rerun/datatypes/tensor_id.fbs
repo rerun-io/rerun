@@ -9,7 +9,7 @@ namespace rerun.datatypes;
 struct TensorId (
   order: 100,
   "attr.arrow.transparent",
-  "attr.rust.derive": "PartialEq"
+  "attr.rust.derive": "Copy, Default, PartialEq"
 ) {
-  id: [byte:16] (order: 100);
+  id: [ubyte:16] (order: 100);
 }

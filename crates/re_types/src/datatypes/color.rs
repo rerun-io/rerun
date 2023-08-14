@@ -105,20 +105,20 @@ impl crate::Loggable for Color {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(data
+        Ok(arrow_data
             .as_any()
             .downcast_ref::<UInt32Array>()
             .ok_or_else(|| {
                 crate::DeserializationError::datatype_mismatch(
                     DataType::UInt32,
-                    data.data_type().clone(),
+                    arrow_data.data_type().clone(),
                 )
             })
             .with_context("rerun.datatypes.Color#rgba")?

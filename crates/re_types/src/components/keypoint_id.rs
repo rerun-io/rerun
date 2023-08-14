@@ -114,20 +114,20 @@ impl crate::Loggable for KeypointId {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(data
+        Ok(arrow_data
             .as_any()
             .downcast_ref::<UInt16Array>()
             .ok_or_else(|| {
                 crate::DeserializationError::datatype_mismatch(
                     DataType::UInt16,
-                    data.data_type().clone(),
+                    arrow_data.data_type().clone(),
                 )
             })
             .with_context("rerun.components.KeypointId#id")?
@@ -143,24 +143,26 @@ impl crate::Loggable for KeypointId {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    fn try_from_arrow(
+        arrow_data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = data.validity() {
+        if let Some(validity) = arrow_data.validity() {
             if validity.unset_bits() != 0 {
                 return Err(crate::DeserializationError::missing_data());
             }
         }
-        Ok(data
+        Ok(arrow_data
             .as_any()
             .downcast_ref::<UInt16Array>()
             .ok_or_else(|| {
                 crate::DeserializationError::datatype_mismatch(
                     DataType::UInt16,
-                    data.data_type().clone(),
+                    arrow_data.data_type().clone(),
                 )
             })
             .with_context("rerun.components.KeypointId#id")?

@@ -126,7 +126,7 @@ impl crate::Loggable for Label {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -134,35 +134,35 @@ impl crate::Loggable for Label {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
                 .ok_or_else(|| {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::Utf8,
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.components.Label#value")?;
-            let data_buf = data.values();
-            let offsets = data.offsets();
+            let arrow_data_buf = arrow_data.values();
+            let offsets = arrow_data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                 offsets.iter().zip(offsets.lengths()),
-                data.validity(),
+                arrow_data.validity(),
             )
             .map(|elem| {
                 elem.map(|(start, len)| {
                     let start = *start as usize;
                     let end = start + len;
-                    if end as usize > data_buf.len() {
+                    if end as usize > arrow_data_buf.len() {
                         return Err(crate::DeserializationError::offset_slice_oob(
                             (start, end),
-                            data_buf.len(),
+                            arrow_data_buf.len(),
                         ));
                     }
 
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                    let data = unsafe { data_buf.clone().sliced_unchecked(start, len) };
+                    let data = unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
                     Ok(data)
                 })
                 .transpose()

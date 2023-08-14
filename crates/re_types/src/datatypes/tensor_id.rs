@@ -13,9 +13,9 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// Storage for a `Tensor`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Copy, Default, PartialEq)]
 pub struct TensorId {
-    pub id: [i8; 16usize],
+    pub id: [u8; 16usize],
 }
 
 impl<'a> From<TensorId> for ::std::borrow::Cow<'a, TensorId> {
@@ -49,7 +49,7 @@ impl crate::Loggable for TensorId {
         DataType::FixedSizeList(
             Box::new(Field {
                 name: "item".to_owned(),
-                data_type: DataType::Int8,
+                data_type: DataType::UInt8,
                 is_nullable: false,
                 metadata: [].into(),
             }),
@@ -104,7 +104,7 @@ impl crate::Loggable for TensorId {
                             Box::new(DataType::FixedSizeList(
                                 Box::new(Field {
                                     name: "item".to_owned(),
-                                    data_type: DataType::Int8,
+                                    data_type: DataType::UInt8,
                                     is_nullable: false,
                                     metadata: [].into(),
                                 }),
@@ -120,7 +120,7 @@ impl crate::Loggable for TensorId {
                             _ = extension_wrapper;
                             DataType::Extension(
                                 "rerun.datatypes.TensorId".to_owned(),
-                                Box::new(DataType::Int8),
+                                Box::new(DataType::UInt8),
                                 None,
                             )
                             .to_logical_type()
@@ -142,7 +142,7 @@ impl crate::Loggable for TensorId {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -150,7 +150,7 @@ impl crate::Loggable for TensorId {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
@@ -158,31 +158,31 @@ impl crate::Loggable for TensorId {
                         DataType::FixedSizeList(
                             Box::new(Field {
                                 name: "item".to_owned(),
-                                data_type: DataType::Int8,
+                                data_type: DataType::UInt8,
                                 is_nullable: false,
                                 metadata: [].into(),
                             }),
                             16usize,
                         ),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.datatypes.TensorId#id")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
                 let offsets = (0..)
                     .step_by(16usize)
-                    .zip((16usize..).step_by(16usize).take(data.len()));
-                let data_inner = {
-                    let data_inner = &**data.values();
-                    data_inner
+                    .zip((16usize..).step_by(16usize).take(arrow_data.len()));
+                let arrow_data_inner = {
+                    let arrow_data_inner = &**arrow_data.values();
+                    arrow_data_inner
                         .as_any()
-                        .downcast_ref::<Int8Array>()
+                        .downcast_ref::<UInt8Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
-                                DataType::Int8,
-                                data_inner.data_type().clone(),
+                                DataType::UInt8,
+                                arrow_data_inner.data_type().clone(),
                             )
                         })
                         .with_context("rerun.datatypes.TensorId#id")?
@@ -190,27 +190,30 @@ impl crate::Loggable for TensorId {
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, data.validity())
-                    .map(|elem| {
-                        elem.map(|(start, end)| {
-                            debug_assert!(end - start == 16usize);
-                            if end as usize > data_inner.len() {
-                                return Err(crate::DeserializationError::offset_slice_oob(
-                                    (start, end),
-                                    data_inner.len(),
-                                ));
-                            }
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets,
+                    arrow_data.validity(),
+                )
+                .map(|elem| {
+                    elem.map(|(start, end)| {
+                        debug_assert!(end - start == 16usize);
+                        if end as usize > arrow_data_inner.len() {
+                            return Err(crate::DeserializationError::offset_slice_oob(
+                                (start, end),
+                                arrow_data_inner.len(),
+                            ));
+                        }
 
-                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            let data =
-                                unsafe { data_inner.get_unchecked(start as usize..end as usize) };
-                            let data = data.iter().cloned().map(Option::unwrap_or_default);
-                            let arr = array_init::from_iter(data).unwrap();
-                            Ok(arr)
-                        })
-                        .transpose()
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data =
+                            unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data.iter().cloned().map(Option::unwrap_or_default);
+                        let arr = array_init::from_iter(data).unwrap();
+                        Ok(arr)
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }

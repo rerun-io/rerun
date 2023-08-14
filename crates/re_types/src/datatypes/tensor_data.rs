@@ -1091,7 +1091,7 @@ impl crate::Loggable for TensorData {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -1099,7 +1099,7 @@ impl crate::Loggable for TensorData {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
                 .ok_or_else(|| {
@@ -1251,15 +1251,16 @@ impl crate::Loggable for TensorData {
                             ]),
                             UnionMode::Dense,
                         ),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.datatypes.TensorData")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (data_types, data_arrays) = (data.types(), data.fields());
-                let data_offsets = data
+                let (arrow_data_types, arrow_data_arrays) =
+                    (arrow_data.types(), arrow_data.fields());
+                let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
@@ -1410,24 +1411,24 @@ impl crate::Loggable for TensorData {
                                 ]),
                                 UnionMode::Dense,
                             ),
-                            data.data_type().clone(),
+                            arrow_data.data_type().clone(),
                         )
                     })
                     .with_context("rerun.datatypes.TensorData")?;
-                if data_types.len() != data_offsets.len() {
+                if arrow_data_types.len() != arrow_data_offsets.len() {
                     return Err(crate::DeserializationError::offset_slice_oob(
-                        (0, data_types.len()),
-                        data_offsets.len(),
+                        (0, arrow_data_types.len()),
+                        arrow_data_offsets.len(),
                     ))
                     .with_context("rerun.datatypes.TensorData");
                 }
                 let u_8 = {
-                    if 1usize >= data_arrays.len() {
+                    if 1usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[1usize];
+                    let arrow_data = &*arrow_data_arrays[1usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -1438,46 +1439,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#U8")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::UInt8,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#U8")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -1493,12 +1494,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let u_16 = {
-                    if 2usize >= data_arrays.len() {
+                    if 2usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[2usize];
+                    let arrow_data = &*arrow_data_arrays[2usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -1509,46 +1510,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#U16")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt16Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::UInt16,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#U16")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -1564,12 +1565,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let u_32 = {
-                    if 3usize >= data_arrays.len() {
+                    if 3usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[3usize];
+                    let arrow_data = &*arrow_data_arrays[3usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -1580,46 +1581,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#U32")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt32Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::UInt32,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#U32")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -1635,12 +1636,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let u_64 = {
-                    if 4usize >= data_arrays.len() {
+                    if 4usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[4usize];
+                    let arrow_data = &*arrow_data_arrays[4usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -1651,46 +1652,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#U64")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt64Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::UInt64,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#U64")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -1706,12 +1707,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let i_8 = {
-                    if 5usize >= data_arrays.len() {
+                    if 5usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[5usize];
+                    let arrow_data = &*arrow_data_arrays[5usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -1722,46 +1723,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#I8")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Int8Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Int8,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#I8")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -1777,12 +1778,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let i_16 = {
-                    if 6usize >= data_arrays.len() {
+                    if 6usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[6usize];
+                    let arrow_data = &*arrow_data_arrays[6usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -1793,46 +1794,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#I16")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Int8Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Int8,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#I16")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -1848,12 +1849,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let i_32 = {
-                    if 7usize >= data_arrays.len() {
+                    if 7usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[7usize];
+                    let arrow_data = &*arrow_data_arrays[7usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -1864,46 +1865,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#I32")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Int32Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Int32,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#I32")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -1919,12 +1920,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let i_64 = {
-                    if 8usize >= data_arrays.len() {
+                    if 8usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[8usize];
+                    let arrow_data = &*arrow_data_arrays[8usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -1935,46 +1936,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#I64")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Int64Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Int64,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#I64")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -1990,12 +1991,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let f_16 = {
-                    if 9usize >= data_arrays.len() {
+                    if 9usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[9usize];
+                    let arrow_data = &*arrow_data_arrays[9usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -2006,46 +2007,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#F16")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Float32,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#F16")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -2061,12 +2062,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let f_32 = {
-                    if 10usize >= data_arrays.len() {
+                    if 10usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[10usize];
+                    let arrow_data = &*arrow_data_arrays[10usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -2077,46 +2078,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#F32")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Float32,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#F32")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -2132,12 +2133,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let f_64 = {
-                    if 11usize >= data_arrays.len() {
+                    if 11usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[11usize];
+                    let arrow_data = &*arrow_data_arrays[11usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -2148,46 +2149,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#F64")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float64Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Float64,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#F64")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -2203,12 +2204,12 @@ impl crate::Loggable for TensorData {
                     .collect::<Vec<_>>()
                 };
                 let jpeg = {
-                    if 12usize >= data_arrays.len() {
+                    if 12usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[12usize];
+                    let arrow_data = &*arrow_data_arrays[12usize];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -2219,46 +2220,46 @@ impl crate::Loggable for TensorData {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TensorData#JPEG")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Int8Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Int8,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorData#JPEG")?
                                     .values()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner
+                                        arrow_data_inner
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
@@ -2273,11 +2274,11 @@ impl crate::Loggable for TensorData {
                     }
                     .collect::<Vec<_>>()
                 };
-                data_types
+                arrow_data_types
                     .iter()
                     .enumerate()
                     .map(|(i, typ)| {
-                        let offset = data_offsets[i];
+                        let offset = arrow_data_offsets[i];
                         if *typ == 0 {
                             Ok(None)
                         } else {

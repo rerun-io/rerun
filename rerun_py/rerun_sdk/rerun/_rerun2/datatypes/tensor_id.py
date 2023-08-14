@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from .._converters import (
-    to_np_int8,
+    to_np_uint8,
 )
 
 __all__ = ["TensorId", "TensorIdArray", "TensorIdArrayLike", "TensorIdLike", "TensorIdType"]
@@ -24,7 +24,7 @@ __all__ = ["TensorId", "TensorIdArray", "TensorIdArrayLike", "TensorIdLike", "Te
 class TensorId:
     """Storage for a `Tensor`."""
 
-    id: npt.NDArray[np.int8] = field(converter=to_np_int8)
+    id: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.id, dtype=dtype)
@@ -43,7 +43,7 @@ TensorIdArrayLike = Union[
 class TensorIdType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={}), 16), "rerun.datatypes.TensorId"
+            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16), "rerun.datatypes.TensorId"
         )
 
 

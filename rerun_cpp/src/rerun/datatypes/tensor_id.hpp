@@ -10,12 +10,12 @@ namespace rerun {
     namespace datatypes {
         /// Storage for a `Tensor`
         struct TensorId {
-            int8_t id[16];
+            uint8_t id[16];
 
           public:
             TensorId() = default;
 
-            TensorId(const int8_t (&_id)[16])
+            TensorId(const uint8_t (&_id)[16])
                 : id{_id[0],
                      _id[1],
                      _id[2],

@@ -9,7 +9,7 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &TensorId::to_arrow_datatype() {
             static const auto datatype =
-                arrow::fixed_size_list(arrow::field("item", arrow::int8(), false), 16);
+                arrow::fixed_size_list(arrow::field("item", arrow::uint8(), false), 16);
             return datatype;
         }
 
@@ -21,7 +21,7 @@ namespace rerun {
 
             return arrow::Result(std::make_shared<arrow::FixedSizeListBuilder>(
                 memory_pool,
-                std::make_shared<arrow::Int8Builder>(memory_pool),
+                std::make_shared<arrow::UInt8Builder>(memory_pool),
                 16
             ));
         }
@@ -36,7 +36,7 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            auto value_builder = static_cast<arrow::Int8Builder *>(builder->value_builder());
+            auto value_builder = static_cast<arrow::UInt8Builder *>(builder->value_builder());
 
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
             static_assert(sizeof(elements[0].id) == sizeof(elements[0]));

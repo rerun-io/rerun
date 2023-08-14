@@ -57,7 +57,7 @@ class TensorType(BaseExtensionType):
                 [
                     pa.field(
                         "id",
-                        pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={}), 16),
+                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16),
                         nullable=False,
                         metadata={},
                     ),

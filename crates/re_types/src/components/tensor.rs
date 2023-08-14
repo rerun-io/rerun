@@ -112,14 +112,14 @@ impl crate::Loggable for Tensor {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(crate::datatypes::Tensor::try_from_arrow_opt(data)
+        Ok(crate::datatypes::Tensor::try_from_arrow_opt(arrow_data)
             .with_context("rerun.components.Tensor#data")?
             .into_iter()
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
