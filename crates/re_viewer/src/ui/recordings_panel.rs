@@ -48,8 +48,8 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
                     .store_info()
                     .map_or("<unknown>", |info| info.application_id.as_str()),
             )
-            .and_modify(|store_dbs| store_dbs.push(*store_db))
-            .or_insert(vec![store_db]);
+            .or_default()
+            .push(*store_db);
     }
 
     if store_dbs_map.is_empty() {
