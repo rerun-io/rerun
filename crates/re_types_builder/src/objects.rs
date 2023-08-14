@@ -1088,7 +1088,7 @@ impl ElementType {
     }
 
     /// Is this type directly backed by a native arrow `Buffer`. This means the data can
-    /// be returned using a [`re_types::ArrowBuffer`] which facilitates direct zero-copy access to
+    /// be returned using a `re_types::ArrowBuffer` which facilitates direct zero-copy access to
     /// a slice representation.
     pub fn backed_by_arrow_buffer(&self) -> bool {
         match self {
