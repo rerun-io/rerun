@@ -1,0 +1,15 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// Storage for a `Tensor`
+table TensorDimension (
+  order: 100,
+  "attr.rust.derive": "PartialEq"
+) {
+  size: long (order: 100);
+  name: string (order: 200, nullable);
+}

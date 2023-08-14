@@ -13,5 +13,5 @@ table Tensor (
   order: 100,
   "attr.rust.derive": "PartialEq"
 ) {
-  data: rerun.datatypes.TensorData (order: 100);
+  data: rerun.datatypes.Tensor (order: 100);
 }

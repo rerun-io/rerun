@@ -1,0 +1,15 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// Storage for a `Tensor`
+struct TensorId (
+  order: 100,
+  "attr.arrow.transparent",
+  "attr.rust.derive": "PartialEq"
+) {
+  id: [byte:16] (order: 100);
+}
