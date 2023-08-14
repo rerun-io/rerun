@@ -87,7 +87,10 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => ("Open…", "Open a Rerun Data File (.rrd)"),
 
-            UICommand::CloseCurrentRecording => ("Close recording", "Close the current Recording"),
+            UICommand::CloseCurrentRecording => (
+                "Close current Recording",
+                "Close the current Recording (unsaved data will be lost)",
+            ),
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Quit => ("Quit", "Close the Rerun Viewer"),
