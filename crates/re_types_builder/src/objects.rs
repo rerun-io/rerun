@@ -1087,7 +1087,10 @@ impl ElementType {
         }
     }
 
-    pub fn is_primitive(&self) -> bool {
+    /// Is this type directly backed by a native arrow `Buffer`. This means the data can
+    /// be returned using a [`crate::ArrowBuffer`] which facilitates direct zero-copy access to
+    /// a slice representation.
+    pub fn backed_by_arrow_buffer(&self) -> bool {
         match self {
             Self::UInt8
             | Self::UInt16
@@ -1097,11 +1100,10 @@ impl ElementType {
             | Self::Int16
             | Self::Int32
             | Self::Int64
-            | Self::Bool
             | Self::Float16
             | Self::Float32
             | Self::Float64 => true,
-            Self::Object(_) | Self::String => false,
+            Self::Bool | Self::Object(_) | Self::String => false,
         }
     }
 }

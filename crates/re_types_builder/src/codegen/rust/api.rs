@@ -622,7 +622,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Vector { elem_type } => {
                 if *unwrap {
                     quote!(#elem_type)
-                } else if elem_type.is_primitive() {
+                } else if elem_type.backed_by_arrow_buffer() {
                     quote!(crate::ArrowBuffer<#elem_type>)
                 } else {
                     quote!(Vec<#elem_type>)
