@@ -79,7 +79,7 @@ clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
 crossbeam = "0.8"
 ecolor = "0.22.0"
-eframe = { version = "0.22.0", default-features = false }
+eframe = { version = "0.22.0", default-features = false, features = ["x11"] }
 egui = { version = "0.22.0", features = ["extra_debug_asserts", "log"] }
 egui_extras = { version = "0.22.0", features = ["log"] }
 egui_tiles = { version = "0.2" }
@@ -102,8 +102,8 @@ parking_lot = "0.12"
 polars-core = "0.29"
 polars-lazy = "0.29"
 polars-ops = "0.29"
-puffin = "0.15"
-puffin_http = "0.12"
+puffin = "0.16"
+puffin_http = "0.13"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
@@ -121,7 +121,7 @@ tokio = { version = "1.24", default-features = false }
 unindent = "0.1"
 vec1 = "1.8"
 web-time = "0.2.0"
-wgpu = { version = "0.16.1" }
+wgpu = { version = "0.16.3" }
 wgpu-core = { version = "0.16.1" }
 
 
@@ -150,5 +150,15 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
+# Temporary patch until next egui release
+ecolor = { git = "https://github.com/emilk/egui", rev = "dd417cfc1acdf7ac88f214015d4d8e7a21835d30" }
+eframe = { git = "https://github.com/emilk/egui", rev = "dd417cfc1acdf7ac88f214015d4d8e7a21835d30" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "dd417cfc1acdf7ac88f214015d4d8e7a21835d30" }
+egui-winit = { git = "https://github.com/emilk/egui", rev = "dd417cfc1acdf7ac88f214015d4d8e7a21835d30" }
+egui = { git = "https://github.com/emilk/egui", rev = "dd417cfc1acdf7ac88f214015d4d8e7a21835d30" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "dd417cfc1acdf7ac88f214015d4d8e7a21835d30" }
+emath = { git = "https://github.com/emilk/egui", rev = "dd417cfc1acdf7ac88f214015d4d8e7a21835d30" }
+epaint = { git = "https://github.com/emilk/egui", rev = "dd417cfc1acdf7ac88f214015d4d8e7a21835d30" }
+
 # Temporary patch until next egui_tiles release
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", commit = "f835c4df1cc260a58122a8d37c7c3738902b9643" }
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "f835c4df1cc260a58122a8d37c7c3738902b9643" }

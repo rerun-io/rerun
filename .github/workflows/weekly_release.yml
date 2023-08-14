@@ -26,7 +26,7 @@ jobs:
 
       - name: Update crate versions
         run: |
-          python3 scripts/ci/crates.py version prerelease
+          python3 scripts/ci/crates.py version --bump prerelease
 
       - name: Get bumped version
         run: |

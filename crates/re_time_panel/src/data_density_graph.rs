@@ -5,6 +5,7 @@
 
 use std::ops::RangeInclusive;
 
+use egui::emath::Rangef;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
 use re_data_store::TimeHistogram;
@@ -87,9 +88,9 @@ struct DensityGraph {
 }
 
 impl DensityGraph {
-    pub fn new(x_range: RangeInclusive<f32>) -> Self {
-        let min_x = *x_range.start() - MARGIN_X;
-        let max_x = *x_range.end() + MARGIN_X;
+    pub fn new(x_range: Rangef) -> Self {
+        let min_x = x_range.min - MARGIN_X;
+        let max_x = x_range.max + MARGIN_X;
         let n = ((max_x - min_x) * DENSITIES_PER_UI_PIXEL).ceil() as usize;
         Self {
             buckets: vec![0.0; n],
@@ -187,15 +188,19 @@ impl DensityGraph {
 
     pub fn paint(
         &self,
-        data_dentity_graph_painter: &mut DataDensityGraphPainter,
-        y_range: RangeInclusive<f32>,
+        data_density_graph_painter: &mut DataDensityGraphPainter,
+        y_range: Rangef,
         painter: &egui::Painter,
         full_color: Color32,
         hovered_x_range: RangeInclusive<f32>,
     ) {
         re_tracing::profile_function!();
 
-        let (min_y, max_y) = (*y_range.start(), *y_range.end());
+        let Rangef {
+            min: min_y,
+            max: max_y,
+        } = y_range;
+
         let center_y = (min_y + max_y) / 2.0;
         let max_radius = (max_y - min_y) / 2.0;
 
@@ -235,7 +240,7 @@ impl DensityGraph {
 
             let x = self.x_from_bucket_index(i);
 
-            let normalized_density = data_dentity_graph_painter.normalize_density(density);
+            let normalized_density = data_density_graph_painter.normalize_density(density);
 
             let (inner_radius, inner_color) = if normalized_density == 0.0 {
                 (0.0, Color32::TRANSPARENT)

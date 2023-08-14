@@ -108,6 +108,17 @@ impl StoreHub {
         self.selected_rec_id = Some(recording_id);
     }
 
+    pub fn remove_recording_id(&mut self, recording_id: &StoreId) {
+        if let Some(new_selection) = self.store_dbs.find_closest_recording(recording_id) {
+            self.set_recording_id(new_selection.clone());
+        } else {
+            self.application_id = None;
+            self.selected_rec_id = None;
+        }
+
+        self.store_dbs.remove(recording_id);
+    }
+
     /// Change the selected [`ApplicationId`]
     pub fn set_app_id(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
@@ -324,6 +335,30 @@ impl StoreBundle {
 
     pub fn remove(&mut self, id: &StoreId) {
         self.store_dbs.remove(id);
+    }
+
+    /// Returns the closest "neighbor" recording to the given id.
+    ///
+    /// The closest neighbor is the next recording when sorted by (app ID, time), if any, or the
+    /// previous one otherwise. This is used to update the selected recording when the current one
+    /// is deleted.
+    pub fn find_closest_recording(&self, id: &StoreId) -> Option<&StoreId> {
+        let mut recs = self.recordings().collect_vec();
+        recs.sort_by_key(|store_db| store_db.sort_key());
+
+        let cur_pos = recs.iter().position(|rec| rec.store_id() == id);
+
+        if let Some(cur_pos) = cur_pos {
+            if recs.len() > cur_pos + 1 {
+                Some(recs[cur_pos + 1].store_id())
+            } else if cur_pos > 0 {
+                Some(recs[cur_pos - 1].store_id())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     // --

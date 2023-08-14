@@ -1,4 +1,3 @@
-use egui::Widget;
 use re_ui::{toasts, CommandPalette, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.
@@ -305,12 +304,29 @@ impl eframe::App for ExampleApp {
                                         item.with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
                                     };
 
-                                    if item.ui(ui).clicked() {
+                                    if item.show(ui).clicked() {
                                         self.selected_list_item = Some(i);
                                     }
                                 }
                             });
                         });
+
+                    self.re_ui.panel_content(ui, |re_ui, ui| {
+                        re_ui.panel_title_bar(ui, "Another section", None);
+
+                        self.re_ui
+                            .list_item("Collapsing list item with icon")
+                            .with_icon(&re_ui::icons::SPACE_VIEW_2D)
+                            .show_collapsing(ui, true, |_re_ui, ui| {
+                                self.re_ui.list_item("Sub-item").show(ui);
+                                self.re_ui.list_item("Sub-item").show(ui);
+                                self.re_ui
+                                    .list_item("Sub-item with icon")
+                                    .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                                    .show(ui);
+                                self.re_ui.list_item("Sub-item").show(ui);
+                            });
+                    });
                 });
             });
 

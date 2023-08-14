@@ -10,8 +10,7 @@ mod time_control_ui;
 mod time_ranges_ui;
 mod time_selection_ui;
 
-use std::ops::RangeInclusive;
-
+use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, PointerButton, Rect, Shape, Vec2};
 
 use re_data_store::{EntityTree, InstancePath, TimeHistogram};
@@ -205,21 +204,24 @@ impl TimePanel {
                 .at_most(ui.max_rect().right() - 100.0);
 
         // Where the time will be shown.
-        let time_bg_x_range = time_x_left..=ui.max_rect().right();
+        let time_bg_x_range = Rangef::new(time_x_left, ui.max_rect().right());
         let time_fg_x_range = {
             // Painting to the right of the scroll bar (if any) looks bad:
             let right = ui.max_rect().right() - ui.spacing_mut().scroll_bar_outer_margin;
             debug_assert!(time_x_left < right);
-            time_x_left..=right
+            Rangef::new(time_x_left, right)
         };
 
         let side_margin = 26.0; // chosen so that the scroll bar looks approximately centered in the default gap
         self.time_ranges_ui = initialize_time_ranges_ui(
             ctx,
-            (*time_fg_x_range.start() + side_margin)..=(*time_fg_x_range.end() - side_margin),
+            Rangef::new(
+                time_fg_x_range.min + side_margin,
+                time_fg_x_range.max - side_margin,
+            ),
             ctx.rec_cfg.time_ctrl.time_view(),
         );
-        let full_y_range = ui.min_rect().bottom()..=ui.max_rect().bottom();
+        let full_y_range = Rangef::new(ui.min_rect().bottom(), ui.max_rect().bottom());
 
         let timeline_rect = {
             let top = ui.min_rect().bottom();
@@ -239,18 +241,17 @@ impl TimePanel {
             );
 
             let bottom = ui.min_rect().bottom();
-            Rect::from_x_y_ranges(time_fg_x_range.clone(), top..=bottom)
+            Rect::from_x_y_ranges(time_fg_x_range, top..=bottom)
         };
 
         let streams_rect = Rect::from_x_y_ranges(
-            time_fg_x_range.clone(),
+            time_fg_x_range,
             timeline_rect.bottom()..=ui.max_rect().bottom(),
         );
 
         // includes the timeline and streams areas.
-        let time_bg_area_rect = Rect::from_x_y_ranges(time_bg_x_range, full_y_range.clone());
-        let time_fg_area_rect =
-            Rect::from_x_y_ranges(time_fg_x_range.clone(), full_y_range.clone());
+        let time_bg_area_rect = Rect::from_x_y_ranges(time_bg_x_range, full_y_range);
+        let time_fg_area_rect = Rect::from_x_y_ranges(time_fg_x_range, full_y_range);
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
@@ -272,7 +273,7 @@ impl TimePanel {
             ctx.re_ui,
             ui,
             &time_bg_area_painter,
-            full_y_range.clone(),
+            full_y_range,
         );
         time_selection_ui::loop_selection_ui(
             ctx.store_db,
@@ -310,9 +311,9 @@ impl TimePanel {
             // This looks great but only if there are still time markers.
             // When they move to the right (or have a cut) one expects the shadow to go all the way up.
             // But that's quite complicated so let's have the shadow all the way
-            let shadow_y_start = *full_y_range.start();
+            let shadow_y_start = full_y_range.min;
 
-            let shadow_y_end = *full_y_range.end();
+            let shadow_y_end = full_y_range.max;
             let rect = egui::Rect::from_x_y_ranges(
                 time_x_left..=(time_x_left + shadow_width),
                 shadow_y_start..=shadow_y_end,
@@ -721,7 +722,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
 
 fn initialize_time_ranges_ui(
     ctx: &mut ViewerContext<'_>,
-    time_x_range: RangeInclusive<f32>,
+    time_x_range: Rangef,
     mut time_view: Option<TimeView>,
 ) -> TimeRangesUi {
     re_tracing::profile_function!();
@@ -762,10 +763,10 @@ fn initialize_time_ranges_ui(
 }
 
 /// Find a nice view of everything.
-fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) -> TimeView {
+fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
     let gap_width = time_ranges_ui::gap_width(x_range, &timeline_axis.ranges) as f32;
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
-    let width = *x_range.end() - *x_range.start();
+    let width = x_range.span();
     let width_sans_gaps = width - num_gaps as f32 * gap_width;
 
     let factor = if width_sans_gaps > 0.0 {
@@ -789,7 +790,7 @@ fn paint_time_ranges_gaps(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     painter: &egui::Painter,
-    y_range: RangeInclusive<f32>,
+    y_range: Rangef,
 ) {
     re_tracing::profile_function!();
 
@@ -818,8 +819,10 @@ fn paint_time_ranges_gaps(
 
     use itertools::Itertools as _;
 
-    let top = *y_range.start();
-    let bottom = *y_range.end();
+    let Rangef {
+        min: top,
+        max: bottom,
+    } = y_range;
 
     let fill_color = ui.visuals().widgets.noninteractive.bg_fill;
     let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
@@ -896,7 +899,7 @@ fn paint_time_ranges_gaps(
                 0.0,
                 fill_color,
             );
-            painter.vline(gap_edge, y_range.clone(), stroke);
+            painter.vline(gap_edge, y_range, stroke);
         }
     }
 
@@ -1005,7 +1008,7 @@ fn time_marker_ui(
     // show current time as a line:
     if let Some(time) = time_ctrl.time() {
         if let Some(x) = time_ranges_ui.x_from_time_f32(time) {
-            if timeline_rect.x_range().contains(&x) {
+            if timeline_rect.x_range().contains(x) {
                 let line_rect =
                     Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
                         .expand(interact_radius);
@@ -1036,7 +1039,7 @@ fn time_marker_ui(
                 re_ui.paint_time_cursor(
                     time_area_painter,
                     x,
-                    timeline_rect.top()..=ui.max_rect().bottom(),
+                    Rangef::new(timeline_rect.top(), ui.max_rect().bottom()),
                     stroke,
                 );
             }
