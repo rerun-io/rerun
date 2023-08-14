@@ -1,4 +1,3 @@
-use re_data_store::StoreDb;
 use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
 use time::macros::format_description;
 
@@ -39,13 +38,7 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         return;
     }
 
-    fn store_db_key(store_db: &StoreDb) -> impl Ord + '_ {
-        store_db
-            .store_info()
-            .map(|info| (info.application_id.0.as_str(), info.started))
-    }
-
-    store_dbs.sort_by_key(|store_db| store_db_key(store_db));
+    store_dbs.sort_by_key(|store_db| store_db.sort_key());
 
     let active_recording = store_context.recording.map(|rec| rec.store_id());
 

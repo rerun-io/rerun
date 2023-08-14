@@ -40,6 +40,8 @@ impl App {
 
                 self.save_buttons_ui(ui, _store_context);
 
+                UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+
                 ui.add_space(spacing);
 
                 // On the web the browser controls the zoom

@@ -19,6 +19,7 @@ pub enum UICommand {
     Save,
     #[cfg(not(target_arch = "wasm32"))]
     SaveSelection,
+    CloseCurrentRecording,
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
@@ -85,6 +86,8 @@ impl UICommand {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => ("Open…", "Open a Rerun Data File (.rrd)"),
+
+            UICommand::CloseCurrentRecording => ("Close recording", "Close the current Recording"),
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Quit => ("Quit", "Close the Rerun Viewer"),
@@ -186,6 +189,7 @@ impl UICommand {
             UICommand::SaveSelection => Some(cmd_alt(Key::S)),
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => Some(cmd(Key::O)),
+            UICommand::CloseCurrentRecording => None,
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
             UICommand::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),
