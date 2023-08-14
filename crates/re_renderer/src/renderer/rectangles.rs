@@ -188,7 +188,7 @@ pub enum RectangleError {
 }
 
 mod gpu_data {
-    use crate::{texture_info, wgpu_buffer_types};
+    use crate::wgpu_buffer_types;
 
     use super::{ColorMapper, RectangleError, TexturedRect};
 
@@ -283,7 +283,7 @@ mod gpu_data {
             let mut colormap_function = 0;
             let color_mapper_int;
 
-            match texture_info::num_texture_components(texture_format) {
+            match texture_format.components() {
                 1 => match color_mapper {
                     Some(ColorMapper::Function(colormap)) => {
                         color_mapper_int = COLOR_MAPPER_FUNCTION;
