@@ -79,6 +79,7 @@ jobs:
         if: steps.versioning.outputs.previous != steps.versioning.outputs.current
         with:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
+          base: main
           branch: ${{ github.ref_name }}
           commit-message: "Bump crate versions to `${{ steps.versioning.outputs.final }}`"
           title: "Release ${{ steps.versioning.outputs.final }}"
