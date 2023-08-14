@@ -9,6 +9,10 @@ on:
       PY_DOCS_VERSION_NAME:
         required: true
         type: string
+      RS_DOCS_VERSION_NAME:
+        required: false
+        type: string
+        default: "head"
       UPDATE_LATEST:
         required: false
         type: boolean
@@ -154,4 +158,5 @@ jobs:
       - name: Deploy the docs
         run: |
           git fetch
-          python3 -m ghp_import -n -p -x docs/rust/head target/doc/ -m "Update the rust docs"
+          python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
+
