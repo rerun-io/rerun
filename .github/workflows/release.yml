@@ -3,10 +3,6 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      release-version:
-        description: "Release version number"
-        type: string
-        required: true
       release-type:
         description: "Is this a pre-release or a final release?"
         type: choice
@@ -15,18 +11,33 @@ on:
           - release
         required: true
 
+concurrency:
+  group: ${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions: # wants to push commits and create a PR
+  contents: write
+  id-token: write
+
 jobs:
+  # Re-entrancy:
+  # - `version` is re-entrant because it doesn't commit/create PR if the version doesn't change,
+  #   and the version doesn't change if we're already on the final version specified by the branch name.
+  # - `update-docs` is re-entrant because it overwrites history of the `gh-pages` branch, so any
+  #   previous partial update will just be overwritten by the next successful run.
+  # - `publish-crates` is re-entrant because the `crates.py` script correctly handles publish failures
+  #   by first checking if a crate has already been published before attempting to publish it.
+  # - `build-and-publish-wheels` is re-entrant because all the uploaded artifacts will be overwritten
+  #   by any subsequent runs, and the final upload to PyPI has the `--skip-existing` flag, which ignores
+  #   any wheels already uploaded.
   version:
     name: "Versioning"
     runs-on: ubuntu-latest
 
-    permissions: # wants to push commits and create a PR
-      contents: write
-      id-token: "write"
-
     outputs:
-      prerelease: ${{ steps.update-crate-versions.outputs.prerelease }}
-      finalized: ${{ steps.update-crate-versions.outputs.finalized }}
+      previous: ${{ steps.versioning.outputs.previous }}
+      current: ${{ steps.versioning.outputs.current }}
+      final: ${{ steps.versioning.outputs.final }}
 
     steps:
       - name: Checkout repository
@@ -42,57 +53,143 @@ jobs:
           python3 -m pip install -r ./scripts/ci/requirements.txt
 
       - name: Update crate versions
-        id: update-crate-versions
+        id: versioning
         run: |
-          current_version=$(python3 scripts/ci/crates.py get-version --finalize)
-          if [ $current_version != ${{ inputs.release-version }} ]; then
-            python3 scripts/ci/crates.py version --exact ${{ inputs.release-version }}
+          release_version=$(echo ${{ github.ref_name }} | grep -oP '^release-\K\d+\.\d+\.\d+$')
+
+          previous=$(python3 scripts/ci/crates.py get-version)
+
+          if [ $(python3 scripts/ci/crates.py get-version --finalize) != $release_version ]; then
+            python3 scripts/ci/crates.py version --exact $release_version
           fi
 
           if [ ${{ inputs.release-type }} = "prerelease" ]; then
             python3 scripts/ci/crates.py version --bump prerelease --pre-id=rc
           fi
 
-          echo "prerelease=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
-          echo "finalized=$(python3 scripts/ci/crates.py get-version --finalize)" >> "$GITHUB_OUTPUT"
+          current=$(python3 scripts/ci/crates.py get-version)
+          final=$(python3 scripts/ci/crates.py get-version --finalize)
+
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          echo "current=$current"   >> "$GITHUB_OUTPUT"
+          echo "final=$final"       >> "$GITHUB_OUTPUT"
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v5.0.2
+        if: steps.versioning.outputs.previous != steps.versioning.outputs.current
         with:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
           branch: ${{ github.ref_name }}
-          commit-message: "Bump crate versions to `${{ inputs.release-version }}`"
-          title: "Release ${{ inputs.release-version }}"
+          commit-message: "Bump crate versions to `${{ steps.versioning.outputs.final }}`"
+          title: "Release ${{ steps.versioning.outputs.final }}"
           labels: "⛴ release"
           committer: "Rerun Bot <bot@rerun.io>"
           author: "Rerun Bot <bot@rerun.io>"
           body: |
-            TODO(jprochazk): fill in the full checklist here
+            # Release ${{ steps.versioning.outputs.final }}
+
+            ### Next steps
+            - [Test the release](#testing)
+            - For any added commits, run the release workflow in `prerelease` mode
+            - After testinig, run the release workflow in `release` mode
+            - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
+
+            ### Testing
+            - [ ] Docs
+              - NOTE: wait for docs deploy + [`docs.rs` build](https://docs.rs/releases/queue)
+              - [ ] [ref.rerun.io](https://ref.rerun.io/docs/rust/prerelease/rerun/) (Rust)
+              - [ ] [ref.rerun.io](https://ref.rerun.io/docs/python/prerelease/common/) (Python)
+              - [ ] [rerun.io/docs](https://rerun.io/preview/{{ "pr:%s"|format(pr.branch)|encode_uri_component }}/docs)
+              - [ ] [rerun.io/examples](https://rerun.io/preview/{{ "pr:%s"|format(pr.branch)|encode_uri_component }}/examples)
+              - [ ] [docs.rs](https://docs.rs/rerun/${{ steps.versioning.outputs.current }}/rerun/)
+            - Web (TODO(jprochazk): publish web + add links for these)
+              - Demo
+              - App
+            - [ ] Windows
+              - [ ] Python Wheel
+                - [ ] Web
+                - [ ] Native
+              - [ ] Rust crate
+                - [ ] Web
+                - [ ] Native
+              - [ ] Rust install
+                - [ ] Web
+                - [ ] Native
+            - [ ] Linux
+              - [ ] Python Wheel
+                - [ ] Web
+                - [ ] Native
+              - [ ] Rust crate
+                - [ ] Web
+                - [ ] Native
+              - [ ] Rust install
+                - [ ] Web
+                - [ ] Native
+            - [ ] Mac
+              - [ ] Python Wheel
+                - [ ] Web
+                - [ ] Native
+              - [ ] Rust crate
+                - [ ] Web
+                - [ ] Native
+              - [ ] Rust install
+                - [ ] Web
+                - [ ] Native
 
   update-docs:
     name: "Update Docs"
+    # TEMP: temporarily disabled
+    if: false
     needs: [version]
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
-      CONCURRENCY: pre-release-${{ github.ref_name }}
-      PY_DOCS_VERSION_NAME: "HEAD"
-      UPDATE_LATEST: false
+      CONCURRENCY: ${{ github.ref_name }}
+      PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'prerelease' && 'prerelease' || needs.version.outputs.final }}
+      RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'prerelease' && 'prerelease' || 'head' }}
+      # TODO(jprochazk): set `rerun.io` target commit if `UPDATE_LATEST`
+      UPDATE_LATEST: ${{ inputs.release-type == 'release' }}
     secrets: inherit
 
   publish-crates:
     name: "Publish Crates"
+    # TEMP: temporarily disabled
+    if: false
     needs: [version]
     uses: ./.github/workflows/reusable_release_crates.yml
     with:
-      CONCURRENCY: pre-release-${{ github.ref_name }}
+      CONCURRENCY: ${{ github.ref_name }}
     secrets: inherit
 
   build-and-publish-wheels:
     name: "Build and Publish Wheels"
+    # TEMP: temporarily disabled
+    if: false
     needs: [version]
     uses: ./.github/workflows/reusable_build_and_publish_wheels.yml
     with:
-      RELEASE_VERSION: ${{ inputs.release-type == 'prerelease' && needs.version.outputs.prerelease || needs.version.outputs.finalized }}
-      CONCURRENCY: pre-release-${{ github.ref_name }}
+      RELEASE_VERSION: ${{ needs.version.outputs.current }}
+      CONCURRENCY: ${{ github.ref_name }}
     secrets: inherit
+
+  # TODO(jprochazk): publish web workflow
+
+  update-latest-branch:
+    name: "Update Latest Branch"
+    # TEMP: temporarily disabled
+    # only update the latest branch in `release`
+    # and after every other step has finished
+    if: false && inputs.release-type == 'release'
+    needs: [update-docs, publish-crates, build-and-publish-wheels]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update latest branch
+        run: |
+          git fetch
+          git checkout ${{ github.ref_name }}
+          git push --force origin ${{ github.ref_name }}:latest
+          git commit -m "Update docs for ${GITHUB_SHA}"
+          git push origin gh-pages-orphan:gh-pages -f
 
