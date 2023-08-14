@@ -151,7 +151,7 @@ class Bump(Enum):
         elif self is Bump.PATCH:
             return version.bump_patch()
         elif self is Bump.PRERELEASE:
-            if version.prerelease != pre_id:
+            if version.prerelease is not None and version.prerelease.split(".")[0] != pre_id:
                 # reset the build number if the pre-id changes
                 # e.g. by going from `alpha` to `rc`
                 return version.finalize_version().bump_prerelease(token=pre_id)
@@ -248,16 +248,22 @@ def bump_dependency_versions(
             info["version"] = update_to
 
 
-def version(dry_run: bool, bump: Bump | str, pre_id: str) -> None:
+def version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> None:
     ctx = Context()
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
     crates = get_workspace_crates(root)
     current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
-    if isinstance(bump, Bump):
-        new_version = bump.apply(current_version, pre_id)
-    else:
-        new_version = VersionInfo.parse(bump)
+
+    new_version = current_version
+    print(bump)
+    if bump is not None:
+        if isinstance(bump, Bump):
+            new_version = bump.apply(new_version, pre_id)
+        else:
+            new_version = VersionInfo.parse(bump)
+    if dev is not None:
+        new_version = new_version.replace(build="dev" if dev else None)
 
     # There are a few places where versions are set:
     # 1. In the root `Cargo.toml` under `workspace.package.version`.
@@ -362,17 +368,32 @@ def get_version(finalize: bool) -> None:
 def main() -> None:
     colorama_init()
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
+
     cmds_parser = parser.add_subparsers(title="cmds", dest="cmd")
+
     version_parser = cmds_parser.add_parser("version", help="Bump the crate versions")
     target_version_parser = version_parser.add_mutually_exclusive_group()
     target_version_parser.add_argument("--bump", type=Bump, choices=list(Bump), help="Bump version according to semver")
     target_version_parser.add_argument("--exact", type=str, help="Update version to an exact value")
+    dev_parser = version_parser.add_mutually_exclusive_group()
+    dev_parser.add_argument("--dev", default=None, action="store_true", help="Set build metadata to `+dev`")
+    dev_parser.add_argument(
+        "--no-dev", dest="dev", action="store_false", help="Remove `+dev` from build metadata (if present)"
+    )
     version_parser.add_argument("--dry-run", action="store_true", help="Display the execution plan")
-    version_parser.add_argument("--pre-id", type=str, default=DEFAULT_PRE_ID, help="Set the pre-release prefix")
+    version_parser.add_argument(
+        "--pre-id",
+        type=str,
+        default=DEFAULT_PRE_ID,
+        choices=["alpha", "rc"],
+        help="Set the pre-release prefix",
+    )
+
     publish_parser = cmds_parser.add_parser("publish", help="Publish crates")
     publish_parser.add_argument("--token", type=str, help="crates.io token")
     publish_parser.add_argument("--dry-run", action="store_true", help="Display the execution plan")
     publish_parser.add_argument("--allow-dirty", action="store_true", help="Allow uncommitted changes")
+
     get_version_parser = cmds_parser.add_parser("get-version", help="Get the current crate version")
     get_version_parser.add_argument(
         "--finalize", action="store_true", help="Return version finalized if it is a pre-release"
@@ -382,10 +403,16 @@ def main() -> None:
     if args.cmd == "get-version":
         get_version(args.finalize)
     if args.cmd == "version":
+        if args.dev and args.pre_id != "alpha":
+            parser.error("`--pre-id` must be set to `alpha` when `--dev` is set")
+
+        if args.bump is None and args.exact is None and args.dev is None:
+            parser.error("one of `--bump`, `--exact`, `--dev` is required")
+
         if args.bump:
-            version(args.dry_run, args.bump, args.pre_id)
+            version(args.dry_run, args.bump, args.pre_id, args.dev)
         else:
-            version(args.dry_run, args.exact, args.pre_id)
+            version(args.dry_run, args.exact, args.pre_id, args.dev)
     if args.cmd == "publish":
         if not args.dry_run and not args.token:
             parser.error("`--token` is required when `--dry-run` is not set")
