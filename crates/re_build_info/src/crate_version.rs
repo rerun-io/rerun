@@ -3,32 +3,147 @@
 /// If you are running up against this limit then feel free to bump it!
 const MAX_NUM: u8 = 31;
 
-const IS_ALPHA_BIT: u8 = 1 << 7;
-const IS_PRERELEASE_BIT: u8 = 1 << 6;
+mod meta {
+    pub const TAG_MASK: u8 = 0b11000000;
+    pub const VALUE_MASK: u8 = 0b00011111;
+
+    pub const RC: u8 = 0b01000000;
+    pub const ALPHA: u8 = 0b10000000;
+    pub const DEV_ALPHA: u8 = 0b11000000;
+}
 
 /// The version of a Rerun crate.
 ///
-/// Sub-set of semver supporting `major.minor.patch` plus an optional `-alpha.X`.
+/// Sub-set of semver supporting `major.minor.patch-{alpha,rc}.N+dev`.
 ///
-/// When parsing, any `+metadata` suffix is ignored.
+/// The string value of build metadata is not preserved.
 ///
-/// Examples: `1.2.3`, `1.2.3-alpha.4`.
+/// Examples: `1.2.3`, `1.2.3-alpha.4`, `1.2.3-alpha.1+dev`.
 ///
-/// We use `-alpha.X` when we publish pre-releases to crates.io and PyPI.
+/// `-alpha.N+dev` versions are used for local or CI builds.
+/// `-alpha.N` versions are used for weekly releases.
+/// `-rc.N` versions are used for release candidates as we're preparing for a full release.
 ///
-/// We use a `+githash` suffix for continuous pre-releases that you can download from our GitHub.
-/// We do NOT store that in this struct. See also `scripts/ci/version_util.py`.
-///
-/// The version numbers aren't allowed to be very large (current max: 31).
-/// This limited subset it chosen so that we can encode the version in 32 bits
+/// The version numbers (`N`) aren't allowed to be very large (current max: 31).
+/// This limited subset is chosen so that we can encode the version in 32 bits
 /// in our `.rrd` files and on the wire.
+///
+/// Here is the current binary format:
+/// ```text,ignore
+/// major    minor    patch    meta
+/// 00000000 00000000 00000000 00000000
+///                            ▲▲ ▲   ▲
+///                            ││ └┬──┘
+///                            ││  └─ N
+///                            │└─ rc/dev
+///                            └─ alpha
+/// ```
+///
+/// The valid bit patterns for `meta` are:
+/// - `100NNNNN` -> `-alpha.N`
+/// - `110NNNNN` -> `-alpha.N+dev`
+/// - `010NNNNN` -> `-rc.N`
+/// - `00000000` -> none of the above
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CrateVersion {
     major: u8,
     minor: u8,
     patch: u8,
-    alpha: Option<u8>,
-    prerelease: bool,
+    meta: Option<Meta>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Meta {
+    Rc(u8),
+    Alpha(u8),
+    DevAlpha(u8),
+}
+
+impl Meta {
+    pub const fn to_byte(self) -> u8 {
+        match self {
+            Meta::Rc(value) => value | meta::RC,
+            Meta::Alpha(value) => value | meta::ALPHA,
+            Meta::DevAlpha(value) => value | meta::DEV_ALPHA,
+        }
+    }
+
+    pub const fn from_byte(v: u8) -> Option<Self> {
+        let tag = v & meta::TAG_MASK;
+        let value = v & meta::VALUE_MASK;
+        match tag {
+            meta::RC => Some(Self::Rc(value)),
+            meta::ALPHA => Some(Self::Alpha(value)),
+            meta::DEV_ALPHA => Some(Self::DevAlpha(value)),
+            _ => None,
+        }
+    }
+}
+
+const fn __slice(v: &[u8], start: Option<usize>, end: Option<usize>) -> &[u8] {
+    let (start, end) = match (start, end) {
+        (Some(start), Some(end)) => (start, end),
+        (Some(start), None) => (start, v.len()),
+        (None, Some(end)) => (0, end),
+        (None, None) => return v,
+    };
+
+    assert!(start <= v.len());
+    assert!(end <= v.len());
+    assert!(start <= end);
+
+    {
+        // The only reason we do this is to allow slicing in `const` functions.
+        #![allow(unsafe_code)]
+
+        let ptr = v.as_ptr();
+        // SAFETY:
+        // - the read is valid, because the following is true:
+        //   - `ptr` is valid for reads of `len` elements, because it is taken from a valid slice.
+        //     this means it is already guaranteed to be non-null and properly aligned, and the
+        //     entire length of the slice is contained within a single allocated object.
+        //   - `start <= len && end <= len && start <= end`
+        // - the returned slice appears to be a shared borrow from `v`,
+        //   so the borrow checker will ensure users will not mutate `v`
+        //   until this slice is dropped.
+        unsafe { std::slice::from_raw_parts(ptr.add(start), end - start) }
+    }
+}
+
+/// Slice `s` by some `start` and `end` bounds.
+///
+/// This is equivalent to doing `s[start..end]`,
+/// but works in a `const` context.
+macro_rules! slice {
+    ($s:expr, .., $end:expr) => {
+        __slice($s, None, Some($end))
+    };
+    ($s:expr, $start:expr, ..) => {
+        __slice($s, Some($start), None)
+    };
+    ($s:expr, $start:expr, $end:expr) => {
+        __slice($s, Some($start), Some($end))
+    };
+}
+
+const fn equals(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+
+    let len = a.len();
+    let mut i = 0;
+    while i < len {
+        if a[i] != b[i] {
+            return false;
+        }
+        i += 1;
+    }
+    true
+}
+
+const fn split_at(s: &[u8], i: usize) -> (&[u8], &[u8]) {
+    (slice!(s, .., i), slice!(s, i, ..))
 }
 
 impl CrateVersion {
@@ -41,54 +156,45 @@ impl CrateVersion {
             major,
             minor,
             patch,
-            alpha: None,
-            prerelease: false,
+            meta: None,
         }
     }
 
     /// Whether or not this build is a prerelease (a version ending with +commit suffix)
-    pub fn is_prerelease(&self) -> bool {
-        self.prerelease
+    pub fn is_dev(&self) -> bool {
+        matches!(self.meta, Some(Meta::DevAlpha(..)))
+    }
+
+    pub fn is_alpha(&self) -> bool {
+        matches!(self.meta, Some(Meta::Alpha(..) | Meta::DevAlpha(..)))
+    }
+
+    pub fn is_rc(&self) -> bool {
+        matches!(self.meta, Some(Meta::Rc(..)))
     }
 
     /// From a compact 32-bit representation crated with [`Self::to_bytes`].
-    pub fn from_bytes([major, minor, patch, suffix_byte]: [u8; 4]) -> Self {
-        let is_alpha = (suffix_byte & IS_ALPHA_BIT) != 0;
-        let is_prerelease = (suffix_byte & IS_PRERELEASE_BIT) != 0;
-        let alpha_version = suffix_byte & !(IS_ALPHA_BIT | IS_PRERELEASE_BIT);
-
+    pub fn from_bytes([major, minor, patch, meta]: [u8; 4]) -> Self {
         Self {
             major,
             minor,
             patch,
-            alpha: is_alpha.then_some(alpha_version),
-            prerelease: is_prerelease,
+            meta: Meta::from_byte(meta),
         }
     }
 
     /// A compact 32-bit representation. See also [`Self::from_bytes`].
     pub fn to_bytes(self) -> [u8; 4] {
-        let Self {
-            major,
-            minor,
-            patch,
-            alpha,
-            prerelease,
-        } = self;
-
-        let mut suffix_byte = if let Some(alpha) = alpha {
-            IS_ALPHA_BIT | alpha
-        } else {
-            0
-        };
-
-        suffix_byte |= if prerelease { IS_PRERELEASE_BIT } else { 0 };
-
-        [major, minor, patch, suffix_byte]
+        [
+            self.major,
+            self.minor,
+            self.patch,
+            self.meta.map(Meta::to_byte).unwrap_or_default(),
+        ]
     }
 
     pub fn is_compatible_with(self, other: CrateVersion) -> bool {
-        if self.alpha != other.alpha {
+        if self.meta != other.meta {
             return false; // Alphas can contain breaking changes
         }
 
@@ -105,95 +211,115 @@ impl CrateVersion {
     pub const fn parse(version_string: &str) -> Self {
         // Note that this is a const function, which means we are extremely limited in what we can do!
 
-        const fn parse_u8(s: &[u8], begin: usize, end: usize) -> u8 {
-            assert!(begin < end);
-            assert!(
-                s[begin] != b'0' || begin + 1 == end,
-                "multi-digit number cannot start with zero"
-            );
+        const fn maybe(s: &[u8], c: u8) -> (bool, &[u8]) {
+            if !s.is_empty() && s[0] == c {
+                (true, slice!(s, 1, ..))
+            } else {
+                (false, s)
+            }
+        }
+
+        const fn maybe_token<'a>(s: &'a [u8], token: &[u8]) -> (bool, &'a [u8]) {
+            if s.len() < token.len() {
+                return (false, s);
+            }
+
+            let (left, right) = split_at(s, token.len());
+            if equals(left, token) {
+                (true, right)
+            } else {
+                (false, s)
+            }
+        }
+
+        const fn eat(s: &[u8], c: u8) -> &[u8] {
+            assert!(s[0] == c);
+            slice!(s, 1, ..)
+        }
+
+        const fn eat_token<'a>(s: &'a [u8], token: &[u8]) -> &'a [u8] {
+            let (left, right) = split_at(s, token.len());
+            assert!(equals(left, token));
+            right
+        }
+
+        const fn eat_u8(s: &[u8]) -> (u8, &[u8]) {
+            assert!(!s.is_empty(), "expected digit");
+
+            if s.len() > 1 && s[1].is_ascii_digit() {
+                assert!(s[0] != b'0', "multi-digit number cannot start with zero");
+            }
 
             let mut num = 0u64;
-            let mut i = begin;
-
-            while i < end {
-                let c = s[i];
-                assert!(
-                    b'0' <= c && c <= b'9',
-                    "Unexpected non-digit in version string"
-                );
-                let digit = c - b'0';
-                num = num * 10 + digit as u64;
-                assert!(num <= MAX_NUM as _, "Too large number in rust version");
+            let mut i = 0;
+            while i < s.len() && s[i].is_ascii_digit() {
+                let digit = (s[i] - b'0') as u64;
+                num = num * 10 + digit;
                 i += 1;
             }
+
             assert!(num <= u8::MAX as u64);
-            num as _
+            let num = num as u8;
+            let remainder = slice!(s, i, ..);
+
+            (num, remainder)
         }
 
-        let s = version_string.as_bytes();
+        let mut s = version_string.as_bytes();
+        let (major, minor, patch);
+        let mut meta = None;
 
-        let mut i = 0;
-        while s[i] != b'.' {
-            i += 1;
-        }
-        let major = parse_u8(s, 0, i);
+        (major, s) = eat_u8(s);
+        s = eat(s, b'.');
+        (minor, s) = eat_u8(s);
+        s = eat(s, b'.');
+        (patch, s) = eat_u8(s);
+        if let (true, remainder) = maybe(s, b'-') {
+            s = remainder;
 
-        i += 1;
-        let minor_start = i;
-        while s[i] != b'.' {
-            i += 1;
-        }
-        let minor = parse_u8(s, minor_start, i);
-
-        i += 1;
-        let patch_start = i;
-        while i < s.len() && s[i] != b'-' && s[i] != b'+' {
-            i += 1;
-        }
-        let patch = parse_u8(s, patch_start, i);
-
-        if i == s.len() {
-            return Self::new(major, minor, patch);
-        }
-
-        let alpha = if s[i] == b'-' {
-            // `-alpha.X` suffix (Called "pre-release version" in semver).
-            // Comparing strings in `const` functions is fun:
-            assert!(
-                s[i] == b'-'
-                    && s[i + 1] == b'a'
-                    && s[i + 2] == b'l'
-                    && s[i + 3] == b'p'
-                    && s[i + 4] == b'h'
-                    && s[i + 5] == b'a'
-                    && s[i + 6] == b'.',
-                "Expected `-alpha.X` suffix"
-            );
-            i += 7;
-
-            let alpha_start = i;
-            while i < s.len() && s[i] != b'+' {
-                i += 1;
+            let build;
+            if let (true, remainder) = maybe_token(s, b"alpha") {
+                s = eat(remainder, b'.');
+                (build, s) = eat_u8(s);
+                meta = Some(Meta::Alpha(build));
+            } else if let (true, remainder) = maybe_token(s, b"rc") {
+                s = eat(remainder, b'.');
+                (build, s) = eat_u8(s);
+                meta = Some(Meta::Rc(build));
+            } else {
+                panic!("Expected `alpha` or `rc` after `-`");
             }
-            Some(parse_u8(s, alpha_start, i))
-        } else {
-            None
+        }
+
+        if let (true, remainder) = maybe(s, b'+') {
+            s = remainder;
+            match meta {
+                Some(Meta::Alpha(build)) => {
+                    s = eat_token(s, b"dev");
+                    meta = Some(Meta::DevAlpha(build));
+                }
+                Some(..) => panic!("Unexpected `-rc` with `+dev`"),
+                None => panic!("Unexpected `+dev` without `-alpha`"),
+            }
         };
 
-        // If there are additional characters past alpha, it must be a prerelease
-        let prerelease = if i < s.len() {
-            assert!(s[i] == b'+', "Unexpected suffix");
-            true
-        } else {
-            false
-        };
+        assert!(s.is_empty());
 
         Self {
             major,
             minor,
             patch,
-            alpha,
-            prerelease,
+            meta,
+        }
+    }
+}
+
+impl std::fmt::Display for Meta {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Meta::Rc(build) => write!(f, "-rc.{build}"),
+            Meta::Alpha(build) => write!(f, "-alpha.{build}"),
+            Meta::DevAlpha(build) => write!(f, "-alpha.{build}+dev"),
         }
     }
 }
@@ -204,16 +330,12 @@ impl std::fmt::Display for CrateVersion {
             major,
             minor,
             patch,
-            alpha,
-            prerelease,
+            meta,
         } = *self;
 
         write!(f, "{major}.{minor}.{patch}")?;
-        if let Some(alpha) = alpha {
-            write!(f, "-alpha.{alpha}")?;
-        }
-        if prerelease {
-            write!(f, "+")?;
+        if let Some(meta) = meta {
+            write!(f, "{meta}")?;
         }
         Ok(())
     }
@@ -226,33 +348,30 @@ fn test_parse_version() {
     assert_eq!(parse("1.2.3"), CrateVersion::new(1, 2, 3));
     assert_eq!(parse("12.23.24"), CrateVersion::new(12, 23, 24));
     assert_eq!(
+        parse("12.23.24-rc.31"),
+        CrateVersion {
+            major: 12,
+            minor: 23,
+            patch: 24,
+            meta: Some(Meta::Rc(31)),
+        }
+    );
+    assert_eq!(
         parse("12.23.24-alpha.31"),
         CrateVersion {
             major: 12,
             minor: 23,
             patch: 24,
-            alpha: Some(31),
-            prerelease: false
+            meta: Some(Meta::Alpha(31)),
         }
     );
     assert_eq!(
-        parse("12.23.24+foo"),
+        parse("12.23.24-alpha.31+dev"),
         CrateVersion {
             major: 12,
             minor: 23,
             patch: 24,
-            alpha: None,
-            prerelease: true
-        }
-    );
-    assert_eq!(
-        parse("12.23.24-alpha.31+bar"),
-        CrateVersion {
-            major: 12,
-            minor: 23,
-            patch: 24,
-            alpha: Some(31),
-            prerelease: true
+            meta: Some(Meta::DevAlpha(31)),
         }
     );
 }
@@ -264,10 +383,9 @@ fn test_format_parse_roundtrip() {
         "0.2.0",
         "1.2.3",
         "12.23.24",
+        "12.23.24-rc.31",
         "12.23.24-alpha.31",
-        // These do NOT round-trip, because we ignore the `+metadata`:
-        // "12.23.24+githash",
-        // "12.23.24-alpha.31+foobar",
+        "12.23.24-alpha.31+dev",
     ] {
         assert_eq!(parse(version).to_string(), version);
     }
@@ -280,8 +398,9 @@ fn test_format_parse_roundtrip_bytes() {
         "0.2.0",
         "1.2.3",
         "12.23.24",
+        "12.23.24-rc.31",
         "12.23.24-alpha.31",
-        "12.23.24-alpha.31+foo",
+        "12.23.24-alpha.31+dev",
     ] {
         let version = parse(version);
         let bytes = version.to_bytes();
@@ -298,11 +417,70 @@ fn test_compatibility() {
     assert!(are_compatible("0.2.0", "0.2.0"));
     assert!(are_compatible("0.2.0", "0.2.1"));
     assert!(are_compatible("1.2.0", "1.3.0"));
-    assert!(!are_compatible("0.2.0", "1.2.0"));
-    assert!(!are_compatible("0.2.0", "0.3.0"));
+    assert!(
+        !are_compatible("0.2.0", "1.2.0"),
+        "Different major versions are incompatible"
+    );
+    assert!(
+        !are_compatible("0.2.0", "0.3.0"),
+        "Different minor versions are incompatible"
+    );
     assert!(are_compatible("0.2.0-alpha.0", "0.2.0-alpha.0"));
+    assert!(are_compatible("0.2.0-rc.0", "0.2.0-rc.0"));
+    assert!(
+        !are_compatible("0.2.0-rc.0", "0.2.0-alpha.0"),
+        "Rc and Alpha are incompatible"
+    );
+    assert!(
+        !are_compatible("0.2.0-rc.0", "0.2.0-alpha.0+dev"),
+        "Rc and Dev are incompatible"
+    );
+    assert!(
+        !are_compatible("0.2.0-alpha.0", "0.2.0-alpha.0+dev"),
+        "Alpha and Dev are incompatible"
+    );
     assert!(
         !are_compatible("0.2.0-alpha.0", "0.2.0-alpha.1"),
-        "Alphas are always incompatible"
+        "Different alpha builds are always incompatible"
     );
+    assert!(
+        !are_compatible("0.2.0-rc.0", "0.2.0-rc.1"),
+        "Different rc builds are always incompatible"
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_bad_parse_missing_minor_patch() {
+    CrateVersion::parse("10");
+}
+
+#[test]
+#[should_panic]
+fn test_bad_parse_missing_patch() {
+    CrateVersion::parse("10.0");
+}
+
+#[test]
+#[should_panic]
+fn test_bad_parse_incomplete_meta() {
+    CrateVersion::parse("10.0.1-");
+}
+
+#[test]
+#[should_panic]
+fn test_bad_parse_invalid_meta() {
+    CrateVersion::parse("10.0.1-alpha0");
+}
+
+#[test]
+#[should_panic]
+fn test_bad_parse_incomplete_dev() {
+    CrateVersion::parse("10.0.1-alpha.0+");
+}
+
+#[test]
+#[should_panic]
+fn test_bad_parse_unexpected_token() {
+    CrateVersion::parse("10.x.1-alpha.0-");
 }
