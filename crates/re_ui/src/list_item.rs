@@ -1,5 +1,5 @@
 use crate::{Icon, ReUi};
-use egui::{Align2, NumExt, Response, Shape, Ui};
+use egui::{Align2, Response, Shape, Ui};
 
 struct ListItemResponse {
     response: Response,
@@ -117,6 +117,7 @@ impl<'a> ListItem<'a> {
         self.ui(ui).response
     }
 
+    /// Draw the item as a collapsing header.
     pub fn show_collapsing<R>(
         mut self,
         ui: &mut Ui,
@@ -147,7 +148,6 @@ impl<'a> ListItem<'a> {
     }
 
     fn ui(self, ui: &mut Ui) -> ListItemResponse {
-        let button_padding = ui.spacing().button_padding;
         let collapse_extra = if self.collapse_openness.is_some() {
             ReUi::collapsing_triangle_size().x + ReUi::text_to_icon_padding()
         } else {
@@ -159,26 +159,8 @@ impl<'a> ListItem<'a> {
             0.0
         };
 
-        let padding_extra = button_padding + button_padding;
-        let wrap_width = ui.available_width() - padding_extra.x - collapse_extra - icon_extra;
-
-        let text =
-            self.text
-                .clone()
-                .into_galley(ui, Some(false), wrap_width, egui::TextStyle::Button);
-
-        let desired_size =
-            (padding_extra + egui::vec2(collapse_extra + icon_extra, 0.0) + text.size())
-                .at_least(egui::vec2(ui.available_width(), ReUi::list_item_height()));
+        let desired_size = egui::vec2(ui.available_width(), ReUi::list_item_height());
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
-
-        response.widget_info(|| {
-            egui::WidgetInfo::selected(
-                egui::WidgetType::SelectableLabel,
-                self.selected,
-                text.text(),
-            )
-        });
 
         let mut collapse_response = None;
 
@@ -217,30 +199,48 @@ impl<'a> ListItem<'a> {
                 icon_fn(self.re_ui, ui, icon_rect, visuals);
             }
 
-            // Draw text next to the icon.
-            let mut text_rect = rect;
-            text_rect.min.x += collapse_extra + icon_extra;
-            let text_pos = Align2::LEFT_CENTER
-                .align_size_within_rect(text.size(), text_rect)
-                .min;
-            text.paint_with_visuals(ui.painter(), text_pos, &visuals);
-
             // Handle buttons
-            let button_hovered =
+            let button_response =
                 if self.active && ui.interact(rect, ui.id(), egui::Sense::hover()).hovered() {
                     if let Some(buttons) = self.buttons_fn {
                         let mut ui =
                             ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::Center));
-                        buttons(self.re_ui, &mut ui).hovered()
+                        Some(buttons(self.re_ui, &mut ui))
                     } else {
-                        false
+                        None
                     }
                 } else {
-                    false
+                    None
                 };
 
+            // Draw text next to the icon.
+            let mut text_rect = rect;
+            text_rect.min.x += collapse_extra + icon_extra;
+            if let Some(ref button_response) = button_response {
+                text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
+            }
+
+            let text =
+                self.text
+                    .into_galley(ui, Some(false), text_rect.width(), egui::TextStyle::Button);
+
+            // this happens here to avoid cloning the text
+            response.widget_info(|| {
+                egui::WidgetInfo::selected(
+                    egui::WidgetType::SelectableLabel,
+                    self.selected,
+                    text.text(),
+                )
+            });
+
+            let text_pos = Align2::LEFT_CENTER
+                .align_size_within_rect(text.size(), text_rect)
+                .min;
+
+            text.paint_with_visuals(ui.painter(), text_pos, &visuals);
+
             // Draw background on interaction.
-            let bg_fill = if button_hovered {
+            let bg_fill = if button_response.map_or(false, |r| r.hovered()) {
                 Some(visuals.bg_fill)
             } else if self.selected
                 || response.hovered()
