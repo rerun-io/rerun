@@ -14,7 +14,8 @@ alias Mat4 = mat4x4<f32>;
 
 // Extreme values as documented by the spec:
 // https://www.w3.org/TR/WGSL/#floating-point-types
-const f32max = 0x1.fffffep+127f;  // Largest positive float value.
+//const f32max = 0x1.fffffep+127f;  // Largest positive float value.
+const f32max = 3.40282e38;  // ⚠️ Should be above value, using a smaller one to work around https://github.com/gfx-rs/naga/issues/2436.
 const f32min = -0x0.fffffep+127f;  // Smallest negative float value.
 const f32min_normal = 0x1p-126f;  // Smallest positive normal float value.
 // F16 is not implemented yet in Naga https://github.com/gfx-rs/naga/issues/1884
