@@ -783,7 +783,7 @@ fn quote_trait_impls_from_obj(
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+                    fn try_from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
@@ -791,7 +791,7 @@ fn quote_trait_impls_from_obj(
 
                         // This code-path cannot have null fields. If it does have a validity mask
                         // all bits must indicate valid data.
-                        if let Some(validity) = data.validity() {
+                        if let Some(validity) = arrow_data.validity() {
                             if validity.unset_bits() != 0 {
                                 return Err(crate::DeserializationError::missing_data());
                             }
@@ -840,7 +840,7 @@ fn quote_trait_impls_from_obj(
 
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
-                    fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
+                    fn try_from_arrow_opt(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
@@ -1082,11 +1082,11 @@ fn quote_trait_impls_from_obj(
 
                     #[inline]
                     fn try_from_arrow(
-                        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
+                        arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
                         use crate::{Loggable as _, ResultExt as _};
 
-                        let arrays_by_name: ::std::collections::HashMap<_, _> = data
+                        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
                             .into_iter()
                             .map(|(field, array)| (field.name, array))
                             .collect();
