@@ -29,9 +29,10 @@ pub fn new_egui_callback(
 struct ReRendererCallback {
     // It would be nice to put the ViewBuilder in here directly, but this
     // struct is required to be Send/Sync and wgpu resources aren't on wasm.
+    // Technically, we ignore this restriction by using the `fragile-send-sync-non-atomic-wasm` wgpu feature flag.
     //
-    // Additionally, we need to make sure that the ViewBuilder outlives the pass
-    // (However, this restriction is likely to be address by Arcanization https://github.com/gfx-rs/wgpu/pull/3626).
+    // However, in addition, we need to make sure that the ViewBuilder outlives the render pass that is used to draw egui.
+    // (This restriction is likely to be address by Arcanization https://github.com/gfx-rs/wgpu/pull/3626).
     view_builder: ViewBuilderHandle,
     clear_color: re_renderer::Rgba,
 }
