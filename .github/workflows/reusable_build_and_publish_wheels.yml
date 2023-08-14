@@ -12,9 +12,25 @@ on:
         required: true
 
 jobs:
+  get-commit-sha:
+    name: Get Commit Sha
+    runs-on: ubuntu-latest
+    outputs:
+      short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
+      full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
+    steps:
+      - name: "Set short-sha"
+        id: get-short-sha
+        run: echo "short-sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: "Set full-sha"
+        id: get-full-sha
+        run: echo "full-sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+
   ### Linux
   build-linux:
     name: "Linux: Build/Test Wheels"
+    needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: ${{ inputs.CONCURRENCY }}
@@ -37,6 +53,7 @@ jobs:
   ### Windows
   build-windows:
     name: "Windows: Build/Test Wheels"
+    needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: ${{ inputs.CONCURRENCY }}
@@ -59,6 +76,7 @@ jobs:
   ### macOS (arm)
   build-macos-arm:
     name: "Macos-Arm: Build/Test Wheels"
+    needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: ${{ inputs.CONCURRENCY }}
@@ -81,6 +99,7 @@ jobs:
   ### macOS (intel)
   build-macos-intel:
     name: "Macos-Intel: Build/Test Wheels"
+    needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       CONCURRENCY: ${{ inputs.CONCURRENCY }}
@@ -113,4 +132,50 @@ jobs:
     with:
       CONCURRENCY: ${{ inputs.CONCURRENCY }}
     secrets: inherit
+
+  publish-wheels:
+    name: "Publish Wheels"
+    needs: [get-commit-sha, generate-wheel-index]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+        with:
+          version: ">= 363.0.0"
+
+      - name: Install packaging
+        run: |
+          python3 -m pip install packaging google-cloud-storage
+
+      - name: Download wheels from Google Cloud Storage
+        env:
+          BUCKET_PATH:
+        run: |
+          mkdir wheels
+          gsutil cp "gs://rerun-builds/commit/${{ needs.get-commit-sha.outputs.short-sha }}/wheels/*.whl" wheels/
+
+      - name: Verify wheels match the expected release
+        run: |
+          python3 scripts/ci/verify_wheels.py --folder wheels --version ${{ inputs.RELEASE_VERSION }}
+
+      - name: Publish to PyPI
+        uses: PyO3/maturin-action@v1
+        env:
+          # These are both set in the GitHub project configuration
+          MATURIN_REPOSITORY: ${{ vars.PYPI_REPOSITORY }}
+          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
+        with:
+          command: upload
+          args: --skip-existing wheels/*
 
