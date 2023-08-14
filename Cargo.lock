@@ -4633,6 +4633,7 @@ dependencies = [
  "image",
  "itertools 0.11.0",
  "objc",
+ "once_cell",
  "poll-promise",
  "re_analytics",
  "re_arrow_store",

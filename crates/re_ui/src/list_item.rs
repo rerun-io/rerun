@@ -125,7 +125,7 @@ impl<'a> ListItem<'a> {
     ) {
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
-            ui.make_persistent_id(self.text.text()),
+            ui.make_persistent_id(ui.id().with(self.text.text())),
             default_open,
         );
 
@@ -142,9 +142,7 @@ impl<'a> ListItem<'a> {
         }
 
         state.show_body_indented(&response.response, ui, |ui| {
-            ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
             add_body(re_ui, ui);
-            ui.add_space(4.0); // Same here
         });
     }
 
