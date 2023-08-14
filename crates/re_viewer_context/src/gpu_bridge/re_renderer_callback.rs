@@ -50,15 +50,15 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             return Vec::new();
         };
 
-        let view_builder_map = ctx
-            .active_frame
-            .per_frame_data_helper
-            .entry::<ViewBuilderMap>()
-            .or_insert_with(Default::default);
-
         // Takes the view_builder out of the slotmap, so we don't have a mutable reference to ctx in use.
-        let Some(mut view_builder) = view_builder_map.get_mut(self.view_builder).and_then(|slot| slot.take())
-        else {
+        let Some(mut view_builder) = ctx.active_frame
+            .per_frame_data_helper
+            .get_mut::<ViewBuilderMap>()
+            .and_then(|view_builder_map| {
+                view_builder_map
+                    .get_mut(self.view_builder)
+                    .and_then(|slot| slot.take())
+            }) else {
             re_log::error_once!(
                 "Failed to execute egui prepare callback. View builder with handle {:?} not found.", self.view_builder
             );
@@ -67,7 +67,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
 
         match view_builder.draw(ctx, self.clear_color) {
             Ok(command_buffer) => {
-                // If drawing worked, put vhe view_builder back in so we can use it during paint.
+                // If drawing worked, put the view_builder back in so we can use it during paint.
                 ctx.active_frame
                     .per_frame_data_helper
                     .get_mut::<ViewBuilderMap>()
@@ -81,7 +81,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
 
             Err(err) => {
                 re_log::error_once!("Failed to fill view builder: {err}");
-                // TODO(andreas): It would be nice to paint an error message instead now.
+                // TODO(andreas): It would be nice to paint an error message instead.
                 Vec::new()
             }
         }
