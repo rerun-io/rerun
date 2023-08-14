@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 
 use crate::{
     codegen::rust::{
-        arrow::{quote_fqname_as_type_path, ArrowDataTypeTokenizer},
+        arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
         util::is_tuple_struct_from_obj,
     },
     ArrowRegistry, Object, ObjectKind, Objects,
@@ -575,10 +575,7 @@ fn quote_arrow_field_deserializer(
         DataType::List(inner) => {
             let data_src_inner = format_ident!("{data_src}_inner");
 
-            let inner_is_primitive = matches!(
-                inner.data_type(),
-                DataType::UInt8 | DataType::UInt16 | DataType::Float32
-            );
+            let inner_is_primitive = is_backed_by_arrow_buffer(inner.data_type());
 
             let quoted_inner = quote_arrow_field_deserializer(
                 objects,

@@ -6,7 +6,7 @@ use quote::{format_ident, quote};
 use crate::{ArrowRegistry, Object, Objects};
 
 use super::{
-    arrow::{quote_fqname_as_type_path, ArrowDataTypeTokenizer},
+    arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
     util::is_tuple_struct_from_obj,
 };
 
@@ -320,7 +320,7 @@ fn quote_arrow_field_serializer(
     is_nullable: bool,
     bitmap_src: &proc_macro2::Ident,
     data_src: &proc_macro2::Ident,
-    is_list_inner: bool,
+    expose_inner_as_buffer: bool,
 ) -> TokenStream {
     let quoted_datatype = ArrowDataTypeTokenizer(datatype, false);
     let quoted_datatype = if let Some(ext) = extension_wrapper {
@@ -391,7 +391,7 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            if is_list_inner {
+            if expose_inner_as_buffer {
                 // A primitive that's an inner element of a list will already have been mapped
                 // to a buffer type.
                 quote! {
@@ -492,10 +492,8 @@ fn quote_arrow_field_serializer(
         DataType::List(inner) | DataType::FixedSizeList(inner, _) => {
             let inner_datatype = inner.data_type();
 
-            let inner_is_primitive = matches!(
-                inner_datatype,
-                DataType::UInt8 | DataType::UInt16 | DataType::Float32
-            ) && matches!(datatype, DataType::List(_));
+            let expose_inner_as_buffer = is_backed_by_arrow_buffer(inner.data_type())
+                && matches!(datatype, DataType::List(_));
 
             let quoted_inner_data = format_ident!("{data_src}_inner_data");
             let quoted_inner_bitmap = format_ident!("{data_src}_inner_bitmap");
@@ -507,7 +505,7 @@ fn quote_arrow_field_serializer(
                 inner.is_nullable,
                 &quoted_inner_bitmap,
                 &quoted_inner_data,
-                inner_is_primitive,
+                expose_inner_as_buffer,
             );
 
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
@@ -540,12 +538,13 @@ fn quote_arrow_field_serializer(
                     // NOTE: Flattening yet again since we have to deconstruct the inner list.
                     .flatten()
                 }
-            } else if inner_is_primitive {
+            } else if expose_inner_as_buffer {
                 quote! {
                     .flatten()
-                    .map(|b| b.0.iter())
-                    .flatten()
-                    .cloned()
+                    .map(|b| b.0.as_slice())
+                    .collect::<Vec<_>>()
+                    .concat()
+                    .into();
                 }
             } else {
                 quote! {
@@ -582,15 +581,13 @@ fn quote_arrow_field_serializer(
             // TODO(cmc): We should be checking this, but right now we don't because we don't
             // support intra-list nullability.
             _ = is_nullable;
-            if inner_is_primitive {
+            if expose_inner_as_buffer {
                 quote! {{
                     use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                     let #quoted_inner_data: Buffer<_> = #data_src
                         .iter()
                         #quoted_transparent_mapping
-                        .collect::<Vec<_>>()
-                        .into();
 
                     // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
                     let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
