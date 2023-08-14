@@ -815,6 +815,21 @@ fn quote_iterator_transparency(
     }
 }
 
+/// This generates code that deserializes a runtime Arrow payload into the specified `obj`, taking
+/// Arrow-transparency into account.
+///
+/// It contains additional performance optimizations based on the inner-type being non-nullable, allowing
+/// us to map directly to slices rather than iterating. The ability to use this optimization is determined
+/// by [`should_optimize_non_nullable_deserialize`].
+///
+/// There is a 1:1 relationship between `quote_arrow_deserializer_non_nullable` and `Loggable::try_from_arrow`:
+/// ```ignore
+/// fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
+///     Ok(#quoted_deserializer_)
+/// }
+/// ```
+///
+/// See [`quote_arrow_deserializer_non_nullable`] for additional information.
 pub fn quote_arrow_deserializer_non_nullable(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
@@ -869,6 +884,13 @@ pub fn quote_arrow_deserializer_non_nullable(
     }
 }
 
+/// This generates code that deserializes a runtime Arrow payload according to the specified `datatype`.
+///
+/// It contains additional performance optimizations based on the inner-type being non-nullable, allowing
+/// us to map directly to slices rather than iterating. The ability to use this optimization is determined
+/// by [`should_optimize_non_nullable_deserialize`].
+///
+/// See [`quote_arrow_field_deserializer`] for additional information.
 fn quote_arrow_field_deserializer_non_nullable(
     objects: &Objects,
     datatype: &DataType,
@@ -957,7 +979,17 @@ fn quote_arrow_field_deserializer_non_nullable(
     }
 }
 
-pub fn should_optimize_deserialize(obj: &Object, arrow_registry: &ArrowRegistry) -> bool {
+/// Whether or not this object allows for the non-nullable optimizations.
+///
+/// Nullabillity is kind of weird since it's technically a property of the field
+/// rather than the datatype. However, we know that Components can only be used
+/// by archetypes and as such should never be nullible.
+///
+/// This should always be checked before using [`quote_arrow_deserializer_non_nullable`].
+pub fn should_optimize_non_nullable_deserialize(
+    obj: &Object,
+    arrow_registry: &ArrowRegistry,
+) -> bool {
     let is_arrow_transparent = obj.datatype.is_none();
     if obj.kind == ObjectKind::Component && is_arrow_transparent {
         let typ = arrow_registry.get(&obj.fqname);
@@ -968,7 +1000,8 @@ pub fn should_optimize_deserialize(obj: &Object, arrow_registry: &ArrowRegistry)
     }
 }
 
-pub fn should_optimize_deserialize_datatype(typ: &DataType) -> bool {
+/// Whether or not this datatype allows for the non-nullable optimizations.
+fn should_optimize_deserialize_datatype(typ: &DataType) -> bool {
     match typ {
         DataType::Int8
         | DataType::Int16

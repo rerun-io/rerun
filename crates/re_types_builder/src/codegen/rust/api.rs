@@ -13,7 +13,7 @@ use crate::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
                 quote_arrow_deserializer, quote_arrow_deserializer_non_nullable,
-                should_optimize_deserialize,
+                should_optimize_non_nullable_deserialize,
             },
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components},
@@ -711,12 +711,8 @@ fn quote_trait_impls_from_obj(
 
             let datatype = arrow_registry.get(fqname);
 
-            // Nullabillity is kind of weird since it's technically a property of the field
-            // rather than the datatype. However, we know that Components can only be used
-            // by archetypes and as such should never be nullible.
-            // TODO(jleibs): we should always code-gen both version of this and dispatch to
-            // the right one based on the stored data instead.
-            let optimize_non_nullable = should_optimize_deserialize(obj, arrow_registry);
+            let optimize_non_nullable =
+                should_optimize_non_nullable_deserialize(obj, arrow_registry);
 
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
@@ -792,6 +788,15 @@ fn quote_trait_impls_from_obj(
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
                         use crate::{Loggable as _, ResultExt as _};
+
+                        // This code-path cannot have null fields. If it does have a validity mask
+                        // all bits must indicate valid data.
+                        if let Some(validity) = data.validity() {
+                            if validity.unset_bits() != 0 {
+                                return Err(crate::DeserializationError::missing_data());
+                            }
+                        }
+
                         Ok(#quoted_deserializer)
                     }
                 }

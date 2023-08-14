@@ -239,6 +239,11 @@ impl crate::Loggable for Vector3D {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        if let Some(validity) = data.validity() {
+            if validity.unset_bits() != 0 {
+                return Err(crate::DeserializationError::missing_data());
+            }
+        }
         Ok({
             let data = data
                 .as_any()

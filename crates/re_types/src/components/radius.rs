@@ -127,6 +127,11 @@ impl crate::Loggable for Radius {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        if let Some(validity) = data.validity() {
+            if validity.unset_bits() != 0 {
+                return Err(crate::DeserializationError::missing_data());
+            }
+        }
         Ok(data
             .as_any()
             .downcast_ref::<Float32Array>()
