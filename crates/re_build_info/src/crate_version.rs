@@ -75,7 +75,11 @@ impl Meta {
     }
 }
 
-const fn __slice(v: &[u8], start: Option<usize>, end: Option<usize>) -> &[u8] {
+/// Helper function to slice slices in a `const` context.
+/// Instead of using this directly, use the `slice` macro.
+///
+/// This is equivalent to `v[start..end]`.
+const fn const_u8_slice_util(v: &[u8], start: Option<usize>, end: Option<usize>) -> &[u8] {
     let (start, end) = match (start, end) {
         (Some(start), Some(end)) => (start, end),
         (Some(start), None) => (start, v.len()),
@@ -111,13 +115,13 @@ const fn __slice(v: &[u8], start: Option<usize>, end: Option<usize>) -> &[u8] {
 /// but works in a `const` context.
 macro_rules! slice {
     ($s:expr, .., $end:expr) => {
-        __slice($s, None, Some($end))
+        const_u8_slice_util($s, None, Some($end))
     };
     ($s:expr, $start:expr, ..) => {
-        __slice($s, Some($start), None)
+        const_u8_slice_util($s, Some($start), None)
     };
     ($s:expr, $start:expr, $end:expr) => {
-        __slice($s, Some($start), Some($end))
+        const_u8_slice_util($s, Some($start), Some($end))
     };
 }
 
