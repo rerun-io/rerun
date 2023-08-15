@@ -227,6 +227,8 @@ def bump_dependency_versions(
     manifest: dict[str, Any],
     crates: dict[str, Crate],
 ) -> None:
+    # ensure `+metadata` is not included in dependency versions
+    new_version = new_version.replace(build=None)
     for dependency, kind in crate_deps(manifest):
         if dependency not in crates:
             continue
