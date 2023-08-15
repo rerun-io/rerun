@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-import logging
 import traceback
 import warnings
 from typing import Any, Callable, TypeVar, cast
@@ -13,8 +12,11 @@ from rerun.recording_stream import RecordingStream
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 
-# Default formatting for the `warnings` package is... non optimal.
-warnings.formatwarning = lambda msg, *args, **kwargs: f"WARNING:rerun:{msg}\n"
+
+class RerunWarning(Warning):
+    """A custom warning class that we use to identify warnings that are emitted by the Rerun SDK itself."""
+
+    pass
 
 
 def log_decorator(func: _TFunc) -> _TFunc:
@@ -35,7 +37,9 @@ def log_decorator(func: _TFunc) -> _TFunc:
         if not bindings.is_enabled(recording):
             # NOTE: use `warnings` which handles runtime deduplication.
             warnings.warn(
-                f"Rerun is disabled - {func.__name__}() call ignored. You must call rerun.init before using log APIs."
+                f"Rerun is disabled - {func.__name__}() call ignored. You must call rerun.init before using log APIs.",
+                category=RerunWarning,
+                stacklevel=2,
             )
             return
 
@@ -48,6 +52,6 @@ def log_decorator(func: _TFunc) -> _TFunc:
             except Exception as e:
                 warning = "".join(traceback.format_exception(e.__class__, e, e.__traceback__))
                 log_text_entry_internal("rerun", warning, level=LogLevel.WARN, recording=recording)
-                logging.warning(f"Ignoring rerun log call: {warning}")
+                warnings.warn(f"Ignoring rerun log call: {warning}", category=RerunWarning, stacklevel=2)
 
     return cast(_TFunc, wrapper)
