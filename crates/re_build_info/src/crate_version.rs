@@ -202,7 +202,12 @@ impl CrateVersion {
     ///
     /// See [`CrateVersion`] for more information.
     pub const fn parse(version_string: &str) -> Self {
-        const_panic::unwrap_ok!(Self::try_parse(version_string))
+        match Self::try_parse(version_string) {
+            Ok(version) => version,
+            Err(e) => {
+                const_panic::concat_panic!("invalid version string `", version_string, "`: ", e);
+            }
+        }
     }
 
     /// Parse a version string according to our subset of semver.
