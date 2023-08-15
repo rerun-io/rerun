@@ -155,15 +155,20 @@ impl CrateVersion {
         }
     }
 
-    /// Whether or not this build is a prerelease (a version ending with +commit suffix)
+    /// Whether or not this build has a `+dev` suffix.
+    ///
+    /// This is used to identify builds which are not explicit releases,
+    /// such as local builds and CI builds for every commit.
     pub fn is_dev(&self) -> bool {
         matches!(self.meta, Some(Meta::DevAlpha(..)))
     }
 
+    /// Whether or not this is an alpha version (`-alpha.N` or `-alpha.N+dev`).
     pub fn is_alpha(&self) -> bool {
         matches!(self.meta, Some(Meta::Alpha(..) | Meta::DevAlpha(..)))
     }
 
+    /// Whether or not this is a release candidate (`-rc.N`).
     pub fn is_rc(&self) -> bool {
         matches!(self.meta, Some(Meta::Rc(..)))
     }
@@ -188,9 +193,21 @@ impl CrateVersion {
         ]
     }
 
+    #[allow(clippy::unnested_or_patterns)]
     pub fn is_compatible_with(self, other: CrateVersion) -> bool {
-        if self.meta != other.meta {
-            return false; // Alphas can contain breaking changes
+        match (self.meta, other.meta) {
+            // release candidates are always compatible with each other
+            // and their finalized version:
+            //   1.0.0-rc.1 == 1.0.0-rc.2 == 1.0.0
+            (Some(Meta::Rc(..)), Some(Meta::Rc(..)))
+            | (Some(Meta::Rc(..)), None)
+            | (None, Some(Meta::Rc(..))) => {}
+            (this, other) => {
+                if this != other {
+                    // Alphas can contain breaking changes
+                    return false;
+                }
+            }
         }
 
         if self.major == 0 {
@@ -486,8 +503,12 @@ fn test_compatibility() {
         "Different alpha builds are always incompatible"
     );
     assert!(
-        !are_compatible("0.2.0-rc.0", "0.2.0-rc.1"),
-        "Different rc builds are always incompatible"
+        are_compatible("0.2.0-rc.0", "0.2.0-rc.1"),
+        "Different rc builds are always compatible"
+    );
+    assert!(
+        are_compatible("0.2.0-rc.0", "0.2.0"),
+        "rc build is compatible with the finalized version"
     );
 }
 
