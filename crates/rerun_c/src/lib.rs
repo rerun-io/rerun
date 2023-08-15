@@ -291,9 +291,9 @@ pub extern "C" fn rr_recording_stream_save(
             CErrorCode::RecordingStreamSaveFailure,
             &format!("Failed to save recording stream to {path:?}: {err}"),
         );
+    } else {
+        CError::set_ok(error);
     }
-
-    CError::set_ok(error);
 }
 
 #[allow(unsafe_code)]

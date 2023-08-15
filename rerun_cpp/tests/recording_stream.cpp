@@ -179,8 +179,9 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
 
     std::string test_rrd0 = std::string(test_path) + "test-file-0.rrd";
     std::string test_rrd1 = std::string(test_path) + "test-file-1.rrd";
-    std::remove(test_rrd0.c_str());
-    std::remove(test_rrd1.c_str());
+
+    fs::remove(test_rrd0.c_str());
+    fs::remove(test_rrd1.c_str());
 
     GIVEN("a new RecordingStream") {
         auto stream0 = std::make_unique<rr::RecordingStream>("test");
@@ -190,12 +191,16 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                 CHECK(stream0->save(nullptr).code == rr::StatusCode::UnexpectedNullArgument);
             }
         }
-        AND_GIVEN("an invalid path for the save path") {
-            THEN("then the save call fails") {
-                CHECK(stream0->save("/../").code == rr::StatusCode::RecordingStreamSaveFailure);
-            }
-        }
         AND_GIVEN("valid save path " << test_rrd0) {
+            AND_GIVEN("a directory already existing at this path") {
+                fs::create_directory(test_rrd0.c_str());
+                THEN("then the save call fails") {
+                    CHECK(
+                        stream0->save(test_rrd0.c_str()).code ==
+                        rr::StatusCode::RecordingStreamSaveFailure
+                    );
+                }
+            }
             THEN("save call returns no error") {
                 REQUIRE(stream0->save(test_rrd0.c_str()));
 
