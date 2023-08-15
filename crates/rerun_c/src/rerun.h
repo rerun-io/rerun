@@ -19,12 +19,12 @@ extern "C" {
 /// Special value for `rr_recording_stream` methods to indicate the most appropriate
 /// globally available recording stream for recordings.
 /// (i.e. thread-local first, then global scope)
-#define RERUN_REC_STREAM_CURRENT_RECORDING 0xFFFFFFFF
+#define RERUN_REC_STREAM_CURRENT_RECORDING ((rr_recording_stream)0xFFFFFFFF)
 
 /// Special value for `rr_recording_stream` methods to indicate the most appropriate
 /// globally available recording stream for blueprints.
 /// (i.e. thread-local first, then global scope)
-#define RERUN_REC_STREAM_CURRENT_BLUEPRINT 0xFFFFFFFE
+#define RERUN_REC_STREAM_CURRENT_BLUEPRINT ((rr_recording_stream)0xFFFFFFFE)
 
 /// A unique handle for a recording stream.
 /// A recording stream handles everything related to logging data into Rerun.
@@ -48,7 +48,7 @@ extern "C" {
 ///
 /// TODO(andreas): The only way of having two instances of a `RecordingStream` is currently to
 /// set it as a the global.
-typedef int32_t rr_recording_stream;
+typedef uint32_t rr_recording_stream;
 
 struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
@@ -64,7 +64,7 @@ struct rr_data_cell {
 
     /// The number of bytes in the `bytes` field.
     /// Must be a multiple of 8.
-    const uint64_t num_bytes;
+    uint64_t num_bytes;
 
     /// Data in the Arrow IPC encapsulated message format.
     ///

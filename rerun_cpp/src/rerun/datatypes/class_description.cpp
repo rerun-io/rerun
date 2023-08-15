@@ -73,8 +73,8 @@ namespace rerun {
 
             {
                 auto field_builder = static_cast<arrow::StructBuilder *>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(rerun::datatypes::AnnotationInfo::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].info,
@@ -86,10 +86,10 @@ namespace rerun {
                 auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(1));
                 auto value_builder =
                     static_cast<arrow::StructBuilder *>(field_builder->value_builder());
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 2));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     if (element.keypoint_annotations.data()) {
@@ -107,10 +107,10 @@ namespace rerun {
                 auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(2));
                 auto value_builder =
                     static_cast<arrow::StructBuilder *>(field_builder->value_builder());
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 2));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     if (element.keypoint_connections.data()) {
@@ -124,7 +124,7 @@ namespace rerun {
                     }
                 }
             }
-            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
             return arrow::Status::OK();
         }

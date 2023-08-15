@@ -41,12 +41,12 @@ namespace rerun {
 
             {
                 auto field_builder = static_cast<arrow::FloatBuilder *>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].value));
                 }
             }
-            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
             return arrow::Status::OK();
         }

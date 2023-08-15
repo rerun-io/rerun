@@ -86,8 +86,8 @@ namespace rerun {
 
             {
                 auto field_builder = static_cast<arrow::FloatBuilder *>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.single_float_optional.has_value()) {
                         ARROW_RETURN_NOT_OK(
@@ -100,8 +100,8 @@ namespace rerun {
             }
             {
                 auto field_builder = static_cast<arrow::StringBuilder *>(builder->field_builder(1));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(
                         field_builder->Append(elements[elem_idx].single_string_required)
                     );
@@ -109,8 +109,8 @@ namespace rerun {
             }
             {
                 auto field_builder = static_cast<arrow::StringBuilder *>(builder->field_builder(2));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.single_string_optional.has_value()) {
                         ARROW_RETURN_NOT_OK(
@@ -125,16 +125,16 @@ namespace rerun {
                 auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(3));
                 auto value_builder =
                     static_cast<arrow::FloatBuilder *>(field_builder->value_builder());
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 1));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 1)));
 
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.many_floats_optional.has_value()) {
                         ARROW_RETURN_NOT_OK(field_builder->Append());
                         ARROW_RETURN_NOT_OK(value_builder->AppendValues(
                             element.many_floats_optional.value().data(),
-                            element.many_floats_optional.value().size(),
+                            static_cast<int64_t>(element.many_floats_optional.value().size()),
                             nullptr
                         ));
                     } else {
@@ -146,13 +146,13 @@ namespace rerun {
                 auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(4));
                 auto value_builder =
                     static_cast<arrow::StringBuilder *>(field_builder->value_builder());
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 2));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
-                    for (auto item_idx = 0; item_idx < element.many_strings_required.size();
+                    for (size_t item_idx = 0; item_idx < element.many_strings_required.size();
                          item_idx += 1) {
                         ARROW_RETURN_NOT_OK(
                             value_builder->Append(element.many_strings_required[item_idx])
@@ -164,14 +164,14 @@ namespace rerun {
                 auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(5));
                 auto value_builder =
                     static_cast<arrow::StringBuilder *>(field_builder->value_builder());
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 1));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 1)));
 
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.many_strings_optional.has_value()) {
                         ARROW_RETURN_NOT_OK(field_builder->Append());
-                        for (auto item_idx = 0;
+                        for (size_t item_idx = 0;
                              item_idx < element.many_strings_optional.value().size();
                              item_idx += 1) {
                             ARROW_RETURN_NOT_OK(value_builder->Append(
@@ -185,15 +185,15 @@ namespace rerun {
             }
             {
                 auto field_builder = static_cast<arrow::FloatBuilder *>(builder->field_builder(6));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].flattened_scalar));
                 }
             }
             {
                 auto field_builder = static_cast<arrow::StructBuilder *>(builder->field_builder(7));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(rerun::datatypes::FlattenedScalar::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].almost_flattened_scalar,
@@ -204,8 +204,8 @@ namespace rerun {
             {
                 auto field_builder =
                     static_cast<arrow::BooleanBuilder *>(builder->field_builder(8));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.from_parent.has_value()) {
                         ARROW_RETURN_NOT_OK(field_builder->Append(element.from_parent.value()));
@@ -214,7 +214,7 @@ namespace rerun {
                     }
                 }
             }
-            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
             return arrow::Status::OK();
         }

@@ -69,10 +69,10 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
-            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto &union_instance = elements[elem_idx];
-                ARROW_RETURN_NOT_OK(builder->Append(static_cast<uint8_t>(union_instance._tag)));
+                ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance._tag)));
 
                 auto variant_index = static_cast<int>(union_instance._tag);
                 auto variant_builder_untyped = builder->child_builder(variant_index).get();
@@ -102,6 +102,7 @@ namespace rerun {
                     case detail::AffixFuzzer3Tag::craziness: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
+                        (void)variant_builder;
                         return arrow::Status::NotImplemented(
                             "TODO(andreas): list types in unions are not yet supported"
                         );
@@ -110,6 +111,7 @@ namespace rerun {
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
                         auto variant_builder =
                             static_cast<arrow::FixedSizeListBuilder *>(variant_builder_untyped);
+                        (void)variant_builder;
                         return arrow::Status::NotImplemented(
                             "TODO(andreas): list types in unions are not yet supported"
                         );

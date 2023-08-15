@@ -36,8 +36,8 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
-            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.single_string_optional.has_value()) {
                     ARROW_RETURN_NOT_OK(builder->Append(element.single_string_optional.value()));
