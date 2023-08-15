@@ -176,30 +176,6 @@ jobs:
           url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
           pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
 
-      - name: Patch Cargo.toml for pre-release
-        if: ${{ inputs.RELEASE_VERSION == 'prerelease' }}
-        # After patching the pre-release version, run cargo update.
-        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
-        run: |
-          python3 scripts/ci/version_util.py --patch_prerelease
-          cargo update -w
-
-      - name: Store the expected version
-        # Find the current cargo version and store it in the output: `expected_version`
-        shell: bash
-        id: expected_version
-        run: |
-          echo "EXPECTED_VERSION=$(python3 scripts/ci/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
-
-      - name: Check the expected version
-        if: ${{ inputs.RELEASE_VERSION != 'prerelease' }}
-        shell: bash
-        run: |
-          if [ "${{steps.expected_version.outputs.EXPECTED_VERSION}}" != "${{inputs.RELEASE_VERSION}}" ]; then
-            echo "Error: EXPECTED_VERSION (${{steps.expected_version.outputs.EXPECTED_VERSION}}) does not match RELEASE_VERSION (${{inputs.RELEASE_VERSION}})"
-            exit 1
-          fi
-
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
         with:
@@ -297,3 +273,4 @@ jobs:
         with:
           name: ${{ inputs.RRD_ARTIFACT_NAME }}
           path: rrd
+
