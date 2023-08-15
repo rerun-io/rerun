@@ -266,8 +266,13 @@ fn validity_size(validity: Option<&Bitmap>) -> usize {
 ///
 /// FFI buffers are included in this estimation.
 fn estimated_bytes_size(array: &dyn Array) -> usize {
+    // NOTE: `.len()` is the number of elements in an arrow2 buffer
+    // no matter WHAT the documentation says.
+    // See https://github.com/jorgecarleitao/arrow2/issues/1430
+
     #[allow(clippy::enum_glob_use)]
     use PhysicalType::*;
+
     match array.data_type().to_physical_type() {
         Null => 0,
         Boolean => {
@@ -326,14 +331,9 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
         Union => {
             let array = array.as_any().downcast_ref::<UnionArray>().unwrap();
 
-            let types = array.types().len() * std::mem::size_of::<i8>();
-            let offsets = array
-                .offsets()
-                .as_ref()
-                .map(|x| x.len() * std::mem::size_of::<i32>())
-                .unwrap_or_default();
+            let types_size = array.types().len() * std::mem::size_of::<i8>();
 
-            let fields = if let Some(offsets) = array.offsets() {
+            if let Some(offsets) = array.offsets() {
                 // https://arrow.apache.org/docs/format/Columnar.html#dense-union:
                 //
                 // Dense union represents a mixed-type array with 5 bytes of overhead for each
@@ -383,7 +383,10 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                         );
                     }
                 }
-                fields_size
+
+                let offsets_size = offsets.len() * std::mem::size_of::<i32>();
+
+                types_size + offsets_size + fields_size
             } else {
                 // https://arrow.apache.org/docs/format/Columnar.html#sparse-union:
                 //
@@ -398,14 +401,14 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 // - Equal-length arrays can be interpreted as a union by only defining the types
                 //   array.
 
-                array
+                let num_elems = array.types().len();
+                let fields_size = array
                     .fields()
                     .iter()
-                    .map(|x| estimated_bytes_size(x.sliced(0, array.len()).as_ref()))
-                    .sum::<usize>()
-            };
-
-            types + offsets + fields
+                    .map(|x| estimated_bytes_size(x.sliced(0, num_elems).as_ref()))
+                    .sum::<usize>();
+                types_size + fields_size
+            }
         }
         Dictionary(key_type) => match_integer_type!(key_type, |$T| {
             let array = array
