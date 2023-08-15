@@ -177,8 +177,12 @@ impl SpatialSpaceViewState {
                     {
                         self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
                     }
-                    ui.checkbox(&mut self.state_3d.spin, "Spin")
-                        .on_hover_text("Spin camera around the orbit center.");
+
+                    let mut spin = self.state_3d.spin();
+                    if ui.checkbox(&mut spin, "Spin")
+                        .on_hover_text("Spin camera around the orbit center").changed() {
+                        self.state_3d.set_spin(spin);
+                    }
                 }
             });
             ui.end_row();
