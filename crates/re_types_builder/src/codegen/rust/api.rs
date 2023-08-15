@@ -711,7 +711,7 @@ fn quote_trait_impls_from_obj(
 
             let datatype = arrow_registry.get(fqname);
 
-            let optimize_non_nullable =
+            let optimize_for_buffer_slice =
                 should_optimize_buffer_slice_deserialize(obj, arrow_registry);
 
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
@@ -744,13 +744,13 @@ fn quote_trait_impls_from_obj(
                 }
             };
 
-            let quoted_item = if optimize_non_nullable {
+            let quoted_item = if optimize_for_buffer_slice {
                 quote!(Self)
             } else {
                 quote!(Option<Self>)
             };
 
-            let quoted_item_converters = if optimize_non_nullable {
+            let quoted_item_converters = if optimize_for_buffer_slice {
                 quote! {
                     #[inline]
                     fn convert_item_to_self(item: Self::Item<'_>) -> Self {
@@ -771,13 +771,13 @@ fn quote_trait_impls_from_obj(
                 }
             };
 
-            let quoted_iter_from_arrow_impl = if optimize_non_nullable {
+            let quoted_iter_from_arrow_impl = if optimize_for_buffer_slice {
                 quote!(try_from_arrow)
             } else {
                 quote!(try_from_arrow_opt)
             };
 
-            let quoted_try_from_arrow = if optimize_non_nullable {
+            let quoted_try_from_arrow = if optimize_for_buffer_slice {
                 let quoted_deserializer =
                     quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
                 quote! {

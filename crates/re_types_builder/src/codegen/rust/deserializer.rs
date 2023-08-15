@@ -833,14 +833,14 @@ fn quote_iterator_transparency(
 /// allowing us to map directly to slices rather than iterating. The ability to use this optimization is
 /// determined by [`should_optimize_buffer_slice_deserialize`].
 ///
-/// There is a 1:1 relationship between `quote_arrow_deserializer_non_nullable` and `Loggable::try_from_arrow`:
+/// There is a 1:1 relationship between `quote_arrow_deserializer_buffer_slice` and `Loggable::try_from_arrow`:
 /// ```ignore
 /// fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
 ///     Ok(#quoted_deserializer_)
 /// }
 /// ```
 ///
-/// See [`quote_arrow_deserializer_non_nullable`] for additional information.
+/// See [`quote_arrow_deserializer_buffer_slice`] for additional information.
 pub fn quote_arrow_deserializer_buffer_slice(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
@@ -999,7 +999,7 @@ fn quote_arrow_field_deserializer_buffer_slice(
 /// rather than the datatype. However, we know that Components can only be used
 /// by archetypes and as such should never be nullible.
 ///
-/// This should always be checked before using [`quote_arrow_deserializer_non_nullable`].
+/// This should always be checked before using [`quote_arrow_deserializer_buffer_slice`].
 pub fn should_optimize_buffer_slice_deserialize(
     obj: &Object,
     arrow_registry: &ArrowRegistry,
