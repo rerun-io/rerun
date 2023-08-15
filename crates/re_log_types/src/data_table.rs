@@ -1231,10 +1231,16 @@ impl DataTable {
                         let c1_bytes = cell_to_bytes(c1.clone());
                         let c2_bytes = cell_to_bytes(c1.clone());
 
+                        size_mismatches.push(format!(
+                            "Cell size is {} vs {} bytes",
+                            c1_bytes.len(),
+                            c2_bytes.len()
+                        ));
+
                         size_mismatches.push(
                             similar_asserts::SimpleDiff::from_str(
-                                &format!("{c1_bytes:?}"),
-                                &format!("{c2_bytes:?}"),
+                                &format!("{c1_bytes:#?}"),
+                                &format!("{c2_bytes:#?}"),
                                 "cell1_ipc",
                                 "cell2_ipc",
                             )
