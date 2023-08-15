@@ -1,8 +1,3 @@
-/// We disallow version numbers larger than this in order to keep a few bits for future use.
-///
-/// If you are running up against this limit then feel free to bump it!
-const MAX_NUM: u8 = 31;
-
 mod meta {
     pub const TAG_MASK: u8 = 0b11000000;
     pub const VALUE_MASK: u8 = 0b00011111;
@@ -148,10 +143,6 @@ const fn split_at(s: &[u8], i: usize) -> (&[u8], &[u8]) {
 
 impl CrateVersion {
     pub const fn new(major: u8, minor: u8, patch: u8) -> Self {
-        assert!(
-            major <= MAX_NUM && minor <= MAX_NUM && patch <= MAX_NUM,
-            "Too large number in version string"
-        );
         Self {
             major,
             minor,
@@ -207,8 +198,17 @@ impl CrateVersion {
         }
     }
 
-    /// Parse a semver version string, ignoring any trailing `+metadata`.
+    /// Parse a version string according to our subset of semver.
+    ///
+    /// See [`CrateVersion`] for more information.
     pub const fn parse(version_string: &str) -> Self {
+        const_panic::unwrap_ok!(Self::try_parse(version_string))
+    }
+
+    /// Parse a version string according to our subset of semver.
+    ///
+    /// See [`CrateVersion`] for more information.
+    pub const fn try_parse(version_string: &str) -> Result<Self, &'static str> {
         // Note that this is a const function, which means we are extremely limited in what we can do!
 
         const fn maybe(s: &[u8], c: u8) -> (bool, &[u8]) {
@@ -232,62 +232,89 @@ impl CrateVersion {
             }
         }
 
-        const fn eat(s: &[u8], c: u8) -> &[u8] {
-            assert!(s[0] == c);
-            slice!(s, 1, ..)
+        macro_rules! eat {
+            ($s:ident, $c:expr, $msg:literal) => {{
+                if $s.is_empty() || $s[0] != $c {
+                    return Err($msg);
+                }
+                slice!($s, 1, ..)
+            }};
         }
 
-        const fn eat_token<'a>(s: &'a [u8], token: &[u8]) -> &'a [u8] {
-            let (left, right) = split_at(s, token.len());
-            assert!(equals(left, token));
-            right
+        macro_rules! eat_token {
+            ($s:ident, $token:expr, $msg:literal) => {{
+                let token = $token;
+                if token.len() > $s.len() {
+                    return Err($msg);
+                }
+                let (left, right) = split_at($s, token.len());
+                if !equals(left, token) {
+                    return Err($msg);
+                }
+                right
+            }};
         }
 
-        const fn eat_u8(s: &[u8]) -> (u8, &[u8]) {
-            assert!(!s.is_empty(), "expected digit");
+        macro_rules! eat_u8 {
+            ($s:ident, $msg:literal) => {{
+                if $s.is_empty() {
+                    return Err($msg);
+                }
 
-            if s.len() > 1 && s[1].is_ascii_digit() {
-                assert!(s[0] != b'0', "multi-digit number cannot start with zero");
-            }
+                if $s.len() > 1 && $s[1].is_ascii_digit() {
+                    if $s[0] == b'0' {
+                        return Err("multi-digit number cannot start with zero");
+                    }
+                }
 
-            let mut num = 0u64;
-            let mut i = 0;
-            while i < s.len() && s[i].is_ascii_digit() {
-                let digit = (s[i] - b'0') as u64;
-                num = num * 10 + digit;
-                i += 1;
-            }
+                let mut num = 0u64;
+                let mut i = 0;
+                while i < $s.len() && $s[i].is_ascii_digit() {
+                    let digit = ($s[i] - b'0') as u64;
+                    num = num * 10 + digit;
+                    i += 1;
+                }
 
-            assert!(num <= u8::MAX as u64);
-            let num = num as u8;
-            let remainder = slice!(s, i, ..);
+                if num > u8::MAX as u64 {
+                    return Err("digit cannot be larger than 255");
+                }
+                let num = num as u8;
+                let remainder = slice!($s, i, ..);
 
-            (num, remainder)
+                (num, remainder)
+            }};
         }
 
         let mut s = version_string.as_bytes();
         let (major, minor, patch);
         let mut meta = None;
 
-        (major, s) = eat_u8(s);
-        s = eat(s, b'.');
-        (minor, s) = eat_u8(s);
-        s = eat(s, b'.');
-        (patch, s) = eat_u8(s);
+        (major, s) = eat_u8!(s, "expected major version number");
+        s = eat!(s, b'.', "expected `.` after major version number");
+        (minor, s) = eat_u8!(s, "expected minor version number");
+        s = eat!(s, b'.', "expected `.` after minor version number");
+        (patch, s) = eat_u8!(s, "expected patch version number");
+
         if let (true, remainder) = maybe(s, b'-') {
             s = remainder;
 
             let build;
             if let (true, remainder) = maybe_token(s, b"alpha") {
-                s = eat(remainder, b'.');
-                (build, s) = eat_u8(s);
+                s = eat!(remainder, b'.', "expected `.` after `-alpha`");
+                (build, s) = eat_u8!(s, "expected digit after `-alpha.`");
+                if build > 31 {
+                    return Err("`-alpha` build number is larger than 31");
+                }
                 meta = Some(Meta::Alpha(build));
             } else if let (true, remainder) = maybe_token(s, b"rc") {
-                s = eat(remainder, b'.');
-                (build, s) = eat_u8(s);
+                s = eat!(remainder, b'.', "expected `.` after `-rc`");
+                (build, s) = eat_u8!(s, "expected digit after `-rc.`");
+                if build > 31 {
+                    return Err("`-rc` build number is larger than 31");
+                }
                 meta = Some(Meta::Rc(build));
             } else {
-                panic!("Expected `alpha` or `rc` after `-`");
+                return Err("expected `alpha` or `rc` after `-`");
             }
         }
 
@@ -295,22 +322,24 @@ impl CrateVersion {
             s = remainder;
             match meta {
                 Some(Meta::Alpha(build)) => {
-                    s = eat_token(s, b"dev");
+                    s = eat_token!(s, b"dev", "expected `dev` after `+`");
                     meta = Some(Meta::DevAlpha(build));
                 }
-                Some(..) => panic!("Unexpected `-rc` with `+dev`"),
-                None => panic!("Unexpected `+dev` without `-alpha`"),
+                Some(..) => return Err("unexpected `-rc` with `+dev`"),
+                None => return Err("unexpected `+dev` without `-alpha`"),
             }
         };
 
-        assert!(s.is_empty());
+        if !s.is_empty() {
+            return Err("expected end of string");
+        }
 
-        Self {
+        Ok(Self {
             major,
             minor,
             patch,
             meta,
-        }
+        })
     }
 }
 
@@ -343,12 +372,18 @@ impl std::fmt::Display for CrateVersion {
 
 #[test]
 fn test_parse_version() {
-    let parse = CrateVersion::parse;
-    assert_eq!(parse("0.2.0"), CrateVersion::new(0, 2, 0));
-    assert_eq!(parse("1.2.3"), CrateVersion::new(1, 2, 3));
-    assert_eq!(parse("12.23.24"), CrateVersion::new(12, 23, 24));
-    assert_eq!(
-        parse("12.23.24-rc.31"),
+    macro_rules! assert_parse_ok {
+        ($input:literal, $expected:expr) => {
+            assert_eq!(CrateVersion::try_parse($input), Ok($expected))
+        };
+    }
+
+    assert_parse_ok!("0.2.0", CrateVersion::new(0, 2, 0));
+    assert_parse_ok!("0.2.0", CrateVersion::new(0, 2, 0));
+    assert_parse_ok!("1.2.3", CrateVersion::new(1, 2, 3));
+    assert_parse_ok!("12.23.24", CrateVersion::new(12, 23, 24));
+    assert_parse_ok!(
+        "12.23.24-rc.31",
         CrateVersion {
             major: 12,
             minor: 23,
@@ -356,8 +391,8 @@ fn test_parse_version() {
             meta: Some(Meta::Rc(31)),
         }
     );
-    assert_eq!(
-        parse("12.23.24-alpha.31"),
+    assert_parse_ok!(
+        "12.23.24-alpha.31",
         CrateVersion {
             major: 12,
             minor: 23,
@@ -365,8 +400,8 @@ fn test_parse_version() {
             meta: Some(Meta::Alpha(31)),
         }
     );
-    assert_eq!(
-        parse("12.23.24-alpha.31+dev"),
+    assert_parse_ok!(
+        "12.23.24-alpha.31+dev",
         CrateVersion {
             major: 12,
             minor: 23,
@@ -378,7 +413,6 @@ fn test_parse_version() {
 
 #[test]
 fn test_format_parse_roundtrip() {
-    let parse = CrateVersion::parse;
     for version in [
         "0.2.0",
         "1.2.3",
@@ -387,13 +421,12 @@ fn test_format_parse_roundtrip() {
         "12.23.24-alpha.31",
         "12.23.24-alpha.31+dev",
     ] {
-        assert_eq!(parse(version).to_string(), version);
+        assert_eq!(CrateVersion::parse(version).to_string(), version);
     }
 }
 
 #[test]
 fn test_format_parse_roundtrip_bytes() {
-    let parse = CrateVersion::parse;
     for version in [
         "0.2.0",
         "1.2.3",
@@ -402,7 +435,7 @@ fn test_format_parse_roundtrip_bytes() {
         "12.23.24-alpha.31",
         "12.23.24-alpha.31+dev",
     ] {
-        let version = parse(version);
+        let version = CrateVersion::parse(version);
         let bytes = version.to_bytes();
         assert_eq!(CrateVersion::from_bytes(bytes), version);
     }
@@ -450,37 +483,52 @@ fn test_compatibility() {
 }
 
 #[test]
-#[should_panic]
-fn test_bad_parse_missing_minor_patch() {
-    CrateVersion::parse("10");
-}
+fn test_bad_parse() {
+    macro_rules! assert_parse_err {
+        ($input:literal, $expected:literal) => {
+            assert_eq!(CrateVersion::try_parse($input), Err($expected))
+        };
+    }
 
-#[test]
-#[should_panic]
-fn test_bad_parse_missing_patch() {
-    CrateVersion::parse("10.0");
-}
-
-#[test]
-#[should_panic]
-fn test_bad_parse_incomplete_meta() {
-    CrateVersion::parse("10.0.1-");
-}
-
-#[test]
-#[should_panic]
-fn test_bad_parse_invalid_meta() {
-    CrateVersion::parse("10.0.1-alpha0");
-}
-
-#[test]
-#[should_panic]
-fn test_bad_parse_incomplete_dev() {
-    CrateVersion::parse("10.0.1-alpha.0+");
-}
-
-#[test]
-#[should_panic]
-fn test_bad_parse_unexpected_token() {
-    CrateVersion::parse("10.x.1-alpha.0-");
+    assert_parse_err!("10", "expected `.` after major version number");
+    assert_parse_err!("10.", "expected minor version number");
+    assert_parse_err!("10.0", "expected `.` after minor version number");
+    assert_parse_err!("10.0.", "expected patch version number");
+    assert_parse_err!("10.0.2-", "expected `alpha` or `rc` after `-`");
+    assert_parse_err!("10.0.2-alpha", "expected `.` after `-alpha`");
+    assert_parse_err!("10.0.2-alpha.", "expected digit after `-alpha.`");
+    assert_parse_err!(
+        "10.0.2-alpha.255",
+        "`-alpha` build number is larger than 31"
+    );
+    assert_parse_err!("10.0.2-rc", "expected `.` after `-rc`");
+    assert_parse_err!("10.0.2-rc.", "expected digit after `-rc.`");
+    assert_parse_err!("10.0.2-rc.255", "`-rc` build number is larger than 31");
+    assert_parse_err!("10.0.2-alpha.1+", "expected `dev` after `+`");
+    assert_parse_err!("10.0.2-rc.1+dev", "unexpected `-rc` with `+dev`");
+    assert_parse_err!("10.0.2+dev", "unexpected `+dev` without `-alpha`");
+    assert_parse_err!(
+        "10.0.2-alpha.1+dev extra_characters",
+        "expected end of string"
+    );
+    assert_parse_err!("256.0.2-alpha.1+dev", "digit cannot be larger than 255");
+    assert_parse_err!("10.256.2-alpha.1+dev", "digit cannot be larger than 255");
+    assert_parse_err!("10.0.256-alpha.1+dev", "digit cannot be larger than 255");
+    assert_parse_err!("10.0.2-alpha.256+dev", "digit cannot be larger than 255");
+    assert_parse_err!(
+        "01.0.2-alpha.256+dev",
+        "multi-digit number cannot start with zero"
+    );
+    assert_parse_err!(
+        "10.01.2-alpha.256+dev",
+        "multi-digit number cannot start with zero"
+    );
+    assert_parse_err!(
+        "10.0.01-alpha.256+dev",
+        "multi-digit number cannot start with zero"
+    );
+    assert_parse_err!(
+        "10.0.2-alpha.01+dev",
+        "multi-digit number cannot start with zero"
+    );
 }

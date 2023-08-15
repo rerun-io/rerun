@@ -14,3 +14,6 @@ version.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
+
+[dependencies]
+const_panic.workspace = true
