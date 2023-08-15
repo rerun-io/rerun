@@ -7,10 +7,11 @@ use re_ui::{ReUi, UICommandSender};
 const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 400.0;
 
-const PYTHON_QUICKSTART: &'static str = "https://www.rerun.io/docs/getting-started/python";
-const CPP_QUICKSTART: &'static str = "https://www.rerun.io/docs/getting-started/cpp";
-const RUST_QUICKSTART: &'static str = "https://www.rerun.io/docs/getting-started/rust";
+const PYTHON_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/python";
+const CPP_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/cpp";
+const RUST_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/rust";
 
+//TODO(ab): get rid of that unless we really need state here
 pub struct WaitScreen {}
 
 impl WaitScreen {
@@ -18,6 +19,7 @@ impl WaitScreen {
         Self {}
     }
 
+    #[allow(clippy::unused_self)]
     pub fn show(
         &self,
         re_ui: &re_ui::ReUi,
@@ -56,8 +58,7 @@ impl WaitScreen {
     ) {
         let column_spacing = 15.0;
         let column_width = ((ui.available_width() - 2. * column_spacing) / 3.0)
-            .min(MAX_COLUMN_WIDTH)
-            .max(MIN_COLUMN_WIDTH);
+            .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
 
         let grid = egui::Grid::new("onboarding_grid")
             .spacing(egui::Vec2::splat(column_spacing))
@@ -136,7 +137,7 @@ impl WaitScreen {
                 if large_text_buttons(ui, "Open file...").clicked() {
                     command_sender.send_ui(re_ui::UICommand::Open);
                 }
-                button_centered_label(ui, "Or drop a file anywhere!")
+                button_centered_label(ui, "Or drop a file anywhere!");
             });
 
             ui.horizontal(|ui| {
