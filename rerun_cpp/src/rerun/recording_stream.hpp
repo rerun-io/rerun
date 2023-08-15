@@ -140,16 +140,21 @@ namespace rerun {
         /// Logs any failure via `Status::log_error_on_failure`
         template <typename T>
         void log_archetype(const char* entity_path, const T& archetype) {
-            // TODO(andreas): Handle splats.
-            // TODO(andreas): Error handling.
-            const auto data_cells = archetype.to_data_cells().ValueOrDie();
-            try_log_data_row(
+            try_log_archetype(entity_path, archetype).log_error_on_failure();
+        }
+
+        /// Logs a an archetype, returning an error on failure.
+        ///
+        /// @see log_archetype
+        template <typename T>
+        [[nodiscard]] Status try_log_archetype(const char* entity_path, const T& archetype) {
+            const auto data_cells = archetype.to_data_cells().ValueOrDie(); // TODO: Error handling.
+            return try_log_data_row(
                 entity_path,
                 archetype.num_instances(),
                 data_cells.size(),
                 data_cells.data()
-            )
-                .log_error_on_failure();
+            );
         }
 
         /// Logs a list of component arrays.
@@ -164,6 +169,16 @@ namespace rerun {
         /// Logs any failure via `Status::log_error_on_failure`
         template <typename... Ts>
         void log_components(const char* entity_path, const Ts&... component_array) {
+            try_log_components(entity_path, component_array...).log_error_on_failure();
+        }
+
+        /// Logs a list of component arrays, returning an error on failure.
+        ///
+        /// @see log_components
+        template <typename... Ts>
+        [[nodiscard]] Status try_log_components(
+            const char* entity_path, const Ts&... component_array
+        ) {
             // TODO(andreas): Handle splats.
             const size_t num_instances = size_of_first_collection(component_array...);
 
@@ -171,8 +186,12 @@ namespace rerun {
             data_cells.reserve(sizeof...(Ts));
             push_data_cells(data_cells, component_array...);
 
-            try_log_data_row(entity_path, num_instances, data_cells.size(), data_cells.data())
-                .log_error_on_failure();
+            return try_log_data_row(
+                entity_path,
+                num_instances,
+                data_cells.size(),
+                data_cells.data()
+            );
         }
 
         /// Low level API that logs raw data cells to the recording stream.

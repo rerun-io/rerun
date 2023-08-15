@@ -50,6 +50,9 @@ namespace rerun {
       public:
         Status() = default;
 
+        Status(StatusCode _code, std::string _description)
+            : code(_code), description(std::move(_description)) {}
+
         /// Construct from a C status object.
         Status(const rr_status& status);
 
