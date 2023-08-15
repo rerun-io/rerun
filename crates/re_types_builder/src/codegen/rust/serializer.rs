@@ -501,6 +501,12 @@ fn quote_arrow_field_serializer(
         DataType::List(inner) | DataType::FixedSizeList(inner, _) => {
             let inner_datatype = inner.data_type();
 
+            // Note: We only use the ArrowBuffer optimization for `Lists` but not `FixedSizeList`.
+            // This is because the `ArrowBuffer` has a dynamic length, which would add more overhead
+            // to simple fixed-sized types like `Point2D`.
+            //
+            // TODO(jleibs): If we need to support large FixedSizeList types where the `ArrowBuffer`
+            // optimization would be significant, we can introduce a new attribute to force this.
             let inner_repr = if is_backed_by_arrow_buffer(inner.data_type())
                 && matches!(datatype, DataType::List(_))
             {
