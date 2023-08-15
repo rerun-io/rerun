@@ -160,3 +160,20 @@ jobs:
           git fetch
           python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
 
+  redeploy-rerun-io:
+    runs-on: ubuntu-latest
+    if: inputs.UPDATE_LATEST
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Re-deploy rerun.io
+        uses: ./.github/actions/deploy-vercel
+        with:
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
+          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          release_commit:
+
