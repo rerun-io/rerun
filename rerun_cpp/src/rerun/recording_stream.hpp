@@ -220,9 +220,9 @@ namespace rerun {
 
         static void push_data_cells(std::vector<DataCell>&) {}
 
-        RecordingStream(int32_t id, StoreKind store_kind) : _id(id), _store_kind(store_kind) {}
+        RecordingStream(uint32_t id, StoreKind store_kind) : _id(id), _store_kind(store_kind) {}
 
-        int32_t _id;
+        uint32_t _id;
         StoreKind _store_kind;
     };
 } // namespace rerun

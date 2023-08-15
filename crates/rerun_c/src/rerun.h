@@ -48,7 +48,7 @@ extern "C" {
 ///
 /// TODO(andreas): The only way of having two instances of a `RecordingStream` is currently to
 /// set it as a the global.
-typedef int32_t rr_recording_stream;
+typedef uint32_t rr_recording_stream;
 
 struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
