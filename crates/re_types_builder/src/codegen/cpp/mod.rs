@@ -788,8 +788,8 @@ impl QuotedObject {
             }
 
             let trivial_memcpy = quote! {
-                const void *otherbytes = reinterpret_cast<const void *>(&other._data);
-                void *thisbytes = reinterpret_cast<void *>(&this->_data);
+                const void* otherbytes = reinterpret_cast<const void*>(&other._data);
+                void* thisbytes = reinterpret_cast<void*>(&this->_data);
                 std::memcpy(thisbytes, otherbytes, sizeof(detail::#data_typename));
             };
 
