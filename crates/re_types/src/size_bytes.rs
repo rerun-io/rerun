@@ -439,9 +439,11 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
 fn test_arrow_estimated_size_bytes() {
     use arrow2::{
         array::{Array, Float64Array, ListArray, StructArray, UInt64Array, Utf8Array},
-        datatypes::{DataType, Field},
+        buffer::Buffer,
+        datatypes::{DataType, Field, UnionMode},
         offset::Offsets,
     };
+    use std::mem::size_of;
 
     // empty primitive array
     {
@@ -591,5 +593,26 @@ fn test_arrow_estimated_size_bytes() {
 
         assert_eq!(81200, raw_size_bytes);
         assert_eq!(80204, arrow_size_bytes); // smaller because smaller inner headers
+    }
+
+    // Dense union, `enum { i(i32), f(f32) }`
+    {
+        let fields = vec![
+            Field::new("i", DataType::Int32, false),
+            Field::new("f", DataType::Float64, false),
+        ];
+        let data_type = DataType::Union(fields, Some(vec![0i32, 1i32]), UnionMode::Dense);
+        let types = Buffer::<i8>::from(vec![0i8, 0i8, 1i8, 0i8, 1i8]);
+        let fields = vec![
+            PrimitiveArray::<i32>::from_vec(vec![0, 1, 2]).boxed(),
+            PrimitiveArray::<f64>::from_vec(vec![0.0, 1.0]).boxed(),
+        ];
+        let offsets = vec![0, 1, 0, 2, 1];
+        let array = UnionArray::new(data_type, types, fields, Some(offsets.into())).boxed();
+
+        let raw_size_bytes = 5 + 3 * size_of::<i32>() + 2 * size_of::<f64>() + 5 * size_of::<i32>();
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(raw_size_bytes, arrow_size_bytes);
     }
 }
