@@ -113,10 +113,13 @@ enum {
     _RERUN_ERROR_CODE_CATEGORY_ARGUMENT = 0x000000010,
     RERUN_ERROR_CODE_UNEXPECTED_NULL_ARGUMENT,
     RERUN_ERROR_CODE_INVALID_STRING_ARGUMENT,
+    RERUN_ERROR_CODE_INVALID_RECORDING_STREAM_HANDLE,
+    RERUN_ERROR_CODE_INVALID_SOCKET_ADDRESS,
 
-    // Operation failure.
+    // Recording stream errors
     _RERUN_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
     RERUN_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
+    RERUN_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
 
     // Generic errors.
     RERUN_ERROR_CODE_UNKNOWN,
@@ -181,17 +184,18 @@ extern void rr_recording_stream_set_thread_local(
 /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
 /// and can cause a call to `flush` to block indefinitely.
 ///
-/// This function returns immediately.
-/// No-op for destroyed/non-existing streams.
+/// This function returns immediately and will only raise an error for argument parsing errors,
+/// not for connection errors as these happen asynchronously.
 extern void rr_recording_stream_connect(
-    rr_recording_stream stream, const char* tcp_addr, float flush_timeout_sec
+    rr_recording_stream stream, const char* tcp_addr, float flush_timeout_sec, rr_status* status
 );
 
 /// Stream all log-data to a given file.
 ///
 /// This function returns immediately.
-/// No-op for destroyed/non-existing streams.
-extern void rr_recording_stream_save(rr_recording_stream stream, const char* path);
+extern void rr_recording_stream_save(
+    rr_recording_stream stream, const char* path, rr_status* status
+);
 
 /// Initiates a flush the batching pipeline and waits for it to propagate.
 ///

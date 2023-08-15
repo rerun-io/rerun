@@ -185,47 +185,59 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     GIVEN("a new RecordingStream") {
         auto stream0 = std::make_unique<rr::RecordingStream>("test");
 
-        WHEN("calling save") {
-            stream0->save(test_rrd0.c_str());
-
-            THEN("a new file got immediately created") {
-                CHECK(fs::exists(test_rrd0));
+        AND_GIVEN("a nullptr for the save path") {
+            THEN("then the save call returns a null argument error") {
+                CHECK(stream0->save(nullptr).code == rr::StatusCode::UnexpectedNullArgument);
             }
+        }
+        AND_GIVEN("an invalid path for the save path") {
+            THEN("then the save call fails") {
+                CHECK(stream0->save("/../").code == rr::StatusCode::RecordingStreamSaveFailure);
+            }
+        }
+        AND_GIVEN("valid save path " << test_rrd0) {
+            THEN("save call returns no error") {
+                REQUIRE(stream0->save(test_rrd0.c_str()));
 
-            WHEN("creating a second stream") {
-                auto stream1 = std::make_unique<rr::RecordingStream>("test2");
+                THEN("a new file got immediately created") {
+                    CHECK(fs::exists(test_rrd0));
+                }
 
-                WHEN("saving that one to a different file") {
-                    stream1->save(test_rrd1.c_str());
+                WHEN("creating a second stream") {
+                    auto stream1 = std::make_unique<rr::RecordingStream>("test2");
 
-                    WHEN("logging a component to the second stream") {
-                        stream1->log_components(
-                            "as-array",
-                            std::array<rrc::Point2D, 2>{
-                                rr::datatypes::Vec2D{1.0, 2.0},
-                                rr::datatypes::Vec2D{4.0, 5.0},
+                    WHEN("saving that one to a different file " << test_rrd1) {
+                        REQUIRE(stream1->save(test_rrd1.c_str()));
+
+                        WHEN("logging a component to the second stream") {
+                            stream1->log_components(
+                                "as-array",
+                                std::array<rrc::Point2D, 2>{
+                                    rr::datatypes::Vec2D{1.0, 2.0},
+                                    rr::datatypes::Vec2D{4.0, 5.0},
+                                }
+                            );
+
+                            THEN("after destruction, the second stream produced a bigger file") {
+                                stream0.reset();
+                                stream1.reset();
+                                CHECK(fs::file_size(test_rrd0) < fs::file_size(test_rrd1));
                             }
-                        );
-
-                        THEN("after destruction, the second stream produced a bigger file") {
-                            stream0.reset();
-                            stream1.reset();
-                            CHECK(fs::file_size(test_rrd0) < fs::file_size(test_rrd1));
                         }
-                    }
-                    WHEN("logging an archetype to the second stream") {
-                        stream1->log_archetype(
-                            "archetype",
-                            rr::archetypes::Points2D({
-                                rr::datatypes::Vec2D{1.0, 2.0},
-                                rr::datatypes::Vec2D{4.0, 5.0},
-                            })
-                        );
+                        WHEN("logging an archetype to the second stream") {
+                            stream1->log_archetype(
+                                "archetype",
+                                rr::archetypes::Points2D({
+                                    rr::datatypes::Vec2D{1.0, 2.0},
+                                    rr::datatypes::Vec2D{4.0, 5.0},
+                                })
+                            );
 
-                        THEN("after destruction, the second stream produced a bigger file") {
-                            stream0.reset();
-                            stream1.reset();
-                            CHECK(fs::file_size(test_rrd0) < fs::file_size(test_rrd1));
+                            THEN("after destruction, the second stream produced a bigger file") {
+                                stream0.reset();
+                                stream1.reset();
+                                CHECK(fs::file_size(test_rrd0) < fs::file_size(test_rrd1));
+                            }
                         }
                     }
                 }
@@ -235,37 +247,51 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
 }
 
 void test_logging_to_connection(const char* address, rr::RecordingStream& stream) {
-    THEN("Connecting to with zero timeout to" << address) {
-        // TODO(andreas): Should return error, need to test those.
-        stream.connect(address, 0.0f);
-
-        WHEN("logging a component and then flushing") {
-            stream.log_components(
-                "as-array",
-                std::array<rrc::Point2D, 2>{
-                    rr::datatypes::Vec2D{1.0, 2.0},
-                    rr::datatypes::Vec2D{4.0, 5.0},
-                }
-            );
-            stream.flush_blocking();
-
-            THEN("does not crash") {
-                // No easy way to see if it got sent.
-            }
+    AND_GIVEN("a nullptr for the socket address") {
+        THEN("then the connect call returns a null argument error") {
+            CHECK(stream.connect(nullptr, 0.0f).code == rr::StatusCode::UnexpectedNullArgument);
         }
-        WHEN("logging an archetype and then flushing") {
-            stream.log_archetype(
-                "archetype",
-                rr::archetypes::Points2D({
-                    rr::datatypes::Vec2D{1.0, 2.0},
-                    rr::datatypes::Vec2D{4.0, 5.0},
-                })
+    }
+    AND_GIVEN("an invalid address for the socket address") {
+        THEN("then the save call fails") {
+            CHECK(
+                stream.connect("definitely not valid!", 0.0f).code ==
+                rr::StatusCode::InvalidSocketAddress
             );
+        }
+    }
+    AND_GIVEN("a valid socket address " << address) {
+        THEN("save call with zero timeout returns no error") {
+            REQUIRE(stream.connect(address, 0.0f));
 
-            stream.flush_blocking();
+            WHEN("logging a component and then flushing") {
+                stream.log_components(
+                    "as-array",
+                    std::array<rrc::Point2D, 2>{
+                        rr::datatypes::Vec2D{1.0, 2.0},
+                        rr::datatypes::Vec2D{4.0, 5.0},
+                    }
+                );
+                stream.flush_blocking();
 
-            THEN("does not crash") {
-                // No easy way to see if it got sent.
+                THEN("does not crash") {
+                    // No easy way to see if it got sent.
+                }
+            }
+            WHEN("logging an archetype and then flushing") {
+                stream.log_archetype(
+                    "archetype",
+                    rr::archetypes::Points2D({
+                        rr::datatypes::Vec2D{1.0, 2.0},
+                        rr::datatypes::Vec2D{4.0, 5.0},
+                    })
+                );
+
+                stream.flush_blocking();
+
+                THEN("does not crash") {
+                    // No easy way to see if it got sent.
+                }
             }
         }
     }

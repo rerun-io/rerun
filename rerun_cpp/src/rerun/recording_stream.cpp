@@ -75,12 +75,16 @@ namespace rerun {
         }
     }
 
-    void RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
-        rr_recording_stream_connect(_id, tcp_addr, flush_timeout_sec);
+    Status RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
+        rr_status status = {};
+        rr_recording_stream_connect(_id, tcp_addr, flush_timeout_sec, &status);
+        return status;
     }
 
-    void RecordingStream::save(const char* path) {
-        rr_recording_stream_save(_id, path);
+    Status RecordingStream::save(const char* path) {
+        rr_status status = {};
+        rr_recording_stream_save(_id, path, &status);
+        return status;
     }
 
     void RecordingStream::flush_blocking() {

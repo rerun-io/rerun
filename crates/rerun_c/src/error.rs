@@ -46,7 +46,7 @@ impl CError {
         CError::write_error(
             error,
             CErrorCode::InvalidStringArgument,
-            &format!("Failed to interpret argument '{argument_name:?}' as a UTF-8: {utf8_error}",),
+            &format!("Failed to interpret argument {argument_name:?} as a UTF-8: {utf8_error}",),
         );
     }
 

@@ -15,9 +15,12 @@ namespace rerun {
         _CategoryArgument = 0x000000010,
         UnexpectedNullArgument,
         InvalidStringArgument,
+        InvalidRecordingStreamHandle,
+        InvalidSocketAddress,
 
         _CategoryRecordingStream = 0x000000100,
         RecordingStreamCreationFailure,
+        RecordingStreamSaveFailure,
 
         Unknown = 0xFFFFFFFF,
     };

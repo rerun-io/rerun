@@ -81,9 +81,12 @@ pub enum CErrorCode {
     CategoryArgument = 0x000000010,
     UnexpectedNullArgument,
     InvalidStringArgument,
+    InvalidRecordingStreamHandle,
+    InvalidSocketAddress,
 
     CategoryRecordingStream = 0x000000100,
     RecordingStreamCreationFailure,
+    RecordingStreamSaveFailure,
 
     Unknown = 0xFFFFFFFF,
 }
@@ -229,14 +232,27 @@ pub unsafe extern "C" fn rr_recording_stream_connect(
     id: CRecStreamId,
     tcp_addr: *const c_char,
     flush_timeout_sec: f32,
+    error: *mut CError,
 ) {
     let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
+        CError::write_error(error, CErrorCode::InvalidRecordingStreamHandle, "Recording stream handle does not point to an existing recording stream.");
         return;
     };
 
-    let tcp_addr = unsafe { CStr::from_ptr(tcp_addr) };
-    let tcp_addr = tcp_addr.to_str().expect("invalid tcp_addr");
-    let tcp_addr = tcp_addr.parse().expect("failed to parse tcp_addr");
+    let Some(tcp_addr) = ptr::try_char_ptr_as_str(tcp_addr, error, "tcp_addr") else {
+        return;
+    };
+    let tcp_addr = match tcp_addr.parse() {
+        Ok(tcp_addr) => tcp_addr,
+        Err(err) => {
+            CError::write_error(
+                error,
+                CErrorCode::InvalidSocketAddress,
+                &format!("Failed to parse tcp address {tcp_addr:?}: {err}",),
+            );
+            return;
+        }
+    };
 
     let flush_timeout = if flush_timeout_sec >= 0.0 {
         Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
@@ -249,17 +265,27 @@ pub unsafe extern "C" fn rr_recording_stream_connect(
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_recording_stream_save(id: CRecStreamId, path: *const c_char) {
+pub unsafe extern "C" fn rr_recording_stream_save(
+    id: CRecStreamId,
+    path: *const c_char,
+    error: *mut CError,
+) {
     let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
+        CError::write_error(error, CErrorCode::InvalidRecordingStreamHandle, "Recording stream handle does not point to an existing recording stream.");
         return;
     };
 
-    let path = unsafe { CStr::from_ptr(path) };
-    let path = path.to_str().expect("invalid path");
+    let Some(path) = ptr::try_char_ptr_as_str(path, error, "path") else {
+        return;
+    };
 
-    stream
-        .save(path)
-        .expect("Failed to save recording stream to file");
+    if let Err(err) = stream.save(path) {
+        CError::write_error(
+            error,
+            CErrorCode::RecordingStreamSaveFailure,
+            &format!("Failed to save recording stream to {path:?}: {err}",),
+        );
+    }
 }
 
 #[allow(unsafe_code)]

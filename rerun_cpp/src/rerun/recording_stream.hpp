@@ -102,12 +102,14 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
-        void connect(const char* tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0);
+        [[nodiscard]] Status connect(
+            const char* tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0
+        );
 
         /// Stream all log-data to a given file.
         ///
         /// This function returns immediately.
-        void save(const char* path);
+        [[nodiscard]] Status save(const char* path);
 
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///

@@ -23,6 +23,11 @@ auto check_logged_status(
 
         ~CheckOnDestruct() {
             CHECK(last_logged_status.code == expected_status_code);
+            if (expected_status_code != rerun::StatusCode::Ok) {
+                CHECK(last_logged_status.description.length() > 0);
+            } else {
+                CHECK(last_logged_status.description.length() == 0);
+            }
             rerun::Status::set_log_handler(nullptr);
         }
     } check = {expected_status_code};
