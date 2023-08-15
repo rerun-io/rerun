@@ -1229,7 +1229,7 @@ impl DataTable {
                         }
 
                         let c1_bytes = cell_to_bytes(c1.clone());
-                        let c2_bytes = cell_to_bytes(c1.clone());
+                        let c2_bytes = cell_to_bytes(c2.clone());
 
                         size_mismatches.push(format!(
                             "Cell size is {} vs {} bytes",
