@@ -18,8 +18,7 @@ foreach(SOURCE_PATH ${sources_list})
 
     add_executable(${EXAMPLE_TARGET} ${SOURCE_PATH})
 
-    # TODO(andreas): Fix warnings and enable this.
-    # set_default_warning_settings(rerun_example)
+    set_default_warning_settings(rerun_example)
     target_link_libraries(${EXAMPLE_TARGET} PRIVATE rerun_sdk)
 
     add_dependencies(doc_examples ${EXAMPLE_TARGET})

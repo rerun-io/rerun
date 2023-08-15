@@ -92,7 +92,7 @@ jobs:
             ### Next steps
             - [Test the release](#testing)
             - For any added commits, run the release workflow in `prerelease` mode
-            - After testinig, run the release workflow in `release` mode
+            - After testing, run the release workflow in `release` mode
             - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
 
             ### Testing
@@ -139,10 +139,10 @@ jobs:
 
   update-docs:
     name: "Update Docs"
-    # TEMP: temporarily disabled
-    if: false
     needs: [version]
     uses: ./.github/workflows/reusable_deploy_docs.yml
+    # TEMP: disabled
+    if: false
     with:
       CONCURRENCY: ${{ github.ref_name }}
       PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'prerelease' && 'prerelease' || needs.version.outputs.final }}
@@ -153,33 +153,46 @@ jobs:
 
   publish-crates:
     name: "Publish Crates"
-    # TEMP: temporarily disabled
-    if: false
     needs: [version]
     uses: ./.github/workflows/reusable_release_crates.yml
+    # TEMP: disabled
+    if: false
     with:
       CONCURRENCY: ${{ github.ref_name }}
     secrets: inherit
 
   build-and-publish-wheels:
     name: "Build and Publish Wheels"
-    # TEMP: temporarily disabled
-    if: false
     needs: [version]
     uses: ./.github/workflows/reusable_build_and_publish_wheels.yml
+    # TEMP: disabled
+    if: false
     with:
-      RELEASE_VERSION: ${{ needs.version.outputs.current }}
-      CONCURRENCY: ${{ github.ref_name }}
+      release-version: ${{ needs.version.outputs.current }}
+      concurrency: ${{ github.ref_name }}
+      linux-wheel-name: linux-wheel
+      linux-rrd-name: linux-rrd
     secrets: inherit
 
-  # TODO(jprochazk): publish web workflow
+  build-and-publish-web:
+    name: "Build and Publish Web"
+    needs: [version, build-and-publish-wheels]
+    uses: ./.github/workflows/reusable_build_and_publish_web.yml
+    # TEMP: disabled
+    if: false
+    with:
+      release-version: ${{ needs.version.outputs.current }}
+      concurrency: ${{ github.ref_name }}
+      wheel-artifact-name: linux-wheel
+      rrd-artifact-name: linux-rrd
+      update-latest: ${{ inputs.release-type == 'release' }}
 
   update-latest-branch:
     name: "Update Latest Branch"
-    # TEMP: temporarily disabled
     # only update the latest branch in `release`
     # and after every other step has finished
-    if: false && inputs.release-type == 'release'
+    # TEMP: disabled
+    if: false || inputs.release-type == 'release'
     needs: [update-docs, publish-crates, build-and-publish-wheels]
     runs-on: ubuntu-latest
     steps:

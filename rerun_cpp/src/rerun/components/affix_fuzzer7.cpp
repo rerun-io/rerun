@@ -43,10 +43,10 @@ namespace rerun {
             }
 
             auto value_builder = static_cast<arrow::StructBuilder *>(builder->value_builder());
-            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
-            ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 1));
+            ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 1)));
 
-            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto &element = elements[elem_idx];
                 if (element.many_optional.has_value()) {
                     ARROW_RETURN_NOT_OK(builder->Append());

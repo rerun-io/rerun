@@ -6,14 +6,43 @@ function(set_default_warning_settings target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /WX)
     else()
-        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wformat=2 -Wmissing-include-dirs -Wnull-dereference -Woverloaded-virtual -Wpointer-arith -Wshadow -Wswitch-enum -Wvla -Wno-sign-compare -Wconversion -Wunused -Wold-style-cast -Wno-missing-braces)
+        # Enabled warnings.
+        target_compile_options(${target} PRIVATE
+            -Wall
+            -Wcast-align
+            -Wcast-qual
+            -Wextra
+            -Wformat=2
+            -Wmissing-include-dirs
+            -Wnull-dereference
+            -Wold-style-cast
+            -Wpedantic
+            -Wpointer-arith
+            -Wshadow
+            -Wswitch-enum
+            -Wvla
+        )
 
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
+            target_compile_options(${target} PRIVATE
+                -Wc++17-compat-pedantic
+                -Wc99-extensions
+                -Wgnu
+                -Wnon-gcc
+                -Wshadow-all
+            )
+        endif()
+
+        # Disabled warnings
         # arrow has a bunch of unused parameters in its headers.
         target_compile_options(${target} PRIVATE -Wno-unused-parameter)
-    endif()
 
-    # Enable this to fail on warnings.
-    # set_property(TARGET ${target} PROPERTY COMPILE_WARNING_AS_ERROR ON)
+        # CMAKE_COMPILE_WARNING_AS_ERROR is only directly supported starting in CMake `3.24`
+        # https://cmake.org/cmake/help/latest/prop_tgt/COMPILE_WARNING_AS_ERROR.html
+        if(${CMAKE_COMPILE_WARNING_AS_ERROR})
+            target_compile_options(${target} PRIVATE -Werror)
+        endif()
+    endif()
 endfunction()
 
 # Use makefiles on linux, otherwise it might use Ninja which isn't installed by default.

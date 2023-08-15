@@ -21,10 +21,14 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) {
         CrateVersion::from_bytes(encoded_version)
     };
 
-    let local_version = CrateVersion::parse(env!("CARGO_PKG_VERSION"));
+    const LOCAL_VERSION: CrateVersion = CrateVersion::parse(env!("CARGO_PKG_VERSION"));
 
-    if !encoded_version.is_compatible_with(local_version) {
-        re_log::warn!("Found log stream with Rerun version {encoded_version}, which is incompatible with the local Rerun version {local_version}. Loading will try to continue, but might fail in subtle ways.");
+    if !encoded_version.is_compatible_with(LOCAL_VERSION) {
+        re_log::warn!(
+            "Found log stream with Rerun version {encoded_version}, \
+            which is incompatible with the local Rerun version {LOCAL_VERSION}. \
+            Loading will try to continue, but might fail in subtle ways."
+        );
     }
 }
 

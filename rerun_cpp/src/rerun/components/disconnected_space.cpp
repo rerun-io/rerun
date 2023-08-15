@@ -38,7 +38,7 @@ namespace rerun {
             static_assert(sizeof(*elements) == sizeof(elements->is_disconnected));
             ARROW_RETURN_NOT_OK(builder->AppendValues(
                 reinterpret_cast<const uint8_t *>(&elements->is_disconnected),
-                num_elements
+                static_cast<int64_t>(num_elements)
             ));
 
             return arrow::Status::OK();

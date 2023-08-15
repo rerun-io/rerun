@@ -32,7 +32,9 @@ namespace rerun {
             }
 
             static_assert(sizeof(*elements) == sizeof(elements->value));
-            ARROW_RETURN_NOT_OK(builder->AppendValues(&elements->value, num_elements));
+            ARROW_RETURN_NOT_OK(
+                builder->AppendValues(&elements->value, static_cast<int64_t>(num_elements))
+            );
 
             return arrow::Status::OK();
         }
