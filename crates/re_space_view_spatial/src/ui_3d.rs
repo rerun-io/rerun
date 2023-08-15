@@ -47,7 +47,7 @@ pub struct View3DState {
     eye_interpolation: Option<EyeInterpolation>,
 
     // options:
-    pub spin: bool,
+    spin: bool,
     pub show_axes: bool,
     pub show_bbox: bool,
     pub show_accumulated_bbox: bool,
@@ -204,6 +204,15 @@ impl View3DState {
         } else {
             self.orbit_eye = Some(target);
         }
+    }
+
+    pub fn spin(&self) -> bool {
+        self.spin
+    }
+
+    pub fn set_spin(&mut self, spin: bool) {
+        self.spin = spin;
+        self.did_interact_with_eye = true;
     }
 }
 
