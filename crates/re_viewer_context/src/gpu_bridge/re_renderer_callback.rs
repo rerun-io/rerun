@@ -1,10 +1,8 @@
-pub const EGUI_RENDER_CONTEXT_IDENTIFIER: egui_wgpu::SharedCallbackResourceId = 0;
-
 slotmap::new_key_type! { pub struct ViewBuilderHandle; }
 
 type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, Option<re_renderer::ViewBuilder>>;
 
-pub fn new_egui_callback(
+pub fn new_renderer_callback(
     render_ctx: &mut re_renderer::RenderContext,
     view_builder: re_renderer::ViewBuilder,
     clip_rect: egui::Rect,
@@ -43,9 +41,9 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         _device: &wgpu::Device,
         _queue: &wgpu::Queue,
         _egui_encoder: &mut wgpu::CommandEncoder,
-        shared_paint_callback_resources: &mut egui_wgpu::SharedCallbackResourceMap,
+        paint_callback_resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
-        let Some(ctx) = shared_paint_callback_resources.get_mut::<re_renderer::RenderContext>(EGUI_RENDER_CONTEXT_IDENTIFIER) else {
+        let Some(ctx) = paint_callback_resources.get_mut::<re_renderer::RenderContext>() else {
             re_log::error_once!("Failed to execute egui prepare callback. No render context available.");
             return Vec::new();
         };
@@ -91,9 +89,9 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         &'a self,
         info: egui::PaintCallbackInfo,
         render_pass: &mut wgpu::RenderPass<'a>,
-        shared_paint_callback_resources: &'a egui_wgpu::SharedCallbackResourceMap,
+        paint_callback_resources: &'a egui_wgpu::CallbackResources,
     ) {
-        let Some(ctx) = shared_paint_callback_resources.get::<re_renderer::RenderContext>(EGUI_RENDER_CONTEXT_IDENTIFIER) else {
+        let Some(ctx) = paint_callback_resources.get::<re_renderer::RenderContext>() else {
             re_log::error_once!("Failed to execute egui draw callback. No render context available.");
             return;
         };

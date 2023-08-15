@@ -597,7 +597,7 @@ pub fn view_3d(
     view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
         ctx.render_ctx,
     ));
-    ui.painter().add(gpu_bridge::new_egui_callback(
+    ui.painter().add(gpu_bridge::new_renderer_callback(
         ctx.render_ctx,
         view_builder,
         rect,

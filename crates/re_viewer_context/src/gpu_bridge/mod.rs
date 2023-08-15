@@ -3,7 +3,7 @@
 mod re_renderer_callback;
 mod tensor_to_gpu;
 
-pub use re_renderer_callback::{new_egui_callback, EGUI_RENDER_CONTEXT_IDENTIFIER};
+pub use re_renderer_callback::new_renderer_callback;
 pub use tensor_to_gpu::{depth_tensor_to_gpu, tensor_to_gpu};
 
 use crate::TensorStats;
@@ -189,7 +189,7 @@ pub fn render_image(
         &[textured_rectangle],
     )?);
 
-    painter.add(new_egui_callback(
+    painter.add(new_renderer_callback(
         render_ctx,
         view_builder,
         clip_rect,

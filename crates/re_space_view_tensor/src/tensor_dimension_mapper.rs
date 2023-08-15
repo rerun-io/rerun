@@ -159,12 +159,7 @@ fn drop_target_ui<R>(
 
     ui.painter().set(
         where_to_put_background,
-        egui::epaint::RectShape {
-            rounding: style.rounding,
-            fill,
-            stroke,
-            rect,
-        },
+        egui::epaint::RectShape::new(rect, style.rounding, fill, stroke),
     );
 
     egui::InnerResponse::new(ret, response)

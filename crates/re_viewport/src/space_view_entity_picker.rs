@@ -33,7 +33,7 @@ impl SpaceViewEntityPicker {
         );
         painter.add(egui::Shape::rect_filled(
             ui.ctx().screen_rect(),
-            egui::Rounding::none(),
+            egui::Rounding::ZERO,
             egui::Color32::from_black_alpha(128),
         ));
 

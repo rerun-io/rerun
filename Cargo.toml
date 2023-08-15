@@ -153,14 +153,14 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # Temporary patch until next egui release
-ecolor = { git = "https://github.com/emilk/egui", rev = "a08f179c" }
-eframe = { git = "https://github.com/emilk/egui", rev = "a08f179c" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "a08f179c" }
-egui-winit = { git = "https://github.com/emilk/egui", rev = "a08f179c" }
-egui = { git = "https://github.com/emilk/egui", rev = "a08f179c" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "a08f179c" }
-emath = { git = "https://github.com/emilk/egui", rev = "a08f179c" }
-epaint = { git = "https://github.com/emilk/egui", rev = "a08f179c" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "b896d641c578c04603adf07a9350b8bfc3c7ed9f" }
+eframe = { git = "https://github.com/emilk/egui", rev = "b896d641c578c04603adf07a9350b8bfc3c7ed9f" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "b896d641c578c04603adf07a9350b8bfc3c7ed9f" }
+egui-winit = { git = "https://github.com/emilk/egui", rev = "b896d641c578c04603adf07a9350b8bfc3c7ed9f" }
+egui = { git = "https://github.com/emilk/egui", rev = "b896d641c578c04603adf07a9350b8bfc3c7ed9f" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "b896d641c578c04603adf07a9350b8bfc3c7ed9f" }
+emath = { git = "https://github.com/emilk/egui", rev = "b896d641c578c04603adf07a9350b8bfc3c7ed9f" }
+epaint = { git = "https://github.com/emilk/egui", rev = "b896d641c578c04603adf07a9350b8bfc3c7ed9f" }
 
 # Temporary patch until next egui_tiles release
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "f835c4df1cc260a58122a8d37c7c3738902b9643" }

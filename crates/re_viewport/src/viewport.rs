@@ -304,7 +304,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let frame = egui::Frame {
             inner_margin: egui::Margin::same(0.),
             outer_margin: egui::Margin::same(0.),
-            rounding: egui::Rounding::none(),
+            rounding: egui::Rounding::ZERO,
             shadow: Default::default(),
             fill: egui::Color32::TRANSPARENT,
             stroke: egui::Stroke::NONE,
