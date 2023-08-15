@@ -3,7 +3,7 @@ use itertools::Itertools;
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
-use re_ui::{ReUi, UICommandSender};
+use re_ui::ReUi;
 
 const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 400.0;
@@ -154,12 +154,15 @@ impl WaitScreen {
             });
 
             #[cfg(not(target_arch = "wasm32"))]
-            ui.horizontal(|ui| {
-                if large_text_buttons(ui, "Open file...").clicked() {
-                    command_sender.send_ui(re_ui::UICommand::Open);
-                }
-                button_centered_label(ui, "Or drop a file anywhere!");
-            });
+            {
+                use re_ui::UICommandSender;
+                ui.horizontal(|ui| {
+                    if large_text_buttons(ui, "Open file...").clicked() {
+                        command_sender.send_ui(re_ui::UICommand::Open);
+                    }
+                    button_centered_label(ui, "Or drop a file anywhere!");
+                });
+            }
 
             #[cfg(target_arch = "wasm32")]
             ui.horizontal(|ui| {
