@@ -133,11 +133,17 @@ impl WaitScreen {
                 url_large_text_buttons(ui, "Rust", RUST_QUICKSTART);
             });
 
+            #[cfg(not(target_arch = "wasm32"))]
             ui.horizontal(|ui| {
                 if large_text_buttons(ui, "Open file...").clicked() {
                     command_sender.send_ui(re_ui::UICommand::Open);
                 }
                 button_centered_label(ui, "Or drop a file anywhere!");
+            });
+
+            #[cfg(target_arch = "wasm32")]
+            ui.horizontal(|ui| {
+                button_centered_label(ui, "Drop a file anywhere!");
             });
 
             ui.horizontal(|ui| {
