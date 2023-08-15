@@ -597,10 +597,10 @@ impl App {
                             render_ctx.before_submit();
                         }
                     } else {
-                        crate::ui::wait_screen_ui(ui, &self.rx);
+                        crate::ui::wait_screen_ui(&self.re_ui, ui, &self.rx, &self.command_sender);
                     }
                 } else {
-                    crate::ui::wait_screen_ui(ui, &self.rx);
+                    crate::ui::wait_screen_ui(&self.re_ui, ui, &self.rx, &self.command_sender);
                 }
             });
     }

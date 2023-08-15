@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)] // fixed json file
 
+use crate::ReUi;
 use egui::Color32;
 
 /// The look and feel of the UI.
@@ -78,6 +79,21 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         egui_style.spacing.interact_size.y = 15.0;
         // egui_style.spacing.interact_size.y = font_size;
     }
+
+    // add massive font
+    // TODO(ab): font size should come from design tokens
+    egui_style
+        .text_styles
+        .insert(ReUi::onboarding_h1(), egui::FontId::proportional(42.0));
+    egui_style
+        .text_styles
+        .insert(ReUi::onboarding_h2(), egui::FontId::proportional(24.0)); //TODO(ab): thin
+    egui_style
+        .text_styles
+        .insert(ReUi::onboarding_h3(), egui::FontId::proportional(18.0));
+    egui_style
+        .text_styles
+        .insert(ReUi::onboarding_body(), egui::FontId::proportional(14.0));
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");

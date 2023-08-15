@@ -89,6 +89,27 @@ impl ReUi {
         }
     }
 
+    /// Welcome screen big title
+    #[inline]
+    pub fn onboarding_h1() -> egui::TextStyle {
+        egui::TextStyle::Name("onboarding-h1".into())
+    }
+
+    #[inline]
+    pub fn onboarding_h2() -> egui::TextStyle {
+        egui::TextStyle::Name("onboarding-h2".into())
+    }
+
+    #[inline]
+    pub fn onboarding_h3() -> egui::TextStyle {
+        egui::TextStyle::Name("onboarding-h3".into())
+    }
+
+    #[inline]
+    pub fn onboarding_body() -> egui::TextStyle {
+        egui::TextStyle::Name("onboarding-body".into())
+    }
+
     /// Margin on all sides of views.
     pub fn view_padding() -> f32 {
         12.0

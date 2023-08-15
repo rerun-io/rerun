@@ -97,3 +97,18 @@ pub const SPACE_VIEW_UNKNOWN: Icon = Icon::new(
 );
 
 pub const CONTAINER: Icon = Icon::new("container", include_bytes!("../data/icons/container.png"));
+
+pub const ONBOARDING_CONFIGURE: Icon = Icon::new(
+    "onboarding_configure",
+    include_bytes!("../data/images/onboarding_configure.jpg"),
+);
+
+pub const ONBOARDING_LIVE_DATA: Icon = Icon::new(
+    "onboarding_live_data",
+    include_bytes!("../data/images/onboarding_live_data.jpg"),
+);
+
+pub const ONBOARDING_RECORDED_DATA: Icon = Icon::new(
+    "onboarding_recorded_data",
+    include_bytes!("../data/images/onboarding_recorded_data.jpg"),
+);
