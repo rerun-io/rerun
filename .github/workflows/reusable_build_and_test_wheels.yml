@@ -139,12 +139,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
+          cache-dependency-path: "scripts/ci/requirements.txt"
 
       # These should already be in the docker container, but run for good measure. A no-op install
       # should be fast, and this way things don't break if we add new packages without rebuilding
       # docker
-      - run: pip install -r rerun_py/requirements-build.txt
+      - run: pip install -r scripts/ci/requirements.txt
 
       # We have a nice script for that: ./scripts/setup_web.sh
       # Unfortunately, we can't run that on Windows, because Windows doesn't come with
@@ -175,30 +175,6 @@ jobs:
           name: "wasm-opt.exe"
           url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
           pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
-
-      - name: Patch Cargo.toml for pre-release
-        if: ${{ inputs.RELEASE_VERSION == 'prerelease' }}
-        # After patching the pre-release version, run cargo update.
-        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
-        run: |
-          python3 scripts/ci/version_util.py --patch_prerelease
-          cargo update -w
-
-      - name: Store the expected version
-        # Find the current cargo version and store it in the output: `expected_version`
-        shell: bash
-        id: expected_version
-        run: |
-          echo "EXPECTED_VERSION=$(python3 scripts/ci/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
-
-      - name: Check the expected version
-        if: ${{ inputs.RELEASE_VERSION != 'prerelease' }}
-        shell: bash
-        run: |
-          if [ "${{steps.expected_version.outputs.EXPECTED_VERSION}}" != "${{inputs.RELEASE_VERSION}}" ]; then
-            echo "Error: EXPECTED_VERSION (${{steps.expected_version.outputs.EXPECTED_VERSION}}) does not match RELEASE_VERSION (${{inputs.RELEASE_VERSION}})"
-            exit 1
-          fi
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
@@ -235,6 +211,11 @@ jobs:
         run: |
           pip install attrs>=23.1.0 deprecated numpy>=1.23 pillow pyarrow==10.0.1 pytest==7.1.2
 
+      - name: Get version
+        id: get-version
+        run: |
+          echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+
       - name: Install built wheel
         if: needs.set-config.outputs.RUN_TESTS == 'true'
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
@@ -243,7 +224,7 @@ jobs:
         shell: bash
         run: |
           pip uninstall rerun-sdk
-          pip install rerun-sdk==${{ steps.expected_version.outputs.EXPECTED_VERSION }} --no-index --find-links dist
+          pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
 
       - name: Verify built wheel version
         if: needs.set-config.outputs.RUN_TESTS == 'true'
@@ -297,3 +278,4 @@ jobs:
         with:
           name: ${{ inputs.RRD_ARTIFACT_NAME }}
           path: rrd
+
