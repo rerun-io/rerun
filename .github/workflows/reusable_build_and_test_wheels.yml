@@ -139,12 +139,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
+          cache-dependency-path: "scripts/ci/requirements.txt"
 
       # These should already be in the docker container, but run for good measure. A no-op install
       # should be fast, and this way things don't break if we add new packages without rebuilding
       # docker
-      - run: pip install -r rerun_py/requirements-build.txt
+      - run: pip install -r scripts/ci/requirements.txt
 
       # We have a nice script for that: ./scripts/setup_web.sh
       # Unfortunately, we can't run that on Windows, because Windows doesn't come with
@@ -211,6 +211,11 @@ jobs:
         run: |
           pip install attrs>=23.1.0 deprecated numpy>=1.23 pillow pyarrow==10.0.1 pytest==7.1.2
 
+      - name: Get version
+        id: get-version
+        run: |
+          echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+
       - name: Install built wheel
         if: needs.set-config.outputs.RUN_TESTS == 'true'
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
@@ -219,7 +224,7 @@ jobs:
         shell: bash
         run: |
           pip uninstall rerun-sdk
-          pip install rerun-sdk==${{ steps.expected_version.outputs.EXPECTED_VERSION }} --no-index --find-links dist
+          pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
 
       - name: Verify built wheel version
         if: needs.set-config.outputs.RUN_TESTS == 'true'
