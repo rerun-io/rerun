@@ -400,13 +400,12 @@ impl TimeControl {
             false
         }
 
-        if !self.timeline.is_auto() && is_timeline_valid(self.timeline.get(), times_per_timeline) {
-            return;
+        // If the timeline is auto refresh it every frame, otherwise only pick a new one if invalid.
+        if self.timeline.is_auto() || !is_timeline_valid(self.timeline.get(), times_per_timeline) {
+            self.timeline = EditableAutoValue::Auto(
+                default_timeline(times_per_timeline.timelines()).map_or(Default::default(), |t| *t),
+            );
         }
-
-        self.timeline = EditableAutoValue::Auto(
-            default_timeline(times_per_timeline.timelines()).map_or(Default::default(), |t| *t),
-        );
     }
 
     /// The currently selected timeline
