@@ -360,6 +360,7 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 // The range of offsets for a given type id.
                 let mut type_ranges: BTreeMap<i8, Range> = Default::default();
 
+                debug_assert_eq!(array.types().len(), offsets.len());
                 for (&type_id, &offset) in array.types().iter().zip(offsets.iter()) {
                     // Offsets are monotonically increasing
                     type_ranges
