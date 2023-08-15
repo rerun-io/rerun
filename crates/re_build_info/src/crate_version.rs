@@ -204,8 +204,8 @@ impl CrateVersion {
     pub const fn parse(version_string: &str) -> Self {
         match Self::try_parse(version_string) {
             Ok(version) => version,
-            Err(e) => {
-                const_panic::concat_panic!("invalid version string `", version_string, "`: ", e);
+            Err(err) => {
+                const_panic::concat_panic!("invalid version string `", version_string, "`: ", err);
             }
         }
     }
