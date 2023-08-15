@@ -81,7 +81,7 @@ pub fn quote_arrow_deserializer(
             obj_field.is_nullable,
             obj_field_fqname,
             &data_src,
-            false,
+            InnerRepr::NativeIterable,
         );
 
         let quoted_unwrapping = if obj_field.is_nullable {
@@ -125,7 +125,7 @@ pub fn quote_arrow_deserializer(
                         obj_field.is_nullable,
                         obj_field.fqname.as_str(),
                         &data_src,
-                        false,
+                        InnerRepr::NativeIterable,
                     );
 
                     quote! {
@@ -218,7 +218,7 @@ pub fn quote_arrow_deserializer(
                             obj_field.is_nullable,
                             obj_field.fqname.as_str(),
                             &data_src,
-                            false,
+                            InnerRepr::NativeIterable,
                         );
 
                         let i = i + 1; // NOTE: +1 to account for `nulls` virtual arm
@@ -351,6 +351,16 @@ pub fn quote_arrow_deserializer(
     }
 }
 
+#[derive(Copy, Clone)]
+enum InnerRepr {
+    /// The inner elements of the field should be exposed as `Buffer<T>`
+    /// This is only applicable when T is an arrow primitive
+    BufferT,
+
+    /// The inner elements of the field should be exposed as an iterable of T
+    NativeIterable,
+}
+
 /// This generates code that deserializes a runtime Arrow payload according to the specified `datatype`.
 ///
 /// The `datatype` comes from our compile-time Arrow registry, not from the runtime payload!
@@ -368,7 +378,7 @@ fn quote_arrow_field_deserializer(
     is_nullable: bool,
     obj_field_fqname: &str,
     data_src: &proc_macro2::Ident, // &dyn ::arrow2::array::Array
-    is_list_inner: bool,
+    inner_repr: InnerRepr,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
 
@@ -399,17 +409,16 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            if is_list_inner {
-                quote! {
+            match inner_repr {
+                InnerRepr::BufferT => quote! {
                     #quoted_downcast?
                     .values()
-                }
-            } else {
-                quote! {
+                },
+                InnerRepr::NativeIterable => quote! {
                     #quoted_downcast?
                         .into_iter() // NOTE: automatically checks the bitmap on our behalf
                         #quoted_iter_transparency
-                }
+                },
             }
         }
 
@@ -476,7 +485,7 @@ fn quote_arrow_field_deserializer(
                 inner.is_nullable,
                 obj_field_fqname,
                 &data_src_inner,
-                false,
+                InnerRepr::NativeIterable,
             );
 
             let quoted_downcast = {
@@ -575,7 +584,11 @@ fn quote_arrow_field_deserializer(
         DataType::List(inner) => {
             let data_src_inner = format_ident!("{data_src}_inner");
 
-            let inner_is_primitive = is_backed_by_arrow_buffer(inner.data_type());
+            let inner_repr = if is_backed_by_arrow_buffer(inner.data_type()) {
+                InnerRepr::BufferT
+            } else {
+                InnerRepr::NativeIterable
+            };
 
             let quoted_inner = quote_arrow_field_deserializer(
                 objects,
@@ -583,7 +596,7 @@ fn quote_arrow_field_deserializer(
                 inner.is_nullable,
                 obj_field_fqname,
                 &data_src_inner,
-                inner_is_primitive,
+                inner_repr,
             );
 
             let quoted_downcast = {
@@ -591,20 +604,18 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            let quoted_collect_inner = if inner_is_primitive {
-                quote!()
-            } else {
-                quote!(.collect::<Vec<_>>())
+            let quoted_collect_inner = match inner_repr {
+                InnerRepr::BufferT => quote!(),
+                InnerRepr::NativeIterable => quote!(.collect::<Vec<_>>()),
             };
 
-            let quoted_inner_data_range = if inner_is_primitive {
-                quote! {
+            let quoted_inner_data_range = match inner_repr {
+                InnerRepr::BufferT => quote! {
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                     let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
                     let data = crate::ArrowBuffer(data);
-                }
-            } else {
-                quote! {
+                },
+                InnerRepr::NativeIterable => quote! {
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                     let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
 
@@ -637,7 +648,7 @@ fn quote_arrow_field_deserializer(
                         // // this can only be a case of malformed data.
                         // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
                         // .collect::<crate::DeserializationResult<Vec<_>>>()?;
-                }
+                },
             };
 
             quote! {{
@@ -864,7 +875,7 @@ pub fn quote_arrow_deserializer_non_nullable(
             obj_field.is_nullable,
             obj_field_fqname,
             &data_src,
-            false,
+            InnerRepr::NativeIterable,
         );
 
         let quoted_remapping = if is_tuple_struct {
@@ -897,7 +908,7 @@ fn quote_arrow_field_deserializer_non_nullable(
     is_nullable: bool,
     obj_field_fqname: &str,
     data_src: &proc_macro2::Ident, // &dyn ::arrow2::array::Array
-    is_list_inner: bool,
+    inner_repr: InnerRepr,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
 
@@ -924,25 +935,24 @@ fn quote_arrow_field_deserializer_non_nullable(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            if is_list_inner {
-                quote! {
+            match inner_repr {
+                InnerRepr::BufferT => quote! {
                     #quoted_downcast?
                     .values()
                     .as_slice()
-                }
-            } else {
-                quote! {
+                },
+                InnerRepr::NativeIterable => quote! {
                     #quoted_downcast?
                     .values()
                     .as_slice()
                     .iter()
                     #quoted_iter_transparency
-                }
+                },
             }
         }
 
         DataType::FixedSizeList(inner, length) => {
-            if is_list_inner {
+            if matches!(inner_repr, InnerRepr::BufferT) {
                 // This implies a nested fixed-sized-array
                 unimplemented!("{datatype:#?}")
             }
@@ -953,7 +963,7 @@ fn quote_arrow_field_deserializer_non_nullable(
                 inner.is_nullable,
                 obj_field_fqname,
                 &data_src_inner,
-                true,
+                InnerRepr::BufferT,
             );
 
             let quoted_downcast = {

@@ -84,7 +84,7 @@ pub fn quote_arrow_serializer(
             obj_field.is_nullable,
             &bitmap_dst,
             &quoted_data_dst,
-            false,
+            InnerRepr::NativeIterable,
         );
 
         let quoted_bitmap = quoted_bitmap(bitmap_dst);
@@ -130,7 +130,7 @@ pub fn quote_arrow_serializer(
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,
-                        false,
+                        InnerRepr::NativeIterable,
                     );
 
                     let quoted_flatten = quoted_flatten(obj_field.is_nullable);
@@ -193,7 +193,7 @@ pub fn quote_arrow_serializer(
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,
-                        false
+                        InnerRepr::NativeIterable
                     );
 
                     let quoted_flatten = quoted_flatten(obj_field.is_nullable);
@@ -313,6 +313,16 @@ pub fn quote_arrow_serializer(
     }
 }
 
+#[derive(Copy, Clone)]
+enum InnerRepr {
+    /// The inner elements of the field will come from an `ArrowBuffer<T>`
+    /// This is only applicable when T is an arrow primitive
+    ArrowBuffer,
+
+    /// The inner elements of the field will come from an iterable of T
+    NativeIterable,
+}
+
 fn quote_arrow_field_serializer(
     objects: &Objects,
     extension_wrapper: Option<&str>,
@@ -320,7 +330,7 @@ fn quote_arrow_field_serializer(
     is_nullable: bool,
     bitmap_src: &proc_macro2::Ident,
     data_src: &proc_macro2::Ident,
-    expose_inner_as_buffer: bool,
+    inner_repr: InnerRepr,
 ) -> TokenStream {
     let quoted_datatype = ArrowDataTypeTokenizer(datatype, false);
     let quoted_datatype = if let Some(ext) = extension_wrapper {
@@ -391,24 +401,23 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            if expose_inner_as_buffer {
+            match inner_repr {
                 // A primitive that's an inner element of a list will already have been mapped
                 // to a buffer type.
-                quote! {
+                InnerRepr::ArrowBuffer => quote! {
                     PrimitiveArray::new(
                         #quoted_datatype,
                         #data_src,
                         #bitmap_src,
                     ).boxed()
-                }
-            } else {
-                quote! {
+                },
+                InnerRepr::NativeIterable => quote! {
                     PrimitiveArray::new(
                         #quoted_datatype,
                         #data_src.into_iter() #quoted_transparent_mapping .collect(),
                         #bitmap_src,
                     ).boxed()
-                }
+                },
             }
         }
 
@@ -492,8 +501,13 @@ fn quote_arrow_field_serializer(
         DataType::List(inner) | DataType::FixedSizeList(inner, _) => {
             let inner_datatype = inner.data_type();
 
-            let expose_inner_as_buffer = is_backed_by_arrow_buffer(inner.data_type())
-                && matches!(datatype, DataType::List(_));
+            let inner_repr = if is_backed_by_arrow_buffer(inner.data_type())
+                && matches!(datatype, DataType::List(_))
+            {
+                InnerRepr::ArrowBuffer
+            } else {
+                InnerRepr::NativeIterable
+            };
 
             let quoted_inner_data = format_ident!("{data_src}_inner_data");
             let quoted_inner_bitmap = format_ident!("{data_src}_inner_bitmap");
@@ -505,7 +519,7 @@ fn quote_arrow_field_serializer(
                 inner.is_nullable,
                 &quoted_inner_bitmap,
                 &quoted_inner_data,
-                expose_inner_as_buffer,
+                inner_repr,
             );
 
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
@@ -538,27 +552,27 @@ fn quote_arrow_field_serializer(
                     // NOTE: Flattening yet again since we have to deconstruct the inner list.
                     .flatten()
                 }
-            } else if expose_inner_as_buffer {
-                quote! {
-                    .flatten()
-                    .map(|b| b.0.as_slice())
-                    .collect::<Vec<_>>()
-                    .concat()
-                    .into();
-                }
             } else {
-                quote! {
-                    .flatten()
-                    // NOTE: Flattening yet again since we have to deconstruct the inner list.
-                    .flatten()
-                    .cloned()
+                match inner_repr {
+                    InnerRepr::ArrowBuffer => quote! {
+                        .flatten()
+                        .map(|b| b.0.as_slice())
+                        .collect::<Vec<_>>()
+                        .concat()
+                        .into();
+                    },
+                    InnerRepr::NativeIterable => quote! {
+                        .flatten()
+                        // NOTE: Flattening yet again since we have to deconstruct the inner list.
+                        .flatten()
+                        .cloned()
+                    },
                 }
             };
 
-            let quoted_num_instances = if expose_inner_as_buffer {
-                quote!(num_instances())
-            } else {
-                quote!(len())
+            let quoted_num_instances = match inner_repr {
+                InnerRepr::ArrowBuffer => quote!(num_instances()),
+                InnerRepr::NativeIterable => quote!(len()),
             };
 
             let quoted_create = if let DataType::List(_) = datatype {
@@ -587,8 +601,8 @@ fn quote_arrow_field_serializer(
             // TODO(cmc): We should be checking this, but right now we don't because we don't
             // support intra-list nullability.
             _ = is_nullable;
-            if expose_inner_as_buffer {
-                quote! {{
+            match inner_repr {
+                InnerRepr::ArrowBuffer => quote! {{
                     use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                     let #quoted_inner_data: Buffer<_> = #data_src
@@ -599,9 +613,8 @@ fn quote_arrow_field_serializer(
                     let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
 
                     #quoted_create
-                }}
-            } else {
-                quote! {{
+                }},
+                InnerRepr::NativeIterable => quote! {{
                     use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                     let #quoted_inner_data: Vec<_> = #data_src
@@ -616,7 +629,7 @@ fn quote_arrow_field_serializer(
                     let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
 
                     #quoted_create
-                }}
+                }},
             }
         }
 
