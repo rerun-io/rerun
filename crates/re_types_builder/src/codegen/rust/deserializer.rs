@@ -829,9 +829,9 @@ fn quote_iterator_transparency(
 /// This generates code that deserializes a runtime Arrow payload into the specified `obj`, taking
 /// Arrow-transparency into account.
 ///
-/// It contains additional performance optimizations based on the inner-type being non-nullable, allowing
-/// us to map directly to slices rather than iterating. The ability to use this optimization is determined
-/// by [`should_optimize_non_nullable_deserialize`].
+/// It contains additional performance optimizations based on the inner-type being a non-nullable primitive
+/// allowing us to map directly to slices rather than iterating. The ability to use this optimization is
+/// determined by [`should_optimize_buffer_slice_deserialize`].
 ///
 /// There is a 1:1 relationship between `quote_arrow_deserializer_non_nullable` and `Loggable::try_from_arrow`:
 /// ```ignore
@@ -841,7 +841,7 @@ fn quote_iterator_transparency(
 /// ```
 ///
 /// See [`quote_arrow_deserializer_non_nullable`] for additional information.
-pub fn quote_arrow_deserializer_non_nullable(
+pub fn quote_arrow_deserializer_buffer_slice(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     obj: &Object,
@@ -857,6 +857,7 @@ pub fn quote_arrow_deserializer_non_nullable(
     if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
         // The semantic pass would have failed already if this wasn't the case.
+        debug_assert!(obj.fields.len() == 1);
         let obj_field = &obj.fields[0];
         let obj_field_fqname = obj_field.fqname.as_str();
 
@@ -869,7 +870,7 @@ pub fn quote_arrow_deserializer_non_nullable(
             }
         );
 
-        let quoted_deserializer = quote_arrow_field_deserializer_non_nullable(
+        let quoted_deserializer = quote_arrow_field_deserializer_buffer_slice(
             objects,
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
@@ -897,12 +898,12 @@ pub fn quote_arrow_deserializer_non_nullable(
 
 /// This generates code that deserializes a runtime Arrow payload according to the specified `datatype`.
 ///
-/// It contains additional performance optimizations based on the inner-type being non-nullable, allowing
-/// us to map directly to slices rather than iterating. The ability to use this optimization is determined
-/// by [`should_optimize_non_nullable_deserialize`].
+/// It contains additional performance optimizations based on the inner-type being a non-nullable primitive
+/// allowing us to map directly to slices rather than iterating. The ability to use this optimization is
+/// determined by [`should_optimize_buffer_slice_deserialize`].
 ///
 /// See [`quote_arrow_field_deserializer`] for additional information.
-fn quote_arrow_field_deserializer_non_nullable(
+fn quote_arrow_field_deserializer_buffer_slice(
     objects: &Objects,
     datatype: &DataType,
     is_nullable: bool,
@@ -931,7 +932,7 @@ fn quote_arrow_field_deserializer_non_nullable(
 
             let quoted_downcast = {
                 let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
-                let cast_as = format_ident!("{cast_as}Array");
+                let cast_as = format_ident!("{cast_as}Array"); // e.g. `Uint32Array`
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
@@ -957,7 +958,7 @@ fn quote_arrow_field_deserializer_non_nullable(
                 unimplemented!("{datatype:#?}")
             }
             let data_src_inner = format_ident!("{data_src}_inner");
-            let quoted_inner = quote_arrow_field_deserializer_non_nullable(
+            let quoted_inner = quote_arrow_field_deserializer_buffer_slice(
                 objects,
                 inner.data_type(),
                 inner.is_nullable,
@@ -989,14 +990,17 @@ fn quote_arrow_field_deserializer_non_nullable(
     }
 }
 
-/// Whether or not this object allows for the non-nullable optimizations.
+/// Whether or not this object allows for the buffer-slice optimizations.
+///
+/// These optimizations require the outer type to be non-nullable and made up exclusively
+/// of primitive types.
 ///
 /// Nullabillity is kind of weird since it's technically a property of the field
 /// rather than the datatype. However, we know that Components can only be used
 /// by archetypes and as such should never be nullible.
 ///
 /// This should always be checked before using [`quote_arrow_deserializer_non_nullable`].
-pub fn should_optimize_non_nullable_deserialize(
+pub fn should_optimize_buffer_slice_deserialize(
     obj: &Object,
     arrow_registry: &ArrowRegistry,
 ) -> bool {
@@ -1004,14 +1008,14 @@ pub fn should_optimize_non_nullable_deserialize(
     if obj.kind == ObjectKind::Component && is_arrow_transparent {
         let typ = arrow_registry.get(&obj.fqname);
         let obj_field = &obj.fields[0];
-        !obj_field.is_nullable && should_optimize_deserialize_datatype(&typ)
+        !obj_field.is_nullable && should_optimize_buffer_slice_deserialize_datatype(&typ)
     } else {
         false
     }
 }
 
-/// Whether or not this datatype allows for the non-nullable optimizations.
-fn should_optimize_deserialize_datatype(typ: &DataType) -> bool {
+/// Whether or not this datatype allows for the buffer slice optimizations.
+fn should_optimize_buffer_slice_deserialize_datatype(typ: &DataType) -> bool {
     match typ {
         DataType::Int8
         | DataType::Int16
@@ -1024,9 +1028,9 @@ fn should_optimize_deserialize_datatype(typ: &DataType) -> bool {
         | DataType::Float16
         | DataType::Float32
         | DataType::Float64 => true,
-        DataType::Extension(_, typ, _) => should_optimize_deserialize_datatype(typ),
+        DataType::Extension(_, typ, _) => should_optimize_buffer_slice_deserialize_datatype(typ),
         DataType::FixedSizeList(field, _) => {
-            should_optimize_deserialize_datatype(field.data_type())
+            should_optimize_buffer_slice_deserialize_datatype(field.data_type())
         }
         _ => false,
     }

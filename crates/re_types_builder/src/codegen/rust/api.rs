@@ -12,8 +12,8 @@ use crate::{
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
-                quote_arrow_deserializer, quote_arrow_deserializer_non_nullable,
-                should_optimize_non_nullable_deserialize,
+                quote_arrow_deserializer, quote_arrow_deserializer_buffer_slice,
+                should_optimize_buffer_slice_deserialize,
             },
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components},
@@ -712,7 +712,7 @@ fn quote_trait_impls_from_obj(
             let datatype = arrow_registry.get(fqname);
 
             let optimize_non_nullable =
-                should_optimize_non_nullable_deserialize(obj, arrow_registry);
+                should_optimize_buffer_slice_deserialize(obj, arrow_registry);
 
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
@@ -779,7 +779,7 @@ fn quote_trait_impls_from_obj(
 
             let quoted_try_from_arrow = if optimize_non_nullable {
                 let quoted_deserializer =
-                    quote_arrow_deserializer_non_nullable(arrow_registry, objects, obj);
+                    quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
