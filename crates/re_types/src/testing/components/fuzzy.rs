@@ -1895,13 +1895,14 @@ impl crate::Loggable for AffixFuzzer11 {
                     .concat()
                     .into();
                 let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    data0
-                        .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
-                )
-                .unwrap()
-                .into();
+                let offsets =
+                    ::arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
+                        opt.as_ref()
+                            .map(|datum| datum.num_instances())
+                            .unwrap_or_default()
+                    }))
+                    .unwrap()
+                    .into();
                 ListArray::new(
                     {
                         _ = extension_wrapper;

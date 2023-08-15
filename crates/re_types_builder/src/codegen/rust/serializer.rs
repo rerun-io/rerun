@@ -555,10 +555,16 @@ fn quote_arrow_field_serializer(
                 }
             };
 
+            let quoted_num_instances = if expose_inner_as_buffer {
+                quote!(num_instances())
+            } else {
+                quote!(len())
+            };
+
             let quoted_create = if let DataType::List(_) = datatype {
                 quote! {
                     let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                        #data_src.iter().map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default())
+                        #data_src.iter().map(|opt| opt.as_ref().map(|datum| datum. #quoted_num_instances).unwrap_or_default())
                     ).unwrap().into();
 
                     ListArray::new(

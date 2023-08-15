@@ -13,7 +13,16 @@ pub struct ArrowBuffer<T>(pub Buffer<T>);
 
 impl<T> ArrowBuffer<T> {
     #[inline]
-    pub fn len(&self) -> usize {
+    /// The number of instances of T stored in this buffer.
+    pub fn num_instances(&self) -> usize {
+        // WARNING: If you are touching this code, make sure you know what len() actually does.
+        //
+        // There is ambiguity in how arrow2 and arrow-rs talk about buffer lengths, including
+        // some incorrect documentation: https://github.com/jorgecarleitao/arrow2/issues/1430
+        //
+        // Arrow2 `Buffer<T>` is typed and `len()` is the number of units of `T`, but the documentation
+        // is currently incorrect.
+        // Arrow-rs `Buffer` is untyped and len() is in bytes, but `ScalarBuffer`s are in units of T.
         self.0.len()
     }
 

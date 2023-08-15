@@ -529,7 +529,9 @@ impl crate::Loggable for AffixFuzzer1 {
                             > = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_floats_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
                                 }),
                             )
                             .unwrap()
