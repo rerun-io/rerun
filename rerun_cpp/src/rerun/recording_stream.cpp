@@ -78,8 +78,7 @@ namespace rerun {
         const DataCell* data_cells
     ) {
         // Map to C API:
-        std::unique_ptr<rr_data_cell[]> c_data_cells =
-            std::make_unique<rr_data_cell[]>(num_data_cells);
+        std::vector<rr_data_cell> c_data_cells(num_data_cells);
         for (size_t i = 0; i < num_data_cells; i++) {
             c_data_cells[i].component_name = data_cells[i].component_name;
             c_data_cells[i].num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size());
@@ -90,7 +89,7 @@ namespace rerun {
         c_data_row.entity_path = entity_path,
         c_data_row.num_instances = static_cast<uint32_t>(num_instances);
         c_data_row.num_data_cells = static_cast<uint32_t>(num_data_cells);
-        c_data_row.data_cells = c_data_cells.get();
+        c_data_row.data_cells = c_data_cells.data();
 
         rr_log(_id, &c_data_row, true);
     }
