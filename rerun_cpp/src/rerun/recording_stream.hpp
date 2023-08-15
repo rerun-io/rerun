@@ -126,6 +126,8 @@ namespace rerun {
         /// Alias for `log_archetype`.
         /// TODO(andreas): Would be nice if this were able to combine both log_archetype and
         /// log_components!
+        ///
+        /// Logs any failure via `Status::log_error_on_failure`
         template <typename T>
         void log(const char* entity_path, const T& archetype) {
             log_archetype(entity_path, archetype);
@@ -134,17 +136,20 @@ namespace rerun {
         /// Logs an archetype.
         ///
         /// Prefer this interface for ease of use over the more general `log_components` interface.
+        ///
+        /// Logs any failure via `Status::log_error_on_failure`
         template <typename T>
         void log_archetype(const char* entity_path, const T& archetype) {
             // TODO(andreas): Handle splats.
             // TODO(andreas): Error handling.
             const auto data_cells = archetype.to_data_cells().ValueOrDie();
-            log_data_row(
+            try_log_data_row(
                 entity_path,
                 archetype.num_instances(),
                 data_cells.size(),
                 data_cells.data()
-            );
+            )
+                .log_error_on_failure();
         }
 
         /// Logs a list of component arrays.
@@ -155,6 +160,8 @@ namespace rerun {
         /// Expects component arrays as std::vector, std::array or C arrays.
         ///
         /// TODO(andreas): More documentation, examples etc.
+        ///
+        /// Logs any failure via `Status::log_error_on_failure`
         template <typename... Ts>
         void log_components(const char* entity_path, const Ts&... component_array) {
             // TODO(andreas): Handle splats.
@@ -164,14 +171,15 @@ namespace rerun {
             data_cells.reserve(sizeof...(Ts));
             push_data_cells(data_cells, component_array...);
 
-            log_data_row(entity_path, num_instances, data_cells.size(), data_cells.data());
+            try_log_data_row(entity_path, num_instances, data_cells.size(), data_cells.data())
+                .log_error_on_failure();
         }
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
         /// I.e. logs a number of components arrays (each with a same number of instances) to a
         /// single entity path.
-        void log_data_row(
+        [[nodiscard]] Status try_log_data_row(
             const char* entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells
         );

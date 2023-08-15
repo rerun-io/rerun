@@ -9,7 +9,7 @@
 mod error;
 mod ptr;
 
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::{c_char, CString};
 
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -78,15 +78,20 @@ pub struct CDataRow {
 pub enum CErrorCode {
     Ok = 0,
 
-    CategoryArgument = 0x000000010,
+    _CategoryArgument = 0x000000010,
     UnexpectedNullArgument,
     InvalidStringArgument,
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
+    InvalidEntityPath,
 
-    CategoryRecordingStream = 0x000000100,
+    _CategoryRecordingStream = 0x000000100,
     RecordingStreamCreationFailure,
     RecordingStreamSaveFailure,
+
+    _CategoryArrow = 0x000001000,
+    ArrowIpcMessageParsingFailure,
+    ArrowDataCellError,
 
     Unknown = 0xFFFFFFFF,
 }
@@ -228,14 +233,14 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecStreamId) {
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_recording_stream_connect(
+pub extern "C" fn rr_recording_stream_connect(
     id: CRecStreamId,
     tcp_addr: *const c_char,
     flush_timeout_sec: f32,
     error: *mut CError,
 ) {
     let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
-        CError::write_error(error, CErrorCode::InvalidRecordingStreamHandle, "Recording stream handle does not point to an existing recording stream.");
+        CError::invalid_recording_stream_handle(error);
         return;
     };
 
@@ -261,17 +266,18 @@ pub unsafe extern "C" fn rr_recording_stream_connect(
     };
 
     stream.connect(tcp_addr, flush_timeout);
+    CError::set_ok(error);
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_recording_stream_save(
+pub extern "C" fn rr_recording_stream_save(
     id: CRecStreamId,
     path: *const c_char,
     error: *mut CError,
 ) {
     let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
-        CError::write_error(error, CErrorCode::InvalidRecordingStreamHandle, "Recording stream handle does not point to an existing recording stream.");
+        CError::invalid_recording_stream_handle(error);
         return;
     };
 
@@ -283,20 +289,29 @@ pub unsafe extern "C" fn rr_recording_stream_save(
         CError::write_error(
             error,
             CErrorCode::RecordingStreamSaveFailure,
-            &format!("Failed to save recording stream to {path:?}: {err}",),
+            &format!("Failed to save recording stream to {path:?}: {err}"),
         );
     }
+
+    CError::set_ok(error);
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_log(id: CRecStreamId, data_row: *const CDataRow, inject_time: bool) {
+pub unsafe extern "C" fn rr_log(
+    id: CRecStreamId,
+    data_row: *const CDataRow,
+    inject_time: bool,
+    error: *mut CError,
+) {
     let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
+        CError::invalid_recording_stream_handle(error);
         return;
     };
 
-    assert!(!data_row.is_null());
-    let data_row = unsafe { &*data_row };
+    let Some(data_row) = ptr::try_ptr_as_ref(data_row, error, "data_row") else {
+        return;
+    };
 
     let CDataRow {
         entity_path,
@@ -305,33 +320,70 @@ pub unsafe extern "C" fn rr_log(id: CRecStreamId, data_row: *const CDataRow, inj
         data_cells,
     } = *data_row;
 
-    let entity_path = unsafe { CStr::from_ptr(entity_path) };
-    let entity_path =
-        EntityPath::from(re_log_types::parse_entity_path(entity_path.to_str().unwrap()).unwrap());
+    let Some(entity_path) = ptr::try_char_ptr_as_str(entity_path, error, "entity_path") else {
+        return;
+    };
+
+    let entity_path = match re_log_types::parse_entity_path(entity_path) {
+        Ok(entity_path) => EntityPath::from(entity_path),
+        Err(err) => {
+            CError::write_error(
+                error,
+                CErrorCode::InvalidEntityPath,
+                &format!("Failed to parse entity path {entity_path:?}: {err}"),
+            );
+            return;
+        }
+    };
 
     re_log::debug!(
         "rerun_log {entity_path:?}, num_instances: {num_instances}, num_data_cells: {num_data_cells}",
     );
 
-    let cells = (0..num_data_cells)
-        .map(|i| {
-            let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
-            let CDataCell {
-                component_name,
-                num_bytes,
-                bytes,
-            } = *data_cell;
+    let mut cells = re_log_types::DataCellVec::default();
+    cells.reserve(num_data_cells as usize);
+    for i in 0..num_data_cells {
+        let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
+        let CDataCell {
+            component_name,
+            num_bytes,
+            bytes,
+        } = *data_cell;
 
-            let component_name = unsafe { CStr::from_ptr(component_name) };
-            let component_name = ComponentName::from(component_name.to_str().unwrap());
+        let Some(component_name) = ptr::try_char_ptr_as_str(
+            component_name,
+            error,
+            "data_cells[i].component_name",
+        ) else {
+            return;
+        };
+        let component_name = ComponentName::from(component_name);
 
-            let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
+        let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
+        let array = match parse_arrow_ipc_encapsulated_message(bytes) {
+            Ok(array) => array,
+            Err(err) => {
+                CError::write_error(
+                    error,
+                    CErrorCode::ArrowIpcMessageParsingFailure,
+                    &format!("Failed to parse Arrow IPC encapsulated message: {err}"),
+                );
+                return;
+            }
+        };
 
-            let array = parse_arrow_ipc_encapsulated_message(bytes).unwrap();
-
-            DataCell::try_from_arrow(component_name, array).unwrap()
-        })
-        .collect();
+        match DataCell::try_from_arrow(component_name, array) {
+            Ok(cell) => cells.push(cell),
+            Err(err) => {
+                CError::write_error(
+                    error,
+                    CErrorCode::ArrowDataCellError,
+                    &format!("Failed to create arrow datacell from message: {err}"),
+                );
+                return;
+            }
+        }
+    }
 
     let data_row = DataRow {
         row_id: re_sdk::log::RowId::random(),
@@ -342,6 +394,8 @@ pub unsafe extern "C" fn rr_log(id: CRecStreamId, data_row: *const CDataRow, inj
     };
 
     stream.record_row(data_row, inject_time);
+
+    CError::set_ok(error);
 }
 
 // ----------------------------------------------------------------------------

@@ -115,11 +115,17 @@ enum {
     RERUN_ERROR_CODE_INVALID_STRING_ARGUMENT,
     RERUN_ERROR_CODE_INVALID_RECORDING_STREAM_HANDLE,
     RERUN_ERROR_CODE_INVALID_SOCKET_ADDRESS,
+    RERUN_ERROR_CODE_INVALID_ENTITY_PATH,
 
     // Recording stream errors
     _RERUN_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
     RERUN_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
     RERUN_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
+
+    // Arrow data processing errors.
+    _RERUN_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
+    RERUN_ERROR_CODE_ARROW_IPC_MESSAGE_PARSING_FAILURE,
+    RERUN_ERROR_CODE_ARROW_DATA_CELL_ERROR,
 
     // Generic errors.
     RERUN_ERROR_CODE_UNKNOWN,
@@ -207,9 +213,9 @@ extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 ///
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
-///
-/// No-op for destroyed/non-existing streams.
-extern void rr_log(rr_recording_stream stream, const rr_data_row* data_row, bool inject_time);
+extern void rr_log(
+    rr_recording_stream stream, const rr_data_row* data_row, bool inject_time, rr_status* status
+);
 
 // ----------------------------------------------------------------------------
 

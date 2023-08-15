@@ -12,15 +12,23 @@ namespace rerun {
     enum class StatusCode : uint32_t {
         Ok = 0,
 
+        // Invalid argument errors.
         _CategoryArgument = 0x000000010,
         UnexpectedNullArgument,
         InvalidStringArgument,
         InvalidRecordingStreamHandle,
         InvalidSocketAddress,
+        InvalidEntityPath,
 
+        // Recording stream errors
         _CategoryRecordingStream = 0x000000100,
         RecordingStreamCreationFailure,
         RecordingStreamSaveFailure,
+
+        // Arrow data processing errors.
+        _CategoryArrow = 0x000001000,
+        ArrowIpcMessageParsingFailure,
+        ArrowDataCellError,
 
         Unknown = 0xFFFFFFFF,
     };

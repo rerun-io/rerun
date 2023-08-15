@@ -91,7 +91,7 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    void RecordingStream::log_data_row(
+    Status RecordingStream::try_log_data_row(
         const char* entity_path, size_t num_instances, size_t num_data_cells,
         const DataCell* data_cells
     ) {
@@ -109,6 +109,8 @@ namespace rerun {
         c_data_row.num_data_cells = static_cast<uint32_t>(num_data_cells);
         c_data_row.data_cells = c_data_cells.data();
 
-        rr_log(_id, &c_data_row, true);
+        rr_status status = {};
+        rr_log(_id, &c_data_row, true, &status);
+        return status;
     }
 } // namespace rerun

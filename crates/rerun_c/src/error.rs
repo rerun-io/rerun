@@ -50,6 +50,14 @@ impl CError {
         );
     }
 
+    pub fn invalid_recording_stream_handle(error: *mut CError) {
+        CError::write_error(
+            error,
+            CErrorCode::InvalidRecordingStreamHandle,
+            "Recording stream handle does not point to an existing recording stream.",
+        );
+    }
+
     pub fn set_ok(error: *mut CError) {
         CError::write_error(error, CErrorCode::Ok, "success");
     }
