@@ -44,19 +44,20 @@ namespace rerun {
 
     RecordingStream& RecordingStream::current(StoreKind store_kind) {
         switch (store_kind) {
-            case StoreKind::Recording: {
-                static RecordingStream current_recording(
-                    RERUN_REC_STREAM_CURRENT_RECORDING,
-                    StoreKind::Recording
-                );
-                return current_recording;
-            }
             case StoreKind::Blueprint: {
                 static RecordingStream current_blueprint(
                     RERUN_REC_STREAM_CURRENT_BLUEPRINT,
                     StoreKind::Blueprint
                 );
                 return current_blueprint;
+            }
+            case StoreKind::Recording:
+            default: {
+                static RecordingStream current_recording(
+                    RERUN_REC_STREAM_CURRENT_RECORDING,
+                    StoreKind::Recording
+                );
+                return current_recording;
             }
         }
     }
