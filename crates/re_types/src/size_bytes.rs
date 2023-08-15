@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
 use arrow2::datatypes::{DataType, Field};
-use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 // ---
@@ -255,6 +254,7 @@ fn validity_size(validity: Option<&Bitmap>) -> usize {
 }
 
 /// Returns the total (heap) allocated size of the array in bytes.
+///
 /// # Implementation
 /// This estimation is the sum of the size of its buffers, validity, including nested arrays.
 /// Multiple arrays may share buffers and bitmaps. Therefore, the size of 2 arrays is not the
@@ -347,36 +347,42 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 //   The respective offsets for each child value array must be in
                 //   order / increasing.
 
-                if offsets.is_empty() {
-                    return 0;
+                /// The range of offsets for a given type id.
+                #[derive(Debug)]
+                struct Range {
+                    /// Inclusive
+                    min: i32,
+
+                    /// Inclusive
+                    max: i32,
                 }
 
-                let fields = array.fields();
-                let types: IntSet<_> = array.types().iter().copied().collect();
-                types
-                    .into_iter()
-                    .map(|cur_ty| {
-                        let mut indices = array
-                            .types()
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(idx, &ty)| (ty == cur_ty).then_some(idx));
+                // The range of offsets for a given type id.
+                let mut type_ranges: BTreeMap<i8, Range> = Default::default();
 
-                        let idx_start = indices.next().unwrap_or_default();
-                        let mut idx_end = idx_start;
-                        for idx in indices {
-                            idx_end = idx;
-                        }
-
-                        let values_start = offsets[idx_start] as usize;
-                        let values_end = offsets[idx_end] as usize;
-                        fields.get(cur_ty as usize).map_or(0, |x| {
-                            estimated_bytes_size(
-                                x.sliced(values_start, values_end - values_start).as_ref(),
-                            )
+                for (&type_id, &offset) in array.types().iter().zip(offsets.iter()) {
+                    // Offsets are monotonically increasing
+                    type_ranges
+                        .entry(type_id)
+                        .and_modify(|range| {
+                            range.max = offset;
                         })
-                    })
-                    .sum::<usize>()
+                        .or_insert(Range {
+                            min: offset,
+                            max: offset,
+                        });
+                }
+
+                let mut fields_size = 0;
+                for (type_id, range) in type_ranges {
+                    if let Some(field) = array.fields().get(type_id as usize) {
+                        let len = range.max - range.min + 1; // range is inclusive
+                        fields_size += estimated_bytes_size(
+                            field.sliced(range.min as usize, len as usize).as_ref(),
+                        );
+                    }
+                }
+                fields_size
             } else {
                 // https://arrow.apache.org/docs/format/Columnar.html#sparse-union:
                 //
