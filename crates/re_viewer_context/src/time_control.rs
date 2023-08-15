@@ -127,15 +127,13 @@ impl TimeControl {
             return NeedsRepaint::No; // we have no data on this timeline yet, so bail
         };
 
-        let timeline = *self.timeline.get();
-
         match self.play_state() {
             PlayState::Paused => {
                 // It's possible that the playback is paused because e.g. it reached its end, but
                 // then the user decides to switch timelines.
                 // When they do so, it might be the case that they switch to a timeline they've
                 // never interacted with before, in which case we don't even have a time state yet.
-                self.states.entry(timeline).or_insert_with(|| {
+                self.states.entry(*self.timeline).or_insert_with(|| {
                     TimeState::new(if self.following {
                         full_range.max
                     } else {
@@ -149,7 +147,7 @@ impl TimeControl {
 
                 let state = self
                     .states
-                    .entry(timeline)
+                    .entry(*self.timeline)
                     .or_insert_with(|| TimeState::new(full_range.min));
 
                 if self.looping == Looping::Off && full_range.max <= state.time {
@@ -175,7 +173,7 @@ impl TimeControl {
                     state.time = state.time.max(loop_range.min);
                 }
 
-                match timeline.typ() {
+                match self.timeline.typ() {
                     TimeType::Sequence => {
                         state.time += TimeReal::from(state.fps * dt);
                     }
@@ -192,7 +190,7 @@ impl TimeControl {
             }
             PlayState::Following => {
                 // Set the time to the max:
-                match self.states.entry(timeline) {
+                match self.states.entry(*self.timeline) {
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         entry.insert(TimeState::new(full_range.max));
                     }
@@ -234,8 +232,6 @@ impl TimeControl {
     }
 
     pub fn set_play_state(&mut self, times_per_timeline: &TimesPerTimeline, play_state: PlayState) {
-        let timeline = self.timeline.get();
-
         match play_state {
             PlayState::Paused => {
                 self.playing = false;
@@ -245,14 +241,14 @@ impl TimeControl {
                 self.following = false;
 
                 // Start from beginning if we are at the end:
-                if let Some(time_points) = times_per_timeline.get(timeline) {
-                    if let Some(state) = self.states.get_mut(timeline) {
+                if let Some(time_points) = times_per_timeline.get(self.timeline.get()) {
+                    if let Some(state) = self.states.get_mut(self.timeline.get()) {
                         if max(time_points) <= state.time {
                             state.time = min(time_points).into();
                         }
                     } else {
                         self.states
-                            .insert(*timeline, TimeState::new(min(time_points)));
+                            .insert(*self.timeline, TimeState::new(min(time_points)));
                     }
                 }
             }
@@ -260,9 +256,9 @@ impl TimeControl {
                 self.playing = true;
                 self.following = true;
 
-                if let Some(time_points) = times_per_timeline.get(timeline) {
+                if let Some(time_points) = times_per_timeline.get(self.timeline.get()) {
                     // Set the time to the max:
-                    match self.states.entry(*timeline) {
+                    match self.states.entry(*self.timeline) {
                         std::collections::btree_map::Entry::Vacant(entry) => {
                             entry.insert(TimeState::new(max(time_points)));
                         }
@@ -379,7 +375,7 @@ impl TimeControl {
 
     /// playback fps
     pub fn fps(&self) -> Option<f32> {
-        self.states.get(self.timeline.get()).map(|state| state.fps)
+        self.states.get(self.timeline()).map(|state| state.fps)
     }
 
     /// playback fps
@@ -401,7 +397,7 @@ impl TimeControl {
         }
 
         // If the timeline is auto refresh it every frame, otherwise only pick a new one if invalid.
-        if self.timeline.is_auto() || !is_timeline_valid(self.timeline.get(), times_per_timeline) {
+        if self.timeline.is_auto() || !is_timeline_valid(self.timeline(), times_per_timeline) {
             self.timeline = EditableAutoValue::Auto(
                 default_timeline(times_per_timeline.timelines()).map_or(Default::default(), |t| *t),
             );
@@ -409,13 +405,14 @@ impl TimeControl {
     }
 
     /// The currently selected timeline
+    #[inline]
     pub fn timeline(&self) -> &Timeline {
         self.timeline.get()
     }
 
     /// The time type of the currently selected timeline
     pub fn time_type(&self) -> TimeType {
-        self.timeline.get().typ()
+        self.timeline.typ()
     }
 
     pub fn set_timeline(&mut self, timeline: Timeline) {
@@ -424,7 +421,7 @@ impl TimeControl {
 
     /// The current time.
     pub fn time(&self) -> Option<TimeReal> {
-        self.states.get(self.timeline.get()).map(|state| state.time)
+        self.states.get(self.timeline()).map(|state| state.time)
     }
 
     /// The current time.
@@ -440,7 +437,7 @@ impl TimeControl {
     /// Query for latest value at the currently selected time on the currently selected timeline.
     pub fn current_query(&self) -> re_arrow_store::LatestAtQuery {
         re_arrow_store::LatestAtQuery::new(
-            *self.timeline.get(),
+            *self.timeline,
             self.time().map_or(TimeInt::MAX, |t| t.floor()),
         )
     }
@@ -448,7 +445,7 @@ impl TimeControl {
     /// The current loop range, iff selection looping is turned on.
     pub fn active_loop_selection(&self) -> Option<TimeRangeF> {
         if self.looping == Looping::Selection {
-            self.states.get(self.timeline.get())?.loop_selection
+            self.states.get(self.timeline())?.loop_selection
         } else {
             None
         }
@@ -456,20 +453,20 @@ impl TimeControl {
 
     /// The full range of times for the current timeline
     pub fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<TimeRange> {
-        times_per_timeline.get(self.timeline.get()).map(range)
+        times_per_timeline.get(self.timeline()).map(range)
     }
 
     /// The selected slice of time that is called the "loop selection".
     ///
     /// This can still return `Some` even if looping is currently off.
     pub fn loop_selection(&self) -> Option<TimeRangeF> {
-        self.states.get(self.timeline.get())?.loop_selection
+        self.states.get(self.timeline())?.loop_selection
     }
 
     /// Set the current loop selection without enabling looping.
     pub fn set_loop_selection(&mut self, selection: TimeRangeF) {
         self.states
-            .entry(*self.timeline.get())
+            .entry(*self.timeline)
             .or_insert_with(|| TimeState::new(selection.min))
             .loop_selection = Some(selection);
     }
@@ -486,11 +483,11 @@ impl TimeControl {
 
     /// Is the current time in the selection range (if any), or at the current time mark?
     pub fn is_time_selected(&self, timeline: &Timeline, needle: TimeInt) -> bool {
-        if timeline != self.timeline.get() {
+        if timeline != self.timeline() {
             return false;
         }
 
-        if let Some(state) = self.states.get(self.timeline.get()) {
+        if let Some(state) = self.states.get(self.timeline()) {
             state.time.floor() == needle
         } else {
             false
@@ -506,7 +503,7 @@ impl TimeControl {
         let time = time.into();
 
         self.states
-            .entry(*self.timeline.get())
+            .entry(*self.timeline)
             .or_insert_with(|| TimeState::new(time))
             .time = time;
     }
@@ -514,14 +511,14 @@ impl TimeControl {
     /// The range of time we are currently zoomed in on.
     pub fn time_view(&self) -> Option<TimeView> {
         self.states
-            .get(self.timeline.get())
+            .get(self.timeline())
             .and_then(|state| state.view)
     }
 
     /// The range of time we are currently zoomed in on.
     pub fn set_time_view(&mut self, view: TimeView) {
         self.states
-            .entry(*self.timeline.get())
+            .entry(*self.timeline)
             .or_insert_with(|| TimeState::new(view.min))
             .view = Some(view);
     }
