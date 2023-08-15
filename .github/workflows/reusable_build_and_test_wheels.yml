@@ -213,6 +213,8 @@ jobs:
 
       - name: Get version
         id: get-version
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
+        shell: bash
         run: |
           echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
