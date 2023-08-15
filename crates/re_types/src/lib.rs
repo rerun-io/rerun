@@ -181,16 +181,7 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::try_from_arrow`].
     #[inline]
     fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
-        Self::try_iter_from_arrow(data)
-            .detailed_unwrap()
-            .map(Self::convert_item_to_self)
-            .map(|v| {
-                v.ok_or_else(|| DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-                .detailed_unwrap()
-            })
-            .collect()
+        Self::try_from_arrow(data).detailed_unwrap()
     }
 
     /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
@@ -200,14 +191,9 @@ pub trait Loggable: Sized {
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
-        Self::try_iter_from_arrow(data)?
+        Ok(Self::try_iter_from_arrow(data)?
             .map(Self::convert_item_to_self)
-            .map(|v| {
-                v.ok_or_else(|| DeserializationError::MissingData {
-                    backtrace: ::backtrace::Backtrace::new_unresolved(),
-                })
-            })
-            .collect()
+            .collect())
     }
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
@@ -230,7 +216,7 @@ pub trait Loggable: Sized {
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         Ok(Self::try_iter_from_arrow(data)?
-            .map(Self::convert_item_to_self)
+            .map(Self::convert_item_to_opt_self)
             .collect())
     }
 
@@ -251,10 +237,20 @@ pub trait Loggable: Sized {
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Self::Iter<'_>>;
 
+    /// Convert a [`Loggable::Item`] into a [`Loggable`]
+    ///
+    /// This is intended to be used with [`Loggable::try_iter_from_arrow`] when the type
+    /// is known to be non-nullible.
+    #[inline]
+    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
+        // TODO(jleibs): This unwrap goes away when we remove the iterator abstraction
+        Self::convert_item_to_opt_self(item).unwrap()
+    }
+
     /// Convert a [`Loggable::Item`] into an optional [`Loggable`]
     ///
     /// This is intended to be used with [`Loggable::try_iter_from_arrow`]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self>;
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self>;
 }
 
 /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
@@ -604,7 +600,9 @@ mod size_bytes;
 pub use component_name::ComponentName;
 pub use size_bytes::SizeBytes;
 
+mod arrow_buffer;
 mod arrow_string;
+pub use arrow_buffer::ArrowBuffer;
 pub use arrow_string::ArrowString;
 
 #[cfg(feature = "testing")]

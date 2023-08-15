@@ -126,7 +126,7 @@ impl crate::Loggable for FlattenedScalar {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -209,7 +209,7 @@ impl crate::Loggable for FlattenedScalar {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -221,7 +221,7 @@ pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
     pub single_string_required: crate::ArrowString,
     pub single_string_optional: Option<crate::ArrowString>,
-    pub many_floats_optional: Option<Vec<f32>>,
+    pub many_floats_optional: Option<crate::ArrowBuffer<f32>>,
     pub many_strings_required: Vec<crate::ArrowString>,
     pub many_strings_optional: Option<Vec<crate::ArrowString>>,
     pub flattened_scalar: f32,
@@ -517,19 +517,21 @@ impl crate::Loggable for AffixFuzzer1 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_floats_optional_inner_data: Vec<_> = many_floats_optional
+                            let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
                                 .iter()
                                 .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
+                                .map(|b| b.0.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
                             let many_floats_optional_inner_bitmap: Option<
                                 ::arrow2::bitmap::Bitmap,
                             > = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_floats_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
                                 }),
                             )
                             .unwrap()
@@ -552,10 +554,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                         _ = extension_wrapper;
                                         DataType::Float32.to_logical_type().clone()
                                     },
-                                    many_floats_optional_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    many_floats_optional_inner_data,
                                     many_floats_optional_inner_bitmap,
                                 )
                                 .boxed(),
@@ -842,7 +841,7 @@ impl crate::Loggable for AffixFuzzer1 {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data =
                 data.as_any()
@@ -1201,9 +1200,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                     .with_context(
                                         "rerun.testing.datatypes.AffixFuzzer1#many_floats_optional",
                                     )?
-                                    .into_iter()
-                                    .map(|opt| opt.copied())
-                                    .collect::<Vec<_>>()
+                                    .values()
                                 };
                             let offsets = data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -1223,13 +1220,11 @@ impl crate::Loggable for AffixFuzzer1 {
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner.get_unchecked(start as usize..end as usize)
+                                        data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = data
-                                        .iter()
-                                        .cloned()
-                                        .map(Option::unwrap_or_default)
-                                        .collect();
+                                    let data = crate::ArrowBuffer(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1774,7 +1769,7 @@ impl crate::Loggable for AffixFuzzer1 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -1869,7 +1864,7 @@ impl crate::Loggable for AffixFuzzer2 {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<Float32Array>()
@@ -1900,7 +1895,7 @@ impl crate::Loggable for AffixFuzzer2 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -2265,7 +2260,7 @@ impl crate::Loggable for AffixFuzzer3 {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -2685,7 +2680,7 @@ impl crate::Loggable for AffixFuzzer3 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -2996,7 +2991,7 @@ impl crate::Loggable for AffixFuzzer4 {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -3359,7 +3354,7 @@ impl crate::Loggable for AffixFuzzer4 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -3493,7 +3488,7 @@ impl crate::Loggable for AffixFuzzer5 {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -3568,7 +3563,7 @@ impl crate::Loggable for AffixFuzzer5 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
@@ -3764,7 +3759,7 @@ impl crate::Loggable for AffixFuzzer20 {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -3930,7 +3925,7 @@ impl crate::Loggable for AffixFuzzer20 {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }

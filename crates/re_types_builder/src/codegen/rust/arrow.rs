@@ -133,3 +133,20 @@ pub fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
     let expr: syn::TypePath = syn::parse_str(&fqname).unwrap();
     quote!(#expr)
 }
+
+pub fn is_backed_by_arrow_buffer(typ: &DataType) -> bool {
+    matches!(
+        typ,
+        DataType::Int8
+            | DataType::Int16
+            | DataType::Int32
+            | DataType::Int64
+            | DataType::UInt8
+            | DataType::UInt16
+            | DataType::UInt32
+            | DataType::UInt64
+            | DataType::Float16
+            | DataType::Float32
+            | DataType::Float64
+    )
+}

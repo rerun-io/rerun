@@ -42,7 +42,7 @@ impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
 
 impl crate::Loggable for ClassId {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
+    type Item<'a> = Self;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
@@ -119,7 +119,7 @@ impl crate::Loggable for ClassId {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<UInt16Array>()
@@ -140,6 +140,38 @@ impl crate::Loggable for ClassId {
             .with_context("rerun.components.ClassId")?)
     }
 
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        if let Some(validity) = data.validity() {
+            if validity.unset_bits() != 0 {
+                return Err(crate::DeserializationError::missing_data());
+            }
+        }
+        Ok(data
+            .as_any()
+            .downcast_ref::<UInt16Array>()
+            .ok_or_else(|| {
+                crate::DeserializationError::datatype_mismatch(
+                    DataType::UInt16,
+                    data.data_type().clone(),
+                )
+            })
+            .with_context("rerun.components.ClassId#id")?
+            .values()
+            .as_slice()
+            .iter()
+            .copied()
+            .map(|v| crate::datatypes::ClassId(v))
+            .map(|v| Self(v))
+            .collect::<Vec<_>>())
+    }
+
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
@@ -147,12 +179,17 @@ impl crate::Loggable for ClassId {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        Ok(Self::try_from_arrow(data)?.into_iter())
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
         item
+    }
+
+    #[inline]
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
+        Some(item)
     }
 }
 
