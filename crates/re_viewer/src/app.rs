@@ -6,7 +6,7 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
-    command_channel, gpu_bridge, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
+    command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
     DynSpaceViewClass, PlayState, SpaceViewClassRegistry, SpaceViewClassRegistryError,
     StoreContext, SystemCommand, SystemCommandSender,
 };
@@ -576,10 +576,9 @@ impl App {
                             &mut render_state.renderer.write()
                         };
                         if let Some(render_ctx) = egui_renderer
-                            .shared_paint_callback_resources
-                            .get_mut::<re_renderer::RenderContext>(
-                            gpu_bridge::EGUI_RENDER_CONTEXT_IDENTIFIER,
-                        ) {
+                            .callback_resources
+                            .get_mut::<re_renderer::RenderContext>()
+                        {
                             render_ctx.begin_frame();
 
                             self.state.show(
@@ -899,8 +898,8 @@ impl eframe::App for App {
                 &mut render_state.renderer.read()
             };
             let render_ctx = egui_renderer
-                .shared_paint_callback_resources
-                .get::<re_renderer::RenderContext>(gpu_bridge::EGUI_RENDER_CONTEXT_IDENTIFIER)
+                .callback_resources
+                .get::<re_renderer::RenderContext>()
                 .unwrap();
 
             // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
