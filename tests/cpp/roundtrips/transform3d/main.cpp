@@ -9,7 +9,7 @@ namespace rr = rerun;
 
 int main(int argc, char** argv) {
     auto rec_stream = rr::RecordingStream("roundtrip_transform3d");
-    rec_stream.save(argv[1]);
+    rec_stream.save(argv[1]).throw_on_failure();
 
     rec_stream.log(
         "translation_and_mat3x3/identity",
