@@ -550,12 +550,14 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            // TODO(jleibs): The inner types of lists shouldn't be nullable, but both the python and
-            // C++ code-gen end up setting these to null when an outer fixed-sized field does happen
-            // to be null. In order to keep everything aligned at a validation level we match this
-            // behavior and create a validity-mask for the corresponding inner type. We can undo this if
-            // we make the C++ and Python codegen match the rust behavior or make our comparison tests
-            // more lenient.
+            // TODO(https://github.com/rerun-io/rerun/issues/2993): The inner
+            // types of lists shouldn't be nullable, but both the python and C++
+            // code-gen end up setting these to null when an outer fixed-sized
+            // field does happen to be null. In order to keep everything aligned
+            // at a validation level we match this behavior and create a
+            // validity-mask for the corresponding inner type. We can undo this
+            // if we make the C++ and Python codegen match the rust behavior or
+            // make our comparison tests more lenient.
             let quoted_inner_bitmap =
                 if let DataType::FixedSizeList(_, count) = datatype.to_logical_type() {
                     quote! {
