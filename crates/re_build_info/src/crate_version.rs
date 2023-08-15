@@ -510,6 +510,10 @@ fn test_compatibility() {
         are_compatible("0.2.0-rc.0", "0.2.0"),
         "rc build is compatible with the finalized version"
     );
+    assert!(
+        are_compatible("0.2.0", "0.2.1-rc.0"),
+        "rc build is compatible by patch version"
+    );
 }
 
 #[test]
