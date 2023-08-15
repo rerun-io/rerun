@@ -195,10 +195,8 @@ jobs:
 
   update-latest-branch:
     name: "Update Latest Branch"
-    # only update the latest branch in `release`
-    # and after every other step has finished
     if: inputs.release-type == 'release'
-    needs: [update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
+    needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -211,4 +209,37 @@ jobs:
           git push --force origin ${{ github.ref_name }}:latest
           git commit -m "Update docs for ${GITHUB_SHA}"
           git push origin gh-pages-orphan:gh-pages -f
+
+  post-release-version-bump:
+    name: "Post-release Version Bump"
+    if: inputs.release-type == 'release'
+    needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -r scripts/ci/requirements.txt
+
+      # After a release, we bump the minor version and append `+dev`.
+      - name: Update version
+        id: update-version
+        run: |
+          python3 scripts/ci/crates.py version --bump minor --dev
+          echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v5.0.2
+        with:
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
+          base: main
+          branch: "post-${{ github.ref_name }}"
+          commit-message: "bump versions to ${{ steps.update-version.outputs.version }}"
+          title: "Post-release ${{ needs.version.outputs.final }}"
+          labels: "⛴ release"
+          committer: "Rerun Bot <bot@rerun.io>"
+          author: "Rerun Bot <bot@rerun.io>"
+          body: |
+            ### What
+
+            - [x] Bump all crate versions to `${{ steps.update-version.outputs.version }}`
 
