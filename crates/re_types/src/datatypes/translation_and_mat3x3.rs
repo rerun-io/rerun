@@ -146,7 +146,15 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let translation_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let translation_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                                translation_bitmap.as_ref().map(|bitmap| {
+                                    bitmap
+                                        .iter()
+                                        .map(|i| std::iter::repeat(i).take(3usize))
+                                        .flatten()
+                                        .collect::<Vec<_>>()
+                                        .into()
+                                });
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;
@@ -212,7 +220,15 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let matrix_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let matrix_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                                matrix_bitmap.as_ref().map(|bitmap| {
+                                    bitmap
+                                        .iter()
+                                        .map(|i| std::iter::repeat(i).take(9usize))
+                                        .flatten()
+                                        .collect::<Vec<_>>()
+                                        .into()
+                                });
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;

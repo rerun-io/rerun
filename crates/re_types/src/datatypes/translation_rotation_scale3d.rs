@@ -157,7 +157,15 @@ impl crate::Loggable for TranslationRotationScale3D {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let translation_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let translation_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                                translation_bitmap.as_ref().map(|bitmap| {
+                                    bitmap
+                                        .iter()
+                                        .map(|i| std::iter::repeat(i).take(3usize))
+                                        .flatten()
+                                        .collect::<Vec<_>>()
+                                        .into()
+                                });
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;

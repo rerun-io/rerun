@@ -90,7 +90,15 @@ impl crate::Loggable for Vec2D {
                     .cloned()
                     .map(Some)
                     .collect();
-                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                    data0_bitmap.as_ref().map(|bitmap| {
+                        bitmap
+                            .iter()
+                            .map(|i| std::iter::repeat(i).take(2usize))
+                            .flatten()
+                            .collect::<Vec<_>>()
+                            .into()
+                    });
                 FixedSizeListArray::new(
                     {
                         _ = extension_wrapper;

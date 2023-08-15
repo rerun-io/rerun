@@ -149,7 +149,15 @@ impl crate::Loggable for Rotation3D {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let quaternion_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let quaternion_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                                quaternion_bitmap.as_ref().map(|bitmap| {
+                                    bitmap
+                                        .iter()
+                                        .map(|i| std::iter::repeat(i).take(4usize))
+                                        .flatten()
+                                        .collect::<Vec<_>>()
+                                        .into()
+                                });
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;
