@@ -36,5 +36,3 @@ fn validity_checks() {
         DeserializationError::MissingData { .. }
     ));
 }
-
-mod util;
