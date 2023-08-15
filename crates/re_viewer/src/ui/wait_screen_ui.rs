@@ -1,4 +1,5 @@
 use egui::Ui;
+use itertools::Itertools;
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
@@ -10,6 +11,16 @@ const MAX_COLUMN_WIDTH: f32 = 400.0;
 const PYTHON_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/python";
 const CPP_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/cpp";
 const RUST_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/rust";
+
+pub fn wait_screen_ui(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    rx: &Receiver<LogMsg>,
+    command_sender: &re_viewer_context::CommandSender,
+) {
+    let wait_screen = WaitScreen::new();
+    wait_screen.show(re_ui, ui, rx, command_sender);
+}
 
 //TODO(ab): get rid of that unless we really need state here
 pub struct WaitScreen {}
@@ -24,6 +35,7 @@ impl WaitScreen {
         &self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
+        rx: &Receiver<LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) {
         let mut margin = egui::Margin::same(40.0);
@@ -47,6 +59,14 @@ impl WaitScreen {
                 ui.add_space(20.0);
 
                 Self::onboarding_content_ui(re_ui, ui, command_sender);
+
+                ui.add_space(55.0);
+
+                let (status, source) = status_strings(rx);
+                ui.vertical_centered(|ui| {
+                    ui.label(status);
+                    ui.label(egui::RichText::new(source).color(ui.visuals().weak_text_color()));
+                });
             });
         });
     }
@@ -202,74 +222,30 @@ fn image_banner(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, image: &re_ui::Icon, col
     ));
 }
 
-pub fn wait_screen_ui(
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    _rx: &Receiver<LogMsg>,
-    command_sender: &re_viewer_context::CommandSender,
-) {
-    let wait_screen = WaitScreen::new();
-    wait_screen.show(re_ui, ui, command_sender);
+pub fn status_strings(rx: &Receiver<LogMsg>) -> (&'static str, String) {
+    match rx.source() {
+        re_smart_channel::SmartChannelSource::Files { paths } => (
+            "Loading…",
+            format!(
+                "{}",
+                paths
+                    .iter()
+                    .format_with(", ", |path, f| f(&format_args!("{}", path.display())))
+            ),
+        ),
+        re_smart_channel::SmartChannelSource::RrdHttpStream { url } => ("Loading…", url.clone()),
+        re_smart_channel::SmartChannelSource::RrdWebEventListener => {
+            ("Ready", "Waiting for logging data…".to_owned())
+        }
+        re_smart_channel::SmartChannelSource::Sdk => {
+            ("Ready", "Waiting for logging data from SDK".to_owned())
+        }
+        re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
+            // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
+            ("Ready", format!("Waiting for data from {ws_server_url}"))
+        }
+        re_smart_channel::SmartChannelSource::TcpServer { port } => {
+            ("Ready", format!("Listening on port {port}"))
+        }
+    }
 }
-
-// pub fn wait_screen_ui_old(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
-//     ui.centered_and_justified(|ui| {
-//         fn waiting_ui(ui: &mut egui::Ui, heading_txt: &str, msg_txt: &str) {
-//             let style = ui.style();
-//             let mut layout_job = egui::text::LayoutJob::default();
-//             layout_job.append(
-//                 heading_txt,
-//                 0.0,
-//                 egui::TextFormat::simple(
-//                     egui::TextStyle::Heading.resolve(style),
-//                     style.visuals.strong_text_color(),
-//                 ),
-//             );
-//             layout_job.append(
-//                 &format!("\n\n{msg_txt}"),
-//                 0.0,
-//                 egui::TextFormat::simple(
-//                     egui::TextStyle::Body.resolve(style),
-//                     style.visuals.text_color(),
-//                 ),
-//             );
-//             layout_job.halign = egui::Align::Center;
-//             ui.label(layout_job);
-//         }
-//
-//         match rx.source() {
-//             re_smart_channel::SmartChannelSource::Files { paths } => {
-//                 waiting_ui(
-//                     ui,
-//                     "Loading…",
-//                     &format!(
-//                         "{}",
-//                         paths
-//                             .iter()
-//                             .format_with(", ", |path, f| f(&format_args!("{}", path.display())))
-//                     ),
-//                 );
-//             }
-//             re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
-//                 waiting_ui(ui, "Loading…", url);
-//             }
-//             re_smart_channel::SmartChannelSource::RrdWebEventListener => {
-//                 waiting_ui(ui, "Ready", "Waiting for logging data…");
-//             }
-//             re_smart_channel::SmartChannelSource::Sdk => {
-//                 waiting_ui(ui, "Ready", "Waiting for logging data from SDK");
-//             }
-//             re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
-//                 // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
-//                 waiting_ui(
-//                     ui,
-//                     "Ready",
-//                     &format!("Waiting for data from {ws_server_url}"),
-//                 );
-//             }
-//             re_smart_channel::SmartChannelSource::TcpServer { port } => {
-//                 waiting_ui(ui, "Ready", &format!("Listening on port {port}"));
-//             }
-//         };
-//     });
-// }
