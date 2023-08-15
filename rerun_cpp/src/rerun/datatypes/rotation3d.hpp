@@ -34,13 +34,15 @@ namespace rerun {
 
                 ~Rotation3DData() {}
 
-                void swap(Rotation3DData& other) noexcept {
+                void swap(Rotation3DData &other) noexcept {
                     // This bitwise swap would fail for self-referential types, but we don't have
                     // any of those.
                     char temp[sizeof(Rotation3DData)];
-                    std::memcpy(temp, this, sizeof(Rotation3DData));
-                    std::memcpy(this, &other, sizeof(Rotation3DData));
-                    std::memcpy(&other, temp, sizeof(Rotation3DData));
+                    void *otherbytes = reinterpret_cast<void *>(&other);
+                    void *thisbytes = reinterpret_cast<void *>(this);
+                    std::memcpy(temp, thisbytes, sizeof(Rotation3DData));
+                    std::memcpy(thisbytes, otherbytes, sizeof(Rotation3DData));
+                    std::memcpy(otherbytes, temp, sizeof(Rotation3DData));
                 }
             };
         } // namespace detail
@@ -49,26 +51,28 @@ namespace rerun {
         struct Rotation3D {
             Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
 
-            Rotation3D(const Rotation3D& other) : _tag(other._tag) {
-                memcpy(&this->_data, &other._data, sizeof(detail::Rotation3DData));
+            Rotation3D(const Rotation3D &other) : _tag(other._tag) {
+                const void *otherbytes = reinterpret_cast<const void *>(&other._data);
+                void *thisbytes = reinterpret_cast<void *>(&this->_data);
+                std::memcpy(thisbytes, otherbytes, sizeof(detail::Rotation3DData));
             }
 
-            Rotation3D& operator=(const Rotation3D& other) noexcept {
+            Rotation3D &operator=(const Rotation3D &other) noexcept {
                 Rotation3D tmp(other);
                 this->swap(tmp);
                 return *this;
             }
 
-            Rotation3D(Rotation3D&& other) noexcept : _tag(detail::Rotation3DTag::NONE) {
+            Rotation3D(Rotation3D &&other) noexcept : _tag(detail::Rotation3DTag::NONE) {
                 this->swap(other);
             }
 
-            Rotation3D& operator=(Rotation3D&& other) noexcept {
+            Rotation3D &operator=(Rotation3D &&other) noexcept {
                 this->swap(other);
                 return *this;
             }
 
-            void swap(Rotation3D& other) noexcept {
+            void swap(Rotation3D &other) noexcept {
                 auto tag_temp = this->_tag;
                 this->_tag = other._tag;
                 other._tag = tag_temp;
@@ -102,16 +106,16 @@ namespace rerun {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType> &to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
+                arrow::MemoryPool *memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
             static arrow::Status fill_arrow_array_builder(
-                arrow::DenseUnionBuilder* builder, const Rotation3D* elements, size_t num_elements
+                arrow::DenseUnionBuilder *builder, const Rotation3D *elements, size_t num_elements
             );
 
           private:
