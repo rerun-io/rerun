@@ -9,27 +9,27 @@ function(set_default_warning_settings target)
         # Enabled warnings.
         target_compile_options(${target} PRIVATE
             -Wall
-            -Wextra
-            -Wpedantic
             -Wcast-align
             -Wcast-qual
+            -Wextra
             -Wformat=2
             -Wmissing-include-dirs
             -Wnull-dereference
+            -Wold-style-cast
+            -Wpedantic
             -Wpointer-arith
             -Wshadow
             -Wswitch-enum
             -Wvla
-            -Wold-style-cast
         )
 
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
             target_compile_options(${target} PRIVATE
                 -Wc++17-compat-pedantic
-                -Wshadow-all
-                -Wnon-gcc
-                -Wgnu
                 -Wc99-extensions
+                -Wgnu
+                -Wnon-gcc
+                -Wshadow-all
             )
         endif()
 
