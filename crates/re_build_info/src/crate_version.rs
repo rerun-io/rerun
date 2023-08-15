@@ -1,6 +1,7 @@
 mod meta {
     pub const TAG_MASK: u8 = 0b11000000;
-    pub const VALUE_MASK: u8 = 0b00011111;
+    pub const VALUE_MASK: u8 = 0b00111111;
+    pub const MAX_VALUE: u8 = VALUE_MASK;
 
     pub const RC: u8 = 0b01000000;
     pub const ALPHA: u8 = 0b10000000;
@@ -19,25 +20,25 @@ mod meta {
 /// `-alpha.N` versions are used for weekly releases.
 /// `-rc.N` versions are used for release candidates as we're preparing for a full release.
 ///
-/// The version numbers (`N`) aren't allowed to be very large (current max: 31).
+/// The version numbers (`N`) aren't allowed to be very large (current max: 63).
 /// This limited subset is chosen so that we can encode the version in 32 bits
 /// in our `.rrd` files and on the wire.
 ///
 /// Here is the current binary format:
 /// ```text,ignore
 /// major    minor    patch    meta
-/// 00000000 00000000 00000000 00000000
-///                            ▲▲ ▲   ▲
-///                            ││ └┬──┘
+/// 00000000 00000000 00000000 00NNNNNN
+///                            ▲▲▲    ▲
+///                            ││└─┬──┘
 ///                            ││  └─ N
 ///                            │└─ rc/dev
 ///                            └─ alpha
 /// ```
 ///
 /// The valid bit patterns for `meta` are:
-/// - `100NNNNN` -> `-alpha.N`
-/// - `110NNNNN` -> `-alpha.N+dev`
-/// - `010NNNNN` -> `-rc.N`
+/// - `10NNNNNN` -> `-alpha.N`
+/// - `11NNNNNN` -> `-alpha.N+dev`
+/// - `01NNNNNN` -> `-rc.N`
 /// - `00000000` -> none of the above
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CrateVersion {
@@ -328,15 +329,15 @@ impl CrateVersion {
             if let (true, remainder) = maybe_token(s, b"alpha") {
                 s = eat!(remainder, b'.', "expected `.` after `-alpha`");
                 (build, s) = eat_u8!(s, "expected digit after `-alpha.`");
-                if build > 31 {
-                    return Err("`-alpha` build number is larger than 31");
+                if build > meta::MAX_VALUE {
+                    return Err("`-alpha` build number is larger than 63");
                 }
                 meta = Some(Meta::Alpha(build));
             } else if let (true, remainder) = maybe_token(s, b"rc") {
                 s = eat!(remainder, b'.', "expected `.` after `-rc`");
                 (build, s) = eat_u8!(s, "expected digit after `-rc.`");
-                if build > 31 {
-                    return Err("`-rc` build number is larger than 31");
+                if build > meta::MAX_VALUE {
+                    return Err("`-rc` build number is larger than 63");
                 }
                 meta = Some(Meta::Rc(build));
             } else {
@@ -409,30 +410,30 @@ fn test_parse_version() {
     assert_parse_ok!("1.2.3", CrateVersion::new(1, 2, 3));
     assert_parse_ok!("12.23.24", CrateVersion::new(12, 23, 24));
     assert_parse_ok!(
-        "12.23.24-rc.31",
+        "12.23.24-rc.63",
         CrateVersion {
             major: 12,
             minor: 23,
             patch: 24,
-            meta: Some(Meta::Rc(31)),
+            meta: Some(Meta::Rc(63)),
         }
     );
     assert_parse_ok!(
-        "12.23.24-alpha.31",
+        "12.23.24-alpha.63",
         CrateVersion {
             major: 12,
             minor: 23,
             patch: 24,
-            meta: Some(Meta::Alpha(31)),
+            meta: Some(Meta::Alpha(63)),
         }
     );
     assert_parse_ok!(
-        "12.23.24-alpha.31+dev",
+        "12.23.24-alpha.63+dev",
         CrateVersion {
             major: 12,
             minor: 23,
             patch: 24,
-            meta: Some(Meta::DevAlpha(31)),
+            meta: Some(Meta::DevAlpha(63)),
         }
     );
 }
@@ -443,9 +444,9 @@ fn test_format_parse_roundtrip() {
         "0.2.0",
         "1.2.3",
         "12.23.24",
-        "12.23.24-rc.31",
-        "12.23.24-alpha.31",
-        "12.23.24-alpha.31+dev",
+        "12.23.24-rc.63",
+        "12.23.24-alpha.63",
+        "12.23.24-alpha.63+dev",
     ] {
         assert_eq!(CrateVersion::parse(version).to_string(), version);
     }
@@ -457,9 +458,9 @@ fn test_format_parse_roundtrip_bytes() {
         "0.2.0",
         "1.2.3",
         "12.23.24",
-        "12.23.24-rc.31",
-        "12.23.24-alpha.31",
-        "12.23.24-alpha.31+dev",
+        "12.23.24-rc.63",
+        "12.23.24-alpha.63",
+        "12.23.24-alpha.63+dev",
     ] {
         let version = CrateVersion::parse(version);
         let bytes = version.to_bytes();
@@ -533,11 +534,11 @@ fn test_bad_parse() {
     assert_parse_err!("10.0.2-alpha.", "expected digit after `-alpha.`");
     assert_parse_err!(
         "10.0.2-alpha.255",
-        "`-alpha` build number is larger than 31"
+        "`-alpha` build number is larger than 63"
     );
     assert_parse_err!("10.0.2-rc", "expected `.` after `-rc`");
     assert_parse_err!("10.0.2-rc.", "expected digit after `-rc.`");
-    assert_parse_err!("10.0.2-rc.255", "`-rc` build number is larger than 31");
+    assert_parse_err!("10.0.2-rc.255", "`-rc` build number is larger than 63");
     assert_parse_err!("10.0.2-alpha.1+", "expected `dev` after `+`");
     assert_parse_err!("10.0.2-rc.1+dev", "unexpected `-rc` with `+dev`");
     assert_parse_err!("10.0.2+dev", "unexpected `+dev` without `-alpha`");
