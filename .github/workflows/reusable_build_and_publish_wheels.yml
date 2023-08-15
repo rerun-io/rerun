@@ -3,11 +3,19 @@ name: Build and publish wheels
 on:
   workflow_call:
     inputs:
-      CONCURRENCY:
+      concurrency:
         type: string
         required: true
-      RELEASE_VERSION:
+      release-version:
         description: "Release Version Number (Must match Cargo.toml)"
+        type: string
+        required: true
+      linux-wheel-name:
+        description: "Name of the wheel built for linux"
+        type: string
+        required: true
+      linux-rrd-name:
+        description: "Name of the .rrd file built for linux"
         type: string
         required: true
 
@@ -33,11 +41,11 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: ${{ inputs.concurrency }}
       PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: linux-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
-      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+      WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_VERSION: ${{ inputs.release-version }}
     secrets: inherit
 
   upload-wheels-linux:
@@ -45,9 +53,9 @@ jobs:
     needs: [build-linux]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
-      WHEEL_ARTIFACT_NAME: linux-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
+      CONCURRENCY: ${{ inputs.concurrency }}
+      WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
     secrets: inherit
 
   ### Windows
@@ -56,11 +64,11 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: ${{ inputs.concurrency }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ""
-      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+      RELEASE_VERSION: ${{ inputs.release-version }}
     secrets: inherit
 
   upload-wheels-windows:
@@ -68,9 +76,9 @@ jobs:
     needs: [build-linux, build-windows]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: ${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: windows-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
     secrets: inherit
 
   ### macOS (arm)
@@ -79,11 +87,11 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: ${{ inputs.concurrency }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ""
-      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+      RELEASE_VERSION: ${{ inputs.release-version }}
     secrets: inherit
 
   upload-wheels-macos-arm:
@@ -91,9 +99,9 @@ jobs:
     needs: [build-linux, build-macos-arm]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: ${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
     secrets: inherit
 
   ### macOS (intel)
@@ -102,11 +110,11 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: ${{ inputs.concurrency }}
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
       RRD_ARTIFACT_NAME: ""
-      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+      RELEASE_VERSION: ${{ inputs.release-version }}
     secrets: inherit
 
   upload-wheels-macos-intel:
@@ -114,9 +122,9 @@ jobs:
     needs: [build-linux, build-macos-intel]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: ${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
     secrets: inherit
 
   generate-wheel-index:
@@ -130,13 +138,13 @@ jobs:
       ]
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: ${{ inputs.concurrency }}
     secrets: inherit
 
   publish-wheels:
     name: "Publish Wheels"
     needs: [get-commit-sha, generate-wheel-index]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -159,15 +167,13 @@ jobs:
           python3 -m pip install packaging google-cloud-storage
 
       - name: Download wheels from Google Cloud Storage
-        env:
-          BUCKET_PATH:
         run: |
           mkdir wheels
           gsutil cp "gs://rerun-builds/commit/${{ needs.get-commit-sha.outputs.short-sha }}/wheels/*.whl" wheels/
 
       - name: Verify wheels match the expected release
         run: |
-          python3 scripts/ci/verify_wheels.py --folder wheels --version ${{ inputs.RELEASE_VERSION }}
+          python3 scripts/ci/verify_wheels.py --folder wheels --version ${{ inputs.release-version }}
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
