@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
-use itertools::Itertools as _;
-use nohash_hasher::IntSet;
 use re_types::ComponentName;
+
+use ahash::HashMap;
+use itertools::{izip, Itertools as _};
+use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use crate::{
@@ -1138,11 +1139,11 @@ impl DataTable {
                     cells: ref cells2,
                 } = row2;
 
-                for (c1, c2) in cells1.0.iter().zip(&cells2.0) {
+                for (c1, c2) in izip!(&cells1.0, &cells2.0) {
                     if c1 != c2 {
                         anyhow::ensure!(
                             c1.datatype() == c2.datatype(),
-                            "Found discrepancy in row #{ri}, cells' datatypes don't match!\n{}",
+                            "Found discrepancy in row #{ri}: cells' datatypes don't match!\n{}",
                             similar_asserts::SimpleDiff::from_str(
                                 &format!("{:?}", c1.datatype()),
                                 &format!("{:?}", c2.datatype()),
@@ -1160,7 +1161,7 @@ impl DataTable {
                         ) {
                             anyhow::ensure!(
                                 arr1.validity() == arr2.validity(),
-                                "Found discrepancy in row #{ri}, union arrays' validity bitmaps don't match!\n{}\n{}",
+                                "Found discrepancy in row #{ri}: union arrays' validity bitmaps don't match!\n{}\n{}",
                                 similar_asserts::SimpleDiff::from_str(&row1.to_string(), &row2.to_string(), "row1", "row2"),
                                 similar_asserts::SimpleDiff::from_str(
                                     &format!("{:?}", arr1.validity()),
@@ -1171,7 +1172,7 @@ impl DataTable {
                             );
                             anyhow::ensure!(
                                 arr1.types() == arr2.types(),
-                                "Found discrepancy in row #{ri}, union arrays' type indices don't match!\n{}\n{}",
+                                "Found discrepancy in row #{ri}: union arrays' type indices don't match!\n{}\n{}",
                                 similar_asserts::SimpleDiff::from_str(&row1.to_string(), &row2.to_string(), "row1", "row2"),
                                 similar_asserts::SimpleDiff::from_str(
                                     &format!("{:?}", arr1.types()),
@@ -1182,7 +1183,7 @@ impl DataTable {
                             );
                             anyhow::ensure!(
                                 arr1.offsets() == arr2.offsets(),
-                                "Found discrepancy in row #{ri}, union arrays' offsets don't match!\n{}\n{}",
+                                "Found discrepancy in row #{ri}: union arrays' offsets don't match!\n{}\n{}",
                                 similar_asserts::SimpleDiff::from_str(&row1.to_string(), &row2.to_string(), "row1", "row2"),
                                 similar_asserts::SimpleDiff::from_str(
                                     &format!("{:?}", arr1.offsets()),
@@ -1196,10 +1197,10 @@ impl DataTable {
                 }
 
                 let mut size_mismatches = vec![];
-                for (c1, c2) in cells1.0.iter().zip(&cells2.0) {
+                for (c1, c2) in izip!(&cells1.0, &cells2.0) {
                     if c1.total_size_bytes() != c2.total_size_bytes() {
                         size_mismatches.push(format!(
-                            "Found discrepancy in row #{ri}, cells' sizes don't match! {} ({}) vs. {} ({}) bytes",
+                            "Sizes don't match! {} ({}) vs. {} ({}) bytes",
                             c1.total_size_bytes(),
                             c1.component_name(),
                             c2.total_size_bytes(),
@@ -1208,7 +1209,7 @@ impl DataTable {
 
                         fn cell_to_bytes(cell: DataCell) -> Vec<u8> {
                             let row = DataRow::from_cells1(
-                                RowId::random(),
+                                RowId::ZERO,
                                 "cell",
                                 TimePoint::default(),
                                 cell.num_instances(),
@@ -1232,20 +1233,22 @@ impl DataTable {
                         let c2_bytes = cell_to_bytes(c2.clone());
 
                         size_mismatches.push(format!(
-                            "Cell size is {} vs {} bytes",
+                            "IPC size is {} vs {} bytes",
                             c1_bytes.len(),
                             c2_bytes.len()
                         ));
 
-                        size_mismatches.push(
-                            similar_asserts::SimpleDiff::from_str(
-                                &format!("{c1_bytes:#?}"),
-                                &format!("{c2_bytes:#?}"),
-                                "cell1_ipc",
-                                "cell2_ipc",
-                            )
-                            .to_string(),
-                        );
+                        if c1_bytes.len().max(c2_bytes.len()) < 300 {
+                            size_mismatches.push(
+                                similar_asserts::SimpleDiff::from_str(
+                                    &format!("{c1_bytes:#?}"),
+                                    &format!("{c2_bytes:#?}"),
+                                    "cell1_ipc",
+                                    "cell2_ipc",
+                                )
+                                .to_string(),
+                            );
+                        }
                     }
                 }
 
@@ -1254,7 +1257,9 @@ impl DataTable {
                         && entity_path1 == entity_path2
                         && num_instances1 == num_instances2
                         && cells1 == cells2,
-                    "Found discrepancy in row #{ri}:\n{}\n{}",
+                    "Found discrepancy in row #{ri}:\n{}\n{}\
+                    \n\nrow1:\n{row1}
+                    \n\nrow2:\n{row2}",
                     similar_asserts::SimpleDiff::from_str(
                         &row1.to_string(),
                         &row2.to_string(),
