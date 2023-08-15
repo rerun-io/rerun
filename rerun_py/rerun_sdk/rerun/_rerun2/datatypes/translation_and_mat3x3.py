@@ -85,9 +85,19 @@ class TranslationAndMat3x3Type(BaseExtensionType):
             self,
             pa.struct(
                 [
-                    pa.field("translation", pa.list_(pa.field("item", pa.float32(), False, {}), 3), True, {}),
-                    pa.field("matrix", pa.list_(pa.field("item", pa.float32(), False, {}), 9), True, {}),
-                    pa.field("from_parent", pa.bool_(), False, {}),
+                    pa.field(
+                        "translation",
+                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                        nullable=True,
+                        metadata={},
+                    ),
+                    pa.field(
+                        "matrix",
+                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
+                        nullable=True,
+                        metadata={},
+                    ),
+                    pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
                 ]
             ),
             "rerun.datatypes.TranslationAndMat3x3",

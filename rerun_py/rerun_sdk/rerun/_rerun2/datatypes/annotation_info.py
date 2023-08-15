@@ -86,9 +86,9 @@ class AnnotationInfoType(BaseExtensionType):
             self,
             pa.struct(
                 [
-                    pa.field("id", pa.uint16(), False, {}),
-                    pa.field("label", pa.utf8(), True, {}),
-                    pa.field("color", pa.uint32(), True, {}),
+                    pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                    pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                    pa.field("color", pa.uint32(), nullable=True, metadata={}),
                 ]
             ),
             "rerun.datatypes.AnnotationInfo",

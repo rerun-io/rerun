@@ -54,7 +54,14 @@ class LineStrip3DType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.list_(pa.field("item", pa.list_(pa.field("item", pa.float32(), False, {}), 3), False, {})),
+            pa.list_(
+                pa.field(
+                    "item",
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                    nullable=False,
+                    metadata={},
+                )
+            ),
             "rerun.linestrip3d",
         )
 
