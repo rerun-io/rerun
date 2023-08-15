@@ -13,6 +13,9 @@ on:
         required: false
         type: string
         default: "head"
+      RELEASE_COMMIT:
+        required: false
+        type: string
       UPDATE_LATEST:
         required: false
         type: boolean
@@ -175,5 +178,5 @@ jobs:
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
           vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
-          release_commit:
+          release_commit: ${{ inputs.RELEASE_COMMIT }}
 
