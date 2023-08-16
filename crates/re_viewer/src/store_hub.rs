@@ -109,11 +109,13 @@ impl StoreHub {
     }
 
     pub fn remove_recording_id(&mut self, recording_id: &StoreId) {
-        if let Some(new_selection) = self.store_dbs.find_closest_recording(recording_id) {
-            self.set_recording_id(new_selection.clone());
-        } else {
-            self.application_id = None;
-            self.selected_rec_id = None;
+        if self.selected_rec_id.as_ref() == Some(recording_id) {
+            if let Some(new_selection) = self.store_dbs.find_closest_recording(recording_id) {
+                self.set_recording_id(new_selection.clone());
+            } else {
+                self.application_id = None;
+                self.selected_rec_id = None;
+            }
         }
 
         self.store_dbs.remove(recording_id);
