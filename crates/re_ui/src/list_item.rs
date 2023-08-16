@@ -1,5 +1,5 @@
 use crate::{Icon, ReUi};
-use egui::{Align2, Response, Shape, Ui};
+use egui::{Align, Align2, Response, Shape, Ui};
 
 struct ListItemResponse {
     response: Response,
@@ -220,9 +220,14 @@ impl<'a> ListItem<'a> {
                 text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
             }
 
-            let text =
+            let mut text_job =
                 self.text
-                    .into_galley(ui, Some(false), text_rect.width(), egui::TextStyle::Button);
+                    .into_text_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
+            text_job.job.wrap.max_width = text_rect.width();
+            text_job.job.wrap.max_rows = 1;
+            text_job.job.wrap.break_anywhere = true;
+
+            let text = ui.fonts(|f| text_job.into_galley(f));
 
             // this happens here to avoid cloning the text
             response.widget_info(|| {
