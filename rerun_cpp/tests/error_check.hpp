@@ -4,7 +4,7 @@
 
 /// Checks if the given operation logs the expected status code.
 template <typename Op>
-auto check_logged_status(
+auto check_logged_error(
     Op operation, rerun::ErrorCode expected_status_code = rerun::ErrorCode::Ok
 ) {
     static rerun::Error last_logged_status;

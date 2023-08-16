@@ -86,6 +86,11 @@ namespace rerun {
         /// Construct from an arrow status.
         Error(const arrow::Status& status);
 
+        /// Compare two errors for equality. Requires the description to match.
+        bool operator==(const Error& other) const {
+            return code == other.code && description == other.description;
+        }
+
         /// Returns true if the code is `Ok`.
         bool is_ok() const {
             return code == ErrorCode::Ok;
