@@ -1200,7 +1200,7 @@ impl DataTable {
                 for (c1, c2) in izip!(&cells1.0, &cells2.0) {
                     if c1.total_size_bytes() != c2.total_size_bytes() {
                         size_mismatches.push(format!(
-                            "Sizes don't match! {} ({}) vs. {} ({}) bytes",
+                            "Sizes don't match! {} ({}) vs. {} ({}) bytes. Perhaps the validity differs?",
                             c1.total_size_bytes(),
                             c1.component_name(),
                             c2.total_size_bytes(),
