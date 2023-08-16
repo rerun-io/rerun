@@ -10,10 +10,6 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-// C99 compliant static assertion macro.
-
-#define STATIC_ASSERT(COND, MSG) typedef char static_assertion_##MSG[(COND) ? 1 : -1]
-
 // ----------------------------------------------------------------------------
 // Types:
 
