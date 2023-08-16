@@ -47,7 +47,7 @@ if(APPLE)
     target_link_libraries(rerun_sdk PRIVATE "-framework CoreFoundation" "-framework IOKit")
 elseif(UNIX) # if(LINUX) # CMake 3.25
     target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
-    target_link_libraries(rerun_sdk PRIVATE "-lm -ldl")
+    target_link_libraries(rerun_sdk PRIVATE "-lm -ldl -pthread")
 elseif(WIN32)
     # TODO(andreas): Why not static linkage?
     target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/rerun_c.lib)
