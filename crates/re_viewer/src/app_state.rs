@@ -71,6 +71,7 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
+        show_welcome: bool,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
@@ -193,7 +194,11 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
-                        viewport.viewport_ui(ui, &mut ctx);
+                        if show_welcome {
+                            crate::ui::welcome_ui(re_ui, ui, rx, command_sender);
+                        } else {
+                            viewport.viewport_ui(ui, &mut ctx);
+                        }
                     });
 
                 // If the viewport was user-edited, then disable auto space views

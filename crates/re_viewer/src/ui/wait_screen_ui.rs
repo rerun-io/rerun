@@ -12,14 +12,50 @@ const PYTHON_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/pytho
 const CPP_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/cpp";
 const RUST_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/rust";
 
-pub fn wait_screen_ui(
+/// Welcome screen shown in place of the viewport when no data is loaded.
+pub fn welcome_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     rx: &Receiver<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
 ) {
     let wait_screen = WaitScreen::new();
-    wait_screen.show(re_ui, ui, rx, command_sender);
+
+    egui::ScrollArea::horizontal()
+        .id_source("welcome screen")
+        .stick_to_bottom(true)
+        .auto_shrink([false, true])
+        .show(ui, |ui| {
+            wait_screen.show(re_ui, ui, rx, command_sender);
+        });
+}
+
+/// Full-screen UI shown while in loading state.
+pub fn loading_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
+    ui.centered_and_justified(|ui| {
+        let (status, source) = status_strings(rx);
+
+        let style = ui.style();
+        let mut layout_job = egui::text::LayoutJob::default();
+        layout_job.append(
+            status,
+            0.0,
+            egui::TextFormat::simple(
+                egui::TextStyle::Heading.resolve(style),
+                style.visuals.strong_text_color(),
+            ),
+        );
+        layout_job.append(
+            &format!("\n\n{source}"),
+            0.0,
+            egui::TextFormat::simple(
+                egui::TextStyle::Body.resolve(style),
+                style.visuals.text_color(),
+            ),
+        );
+        layout_job.halign = egui::Align::Center;
+        ui.label(layout_job);
+    });
 }
 
 //TODO(ab): get rid of that unless we really need state here
@@ -46,14 +82,21 @@ impl WaitScreen {
         }
         .show(ui, |ui| {
             ui.vertical(|ui| {
-                ui.label(
-                    egui::RichText::new("Welcome")
-                        .strong()
-                        .text_style(re_ui::ReUi::onboarding_h1()),
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new("Welcome")
+                            .strong()
+                            .text_style(re_ui::ReUi::onboarding_h1()),
+                    )
+                    .wrap(false),
                 );
-                ui.label(
-                    egui::RichText::new("Visualize multimodal data")
-                        .text_style(re_ui::ReUi::onboarding_h2()),
+
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new("Visualize multimodal data")
+                            .text_style(re_ui::ReUi::onboarding_h2()),
+                    )
+                    .wrap(false),
                 );
 
                 ui.add_space(20.0);

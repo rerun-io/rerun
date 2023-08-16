@@ -564,12 +564,6 @@ impl App {
                 self.style_panel_ui(egui_ctx, ui);
 
                 if let Some(store_view) = store_context {
-                    // TODO(jleibs): We don't necessarily want to show the wait
-                    // screen just because we're missing a recording. If we've
-                    // loaded a blueprint, we can still show the empty layouts or
-                    // static data, but we need to jump through some hoops to
-                    // handle a missing `RecordingConfig` in this case.
-
                     static EMPTY_STORE_DB: once_cell::sync::Lazy<StoreDb> =
                         once_cell::sync::Lazy::new(|| {
                             StoreDb::new(re_log_types::StoreId::from_string(
@@ -578,10 +572,13 @@ impl App {
                             ))
                         });
 
-                    let store_db = if let Some(store_db) = store_view.recording {
-                        store_db
+                    let (store_db, show_welcome) = if let Some(store_db) = store_view.recording {
+                        (store_db, false)
                     } else {
-                        &EMPTY_STORE_DB
+                        (
+                            once_cell::sync::Lazy::<StoreDb>::force(&EMPTY_STORE_DB),
+                            true,
+                        )
                     };
 
                     // TODO(andreas): store the re_renderer somewhere else.
@@ -596,6 +593,7 @@ impl App {
                         render_ctx.begin_frame();
 
                         self.state.show(
+                            show_welcome,
                             app_blueprint,
                             ui,
                             render_ctx,
@@ -611,7 +609,7 @@ impl App {
                         render_ctx.before_submit();
                     }
                 } else {
-                    crate::ui::wait_screen_ui(&self.re_ui, ui, &self.rx, &self.command_sender);
+                    crate::ui::loading_ui(ui, &self.rx);
                 }
             });
     }
