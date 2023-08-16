@@ -158,7 +158,7 @@ fn entity_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, stats: &re_arrow_stor
 
         let data_rate = match timeline.typ() {
             re_log_types::TimeType::Time => {
-                let bytes_per_second = 1e-9 * bytes_per_time;
+                let bytes_per_second = 1e9 * bytes_per_time;
 
                 format!(
                     "{}/s in {}",
