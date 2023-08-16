@@ -113,7 +113,8 @@ impl CppCodeGenerator {
         object_kind: ObjectKind,
         folder_name: &str,
     ) -> BTreeSet<Utf8PathBuf> {
-        let folder_path = self.output_path.join(folder_name);
+        let folder_path_sdk = self.output_path.join("src/rerun").join(folder_name);
+        let folder_path_testing = self.output_path.join("tests/generated").join(folder_name);
         let mut filepaths = BTreeSet::default();
 
         // Generate folder contents:
@@ -121,13 +122,19 @@ impl CppCodeGenerator {
         for &obj in &ordered_objects {
             let filename = obj.snake_case_name();
 
-            let mut hpp_includes = Includes::default();
+            let mut hpp_includes = Includes::new(obj.fqname.clone());
             let hpp_type_extensions =
-                hpp_type_extensions(&folder_path, &filename, &mut hpp_includes);
+                hpp_type_extensions(&folder_path_sdk, &filename, &mut hpp_includes);
 
             let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions);
+
             for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
                 let string = string_from_token_stream(&tokens, obj.relative_filepath());
+                let folder_path = if obj.is_testing() {
+                    &folder_path_testing
+                } else {
+                    &folder_path_sdk
+                };
                 let filepath = folder_path.join(format!("{filename}.{extension}"));
                 write_file(&filepath, string);
                 let inserted = filepaths.insert(filepath);
@@ -139,16 +146,22 @@ impl CppCodeGenerator {
             }
         }
 
-        {
-            // Generate module file that includes all the headers:
+        // Generate module file that includes all the headers:
+        for testing in [false, true] {
             let hash = quote! { # };
             let pragma_once = pragma_once();
             let header_file_names = ordered_objects
                 .iter()
+                .filter(|obj| obj.is_testing() == testing)
                 .map(|obj| format!("{folder_name}/{}.hpp", obj.snake_case_name()));
             let tokens = quote! {
                 #pragma_once
                 #(#hash include #header_file_names "NEWLINE_TOKEN")*
+            };
+            let folder_path = if testing {
+                &folder_path_testing
+            } else {
+                &folder_path_sdk
             };
             let filepath = folder_path
                 .parent()
@@ -159,7 +172,7 @@ impl CppCodeGenerator {
             filepaths.insert(filepath);
         }
 
-        super::common::remove_old_files_from_folder(folder_path, &filepaths);
+        super::common::remove_old_files_from_folder(folder_path_sdk, &filepaths);
 
         filepaths
     }
@@ -205,7 +218,7 @@ fn hpp_type_extensions(
 
                 let include = &line[start + 1..end];
                 if include != target_header {
-                    includes.local.insert(include.to_owned());
+                    includes.insert_relative(include);
                 }
             } else if let Some(start) = line.find('<') {
                 let end = line.rfind('>').unwrap_or_else(|| {
@@ -213,7 +226,7 @@ fn hpp_type_extensions(
                         "Expected to find or '>' in include line {line} in file {extension_file:?}"
                     )
                 });
-                includes.system.insert(line[start + 1..end].to_owned());
+                includes.insert_system(&line[start + 1..end]);
             } else {
                 panic!("Expected to find '\"' or '<' in include line {line} in file {extension_file:?}");
             }
@@ -315,12 +328,12 @@ impl QuotedObject {
         let type_ident = format_ident!("{type_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
 
-        hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
+        hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
 
         // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
         // TODO(andreas): This drags in arrow headers into the public api though. We probably should try harder with forward declarations.
-        hpp_includes.system.insert("arrow/type_fwd.h".to_owned());
-        let mut cpp_includes = Includes::default();
+        hpp_includes.insert_system("arrow/type_fwd.h");
+        let mut cpp_includes = Includes::new(obj.fqname.clone());
         #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
@@ -379,7 +392,7 @@ impl QuotedObject {
                 }
             }
             ObjectKind::Archetype => {
-                hpp_includes.system.insert("utility".to_owned()); // std::move
+                hpp_includes.insert_system("utility"); // std::move
 
                 let required_component_fields = obj
                     .fields
@@ -628,15 +641,15 @@ impl QuotedObject {
         }))
         .collect_vec();
 
-        hpp_includes.system.insert("cstdint".to_owned()); // we use `uint32_t` etc everywhere.
-        hpp_includes.system.insert("utility".to_owned()); // std::move
-        hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
+        hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
+        hpp_includes.insert_system("utility"); // std::move
+        hpp_includes.insert_system("cstring"); // std::memcpy
 
         // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
         // TODO(andreas): This drags in arrow headers into the public api though. We probably should try harder with forward declarations.
-        hpp_includes.system.insert("arrow/type_fwd.h".to_owned());
+        hpp_includes.insert_system("arrow/type_fwd.h");
 
-        let mut cpp_includes = Includes::default();
+        let mut cpp_includes = Includes::new(obj.fqname.clone());
         #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
@@ -742,7 +755,7 @@ impl QuotedObject {
                 } else {
                     let typedef_declaration =
                         quote_variable(&mut hpp_includes, obj_field, &format_ident!("TypeAlias"));
-                    hpp_includes.system.insert("utility".to_owned()); // std::move
+                    hpp_includes.insert_system("utility"); // std::move
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
                             typedef #typedef_declaration;
@@ -955,7 +968,7 @@ fn single_field_constructor_methods(
         // If it was a temporary it gets moved into the value and then moved again into the field.
         // If it was a lvalue it gets copied into the value and then moved into the field.
         let parameter_declaration = quote_variable(hpp_includes, obj_field, &param_ident);
-        hpp_includes.system.insert("utility".to_owned()); // std::move
+        hpp_includes.insert_system("utility"); // std::move
         methods.push(Method {
             declaration: MethodDeclaration::constructor(quote! {
                 #type_ident(#parameter_declaration) : #field_ident(std::move(#param_ident))
@@ -1016,7 +1029,7 @@ fn single_field_constructor_methods(
 }
 
 fn arrow_data_type_method(obj: &Object, objects: &Objects, cpp_includes: &mut Includes) -> Method {
-    cpp_includes.system.insert("arrow/api.h".to_owned());
+    cpp_includes.insert_system("arrow/api.h");
 
     let quoted_datatype = quote_arrow_data_type(
         &Type::Object(obj.fqname.clone()),
@@ -1045,7 +1058,7 @@ fn new_arrow_array_builder_method(
     objects: &Objects,
     cpp_includes: &mut Includes,
 ) -> Method {
-    cpp_includes.system.insert("arrow/api.h".to_owned());
+    cpp_includes.insert_system("arrow/api.h");
 
     let builder_instantiation = quote_arrow_array_builder_type_instantiation(
         &Type::Object(obj.fqname.clone()),
@@ -1080,7 +1093,7 @@ fn fill_arrow_array_builder_method(
     cpp_includes: &mut Includes,
     objects: &Objects,
 ) -> Method {
-    cpp_includes.system.insert("arrow/api.h".to_owned());
+    cpp_includes.insert_system("arrow/api.h");
 
     let builder = format_ident!("builder");
     let arrow_builder_type = arrow_array_builder_type_object(obj, objects);
@@ -1121,10 +1134,10 @@ fn component_to_data_cell_method(
     hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
 ) -> Method {
-    hpp_includes.local.insert("../data_cell.hpp".to_owned());
-    hpp_includes.local.insert("../result.hpp".to_owned());
-    cpp_includes.local.insert("../arrow.hpp".to_owned()); // ipc_from_table
-    cpp_includes.system.insert("arrow/api.h".to_owned());
+    hpp_includes.insert_rerun("data_cell.hpp");
+    hpp_includes.insert_rerun("result.hpp");
+    cpp_includes.insert_rerun("arrow.hpp"); // ipc_from_table
+    cpp_includes.insert_system("arrow/api.h");
 
     let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
 
@@ -1182,9 +1195,9 @@ fn archetype_to_data_cells(
     hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
 ) -> Method {
-    hpp_includes.local.insert("../data_cell.hpp".to_owned());
-    hpp_includes.local.insert("../result.hpp".to_owned());
-    cpp_includes.system.insert("arrow/api.h".to_owned());
+    hpp_includes.insert_rerun("data_cell.hpp");
+    hpp_includes.insert_rerun("result.hpp");
+    cpp_includes.insert_system("arrow/api.h");
 
     // TODO(andreas): Splats need to be handled separately.
 
@@ -1773,7 +1786,7 @@ fn static_constructor_for_enum_type(
             )
         } else {
             // We need to use placement-new since the union is in an uninitialized state here:
-            hpp_includes.system.insert("new".to_owned()); // placement-new
+            hpp_includes.insert_system("new"); // placement-new
             let elem_type = quote_element_type(hpp_includes, elem_type);
             (
                 quote! {
@@ -1812,7 +1825,7 @@ fn static_constructor_for_enum_type(
         }
     } else {
         // We need to use placement-new since the union is in an uninitialized state here:
-        hpp_includes.system.insert("new".to_owned()); // placement-new
+        hpp_includes.insert_system("new"); // placement-new
         let typedef_declaration =
             quote_variable(hpp_includes, obj_field, &format_ident!("TypeAlias"));
         Method {
@@ -1886,7 +1899,7 @@ fn quote_variable(
     name: &syn::Ident,
 ) -> TokenStream {
     if obj_field.is_nullable {
-        includes.system.insert("optional".to_owned());
+        includes.insert_system("optional");
         match &obj_field.typ {
             Type::UInt8 => quote! { std::optional<uint8_t> #name },
             Type::UInt16 => quote! { std::optional<uint16_t> #name },
@@ -1901,7 +1914,7 @@ fn quote_variable(
             Type::Float32 => quote! { std::optional<float> #name },
             Type::Float64 => quote! { std::optional<double> #name },
             Type::String => {
-                includes.system.insert("string".to_owned());
+                includes.insert_system("string");
                 quote! { std::optional<std::string> #name }
             }
             Type::Array { .. } => {
@@ -1912,7 +1925,7 @@ fn quote_variable(
             }
             Type::Vector { elem_type } => {
                 let elem_type = quote_element_type(includes, elem_type);
-                includes.system.insert("vector".to_owned());
+                includes.insert_system("vector");
                 quote! { std::optional<std::vector<#elem_type>> #name }
             }
             Type::Object(fqname) => {
@@ -1935,7 +1948,7 @@ fn quote_variable(
             Type::Float32 => quote! { float #name },
             Type::Float64 => quote! { double #name },
             Type::String => {
-                includes.system.insert("string".to_owned());
+                includes.insert_system("string");
                 quote! { std::string #name }
             }
             Type::Array { elem_type, length } => {
@@ -1946,7 +1959,7 @@ fn quote_variable(
             }
             Type::Vector { elem_type } => {
                 let elem_type = quote_element_type(includes, elem_type);
-                includes.system.insert("vector".to_owned());
+                includes.insert_system("vector");
                 quote! { std::vector<#elem_type> #name }
             }
             Type::Object(fqname) => {
@@ -1972,7 +1985,7 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
         ElementType::String => {
-            includes.system.insert("string".to_owned());
+            includes.insert_system("string");
             quote! { std::string }
         }
         ElementType::Object(fqname) => quote_fqname_as_type_path(includes, fqname),
@@ -1980,19 +1993,12 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
 }
 
 fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStream {
+    includes.insert_rerun_type(fqname);
+
     let fqname = fqname
         .replace(".testing", "")
         .replace('.', "::")
         .replace("crate", "rerun");
-
-    // fqname example: "rr::datatypes::Transform3D"
-    let components = fqname.split("::").collect::<Vec<_>>();
-    if let ["rerun", obj_kind, typname] = &components[..] {
-        includes.local.insert(format!(
-            "../{obj_kind}/{}.hpp",
-            crate::to_snake_case(typname)
-        ));
-    }
 
     let expr: syn::TypePath = syn::parse_str(&fqname).unwrap();
     quote!(#expr)

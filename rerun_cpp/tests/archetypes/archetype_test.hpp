@@ -2,10 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
 #include <arrow/buffer.h>
-#pragma GCC diagnostic pop
 
 template <typename T>
 void test_serialization_for_manual_and_builder(const T& from_manual, const T& from_builder) {
