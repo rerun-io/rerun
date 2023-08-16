@@ -14,8 +14,19 @@
 
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum TensorMeaning {
-    Unknown(bool),
+    /// The tensor represents arbitrary data
+    Data(bool),
+
+    /// The inner-most tensor dimension represent R, G, B, and optional A channels
+    Rgba(bool),
+
+    /// The inner-most tensor dimension represents a mono color channel
+    Mono(bool),
+
+    /// The inner-most tensor dimension represents a ClassId
     ClassId(bool),
+
+    /// The inner-most tensor dimension represents a measurement of depth
     Depth(bool),
 }
 
@@ -56,7 +67,19 @@ impl crate::Loggable for TensorMeaning {
                     metadata: [].into(),
                 },
                 Field {
-                    name: "Unknown".to_owned(),
+                    name: "Data".to_owned(),
+                    data_type: DataType::Boolean,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Rgba".to_owned(),
+                    data_type: DataType::Boolean,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Mono".to_owned(),
                     data_type: DataType::Boolean,
                     is_nullable: false,
                     metadata: [].into(),
@@ -74,7 +97,7 @@ impl crate::Loggable for TensorMeaning {
                     metadata: [].into(),
                 },
             ],
-            Some(vec![0i32, 1i32, 2i32, 3i32]),
+            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32, 5i32]),
             UnionMode::Dense,
         )
     }
@@ -112,29 +135,31 @@ impl crate::Loggable for TensorMeaning {
                 data.iter()
                     .map(|a| match a.as_deref() {
                         None => 0,
-                        Some(TensorMeaning::Unknown(_)) => 1i8,
-                        Some(TensorMeaning::ClassId(_)) => 2i8,
-                        Some(TensorMeaning::Depth(_)) => 3i8,
+                        Some(TensorMeaning::Data(_)) => 1i8,
+                        Some(TensorMeaning::Rgba(_)) => 2i8,
+                        Some(TensorMeaning::Mono(_)) => 3i8,
+                        Some(TensorMeaning::ClassId(_)) => 4i8,
+                        Some(TensorMeaning::Depth(_)) => 5i8,
                     })
                     .collect(),
                 vec![
                     NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
                         .boxed(),
                     {
-                        let (somes, unknown): (Vec<_>, Vec<_>) = data
+                        let (somes, data): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| {
-                                matches!(datum.as_deref(), Some(TensorMeaning::Unknown(_)))
+                                matches!(datum.as_deref(), Some(TensorMeaning::Data(_)))
                             })
                             .map(|datum| {
                                 let datum = match datum.as_deref() {
-                                    Some(TensorMeaning::Unknown(v)) => Some(v.clone()),
+                                    Some(TensorMeaning::Data(v)) => Some(v.clone()),
                                     _ => None,
                                 };
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let unknown_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let data_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -143,8 +168,64 @@ impl crate::Loggable for TensorMeaning {
                                 _ = extension_wrapper;
                                 DataType::Boolean.to_logical_type().clone()
                             },
-                            unknown.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            unknown_bitmap,
+                            data.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                            data_bitmap,
+                        )
+                        .boxed()
+                    },
+                    {
+                        let (somes, rgba): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| {
+                                matches!(datum.as_deref(), Some(TensorMeaning::Rgba(_)))
+                            })
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorMeaning::Rgba(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let rgba_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        BooleanArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::Boolean.to_logical_type().clone()
+                            },
+                            rgba.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                            rgba_bitmap,
+                        )
+                        .boxed()
+                    },
+                    {
+                        let (somes, mono): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| {
+                                matches!(datum.as_deref(), Some(TensorMeaning::Mono(_)))
+                            })
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorMeaning::Mono(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let mono_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        BooleanArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::Boolean.to_logical_type().clone()
+                            },
+                            mono.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                            mono_bitmap,
                         )
                         .boxed()
                     },
@@ -209,7 +290,9 @@ impl crate::Loggable for TensorMeaning {
                     },
                 ],
                 Some({
-                    let mut unknown_offset = 0;
+                    let mut data_offset = 0;
+                    let mut rgba_offset = 0;
+                    let mut mono_offset = 0;
                     let mut class_id_offset = 0;
                     let mut depth_offset = 0;
                     let mut nulls_offset = 0;
@@ -220,9 +303,19 @@ impl crate::Loggable for TensorMeaning {
                                 nulls_offset += 1;
                                 offset
                             }
-                            Some(TensorMeaning::Unknown(_)) => {
-                                let offset = unknown_offset;
-                                unknown_offset += 1;
+                            Some(TensorMeaning::Data(_)) => {
+                                let offset = data_offset;
+                                data_offset += 1;
+                                offset
+                            }
+                            Some(TensorMeaning::Rgba(_)) => {
+                                let offset = rgba_offset;
+                                rgba_offset += 1;
+                                offset
+                            }
+                            Some(TensorMeaning::Mono(_)) => {
+                                let offset = mono_offset;
+                                mono_offset += 1;
                                 offset
                             }
                             Some(TensorMeaning::ClassId(_)) => {
@@ -267,7 +360,19 @@ impl crate::Loggable for TensorMeaning {
                                     metadata: [].into(),
                                 },
                                 Field {
-                                    name: "Unknown".to_owned(),
+                                    name: "Data".to_owned(),
+                                    data_type: DataType::Boolean,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "Rgba".to_owned(),
+                                    data_type: DataType::Boolean,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
+                                Field {
+                                    name: "Mono".to_owned(),
                                     data_type: DataType::Boolean,
                                     is_nullable: false,
                                     metadata: [].into(),
@@ -285,7 +390,7 @@ impl crate::Loggable for TensorMeaning {
                                     metadata: [].into(),
                                 },
                             ],
-                            Some(vec![0i32, 1i32, 2i32, 3i32]),
+                            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32, 5i32]),
                             UnionMode::Dense,
                         ),
                         arrow_data.data_type().clone(),
@@ -310,7 +415,19 @@ impl crate::Loggable for TensorMeaning {
                                         metadata: [].into(),
                                     },
                                     Field {
-                                        name: "Unknown".to_owned(),
+                                        name: "Data".to_owned(),
+                                        data_type: DataType::Boolean,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "Rgba".to_owned(),
+                                        data_type: DataType::Boolean,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    },
+                                    Field {
+                                        name: "Mono".to_owned(),
                                         data_type: DataType::Boolean,
                                         is_nullable: false,
                                         metadata: [].into(),
@@ -328,7 +445,7 @@ impl crate::Loggable for TensorMeaning {
                                         metadata: [].into(),
                                     },
                                 ],
-                                Some(vec![0i32, 1i32, 2i32, 3i32]),
+                                Some(vec![0i32, 1i32, 2i32, 3i32, 4i32, 5i32]),
                                 UnionMode::Dense,
                             ),
                             arrow_data.data_type().clone(),
@@ -342,7 +459,7 @@ impl crate::Loggable for TensorMeaning {
                     ))
                     .with_context("rerun.datatypes.TensorMeaning");
                 }
-                let unknown = {
+                let data = {
                     if 1usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
@@ -356,15 +473,51 @@ impl crate::Loggable for TensorMeaning {
                                 arrow_data.data_type().clone(),
                             )
                         })
-                        .with_context("rerun.datatypes.TensorMeaning#Unknown")?
+                        .with_context("rerun.datatypes.TensorMeaning#Data")?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
-                let class_id = {
+                let rgba = {
                     if 2usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[2usize];
+                    arrow_data
+                        .as_any()
+                        .downcast_ref::<BooleanArray>()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Boolean,
+                                arrow_data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.datatypes.TensorMeaning#Rgba")?
+                        .into_iter()
+                        .collect::<Vec<_>>()
+                };
+                let mono = {
+                    if 3usize >= arrow_data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
+                    let arrow_data = &*arrow_data_arrays[3usize];
+                    arrow_data
+                        .as_any()
+                        .downcast_ref::<BooleanArray>()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Boolean,
+                                arrow_data.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.datatypes.TensorMeaning#Mono")?
+                        .into_iter()
+                        .collect::<Vec<_>>()
+                };
+                let class_id = {
+                    if 4usize >= arrow_data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
+                    let arrow_data = &*arrow_data_arrays[4usize];
                     arrow_data
                         .as_any()
                         .downcast_ref::<BooleanArray>()
@@ -379,10 +532,10 @@ impl crate::Loggable for TensorMeaning {
                         .collect::<Vec<_>>()
                 };
                 let depth = {
-                    if 3usize >= arrow_data_arrays.len() {
+                    if 5usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[3usize];
+                    let arrow_data = &*arrow_data_arrays[5usize];
                     arrow_data
                         .as_any()
                         .downcast_ref::<BooleanArray>()
@@ -405,22 +558,52 @@ impl crate::Loggable for TensorMeaning {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => TensorMeaning::Unknown({
-                                    if offset as usize >= unknown.len() {
+                                1i8 => TensorMeaning::Data({
+                                    if offset as usize >= data.len() {
                                         return Err(crate::DeserializationError::offset_oob(
                                             offset as _,
-                                            unknown.len(),
+                                            data.len(),
                                         ))
-                                        .with_context("rerun.datatypes.TensorMeaning#Unknown");
+                                        .with_context("rerun.datatypes.TensorMeaning#Data");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { unknown.get_unchecked(offset as usize) }
+                                    unsafe { data.get_unchecked(offset as usize) }
                                         .clone()
                                         .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorMeaning#Unknown")?
+                                        .with_context("rerun.datatypes.TensorMeaning#Data")?
                                 }),
-                                2i8 => TensorMeaning::ClassId({
+                                2i8 => TensorMeaning::Rgba({
+                                    if offset as usize >= rgba.len() {
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
+                                            rgba.len(),
+                                        ))
+                                        .with_context("rerun.datatypes.TensorMeaning#Rgba");
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { rgba.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.TensorMeaning#Rgba")?
+                                }),
+                                3i8 => TensorMeaning::Mono({
+                                    if offset as usize >= mono.len() {
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
+                                            mono.len(),
+                                        ))
+                                        .with_context("rerun.datatypes.TensorMeaning#Mono");
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { mono.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.TensorMeaning#Mono")?
+                                }),
+                                4i8 => TensorMeaning::ClassId({
                                     if offset as usize >= class_id.len() {
                                         return Err(crate::DeserializationError::offset_oob(
                                             offset as _,
@@ -435,7 +618,7 @@ impl crate::Loggable for TensorMeaning {
                                         .ok_or_else(crate::DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorMeaning#ClassId")?
                                 }),
-                                3i8 => TensorMeaning::Depth({
+                                5i8 => TensorMeaning::Depth({
                                     if offset as usize >= depth.len() {
                                         return Err(crate::DeserializationError::offset_oob(
                                             offset as _,
@@ -461,7 +644,19 @@ impl crate::Loggable for TensorMeaning {
                                                     metadata: [].into(),
                                                 },
                                                 Field {
-                                                    name: "Unknown".to_owned(),
+                                                    name: "Data".to_owned(),
+                                                    data_type: DataType::Boolean,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "Rgba".to_owned(),
+                                                    data_type: DataType::Boolean,
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "Mono".to_owned(),
                                                     data_type: DataType::Boolean,
                                                     is_nullable: false,
                                                     metadata: [].into(),
@@ -479,7 +674,7 @@ impl crate::Loggable for TensorMeaning {
                                                     metadata: [].into(),
                                                 },
                                             ],
-                                            Some(vec![0i32, 1i32, 2i32, 3i32]),
+                                            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32, 5i32]),
                                             UnionMode::Dense,
                                         ),
                                         "<invalid>",

@@ -58,7 +58,19 @@ impl crate::Loggable for TensorMeaning {
                     metadata: [].into(),
                 },
                 Field {
-                    name: "Unknown".to_owned(),
+                    name: "Data".to_owned(),
+                    data_type: DataType::Boolean,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Rgba".to_owned(),
+                    data_type: DataType::Boolean,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Mono".to_owned(),
                     data_type: DataType::Boolean,
                     is_nullable: false,
                     metadata: [].into(),
@@ -76,7 +88,7 @@ impl crate::Loggable for TensorMeaning {
                     metadata: [].into(),
                 },
             ],
-            Some(vec![0i32, 1i32, 2i32, 3i32]),
+            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32, 5i32]),
             UnionMode::Dense,
         )
     }

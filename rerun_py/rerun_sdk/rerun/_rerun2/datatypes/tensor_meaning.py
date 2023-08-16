@@ -19,14 +19,23 @@ __all__ = ["TensorMeaning", "TensorMeaningArray", "TensorMeaningArrayLike", "Ten
 class TensorMeaning:
     inner: bool = field(converter=bool)
     """
-    Unknown (bool):
+    Data (bool):
+        The tensor represents arbitrary data
+
+    Rgba (bool):
+        The inner-most tensor dimension represent R, G, B, and optional A channels
+
+    Mono (bool):
+        The inner-most tensor dimension represents a mono color channel
 
     ClassId (bool):
+        The inner-most tensor dimension represents a ClassId
 
     Depth (bool):
+        The inner-most tensor dimension represents a measurement of depth
     """
 
-    kind: Literal["unknown", "classid", "depth"] = field(default="unknown")
+    kind: Literal["data", "rgba", "mono", "classid", "depth"] = field(default="data")
 
 
 if TYPE_CHECKING:
@@ -53,7 +62,9 @@ class TensorMeaningType(BaseExtensionType):
             pa.dense_union(
                 [
                     pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field("Unknown", pa.bool_(), nullable=False, metadata={}),
+                    pa.field("Data", pa.bool_(), nullable=False, metadata={}),
+                    pa.field("Rgba", pa.bool_(), nullable=False, metadata={}),
+                    pa.field("Mono", pa.bool_(), nullable=False, metadata={}),
                     pa.field("ClassId", pa.bool_(), nullable=False, metadata={}),
                     pa.field("Depth", pa.bool_(), nullable=False, metadata={}),
                 ]

@@ -16,16 +16,27 @@ namespace rerun {
                 /// need to be able to leave the object in a state which we can run the destructor
                 /// on.
                 NONE = 0,
-                Unknown,
+                Data,
+                Rgba,
+                Mono,
                 ClassId,
                 Depth,
             };
 
             union TensorMeaningData {
-                bool unknown;
+                /// The tensor represents arbitrary data
+                bool data;
 
+                /// The inner-most tensor dimension represent R, G, B, and optional A channels
+                bool rgba;
+
+                /// The inner-most tensor dimension represents a mono color channel
+                bool mono;
+
+                /// The inner-most tensor dimension represents a ClassId
                 bool class_id;
 
+                /// The inner-most tensor dimension represents a measurement of depth
                 bool depth;
 
                 TensorMeaningData() {}
@@ -76,13 +87,31 @@ namespace rerun {
                 this->_data.swap(other._data);
             }
 
-            static TensorMeaning unknown(bool unknown) {
+            /// The tensor represents arbitrary data
+            static TensorMeaning data(bool data) {
                 TensorMeaning self;
-                self._tag = detail::TensorMeaningTag::Unknown;
-                self._data.unknown = std::move(unknown);
+                self._tag = detail::TensorMeaningTag::Data;
+                self._data.data = std::move(data);
                 return self;
             }
 
+            /// The inner-most tensor dimension represent R, G, B, and optional A channels
+            static TensorMeaning rgba(bool rgba) {
+                TensorMeaning self;
+                self._tag = detail::TensorMeaningTag::Rgba;
+                self._data.rgba = std::move(rgba);
+                return self;
+            }
+
+            /// The inner-most tensor dimension represents a mono color channel
+            static TensorMeaning mono(bool mono) {
+                TensorMeaning self;
+                self._tag = detail::TensorMeaningTag::Mono;
+                self._data.mono = std::move(mono);
+                return self;
+            }
+
+            /// The inner-most tensor dimension represents a ClassId
             static TensorMeaning class_id(bool class_id) {
                 TensorMeaning self;
                 self._tag = detail::TensorMeaningTag::ClassId;
@@ -90,6 +119,7 @@ namespace rerun {
                 return self;
             }
 
+            /// The inner-most tensor dimension represents a measurement of depth
             static TensorMeaning depth(bool depth) {
                 TensorMeaning self;
                 self._tag = detail::TensorMeaningTag::Depth;

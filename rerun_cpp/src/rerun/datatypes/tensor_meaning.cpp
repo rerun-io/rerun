@@ -10,7 +10,9 @@ namespace rerun {
         const std::shared_ptr<arrow::DataType> &TensorMeaning::to_arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field("Unknown", arrow::boolean(), false),
+                arrow::field("Data", arrow::boolean(), false),
+                arrow::field("Rgba", arrow::boolean(), false),
+                arrow::field("Mono", arrow::boolean(), false),
                 arrow::field("ClassId", arrow::boolean(), false),
                 arrow::field("Depth", arrow::boolean(), false),
             });
@@ -27,6 +29,8 @@ namespace rerun {
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
+                    std::make_shared<arrow::BooleanBuilder>(memory_pool),
+                    std::make_shared<arrow::BooleanBuilder>(memory_pool),
                     std::make_shared<arrow::BooleanBuilder>(memory_pool),
                     std::make_shared<arrow::BooleanBuilder>(memory_pool),
                     std::make_shared<arrow::BooleanBuilder>(memory_pool),
@@ -58,10 +62,22 @@ namespace rerun {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                         break;
                     }
-                    case detail::TensorMeaningTag::Unknown: {
+                    case detail::TensorMeaningTag::Data: {
                         auto variant_builder =
                             static_cast<arrow::BooleanBuilder *>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.unknown));
+                        ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.data));
+                        break;
+                    }
+                    case detail::TensorMeaningTag::Rgba: {
+                        auto variant_builder =
+                            static_cast<arrow::BooleanBuilder *>(variant_builder_untyped);
+                        ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.rgba));
+                        break;
+                    }
+                    case detail::TensorMeaningTag::Mono: {
+                        auto variant_builder =
+                            static_cast<arrow::BooleanBuilder *>(variant_builder_untyped);
+                        ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.mono));
                         break;
                     }
                     case detail::TensorMeaningTag::ClassId: {
