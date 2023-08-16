@@ -223,9 +223,7 @@ impl<'a> ListItem<'a> {
             let mut text_job =
                 self.text
                     .into_text_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
-            text_job.job.wrap.max_width = text_rect.width();
-            text_job.job.wrap.max_rows = 1;
-            text_job.job.wrap.break_anywhere = true;
+            text_job.job.wrap = egui::text::TextWrapping::elide_at_width(text_rect.width());
 
             let text = ui.fonts(|f| text_job.into_galley(f));
 
