@@ -112,7 +112,6 @@ impl StoreHub {
         if let Some(new_selection) = self.store_dbs.find_closest_recording(recording_id) {
             self.set_recording_id(new_selection.clone());
         } else {
-            self.application_id = None;
             self.selected_rec_id = None;
         }
 

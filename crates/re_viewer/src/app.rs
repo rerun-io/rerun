@@ -569,35 +569,46 @@ impl App {
                     // loaded a blueprint, we can still show the empty layouts or
                     // static data, but we need to jump through some hoops to
                     // handle a missing `RecordingConfig` in this case.
-                    if let Some(store_db) = store_view.recording {
-                        // TODO(andreas): store the re_renderer somewhere else.
-                        let egui_renderer = {
-                            let render_state = frame.wgpu_render_state().unwrap();
-                            &mut render_state.renderer.write()
-                        };
-                        if let Some(render_ctx) = egui_renderer
-                            .paint_callback_resources
-                            .get_mut::<re_renderer::RenderContext>()
-                        {
-                            render_ctx.begin_frame();
 
-                            self.state.show(
-                                app_blueprint,
-                                ui,
-                                render_ctx,
-                                store_db,
-                                store_view,
-                                &self.re_ui,
-                                &self.component_ui_registry,
-                                &self.space_view_class_registry,
-                                &self.rx,
-                                &self.command_sender,
-                            );
+                    static EMPTY_STORE_DB: once_cell::sync::Lazy<StoreDb> =
+                        once_cell::sync::Lazy::new(|| {
+                            StoreDb::new(re_log_types::StoreId::from_string(
+                                StoreKind::Recording,
+                                "<EMPTY>".to_owned(),
+                            ))
+                        });
 
-                            render_ctx.before_submit();
-                        }
+                    let store_db = if let Some(store_db) = store_view.recording {
+                        store_db
                     } else {
-                        crate::ui::wait_screen_ui(&self.re_ui, ui, &self.rx, &self.command_sender);
+                        &EMPTY_STORE_DB
+                    };
+
+                    // TODO(andreas): store the re_renderer somewhere else.
+                    let egui_renderer = {
+                        let render_state = frame.wgpu_render_state().unwrap();
+                        &mut render_state.renderer.write()
+                    };
+                    if let Some(render_ctx) = egui_renderer
+                        .paint_callback_resources
+                        .get_mut::<re_renderer::RenderContext>()
+                    {
+                        render_ctx.begin_frame();
+
+                        self.state.show(
+                            app_blueprint,
+                            ui,
+                            render_ctx,
+                            store_db,
+                            store_view,
+                            &self.re_ui,
+                            &self.component_ui_registry,
+                            &self.space_view_class_registry,
+                            &self.rx,
+                            &self.command_sender,
+                        );
+
+                        render_ctx.before_submit();
                     }
                 } else {
                     crate::ui::wait_screen_ui(&self.re_ui, ui, &self.rx, &self.command_sender);
