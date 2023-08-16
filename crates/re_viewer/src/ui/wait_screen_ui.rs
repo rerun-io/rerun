@@ -117,7 +117,7 @@ impl WaitScreen {
     fn onboarding_content_ui(
         re_ui: &ReUi,
         ui: &mut Ui,
-        command_sender: &re_viewer_context::CommandSender,
+        _command_sender: &re_viewer_context::CommandSender,
     ) {
         let column_spacing = 15.0;
         let column_width = ((ui.available_width() - 2. * column_spacing) / 3.0 - 1.0)
@@ -201,7 +201,7 @@ impl WaitScreen {
                 use re_ui::UICommandSender;
                 ui.horizontal(|ui| {
                     if large_text_buttons(ui, "Open file...").clicked() {
-                        command_sender.send_ui(re_ui::UICommand::Open);
+                        _command_sender.send_ui(re_ui::UICommand::Open);
                     }
                     button_centered_label(ui, "Or drop a file anywhere!");
                 });
