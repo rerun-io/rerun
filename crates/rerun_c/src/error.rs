@@ -10,23 +10,27 @@ impl CError {
 
         error.code = code;
 
-        let bytes = message.bytes();
-        let message_byte_length_excluding_null = bytes.len().min(error.message.len() - 1);
+        // Copy string character by character.
+        // Ensure that when truncating is necessary, we don't truncate in the middle of a UTF-8 character!
+        let mut bytes_next = 0;
+        for c in message.chars() {
+            if bytes_next + c.len_utf8() >= error.message.len() {
+                re_log::warn_once!("Error message was too long for C error description buffer. Full message\n{message}");
+                break;
+            }
 
-        // If we have to truncate the error message log a warning.
-        // (we don't know how critical it is, but we can't just swallow this silently!)
-        if bytes.len() < message_byte_length_excluding_null {
-            re_log::warn_once!("CError message was too long. Full message\n{message}");
+            let mut bytes = [0; 4];
+            c.encode_utf8(&mut bytes);
+
+            for byte in &bytes[..c.len_utf8()] {
+                error.message[bytes_next] = *byte as _;
+                bytes_next += 1;
+            }
         }
 
-        // Copy over string and null out the rest.
-        for (left, right) in error.message.iter_mut().zip(
-            message
-                .bytes()
-                .take(message_byte_length_excluding_null)
-                .chain(std::iter::repeat(0)),
-        ) {
-            *left = right as std::ffi::c_char;
+        // Fill the rest with nulls.
+        for byte in &mut error.message[bytes_next..] {
+            *byte = 0;
         }
     }
 
@@ -60,5 +64,57 @@ impl CError {
 
     pub fn set_ok(error: *mut CError) {
         CError::write_error(error, CErrorCode::Ok, "success");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::{c_char, CStr};
+
+    use crate::{CError, CErrorCode};
+
+    #[test]
+    #[allow(unsafe_code)]
+    fn write_error_handles_message_overflow() {
+        let mut error = CError {
+            code: CErrorCode::Ok,
+            message: [0; 512],
+        };
+
+        // With ASCII character.
+        let num_expected_bytes = error.message.len() - 1;
+        let description = "a".repeat(1024);
+        CError::write_error(&mut error as *mut CError, CErrorCode::Ok, &description);
+        assert_eq!(
+            unsafe { CStr::from_ptr(&error.message as *const c_char) }.to_str(),
+            Ok(&description[..num_expected_bytes])
+        );
+
+        // With 2 byte UTF8 character
+        let num_expected_bytes = ((error.message.len() - 1) / 2) * 2;
+        let description = "œ".repeat(1024);
+        CError::write_error(&mut error as *mut CError, CErrorCode::Ok, &description);
+        assert_eq!(
+            unsafe { CStr::from_ptr(&error.message as *const c_char) }.to_str(),
+            Ok(&description[..num_expected_bytes])
+        );
+
+        // With 3 byte UTF8 character
+        let num_expected_bytes = ((error.message.len() - 1) / 3) * 3;
+        let description = "∂".repeat(1024);
+        CError::write_error(&mut error as *mut CError, CErrorCode::Ok, &description);
+        assert_eq!(
+            unsafe { CStr::from_ptr(&error.message as *const c_char) }.to_str(),
+            Ok(&description[..num_expected_bytes])
+        );
+
+        // With 4 byte UTF8 character
+        let num_expected_bytes = ((error.message.len() - 1) / 4) * 4;
+        let description = "😀".repeat(1024);
+        CError::write_error(&mut error as *mut CError, CErrorCode::Ok, &description);
+        assert_eq!(
+            unsafe { CStr::from_ptr(&error.message as *const c_char) }.to_str(),
+            Ok(&description[..num_expected_bytes])
+        );
     }
 }
