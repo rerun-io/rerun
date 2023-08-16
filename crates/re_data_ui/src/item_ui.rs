@@ -133,8 +133,8 @@ fn entity_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, stats: &re_arrow_stor
         return;
     }
 
-    // `num_events` is aproximate - we could be logging a Tensor image and a transform
-    // at aproximately the same time. That should only count as one fence-post.
+    // `num_events` is approximate - we could be logging a Tensor image and a transform
+    // at approximately the same time. That should only count as one fence-post.
     let num_events = stats.num_rows;
 
     if stats.time_range.min < stats.time_range.max && 1 < num_events {
