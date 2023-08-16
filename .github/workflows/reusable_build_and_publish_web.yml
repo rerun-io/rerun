@@ -10,6 +10,10 @@ on:
         description: "Release Version Number (Must match Cargo.toml)"
         type: string
         required: true
+      release-commit:
+        description: "Commit to release"
+        type: string
+        required: true
       wheel-artifact-name:
         description: "Name of the wheel to use when running examples"
         type: string
@@ -33,17 +37,19 @@ jobs:
     steps:
       - name: "Set short-sha"
         id: get-short-sha
-        run: echo "short-sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: "Set full-sha"
         id: get-full-sha
-        run: echo "full-sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+        run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   build-web:
     runs-on: ubuntu-latest-16-cores
     needs: [get-commit-sha]
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.release-commit }}
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust

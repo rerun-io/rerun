@@ -6,6 +6,10 @@ on:
       CONCURRENCY:
         required: true
         type: string
+      COMMIT:
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-pip-index
@@ -24,6 +28,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.COMMIT || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v2

@@ -18,6 +18,10 @@ on:
         description: "Name of the .rrd file built for linux"
         type: string
         required: true
+      release-commit:
+        description: "Which commit to build+publish"
+        type: string
+        required: true
 
 jobs:
   get-commit-sha:
@@ -29,11 +33,11 @@ jobs:
     steps:
       - name: "Set short-sha"
         id: get-short-sha
-        run: echo "short-sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: "Set full-sha"
         id: get-full-sha
-        run: echo "full-sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+        run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   ### Linux
   build-linux:
@@ -46,6 +50,7 @@ jobs:
       WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
       RELEASE_VERSION: ${{ inputs.release-version }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   upload-wheels-linux:
@@ -56,6 +61,7 @@ jobs:
       CONCURRENCY: wheels-upload-linux-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   ### Windows
@@ -69,6 +75,7 @@ jobs:
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ""
       RELEASE_VERSION: ${{ inputs.release-version }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   upload-wheels-windows:
@@ -79,6 +86,7 @@ jobs:
       CONCURRENCY: wheels-upload-windows-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   ### macOS (arm)
@@ -92,6 +100,7 @@ jobs:
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ""
       RELEASE_VERSION: ${{ inputs.release-version }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   upload-wheels-macos-arm:
@@ -102,6 +111,7 @@ jobs:
       CONCURRENCY: wheels-upload-macos-arm-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   ### macOS (intel)
@@ -115,6 +125,7 @@ jobs:
       WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
       RRD_ARTIFACT_NAME: ""
       RELEASE_VERSION: ${{ inputs.release-version }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   upload-wheels-macos-intel:
@@ -125,6 +136,7 @@ jobs:
       CONCURRENCY: wheels-upload-macos-intel-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   generate-wheel-index:
@@ -139,6 +151,7 @@ jobs:
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
       CONCURRENCY: generate-wheel-index-${{ inputs.concurrency }}
+      COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   publish-wheels:
@@ -150,6 +163,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
+          ref: ${{ inputs.release-commit }}
 
       - id: "auth"
         uses: google-github-actions/auth@v1

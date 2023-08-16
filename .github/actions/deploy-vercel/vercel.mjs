@@ -14,12 +14,18 @@
  * @typedef {"encrypted" | "secret"} EnvType
  */
 
+/**
+ * Vercel API Client
+ */
 export class Client {
   constructor(/** @type {string} */ token) {
     this.token = token;
   }
 
   /**
+   * Helper function to generate the URL for a given `endpoint`
+   * with query `params`.
+   *
    * @param {string} endpoint
    * @param {Params} [params]
    * @returns {URL}
@@ -31,8 +37,10 @@ export class Client {
   }
 
   /**
+   * HTTP GET an `endpoint` with query `params` and `headers`.
+   *
    * @template T
-   * @param {string} endpoint
+   * @param {string} endpoint - not the full URL, just the path, e.g. `v9/projects`
    * @param {Params} [params]
    * @param {Headers} [headers]
    * @returns {Promise<T>}
@@ -47,9 +55,11 @@ export class Client {
   }
 
   /**
+   * HTTP POST a `body` to an `endpoint` with query `params` and `headers`.
+   *
    * @template T
-   * @param {string} endpoint
-   * @param {Body} body
+   * @param {string} endpoint - not the full URL, just the path, e.g. `v9/projects`
+   * @param {Body} body - will be JSON encoded
    * @param {Params} [params]
    * @param {Headers} [headers]
    * @returns {Promise<T>}
@@ -67,9 +77,11 @@ export class Client {
   }
 
   /**
+   * HTTP PATCH a `body` to an `endpoint` with query `params` and `headers`.
+   *
    * @template T
-   * @param {string} endpoint
-   * @param {Body} body
+   * @param {string} endpoint - not the full URL, just the path, e.g. `v9/projects`
+   * @param {Body} body - will be JSON encoded
    * @param {Params} [params]
    * @param {Headers} [headers]
    * @returns {Promise<T>}
@@ -87,6 +99,8 @@ export class Client {
   }
 
   /**
+   * Return all available teams for the user authorized by this client's token.
+   *
    * @returns {Promise<Team[]>}
    */
   async teams() {
@@ -94,6 +108,9 @@ export class Client {
   }
 
   /**
+   * Return all available projects under a given team (`teamId`)
+   * for the user authorized by this client's token.
+   *
    * @param {string} teamId
    * @returns {Promise<Project[]>}
    */
@@ -102,6 +119,14 @@ export class Client {
   }
 
   /**
+   * Return deployments under a given team (`teamId`) and project (`projectId`).
+   *
+   * The endpoint used is a paginated one, but this call does not support pagination,
+   * and only returns the first 20 results.
+   *
+   * The results are sorted by their created date, so the latest deployment
+   * for the given `target` is at index `0`.
+   *
    * @param {string} teamId
    * @param {string} projectId
    * @param {"production" | "preview" | "development"} target
@@ -114,6 +139,8 @@ export class Client {
   }
 
   /**
+   * Return environment variables available to a project (`projectId`) under a team (`teamId`).
+   *
    * @param {string} teamId
    * @param {string} projectId
    * @returns {Promise<Env[]>}
@@ -123,6 +150,9 @@ export class Client {
   }
 
   /**
+   * Get the decrypted version of an environment variable (`envId`)
+   * available to a project (`projectId`) under a team (`teamId`).
+   *
    * @param {string} teamId
    * @param {string} projectId
    * @param {string} envId
@@ -133,6 +163,9 @@ export class Client {
   }
 
   /**
+   * Set an environment variable (`envId`), making it available to a project `projectId`
+   * under a team (`teamId`).
+   *
    * @param {string} teamId
    * @param {string} projectId
    * @param {string} envId
@@ -153,6 +186,11 @@ export class Client {
   }
 
   /**
+   * Trigger a redeploy of an existing deployment (`deploymentId`)
+   * of a project (`name`) under a specific team (`teamId`).
+   *
+   * The resulting deployment will be set as the current production deployment.
+   *
    * @param {string} teamId
    * @param {string} deploymentId
    * @param {string} name

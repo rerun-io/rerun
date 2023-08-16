@@ -14,6 +14,10 @@ on:
         required: false
         type: string
         default: ""
+      RELEASE_COMMIT:
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-upload-wheels
@@ -47,6 +51,8 @@ jobs:
           INPUTS_CONTEXT: ${{ toJson(inputs) }}
 
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.RELEASE_COMMIT || github.sha }}
 
       - name: Download RRD
         uses: actions/download-artifact@v3
@@ -100,3 +106,4 @@ jobs:
           path: "dist"
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/wheels"
           parent: false
+
