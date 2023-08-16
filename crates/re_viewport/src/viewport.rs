@@ -370,8 +370,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 .clicked()
             {
                 *self.maximized = Some(space_view_id);
-                self.ctx
-                    .set_single_selection(&Item::SpaceView(space_view_id));
+                // Just maximize - don't select. See https://github.com/rerun-io/rerun/issues/2861
             }
         }
 
