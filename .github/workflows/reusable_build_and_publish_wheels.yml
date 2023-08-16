@@ -3,11 +3,23 @@ name: Build and publish wheels
 on:
   workflow_call:
     inputs:
-      CONCURRENCY:
+      concurrency:
         type: string
         required: true
-      RELEASE_VERSION:
+      release-version:
         description: "Release Version Number (Must match Cargo.toml)"
+        type: string
+        required: true
+      linux-wheel-name:
+        description: "Name of the wheel built for linux"
+        type: string
+        required: true
+      linux-rrd-name:
+        description: "Name of the .rrd file built for linux"
+        type: string
+        required: true
+      release-commit:
+        description: "Which commit to build+publish"
         type: string
         required: true
 
@@ -21,11 +33,11 @@ jobs:
     steps:
       - name: "Set short-sha"
         id: get-short-sha
-        run: echo "short-sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: "Set full-sha"
         id: get-full-sha
-        run: echo "full-sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+        run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   ### Linux
   build-linux:
@@ -33,11 +45,12 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: wheels-build-linux-${{ inputs.concurrency }}
       PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: linux-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
-      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+      WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_VERSION: ${{ inputs.release-version }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   upload-wheels-linux:
@@ -45,9 +58,10 @@ jobs:
     needs: [build-linux]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
-      WHEEL_ARTIFACT_NAME: linux-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
+      CONCURRENCY: wheels-upload-linux-${{ inputs.concurrency }}
+      WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   ### Windows
@@ -56,11 +70,12 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: wheels-build-windows-${{ inputs.concurrency }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ""
-      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+      RELEASE_VERSION: ${{ inputs.release-version }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   upload-wheels-windows:
@@ -68,9 +83,10 @@ jobs:
     needs: [build-linux, build-windows]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: wheels-upload-windows-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: windows-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   ### macOS (arm)
@@ -79,11 +95,12 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: wheels-build-macos-arm-${{ inputs.concurrency }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ""
-      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+      RELEASE_VERSION: ${{ inputs.release-version }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   upload-wheels-macos-arm:
@@ -91,9 +108,10 @@ jobs:
     needs: [build-linux, build-macos-arm]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: wheels-upload-macos-arm-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   ### macOS (intel)
@@ -102,11 +120,12 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: wheels-build-macos-intel-${{ inputs.concurrency }}
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
       RRD_ARTIFACT_NAME: ""
-      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+      RELEASE_VERSION: ${{ inputs.release-version }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   upload-wheels-macos-intel:
@@ -114,9 +133,10 @@ jobs:
     needs: [build-linux, build-macos-intel]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: wheels-upload-macos-intel-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
+      RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   generate-wheel-index:
@@ -130,18 +150,20 @@ jobs:
       ]
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
-      CONCURRENCY: ${{ inputs.CONCURRENCY }}
+      CONCURRENCY: generate-wheel-index-${{ inputs.concurrency }}
+      COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   publish-wheels:
     name: "Publish Wheels"
     needs: [get-commit-sha, generate-wheel-index]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
+          ref: ${{ inputs.release-commit }}
 
       - id: "auth"
         uses: google-github-actions/auth@v1
@@ -159,15 +181,13 @@ jobs:
           python3 -m pip install packaging google-cloud-storage
 
       - name: Download wheels from Google Cloud Storage
-        env:
-          BUCKET_PATH:
         run: |
           mkdir wheels
           gsutil cp "gs://rerun-builds/commit/${{ needs.get-commit-sha.outputs.short-sha }}/wheels/*.whl" wheels/
 
       - name: Verify wheels match the expected release
         run: |
-          python3 scripts/ci/verify_wheels.py --folder wheels --version ${{ inputs.RELEASE_VERSION }}
+          python3 scripts/ci/verify_wheels.py --folder wheels --version ${{ inputs.release-version }}
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1

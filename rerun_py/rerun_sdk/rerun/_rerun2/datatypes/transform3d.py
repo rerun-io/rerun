@@ -54,38 +54,51 @@ class Transform3DType(BaseExtensionType):
             self,
             pa.dense_union(
                 [
-                    pa.field("_null_markers", pa.null(), True, {}),
+                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
                     pa.field(
                         "TranslationAndMat3x3",
                         pa.struct(
                             [
                                 pa.field(
-                                    "translation", pa.list_(pa.field("item", pa.float32(), False, {}), 3), True, {}
+                                    "translation",
+                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                                    nullable=True,
+                                    metadata={},
                                 ),
-                                pa.field("matrix", pa.list_(pa.field("item", pa.float32(), False, {}), 9), True, {}),
-                                pa.field("from_parent", pa.bool_(), False, {}),
+                                pa.field(
+                                    "matrix",
+                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
+                                    nullable=True,
+                                    metadata={},
+                                ),
+                                pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
                             ]
                         ),
-                        False,
-                        {},
+                        nullable=False,
+                        metadata={},
                     ),
                     pa.field(
                         "TranslationRotationScale",
                         pa.struct(
                             [
                                 pa.field(
-                                    "translation", pa.list_(pa.field("item", pa.float32(), False, {}), 3), True, {}
+                                    "translation",
+                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                                    nullable=True,
+                                    metadata={},
                                 ),
                                 pa.field(
                                     "rotation",
                                     pa.dense_union(
                                         [
-                                            pa.field("_null_markers", pa.null(), True, {}),
+                                            pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
                                             pa.field(
                                                 "Quaternion",
-                                                pa.list_(pa.field("item", pa.float32(), False, {}), 4),
-                                                False,
-                                                {},
+                                                pa.list_(
+                                                    pa.field("item", pa.float32(), nullable=False, metadata={}), 4
+                                                ),
+                                                nullable=False,
+                                                metadata={},
                                             ),
                                             pa.field(
                                                 "AxisAngle",
@@ -93,54 +106,76 @@ class Transform3DType(BaseExtensionType):
                                                     [
                                                         pa.field(
                                                             "axis",
-                                                            pa.list_(pa.field("item", pa.float32(), False, {}), 3),
-                                                            False,
-                                                            {},
+                                                            pa.list_(
+                                                                pa.field(
+                                                                    "item", pa.float32(), nullable=False, metadata={}
+                                                                ),
+                                                                3,
+                                                            ),
+                                                            nullable=False,
+                                                            metadata={},
                                                         ),
                                                         pa.field(
                                                             "angle",
                                                             pa.dense_union(
                                                                 [
-                                                                    pa.field("_null_markers", pa.null(), True, {}),
-                                                                    pa.field("Radians", pa.float32(), False, {}),
-                                                                    pa.field("Degrees", pa.float32(), False, {}),
+                                                                    pa.field(
+                                                                        "_null_markers",
+                                                                        pa.null(),
+                                                                        nullable=True,
+                                                                        metadata={},
+                                                                    ),
+                                                                    pa.field(
+                                                                        "Radians",
+                                                                        pa.float32(),
+                                                                        nullable=False,
+                                                                        metadata={},
+                                                                    ),
+                                                                    pa.field(
+                                                                        "Degrees",
+                                                                        pa.float32(),
+                                                                        nullable=False,
+                                                                        metadata={},
+                                                                    ),
                                                                 ]
                                                             ),
-                                                            False,
-                                                            {},
+                                                            nullable=False,
+                                                            metadata={},
                                                         ),
                                                     ]
                                                 ),
-                                                False,
-                                                {},
+                                                nullable=False,
+                                                metadata={},
                                             ),
                                         ]
                                     ),
-                                    True,
-                                    {},
+                                    nullable=True,
+                                    metadata={},
                                 ),
                                 pa.field(
                                     "scale",
                                     pa.dense_union(
                                         [
-                                            pa.field("_null_markers", pa.null(), True, {}),
+                                            pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
                                             pa.field(
                                                 "ThreeD",
-                                                pa.list_(pa.field("item", pa.float32(), False, {}), 3),
-                                                False,
-                                                {},
+                                                pa.list_(
+                                                    pa.field("item", pa.float32(), nullable=False, metadata={}), 3
+                                                ),
+                                                nullable=False,
+                                                metadata={},
                                             ),
-                                            pa.field("Uniform", pa.float32(), False, {}),
+                                            pa.field("Uniform", pa.float32(), nullable=False, metadata={}),
                                         ]
                                     ),
-                                    True,
-                                    {},
+                                    nullable=True,
+                                    metadata={},
                                 ),
-                                pa.field("from_parent", pa.bool_(), False, {}),
+                                pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
                             ]
                         ),
-                        False,
-                        {},
+                        nullable=False,
+                        metadata={},
                     ),
                 ]
             ),

@@ -48,15 +48,15 @@ namespace rerun {
 
             {
                 auto field_builder = static_cast<arrow::UInt16Builder *>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].id));
                 }
             }
             {
                 auto field_builder = static_cast<arrow::StringBuilder *>(builder->field_builder(1));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.label.has_value()) {
                         ARROW_RETURN_NOT_OK(rerun::datatypes::Label::fill_arrow_array_builder(
@@ -71,8 +71,8 @@ namespace rerun {
             }
             {
                 auto field_builder = static_cast<arrow::UInt32Builder *>(builder->field_builder(2));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.color.has_value()) {
                         ARROW_RETURN_NOT_OK(rerun::datatypes::Color::fill_arrow_array_builder(
@@ -85,7 +85,7 @@ namespace rerun {
                     }
                 }
             }
-            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
             return arrow::Status::OK();
         }

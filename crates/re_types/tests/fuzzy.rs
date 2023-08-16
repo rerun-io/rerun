@@ -13,7 +13,7 @@ fn roundtrip() {
         single_float_optional: Some(1.0),
         single_string_required: "a".into(),
         single_string_optional: Some("a".into()),
-        many_floats_optional: Some(vec![1.0, 10.0, 100.0]),
+        many_floats_optional: Some(vec![1.0, 10.0, 100.0].into()),
         many_strings_required: vec!["1".into(), "2".into()],
         many_strings_optional: Some(vec!["10".into(), "20".into()]),
         flattened_scalar: 42.0,
@@ -25,7 +25,7 @@ fn roundtrip() {
         single_float_optional: None,
         single_string_required: "b".into(),
         single_string_optional: None,
-        many_floats_optional: Some(vec![2.0, 20.0, 200.0]),
+        many_floats_optional: Some(vec![2.0, 20.0, 200.0].into()),
         many_strings_required: vec!["3".into(), "4".into()],
         many_strings_optional: None,
         flattened_scalar: 43.0,
@@ -37,7 +37,7 @@ fn roundtrip() {
         single_float_optional: Some(3.0),
         single_string_required: "c".into(),
         single_string_optional: Some("c".into()),
-        many_floats_optional: Some(vec![3.0, 30.0, 300.0]),
+        many_floats_optional: Some(vec![3.0, 30.0, 300.0].into()),
         many_strings_required: vec!["5".into(), "6".into()],
         many_strings_optional: Some(vec!["50".into(), "60".into()]),
         flattened_scalar: 44.0,
@@ -49,7 +49,7 @@ fn roundtrip() {
         single_float_optional: None,
         single_string_required: "d".into(),
         single_string_optional: None,
-        many_floats_optional: Some(vec![4.0, 40.0, 400.0]),
+        many_floats_optional: Some(vec![4.0, 40.0, 400.0].into()),
         many_strings_required: vec!["7".into(), "8".into()],
         many_strings_optional: None,
         flattened_scalar: 45.0,
@@ -84,7 +84,7 @@ fn roundtrip() {
         single_float_optional: None,
         single_string_required: "d".into(),
         single_string_optional: None,
-        many_floats_optional: Some(vec![4.0, 40.0, 400.0]),
+        many_floats_optional: Some(vec![4.0, 40.0, 400.0].into()),
         many_strings_required: vec!["7".into(), "8".into()],
         many_strings_optional: None,
         flattened_scalar: 46.0,
@@ -101,8 +101,8 @@ fn roundtrip() {
     let fuzzy10_1 = components::AffixFuzzer10(None);
     let fuzzy10_2 = components::AffixFuzzer10(Some("a".into()));
 
-    let fuzzy11_1 = components::AffixFuzzer11(Some(vec![1.0, 10.0]));
-    let fuzzy11_2 = components::AffixFuzzer11(Some(vec![2.0, 20.0, 200.0]));
+    let fuzzy11_1 = components::AffixFuzzer11(Some(vec![1.0, 10.0].into()));
+    let fuzzy11_2 = components::AffixFuzzer11(Some(vec![2.0, 20.0, 200.0].into()));
 
     let fuzzy12_1 = components::AffixFuzzer12(vec!["1".into(), "10".into()]);
     let fuzzy12_2 = components::AffixFuzzer12(vec!["20".into(), "200".into(), "2000".into()]);
@@ -148,7 +148,7 @@ fn roundtrip() {
                 single_float_optional: None,
                 single_string_required: "d".into(),
                 single_string_optional: None,
-                many_floats_optional: Some(vec![4.0, 40.0, 400.0]),
+                many_floats_optional: Some(vec![4.0, 40.0, 400.0].into()),
                 many_strings_required: vec!["7".into(), "8".into()],
                 many_strings_optional: None,
                 flattened_scalar: 46.0,
@@ -168,7 +168,7 @@ fn roundtrip() {
                 single_float_optional: Some(3.0),
                 single_string_required: "c".into(),
                 single_string_optional: Some("c".into()),
-                many_floats_optional: Some(vec![3.0, 30.0, 300.0]),
+                many_floats_optional: Some(vec![3.0, 30.0, 300.0].into()),
                 many_strings_required: vec!["5".into(), "6".into()],
                 many_strings_optional: Some(vec!["50".into(), "60".into()]),
                 flattened_scalar: 44.0,
@@ -189,7 +189,7 @@ fn roundtrip() {
                 single_float_optional: Some(3.0),
                 single_string_required: "c".into(),
                 single_string_optional: Some("c".into()),
-                many_floats_optional: Some(vec![3.0, 30.0, 300.0]),
+                many_floats_optional: Some(vec![3.0, 30.0, 300.0].into()),
                 many_strings_required: vec!["5".into(), "6".into()],
                 many_strings_optional: Some(vec!["50".into(), "60".into()]),
                 flattened_scalar: 44.0,

@@ -5,10 +5,10 @@ use quote::{format_ident, quote};
 
 use crate::{
     codegen::rust::{
-        arrow::{quote_fqname_as_type_path, ArrowDataTypeTokenizer},
+        arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
         util::is_tuple_struct_from_obj,
     },
-    ArrowRegistry, Object, Objects,
+    ArrowRegistry, Object, ObjectKind, Objects,
 };
 
 // ---
@@ -81,6 +81,7 @@ pub fn quote_arrow_deserializer(
             obj_field.is_nullable,
             obj_field_fqname,
             &data_src,
+            InnerRepr::NativeIterable,
         );
 
         let quoted_unwrapping = if obj_field.is_nullable {
@@ -124,6 +125,7 @@ pub fn quote_arrow_deserializer(
                         obj_field.is_nullable,
                         obj_field.fqname.as_str(),
                         &data_src,
+                        InnerRepr::NativeIterable,
                     );
 
                     quote! {
@@ -216,6 +218,7 @@ pub fn quote_arrow_deserializer(
                             obj_field.is_nullable,
                             obj_field.fqname.as_str(),
                             &data_src,
+                            InnerRepr::NativeIterable,
                         );
 
                         let i = i + 1; // NOTE: +1 to account for `nulls` virtual arm
@@ -348,6 +351,16 @@ pub fn quote_arrow_deserializer(
     }
 }
 
+#[derive(Copy, Clone)]
+enum InnerRepr {
+    /// The inner elements of the field should be exposed as `Buffer<T>`
+    /// This is only applicable when T is an arrow primitive
+    BufferT,
+
+    /// The inner elements of the field should be exposed as an iterable of T
+    NativeIterable,
+}
+
 /// This generates code that deserializes a runtime Arrow payload according to the specified `datatype`.
 ///
 /// The `datatype` comes from our compile-time Arrow registry, not from the runtime payload!
@@ -365,6 +378,7 @@ fn quote_arrow_field_deserializer(
     is_nullable: bool,
     obj_field_fqname: &str,
     data_src: &proc_macro2::Ident, // &dyn ::arrow2::array::Array
+    inner_repr: InnerRepr,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
 
@@ -395,10 +409,16 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            quote! {
-                #quoted_downcast?
-                    .into_iter() // NOTE: automatically checks the bitmap on our behalf
-                    #quoted_iter_transparency
+            match inner_repr {
+                InnerRepr::BufferT => quote! {
+                    #quoted_downcast?
+                    .values()
+                },
+                InnerRepr::NativeIterable => quote! {
+                    #quoted_downcast?
+                        .into_iter() // NOTE: automatically checks the bitmap on our behalf
+                        #quoted_iter_transparency
+                },
             }
         }
 
@@ -465,6 +485,7 @@ fn quote_arrow_field_deserializer(
                 inner.is_nullable,
                 obj_field_fqname,
                 &data_src_inner,
+                InnerRepr::NativeIterable,
             );
 
             let quoted_downcast = {
@@ -562,17 +583,72 @@ fn quote_arrow_field_deserializer(
 
         DataType::List(inner) => {
             let data_src_inner = format_ident!("{data_src}_inner");
+
+            let inner_repr = if is_backed_by_arrow_buffer(inner.data_type()) {
+                InnerRepr::BufferT
+            } else {
+                InnerRepr::NativeIterable
+            };
+
             let quoted_inner = quote_arrow_field_deserializer(
                 objects,
                 inner.data_type(),
                 inner.is_nullable,
                 obj_field_fqname,
                 &data_src_inner,
+                inner_repr,
             );
 
             let quoted_downcast = {
                 let cast_as = quote!(::arrow2::array::ListArray<i32>);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+            };
+
+            let quoted_collect_inner = match inner_repr {
+                InnerRepr::BufferT => quote!(),
+                InnerRepr::NativeIterable => quote!(.collect::<Vec<_>>()),
+            };
+
+            let quoted_inner_data_range = match inner_repr {
+                InnerRepr::BufferT => quote! {
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
+                    let data = crate::ArrowBuffer(data);
+                },
+                InnerRepr::NativeIterable => quote! {
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
+
+                    // NOTE: The call to `Option::unwrap_or_default` is very important here.
+                    //
+                    // Since we can only get here if the outer oob is marked as
+                    // non-null, the only possible reason for the default() path
+                    // to be taken is because the inner field itself is nullable and
+                    // happens to have one or more nullable values in the referenced
+                    // slice.
+                    // This is perfectly fine, and when it happens, we need to fill the
+                    // resulting vec with some data, hence default().
+                    //
+                    // This does have a subtle implication though!
+                    // Since we never even look at the inner field's data when the outer
+                    // entry is null, it means we won't notice it if illegal/malformed/corrupt
+                    // in any way.
+                    // It is important that we turn a blind eye here, because most SDKs in
+                    // the ecosystem will put illegal data (e.g. null entries in an array of
+                    // non-null floats) in the inner buffer if the outer entry itself
+                    // is null.
+                    //
+                    // TODO(#2875): use MaybeUninit rather than requiring a default impl
+                    let data = data.iter().cloned().map(Option::unwrap_or_default).collect();
+                        // The following would be the correct thing to do, but costs us way
+                        // too much performance-wise for something that only applies to
+                        // malformed inputs.
+                        //
+                        // // NOTE: We don't support nullable inner elements in our IDL, so
+                        // // this can only be a case of malformed data.
+                        // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
+                        // .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                },
             };
 
             quote! {{
@@ -586,7 +662,7 @@ fn quote_arrow_field_deserializer(
                 } else {
                     let #data_src_inner = {
                         let #data_src_inner = &**#data_src.values();
-                        #quoted_inner.collect::<Vec<_>>()
+                        #quoted_inner #quoted_collect_inner
                     };
 
                     let offsets = #data_src.offsets();
@@ -609,39 +685,8 @@ fn quote_arrow_field_deserializer(
                                     (start, end), #data_src_inner.len(),
                                 ));
                             }
-                            // Safety: all checked above.
-                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
 
-                            // NOTE: The call to `Option::unwrap_or_default` is very important here.
-                            //
-                            // Since we can only get here if the outer oob is marked as
-                            // non-null, the only possible reason for the default() path
-                            // to be taken is because the inner field itself is nullable and
-                            // happens to have one or more nullable values in the referenced
-                            // slice.
-                            // This is perfectly fine, and when it happens, we need to fill the
-                            // resulting vec with some data, hence default().
-                            //
-                            // This does have a subtle implication though!
-                            // Since we never even look at the inner field's data when the outer
-                            // entry is null, it means we won't notice it if illegal/malformed/corrupt
-                            // in any way.
-                            // It is important that we turn a blind eye here, because most SDKs in
-                            // the ecosystem will put illegal data (e.g. null entries in an array of
-                            // non-null floats) in the inner buffer if the outer entry itself
-                            // is null.
-                            //
-                            // TODO(#2875): use MaybeUninit rather than requiring a default impl
-                            let data = data.iter().cloned().map(Option::unwrap_or_default).collect();
-                                // The following would be the correct thing to do, but costs us way
-                                // too much performance-wise for something that only applies to
-                                // malformed inputs.
-                                //
-                                // // NOTE: We don't support nullable inner elements in our IDL, so
-                                // // this can only be a case of malformed data.
-                                // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
-                                // .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                            #quoted_inner_data_range
 
                             Ok(data)
                         }).transpose()
@@ -778,5 +823,215 @@ fn quote_iterator_transparency(
         } else {
             quote!()
         }
+    }
+}
+
+/// This generates code that deserializes a runtime Arrow payload into the specified `obj`, taking
+/// Arrow-transparency into account.
+///
+/// It contains additional performance optimizations based on the inner-type being a non-nullable primitive
+/// allowing us to map directly to slices rather than iterating. The ability to use this optimization is
+/// determined by [`should_optimize_buffer_slice_deserialize`].
+///
+/// There is a 1:1 relationship between `quote_arrow_deserializer_buffer_slice` and `Loggable::try_from_arrow`:
+/// ```ignore
+/// fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
+///     Ok(#quoted_deserializer_)
+/// }
+/// ```
+///
+/// See [`quote_arrow_deserializer_buffer_slice`] for additional information.
+pub fn quote_arrow_deserializer_buffer_slice(
+    arrow_registry: &ArrowRegistry,
+    objects: &Objects,
+    obj: &Object,
+) -> TokenStream {
+    // Runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
+    let data_src = format_ident!("data");
+
+    let datatype = &arrow_registry.get(&obj.fqname);
+
+    let is_arrow_transparent = obj.datatype.is_none();
+    let is_tuple_struct = is_tuple_struct_from_obj(obj);
+
+    if is_arrow_transparent {
+        // NOTE: Arrow transparent objects must have a single field, no more no less.
+        // The semantic pass would have failed already if this wasn't the case.
+        debug_assert!(obj.fields.len() == 1);
+        let obj_field = &obj.fields[0];
+        let obj_field_fqname = obj_field.fqname.as_str();
+
+        let data_dst = format_ident!(
+            "{}",
+            if is_tuple_struct {
+                "data0"
+            } else {
+                obj_field.name.as_str()
+            }
+        );
+
+        let quoted_deserializer = quote_arrow_field_deserializer_buffer_slice(
+            objects,
+            &arrow_registry.get(&obj_field.fqname),
+            obj_field.is_nullable,
+            obj_field_fqname,
+            &data_src,
+            InnerRepr::NativeIterable,
+        );
+
+        let quoted_remapping = if is_tuple_struct {
+            quote!(.map(|v| Self(v)))
+        } else {
+            quote!(.map(|#data_dst| Self { #data_dst }))
+        };
+
+        quote! {
+            #quoted_deserializer
+            #quoted_remapping
+            // NOTE: implicit Vec<Result> to Result<Vec>
+            .collect::<Vec<_>>()
+        }
+    } else {
+        unimplemented!("{datatype:#?}")
+    }
+}
+
+/// This generates code that deserializes a runtime Arrow payload according to the specified `datatype`.
+///
+/// It contains additional performance optimizations based on the inner-type being a non-nullable primitive
+/// allowing us to map directly to slices rather than iterating. The ability to use this optimization is
+/// determined by [`should_optimize_buffer_slice_deserialize`].
+///
+/// See [`quote_arrow_field_deserializer`] for additional information.
+fn quote_arrow_field_deserializer_buffer_slice(
+    objects: &Objects,
+    datatype: &DataType,
+    is_nullable: bool,
+    obj_field_fqname: &str,
+    data_src: &proc_macro2::Ident, // &dyn ::arrow2::array::Array
+    inner_repr: InnerRepr,
+) -> TokenStream {
+    _ = is_nullable; // not yet used, will be needed very soon
+
+    match datatype.to_logical_type() {
+        DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64
+        | DataType::Float16
+        | DataType::Float32
+        | DataType::Float64 => {
+            let quoted_iter_transparency =
+                quote_iterator_transparency(objects, datatype, IteratorKind::Value, None);
+
+            let quoted_iter_transparency = quote!(.copied() #quoted_iter_transparency);
+
+            let quoted_downcast = {
+                let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
+                let cast_as = format_ident!("{cast_as}Array"); // e.g. `Uint32Array`
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+            };
+
+            match inner_repr {
+                InnerRepr::BufferT => quote! {
+                    #quoted_downcast?
+                    .values()
+                    .as_slice()
+                },
+                InnerRepr::NativeIterable => quote! {
+                    #quoted_downcast?
+                    .values()
+                    .as_slice()
+                    .iter()
+                    #quoted_iter_transparency
+                },
+            }
+        }
+
+        DataType::FixedSizeList(inner, length) => {
+            if matches!(inner_repr, InnerRepr::BufferT) {
+                // This implies a nested fixed-sized-array
+                unimplemented!("{datatype:#?}")
+            }
+            let data_src_inner = format_ident!("{data_src}_inner");
+            let quoted_inner = quote_arrow_field_deserializer_buffer_slice(
+                objects,
+                inner.data_type(),
+                inner.is_nullable,
+                obj_field_fqname,
+                &data_src_inner,
+                InnerRepr::BufferT,
+            );
+
+            let quoted_downcast = {
+                let cast_as = quote!(::arrow2::array::FixedSizeListArray);
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+            };
+
+            let quoted_iter_transparency =
+                quote_iterator_transparency(objects, datatype, IteratorKind::Value, None);
+            let quoted_iter_transparency = quote!(.copied() #quoted_iter_transparency);
+
+            quote! {{
+                let #data_src = #quoted_downcast?;
+
+                let #data_src_inner = &**#data_src.values();
+                bytemuck::cast_slice::<_, [_; #length]>(#quoted_inner)
+                .iter()
+                #quoted_iter_transparency
+            }}
+        }
+
+        _ => unimplemented!("{datatype:#?}"),
+    }
+}
+
+/// Whether or not this object allows for the buffer-slice optimizations.
+///
+/// These optimizations require the outer type to be non-nullable and made up exclusively
+/// of primitive types.
+///
+/// Nullabillity is kind of weird since it's technically a property of the field
+/// rather than the datatype. However, we know that Components can only be used
+/// by archetypes and as such should never be nullible.
+///
+/// This should always be checked before using [`quote_arrow_deserializer_buffer_slice`].
+pub fn should_optimize_buffer_slice_deserialize(
+    obj: &Object,
+    arrow_registry: &ArrowRegistry,
+) -> bool {
+    let is_arrow_transparent = obj.datatype.is_none();
+    if obj.kind == ObjectKind::Component && is_arrow_transparent {
+        let typ = arrow_registry.get(&obj.fqname);
+        let obj_field = &obj.fields[0];
+        !obj_field.is_nullable && should_optimize_buffer_slice_deserialize_datatype(&typ)
+    } else {
+        false
+    }
+}
+
+/// Whether or not this datatype allows for the buffer slice optimizations.
+fn should_optimize_buffer_slice_deserialize_datatype(typ: &DataType) -> bool {
+    match typ {
+        DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64
+        | DataType::Float16
+        | DataType::Float32
+        | DataType::Float64 => true,
+        DataType::Extension(_, typ, _) => should_optimize_buffer_slice_deserialize_datatype(typ),
+        DataType::FixedSizeList(field, _) => {
+            should_optimize_buffer_slice_deserialize_datatype(field.data_type())
+        }
+        _ => false,
     }
 }

@@ -33,7 +33,9 @@ namespace rerun {
             }
 
             static_assert(sizeof(*elements) == sizeof(elements->rgba));
-            ARROW_RETURN_NOT_OK(builder->AppendValues(&elements->rgba, num_elements));
+            ARROW_RETURN_NOT_OK(
+                builder->AppendValues(&elements->rgba, static_cast<int64_t>(num_elements))
+            );
 
             return arrow::Status::OK();
         }

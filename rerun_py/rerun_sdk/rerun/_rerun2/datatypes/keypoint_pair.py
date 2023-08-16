@@ -57,7 +57,12 @@ class KeypointPairType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct([pa.field("keypoint0", pa.uint16(), False, {}), pa.field("keypoint1", pa.uint16(), False, {})]),
+            pa.struct(
+                [
+                    pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
+                    pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
+                ]
+            ),
             "rerun.datatypes.KeypointPair",
         )
 

@@ -357,23 +357,12 @@ pub fn view_2d(
 
         // Draw a re_renderer driven view.
         // Camera & projection are configured to ingest space coordinates directly.
-        {
-            let command_buffer =
-                match view_builder.draw(ctx.render_ctx, ui.visuals().extreme_bg_color.into()) {
-                    Ok(command_buffer) => command_buffer,
-                    Err(err) => {
-                        re_log::error_once!("Failed to fill view builder: {err}");
-                        return Ok(()); // TODO(andreas): Should make it possible to pass the error on.
-                    }
-                };
-            painter.add(gpu_bridge::renderer_paint_callback(
-                ctx.render_ctx,
-                command_buffer,
-                view_builder,
-                painter.clip_rect(),
-                painter.ctx().pixels_per_point(),
-            ));
-        }
+        painter.add(gpu_bridge::new_renderer_callback(
+            ctx.render_ctx,
+            view_builder,
+            painter.clip_rect(),
+            ui.visuals().extreme_bg_color.into(),
+        ));
 
         painter.extend(show_projections_from_3d_space(
             ctx,

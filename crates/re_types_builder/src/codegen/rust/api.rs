@@ -11,7 +11,10 @@ use crate::{
     codegen::{
         rust::{
             arrow::ArrowDataTypeTokenizer,
-            deserializer::quote_arrow_deserializer,
+            deserializer::{
+                quote_arrow_deserializer, quote_arrow_deserializer_buffer_slice,
+                should_optimize_buffer_slice_deserialize,
+            },
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components},
         },
@@ -619,6 +622,8 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Vector { elem_type } => {
                 if *unwrap {
                     quote!(#elem_type)
+                } else if elem_type.backed_by_arrow_buffer() {
+                    quote!(crate::ArrowBuffer<#elem_type>)
                 } else {
                     quote!(Vec<#elem_type>)
                 }
@@ -697,14 +702,18 @@ fn quote_trait_impls_from_obj(
 
     match kind {
         ObjectKind::Datatype | ObjectKind::Component => {
-            let kind = if *kind == ObjectKind::Datatype {
+            let quoted_kind = if *kind == ObjectKind::Datatype {
                 quote!(Datatype)
             } else {
                 quote!(Component)
             };
-            let kind_name = format_ident!("{kind}Name");
+            let kind_name = format_ident!("{quoted_kind}Name");
 
             let datatype = arrow_registry.get(fqname);
+
+            let optimize_for_buffer_slice =
+                should_optimize_buffer_slice_deserialize(obj, arrow_registry);
+
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
             let legacy_fqname = obj
@@ -735,12 +744,72 @@ fn quote_trait_impls_from_obj(
                 }
             };
 
+            let quoted_item = if optimize_for_buffer_slice {
+                quote!(Self)
+            } else {
+                quote!(Option<Self>)
+            };
+
+            let quoted_item_converters = if optimize_for_buffer_slice {
+                quote! {
+                    #[inline]
+                    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
+                        item
+                    }
+
+                    #[inline]
+                    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
+                        Some(item)
+                    }
+                }
+            } else {
+                quote! {
+                    #[inline]
+                    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
+                        item
+                    }
+                }
+            };
+
+            let quoted_iter_from_arrow_impl = if optimize_for_buffer_slice {
+                quote!(try_from_arrow)
+            } else {
+                quote!(try_from_arrow_opt)
+            };
+
+            let quoted_try_from_arrow = if optimize_for_buffer_slice {
+                let quoted_deserializer =
+                    quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+                quote! {
+                    #[allow(unused_imports, clippy::wildcard_imports)]
+                    #[inline]
+                    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+                    where
+                        Self: Sized {
+                        use ::arrow2::{datatypes::*, array::*, buffer::*};
+                        use crate::{Loggable as _, ResultExt as _};
+
+                        // This code-path cannot have null fields. If it does have a validity mask
+                        // all bits must indicate valid data.
+                        if let Some(validity) = data.validity() {
+                            if validity.unset_bits() != 0 {
+                                return Err(crate::DeserializationError::missing_data());
+                            }
+                        }
+
+                        Ok(#quoted_deserializer)
+                    }
+                }
+            } else {
+                quote!()
+            };
+
             quote! {
                 #into_cow
 
                 impl crate::Loggable for #name {
                     type Name = crate::#kind_name;
-                    type Item<'a> = Option<Self>;
+                    type Item<'a> = #quoted_item;
                     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
                     #[inline]
@@ -774,11 +843,12 @@ fn quote_trait_impls_from_obj(
                     fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized {
-                        use ::arrow2::{datatypes::*, array::*};
+                        use ::arrow2::{datatypes::*, array::*, buffer::*};
                         use crate::{Loggable as _, ResultExt as _};
                         Ok(#quoted_deserializer)
                     }
 
+                    #quoted_try_from_arrow
 
                     #[inline]
                     fn try_iter_from_arrow(
@@ -787,16 +857,14 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized,
                     {
-                        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+                        Ok(Self:: #quoted_iter_from_arrow_impl (data)?.into_iter())
                     }
 
-                    #[inline]
-                    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
-                        item
-                    }
+
+                    #quoted_item_converters
                 }
 
-                impl crate::#kind for #name {}
+                impl crate::#quoted_kind for #name {}
             }
         }
 

@@ -6,6 +6,9 @@ on:
       CONCURRENCY:
         required: true
         type: string
+      RELEASE_COMMIT:
+        required: false
+        type: string
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-release-crates
@@ -18,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.RELEASE_COMMIT || github.sha }}
 
       - name: Install dependencies
         run: |

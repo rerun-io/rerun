@@ -40,13 +40,13 @@ namespace rerun {
             }
 
             auto value_builder = static_cast<arrow::StringBuilder *>(builder->value_builder());
-            ARROW_RETURN_NOT_OK(builder->Reserve(num_elements));
-            ARROW_RETURN_NOT_OK(value_builder->Reserve(num_elements * 2));
+            ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
-            for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto &element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(builder->Append());
-                for (auto item_idx = 0; item_idx < element.many_strings_required.size();
+                for (size_t item_idx = 0; item_idx < element.many_strings_required.size();
                      item_idx += 1) {
                     ARROW_RETURN_NOT_OK(
                         value_builder->Append(element.many_strings_required[item_idx])

@@ -136,7 +136,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 position: egui::plot::Corner::RightBottom,
                 ..Default::default()
             })
-            .x_axis_formatter(move |time, _| format_time(time_type, time as i64 + time_offset))
+            .x_axis_formatter(move |time, _, _| format_time(time_type, time as i64 + time_offset))
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let is_integer = value.y.round() == value.y;

@@ -59,7 +59,7 @@ class AnnotationContextType(BaseExtensionType):
                     "item",
                     pa.struct(
                         [
-                            pa.field("class_id", pa.uint16(), False, {}),
+                            pa.field("class_id", pa.uint16(), nullable=False, metadata={}),
                             pa.field(
                                 "class_description",
                                 pa.struct(
@@ -68,13 +68,13 @@ class AnnotationContextType(BaseExtensionType):
                                             "info",
                                             pa.struct(
                                                 [
-                                                    pa.field("id", pa.uint16(), False, {}),
-                                                    pa.field("label", pa.utf8(), True, {}),
-                                                    pa.field("color", pa.uint32(), True, {}),
+                                                    pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                                                    pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                                                    pa.field("color", pa.uint32(), nullable=True, metadata={}),
                                                 ]
                                             ),
-                                            False,
-                                            {},
+                                            nullable=False,
+                                            metadata={},
                                         ),
                                         pa.field(
                                             "keypoint_annotations",
@@ -83,17 +83,17 @@ class AnnotationContextType(BaseExtensionType):
                                                     "item",
                                                     pa.struct(
                                                         [
-                                                            pa.field("id", pa.uint16(), False, {}),
-                                                            pa.field("label", pa.utf8(), True, {}),
-                                                            pa.field("color", pa.uint32(), True, {}),
+                                                            pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                                                            pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                                                            pa.field("color", pa.uint32(), nullable=True, metadata={}),
                                                         ]
                                                     ),
-                                                    False,
-                                                    {},
+                                                    nullable=False,
+                                                    metadata={},
                                                 )
                                             ),
-                                            False,
-                                            {},
+                                            nullable=False,
+                                            metadata={},
                                         ),
                                         pa.field(
                                             "keypoint_connections",
@@ -102,26 +102,30 @@ class AnnotationContextType(BaseExtensionType):
                                                     "item",
                                                     pa.struct(
                                                         [
-                                                            pa.field("keypoint0", pa.uint16(), False, {}),
-                                                            pa.field("keypoint1", pa.uint16(), False, {}),
+                                                            pa.field(
+                                                                "keypoint0", pa.uint16(), nullable=False, metadata={}
+                                                            ),
+                                                            pa.field(
+                                                                "keypoint1", pa.uint16(), nullable=False, metadata={}
+                                                            ),
                                                         ]
                                                     ),
-                                                    False,
-                                                    {},
+                                                    nullable=False,
+                                                    metadata={},
                                                 )
                                             ),
-                                            False,
-                                            {},
+                                            nullable=False,
+                                            metadata={},
                                         ),
                                     ]
                                 ),
-                                False,
-                                {},
+                                nullable=False,
+                                metadata={},
                             ),
                         ]
                     ),
-                    False,
-                    {},
+                    nullable=False,
+                    metadata={},
                 )
             ),
             "rerun.annotation_context",

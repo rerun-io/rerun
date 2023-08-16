@@ -6,7 +6,7 @@ use quote::{format_ident, quote};
 use crate::{ArrowRegistry, Object, Objects};
 
 use super::{
-    arrow::{quote_fqname_as_type_path, ArrowDataTypeTokenizer},
+    arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
     util::is_tuple_struct_from_obj,
 };
 
@@ -84,6 +84,7 @@ pub fn quote_arrow_serializer(
             obj_field.is_nullable,
             &bitmap_dst,
             &quoted_data_dst,
+            InnerRepr::NativeIterable,
         );
 
         let quoted_bitmap = quoted_bitmap(bitmap_dst);
@@ -129,6 +130,7 @@ pub fn quote_arrow_serializer(
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,
+                        InnerRepr::NativeIterable,
                     );
 
                     let quoted_flatten = quoted_flatten(obj_field.is_nullable);
@@ -191,6 +193,7 @@ pub fn quote_arrow_serializer(
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,
+                        InnerRepr::NativeIterable
                     );
 
                     let quoted_flatten = quoted_flatten(obj_field.is_nullable);
@@ -310,6 +313,16 @@ pub fn quote_arrow_serializer(
     }
 }
 
+#[derive(Copy, Clone)]
+enum InnerRepr {
+    /// The inner elements of the field will come from an `ArrowBuffer<T>`
+    /// This is only applicable when T is an arrow primitive
+    ArrowBuffer,
+
+    /// The inner elements of the field will come from an iterable of T
+    NativeIterable,
+}
+
 fn quote_arrow_field_serializer(
     objects: &Objects,
     extension_wrapper: Option<&str>,
@@ -317,6 +330,7 @@ fn quote_arrow_field_serializer(
     is_nullable: bool,
     bitmap_src: &proc_macro2::Ident,
     data_src: &proc_macro2::Ident,
+    inner_repr: InnerRepr,
 ) -> TokenStream {
     let quoted_datatype = ArrowDataTypeTokenizer(datatype, false);
     let quoted_datatype = if let Some(ext) = extension_wrapper {
@@ -387,12 +401,23 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            quote! {
-                PrimitiveArray::new(
-                    #quoted_datatype,
-                    #data_src.into_iter() #quoted_transparent_mapping .collect(),
-                    #bitmap_src,
-                ).boxed()
+            match inner_repr {
+                // A primitive that's an inner element of a list will already have been mapped
+                // to a buffer type.
+                InnerRepr::ArrowBuffer => quote! {
+                    PrimitiveArray::new(
+                        #quoted_datatype,
+                        #data_src,
+                        #bitmap_src,
+                    ).boxed()
+                },
+                InnerRepr::NativeIterable => quote! {
+                    PrimitiveArray::new(
+                        #quoted_datatype,
+                        #data_src.into_iter() #quoted_transparent_mapping .collect(),
+                        #bitmap_src,
+                    ).boxed()
+                },
             }
         }
 
@@ -476,6 +501,20 @@ fn quote_arrow_field_serializer(
         DataType::List(inner) | DataType::FixedSizeList(inner, _) => {
             let inner_datatype = inner.data_type();
 
+            // Note: We only use the ArrowBuffer optimization for `Lists` but not `FixedSizeList`.
+            // This is because the `ArrowBuffer` has a dynamic length, which would add more overhead
+            // to simple fixed-sized types like `Point2D`.
+            //
+            // TODO(jleibs): If we need to support large FixedSizeList types where the `ArrowBuffer`
+            // optimization would be significant, we can introduce a new attribute to force this.
+            let inner_repr = if is_backed_by_arrow_buffer(inner.data_type())
+                && matches!(datatype, DataType::List(_))
+            {
+                InnerRepr::ArrowBuffer
+            } else {
+                InnerRepr::NativeIterable
+            };
+
             let quoted_inner_data = format_ident!("{data_src}_inner_data");
             let quoted_inner_bitmap = format_ident!("{data_src}_inner_bitmap");
 
@@ -486,6 +525,7 @@ fn quote_arrow_field_serializer(
                 inner.is_nullable,
                 &quoted_inner_bitmap,
                 &quoted_inner_data,
+                inner_repr,
             );
 
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
@@ -519,18 +559,32 @@ fn quote_arrow_field_serializer(
                     .flatten()
                 }
             } else {
-                quote! {
-                    .flatten()
-                    // NOTE: Flattening yet again since we have to deconstruct the inner list.
-                    .flatten()
-                    .cloned()
+                match inner_repr {
+                    InnerRepr::ArrowBuffer => quote! {
+                        .flatten()
+                        .map(|b| b.0.as_slice())
+                        .collect::<Vec<_>>()
+                        .concat()
+                        .into();
+                    },
+                    InnerRepr::NativeIterable => quote! {
+                        .flatten()
+                        // NOTE: Flattening yet again since we have to deconstruct the inner list.
+                        .flatten()
+                        .cloned()
+                    },
                 }
+            };
+
+            let quoted_num_instances = match inner_repr {
+                InnerRepr::ArrowBuffer => quote!(num_instances()),
+                InnerRepr::NativeIterable => quote!(len()),
             };
 
             let quoted_create = if let DataType::List(_) = datatype {
                 quote! {
                     let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                        #data_src.iter().map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default())
+                        #data_src.iter().map(|opt| opt.as_ref().map(|datum| datum. #quoted_num_instances).unwrap_or_default())
                     ).unwrap().into();
 
                     ListArray::new(
@@ -550,25 +604,65 @@ fn quote_arrow_field_serializer(
                 }
             };
 
+            // TODO(https://github.com/rerun-io/rerun/issues/2993): The inner
+            // types of lists shouldn't be nullable, but both the python and C++
+            // code-gen end up setting these to null when an outer fixed-sized
+            // field does happen to be null. In order to keep everything aligned
+            // at a validation level we match this behavior and create a
+            // validity-mask for the corresponding inner type. We can undo this
+            // if we make the C++ and Python codegen match the rust behavior or
+            // make our comparison tests more lenient.
+            let quoted_inner_bitmap =
+                if let DataType::FixedSizeList(_, count) = datatype.to_logical_type() {
+                    quote! {
+                        let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                            #bitmap_src.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(#count))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
+                    }
+                } else {
+                    // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
+                    quote! {
+                        let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                    }
+                };
+
             // TODO(cmc): We should be checking this, but right now we don't because we don't
             // support intra-list nullability.
             _ = is_nullable;
-            quote! {{
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+            match inner_repr {
+                InnerRepr::ArrowBuffer => quote! {{
+                    use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
-                let #quoted_inner_data: Vec<_> = #data_src
-                    .iter()
-                    #quoted_transparent_mapping
-                    // NOTE: Wrapping back into an option as the recursive call will expect the
-                    // guaranteed nullability layer to be present!
-                    .map(Some)
-                    .collect();
+                    let #quoted_inner_data: Buffer<_> = #data_src
+                        .iter()
+                        #quoted_transparent_mapping
 
-                // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
-                let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                    #quoted_inner_bitmap
 
-                #quoted_create
-            }}
+                    #quoted_create
+                }},
+                InnerRepr::NativeIterable => quote! {{
+                    use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+
+                    let #quoted_inner_data: Vec<_> = #data_src
+                        .iter()
+                        #quoted_transparent_mapping
+                        // NOTE: Wrapping back into an option as the recursive call will expect the
+                        // guaranteed nullability layer to be present!
+                        .map(Some)
+                        .collect();
+
+                    #quoted_inner_bitmap
+
+                    #quoted_create
+                }},
+            }
         }
 
         DataType::Struct(_) | DataType::Union(_, _, _) => {

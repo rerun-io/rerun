@@ -52,8 +52,8 @@ namespace rerun {
 
             {
                 auto field_builder = static_cast<arrow::UInt16Builder *>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(rerun::datatypes::ClassId::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].class_id,
@@ -63,8 +63,8 @@ namespace rerun {
             }
             {
                 auto field_builder = static_cast<arrow::StructBuilder *>(builder->field_builder(1));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(
                         rerun::datatypes::ClassDescription::fill_arrow_array_builder(
                             field_builder,
@@ -74,7 +74,7 @@ namespace rerun {
                     );
                 }
             }
-            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
             return arrow::Status::OK();
         }

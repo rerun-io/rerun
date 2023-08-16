@@ -45,7 +45,7 @@ Mat4x4ArrayLike = Union[
 class Mat4x4Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), False, {}), 16), "rerun.datatypes.Mat4x4"
+            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 16), "rerun.datatypes.Mat4x4"
         )
 
 
