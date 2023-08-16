@@ -61,13 +61,16 @@ impl crate::Archetype for Image {
         >,
     ) -> crate::DeserializationResult<Self> {
         let tensor = Tensor::try_from_arrow(arrow_data)?;
+        // TODO(jleibs): Maybe error if tensor-meaning is wrong
         Ok(Image { data: tensor.data })
     }
 }
 
 impl Image {
-    pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
-        Self { data: data.into() }
+    pub fn try_from<T: TryInto<crate::datatypes::TensorData>>(data: T) -> Result<Self, T::Error> {
+        Ok(Self {
+            data: crate::components::TensorData(data.try_into()?),
+        })
     }
 }
 

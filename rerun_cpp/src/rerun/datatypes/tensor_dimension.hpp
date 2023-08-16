@@ -12,7 +12,7 @@ namespace rerun {
     namespace datatypes {
         /// Storage for a `Tensor`
         struct TensorDimension {
-            int64_t size;
+            uint64_t size;
 
             std::optional<std::string> name;
 

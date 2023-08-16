@@ -43,7 +43,7 @@ namespace rerun {
 
                 std::vector<int8_t> i8;
 
-                std::vector<int8_t> i16;
+                std::vector<int16_t> i16;
 
                 std::vector<int32_t> i32;
 
@@ -182,7 +182,7 @@ namespace rerun {
                         break;
                     }
                     case detail::TensorBufferTag::I16: {
-                        typedef std::vector<int8_t> TypeAlias;
+                        typedef std::vector<int16_t> TypeAlias;
                         _data.i16.~TypeAlias();
                         break;
                     }
@@ -266,8 +266,8 @@ namespace rerun {
                 return self;
             }
 
-            static TensorBuffer i16(std::vector<int8_t> i16) {
-                typedef std::vector<int8_t> TypeAlias;
+            static TensorBuffer i16(std::vector<int16_t> i16) {
+                typedef std::vector<int16_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I16;
                 new (&self._data.i16) TypeAlias(std::move(i16));

@@ -9,7 +9,7 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &TensorDimension::to_arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field("size", arrow::int64(), false),
+                arrow::field("size", arrow::uint64(), false),
                 arrow::field("name", arrow::utf8(), true),
             });
             return datatype;
@@ -25,7 +25,7 @@ namespace rerun {
                 to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    std::make_shared<arrow::Int64Builder>(memory_pool),
+                    std::make_shared<arrow::UInt64Builder>(memory_pool),
                     std::make_shared<arrow::StringBuilder>(memory_pool),
                 })
             ));
@@ -42,7 +42,7 @@ namespace rerun {
             }
 
             {
-                auto field_builder = static_cast<arrow::Int64Builder *>(builder->field_builder(0));
+                auto field_builder = static_cast<arrow::UInt64Builder *>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].size));

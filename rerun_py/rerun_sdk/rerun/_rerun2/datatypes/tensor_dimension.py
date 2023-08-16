@@ -48,7 +48,7 @@ class TensorDimensionType(BaseExtensionType):
             self,
             pa.struct(
                 [
-                    pa.field("size", pa.int64(), nullable=False, metadata={}),
+                    pa.field("size", pa.uint64(), nullable=False, metadata={}),
                     pa.field("name", pa.utf8(), nullable=True, metadata={}),
                 ]
             ),

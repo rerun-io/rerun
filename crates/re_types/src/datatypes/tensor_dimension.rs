@@ -13,9 +13,9 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// Storage for a `Tensor`
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 pub struct TensorDimension {
-    pub size: i64,
+    pub size: u64,
     pub name: Option<crate::ArrowString>,
 }
 
@@ -50,7 +50,7 @@ impl crate::Loggable for TensorDimension {
         DataType::Struct(vec![
             Field {
                 name: "size".to_owned(),
-                data_type: DataType::Int64,
+                data_type: DataType::UInt64,
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -116,7 +116,7 @@ impl crate::Loggable for TensorDimension {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                DataType::Int64.to_logical_type().clone()
+                                DataType::UInt64.to_logical_type().clone()
                             },
                             size.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             size_bitmap,
@@ -191,7 +191,7 @@ impl crate::Loggable for TensorDimension {
                         DataType::Struct(vec![
                             Field {
                                 name: "size".to_owned(),
-                                data_type: DataType::Int64,
+                                data_type: DataType::UInt64,
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
@@ -222,7 +222,7 @@ impl crate::Loggable for TensorDimension {
                             DataType::Struct(vec![
                                 Field {
                                     name: "size".to_owned(),
-                                    data_type: DataType::Int64,
+                                    data_type: DataType::UInt64,
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
@@ -240,10 +240,10 @@ impl crate::Loggable for TensorDimension {
                     let arrow_data = &**arrays_by_name["size"];
                     arrow_data
                         .as_any()
-                        .downcast_ref::<Int64Array>()
+                        .downcast_ref::<UInt64Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
-                                DataType::Int64,
+                                DataType::UInt64,
                                 arrow_data.data_type().clone(),
                             )
                         })
@@ -257,7 +257,7 @@ impl crate::Loggable for TensorDimension {
                             DataType::Struct(vec![
                                 Field {
                                     name: "size".to_owned(),
-                                    data_type: DataType::Int64,
+                                    data_type: DataType::UInt64,
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },

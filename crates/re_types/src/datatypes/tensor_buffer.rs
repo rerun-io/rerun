@@ -20,7 +20,7 @@ pub enum TensorBuffer {
     U32(crate::ArrowBuffer<u32>),
     U64(crate::ArrowBuffer<u64>),
     I8(crate::ArrowBuffer<i8>),
-    I16(crate::ArrowBuffer<i8>),
+    I16(crate::ArrowBuffer<i16>),
     I32(crate::ArrowBuffer<i32>),
     I64(crate::ArrowBuffer<i64>),
     F16(crate::ArrowBuffer<f32>),
@@ -124,7 +124,7 @@ impl crate::Loggable for TensorBuffer {
                     name: "I16".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: DataType::Int8,
+                        data_type: DataType::Int16,
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -605,7 +605,7 @@ impl crate::Loggable for TensorBuffer {
                                     _ = extension_wrapper;
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: DataType::Int8,
+                                        data_type: DataType::Int16,
                                         is_nullable: false,
                                         metadata: [].into(),
                                     }))
@@ -616,7 +616,7 @@ impl crate::Loggable for TensorBuffer {
                                 PrimitiveArray::new(
                                     {
                                         _ = extension_wrapper;
-                                        DataType::Int8.to_logical_type().clone()
+                                        DataType::Int16.to_logical_type().clone()
                                     },
                                     i_16_inner_data,
                                     i_16_inner_bitmap,
@@ -1171,7 +1171,7 @@ impl crate::Loggable for TensorBuffer {
                                     name: "I16".to_owned(),
                                     data_type: DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: DataType::Int8,
+                                        data_type: DataType::Int16,
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
@@ -1331,7 +1331,7 @@ impl crate::Loggable for TensorBuffer {
                                         name: "I16".to_owned(),
                                         data_type: DataType::List(Box::new(Field {
                                             name: "item".to_owned(),
-                                            data_type: DataType::Int8,
+                                            data_type: DataType::Int16,
                                             is_nullable: false,
                                             metadata: [].into(),
                                         })),
@@ -1790,7 +1790,7 @@ impl crate::Loggable for TensorBuffer {
                                 crate::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: DataType::Int8,
+                                        data_type: DataType::Int16,
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
@@ -1805,10 +1805,10 @@ impl crate::Loggable for TensorBuffer {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
                                     .as_any()
-                                    .downcast_ref::<Int8Array>()
+                                    .downcast_ref::<Int16Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
-                                            DataType::Int8,
+                                            DataType::Int16,
                                             arrow_data_inner.data_type().clone(),
                                         )
                                     })
@@ -2532,7 +2532,7 @@ impl crate::Loggable for TensorBuffer {
                                                     name: "I16".to_owned(),
                                                     data_type: DataType::List(Box::new(Field {
                                                         name: "item".to_owned(),
-                                                        data_type: DataType::Int8,
+                                                        data_type: DataType::Int16,
                                                         is_nullable: false,
                                                         metadata: [].into(),
                                                     })),

@@ -27,7 +27,11 @@ namespace rerun {
                     false
                 ),
                 arrow::field("I8", arrow::list(arrow::field("item", arrow::int8(), false)), false),
-                arrow::field("I16", arrow::list(arrow::field("item", arrow::int8(), false)), false),
+                arrow::field(
+                    "I16",
+                    arrow::list(arrow::field("item", arrow::int16(), false)),
+                    false
+                ),
                 arrow::field(
                     "I32",
                     arrow::list(arrow::field("item", arrow::int32(), false)),
@@ -94,7 +98,7 @@ namespace rerun {
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        std::make_shared<arrow::Int8Builder>(memory_pool)
+                        std::make_shared<arrow::Int16Builder>(memory_pool)
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
