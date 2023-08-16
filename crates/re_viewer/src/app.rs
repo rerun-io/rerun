@@ -576,7 +576,7 @@ impl App {
                             &mut render_state.renderer.write()
                         };
                         if let Some(render_ctx) = egui_renderer
-                            .paint_callback_resources
+                            .callback_resources
                             .get_mut::<re_renderer::RenderContext>()
                         {
                             render_ctx.begin_frame();
@@ -898,7 +898,7 @@ impl eframe::App for App {
                 &mut render_state.renderer.read()
             };
             let render_ctx = egui_renderer
-                .paint_callback_resources
+                .callback_resources
                 .get::<re_renderer::RenderContext>()
                 .unwrap();
 

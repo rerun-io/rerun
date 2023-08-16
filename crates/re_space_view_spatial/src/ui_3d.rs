@@ -606,19 +606,11 @@ pub fn view_3d(
     view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
         ctx.render_ctx,
     ));
-    let command_buffer = match view_builder.draw(ctx.render_ctx, re_renderer::Rgba::TRANSPARENT) {
-        Ok(command_buffer) => command_buffer,
-        Err(err) => {
-            re_log::error_once!("Failed to fill view builder: {err}");
-            return Ok(()); // TODO(andreas): Passing the error through would be better - we could show an error on the view instead then.
-        }
-    };
-    ui.painter().add(gpu_bridge::renderer_paint_callback(
+    ui.painter().add(gpu_bridge::new_renderer_callback(
         ctx.render_ctx,
-        command_buffer,
         view_builder,
         rect,
-        ui.ctx().pixels_per_point(),
+        re_renderer::Rgba::TRANSPARENT,
     ));
 
     // Add egui driven labels on top of re_renderer content.
