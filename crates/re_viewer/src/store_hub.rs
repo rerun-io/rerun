@@ -76,18 +76,10 @@ impl StoreHub {
                     .as_ref()
                     .and_then(|id| self.store_dbs.recording(id));
 
-                // TODO(antoine): The below filter will limit our recording view to the current
-                // `ApplicationId`. Leaving this commented out for now since that is a bigger
-                // behavioral change we might want to plan/communicate around as it breaks things
-                // like --split-recordings in the api_demo.
                 StoreContext {
                     blueprint,
                     recording,
-                    alternate_recordings: self
-                        .store_dbs
-                        .recordings()
-                        //.filter(|rec| rec.app_id() == self.application_id.as_ref())
-                        .collect_vec(),
+                    alternate_recordings: self.store_dbs.recordings().collect_vec(),
                 }
             })
     }
