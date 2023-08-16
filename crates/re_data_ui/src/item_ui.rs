@@ -113,20 +113,7 @@ pub fn instance_path_button_to(
             if instance_path.instance_key.is_splat() {
                 let store = &ctx.store_db.entity_db.data_store;
                 let stats = store.entity_stats(query.timeline, instance_path.entity_path.hash());
-                if 0 < stats.size_bytes {
-                    ui.label(format!(
-                        "Using {} in total",
-                        re_format::format_bytes(stats.size_bytes as f64)
-                    ));
-                    // It is tempting to print out `stats.size_bytes / stats.num_rows` here,
-                    // but that could be quite misleading since we could have an entity with e.g.
-                    // 10 images logged, and then also 10 transforms logged. That would be 20 rows,
-                    // and printing `size_bytes / num_rows` would make it look like it had much smaller
-                    // images than it did.
-                    //
-                    // Instead we should print out the data rate, i.e. MiB/s for time timelines and MiB/frame for
-                    // sequence timelines. But that requires knowing here what time range the entity covers.
-                }
+                entity_stats_ui(ui, &query.timeline, &stats);
             } else {
                 // TODO(emilk): per-component stats
             }
@@ -135,6 +122,67 @@ pub fn instance_path_button_to(
         });
 
     cursor_interact_with_selectable(ctx, response, item)
+}
+
+fn entity_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, stats: &re_arrow_store::EntityStats) {
+    use re_format::format_bytes;
+
+    let total_bytes = stats.size_bytes + stats.timelines_size_bytes;
+
+    if total_bytes == 0 {
+        return;
+    }
+
+    // `num_events` is aproximate - we could be logging a Tensor image and a transform
+    // at aproximately the same time. That should only count as one fence-post.
+    let num_events = stats.num_rows;
+
+    if stats.time_range.min < stats.time_range.max && 1 < num_events {
+        // Estimate a data rate.
+        //
+        // Let's do our best to avoid fencepost errors.
+        // If we log 1 MiB every second, then after three
+        // events we have a span of 2 seconds, and 3 MiB,
+        // but the data rate is still 1 MiB/s.
+        //
+        //          <-----2 sec----->
+        // t:       0s      1s      2s
+        // data:   1MiB    1MiB    1MiB
+
+        let duration = stats.time_range.abs_length();
+
+        let mut bytes_per_time = stats.size_bytes as f64 / duration as f64;
+
+        // Fencepost adjustment:
+        bytes_per_time *= (num_events - 1) as f64 / num_events as f64;
+
+        let data_rate = match timeline.typ() {
+            re_log_types::TimeType::Time => {
+                let bytes_per_second = 1e-9 * bytes_per_time;
+
+                format!(
+                    "{}/s in {}",
+                    format_bytes(bytes_per_second),
+                    timeline.name()
+                )
+            }
+
+            re_log_types::TimeType::Sequence => {
+                format!("{} / {}", format_bytes(bytes_per_time), timeline.name())
+            }
+        };
+
+        ui.label(format!(
+            "Using {} in total ≈ {}",
+            format_bytes(total_bytes as f64),
+            data_rate
+        ));
+    } else {
+        ui.label(format!(
+            "Using {} in total",
+            format_bytes(total_bytes as f64)
+        ));
+    }
 }
 
 /// Show a component path and make it selectable.

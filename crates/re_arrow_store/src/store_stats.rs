@@ -1,5 +1,5 @@
 use nohash_hasher::IntMap;
-use re_log_types::{SizeBytes, TimePoint};
+use re_log_types::{SizeBytes, TimePoint, TimeRange};
 use re_types::ComponentName;
 
 use crate::{
@@ -241,25 +241,49 @@ impl DataStore {
             |table| EntityStats {
                 num_rows: table.buckets_num_rows,
                 size_bytes: table.buckets_size_bytes,
+                time_range: table.time_range(),
+                timelines_rows: 0,
+                timelines_size_bytes: 0,
             },
         );
 
         if let Some(timeless) = self.timeless_tables.get(&entity_path_hash) {
-            entity_stats.num_rows += timeless.num_rows();
-            entity_stats.size_bytes += timeless.total_size_bytes();
+            entity_stats.timelines_rows = timeless.num_rows();
+            entity_stats.timelines_size_bytes = timeless.total_size_bytes();
         }
 
         entity_stats
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EntityStats {
-    /// Number of rows in the table.
+    /// Number of rows in the table (excluding timeless).
     pub num_rows: u64,
 
-    /// Approximate number of bytes used.
+    /// Approximate number of bytes used (excluding timeless).
     pub size_bytes: u64,
+
+    /// The time covered by the entity (excluding timeless)
+    pub time_range: re_log_types::TimeRange,
+
+    /// Number of timeless rows
+    pub timelines_rows: u64,
+
+    /// Number of timeless bytes
+    pub timelines_size_bytes: u64,
+}
+
+impl Default for EntityStats {
+    fn default() -> Self {
+        Self {
+            num_rows: 0,
+            size_bytes: 0,
+            time_range: re_log_types::TimeRange::EMPTY,
+            timelines_rows: 0,
+            timelines_size_bytes: 0,
+        }
+    }
 }
 
 // --- Temporal ---
@@ -297,6 +321,22 @@ impl IndexedTable {
     #[inline]
     pub fn num_buckets(&self) -> u64 {
         self.buckets.len() as _
+    }
+
+    /// The time range covered by this table.
+    pub fn time_range(&self) -> TimeRange {
+        if let (Some((_, first)), Some((_, last))) = (
+            self.buckets.first_key_value(),
+            self.buckets.last_key_value(),
+        ) {
+            first
+                .inner
+                .read()
+                .time_range
+                .union(last.inner.read().time_range)
+        } else {
+            TimeRange::EMPTY
+        }
     }
 }
 

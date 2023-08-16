@@ -516,7 +516,7 @@ impl Default for IndexedBucketInner {
     fn default() -> Self {
         let mut this = Self {
             is_sorted: true,
-            time_range: TimeRange::new(i64::MAX.into(), i64::MIN.into()),
+            time_range: TimeRange::EMPTY,
             col_time: Default::default(),
             col_insert_id: Default::default(),
             col_row_id: Default::default(),
