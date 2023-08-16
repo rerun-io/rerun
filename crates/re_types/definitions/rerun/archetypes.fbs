@@ -5,6 +5,7 @@ include "./archetypes/line_strips2d.fbs";
 include "./archetypes/line_strips3d.fbs";
 include "./archetypes/points2d.fbs";
 include "./archetypes/points3d.fbs";
+include "./archetypes/tensor.fbs";
 include "./archetypes/transform3d.fbs";
 
 include "./testing/archetypes/fuzzy.fbs";

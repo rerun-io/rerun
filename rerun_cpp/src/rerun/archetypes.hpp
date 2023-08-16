@@ -10,4 +10,5 @@
 #include "archetypes/line_strips3d.hpp"
 #include "archetypes/points2d.hpp"
 #include "archetypes/points3d.hpp"
+#include "archetypes/tensor.hpp"
 #include "archetypes/transform3d.hpp"

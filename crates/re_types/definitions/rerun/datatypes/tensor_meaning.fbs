@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "rust/attributes.fbs";
+include "fbs/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+struct Unused (order: 100, transparent) {
+  unused: bool (order: 100, transparent);
+}
+
+union TensorMeaning (
+  "attr.rust.derive": "Copy, PartialEq",
+  order: 200
+) {
+  Unknown: Unused (order: 100, transparent),
+  ClassId: Unused (order: 200, transparent),
+  Depth: Unused (order: 300, transparent),
+}

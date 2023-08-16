@@ -12,6 +12,7 @@ include "./components/origin3d.fbs";
 include "./components/point2d.fbs";
 include "./components/point3d.fbs";
 include "./components/radius.fbs";
-include "./components/tensor.fbs";
+include "./components/tensor_data.fbs";
+include "./components/tensor_meaning.fbs";
 include "./components/transform3d.fbs";
 include "./components/vector3d.fbs";

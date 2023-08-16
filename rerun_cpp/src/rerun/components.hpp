@@ -36,6 +36,7 @@
 #include "components/point2d.hpp"
 #include "components/point3d.hpp"
 #include "components/radius.hpp"
-#include "components/tensor.hpp"
+#include "components/tensor_data.hpp"
+#include "components/tensor_meaning.hpp"
 #include "components/transform3d.hpp"
 #include "components/vector3d.hpp"

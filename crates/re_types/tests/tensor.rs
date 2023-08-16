@@ -1,33 +1,78 @@
+use std::collections::HashMap;
+
 use re_types::{
-    components::Tensor,
-    datatypes::{self, TensorData, TensorDimension, TensorId},
-    Loggable,
+    archetypes::Tensor,
+    datatypes::{TensorBuffer, TensorData, TensorDimension, TensorId, TensorMeaning},
+    Archetype as _,
 };
 
 #[test]
 fn tensor_roundtrip() {
-    let t = vec![Tensor(datatypes::Tensor {
+    let expected = Tensor {
+        data: TensorData {
+            id: TensorId {
+                id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+            },
+            shape: vec![
+                TensorDimension {
+                    size: 2,
+                    name: Some("height".into()),
+                },
+                TensorDimension {
+                    size: 3,
+                    name: Some("width".into()),
+                },
+            ],
+            buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
+        }
+        .into(),
+        meaning: Some(TensorMeaning::ClassId(true).into()),
+    };
+
+    let arch = Tensor::new(TensorData {
         id: TensorId {
             id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
         },
         shape: vec![
             TensorDimension {
                 size: 2,
-                name: None,
+                name: Some("height".into()),
             },
             TensorDimension {
-                size: 2,
-                name: None,
+                size: 3,
+                name: Some("width".into()),
             },
         ],
-        data: TensorData::U8(vec![1, 2, 3, 4, 5, 6].into()),
-    })];
+        buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
+    })
+    .with_meaning(TensorMeaning::ClassId(true));
 
-    let serialized = Tensor::try_to_arrow(t.clone(), None).unwrap();
+    let expected_extensions: HashMap<_, _> = [
+        ("data", vec!["rerun.components.TensorData"]),
+        ("meaning", vec!["rerun.components.TensorMeaning"]),
+    ]
+    .into();
 
-    let deserialized = Tensor::try_from_arrow(serialized.as_ref()).unwrap();
+    eprintln!("arch = {arch:#?}");
+    let serialized = arch.to_arrow();
+    for (field, array) in &serialized {
+        // NOTE: Keep those around please, very useful when debugging.
+        // eprintln!("field = {field:#?}");
+        // eprintln!("array = {array:#?}");
+        eprintln!("{} = {array:#?}", field.name);
 
-    similar_asserts::assert_eq!(t, deserialized);
+        // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+        // has been fully replaced.
+        if false {
+            util::assert_extensions(
+                &**array,
+                expected_extensions[field.name.as_str()].as_slice(),
+            );
+        }
+    }
+
+    let deserialized = Tensor::from_arrow(serialized);
+    similar_asserts::assert_eq!(expected, deserialized);
 }
 
 mod util;

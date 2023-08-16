@@ -3,130 +3,56 @@
 
 #include "tensor_data.hpp"
 
+#include "../datatypes/tensor_buffer.hpp"
+#include "../datatypes/tensor_dimension.hpp"
+#include "../datatypes/tensor_id.hpp"
+
 #include <arrow/api.h>
 
 namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &TensorData::to_arrow_datatype() {
-            static const auto datatype = arrow::dense_union({
-                arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field("U8", arrow::list(arrow::field("item", arrow::uint8(), false)), false),
+            static const auto datatype = arrow::struct_({
+                arrow::field("id", rerun::datatypes::TensorId::to_arrow_datatype(), false),
                 arrow::field(
-                    "U16",
-                    arrow::list(arrow::field("item", arrow::uint16(), false)),
+                    "shape",
+                    arrow::list(arrow::field(
+                        "item",
+                        rerun::datatypes::TensorDimension::to_arrow_datatype(),
+                        false
+                    )),
                     false
                 ),
-                arrow::field(
-                    "U32",
-                    arrow::list(arrow::field("item", arrow::uint32(), false)),
-                    false
-                ),
-                arrow::field(
-                    "U64",
-                    arrow::list(arrow::field("item", arrow::uint64(), false)),
-                    false
-                ),
-                arrow::field("I8", arrow::list(arrow::field("item", arrow::int8(), false)), false),
-                arrow::field("I16", arrow::list(arrow::field("item", arrow::int8(), false)), false),
-                arrow::field(
-                    "I32",
-                    arrow::list(arrow::field("item", arrow::int32(), false)),
-                    false
-                ),
-                arrow::field(
-                    "I64",
-                    arrow::list(arrow::field("item", arrow::int64(), false)),
-                    false
-                ),
-                arrow::field(
-                    "F16",
-                    arrow::list(arrow::field("item", arrow::float32(), false)),
-                    false
-                ),
-                arrow::field(
-                    "F32",
-                    arrow::list(arrow::field("item", arrow::float32(), false)),
-                    false
-                ),
-                arrow::field(
-                    "F64",
-                    arrow::list(arrow::field("item", arrow::float64(), false)),
-                    false
-                ),
-                arrow::field(
-                    "JPEG",
-                    arrow::list(arrow::field("item", arrow::int8(), false)),
-                    false
-                ),
+                arrow::field("buffer", rerun::datatypes::TensorBuffer::to_arrow_datatype(), false),
             });
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>>
-            TensorData::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+        arrow::Result<std::shared_ptr<arrow::StructBuilder>> TensorData::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
                 return arrow::Status::Invalid("Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::DenseUnionBuilder>(
+            return arrow::Result(std::make_shared<arrow::StructBuilder>(
+                to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    std::make_shared<arrow::NullBuilder>(memory_pool),
+                    rerun::datatypes::TensorId::new_arrow_array_builder(memory_pool).ValueOrDie(),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        std::make_shared<arrow::UInt8Builder>(memory_pool)
+                        rerun::datatypes::TensorDimension::new_arrow_array_builder(memory_pool)
+                            .ValueOrDie()
                     ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::UInt16Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::UInt32Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::UInt64Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::Int8Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::Int8Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::Int32Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::Int64Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::FloatBuilder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::FloatBuilder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::DoubleBuilder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::Int8Builder>(memory_pool)
-                    ),
-                }),
-                to_arrow_datatype()
+                    rerun::datatypes::TensorBuffer::new_arrow_array_builder(memory_pool)
+                        .ValueOrDie(),
+                })
             ));
         }
 
         arrow::Status TensorData::fill_arrow_array_builder(
-            arrow::DenseUnionBuilder *builder, const TensorData *elements, size_t num_elements
+            arrow::StructBuilder *builder, const TensorData *elements, size_t num_elements
         ) {
             if (!builder) {
                 return arrow::Status::Invalid("Passed array builder is null.");
@@ -135,129 +61,52 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
-            ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto &union_instance = elements[elem_idx];
-                ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance._tag)));
+            {
+                auto field_builder =
+                    static_cast<arrow::FixedSizeListBuilder *>(builder->field_builder(0));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(rerun::datatypes::TensorId::fill_arrow_array_builder(
+                        field_builder,
+                        &elements[elem_idx].id,
+                        1
+                    ));
+                }
+            }
+            {
+                auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(1));
+                auto value_builder =
+                    static_cast<arrow::StructBuilder *>(field_builder->value_builder());
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
-                auto variant_index = static_cast<int>(union_instance._tag);
-                auto variant_builder_untyped = builder->child_builder(variant_index).get();
-
-                switch (union_instance._tag) {
-                    case detail::TensorDataTag::NONE: {
-                        ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
-                    case detail::TensorDataTag::U8: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto &element = elements[elem_idx];
+                    ARROW_RETURN_NOT_OK(field_builder->Append());
+                    if (element.shape.data()) {
+                        ARROW_RETURN_NOT_OK(
+                            rerun::datatypes::TensorDimension::fill_arrow_array_builder(
+                                value_builder,
+                                element.shape.data(),
+                                element.shape.size()
+                            )
                         );
-                        break;
-                    }
-                    case detail::TensorDataTag::U16: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::U32: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::U64: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::I8: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::I16: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::I32: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::I64: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::F16: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::F32: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::F64: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
-                    }
-                    case detail::TensorDataTag::JPEG: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return arrow::Status::NotImplemented(
-                            "TODO(andreas): list types in unions are not yet supported"
-                        );
-                        break;
                     }
                 }
             }
+            {
+                auto field_builder =
+                    static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(2));
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    ARROW_RETURN_NOT_OK(rerun::datatypes::TensorBuffer::fill_arrow_array_builder(
+                        field_builder,
+                        &elements[elem_idx].buffer,
+                        1
+                    ));
+                }
+            }
+            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
             return arrow::Status::OK();
         }

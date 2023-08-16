@@ -9,9 +9,9 @@ namespace rerun.components;
 
 // ---
 
-table Tensor (
+table TensorData (
   order: 100,
   "attr.rust.derive": "PartialEq"
 ) {
-  data: rerun.datatypes.Tensor (order: 100);
+  data: rerun.datatypes.TensorData (order: 100);
 }

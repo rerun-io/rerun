@@ -14,19 +14,10 @@
 
 /// Storage for a `Tensor`
 #[derive(Clone, Debug, PartialEq)]
-pub enum TensorData {
-    U8(crate::ArrowBuffer<u8>),
-    U16(crate::ArrowBuffer<u16>),
-    U32(crate::ArrowBuffer<u32>),
-    U64(crate::ArrowBuffer<u64>),
-    I8(crate::ArrowBuffer<i8>),
-    I16(crate::ArrowBuffer<i8>),
-    I32(crate::ArrowBuffer<i32>),
-    I64(crate::ArrowBuffer<i64>),
-    F16(crate::ArrowBuffer<f32>),
-    F32(crate::ArrowBuffer<f32>),
-    F64(crate::ArrowBuffer<f64>),
-    Jpeg(crate::ArrowBuffer<i8>),
+pub struct TensorData {
+    pub id: crate::datatypes::TensorId,
+    pub shape: Vec<crate::datatypes::TensorDimension>,
+    pub buffer: crate::datatypes::TensorBuffer,
 }
 
 impl<'a> From<TensorData> for ::std::borrow::Cow<'a, TensorData> {
@@ -57,152 +48,31 @@ impl crate::Loggable for TensorData {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Union(
-            vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "U8".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::UInt8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
+        DataType::Struct(vec![
+            Field {
+                name: "id".to_owned(),
+                data_type: <crate::datatypes::TensorId>::to_arrow_datatype(),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "shape".to_owned(),
+                data_type: DataType::List(Box::new(Field {
+                    name: "item".to_owned(),
+                    data_type: <crate::datatypes::TensorDimension>::to_arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
-                },
-                Field {
-                    name: "U16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::UInt16,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "U32".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::UInt32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "U64".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::UInt64,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "I8".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "I16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "I32".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "I64".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int64,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "F16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "F32".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "F64".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float64,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "JPEG".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Int8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-            ],
-            Some(vec![
-                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32, 12i32,
-            ]),
-            UnionMode::Dense,
-        )
+                })),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "buffer".to_owned(),
+                data_type: <crate::datatypes::TensorBuffer>::to_arrow_datatype(),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+        ])
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -216,14 +86,18 @@ impl crate::Loggable for TensorData {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let data: Vec<_> = data
+            let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    datum
+                    (datum.is_some(), datum)
                 })
-                .collect();
-            UnionArray::new(
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
@@ -235,119 +109,106 @@ impl crate::Loggable for TensorData {
                 })
                 .to_logical_type()
                 .clone(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(TensorData::U8(_)) => 1i8,
-                        Some(TensorData::U16(_)) => 2i8,
-                        Some(TensorData::U32(_)) => 3i8,
-                        Some(TensorData::U64(_)) => 4i8,
-                        Some(TensorData::I8(_)) => 5i8,
-                        Some(TensorData::I16(_)) => 6i8,
-                        Some(TensorData::I32(_)) => 7i8,
-                        Some(TensorData::I64(_)) => 8i8,
-                        Some(TensorData::F16(_)) => 9i8,
-                        Some(TensorData::F32(_)) => 10i8,
-                        Some(TensorData::F64(_)) => 11i8,
-                        Some(TensorData::Jpeg(_)) => 12i8,
-                    })
-                    .collect(),
                 vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
                     {
-                        let (somes, u_8): (Vec<_>, Vec<_>) = data
+                        let (somes, id): (Vec<_>, Vec<_>) = data
                             .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::U8(_))))
                             .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::U8(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { id, .. } = &**datum;
+                                    id.clone()
+                                });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u_8_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let id_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_8_inner_data: Buffer<_> = u_8
+                            let id_inner_data: Vec<_> = id
                                 .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let u_8_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                u_8.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
+                                .map(|datum| {
+                                    datum
+                                        .map(|datum| {
+                                            let crate::datatypes::TensorId { id } = datum.clone();
+                                            id
+                                        })
                                         .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
+                                })
+                                .flatten()
+                                .map(Some)
+                                .collect();
+                            let id_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                                id_bitmap.as_ref().map(|bitmap| {
+                                    bitmap
+                                        .iter()
+                                        .map(|i| std::iter::repeat(i).take(16usize))
+                                        .flatten()
+                                        .collect::<Vec<_>>()
+                                        .into()
+                                });
+                            FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::UInt8,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        16usize,
+                                    )
                                     .to_logical_type()
                                     .clone()
                                 },
-                                offsets,
                                 PrimitiveArray::new(
                                     {
                                         _ = extension_wrapper;
                                         DataType::UInt8.to_logical_type().clone()
                                     },
-                                    u_8_inner_data,
-                                    u_8_inner_bitmap,
+                                    id_inner_data
+                                        .into_iter()
+                                        .map(|v| v.unwrap_or_default())
+                                        .collect(),
+                                    id_inner_bitmap,
                                 )
                                 .boxed(),
-                                u_8_bitmap,
+                                id_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, u_16): (Vec<_>, Vec<_>) = data
+                        let (somes, shape): (Vec<_>, Vec<_>) = data
                             .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::U16(_))))
                             .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::U16(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { shape, .. } = &**datum;
+                                    shape.clone()
+                                });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u_16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let shape_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_16_inner_data: Buffer<_> = u_16
+                            let shape_inner_data: Vec<_> = shape
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let u_16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                                .flatten()
+                                .cloned()
+                                .map(Some)
+                                .collect();
+                            let shape_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                u_16.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
+                                shape.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
                             )
                             .unwrap()
@@ -355,735 +216,48 @@ impl crate::Loggable for TensorData {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
+                                    DataType::List(Box::new(Field { name : "item".to_owned(),
+                        data_type : < crate ::datatypes::TensorDimension >
+                        ::to_arrow_datatype(), is_nullable : false, metadata : [].into(),
+                        })).to_logical_type().clone()
                                 },
                                 offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::UInt16.to_logical_type().clone()
-                                    },
-                                    u_16_inner_data,
-                                    u_16_inner_bitmap,
-                                )
-                                .boxed(),
-                                u_16_bitmap,
+                                {
+                                    _ = shape_inner_bitmap;
+                                    _ = extension_wrapper;
+                                    crate::datatypes::TensorDimension::try_to_arrow_opt(
+                                        shape_inner_data,
+                                        None::<&str>,
+                                    )?
+                                },
+                                shape_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, u_32): (Vec<_>, Vec<_>) = data
+                        let (somes, buffer): (Vec<_>, Vec<_>) = data
                             .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::U32(_))))
                             .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::U32(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { buffer, .. } = &**datum;
+                                    buffer.clone()
+                                });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u_32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let buffer_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_32_inner_data: Buffer<_> = u_32
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let u_32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                u_32.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::UInt32.to_logical_type().clone()
-                                    },
-                                    u_32_inner_data,
-                                    u_32_inner_bitmap,
-                                )
-                                .boxed(),
-                                u_32_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, u_64): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::U64(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::U64(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let u_64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_64_inner_data: Buffer<_> = u_64
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let u_64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                u_64.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::UInt64.to_logical_type().clone()
-                                    },
-                                    u_64_inner_data,
-                                    u_64_inner_bitmap,
-                                )
-                                .boxed(),
-                                u_64_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, i_8): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::I8(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::I8(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let i_8_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let i_8_inner_data: Buffer<_> = i_8
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let i_8_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                i_8.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Int8.to_logical_type().clone()
-                                    },
-                                    i_8_inner_data,
-                                    i_8_inner_bitmap,
-                                )
-                                .boxed(),
-                                i_8_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, i_16): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::I16(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::I16(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let i_16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let i_16_inner_data: Buffer<_> = i_16
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let i_16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                i_16.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Int8.to_logical_type().clone()
-                                    },
-                                    i_16_inner_data,
-                                    i_16_inner_bitmap,
-                                )
-                                .boxed(),
-                                i_16_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, i_32): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::I32(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::I32(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let i_32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let i_32_inner_data: Buffer<_> = i_32
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let i_32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                i_32.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Int32.to_logical_type().clone()
-                                    },
-                                    i_32_inner_data,
-                                    i_32_inner_bitmap,
-                                )
-                                .boxed(),
-                                i_32_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, i_64): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::I64(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::I64(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let i_64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let i_64_inner_data: Buffer<_> = i_64
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let i_64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                i_64.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Int64.to_logical_type().clone()
-                                    },
-                                    i_64_inner_data,
-                                    i_64_inner_bitmap,
-                                )
-                                .boxed(),
-                                i_64_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, f_16): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::F16(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::F16(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let f_16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let f_16_inner_data: Buffer<_> = f_16
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let f_16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                f_16.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
-                                    f_16_inner_data,
-                                    f_16_inner_bitmap,
-                                )
-                                .boxed(),
-                                f_16_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, f_32): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::F32(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::F32(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let f_32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let f_32_inner_data: Buffer<_> = f_32
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let f_32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                f_32.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
-                                    f_32_inner_data,
-                                    f_32_inner_bitmap,
-                                )
-                                .boxed(),
-                                f_32_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, f_64): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::F64(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::F64(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let f_64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let f_64_inner_data: Buffer<_> = f_64
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let f_64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                f_64.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float64.to_logical_type().clone()
-                                    },
-                                    f_64_inner_data,
-                                    f_64_inner_bitmap,
-                                )
-                                .boxed(),
-                                f_64_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, jpeg): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorData::Jpeg(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorData::Jpeg(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let jpeg_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let jpeg_inner_data: Buffer<_> = jpeg
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let jpeg_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                jpeg.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Int8.to_logical_type().clone()
-                                    },
-                                    jpeg_inner_data,
-                                    jpeg_inner_bitmap,
-                                )
-                                .boxed(),
-                                jpeg_bitmap,
-                            )
-                            .boxed()
+                            _ = buffer_bitmap;
+                            _ = extension_wrapper;
+                            crate::datatypes::TensorBuffer::try_to_arrow_opt(buffer, None::<&str>)?
                         }
                     },
                 ],
-                Some({
-                    let mut u_8_offset = 0;
-                    let mut u_16_offset = 0;
-                    let mut u_32_offset = 0;
-                    let mut u_64_offset = 0;
-                    let mut i_8_offset = 0;
-                    let mut i_16_offset = 0;
-                    let mut i_32_offset = 0;
-                    let mut i_64_offset = 0;
-                    let mut f_16_offset = 0;
-                    let mut f_32_offset = 0;
-                    let mut f_64_offset = 0;
-                    let mut jpeg_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::U8(_)) => {
-                                let offset = u_8_offset;
-                                u_8_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::U16(_)) => {
-                                let offset = u_16_offset;
-                                u_16_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::U32(_)) => {
-                                let offset = u_32_offset;
-                                u_32_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::U64(_)) => {
-                                let offset = u_64_offset;
-                                u_64_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::I8(_)) => {
-                                let offset = i_8_offset;
-                                i_8_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::I16(_)) => {
-                                let offset = i_16_offset;
-                                i_16_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::I32(_)) => {
-                                let offset = i_32_offset;
-                                i_32_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::I64(_)) => {
-                                let offset = i_64_offset;
-                                i_64_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::F16(_)) => {
-                                let offset = f_16_offset;
-                                f_16_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::F32(_)) => {
-                                let offset = f_32_offset;
-                                f_32_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::F64(_)) => {
-                                let offset = f_64_offset;
-                                f_64_offset += 1;
-                                offset
-                            }
-                            Some(TensorData::Jpeg(_)) => {
-                                let offset = jpeg_offset;
-                                jpeg_offset += 1;
-                                offset
-                            }
-                        })
-                        .collect()
-                }),
+                bitmap,
             )
             .boxed()
         })
@@ -1101,156 +275,35 @@ impl crate::Loggable for TensorData {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::UnionArray>()
+                .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     crate::DeserializationError::datatype_mismatch(
-                        DataType::Union(
-                            vec![
-                                Field {
-                                    name: "_null_markers".to_owned(),
-                                    data_type: DataType::Null,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "U8".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                        DataType::Struct(vec![
+                            Field {
+                                name: "id".to_owned(),
+                                data_type: <crate::datatypes::TensorId>::to_arrow_datatype(),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "shape".to_owned(),
+                                data_type: DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type:
+                                        <crate::datatypes::TensorDimension>::to_arrow_datatype(),
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "U16".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "U32".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "U64".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "I8".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "I16".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "I32".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "I64".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "F16".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "F32".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "F64".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "JPEG".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ],
-                            Some(vec![
-                                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,
-                                11i32, 12i32,
-                            ]),
-                            UnionMode::Dense,
-                        ),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "buffer".to_owned(),
+                                data_type: <crate::datatypes::TensorBuffer>::to_arrow_datatype(),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ]),
                         arrow_data.data_type().clone(),
                     )
                 })
@@ -1258,194 +311,63 @@ impl crate::Loggable for TensorData {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_types, arrow_data_arrays) =
-                    (arrow_data.types(), arrow_data.fields());
-                let arrow_data_offsets = arrow_data
-                    .offsets()
-                    .ok_or_else(|| {
-                        crate::DeserializationError::datatype_mismatch(
-                            DataType::Union(
-                                vec![
-                                    Field {
-                                        name: "_null_markers".to_owned(),
-                                        data_type: DataType::Null,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "U8".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
+                let (arrow_data_fields, arrow_data_arrays) =
+                    (arrow_data.fields(), arrow_data.values());
+                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .zip(arrow_data_arrays)
+                    .collect();
+                let id = {
+                    if !arrays_by_name.contains_key("id") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "id".to_owned(), data_type : < crate
+                                            ::datatypes::TensorId > ::to_arrow_datatype(), is_nullable :
+                                            false, metadata : [].into(), }, Field { name : "shape"
+                                            .to_owned(), data_type : DataType::List(Box::new(Field {
+                                            name : "item".to_owned(), data_type : < crate
+                                            ::datatypes::TensorDimension > ::to_arrow_datatype(),
+                                            is_nullable : false, metadata : [].into(), })), is_nullable
+                                            : false, metadata : [].into(), }, Field { name : "buffer"
+                                            .to_owned(), data_type : < crate ::datatypes::TensorBuffer >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), },
+                                        ],
+                                    ),
+                                    "id",
+                                ),
+                            )
+                            .with_context("rerun.datatypes.TensorData");
+                    }
+                    let arrow_data = &**arrays_by_name["id"];
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
                                             name: "item".to_owned(),
                                             data_type: DataType::UInt8,
                                             is_nullable: false,
                                             metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "U16".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::UInt16,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "U32".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::UInt32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "U64".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::UInt64,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "I8".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Int8,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "I16".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Int8,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "I32".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Int32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "I64".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Int64,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "F16".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "F32".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "F64".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float64,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "JPEG".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Int8,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                ],
-                                Some(vec![
-                                    0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32,
-                                    10i32, 11i32, 12i32,
-                                ]),
-                                UnionMode::Dense,
-                            ),
-                            arrow_data.data_type().clone(),
-                        )
-                    })
-                    .with_context("rerun.datatypes.TensorData")?;
-                if arrow_data_types.len() != arrow_data_offsets.len() {
-                    return Err(crate::DeserializationError::offset_slice_oob(
-                        (0, arrow_data_types.len()),
-                        arrow_data_offsets.len(),
-                    ))
-                    .with_context("rerun.datatypes.TensorData");
-                }
-                let u_8 = {
-                    if 1usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[1usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                        }),
+                                        16usize,
+                                    ),
                                     arrow_data.data_type().clone(),
                                 )
                             })
-                            .with_context("rerun.datatypes.TensorData#U8")?;
+                            .with_context("rerun.datatypes.TensorData#id")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
+                            let offsets = (0..)
+                                .step_by(16usize)
+                                .zip((16usize..).step_by(16usize).take(arrow_data.len()));
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
@@ -1457,18 +379,18 @@ impl crate::Loggable for TensorData {
                                             arrow_data_inner.data_type().clone(),
                                         )
                                     })
-                                    .with_context("rerun.datatypes.TensorData#U8")?
-                                    .values()
+                                    .with_context("rerun.datatypes.TensorData#id")?
+                                    .into_iter()
+                                    .map(|opt| opt.copied())
+                                    .collect::<Vec<_>>()
                             };
-                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets,
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
+                                elem.map(|(start, end)| {
+                                    debug_assert!(end - start == 16usize);
                                     if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
@@ -1478,129 +400,76 @@ impl crate::Loggable for TensorData {
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
+                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                    let arr = array_init::from_iter(data).unwrap();
+                                    Ok(arr)
                                 })
                                 .transpose()
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|id| crate::datatypes::TensorId { id })
+                                })
                             })
                             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
-                    .collect::<Vec<_>>()
                 };
-                let u_16 = {
-                    if 2usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
+                let shape = {
+                    if !arrays_by_name.contains_key("shape") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "id".to_owned(), data_type : < crate
+                                            ::datatypes::TensorId > ::to_arrow_datatype(), is_nullable :
+                                            false, metadata : [].into(), }, Field { name : "shape"
+                                            .to_owned(), data_type : DataType::List(Box::new(Field {
+                                            name : "item".to_owned(), data_type : < crate
+                                            ::datatypes::TensorDimension > ::to_arrow_datatype(),
+                                            is_nullable : false, metadata : [].into(), })), is_nullable
+                                            : false, metadata : [].into(), }, Field { name : "buffer"
+                                            .to_owned(), data_type : < crate ::datatypes::TensorBuffer >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), },
+                                        ],
+                                    ),
+                                    "shape",
+                                ),
+                            )
+                            .with_context("rerun.datatypes.TensorData");
                     }
-                    let arrow_data = &*arrow_data_arrays[2usize];
+                    let arrow_data = &**arrays_by_name["shape"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                                DataType::List(
+                                    Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: DataType::UInt16,
+                                        data_type: <crate::datatypes::TensorDimension>::to_arrow_datatype(),
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#U16")?;
+                                    }),
+                                ),
+                                arrow_data.data_type().clone(),
+                            ))
+                            .with_context("rerun.datatypes.TensorData#shape")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt16Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::UInt16,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#U16")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let u_32 = {
-                    if 3usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[3usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
+                                crate::datatypes::TensorDimension::try_from_arrow_opt(
+                                    arrow_data_inner,
                                 )
-                            })
-                            .with_context("rerun.datatypes.TensorData#U32")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt32Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::UInt32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#U32")?
-                                    .values()
+                                .with_context("rerun.datatypes.TensorData#shape")?
+                                .into_iter()
+                                .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -1620,11 +489,13 @@ impl crate::Loggable for TensorData {
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = data
+                                        .iter()
+                                        .cloned()
+                                        .map(Option::unwrap_or_default)
+                                        .collect();
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1633,995 +504,58 @@ impl crate::Loggable for TensorData {
                         }
                         .into_iter()
                     }
-                    .collect::<Vec<_>>()
                 };
-                let u_64 = {
-                    if 4usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[4usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#U64")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt64Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::UInt64,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#U64")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
+                let buffer = {
+                    if !arrays_by_name.contains_key("buffer") {
+                        return Err(
+                                crate::DeserializationError::missing_struct_field(
+                                    DataType::Struct(
+                                        vec![
+                                            Field { name : "id".to_owned(), data_type : < crate
+                                            ::datatypes::TensorId > ::to_arrow_datatype(), is_nullable :
+                                            false, metadata : [].into(), }, Field { name : "shape"
+                                            .to_owned(), data_type : DataType::List(Box::new(Field {
+                                            name : "item".to_owned(), data_type : < crate
+                                            ::datatypes::TensorDimension > ::to_arrow_datatype(),
+                                            is_nullable : false, metadata : [].into(), })), is_nullable
+                                            : false, metadata : [].into(), }, Field { name : "buffer"
+                                            .to_owned(), data_type : < crate ::datatypes::TensorBuffer >
+                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                                            .into(), },
+                                        ],
+                                    ),
+                                    "buffer",
+                                ),
                             )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
+                            .with_context("rerun.datatypes.TensorData");
+                    }
+                    let arrow_data = &**arrays_by_name["buffer"];
+                    crate::datatypes::TensorBuffer::try_from_arrow_opt(arrow_data)
+                        .with_context("rerun.datatypes.TensorData#buffer")?
                         .into_iter()
-                    }
-                    .collect::<Vec<_>>()
                 };
-                let i_8 = {
-                    if 5usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[5usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#I8")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Int8Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Int8,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#I8")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let i_16 = {
-                    if 6usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[6usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#I16")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Int8Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Int8,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#I16")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let i_32 = {
-                    if 7usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[7usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#I32")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Int32Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Int32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#I32")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let i_64 = {
-                    if 8usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[8usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#I64")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Int64Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Int64,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#I64")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let f_16 = {
-                    if 9usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[9usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#F16")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#F16")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let f_32 = {
-                    if 10usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[10usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#F32")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#F32")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let f_64 = {
-                    if 11usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[11usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#F64")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float64Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Float64,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#F64")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let jpeg = {
-                    if 12usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[12usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#JPEG")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Int8Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Int8,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#JPEG")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                arrow_data_types
-                    .iter()
-                    .enumerate()
-                    .map(|(i, typ)| {
-                        let offset = arrow_data_offsets[i];
-                        if *typ == 0 {
-                            Ok(None)
-                        } else {
-                            Ok(Some(match typ {
-                                1i8 => TensorData::U8({
-                                    if offset as usize >= u_8.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            u_8.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#U8");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { u_8.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#U8")?
-                                }),
-                                2i8 => TensorData::U16({
-                                    if offset as usize >= u_16.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            u_16.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#U16");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { u_16.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#U16")?
-                                }),
-                                3i8 => TensorData::U32({
-                                    if offset as usize >= u_32.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            u_32.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#U32");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { u_32.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#U32")?
-                                }),
-                                4i8 => TensorData::U64({
-                                    if offset as usize >= u_64.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            u_64.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#U64");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { u_64.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#U64")?
-                                }),
-                                5i8 => TensorData::I8({
-                                    if offset as usize >= i_8.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            i_8.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#I8");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { i_8.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#I8")?
-                                }),
-                                6i8 => TensorData::I16({
-                                    if offset as usize >= i_16.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            i_16.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#I16");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { i_16.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#I16")?
-                                }),
-                                7i8 => TensorData::I32({
-                                    if offset as usize >= i_32.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            i_32.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#I32");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { i_32.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#I32")?
-                                }),
-                                8i8 => TensorData::I64({
-                                    if offset as usize >= i_64.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            i_64.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#I64");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { i_64.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#I64")?
-                                }),
-                                9i8 => TensorData::F16({
-                                    if offset as usize >= f_16.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            f_16.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#F16");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { f_16.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#F16")?
-                                }),
-                                10i8 => TensorData::F32({
-                                    if offset as usize >= f_32.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            f_32.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#F32");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { f_32.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#F32")?
-                                }),
-                                11i8 => TensorData::F64({
-                                    if offset as usize >= f_64.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            f_64.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#F64");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { f_64.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#F64")?
-                                }),
-                                12i8 => TensorData::Jpeg({
-                                    if offset as usize >= jpeg.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            jpeg.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorData#JPEG");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { jpeg.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorData#JPEG")?
-                                }),
-                                _ => {
-                                    return Err(crate::DeserializationError::missing_union_arm(
-                                        DataType::Union(
-                                            vec![
-                                                Field {
-                                                    name: "_null_markers".to_owned(),
-                                                    data_type: DataType::Null,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "U8".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::UInt8,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "U16".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::UInt16,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "U32".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::UInt32,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "U64".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::UInt64,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "I8".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Int8,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "I16".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Int8,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "I32".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Int32,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "I64".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Int64,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "F16".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Float32,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "F32".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Float32,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "F64".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Float64,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "JPEG".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Int8,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                            ],
-                                            Some(vec![
-                                                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32,
-                                                8i32, 9i32, 10i32, 11i32, 12i32,
-                                            ]),
-                                            UnionMode::Dense,
-                                        ),
-                                        "<invalid>",
-                                        *typ as _,
-                                    ))
-                                    .with_context("rerun.datatypes.TensorData");
-                                }
-                            }))
-                        }
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::itertools::izip!(id, shape, buffer),
+                    arrow_data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(id, shape, buffer)| {
+                        Ok(Self {
+                            id: id
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.TensorData#id")?,
+                            shape: shape
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.TensorData#shape")?,
+                            buffer: buffer
+                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.TensorData#buffer")?,
+                        })
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.datatypes.TensorData")?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.TensorData")?
             }
         })
     }

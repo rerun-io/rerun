@@ -13,36 +13,36 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Tensor(pub crate::datatypes::Tensor);
+pub struct TensorData(pub crate::datatypes::TensorData);
 
-impl<T: Into<crate::datatypes::Tensor>> From<T> for Tensor {
+impl<T: Into<crate::datatypes::TensorData>> From<T> for TensorData {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<Tensor> for ::std::borrow::Cow<'a, Tensor> {
+impl<'a> From<TensorData> for ::std::borrow::Cow<'a, TensorData> {
     #[inline]
-    fn from(value: Tensor) -> Self {
+    fn from(value: TensorData) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Tensor> for ::std::borrow::Cow<'a, Tensor> {
+impl<'a> From<&'a TensorData> for ::std::borrow::Cow<'a, TensorData> {
     #[inline]
-    fn from(value: &'a Tensor) -> Self {
+    fn from(value: &'a TensorData) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Tensor {
+impl crate::Loggable for TensorData {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.components.Tensor".into()
+        "rerun.components.TensorData".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -68,8 +68,8 @@ impl crate::Loggable for Tensor {
                 metadata: [].into(),
             },
             Field {
-                name: "data".to_owned(),
-                data_type: <crate::datatypes::TensorData>::to_arrow_datatype(),
+                name: "buffer".to_owned(),
+                data_type: <crate::datatypes::TensorBuffer>::to_arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -105,7 +105,10 @@ impl crate::Loggable for Tensor {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::Tensor::try_to_arrow_opt(data0, Some("rerun.components.Tensor"))?
+                crate::datatypes::TensorData::try_to_arrow_opt(
+                    data0,
+                    Some("rerun.components.TensorData"),
+                )?
             }
         })
     }
@@ -119,14 +122,14 @@ impl crate::Loggable for Tensor {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(crate::datatypes::Tensor::try_from_arrow_opt(arrow_data)
-            .with_context("rerun.components.Tensor#data")?
+        Ok(crate::datatypes::TensorData::try_from_arrow_opt(arrow_data)
+            .with_context("rerun.components.TensorData#data")?
             .into_iter()
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.Tensor#data")
-            .with_context("rerun.components.Tensor")?)
+            .with_context("rerun.components.TensorData#data")
+            .with_context("rerun.components.TensorData")?)
     }
 
     #[inline]
@@ -145,4 +148,4 @@ impl crate::Loggable for Tensor {
     }
 }
 
-impl crate::Component for Tensor {}
+impl crate::Component for TensorData {}
