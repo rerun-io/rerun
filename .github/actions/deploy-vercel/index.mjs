@@ -1,8 +1,9 @@
 // @ts-check
 
-import { Client } from "./client.mjs";
+import { Client } from "./vercel.mjs";
 import { assert, find, get, getRequiredInput } from "./util.mjs";
 
+// These inputs are defined in `action.yml`, and should be kept in sync
 const token = getRequiredInput("vercel_token");
 const teamName = getRequiredInput("vercel_team_name");
 const projectName = getRequiredInput("vercel_project_name");

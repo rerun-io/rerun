@@ -1,6 +1,8 @@
 // @ts-check
 
 /**
+ * Return a GitHub Actions input, returning `null` if it was not set.
+ *
  * @param {string} name
  * @returns {string | null}
  */
@@ -10,6 +12,8 @@ export function getInput(name) {
 }
 
 /**
+ * Return a GitHub Actions input, throwing an error if it was not set.
+ *
  * @param {string} name
  * @returns {string}
  */
@@ -22,6 +26,8 @@ export function getRequiredInput(name) {
 }
 
 /**
+ * Assert that `value` is truthy, throwing an error if it is not.
+ *
  * @param {any} value
  * @param {string} [message]
  * @returns {asserts value}
@@ -33,18 +39,22 @@ export function assert(value, message) {
 }
 
 /**
+ * Returns a function that attempts to find an object with
+ * `key` set to `value` in an array of objects with `key` properties.
  *
  * @template {string} Key
  * @template {{ [p in Key]: string }} T
  * @param {Key} key
- * @param {string} name
+ * @param {string} value
  * @returns {(a: T[]) => T|null}
  */
-export function find(key, name) {
-  return (a) => a.find((v) => v[key] === name) ?? null;
+export function find(key, value) {
+  return (a) => a.find((v) => v[key] === value) ?? null;
 }
 
 /**
+ * Returns a function that attempts to retrieve the value at `index` from an array.
+ *
  * @template T
  * @param {number} index
  * @returns {(a: T[]) => T|null}

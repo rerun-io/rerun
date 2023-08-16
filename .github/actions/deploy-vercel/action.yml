@@ -4,6 +4,7 @@
 
 name: "Deploy rerun.io"
 
+# Changing these inputs also requires changing their usage in `index.mjs`
 inputs:
   vercel_token:
     description: "Vercel access token"
