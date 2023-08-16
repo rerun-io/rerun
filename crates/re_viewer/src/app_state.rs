@@ -71,7 +71,6 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
-        show_welcome: bool,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
@@ -190,6 +189,9 @@ impl AppState {
                     fill: ui.style().visuals.panel_fill,
                     ..Default::default()
                 };
+
+                let show_welcome =
+                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)

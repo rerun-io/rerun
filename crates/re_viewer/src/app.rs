@@ -3,7 +3,7 @@ use web_time::Instant;
 use re_data_store::store_db::StoreDb;
 use re_log_types::{LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::Receiver;
+use re_smart_channel::{Receiver, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
@@ -47,6 +47,8 @@ pub struct StartupOptions {
     /// Set the screen resolution in logical points.
     #[cfg(not(target_arch = "wasm32"))]
     pub resolution_in_points: Option<[f32; 2]>,
+
+    pub skip_welcome_screen: bool,
 }
 
 impl Default for StartupOptions {
@@ -60,6 +62,8 @@ impl Default for StartupOptions {
 
             #[cfg(not(target_arch = "wasm32"))]
             resolution_in_points: None,
+
+            skip_welcome_screen: false,
         }
     }
 }
@@ -199,7 +203,7 @@ impl App {
             rx,
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::default()),
+            store_hub: Some(StoreHub::new()),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -572,13 +576,10 @@ impl App {
                             ))
                         });
 
-                    let (store_db, show_welcome) = if let Some(store_db) = store_view.recording {
-                        (store_db, false)
+                    let store_db = if let Some(store_db) = store_view.recording {
+                        store_db
                     } else {
-                        (
-                            once_cell::sync::Lazy::<StoreDb>::force(&EMPTY_STORE_DB),
-                            true,
-                        )
+                        &EMPTY_STORE_DB
                     };
 
                     // TODO(andreas): store the re_renderer somewhere else.
@@ -593,7 +594,6 @@ impl App {
                         render_ctx.begin_frame();
 
                         self.state.show(
-                            show_welcome,
                             app_blueprint,
                             ui,
                             render_ctx,
@@ -833,6 +833,35 @@ impl App {
             }
         }
     }
+
+    /// This function will create an empty blueprint whenever the welcome screen should be
+    /// displayed.
+    ///
+    /// The welcome screen can be displayed only when a blueprint is available (and no recording is
+    /// loaded). This function implements the heuristic which determines when the welcome screen
+    /// should show up.
+    fn handle_default_blueprint(&mut self, store_hub: &mut StoreHub) {
+        if store_hub.current_recording().is_some()
+            | store_hub.app_id().is_some()
+            | self.startup_options.skip_welcome_screen
+        {
+            return;
+        }
+
+        let welcome = match self.rx.source() {
+            SmartChannelSource::Files { .. } | SmartChannelSource::RrdHttpStream { .. } => {
+                !self.rx.is_connected()
+            }
+            SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::Sdk
+            | SmartChannelSource::WsClient { .. } => false,
+            SmartChannelSource::TcpServer { .. } => true,
+        };
+
+        if welcome {
+            store_hub.set_app_id(StoreHub::welcome_screen_app_id());
+        }
+    }
 }
 
 impl eframe::App for App {
@@ -933,6 +962,9 @@ impl eframe::App for App {
         self.state.cleanup(&store_hub);
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
+
+        // heuristic to set the app_id to the welcome screen blueprint
+        self.handle_default_blueprint(&mut store_hub);
 
         let store_context = store_hub.read_context();
 

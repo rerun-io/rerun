@@ -1,4 +1,4 @@
-use ahash::HashMap;
+use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::StoreDb;
@@ -22,7 +22,6 @@ use crate::{
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
 /// id` ([`StoreId`]) are currently selected in the viewer. These can be configured
 /// using [`StoreHub::set_recording_id`] and [`StoreHub::set_app_id`] respectively.
-#[derive(Default)]
 pub struct StoreHub {
     selected_rec_id: Option<StoreId>,
     application_id: Option<ApplicationId>,
@@ -44,6 +43,32 @@ pub struct StoreHubStats {
 }
 
 impl StoreHub {
+    /// App ID used as a marker to display the welcome screen.
+    pub fn welcome_screen_app_id() -> ApplicationId {
+        "<welcome screen>".into()
+    }
+
+    /// Create a new [`StoreHub`].
+    ///
+    /// The [`StoreHub`] will contain a single empty blueprint associated with the app ID returned
+    /// by `[StoreHub::welcome_screen_app_id]`. It should be used as a marker to display the welcome
+    /// screen.
+    pub fn new() -> Self {
+        let mut blueprints = HashMap::new();
+        blueprints.insert(
+            Self::welcome_screen_app_id(),
+            StoreId::from_string(StoreKind::Blueprint, "<welcome screen>".to_owned()),
+        );
+
+        Self {
+            selected_rec_id: None,
+            application_id: None,
+            blueprint_by_app_id: blueprints,
+            store_dbs: Default::default(),
+            blueprint_last_save: Default::default(),
+        }
+    }
+
     /// Add a [`StoreBundle`] to the [`StoreHub`]
     pub fn add_bundle(&mut self, bundle: StoreBundle) {
         self.store_dbs.append(bundle);
@@ -106,6 +131,7 @@ impl StoreHub {
                 self.set_recording_id(new_selection.clone());
             } else {
                 self.selected_rec_id = None;
+                self.application_id = None;
             }
         }
 
@@ -125,6 +151,10 @@ impl StoreHub {
         }
 
         self.application_id = Some(app_id);
+    }
+
+    pub fn app_id(&self) -> Option<&ApplicationId> {
+        self.application_id.as_ref()
     }
 
     /// Change which blueprint is active for a given [`ApplicationId`]
