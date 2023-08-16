@@ -229,6 +229,34 @@ impl DataStore {
         re_tracing::profile_function!();
         self.tables.values().map(|table| table.num_buckets()).sum()
     }
+
+    /// Stats for a specific entity path on a specific timeline
+    pub fn entity_stats(
+        &self,
+        timeline: re_log_types::Timeline,
+        entity_path_hash: re_log_types::EntityPathHash,
+    ) -> EntityStats {
+        let indexed_stats = self.tables.get(&(timeline, entity_path_hash)).map_or(
+            EntityStats::default(),
+            |table| EntityStats {
+                num_rows: table.buckets_num_rows,
+                size_bytes: table.buckets_size_bytes,
+            },
+        );
+
+        // TODO(emilk): stats of self.timeless_tables
+
+        indexed_stats
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EntityStats {
+    /// Number of rows in the table.
+    pub num_rows: u64,
+
+    /// Aproximate number of bytes used.
+    pub size_bytes: u64,
 }
 
 // --- Temporal ---

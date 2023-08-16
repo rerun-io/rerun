@@ -39,7 +39,7 @@ pub use self::arrow_util::ArrayExt;
 pub use self::store::{DataStore, DataStoreConfig, StoreGeneration};
 pub use self::store_gc::GarbageCollectionTarget;
 pub use self::store_read::{LatestAtQuery, RangeQuery};
-pub use self::store_stats::{DataStoreRowStats, DataStoreStats};
+pub use self::store_stats::{DataStoreRowStats, DataStoreStats, EntityStats};
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{

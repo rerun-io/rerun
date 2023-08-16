@@ -105,7 +105,31 @@ pub fn instance_path_button_to(
         .on_hover_ui(|ui| {
             ui.strong(subtype_string);
             ui.label(format!("Path: {instance_path}"));
-            instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+
+            // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
+            // Then we can move the size view into `data_ui`.
+            let query = ctx.current_query();
+
+            if instance_path.instance_key.is_splat() {
+                let store = &ctx.store_db.entity_db.data_store;
+                let stats = store.entity_stats(query.timeline, instance_path.entity_path.hash());
+                ui.label(format!(
+                    "Using {} in total",
+                    re_format::format_bytes(stats.size_bytes as f64)
+                ));
+                // It is tempting to print out `stats.size_bytes / stats.num_rows` here,
+                // but that could be quite misleading since we could have an entity with e.g.
+                // 10 images logged, and then also 10 transforms logged. That would be 20 rows,
+                // and printing `size_bytes / num_rows` would make it look like it had much smaller
+                // images than it did.
+                //
+                // Instead we should print out the data rate, i.e. MiB/s for time timelines and MiB/frame for
+                // sequence timelines. But that requires knowing here what time range the entity covers.
+            } else {
+                // TODO(emilk): per-component stats
+            }
+
+            instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &query);
         });
 
     cursor_interact_with_selectable(ctx, response, item)
