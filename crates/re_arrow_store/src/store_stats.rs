@@ -236,7 +236,7 @@ impl DataStore {
         timeline: re_log_types::Timeline,
         entity_path_hash: re_log_types::EntityPathHash,
     ) -> EntityStats {
-        let indexed_stats = self.tables.get(&(timeline, entity_path_hash)).map_or(
+        let mut entity_stats = self.tables.get(&(timeline, entity_path_hash)).map_or(
             EntityStats::default(),
             |table| EntityStats {
                 num_rows: table.buckets_num_rows,
@@ -244,9 +244,12 @@ impl DataStore {
             },
         );
 
-        // TODO(emilk): stats of self.timeless_tables
+        if let Some(timeless) = self.timeless_tables.get(&entity_path_hash) {
+            entity_stats.num_rows += timeless.num_rows();
+            entity_stats.size_bytes += timeless.total_size_bytes();
+        }
 
-        indexed_stats
+        entity_stats
     }
 }
 
