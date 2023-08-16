@@ -39,7 +39,7 @@ namespace rerun {
     /// Status outcome object (success or error) returned for fallible operations.
     ///
     /// Converts to `true` for success, `false` for failure.
-    class Status {
+    class [[nodiscard]] Status {
       public:
         /// Result code for the given operation.
         StatusCode code = StatusCode::Ok;

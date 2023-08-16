@@ -102,14 +102,12 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
-        [[nodiscard]] Status connect(
-            const char* tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0
-        );
+        Status connect(const char* tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0);
 
         /// Stream all log-data to a given file.
         ///
         /// This function returns immediately.
-        [[nodiscard]] Status save(const char* path);
+        Status save(const char* path);
 
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///
@@ -147,7 +145,7 @@ namespace rerun {
         ///
         /// @see log_archetype
         template <typename T>
-        [[nodiscard]] Status try_log_archetype(const char* entity_path, const T& archetype) {
+        Status try_log_archetype(const char* entity_path, const T& archetype) {
             const auto data_cells = archetype.to_data_cells().ValueOrDie(); // TODO: Error handling.
             return try_log_data_row(
                 entity_path,
@@ -176,9 +174,7 @@ namespace rerun {
         ///
         /// @see log_components
         template <typename... Ts>
-        [[nodiscard]] Status try_log_components(
-            const char* entity_path, const Ts&... component_array
-        ) {
+        Status try_log_components(const char* entity_path, const Ts&... component_array) {
             // TODO(andreas): Handle splats.
             const size_t num_instances = size_of_first_collection(component_array...);
 
@@ -198,7 +194,7 @@ namespace rerun {
         ///
         /// I.e. logs a number of components arrays (each with a same number of instances) to a
         /// single entity path.
-        [[nodiscard]] Status try_log_data_row(
+        Status try_log_data_row(
             const char* entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells
         );
