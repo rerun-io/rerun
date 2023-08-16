@@ -3,6 +3,10 @@
 #include <cstdint>
 #include <string>
 
+#ifdef __cpp_exceptions
+#include <stdexcept>
+#endif
+
 struct rr_status;
 
 namespace rerun {
