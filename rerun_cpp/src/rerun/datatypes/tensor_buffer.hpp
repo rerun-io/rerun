@@ -55,7 +55,7 @@ namespace rerun {
 
                 std::vector<double> f64;
 
-                std::vector<int8_t> jpeg;
+                std::vector<uint8_t> jpeg;
 
                 TensorBufferData() {}
 
@@ -212,7 +212,7 @@ namespace rerun {
                         break;
                     }
                     case detail::TensorBufferTag::JPEG: {
-                        typedef std::vector<int8_t> TypeAlias;
+                        typedef std::vector<uint8_t> TypeAlias;
                         _data.jpeg.~TypeAlias();
                         break;
                     }
@@ -314,8 +314,8 @@ namespace rerun {
                 return self;
             }
 
-            static TensorBuffer jpeg(std::vector<int8_t> jpeg) {
-                typedef std::vector<int8_t> TypeAlias;
+            static TensorBuffer jpeg(std::vector<uint8_t> jpeg) {
+                typedef std::vector<uint8_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::JPEG;
                 new (&self._data.jpeg) TypeAlias(std::move(jpeg));

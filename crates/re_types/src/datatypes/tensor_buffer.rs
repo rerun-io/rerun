@@ -13,7 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// Storage for a `Tensor`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum TensorBuffer {
     U8(crate::ArrowBuffer<u8>),
     U16(crate::ArrowBuffer<u16>),
@@ -26,7 +26,7 @@ pub enum TensorBuffer {
     F16(crate::ArrowBuffer<f32>),
     F32(crate::ArrowBuffer<f32>),
     F64(crate::ArrowBuffer<f64>),
-    Jpeg(crate::ArrowBuffer<i8>),
+    Jpeg(crate::ArrowBuffer<u8>),
 }
 
 impl<'a> From<TensorBuffer> for ::std::borrow::Cow<'a, TensorBuffer> {
@@ -190,7 +190,7 @@ impl crate::Loggable for TensorBuffer {
                     name: "JPEG".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: DataType::Int8,
+                        data_type: DataType::UInt8,
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -977,7 +977,7 @@ impl crate::Loggable for TensorBuffer {
                                     _ = extension_wrapper;
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: DataType::Int8,
+                                        data_type: DataType::UInt8,
                                         is_nullable: false,
                                         metadata: [].into(),
                                     }))
@@ -988,7 +988,7 @@ impl crate::Loggable for TensorBuffer {
                                 PrimitiveArray::new(
                                     {
                                         _ = extension_wrapper;
-                                        DataType::Int8.to_logical_type().clone()
+                                        DataType::UInt8.to_logical_type().clone()
                                     },
                                     jpeg_inner_data,
                                     jpeg_inner_bitmap,
@@ -1237,7 +1237,7 @@ impl crate::Loggable for TensorBuffer {
                                     name: "JPEG".to_owned(),
                                     data_type: DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: DataType::Int8,
+                                        data_type: DataType::UInt8,
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
@@ -1397,7 +1397,7 @@ impl crate::Loggable for TensorBuffer {
                                         name: "JPEG".to_owned(),
                                         data_type: DataType::List(Box::new(Field {
                                             name: "item".to_owned(),
-                                            data_type: DataType::Int8,
+                                            data_type: DataType::UInt8,
                                             is_nullable: false,
                                             metadata: [].into(),
                                         })),
@@ -2216,7 +2216,7 @@ impl crate::Loggable for TensorBuffer {
                                 crate::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: DataType::Int8,
+                                        data_type: DataType::UInt8,
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
@@ -2231,10 +2231,10 @@ impl crate::Loggable for TensorBuffer {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
                                     .as_any()
-                                    .downcast_ref::<Int8Array>()
+                                    .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
-                                            DataType::Int8,
+                                            DataType::UInt8,
                                             arrow_data_inner.data_type().clone(),
                                         )
                                     })
@@ -2598,7 +2598,7 @@ impl crate::Loggable for TensorBuffer {
                                                     name: "JPEG".to_owned(),
                                                     data_type: DataType::List(Box::new(Field {
                                                         name: "item".to_owned(),
-                                                        data_type: DataType::Int8,
+                                                        data_type: DataType::UInt8,
                                                         is_nullable: false,
                                                         metadata: [].into(),
                                                     })),

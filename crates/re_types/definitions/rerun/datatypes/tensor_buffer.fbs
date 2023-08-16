@@ -51,14 +51,14 @@ table F64Buffer(order: 100, transparent) {
 }
 
 table JPEGBuffer(order: 100, transparent) {
-  data: [byte] (order: 100);
+  data: [ubyte] (order: 100);
 }
 
 
 /// Storage for a `Tensor`
 union TensorBuffer (
   order: 100,
-  "attr.rust.derive": "PartialEq"
+  "attr.rust.derive_only": "Clone, PartialEq"
 ) {
   U8: U8Buffer (transparent, order:100),
   U16: U16Buffer (transparent, order:200),

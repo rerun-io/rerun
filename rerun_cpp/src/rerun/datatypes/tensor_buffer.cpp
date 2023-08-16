@@ -55,7 +55,7 @@ namespace rerun {
                 ),
                 arrow::field(
                     "JPEG",
-                    arrow::list(arrow::field("item", arrow::int8(), false)),
+                    arrow::list(arrow::field("item", arrow::uint8(), false)),
                     false
                 ),
             });
@@ -118,7 +118,7 @@ namespace rerun {
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        std::make_shared<arrow::Int8Builder>(memory_pool)
+                        std::make_shared<arrow::UInt8Builder>(memory_pool)
                     ),
                 }),
                 to_arrow_datatype()

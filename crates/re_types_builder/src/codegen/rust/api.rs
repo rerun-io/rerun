@@ -23,7 +23,7 @@ use crate::{
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LEGACY_FQNAME, ATTR_RUST_CUSTOM_CLAUSE,
-    ATTR_RUST_DERIVE, ATTR_RUST_REPR,
+    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_REPR,
 };
 
 use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
@@ -386,8 +386,18 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
-        let quoted_derive_clone_debug = quote_derive_clone_debug();
-        let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
+
+        let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
+        let quoted_derive_clone_debug = if derive_only {
+            quote!()
+        } else {
+            quote_derive_clone_debug()
+        };
+        let quoted_derive_clause = if derive_only {
+            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+        } else {
+            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+        };
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
         let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
@@ -456,8 +466,17 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
-        let quoted_derive_clone_debug = quote_derive_clone_debug();
-        let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
+        let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
+        let quoted_derive_clone_debug = if derive_only {
+            quote!()
+        } else {
+            quote_derive_clone_debug()
+        };
+        let quoted_derive_clause = if derive_only {
+            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+        } else {
+            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+        };
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
         let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 

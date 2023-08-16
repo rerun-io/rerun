@@ -11,6 +11,8 @@ attribute "attr.rust.tuple_struct";
 /// E.g. "attr.rust.derive": "Copy"`.
 attribute "attr.rust.derive";
 
+attribute "attr.rust.derive_only";
+
 /// Apply to any object to generate an arbitrary clause.
 ///
 /// The value of the attribute will be trimmed out but otherwise left as-is.

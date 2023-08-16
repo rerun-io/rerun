@@ -152,7 +152,7 @@ class TensorDataType(BaseExtensionType):
                                 ),
                                 pa.field(
                                     "JPEG",
-                                    pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={})),
+                                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
                                     nullable=False,
                                     metadata={},
                                 ),
