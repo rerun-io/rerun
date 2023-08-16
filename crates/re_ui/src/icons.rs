@@ -54,6 +54,11 @@ pub const RESET: Icon = Icon::new("reset", include_bytes!("../data/icons/reset.p
 
 pub const CLOSE: Icon = Icon::new("close", include_bytes!("../data/icons/close.png"));
 
+pub const EXTERNAL_LINK: Icon = Icon::new(
+    "external_link",
+    include_bytes!("../data/icons/external_link.png"),
+);
+
 pub const SPACE_VIEW_TEXT: Icon = Icon::new(
     "spaceview_text",
     include_bytes!("../data/icons/spaceview_text.png"),

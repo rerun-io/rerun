@@ -1,4 +1,4 @@
-use egui::Ui;
+use egui::{Ui, Widget};
 use itertools::Itertools;
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
@@ -9,8 +9,9 @@ const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 400.0;
 
 const PYTHON_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/python";
-const CPP_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/cpp";
+//const CPP_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/cpp";
 const RUST_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/rust";
+const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
 /// Welcome screen shown in place of the viewport when no data is loaded.
 pub fn welcome_ui(
@@ -191,16 +192,17 @@ impl WaitScreen {
 
             ui.horizontal(|ui| {
                 button_centered_label(ui, "Quick start...");
-                url_large_text_buttons(ui, "Python", PYTHON_QUICKSTART);
-                url_large_text_buttons(ui, "C++", CPP_QUICKSTART);
-                url_large_text_buttons(ui, "Rust", RUST_QUICKSTART);
+                url_large_text_button(re_ui, ui, "Python", PYTHON_QUICKSTART);
+                // TODO(ab): activate when C++ is ready!
+                // url_large_text_button(re_ui, ui, "C++", CPP_QUICKSTART);
+                url_large_text_button(re_ui, ui, "Rust", RUST_QUICKSTART);
             });
 
             #[cfg(not(target_arch = "wasm32"))]
             {
                 use re_ui::UICommandSender;
                 ui.horizontal(|ui| {
-                    if large_text_buttons(ui, "Open file...").clicked() {
+                    if large_text_button(ui, "Open file...").clicked() {
                         _command_sender.send_ui(re_ui::UICommand::Open);
                     }
                     button_centered_label(ui, "Or drop a file anywhere!");
@@ -213,7 +215,7 @@ impl WaitScreen {
             });
 
             ui.horizontal(|ui| {
-                large_text_buttons(ui, "Add View");
+                url_large_text_button(re_ui, ui, "Learn about Views", SPACE_VIEWS_HELP);
             });
 
             ui.end_row();
@@ -228,31 +230,49 @@ fn button_centered_label(ui: &mut egui::Ui, label: impl Into<egui::WidgetText>) 
     });
 }
 
-fn url_large_text_buttons(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>, url: &str) {
-    if large_text_buttons(ui, text).clicked() {
-        ui.ctx().output_mut(|o| {
-            o.open_url = Some(egui::output::OpenUrl {
-                url: url.to_owned(),
-                new_tab: true,
-            });
-        });
-    }
+fn large_button_style(ui: &mut egui::Ui) {
+    ui.style_mut().spacing.button_padding = egui::vec2(12.0, 9.0);
+    let visuals = ui.visuals_mut();
+    visuals.widgets.hovered.expansion = 0.0;
+    visuals.widgets.active.expansion = 0.0;
+    visuals.widgets.open.expansion = 0.0;
+
+    visuals.widgets.inactive.rounding = egui::Rounding::same(8.);
+    visuals.widgets.hovered.rounding = egui::Rounding::same(8.);
+    visuals.widgets.active.rounding = egui::Rounding::same(8.);
+
+    visuals.widgets.inactive.weak_bg_fill = visuals.widgets.inactive.bg_fill;
 }
 
-fn large_text_buttons(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) -> egui::Response {
+fn url_large_text_button(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    text: impl Into<egui::WidgetText>,
+    url: &str,
+) {
     ui.scope(|ui| {
-        ui.style_mut().spacing.button_padding = egui::vec2(12.0, 9.0);
-        let visuals = ui.visuals_mut();
-        visuals.widgets.hovered.expansion = 0.0;
-        visuals.widgets.active.expansion = 0.0;
-        visuals.widgets.open.expansion = 0.0;
+        large_button_style(ui);
 
-        visuals.widgets.inactive.rounding = egui::Rounding::same(8.);
-        visuals.widgets.hovered.rounding = egui::Rounding::same(8.);
-        visuals.widgets.active.rounding = egui::Rounding::same(8.);
+        let image = re_ui.icon_image(&re_ui::icons::EXTERNAL_LINK);
+        let texture_id = image.texture_id(ui.ctx());
 
-        visuals.widgets.inactive.weak_bg_fill = visuals.widgets.inactive.bg_fill;
+        if egui::Button::image_and_text(texture_id, ReUi::small_icon_size(), text)
+            .ui(ui)
+            .clicked()
+        {
+            ui.ctx().output_mut(|o| {
+                o.open_url = Some(egui::output::OpenUrl {
+                    url: url.to_owned(),
+                    new_tab: true,
+                });
+            });
+        }
+    });
+}
 
+fn large_text_button(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) -> egui::Response {
+    ui.scope(|ui| {
+        large_button_style(ui);
         ui.button(text)
     })
     .inner
