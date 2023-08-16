@@ -65,6 +65,8 @@ impl StoreHub {
             application_id: None,
             blueprint_by_app_id: blueprints,
             store_dbs: Default::default(),
+
+            #[cfg(not(target_arch = "wasm32"))]
             blueprint_last_save: Default::default(),
         }
     }
