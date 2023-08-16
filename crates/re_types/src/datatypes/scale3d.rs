@@ -147,7 +147,15 @@ impl crate::Loggable for Scale3D {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let three_d_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let three_d_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                                three_d_bitmap.as_ref().map(|bitmap| {
+                                    bitmap
+                                        .iter()
+                                        .map(|i| std::iter::repeat(i).take(3usize))
+                                        .flatten()
+                                        .collect::<Vec<_>>()
+                                        .into()
+                                });
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;

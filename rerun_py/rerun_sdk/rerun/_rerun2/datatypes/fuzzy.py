@@ -84,7 +84,9 @@ FlattenedScalarArrayLike = Union[
 class FlattenedScalarType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.struct([pa.field("value", pa.float32(), False, {})]), "rerun.testing.datatypes.FlattenedScalar"
+            self,
+            pa.struct([pa.field("value", pa.float32(), nullable=False, metadata={})]),
+            "rerun.testing.datatypes.FlattenedScalar",
         )
 
 
@@ -141,17 +143,35 @@ class AffixFuzzer1Type(BaseExtensionType):
             self,
             pa.struct(
                 [
-                    pa.field("single_float_optional", pa.float32(), True, {}),
-                    pa.field("single_string_required", pa.utf8(), False, {}),
-                    pa.field("single_string_optional", pa.utf8(), True, {}),
-                    pa.field("many_floats_optional", pa.list_(pa.field("item", pa.float32(), True, {})), True, {}),
-                    pa.field("many_strings_required", pa.list_(pa.field("item", pa.utf8(), False, {})), False, {}),
-                    pa.field("many_strings_optional", pa.list_(pa.field("item", pa.utf8(), True, {})), True, {}),
-                    pa.field("flattened_scalar", pa.float32(), False, {}),
+                    pa.field("single_float_optional", pa.float32(), nullable=True, metadata={}),
+                    pa.field("single_string_required", pa.utf8(), nullable=False, metadata={}),
+                    pa.field("single_string_optional", pa.utf8(), nullable=True, metadata={}),
                     pa.field(
-                        "almost_flattened_scalar", pa.struct([pa.field("value", pa.float32(), False, {})]), False, {}
+                        "many_floats_optional",
+                        pa.list_(pa.field("item", pa.float32(), nullable=True, metadata={})),
+                        nullable=True,
+                        metadata={},
                     ),
-                    pa.field("from_parent", pa.bool_(), True, {}),
+                    pa.field(
+                        "many_strings_required",
+                        pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
+                        nullable=False,
+                        metadata={},
+                    ),
+                    pa.field(
+                        "many_strings_optional",
+                        pa.list_(pa.field("item", pa.utf8(), nullable=True, metadata={})),
+                        nullable=True,
+                        metadata={},
+                    ),
+                    pa.field("flattened_scalar", pa.float32(), nullable=False, metadata={}),
+                    pa.field(
+                        "almost_flattened_scalar",
+                        pa.struct([pa.field("value", pa.float32(), nullable=False, metadata={})]),
+                        nullable=False,
+                        metadata={},
+                    ),
+                    pa.field("from_parent", pa.bool_(), nullable=True, metadata={}),
                 ]
             ),
             "rerun.testing.datatypes.AffixFuzzer1",
@@ -254,9 +274,9 @@ class AffixFuzzer3Type(BaseExtensionType):
             self,
             pa.dense_union(
                 [
-                    pa.field("_null_markers", pa.null(), True, {}),
-                    pa.field("degrees", pa.float32(), False, {}),
-                    pa.field("radians", pa.float32(), False, {}),
+                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                    pa.field("degrees", pa.float32(), nullable=False, metadata={}),
+                    pa.field("radians", pa.float32(), nullable=False, metadata={}),
                     pa.field(
                         "craziness",
                         pa.list_(
@@ -264,46 +284,49 @@ class AffixFuzzer3Type(BaseExtensionType):
                                 "item",
                                 pa.struct(
                                     [
-                                        pa.field("single_float_optional", pa.float32(), True, {}),
-                                        pa.field("single_string_required", pa.utf8(), False, {}),
-                                        pa.field("single_string_optional", pa.utf8(), True, {}),
+                                        pa.field("single_float_optional", pa.float32(), nullable=True, metadata={}),
+                                        pa.field("single_string_required", pa.utf8(), nullable=False, metadata={}),
+                                        pa.field("single_string_optional", pa.utf8(), nullable=True, metadata={}),
                                         pa.field(
                                             "many_floats_optional",
-                                            pa.list_(pa.field("item", pa.float32(), True, {})),
-                                            True,
-                                            {},
+                                            pa.list_(pa.field("item", pa.float32(), nullable=True, metadata={})),
+                                            nullable=True,
+                                            metadata={},
                                         ),
                                         pa.field(
                                             "many_strings_required",
-                                            pa.list_(pa.field("item", pa.utf8(), False, {})),
-                                            False,
-                                            {},
+                                            pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
+                                            nullable=False,
+                                            metadata={},
                                         ),
                                         pa.field(
                                             "many_strings_optional",
-                                            pa.list_(pa.field("item", pa.utf8(), True, {})),
-                                            True,
-                                            {},
+                                            pa.list_(pa.field("item", pa.utf8(), nullable=True, metadata={})),
+                                            nullable=True,
+                                            metadata={},
                                         ),
-                                        pa.field("flattened_scalar", pa.float32(), False, {}),
+                                        pa.field("flattened_scalar", pa.float32(), nullable=False, metadata={}),
                                         pa.field(
                                             "almost_flattened_scalar",
-                                            pa.struct([pa.field("value", pa.float32(), False, {})]),
-                                            False,
-                                            {},
+                                            pa.struct([pa.field("value", pa.float32(), nullable=False, metadata={})]),
+                                            nullable=False,
+                                            metadata={},
                                         ),
-                                        pa.field("from_parent", pa.bool_(), True, {}),
+                                        pa.field("from_parent", pa.bool_(), nullable=True, metadata={}),
                                     ]
                                 ),
-                                False,
-                                {},
+                                nullable=False,
+                                metadata={},
                             )
                         ),
-                        False,
-                        {},
+                        nullable=False,
+                        metadata={},
                     ),
                     pa.field(
-                        "fixed_size_shenanigans", pa.list_(pa.field("item", pa.float32(), False, {}), 3), False, {}
+                        "fixed_size_shenanigans",
+                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                        nullable=False,
+                        metadata={},
                     ),
                 ]
             ),
@@ -365,14 +388,14 @@ class AffixFuzzer4Type(BaseExtensionType):
             self,
             pa.dense_union(
                 [
-                    pa.field("_null_markers", pa.null(), True, {}),
+                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
                     pa.field(
                         "single_required",
                         pa.dense_union(
                             [
-                                pa.field("_null_markers", pa.null(), True, {}),
-                                pa.field("degrees", pa.float32(), False, {}),
-                                pa.field("radians", pa.float32(), False, {}),
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                pa.field("degrees", pa.float32(), nullable=False, metadata={}),
+                                pa.field("radians", pa.float32(), nullable=False, metadata={}),
                                 pa.field(
                                     "craziness",
                                     pa.list_(
@@ -380,54 +403,77 @@ class AffixFuzzer4Type(BaseExtensionType):
                                             "item",
                                             pa.struct(
                                                 [
-                                                    pa.field("single_float_optional", pa.float32(), True, {}),
-                                                    pa.field("single_string_required", pa.utf8(), False, {}),
-                                                    pa.field("single_string_optional", pa.utf8(), True, {}),
+                                                    pa.field(
+                                                        "single_float_optional",
+                                                        pa.float32(),
+                                                        nullable=True,
+                                                        metadata={},
+                                                    ),
+                                                    pa.field(
+                                                        "single_string_required", pa.utf8(), nullable=False, metadata={}
+                                                    ),
+                                                    pa.field(
+                                                        "single_string_optional", pa.utf8(), nullable=True, metadata={}
+                                                    ),
                                                     pa.field(
                                                         "many_floats_optional",
-                                                        pa.list_(pa.field("item", pa.float32(), True, {})),
-                                                        True,
-                                                        {},
+                                                        pa.list_(
+                                                            pa.field("item", pa.float32(), nullable=True, metadata={})
+                                                        ),
+                                                        nullable=True,
+                                                        metadata={},
                                                     ),
                                                     pa.field(
                                                         "many_strings_required",
-                                                        pa.list_(pa.field("item", pa.utf8(), False, {})),
-                                                        False,
-                                                        {},
+                                                        pa.list_(
+                                                            pa.field("item", pa.utf8(), nullable=False, metadata={})
+                                                        ),
+                                                        nullable=False,
+                                                        metadata={},
                                                     ),
                                                     pa.field(
                                                         "many_strings_optional",
-                                                        pa.list_(pa.field("item", pa.utf8(), True, {})),
-                                                        True,
-                                                        {},
+                                                        pa.list_(
+                                                            pa.field("item", pa.utf8(), nullable=True, metadata={})
+                                                        ),
+                                                        nullable=True,
+                                                        metadata={},
                                                     ),
-                                                    pa.field("flattened_scalar", pa.float32(), False, {}),
+                                                    pa.field(
+                                                        "flattened_scalar", pa.float32(), nullable=False, metadata={}
+                                                    ),
                                                     pa.field(
                                                         "almost_flattened_scalar",
-                                                        pa.struct([pa.field("value", pa.float32(), False, {})]),
-                                                        False,
-                                                        {},
+                                                        pa.struct(
+                                                            [
+                                                                pa.field(
+                                                                    "value", pa.float32(), nullable=False, metadata={}
+                                                                )
+                                                            ]
+                                                        ),
+                                                        nullable=False,
+                                                        metadata={},
                                                     ),
-                                                    pa.field("from_parent", pa.bool_(), True, {}),
+                                                    pa.field("from_parent", pa.bool_(), nullable=True, metadata={}),
                                                 ]
                                             ),
-                                            False,
-                                            {},
+                                            nullable=False,
+                                            metadata={},
                                         )
                                     ),
-                                    False,
-                                    {},
+                                    nullable=False,
+                                    metadata={},
                                 ),
                                 pa.field(
                                     "fixed_size_shenanigans",
-                                    pa.list_(pa.field("item", pa.float32(), False, {}), 3),
-                                    False,
-                                    {},
+                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                                    nullable=False,
+                                    metadata={},
                                 ),
                             ]
                         ),
-                        False,
-                        {},
+                        nullable=False,
+                        metadata={},
                     ),
                     pa.field(
                         "many_required",
@@ -436,9 +482,9 @@ class AffixFuzzer4Type(BaseExtensionType):
                                 "item",
                                 pa.dense_union(
                                     [
-                                        pa.field("_null_markers", pa.null(), True, {}),
-                                        pa.field("degrees", pa.float32(), False, {}),
-                                        pa.field("radians", pa.float32(), False, {}),
+                                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                        pa.field("degrees", pa.float32(), nullable=False, metadata={}),
+                                        pa.field("radians", pa.float32(), nullable=False, metadata={}),
                                         pa.field(
                                             "craziness",
                                             pa.list_(
@@ -446,58 +492,101 @@ class AffixFuzzer4Type(BaseExtensionType):
                                                     "item",
                                                     pa.struct(
                                                         [
-                                                            pa.field("single_float_optional", pa.float32(), True, {}),
-                                                            pa.field("single_string_required", pa.utf8(), False, {}),
-                                                            pa.field("single_string_optional", pa.utf8(), True, {}),
+                                                            pa.field(
+                                                                "single_float_optional",
+                                                                pa.float32(),
+                                                                nullable=True,
+                                                                metadata={},
+                                                            ),
+                                                            pa.field(
+                                                                "single_string_required",
+                                                                pa.utf8(),
+                                                                nullable=False,
+                                                                metadata={},
+                                                            ),
+                                                            pa.field(
+                                                                "single_string_optional",
+                                                                pa.utf8(),
+                                                                nullable=True,
+                                                                metadata={},
+                                                            ),
                                                             pa.field(
                                                                 "many_floats_optional",
-                                                                pa.list_(pa.field("item", pa.float32(), True, {})),
-                                                                True,
-                                                                {},
+                                                                pa.list_(
+                                                                    pa.field(
+                                                                        "item", pa.float32(), nullable=True, metadata={}
+                                                                    )
+                                                                ),
+                                                                nullable=True,
+                                                                metadata={},
                                                             ),
                                                             pa.field(
                                                                 "many_strings_required",
-                                                                pa.list_(pa.field("item", pa.utf8(), False, {})),
-                                                                False,
-                                                                {},
+                                                                pa.list_(
+                                                                    pa.field(
+                                                                        "item", pa.utf8(), nullable=False, metadata={}
+                                                                    )
+                                                                ),
+                                                                nullable=False,
+                                                                metadata={},
                                                             ),
                                                             pa.field(
                                                                 "many_strings_optional",
-                                                                pa.list_(pa.field("item", pa.utf8(), True, {})),
-                                                                True,
-                                                                {},
+                                                                pa.list_(
+                                                                    pa.field(
+                                                                        "item", pa.utf8(), nullable=True, metadata={}
+                                                                    )
+                                                                ),
+                                                                nullable=True,
+                                                                metadata={},
                                                             ),
-                                                            pa.field("flattened_scalar", pa.float32(), False, {}),
+                                                            pa.field(
+                                                                "flattened_scalar",
+                                                                pa.float32(),
+                                                                nullable=False,
+                                                                metadata={},
+                                                            ),
                                                             pa.field(
                                                                 "almost_flattened_scalar",
-                                                                pa.struct([pa.field("value", pa.float32(), False, {})]),
-                                                                False,
-                                                                {},
+                                                                pa.struct(
+                                                                    [
+                                                                        pa.field(
+                                                                            "value",
+                                                                            pa.float32(),
+                                                                            nullable=False,
+                                                                            metadata={},
+                                                                        )
+                                                                    ]
+                                                                ),
+                                                                nullable=False,
+                                                                metadata={},
                                                             ),
-                                                            pa.field("from_parent", pa.bool_(), True, {}),
+                                                            pa.field(
+                                                                "from_parent", pa.bool_(), nullable=True, metadata={}
+                                                            ),
                                                         ]
                                                     ),
-                                                    False,
-                                                    {},
+                                                    nullable=False,
+                                                    metadata={},
                                                 )
                                             ),
-                                            False,
-                                            {},
+                                            nullable=False,
+                                            metadata={},
                                         ),
                                         pa.field(
                                             "fixed_size_shenanigans",
-                                            pa.list_(pa.field("item", pa.float32(), False, {}), 3),
-                                            False,
-                                            {},
+                                            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                                            nullable=False,
+                                            metadata={},
                                         ),
                                     ]
                                 ),
-                                False,
-                                {},
+                                nullable=False,
+                                metadata={},
                             )
                         ),
-                        False,
-                        {},
+                        nullable=False,
+                        metadata={},
                     ),
                     pa.field(
                         "many_optional",
@@ -506,9 +595,9 @@ class AffixFuzzer4Type(BaseExtensionType):
                                 "item",
                                 pa.dense_union(
                                     [
-                                        pa.field("_null_markers", pa.null(), True, {}),
-                                        pa.field("degrees", pa.float32(), False, {}),
-                                        pa.field("radians", pa.float32(), False, {}),
+                                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                        pa.field("degrees", pa.float32(), nullable=False, metadata={}),
+                                        pa.field("radians", pa.float32(), nullable=False, metadata={}),
                                         pa.field(
                                             "craziness",
                                             pa.list_(
@@ -516,58 +605,101 @@ class AffixFuzzer4Type(BaseExtensionType):
                                                     "item",
                                                     pa.struct(
                                                         [
-                                                            pa.field("single_float_optional", pa.float32(), True, {}),
-                                                            pa.field("single_string_required", pa.utf8(), False, {}),
-                                                            pa.field("single_string_optional", pa.utf8(), True, {}),
+                                                            pa.field(
+                                                                "single_float_optional",
+                                                                pa.float32(),
+                                                                nullable=True,
+                                                                metadata={},
+                                                            ),
+                                                            pa.field(
+                                                                "single_string_required",
+                                                                pa.utf8(),
+                                                                nullable=False,
+                                                                metadata={},
+                                                            ),
+                                                            pa.field(
+                                                                "single_string_optional",
+                                                                pa.utf8(),
+                                                                nullable=True,
+                                                                metadata={},
+                                                            ),
                                                             pa.field(
                                                                 "many_floats_optional",
-                                                                pa.list_(pa.field("item", pa.float32(), True, {})),
-                                                                True,
-                                                                {},
+                                                                pa.list_(
+                                                                    pa.field(
+                                                                        "item", pa.float32(), nullable=True, metadata={}
+                                                                    )
+                                                                ),
+                                                                nullable=True,
+                                                                metadata={},
                                                             ),
                                                             pa.field(
                                                                 "many_strings_required",
-                                                                pa.list_(pa.field("item", pa.utf8(), False, {})),
-                                                                False,
-                                                                {},
+                                                                pa.list_(
+                                                                    pa.field(
+                                                                        "item", pa.utf8(), nullable=False, metadata={}
+                                                                    )
+                                                                ),
+                                                                nullable=False,
+                                                                metadata={},
                                                             ),
                                                             pa.field(
                                                                 "many_strings_optional",
-                                                                pa.list_(pa.field("item", pa.utf8(), True, {})),
-                                                                True,
-                                                                {},
+                                                                pa.list_(
+                                                                    pa.field(
+                                                                        "item", pa.utf8(), nullable=True, metadata={}
+                                                                    )
+                                                                ),
+                                                                nullable=True,
+                                                                metadata={},
                                                             ),
-                                                            pa.field("flattened_scalar", pa.float32(), False, {}),
+                                                            pa.field(
+                                                                "flattened_scalar",
+                                                                pa.float32(),
+                                                                nullable=False,
+                                                                metadata={},
+                                                            ),
                                                             pa.field(
                                                                 "almost_flattened_scalar",
-                                                                pa.struct([pa.field("value", pa.float32(), False, {})]),
-                                                                False,
-                                                                {},
+                                                                pa.struct(
+                                                                    [
+                                                                        pa.field(
+                                                                            "value",
+                                                                            pa.float32(),
+                                                                            nullable=False,
+                                                                            metadata={},
+                                                                        )
+                                                                    ]
+                                                                ),
+                                                                nullable=False,
+                                                                metadata={},
                                                             ),
-                                                            pa.field("from_parent", pa.bool_(), True, {}),
+                                                            pa.field(
+                                                                "from_parent", pa.bool_(), nullable=True, metadata={}
+                                                            ),
                                                         ]
                                                     ),
-                                                    False,
-                                                    {},
+                                                    nullable=False,
+                                                    metadata={},
                                                 )
                                             ),
-                                            False,
-                                            {},
+                                            nullable=False,
+                                            metadata={},
                                         ),
                                         pa.field(
                                             "fixed_size_shenanigans",
-                                            pa.list_(pa.field("item", pa.float32(), False, {}), 3),
-                                            False,
-                                            {},
+                                            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                                            nullable=False,
+                                            metadata={},
                                         ),
                                     ]
                                 ),
-                                True,
-                                {},
+                                nullable=True,
+                                metadata={},
                             )
                         ),
-                        False,
-                        {},
+                        nullable=False,
+                        metadata={},
                     ),
                 ]
             ),
@@ -628,14 +760,14 @@ class AffixFuzzer5Type(BaseExtensionType):
                         "single_optional_union",
                         pa.dense_union(
                             [
-                                pa.field("_null_markers", pa.null(), True, {}),
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
                                 pa.field(
                                     "single_required",
                                     pa.dense_union(
                                         [
-                                            pa.field("_null_markers", pa.null(), True, {}),
-                                            pa.field("degrees", pa.float32(), False, {}),
-                                            pa.field("radians", pa.float32(), False, {}),
+                                            pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                            pa.field("degrees", pa.float32(), nullable=False, metadata={}),
+                                            pa.field("radians", pa.float32(), nullable=False, metadata={}),
                                             pa.field(
                                                 "craziness",
                                                 pa.list_(
@@ -644,59 +776,110 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                         pa.struct(
                                                             [
                                                                 pa.field(
-                                                                    "single_float_optional", pa.float32(), True, {}
+                                                                    "single_float_optional",
+                                                                    pa.float32(),
+                                                                    nullable=True,
+                                                                    metadata={},
                                                                 ),
                                                                 pa.field(
-                                                                    "single_string_required", pa.utf8(), False, {}
+                                                                    "single_string_required",
+                                                                    pa.utf8(),
+                                                                    nullable=False,
+                                                                    metadata={},
                                                                 ),
-                                                                pa.field("single_string_optional", pa.utf8(), True, {}),
+                                                                pa.field(
+                                                                    "single_string_optional",
+                                                                    pa.utf8(),
+                                                                    nullable=True,
+                                                                    metadata={},
+                                                                ),
                                                                 pa.field(
                                                                     "many_floats_optional",
-                                                                    pa.list_(pa.field("item", pa.float32(), True, {})),
-                                                                    True,
-                                                                    {},
+                                                                    pa.list_(
+                                                                        pa.field(
+                                                                            "item",
+                                                                            pa.float32(),
+                                                                            nullable=True,
+                                                                            metadata={},
+                                                                        )
+                                                                    ),
+                                                                    nullable=True,
+                                                                    metadata={},
                                                                 ),
                                                                 pa.field(
                                                                     "many_strings_required",
-                                                                    pa.list_(pa.field("item", pa.utf8(), False, {})),
-                                                                    False,
-                                                                    {},
+                                                                    pa.list_(
+                                                                        pa.field(
+                                                                            "item",
+                                                                            pa.utf8(),
+                                                                            nullable=False,
+                                                                            metadata={},
+                                                                        )
+                                                                    ),
+                                                                    nullable=False,
+                                                                    metadata={},
                                                                 ),
                                                                 pa.field(
                                                                     "many_strings_optional",
-                                                                    pa.list_(pa.field("item", pa.utf8(), True, {})),
-                                                                    True,
-                                                                    {},
+                                                                    pa.list_(
+                                                                        pa.field(
+                                                                            "item",
+                                                                            pa.utf8(),
+                                                                            nullable=True,
+                                                                            metadata={},
+                                                                        )
+                                                                    ),
+                                                                    nullable=True,
+                                                                    metadata={},
                                                                 ),
-                                                                pa.field("flattened_scalar", pa.float32(), False, {}),
+                                                                pa.field(
+                                                                    "flattened_scalar",
+                                                                    pa.float32(),
+                                                                    nullable=False,
+                                                                    metadata={},
+                                                                ),
                                                                 pa.field(
                                                                     "almost_flattened_scalar",
                                                                     pa.struct(
-                                                                        [pa.field("value", pa.float32(), False, {})]
+                                                                        [
+                                                                            pa.field(
+                                                                                "value",
+                                                                                pa.float32(),
+                                                                                nullable=False,
+                                                                                metadata={},
+                                                                            )
+                                                                        ]
                                                                     ),
-                                                                    False,
-                                                                    {},
+                                                                    nullable=False,
+                                                                    metadata={},
                                                                 ),
-                                                                pa.field("from_parent", pa.bool_(), True, {}),
+                                                                pa.field(
+                                                                    "from_parent",
+                                                                    pa.bool_(),
+                                                                    nullable=True,
+                                                                    metadata={},
+                                                                ),
                                                             ]
                                                         ),
-                                                        False,
-                                                        {},
+                                                        nullable=False,
+                                                        metadata={},
                                                     )
                                                 ),
-                                                False,
-                                                {},
+                                                nullable=False,
+                                                metadata={},
                                             ),
                                             pa.field(
                                                 "fixed_size_shenanigans",
-                                                pa.list_(pa.field("item", pa.float32(), False, {}), 3),
-                                                False,
-                                                {},
+                                                pa.list_(
+                                                    pa.field("item", pa.float32(), nullable=False, metadata={}), 3
+                                                ),
+                                                nullable=False,
+                                                metadata={},
                                             ),
                                         ]
                                     ),
-                                    False,
-                                    {},
+                                    nullable=False,
+                                    metadata={},
                                 ),
                                 pa.field(
                                     "many_required",
@@ -705,9 +888,9 @@ class AffixFuzzer5Type(BaseExtensionType):
                                             "item",
                                             pa.dense_union(
                                                 [
-                                                    pa.field("_null_markers", pa.null(), True, {}),
-                                                    pa.field("degrees", pa.float32(), False, {}),
-                                                    pa.field("radians", pa.float32(), False, {}),
+                                                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                                    pa.field("degrees", pa.float32(), nullable=False, metadata={}),
+                                                    pa.field("radians", pa.float32(), nullable=False, metadata={}),
                                                     pa.field(
                                                         "craziness",
                                                         pa.list_(
@@ -718,84 +901,113 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                                         pa.field(
                                                                             "single_float_optional",
                                                                             pa.float32(),
-                                                                            True,
-                                                                            {},
+                                                                            nullable=True,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "single_string_required",
                                                                             pa.utf8(),
-                                                                            False,
-                                                                            {},
+                                                                            nullable=False,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "single_string_optional",
                                                                             pa.utf8(),
-                                                                            True,
-                                                                            {},
+                                                                            nullable=True,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "many_floats_optional",
                                                                             pa.list_(
-                                                                                pa.field("item", pa.float32(), True, {})
+                                                                                pa.field(
+                                                                                    "item",
+                                                                                    pa.float32(),
+                                                                                    nullable=True,
+                                                                                    metadata={},
+                                                                                )
                                                                             ),
-                                                                            True,
-                                                                            {},
+                                                                            nullable=True,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "many_strings_required",
                                                                             pa.list_(
-                                                                                pa.field("item", pa.utf8(), False, {})
+                                                                                pa.field(
+                                                                                    "item",
+                                                                                    pa.utf8(),
+                                                                                    nullable=False,
+                                                                                    metadata={},
+                                                                                )
                                                                             ),
-                                                                            False,
-                                                                            {},
+                                                                            nullable=False,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "many_strings_optional",
                                                                             pa.list_(
-                                                                                pa.field("item", pa.utf8(), True, {})
+                                                                                pa.field(
+                                                                                    "item",
+                                                                                    pa.utf8(),
+                                                                                    nullable=True,
+                                                                                    metadata={},
+                                                                                )
                                                                             ),
-                                                                            True,
-                                                                            {},
+                                                                            nullable=True,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
-                                                                            "flattened_scalar", pa.float32(), False, {}
+                                                                            "flattened_scalar",
+                                                                            pa.float32(),
+                                                                            nullable=False,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "almost_flattened_scalar",
                                                                             pa.struct(
                                                                                 [
                                                                                     pa.field(
-                                                                                        "value", pa.float32(), False, {}
+                                                                                        "value",
+                                                                                        pa.float32(),
+                                                                                        nullable=False,
+                                                                                        metadata={},
                                                                                     )
                                                                                 ]
                                                                             ),
-                                                                            False,
-                                                                            {},
+                                                                            nullable=False,
+                                                                            metadata={},
                                                                         ),
-                                                                        pa.field("from_parent", pa.bool_(), True, {}),
+                                                                        pa.field(
+                                                                            "from_parent",
+                                                                            pa.bool_(),
+                                                                            nullable=True,
+                                                                            metadata={},
+                                                                        ),
                                                                     ]
                                                                 ),
-                                                                False,
-                                                                {},
+                                                                nullable=False,
+                                                                metadata={},
                                                             )
                                                         ),
-                                                        False,
-                                                        {},
+                                                        nullable=False,
+                                                        metadata={},
                                                     ),
                                                     pa.field(
                                                         "fixed_size_shenanigans",
-                                                        pa.list_(pa.field("item", pa.float32(), False, {}), 3),
-                                                        False,
-                                                        {},
+                                                        pa.list_(
+                                                            pa.field("item", pa.float32(), nullable=False, metadata={}),
+                                                            3,
+                                                        ),
+                                                        nullable=False,
+                                                        metadata={},
                                                     ),
                                                 ]
                                             ),
-                                            False,
-                                            {},
+                                            nullable=False,
+                                            metadata={},
                                         )
                                     ),
-                                    False,
-                                    {},
+                                    nullable=False,
+                                    metadata={},
                                 ),
                                 pa.field(
                                     "many_optional",
@@ -804,9 +1016,9 @@ class AffixFuzzer5Type(BaseExtensionType):
                                             "item",
                                             pa.dense_union(
                                                 [
-                                                    pa.field("_null_markers", pa.null(), True, {}),
-                                                    pa.field("degrees", pa.float32(), False, {}),
-                                                    pa.field("radians", pa.float32(), False, {}),
+                                                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                                    pa.field("degrees", pa.float32(), nullable=False, metadata={}),
+                                                    pa.field("radians", pa.float32(), nullable=False, metadata={}),
                                                     pa.field(
                                                         "craziness",
                                                         pa.list_(
@@ -817,89 +1029,118 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                                         pa.field(
                                                                             "single_float_optional",
                                                                             pa.float32(),
-                                                                            True,
-                                                                            {},
+                                                                            nullable=True,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "single_string_required",
                                                                             pa.utf8(),
-                                                                            False,
-                                                                            {},
+                                                                            nullable=False,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "single_string_optional",
                                                                             pa.utf8(),
-                                                                            True,
-                                                                            {},
+                                                                            nullable=True,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "many_floats_optional",
                                                                             pa.list_(
-                                                                                pa.field("item", pa.float32(), True, {})
+                                                                                pa.field(
+                                                                                    "item",
+                                                                                    pa.float32(),
+                                                                                    nullable=True,
+                                                                                    metadata={},
+                                                                                )
                                                                             ),
-                                                                            True,
-                                                                            {},
+                                                                            nullable=True,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "many_strings_required",
                                                                             pa.list_(
-                                                                                pa.field("item", pa.utf8(), False, {})
+                                                                                pa.field(
+                                                                                    "item",
+                                                                                    pa.utf8(),
+                                                                                    nullable=False,
+                                                                                    metadata={},
+                                                                                )
                                                                             ),
-                                                                            False,
-                                                                            {},
+                                                                            nullable=False,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "many_strings_optional",
                                                                             pa.list_(
-                                                                                pa.field("item", pa.utf8(), True, {})
+                                                                                pa.field(
+                                                                                    "item",
+                                                                                    pa.utf8(),
+                                                                                    nullable=True,
+                                                                                    metadata={},
+                                                                                )
                                                                             ),
-                                                                            True,
-                                                                            {},
+                                                                            nullable=True,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
-                                                                            "flattened_scalar", pa.float32(), False, {}
+                                                                            "flattened_scalar",
+                                                                            pa.float32(),
+                                                                            nullable=False,
+                                                                            metadata={},
                                                                         ),
                                                                         pa.field(
                                                                             "almost_flattened_scalar",
                                                                             pa.struct(
                                                                                 [
                                                                                     pa.field(
-                                                                                        "value", pa.float32(), False, {}
+                                                                                        "value",
+                                                                                        pa.float32(),
+                                                                                        nullable=False,
+                                                                                        metadata={},
                                                                                     )
                                                                                 ]
                                                                             ),
-                                                                            False,
-                                                                            {},
+                                                                            nullable=False,
+                                                                            metadata={},
                                                                         ),
-                                                                        pa.field("from_parent", pa.bool_(), True, {}),
+                                                                        pa.field(
+                                                                            "from_parent",
+                                                                            pa.bool_(),
+                                                                            nullable=True,
+                                                                            metadata={},
+                                                                        ),
                                                                     ]
                                                                 ),
-                                                                False,
-                                                                {},
+                                                                nullable=False,
+                                                                metadata={},
                                                             )
                                                         ),
-                                                        False,
-                                                        {},
+                                                        nullable=False,
+                                                        metadata={},
                                                     ),
                                                     pa.field(
                                                         "fixed_size_shenanigans",
-                                                        pa.list_(pa.field("item", pa.float32(), False, {}), 3),
-                                                        False,
-                                                        {},
+                                                        pa.list_(
+                                                            pa.field("item", pa.float32(), nullable=False, metadata={}),
+                                                            3,
+                                                        ),
+                                                        nullable=False,
+                                                        metadata={},
                                                     ),
                                                 ]
                                             ),
-                                            True,
-                                            {},
+                                            nullable=True,
+                                            metadata={},
                                         )
                                     ),
-                                    False,
-                                    {},
+                                    nullable=False,
+                                    metadata={},
                                 ),
                             ]
                         ),
-                        True,
-                        {},
+                        nullable=True,
+                        metadata={},
                     )
                 ]
             ),
@@ -956,7 +1197,12 @@ class AffixFuzzer20Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct([pa.field("p", pa.uint32(), False, {}), pa.field("s", pa.utf8(), False, {})]),
+            pa.struct(
+                [
+                    pa.field("p", pa.uint32(), nullable=False, metadata={}),
+                    pa.field("s", pa.utf8(), nullable=False, metadata={}),
+                ]
+            ),
             "rerun.testing.datatypes.AffixFuzzer20",
         )
 

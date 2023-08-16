@@ -135,7 +135,15 @@ impl crate::Loggable for RotationAxisAngle {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let axis_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let axis_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                                axis_bitmap.as_ref().map(|bitmap| {
+                                    bitmap
+                                        .iter()
+                                        .map(|i| std::iter::repeat(i).take(3usize))
+                                        .flatten()
+                                        .collect::<Vec<_>>()
+                                        .into()
+                                });
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;

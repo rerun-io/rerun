@@ -45,7 +45,7 @@ Mat3x3ArrayLike = Union[
 class Mat3x3Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), False, {}), 9), "rerun.datatypes.Mat3x3"
+            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9), "rerun.datatypes.Mat3x3"
         )
 
 

@@ -604,6 +604,34 @@ fn quote_arrow_field_serializer(
                 }
             };
 
+            // TODO(https://github.com/rerun-io/rerun/issues/2993): The inner
+            // types of lists shouldn't be nullable, but both the python and C++
+            // code-gen end up setting these to null when an outer fixed-sized
+            // field does happen to be null. In order to keep everything aligned
+            // at a validation level we match this behavior and create a
+            // validity-mask for the corresponding inner type. We can undo this
+            // if we make the C++ and Python codegen match the rust behavior or
+            // make our comparison tests more lenient.
+            let quoted_inner_bitmap =
+                if let DataType::FixedSizeList(_, count) = datatype.to_logical_type() {
+                    quote! {
+                        let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                            #bitmap_src.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(#count))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
+                    }
+                } else {
+                    // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
+                    quote! {
+                        let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                    }
+                };
+
             // TODO(cmc): We should be checking this, but right now we don't because we don't
             // support intra-list nullability.
             _ = is_nullable;
@@ -615,8 +643,7 @@ fn quote_arrow_field_serializer(
                         .iter()
                         #quoted_transparent_mapping
 
-                    // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
-                    let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                    #quoted_inner_bitmap
 
                     #quoted_create
                 }},
@@ -631,8 +658,7 @@ fn quote_arrow_field_serializer(
                         .map(Some)
                         .collect();
 
-                    // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
-                    let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                    #quoted_inner_bitmap
 
                     #quoted_create
                 }},

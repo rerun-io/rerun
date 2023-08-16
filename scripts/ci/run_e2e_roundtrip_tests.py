@@ -56,7 +56,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Building rerun-sdk for Python…")
         start_time = time.time()
-        returncode = subprocess.Popen(["just", "py-build"], env=build_env).wait()
+        returncode = subprocess.Popen(["just", "py-build", "--quiet"], env=build_env).wait()
         assert returncode == 0, f"Python rerun-sdk build failed with exit code {returncode}"
         elapsed = time.time() - start_time
         print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
@@ -73,7 +73,7 @@ def main() -> None:
         if args.release:
             build_type = "Release"
         configure_args = ["cmake", f"-DCMAKE_BUILD_TYPE={build_type}", "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON", ".."]
-        print(subprocess.list2cmdline(configure_args))
+        print("> ${subprocess.list2cmdline(configure_args)}")
         returncode = subprocess.Popen(
             configure_args,
             env=build_env,
@@ -117,7 +117,7 @@ def run_roundtrip_python(arch: str) -> str:
 
     cmd = [python_executable, main_path, "--save", output_path]
 
-    print(cmd)
+    print(f"\n> {subprocess.list2cmdline(cmd)}")
     roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = roundtrip_process.wait(timeout=30)
     assert returncode == 0, f"python roundtrip process exited with error code {returncode}"
@@ -129,7 +129,7 @@ def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir:
     project_name = f"roundtrip_{arch}"
     output_path = f"tests/rust/roundtrips/{arch}/out.rrd"
 
-    cmd = ["cargo", "r", "-p", project_name]
+    cmd = ["cargo", "run", "--quiet", "-p", project_name]
 
     if target is not None:
         cmd += ["--target", target]
@@ -142,7 +142,7 @@ def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir:
 
     cmd += ["--", "--save", output_path]
 
-    print(cmd)
+    print(f"\n> {subprocess.list2cmdline(cmd)}")
     roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = roundtrip_process.wait(timeout=12000)
     assert returncode == 0, f"rust roundtrip process exited with error code {returncode}"
@@ -157,7 +157,7 @@ def run_roundtrip_cpp(arch: str, release: bool) -> str:
     cmake_build(target_name, release)
 
     cmd = [f"./build/tests/cpp/roundtrips/{target_name}", output_path]
-    print(cmd)
+    print(f"\n> {subprocess.list2cmdline(cmd)}")
     roundtrip_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = roundtrip_process.wait(timeout=12000)
     assert returncode == 0, f"cpp roundtrip process exited with error code {returncode}"
@@ -181,7 +181,7 @@ def cmake_build(target: str, release: bool) -> None:
         "--parallel",
         str(multiprocessing.cpu_count()),
     ]
-    print(subprocess.list2cmdline(build_process_args))
+    print(f"\n> {subprocess.list2cmdline(build_process_args)}")
     result = subprocess.run(build_process_args, cwd="build")
 
     assert result.returncode == 0, f"cmake build of {target} exited with error code {result.returncode}"
@@ -193,7 +193,7 @@ def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
         cmd += ["--full-dump"]
     cmd += [rrd0_path, rrd1_path]
 
-    print(cmd)
+    print(f"\n> {subprocess.list2cmdline(cmd)}")
     comparison_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = comparison_process.wait(timeout=30)
     assert returncode == 0, f"comparison process exited with error code {returncode}"

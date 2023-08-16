@@ -99,14 +99,22 @@ class TranslationRotationScale3DType(BaseExtensionType):
             self,
             pa.struct(
                 [
-                    pa.field("translation", pa.list_(pa.field("item", pa.float32(), False, {}), 3), True, {}),
+                    pa.field(
+                        "translation",
+                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                        nullable=True,
+                        metadata={},
+                    ),
                     pa.field(
                         "rotation",
                         pa.dense_union(
                             [
-                                pa.field("_null_markers", pa.null(), True, {}),
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
                                 pa.field(
-                                    "Quaternion", pa.list_(pa.field("item", pa.float32(), False, {}), 4), False, {}
+                                    "Quaternion",
+                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4),
+                                    nullable=False,
+                                    metadata={},
                                 ),
                                 pa.field(
                                     "AxisAngle",
@@ -114,45 +122,54 @@ class TranslationRotationScale3DType(BaseExtensionType):
                                         [
                                             pa.field(
                                                 "axis",
-                                                pa.list_(pa.field("item", pa.float32(), False, {}), 3),
-                                                False,
-                                                {},
+                                                pa.list_(
+                                                    pa.field("item", pa.float32(), nullable=False, metadata={}), 3
+                                                ),
+                                                nullable=False,
+                                                metadata={},
                                             ),
                                             pa.field(
                                                 "angle",
                                                 pa.dense_union(
                                                     [
-                                                        pa.field("_null_markers", pa.null(), True, {}),
-                                                        pa.field("Radians", pa.float32(), False, {}),
-                                                        pa.field("Degrees", pa.float32(), False, {}),
+                                                        pa.field(
+                                                            "_null_markers", pa.null(), nullable=True, metadata={}
+                                                        ),
+                                                        pa.field("Radians", pa.float32(), nullable=False, metadata={}),
+                                                        pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
                                                     ]
                                                 ),
-                                                False,
-                                                {},
+                                                nullable=False,
+                                                metadata={},
                                             ),
                                         ]
                                     ),
-                                    False,
-                                    {},
+                                    nullable=False,
+                                    metadata={},
                                 ),
                             ]
                         ),
-                        True,
-                        {},
+                        nullable=True,
+                        metadata={},
                     ),
                     pa.field(
                         "scale",
                         pa.dense_union(
                             [
-                                pa.field("_null_markers", pa.null(), True, {}),
-                                pa.field("ThreeD", pa.list_(pa.field("item", pa.float32(), False, {}), 3), False, {}),
-                                pa.field("Uniform", pa.float32(), False, {}),
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                pa.field(
+                                    "ThreeD",
+                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                                    nullable=False,
+                                    metadata={},
+                                ),
+                                pa.field("Uniform", pa.float32(), nullable=False, metadata={}),
                             ]
                         ),
-                        True,
-                        {},
+                        nullable=True,
+                        metadata={},
                     ),
-                    pa.field("from_parent", pa.bool_(), False, {}),
+                    pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
                 ]
             ),
             "rerun.datatypes.TranslationRotationScale3D",

@@ -2177,7 +2177,14 @@ impl crate::Loggable for AffixFuzzer3 {
                                 .collect();
                             let fixed_size_shenanigans_inner_bitmap: Option<
                                 ::arrow2::bitmap::Bitmap,
-                            > = None;
+                            > = fixed_size_shenanigans_bitmap.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(3usize))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;
