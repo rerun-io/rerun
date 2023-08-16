@@ -58,7 +58,7 @@ jobs:
   # ---------------------------------------------------------------------------
 
   set-config:
-    name: Set Config
+    name: Set Config (${{ inputs.PLATFORM }})
     runs-on: ubuntu-latest-16-cores
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
@@ -104,7 +104,7 @@ jobs:
   # ---------------------------------------------------------------------------
 
   build-wheels:
-    name: Build Wheels
+    name: Build Wheels (${{ needs.set-config.outputs.RUNNER }})
 
     needs: [set-config]
 
