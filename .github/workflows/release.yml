@@ -40,6 +40,7 @@ jobs:
       previous: ${{ steps.versioning.outputs.previous }}
       current: ${{ steps.versioning.outputs.current }}
       final: ${{ steps.versioning.outputs.final }}
+      release-commit: ${{ steps.create-pull-request.outputs.pull-request-head-sha }}
 
     steps:
       - name: Checkout repository
@@ -87,6 +88,7 @@ jobs:
           echo "final=$final"       >> "$GITHUB_OUTPUT"
 
       - name: Create pull request
+        id: create-pull-request
         uses: peter-evans/create-pull-request@v5.0.2
         if: steps.versioning.outputs.previous != steps.versioning.outputs.current
         with:
@@ -159,7 +161,7 @@ jobs:
       PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'prerelease' && 'prerelease' || needs.version.outputs.final }}
       RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'prerelease' && 'prerelease' || 'head' }}
       UPDATE_LATEST: ${{ inputs.release-type == 'release' }}
-      RELEASE_COMMIT: ${{ github.sha }}
+      RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
   publish-crates:
@@ -168,6 +170,7 @@ jobs:
     uses: ./.github/workflows/reusable_release_crates.yml
     with:
       CONCURRENCY: ${{ github.ref_name }}
+      RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
   build-and-publish-wheels:
@@ -179,6 +182,7 @@ jobs:
       concurrency: ${{ github.ref_name }}
       linux-wheel-name: linux-wheel
       linux-rrd-name: linux-rrd
+      release-commit: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
   build-and-publish-web:
@@ -187,6 +191,7 @@ jobs:
     uses: ./.github/workflows/reusable_build_and_publish_web.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
+      release-commit: ${{ needs.version.outputs.release-commit }}
       concurrency: ${{ github.ref_name }}
       wheel-artifact-name: linux-wheel
       rrd-artifact-name: linux-rrd
@@ -201,14 +206,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.version.outputs.release-commit }}
 
       - name: Update latest branch
         run: |
           git fetch
           git checkout ${{ github.ref_name }}
           git push --force origin ${{ github.ref_name }}:latest
-          git commit -m "Update docs for ${GITHUB_SHA}"
-          git push origin gh-pages-orphan:gh-pages -f
 
   post-release-version-bump:
     name: "Post-release Version Bump"
@@ -216,6 +221,11 @@ jobs:
     needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
       - name: Install dependencies
         run: |
           python3 -m pip install -r scripts/ci/requirements.txt
