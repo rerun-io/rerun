@@ -41,7 +41,7 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.concurrency }}
+      CONCURRENCY: wheels-build-linux-${{ inputs.concurrency }}
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
@@ -53,7 +53,7 @@ jobs:
     needs: [build-linux]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.concurrency }}
+      CONCURRENCY: wheels-upload-linux-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
     secrets: inherit
@@ -64,7 +64,7 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.concurrency }}
+      CONCURRENCY: wheels-build-windows-${{ inputs.concurrency }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ""
@@ -76,7 +76,7 @@ jobs:
     needs: [build-linux, build-windows]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.concurrency }}
+      CONCURRENCY: wheels-upload-windows-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
     secrets: inherit
@@ -87,7 +87,7 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.concurrency }}
+      CONCURRENCY: wheels-build-macos-arm-${{ inputs.concurrency }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ""
@@ -99,7 +99,7 @@ jobs:
     needs: [build-linux, build-macos-arm]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.concurrency }}
+      CONCURRENCY: wheels-upload-macos-arm-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
     secrets: inherit
@@ -110,7 +110,7 @@ jobs:
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.concurrency }}
+      CONCURRENCY: wheels-build-macos-intel-${{ inputs.concurrency }}
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
       RRD_ARTIFACT_NAME: ""
@@ -122,7 +122,7 @@ jobs:
     needs: [build-linux, build-macos-intel]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: ${{ inputs.concurrency }}
+      CONCURRENCY: wheels-upload-macos-intel-${{ inputs.concurrency }}
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
       RRD_ARTIFACT_NAME: ${{ inputs.linux-rrd-name }}
     secrets: inherit
@@ -138,7 +138,7 @@ jobs:
       ]
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
-      CONCURRENCY: ${{ inputs.concurrency }}
+      CONCURRENCY: generate-wheel-index-${{ inputs.concurrency }}
     secrets: inherit
 
   publish-wheels:
