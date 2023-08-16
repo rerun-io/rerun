@@ -13,6 +13,9 @@ on:
         required: false
         type: string
         default: "head"
+      RELEASE_COMMIT:
+        required: false
+        type: string
       UPDATE_LATEST:
         required: false
         type: boolean
@@ -49,6 +52,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Don't do a shallow clone
+          ref: ${{ inputs.RELEASE_COMMIT || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -119,6 +123,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
+          ref: ${{ inputs.RELEASE_COMMIT || github.sha }}
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -159,4 +164,21 @@ jobs:
         run: |
           git fetch
           python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
+
+  redeploy-rerun-io:
+    runs-on: ubuntu-latest
+    if: inputs.UPDATE_LATEST
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Re-deploy rerun.io
+        uses: ./.github/actions/deploy-vercel
+        with:
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
+          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          release_commit: ${{ inputs.RELEASE_COMMIT }}
 

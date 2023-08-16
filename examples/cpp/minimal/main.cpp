@@ -18,8 +18,8 @@ int main(int argc, char** argv) {
 
     rr_stream.log(
         "3d/points",
-        rr::archetypes::Points3D({{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}})
-            .with_radii({0.42, 0.43})
+        rr::archetypes::Points3D({{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})
+            .with_radii({0.42f, 0.43f})
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({"hello", "friend"})
             .with_class_ids({126, 127})
@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     rrc::Label c_style_array[3] = {rrc::Label("hello"), rrc::Label("friend"), rrc::Label("yo")};
     rr_stream.log_components(
         "2d/points",
-        std::vector{rrc::Point2D(0.0, 0.0), rrc::Point2D(1.0, 3.0), rrc::Point2D(5.0, 5.0)},
+        std::vector{rrc::Point2D(0.0f, 0.0f), rrc::Point2D(1.0f, 3.0f), rrc::Point2D(5.0f, 5.0f)},
         std::array{rrc::Color(0xFF0000FF), rrc::Color(0x00FF00FF), rrc::Color(0x0000FFFF)},
         c_style_array
     );

@@ -76,18 +76,10 @@ impl StoreHub {
                     .as_ref()
                     .and_then(|id| self.store_dbs.recording(id));
 
-                // TODO(antoine): The below filter will limit our recording view to the current
-                // `ApplicationId`. Leaving this commented out for now since that is a bigger
-                // behavioral change we might want to plan/communicate around as it breaks things
-                // like --split-recordings in the api_demo.
                 StoreContext {
                     blueprint,
                     recording,
-                    alternate_recordings: self
-                        .store_dbs
-                        .recordings()
-                        //.filter(|rec| rec.app_id() == self.application_id.as_ref())
-                        .collect_vec(),
+                    alternate_recordings: self.store_dbs.recordings().collect_vec(),
                 }
             })
     }
@@ -109,10 +101,12 @@ impl StoreHub {
     }
 
     pub fn remove_recording_id(&mut self, recording_id: &StoreId) {
-        if let Some(new_selection) = self.store_dbs.find_closest_recording(recording_id) {
-            self.set_recording_id(new_selection.clone());
-        } else {
-            self.selected_rec_id = None;
+        if self.selected_rec_id.as_ref() == Some(recording_id) {
+            if let Some(new_selection) = self.store_dbs.find_closest_recording(recording_id) {
+                self.set_recording_id(new_selection.clone());
+            } else {
+                self.selected_rec_id = None;
+            }
         }
 
         self.store_dbs.remove(recording_id);

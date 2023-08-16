@@ -117,7 +117,7 @@ fn color_tensor_to_gpu(
         super::tensor_data_range_heuristic(tensor_stats, tensor.data.dtype())?
     };
 
-    let color_mapper = if re_renderer::texture_info::num_texture_components(texture_format) == 1 {
+    let color_mapper = if texture_format.components() == 1 {
         // Single-channel images = luminance = grayscale
         Some(ColorMapper::Function(re_renderer::Colormap::Grayscale))
     } else {

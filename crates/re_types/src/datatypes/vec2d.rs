@@ -90,7 +90,15 @@ impl crate::Loggable for Vec2D {
                     .cloned()
                     .map(Some)
                     .collect();
-                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                    data0_bitmap.as_ref().map(|bitmap| {
+                        bitmap
+                            .iter()
+                            .map(|i| std::iter::repeat(i).take(2usize))
+                            .flatten()
+                            .collect::<Vec<_>>()
+                            .into()
+                    });
                 FixedSizeListArray::new(
                     {
                         _ = extension_wrapper;
@@ -143,7 +151,7 @@ impl crate::Loggable for Vec2D {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -227,7 +235,7 @@ impl crate::Loggable for Vec2D {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }

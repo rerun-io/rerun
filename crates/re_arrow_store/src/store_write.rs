@@ -453,10 +453,10 @@ impl IndexedBucket {
 
         // insert auto-generated cluster cell if present
         if let Some(cluster_cell) = generated_cluster_cell {
-            let component = cluster_cell.component_name();
-            let column = columns.entry(component).or_insert_with(|| {
+            let component_name = cluster_cell.component_name();
+            let column = columns.entry(component_name).or_insert_with(|| {
                 let column = DataCellColumn::empty(num_rows);
-                size_bytes_added += component.total_size_bytes();
+                size_bytes_added += component_name.total_size_bytes();
                 size_bytes_added += column.total_size_bytes();
                 column
             });
@@ -468,10 +468,10 @@ impl IndexedBucket {
 
         // 2-way merge, step 1: left-to-right
         for cell in row.cells().iter() {
-            let component = cell.component_name();
-            let column = columns.entry(component).or_insert_with(|| {
+            let component_name = cell.component_name();
+            let column = columns.entry(component_name).or_insert_with(|| {
                 let column = DataCellColumn::empty(col_time.len().saturating_sub(1));
-                size_bytes_added += component.total_size_bytes();
+                size_bytes_added += component_name.total_size_bytes();
                 size_bytes_added += column.total_size_bytes();
                 column
             });
@@ -482,13 +482,13 @@ impl IndexedBucket {
         // 2-way merge, step 2: right-to-left
         //
         // fill unimpacted columns with null values
-        for (component, column) in &mut *columns {
+        for (component_name, column) in &mut *columns {
             // The cluster key always gets added one way or another, don't try to force fill it!
-            if *component == self.cluster_key {
+            if *component_name == self.cluster_key {
                 continue;
             }
 
-            if !components.contains(component) {
+            if !components.contains(component_name) {
                 let none_cell: Option<DataCell> = None;
                 size_bytes_added += none_cell.total_size_bytes();
                 column.0.push(none_cell);

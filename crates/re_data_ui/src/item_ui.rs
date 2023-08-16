@@ -105,10 +105,84 @@ pub fn instance_path_button_to(
         .on_hover_ui(|ui| {
             ui.strong(subtype_string);
             ui.label(format!("Path: {instance_path}"));
-            instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+
+            // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
+            // Then we can move the size view into `data_ui`.
+            let query = ctx.current_query();
+
+            if instance_path.instance_key.is_splat() {
+                let store = &ctx.store_db.entity_db.data_store;
+                let stats = store.entity_stats(query.timeline, instance_path.entity_path.hash());
+                entity_stats_ui(ui, &query.timeline, &stats);
+            } else {
+                // TODO(emilk): per-component stats
+            }
+
+            instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &query);
         });
 
     cursor_interact_with_selectable(ctx, response, item)
+}
+
+fn entity_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, stats: &re_arrow_store::EntityStats) {
+    use re_format::format_bytes;
+
+    let total_bytes = stats.size_bytes + stats.timelines_size_bytes;
+
+    if total_bytes == 0 {
+        return;
+    }
+
+    // `num_events` is approximate - we could be logging a Tensor image and a transform
+    // at approximately the same time. That should only count as one fence-post.
+    let num_events = stats.num_rows;
+
+    if stats.time_range.min < stats.time_range.max && 1 < num_events {
+        // Estimate a data rate.
+        //
+        // Let's do our best to avoid fencepost errors.
+        // If we log 1 MiB every second, then after three
+        // events we have a span of 2 seconds, and 3 MiB,
+        // but the data rate is still 1 MiB/s.
+        //
+        //          <-----2 sec----->
+        // t:       0s      1s      2s
+        // data:   1MiB    1MiB    1MiB
+
+        let duration = stats.time_range.abs_length();
+
+        let mut bytes_per_time = stats.size_bytes as f64 / duration as f64;
+
+        // Fencepost adjustment:
+        bytes_per_time *= (num_events - 1) as f64 / num_events as f64;
+
+        let data_rate = match timeline.typ() {
+            re_log_types::TimeType::Time => {
+                let bytes_per_second = 1e9 * bytes_per_time;
+
+                format!(
+                    "{}/s in {}",
+                    format_bytes(bytes_per_second),
+                    timeline.name()
+                )
+            }
+
+            re_log_types::TimeType::Sequence => {
+                format!("{} / {}", format_bytes(bytes_per_time), timeline.name())
+            }
+        };
+
+        ui.label(format!(
+            "Using {} in total ≈ {}",
+            format_bytes(total_bytes as f64),
+            data_rate
+        ));
+    } else {
+        ui.label(format!(
+            "Using {} in total",
+            format_bytes(total_bytes as f64)
+        ));
+    }
 }
 
 /// Show a component path and make it selectable.

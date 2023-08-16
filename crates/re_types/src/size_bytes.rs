@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
 use arrow2::datatypes::{DataType, Field};
-use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 // ---
@@ -255,6 +254,7 @@ fn validity_size(validity: Option<&Bitmap>) -> usize {
 }
 
 /// Returns the total (heap) allocated size of the array in bytes.
+///
 /// # Implementation
 /// This estimation is the sum of the size of its buffers, validity, including nested arrays.
 /// Multiple arrays may share buffers and bitmaps. Therefore, the size of 2 arrays is not the
@@ -266,8 +266,13 @@ fn validity_size(validity: Option<&Bitmap>) -> usize {
 ///
 /// FFI buffers are included in this estimation.
 fn estimated_bytes_size(array: &dyn Array) -> usize {
+    // NOTE: `.len()` is the number of elements in an arrow2 buffer
+    // no matter WHAT the documentation says.
+    // See https://github.com/jorgecarleitao/arrow2/issues/1430
+
     #[allow(clippy::enum_glob_use)]
     use PhysicalType::*;
+
     match array.data_type().to_physical_type() {
         Null => 0,
         Boolean => {
@@ -326,14 +331,9 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
         Union => {
             let array = array.as_any().downcast_ref::<UnionArray>().unwrap();
 
-            let types = array.types().len() * std::mem::size_of::<i8>();
-            let offsets = array
-                .offsets()
-                .as_ref()
-                .map(|x| x.len() * std::mem::size_of::<i32>())
-                .unwrap_or_default();
+            let types_size = array.types().len() * std::mem::size_of::<i8>();
 
-            let fields = if let Some(offsets) = array.offsets() {
+            if let Some(offsets) = array.offsets() {
                 // https://arrow.apache.org/docs/format/Columnar.html#dense-union:
                 //
                 // Dense union represents a mixed-type array with 5 bytes of overhead for each
@@ -347,36 +347,46 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 //   The respective offsets for each child value array must be in
                 //   order / increasing.
 
-                if offsets.is_empty() {
-                    return 0;
+                /// The range of offsets for a given type id.
+                #[derive(Debug)]
+                struct Range {
+                    /// Inclusive
+                    min: i32,
+
+                    /// Inclusive
+                    max: i32,
                 }
 
-                let fields = array.fields();
-                let types: IntSet<_> = array.types().iter().copied().collect();
-                types
-                    .into_iter()
-                    .map(|cur_ty| {
-                        let mut indices = array
-                            .types()
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(idx, &ty)| (ty == cur_ty).then_some(idx));
+                // The range of offsets for a given type id.
+                let mut type_ranges: BTreeMap<i8, Range> = Default::default();
 
-                        let idx_start = indices.next().unwrap_or_default();
-                        let mut idx_end = idx_start;
-                        for idx in indices {
-                            idx_end = idx;
-                        }
-
-                        let values_start = offsets[idx_start] as usize;
-                        let values_end = offsets[idx_end] as usize;
-                        fields.get(cur_ty as usize).map_or(0, |x| {
-                            estimated_bytes_size(
-                                x.sliced(values_start, values_end - values_start).as_ref(),
-                            )
+                debug_assert_eq!(array.types().len(), offsets.len());
+                for (&type_id, &offset) in array.types().iter().zip(offsets.iter()) {
+                    // Offsets are monotonically increasing
+                    type_ranges
+                        .entry(type_id)
+                        .and_modify(|range| {
+                            range.max = offset;
                         })
-                    })
-                    .sum::<usize>()
+                        .or_insert(Range {
+                            min: offset,
+                            max: offset,
+                        });
+                }
+
+                let mut fields_size = 0;
+                for (type_id, range) in type_ranges {
+                    if let Some(field) = array.fields().get(type_id as usize) {
+                        let len = range.max - range.min + 1; // range is inclusive
+                        fields_size += estimated_bytes_size(
+                            field.sliced(range.min as usize, len as usize).as_ref(),
+                        );
+                    }
+                }
+
+                let offsets_size = offsets.len() * std::mem::size_of::<i32>();
+
+                types_size + offsets_size + fields_size
             } else {
                 // https://arrow.apache.org/docs/format/Columnar.html#sparse-union:
                 //
@@ -391,14 +401,14 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 // - Equal-length arrays can be interpreted as a union by only defining the types
                 //   array.
 
-                array
+                let num_elems = array.types().len();
+                let fields_size = array
                     .fields()
                     .iter()
-                    .map(|x| estimated_bytes_size(x.sliced(0, array.len()).as_ref()))
-                    .sum::<usize>()
-            };
-
-            types + offsets + fields
+                    .map(|x| estimated_bytes_size(x.sliced(0, num_elems).as_ref()))
+                    .sum::<usize>();
+                types_size + fields_size
+            }
         }
         Dictionary(key_type) => match_integer_type!(key_type, |$T| {
             let array = array
@@ -429,9 +439,11 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
 fn test_arrow_estimated_size_bytes() {
     use arrow2::{
         array::{Array, Float64Array, ListArray, StructArray, UInt64Array, Utf8Array},
-        datatypes::{DataType, Field},
+        buffer::Buffer,
+        datatypes::{DataType, Field, UnionMode},
         offset::Offsets,
     };
+    use std::mem::size_of;
 
     // empty primitive array
     {
@@ -581,5 +593,26 @@ fn test_arrow_estimated_size_bytes() {
 
         assert_eq!(81200, raw_size_bytes);
         assert_eq!(80204, arrow_size_bytes); // smaller because smaller inner headers
+    }
+
+    // Dense union, `enum { i(i32), f(f32) }`
+    {
+        let fields = vec![
+            Field::new("i", DataType::Int32, false),
+            Field::new("f", DataType::Float64, false),
+        ];
+        let data_type = DataType::Union(fields, Some(vec![0i32, 1i32]), UnionMode::Dense);
+        let types = Buffer::<i8>::from(vec![0i8, 0i8, 1i8, 0i8, 1i8]);
+        let fields = vec![
+            PrimitiveArray::<i32>::from_vec(vec![0, 1, 2]).boxed(),
+            PrimitiveArray::<f64>::from_vec(vec![0.0, 1.0]).boxed(),
+        ];
+        let offsets = vec![0, 1, 0, 2, 1];
+        let array = UnionArray::new(data_type, types, fields, Some(offsets.into())).boxed();
+
+        let raw_size_bytes = 5 + 3 * size_of::<i32>() + 2 * size_of::<f64>() + 5 * size_of::<i32>();
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(raw_size_bytes, arrow_size_bytes);
     }
 }

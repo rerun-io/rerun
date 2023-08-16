@@ -1086,6 +1086,26 @@ impl ElementType {
             Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
         }
     }
+
+    /// Is this type directly backed by a native arrow `Buffer`. This means the data can
+    /// be returned using a `re_types::ArrowBuffer` which facilitates direct zero-copy access to
+    /// a slice representation.
+    pub fn backed_by_arrow_buffer(&self) -> bool {
+        match self {
+            Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64 => true,
+            Self::Bool | Self::Object(_) | Self::String => false,
+        }
+    }
 }
 
 // --- Common ---

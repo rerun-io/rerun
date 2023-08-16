@@ -65,18 +65,23 @@ class RotationAxisAngleType(BaseExtensionType):
             self,
             pa.struct(
                 [
-                    pa.field("axis", pa.list_(pa.field("item", pa.float32(), False, {}), 3), False, {}),
+                    pa.field(
+                        "axis",
+                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                        nullable=False,
+                        metadata={},
+                    ),
                     pa.field(
                         "angle",
                         pa.dense_union(
                             [
-                                pa.field("_null_markers", pa.null(), True, {}),
-                                pa.field("Radians", pa.float32(), False, {}),
-                                pa.field("Degrees", pa.float32(), False, {}),
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                pa.field("Radians", pa.float32(), nullable=False, metadata={}),
+                                pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
                             ]
                         ),
-                        False,
-                        {},
+                        nullable=False,
+                        metadata={},
                     ),
                 ]
             ),

@@ -46,7 +46,9 @@ Vec4DArrayLike = Union[
 
 class Vec4DType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.list_(pa.field("item", pa.float32(), False, {}), 4), "rerun.datatypes.Vec4D")
+        pa.ExtensionType.__init__(
+            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4), "rerun.datatypes.Vec4D"
+        )
 
 
 class Vec4DArray(BaseExtensionArray[Vec4DArrayLike]):

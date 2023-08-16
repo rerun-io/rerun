@@ -47,8 +47,8 @@ namespace rerun {
             {
                 auto field_builder =
                     static_cast<arrow::FixedSizeListBuilder *>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].axis,
@@ -59,8 +59,8 @@ namespace rerun {
             {
                 auto field_builder =
                     static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(1));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(num_elements));
-                for (auto elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(rerun::datatypes::Angle::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].angle,
@@ -68,7 +68,7 @@ namespace rerun {
                     ));
                 }
             }
-            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements, nullptr));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
             return arrow::Status::OK();
         }

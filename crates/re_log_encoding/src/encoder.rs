@@ -1,5 +1,6 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
+use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
 use crate::FileHeader;
@@ -52,11 +53,11 @@ pub struct Encoder<W: std::io::Write> {
 
 impl<W: std::io::Write> Encoder<W> {
     pub fn new(options: EncodingOptions, mut write: W) -> Result<Self, EncodeError> {
-        let rerun_version = re_build_info::CrateVersion::parse(env!("CARGO_PKG_VERSION"));
+        const RERUN_VERSION: CrateVersion = CrateVersion::parse(env!("CARGO_PKG_VERSION"));
 
         FileHeader {
             magic: *crate::RRD_HEADER,
-            version: rerun_version.to_bytes(),
+            version: RERUN_VERSION.to_bytes(),
             options,
         }
         .encode(&mut write)?;

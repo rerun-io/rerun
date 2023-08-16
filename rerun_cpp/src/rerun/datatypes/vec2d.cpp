@@ -39,11 +39,13 @@ namespace rerun {
 
             auto value_builder = static_cast<arrow::FloatBuilder *>(builder->value_builder());
 
-            ARROW_RETURN_NOT_OK(builder->AppendValues(num_elements));
+            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
             static_assert(sizeof(elements[0].xy) == sizeof(elements[0]));
-            ARROW_RETURN_NOT_OK(
-                value_builder->AppendValues(elements[0].xy, num_elements * 2, nullptr)
-            );
+            ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                elements[0].xy,
+                static_cast<int64_t>(num_elements * 2),
+                nullptr
+            ));
 
             return arrow::Status::OK();
         }

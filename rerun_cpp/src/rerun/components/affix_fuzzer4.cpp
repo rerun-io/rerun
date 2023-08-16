@@ -39,6 +39,7 @@ namespace rerun {
                 return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
             }
 
+            (void)num_elements;
             return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));
 
             return arrow::Status::OK();

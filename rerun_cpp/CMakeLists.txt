@@ -13,8 +13,7 @@ file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
 
 add_library(rerun_sdk ${rerun_sdk_SRC})
 
-# TODO(andreas): Fix all warnings and enable this.
-# set_default_warning_settings(rerun_sdk)
+set_default_warning_settings(rerun_sdk)
 
 # ------------------------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
+use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender, ViewerContext};
 use std::collections::BTreeMap;
 use time::macros::format_description;
 
@@ -59,7 +59,16 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     for (app_id, store_dbs) in store_dbs_map {
         if store_dbs.len() == 1 {
             let store_db = store_dbs[0];
-            if recording_ui(ctx.re_ui, ui, store_db, Some(app_id), active_recording).clicked() {
+            if recording_ui(
+                ctx.re_ui,
+                ui,
+                store_db,
+                Some(app_id),
+                active_recording,
+                command_sender,
+            )
+            .clicked()
+            {
                 command_sender
                     .send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
             }
@@ -69,7 +78,16 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
                 .active(false)
                 .show_collapsing(ui, true, |_, ui| {
                     for store_db in store_dbs {
-                        if recording_ui(ctx.re_ui, ui, store_db, None, active_recording).clicked() {
+                        if recording_ui(
+                            ctx.re_ui,
+                            ui,
+                            store_db,
+                            None,
+                            active_recording,
+                            command_sender,
+                        )
+                        .clicked()
+                        {
                             command_sender.send_system(SystemCommand::SetRecordingId(
                                 store_db.store_id().clone(),
                             ));
@@ -89,6 +107,7 @@ fn recording_ui(
     store_db: &re_data_store::StoreDb,
     app_id_label: Option<&str>,
     active_recording: Option<&re_log_types::StoreId>,
+    command_sender: &CommandSender,
 ) -> egui::Response {
     let prefix = if let Some(app_id_label) = app_id_label {
         format!("{app_id_label} - ")
@@ -107,6 +126,16 @@ fn recording_ui(
 
     re_ui
         .list_item(format!("{prefix}{name}"))
+        .with_buttons(|re_ui, ui| {
+            let resp = re_ui
+                .small_icon_button(ui, &re_ui::icons::REMOVE)
+                .on_hover_text("Close this Recording (unsaved data will be lost)");
+            if resp.clicked() {
+                command_sender
+                    .send_system(SystemCommand::CloseRecordingId(store_db.store_id().clone()));
+            }
+            resp
+        })
         .with_icon_fn(|_re_ui, ui, rect, visuals| {
             let color = if active_recording == Some(store_db.store_id()) {
                 visuals.fg_stroke.color

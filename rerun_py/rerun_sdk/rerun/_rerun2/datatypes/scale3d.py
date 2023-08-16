@@ -65,9 +65,14 @@ class Scale3DType(BaseExtensionType):
             self,
             pa.dense_union(
                 [
-                    pa.field("_null_markers", pa.null(), True, {}),
-                    pa.field("ThreeD", pa.list_(pa.field("item", pa.float32(), False, {}), 3), False, {}),
-                    pa.field("Uniform", pa.float32(), False, {}),
+                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                    pa.field(
+                        "ThreeD",
+                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                        nullable=False,
+                        metadata={},
+                    ),
+                    pa.field("Uniform", pa.float32(), nullable=False, metadata={}),
                 ]
             ),
             "rerun.datatypes.Scale3D",
