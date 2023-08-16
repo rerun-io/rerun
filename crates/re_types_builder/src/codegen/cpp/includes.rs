@@ -36,7 +36,7 @@ impl Includes {
     /// Insert an include path that is in the `rerun` folder of the sdk.
     pub fn insert_rerun(&mut self, name: &str) {
         if is_testing_fqname(&self.fqname) {
-            self.local.insert(format!("../../../src/rerun/{name}"));
+            self.insert_system(&format!("rerun/{name}"));
         } else {
             self.local.insert(format!("../{name}"));
         }
