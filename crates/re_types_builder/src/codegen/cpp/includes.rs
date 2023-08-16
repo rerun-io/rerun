@@ -72,6 +72,11 @@ impl Includes {
                 );
                 self.insert_rerun(&format!("{obj_kind}/{typname}.hpp"));
             }
+        } else {
+            panic!(
+                "Can't figure out include for {included_fqname:?} when adding includes for {:?}",
+                self.fqname
+            );
         }
     }
 }
