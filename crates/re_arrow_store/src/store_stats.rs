@@ -255,7 +255,7 @@ pub struct EntityStats {
     /// Number of rows in the table.
     pub num_rows: u64,
 
-    /// Aproximate number of bytes used.
+    /// Approximate number of bytes used.
     pub size_bytes: u64,
 }
 
