@@ -26,23 +26,6 @@ include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../crates/rerun_c/src)
 target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # ------------------------------------------------------------------------------
-# Loguru logging library (https://github.com/emilk/loguru):
-set(CMAKE_DL_LIBS "dl") # Required by Loguru for backtraces
-
-# Loguru, see https://github.com/emilk/loguru/blob/master/loguru_cmake_example/CMakeLists.txt
-include(FetchContent)
-FetchContent_Declare(LoguruGitRepo
-    GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
-    GIT_TAG "master"
-)
-
-# set any loguru compile-time flags before calling MakeAvailable()
-set(LOGURU_STACKTRACES 1)
-FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
-
-target_link_libraries(rerun_sdk PRIVATE loguru::loguru)
-
-# ------------------------------------------------------------------------------
 # execute process doesn't fail if the process fails.
 # `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
 # which isn't default on Ubuntu LTS as of writing, causing unnecessary friction.
