@@ -43,7 +43,7 @@ pub fn all_possible_space_views(
 
     // For each candidate, create space views for all possible classes.
     // TODO(andreas): Could save quite a view allocations here by re-using component- and parts arrays.
-    let mut blueprints: Vec<_> = candidate_space_paths
+    candidate_space_paths
         .flat_map(|candidate_space_path| {
             ctx.space_view_class_registry
                 .iter_classes()
@@ -66,19 +66,7 @@ pub fn all_possible_space_views(
                     }
                 })
         })
-        .collect();
-
-    // An empty recording indicates that the application is in the "empty" state, where building a
-    // blueprint must be allowed. In this case, we offer a default blueprint for each class.
-    if blueprints.is_empty() {
-        blueprints.extend(
-            ctx.space_view_class_registry
-                .iter_classes()
-                .map(|class| SpaceViewBlueprint::new(class.name(), &EntityPath::root(), &[])),
-        );
-    }
-
-    blueprints
+        .collect()
 }
 
 fn contains_any_image(
