@@ -219,10 +219,10 @@ fn image_banner(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, image: &re_ui::Icon, col
     let image = re_ui.icon_image(image);
     let texture_id = image.texture_id(ui.ctx());
     let height = column_width * image.size()[1] as f32 / image.size()[0] as f32;
-    ui.add(egui::Image::new(
-        texture_id,
-        egui::vec2(column_width, height),
-    ));
+    ui.add(
+        egui::Image::new(texture_id, egui::vec2(column_width, height))
+            .rounding(egui::Rounding::same(8.)),
+    );
 }
 
 pub fn status_strings(rx: &Receiver<LogMsg>) -> (&'static str, String) {
