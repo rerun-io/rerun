@@ -20,6 +20,7 @@ where
     T: std::fmt::Debug + Clone + Default + PartialEq + serde::Serialize,
     for<'de2> T: serde::Deserialize<'de2>,
 {
+    #[inline]
     fn default() -> Self {
         EditableAutoValue::Auto(T::default())
     }
@@ -30,11 +31,13 @@ where
     T: std::fmt::Debug + Clone + Default + PartialEq + serde::Serialize,
     for<'de2> T: serde::Deserialize<'de2>,
 {
+    #[inline]
     pub fn is_auto(&self) -> bool {
         matches!(self, EditableAutoValue::Auto(_))
     }
 
     /// Gets the value, disregarding if it was user edited or determined by a heuristic.
+    #[inline]
     pub fn get(&self) -> &T {
         match self {
             EditableAutoValue::Auto(v) | EditableAutoValue::UserEdited(v) => v,
@@ -42,6 +45,7 @@ where
     }
 
     /// Returns other if self is auto, self otherwise.
+    #[inline]
     pub fn or<'a>(&'a self, other: &'a EditableAutoValue<T>) -> &'a EditableAutoValue<T> {
         if self.is_auto() {
             other
@@ -52,11 +56,25 @@ where
 
     /// Determine whether this `EditableAutoValue` has user-edits relative to another `EditableAutoValue`
     /// If both values are `Auto`, then it is not considered edited.
+    #[inline]
     pub fn has_edits(&self, other: &Self) -> bool {
         match (self, other) {
             (EditableAutoValue::UserEdited(s), EditableAutoValue::UserEdited(o)) => s != o,
             (EditableAutoValue::Auto(_), EditableAutoValue::Auto(_)) => false,
             _ => true,
         }
+    }
+}
+
+impl<T> std::ops::Deref for EditableAutoValue<T>
+where
+    T: std::fmt::Debug + Clone + Default + PartialEq + serde::Serialize,
+    for<'de2> T: serde::Deserialize<'de2>,
+{
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.get()
     }
 }
