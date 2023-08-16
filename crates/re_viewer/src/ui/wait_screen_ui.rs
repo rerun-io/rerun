@@ -24,7 +24,7 @@ pub fn welcome_ui(
     egui::ScrollArea::horizontal()
         .id_source("welcome screen")
         .stick_to_bottom(true)
-        .auto_shrink([false, true])
+        .auto_shrink([false, false])
         .show(ui, |ui| {
             wait_screen.show(re_ui, ui, rx, command_sender);
         });
@@ -120,7 +120,7 @@ impl WaitScreen {
         command_sender: &re_viewer_context::CommandSender,
     ) {
         let column_spacing = 15.0;
-        let column_width = ((ui.available_width() - 2. * column_spacing) / 3.0)
+        let column_width = ((ui.available_width() - 2. * column_spacing) / 3.0 - 1.0)
             .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
 
         let grid = egui::Grid::new("onboarding_grid")
