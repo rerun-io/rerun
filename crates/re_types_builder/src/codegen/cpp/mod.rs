@@ -1122,6 +1122,7 @@ fn component_to_data_cell_method(
     cpp_includes: &mut Includes,
 ) -> Method {
     hpp_includes.local.insert("../data_cell.hpp".to_owned());
+    hpp_includes.local.insert("../result.hpp".to_owned());
     cpp_includes.local.insert("../arrow.hpp".to_owned()); // ipc_from_table
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
@@ -1131,7 +1132,7 @@ fn component_to_data_cell_method(
         docs: format!("Creates a Rerun DataCell from an array of {type_ident} components.").into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { arrow::Result<rerun::DataCell> },
+            return_type: quote! { Result<rerun::DataCell> },
             name_and_parameters: quote! {
                 to_data_cell(const #type_ident* instances, size_t num_instances)
             },
@@ -1163,7 +1164,11 @@ fn component_to_data_cell_method(
             #NEWLINE_TOKEN
             rerun::DataCell cell;
             cell.component_name = #type_ident::NAME;
-            ARROW_ASSIGN_OR_RAISE(cell.buffer, rerun::ipc_from_table(*arrow::Table::Make(schema, {array})));
+            const auto result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
+            if (result.is_err()) {
+                return result.error;
+            }
+            cell.buffer = std::move(result.value);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return cell;
@@ -1178,6 +1183,7 @@ fn archetype_to_data_cells(
     cpp_includes: &mut Includes,
 ) -> Method {
     hpp_includes.local.insert("../data_cell.hpp".to_owned());
+    hpp_includes.local.insert("../result.hpp".to_owned());
     cpp_includes.system.insert("arrow/api.h".to_owned());
 
     // TODO(andreas): Splats need to be handled separately.
@@ -1203,8 +1209,11 @@ fn archetype_to_data_cells(
             quote! {
                 if (#field_name.has_value()) {
                     const auto& value  = #field_name.value();
-                    ARROW_ASSIGN_OR_RAISE(const auto cell, #to_data_cell);
-                    cells.push_back(cell);
+                    const auto result = #to_data_cell;
+                    if (result.is_err()) {
+                        return result.error;
+                    }
+                    cells.push_back(result.value);
                 }
             }
         } else {
@@ -1215,8 +1224,11 @@ fn archetype_to_data_cells(
             };
             quote! {
                 {
-                    ARROW_ASSIGN_OR_RAISE(const auto cell, #to_data_cell);
-                    cells.push_back(cell);
+                    const auto result = #to_data_cell;
+                    if (result.is_err()) {
+                        return result.error;
+                    }
+                    cells.push_back(result.value);
                 }
             }
         }
@@ -1226,7 +1238,7 @@ fn archetype_to_data_cells(
         docs: "Creates a list of Rerun DataCell from this archetype.".into(),
         declaration: MethodDeclaration {
             is_static: false,
-            return_type: quote!(arrow::Result<std::vector<rerun::DataCell>>),
+            return_type: quote!(Result<std::vector<rerun::DataCell>>),
             name_and_parameters: quote!(to_data_cells() const),
         },
         definition_body: quote! {

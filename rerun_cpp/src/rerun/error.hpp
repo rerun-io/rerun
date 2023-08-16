@@ -7,6 +7,10 @@
 #include <stdexcept>
 #endif
 
+namespace arrow {
+    class Status;
+}
+
 struct rr_error;
 
 namespace rerun {
@@ -15,6 +19,7 @@ namespace rerun {
     /// Category codes are used to group errors together, but are never returned directly.
     enum class ErrorCode : uint32_t {
         Ok = 0,
+        OutOfMemory = 1,
 
         // Invalid argument errors.
         _CategoryArgument = 0x000000010,
@@ -25,7 +30,7 @@ namespace rerun {
         InvalidEntityPath,
 
         // Recording stream errors
-        _CategoryRecordingStream = 0x000000100,
+        _CategoryRecordingStream = 0x00000100,
         RecordingStreamCreationFailure,
         RecordingStreamSaveFailure,
 
@@ -33,6 +38,24 @@ namespace rerun {
         _CategoryArrow = 0x000001000,
         ArrowIpcMessageParsingFailure,
         ArrowDataCellError,
+
+        // Errors directly translated from arrow::StatusCode.
+        _CategoryArrowCppStatus = 0x10000000,
+        ArrowStatusCode_KeyError,
+        ArrowStatusCode_TypeError,
+        ArrowStatusCode_Invalid,
+        ArrowStatusCode_IOError,
+        ArrowStatusCode_CapacityError,
+        ArrowStatusCode_IndexError,
+        ArrowStatusCode_Cancelled,
+        ArrowStatusCode_UnknownError,
+        ArrowStatusCode_NotImplemented,
+        ArrowStatusCode_SerializationError,
+        ArrowStatusCode_RError,
+        ArrowStatusCode_CodeGenError,
+        ArrowStatusCode_ExpressionValidationError,
+        ArrowStatusCode_ExecutionError,
+        ArrowStatusCode_AlreadyExists,
 
         Unknown = 0xFFFFFFFF,
     };
@@ -59,6 +82,9 @@ namespace rerun {
 
         /// Construct from a C status object.
         Error(const rr_error& status);
+
+        /// Construct from an arrow status.
+        Error(const arrow::Status& status);
 
         /// Returns true if the code is `Ok`.
         bool is_ok() const {
