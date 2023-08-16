@@ -25,7 +25,7 @@ fn decode_color(sampled_value: Vec4) -> Vec4 {
 
     // Convert to linear space
     if rect_info.decode_srgb != 0u {
-        if all(0.0 <= rgba.rgb) && all(rgba.rgb <= 1.0) {
+        if all(Vec3(0.0) <= rgba.rgb) && all(rgba.rgb <= Vec3(1.0)) {
             rgba = linear_from_srgba(rgba);
         } else {
             rgba = ERROR_RGBA; // out of range
