@@ -1,8 +1,8 @@
 use crate::{CError, CErrorCode};
 
 impl CError {
-    pub fn write_error(error: *mut CError, code: CErrorCode, message: &str) {
-        #[allow(unsafe_code)]
+    #[allow(unsafe_code)]
+    pub(crate) fn write_error(error: *mut CError, code: CErrorCode, message: &str) {
         let error = unsafe { error.as_mut() };
         let Some(error) = error else {
             return;

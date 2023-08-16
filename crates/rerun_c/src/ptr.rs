@@ -13,7 +13,7 @@ pub fn try_ptr_as_ref<T>(ptr: *const T, error: *mut CError, argument_name: &str)
     }
 }
 
-/// Tries to convert a c_char pointer to a string, raises an error if the pointer is null or it can't be converted to a string.
+/// Tries to convert a [`c_char`] pointer to a string, raises an error if the pointer is null or it can't be converted to a string.
 #[allow(unsafe_code)]
 pub fn try_char_ptr_as_str(
     ptr: *const c_char,
