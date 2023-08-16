@@ -38,7 +38,7 @@ impl<'a> From<&'a Origin3D> for ::std::borrow::Cow<'a, Origin3D> {
 
 impl crate::Loggable for Origin3D {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
+    type Item<'a> = Self;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
@@ -163,7 +163,7 @@ impl crate::Loggable for Origin3D {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let data = data
                 .as_any()
@@ -239,6 +239,61 @@ impl crate::Loggable for Origin3D {
         .with_context("rerun.components.Origin3D")?)
     }
 
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        if let Some(validity) = data.validity() {
+            if validity.unset_bits() != 0 {
+                return Err(crate::DeserializationError::missing_data());
+            }
+        }
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            Box::new(Field {
+                                name: "item".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            }),
+                            3usize,
+                        ),
+                        data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.Origin3D#origin")?;
+            let data_inner = &**data.values();
+            bytemuck::cast_slice::<_, [_; 3usize]>(
+                data_inner
+                    .as_any()
+                    .downcast_ref::<Float32Array>()
+                    .ok_or_else(|| {
+                        crate::DeserializationError::datatype_mismatch(
+                            DataType::Float32,
+                            data_inner.data_type().clone(),
+                        )
+                    })
+                    .with_context("rerun.components.Origin3D#origin")?
+                    .values()
+                    .as_slice(),
+            )
+            .iter()
+            .copied()
+            .map(|v| crate::datatypes::Vec3D(v))
+        }
+        .map(|v| Self(v))
+        .collect::<Vec<_>>())
+    }
+
     #[inline]
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
@@ -246,12 +301,17 @@ impl crate::Loggable for Origin3D {
     where
         Self: Sized,
     {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+        Ok(Self::try_from_arrow(data)?.into_iter())
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
         item
+    }
+
+    #[inline]
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
+        Some(item)
     }
 }
 

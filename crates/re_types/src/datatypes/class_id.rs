@@ -103,7 +103,7 @@ impl crate::Loggable for ClassId {
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(data
             .as_any()
             .downcast_ref::<UInt16Array>()
@@ -134,7 +134,7 @@ impl crate::Loggable for ClassId {
     }
 
     #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Option<Self> {
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
         item
     }
 }
