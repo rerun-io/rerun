@@ -127,6 +127,18 @@ root:
         - name: text-logging
           python: python/text_logging
 
+    - name: paper-walkthrough
+      title: Paper Walkthroughs
+      prelude: |
+        The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
+        from the official open-source implementations adding Rerun as the visualizer.
+        Check out the respective READMEs for installation instructions.
+        For the simplest possible examples showing how to use each api,
+        check out [Loggable Data Types](/docs/reference/data_types).
+      children:
+        - name: tapir
+          python: python/tapir
+
     - name: setup
       title: Setup
       prelude: |
