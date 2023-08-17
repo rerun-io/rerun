@@ -23,6 +23,30 @@ namespace rrc = rr::components;
 
 #define TEST_TAG "[recording_stream]"
 
+struct BadComponent {
+    static const char* NAME;
+    static rr::Error error;
+
+    static rr::Result<rerun::DataCell> to_data_cell(const BadComponent*, size_t) {
+        return error;
+    }
+};
+
+const char* BadComponent::NAME = "bad!";
+rr::Error BadComponent::error = rr::Error(rr::ErrorCode::Unknown, "BadComponent");
+
+struct BadArchetype {
+    rr::Error error = rr::Error(rr::ErrorCode::Unknown, "BadArchetype");
+
+    size_t num_instances() const {
+        return 1;
+    }
+
+    rr::Result<std::vector<rerun::DataCell>> to_data_cells() const {
+        return error;
+    }
+};
+
 namespace rerun {
     std::ostream& operator<<(std::ostream& os, StoreKind kind) {
         switch (kind) {
@@ -47,7 +71,7 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
         AND_GIVEN("a valid application id") {
             THEN("creating a new stream does not log an error") {
                 rr::RecordingStream stream =
-                    check_logged_status([&] { return rr::RecordingStream("test", kind); });
+                    check_logged_error([&] { return rr::RecordingStream("test", kind); });
 
                 AND_THEN("it does not crash on destruction") {}
 
@@ -59,7 +83,7 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
 
         AND_GIVEN("a nullptr for the application id") {
             THEN("creating a new stream logs a null argument error") {
-                check_logged_status(
+                check_logged_error(
                     [&] { rr::RecordingStream stream(nullptr, kind); },
                     rr::ErrorCode::UnexpectedNullArgument
                 );
@@ -67,7 +91,7 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
         }
         AND_GIVEN("invalid utf8 character sequence for the application id") {
             THEN("creating a new stream logs an invalid string argument error") {
-                check_logged_status(
+                check_logged_error(
                     [&] { rr::RecordingStream stream("\xc3\x28", kind); },
                     rr::ErrorCode::InvalidStringArgument
                 );
@@ -220,7 +244,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                         REQUIRE(stream1->save(test_rrd1.c_str()).is_ok());
 
                         WHEN("logging a component to the second stream") {
-                            check_logged_status([&] {
+                            check_logged_error([&] {
                                 stream1->log_components(
                                     "as-array",
                                     std::array<rrc::Point2D, 2>{
@@ -237,7 +261,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                             }
                         }
                         WHEN("logging an archetype to the second stream") {
-                            check_logged_status([&] {
+                            check_logged_error([&] {
                                 stream1->log_archetype(
                                     "archetype",
                                     rr::archetypes::Points2D({
@@ -279,7 +303,7 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
             REQUIRE(stream.connect(address, 0.0f).is_ok());
 
             WHEN("logging a component and then flushing") {
-                check_logged_status([&] {
+                check_logged_error([&] {
                     stream.log_components(
                         "as-array",
                         std::array<rrc::Point2D, 2>{
@@ -295,7 +319,7 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
                 }
             }
             WHEN("logging an archetype and then flushing") {
-                check_logged_status([&] {
+                check_logged_error([&] {
                     stream.log_archetype(
                         "archetype",
                         rr::archetypes::Points2D({
@@ -359,7 +383,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 CHECK(stream.try_log_archetype(path, rr::archetypes::Points2D(v)).code == error);
             }
             THEN("log_components logs the correct error") {
-                check_logged_status(
+                check_logged_error(
                     [&] {
                         stream.log_components(std::get<0>(variant), std::array<rrc::Point2D, 1>{v});
                     },
@@ -367,7 +391,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 );
             }
             THEN("log_archetypes logs the correct error") {
-                check_logged_status(
+                check_logged_error(
                     [&] {
                         stream.log_archetype(std::get<0>(variant), rr::archetypes::Points2D(v));
                     },
@@ -378,6 +402,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
         AND_GIVEN("a valid path") {
             const char* path = "valid";
+
             AND_GIVEN("a cell with a null buffer") {
                 rr::DataCell cell;
                 cell.buffer = nullptr;
@@ -420,6 +445,73 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
             // TODO(andreas): Missing test that provokes `ArrowDataCellError`. It's fairly hard to
             // get there which I reckon is a good thing!
+        }
+    }
+}
+
+SCENARIO("Recording stream handles serialization failure during logging gracefully", TEST_TAG) {
+    GIVEN("a new RecordingStream and a valid entity path") {
+        rr::RecordingStream stream("test");
+        const char* path = "valid";
+        AND_GIVEN("an component that fails serialization") {
+            const auto component = BadComponent();
+            BadComponent::error.code =
+                GENERATE(rr::ErrorCode::Unknown, rr::ErrorCode::ArrowStatusCode_TypeError);
+
+            THEN("calling log_components with an array logs the serialization error") {
+                check_logged_error(
+                    [&] {
+                        stream.log_components(path, std::array{component, component});
+                    },
+                    component.error.code
+                );
+            }
+            THEN("calling log_components with a vector logs the serialization error") {
+                check_logged_error(
+                    [&] {
+                        stream.log_components(path, std::vector{component, component});
+                    },
+                    component.error.code
+                );
+            }
+            THEN("calling log_components with a c array logs the serialization error") {
+                const BadComponent components[] = {component, component};
+                check_logged_error(
+                    [&] { stream.log_components(path, components); },
+                    component.error.code
+                );
+            }
+            THEN("calling try_log_components with an array forwards the serialization error") {
+                CHECK(
+                    stream.try_log_components(path, std::array{component, component}) ==
+                    component.error
+                );
+            }
+            THEN("calling try_log_components with a vector forwards the serialization error") {
+                CHECK(
+                    stream.try_log_components(path, std::vector{component, component}) ==
+                    component.error
+                );
+            }
+            THEN("calling try_log_components with a c array forwards the serialization error") {
+                const BadComponent components[] = {component, component};
+                CHECK(stream.try_log_components(path, components) == component.error);
+            }
+        }
+        AND_GIVEN("an archetype that fails serialization") {
+            auto archetype = BadArchetype();
+            archetype.error.code =
+                GENERATE(rr::ErrorCode::Unknown, rr::ErrorCode::ArrowStatusCode_TypeError);
+
+            THEN("calling log_archetype logs the serialization error") {
+                check_logged_error(
+                    [&] { stream.log_archetype(path, archetype); },
+                    archetype.error.code
+                );
+            }
+            THEN("calling log_archetype forwards the serialization error") {
+                CHECK(stream.try_log_archetype(path, archetype) == archetype.error);
+            }
         }
     }
 }
