@@ -207,7 +207,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                 }
             }
             THEN("save call returns no error") {
-                REQUIRE(stream0->save(test_rrd0.c_str()));
+                REQUIRE(stream0->save(test_rrd0.c_str()).is_ok());
 
                 THEN("a new file got immediately created") {
                     CHECK(fs::exists(test_rrd0));
@@ -217,7 +217,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                     auto stream1 = std::make_unique<rr::RecordingStream>("test2");
 
                     WHEN("saving that one to a different file " << test_rrd1) {
-                        REQUIRE(stream1->save(test_rrd1.c_str()));
+                        REQUIRE(stream1->save(test_rrd1.c_str()).is_ok());
 
                         WHEN("logging a component to the second stream") {
                             check_logged_status([&] {
@@ -276,7 +276,7 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
     }
     AND_GIVEN("a valid socket address " << address) {
         THEN("save call with zero timeout returns no error") {
-            REQUIRE(stream.connect(address, 0.0f));
+            REQUIRE(stream.connect(address, 0.0f).is_ok());
 
             WHEN("logging a component and then flushing") {
                 check_logged_status([&] {

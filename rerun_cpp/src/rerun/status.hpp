@@ -60,8 +60,14 @@ namespace rerun {
         /// Construct from a C status object.
         Status(const rr_error& status);
 
-        operator bool() const {
+        /// Returns true if the code is `Ok`.
+        bool is_ok() const {
             return code == StatusCode::Ok;
+        }
+
+        /// Returns true if the code is not `Ok`.
+        bool is_err() const {
+            return code != StatusCode::Ok;
         }
 
         /// Sets global log handler called for `log_error` and `log_error_on_failure`.
@@ -77,13 +83,13 @@ namespace rerun {
         /// Logs this status via the global log handler.
         ///
         /// @see set_log_handler
-        void log_error();
+        void log_error() const;
 
         /// Logs this status if failed via the global log handler.
         ///
         /// @see set_log_handler
-        void log_error_on_failure() {
-            if (!*this) {
+        void log_error_on_failure() const {
+            if (is_err()) {
                 log_error();
             }
         }
@@ -91,7 +97,7 @@ namespace rerun {
 #ifdef __cpp_exceptions
         /// Throws a `std::runtime_error` if the status is not `Ok`.
         void throw_on_failure() const {
-            if (!*this) {
+            if (is_err()) {
                 throw std::runtime_error(description);
             }
         }
