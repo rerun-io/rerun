@@ -92,22 +92,22 @@ impl ReUi {
     /// Welcome screen big title
     #[inline]
     pub fn welcome_screen_h1() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-scree-h1".into())
+        egui::TextStyle::Name("welcome-screen-h1".into())
     }
 
     #[inline]
     pub fn welcome_screen_h2() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-scree-h2".into())
+        egui::TextStyle::Name("welcome-screen-h2".into())
     }
 
     #[inline]
     pub fn welcome_screen_h3() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-scree-h3".into())
+        egui::TextStyle::Name("welcome-screen-h3".into())
     }
 
     #[inline]
     pub fn welcome_screen_body() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-scree-body".into())
+        egui::TextStyle::Name("welcome-screen-body".into())
     }
 
     /// Margin on all sides of views.

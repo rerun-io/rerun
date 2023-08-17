@@ -57,7 +57,10 @@ impl StoreHub {
         let mut blueprints = HashMap::new();
         blueprints.insert(
             Self::welcome_screen_app_id(),
-            StoreId::from_string(StoreKind::Blueprint, "<welcome screen>".to_owned()),
+            StoreId::from_string(
+                StoreKind::Blueprint,
+                Self::welcome_screen_app_id().to_string(),
+            ),
         );
 
         Self {

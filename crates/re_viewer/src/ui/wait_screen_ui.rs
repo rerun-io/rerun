@@ -8,8 +8,8 @@ use re_ui::ReUi;
 const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 400.0;
 
-const PYTHON_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/python";
 //const CPP_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/cpp";
+const PYTHON_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/python";
 const RUST_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/rust";
 const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
@@ -32,12 +32,12 @@ pub fn welcome_ui(
 /// Full-screen UI shown while in loading state.
 pub fn loading_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
     ui.centered_and_justified(|ui| {
-        let (status, source, _) = status_strings(rx);
+        let status_strings = status_strings(rx);
 
         let style = ui.style();
         let mut layout_job = egui::text::LayoutJob::default();
         layout_job.append(
-            status,
+            status_strings.status,
             0.0,
             egui::TextFormat::simple(
                 egui::TextStyle::Heading.resolve(style),
@@ -45,7 +45,7 @@ pub fn loading_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
             ),
         );
         layout_job.append(
-            &format!("\n\n{source}"),
+            &format!("\n\n{}", status_strings.source),
             0.0,
             egui::TextFormat::simple(
                 egui::TextStyle::Body.resolve(style),
@@ -92,12 +92,15 @@ fn welcome_ui_impl(
 
             onboarding_content_ui(re_ui, ui, command_sender);
 
-            let (status, source, long_term) = status_strings(rx);
-            if long_term {
+            let status_strings = status_strings(rx);
+            if status_strings.long_term {
                 ui.add_space(55.0);
                 ui.vertical_centered(|ui| {
-                    ui.label(status);
-                    ui.label(egui::RichText::new(source).color(ui.visuals().weak_text_color()));
+                    ui.label(status_strings.status);
+                    ui.label(
+                        egui::RichText::new(status_strings.source)
+                            .color(ui.visuals().weak_text_color()),
+                    );
                 });
             }
         });
@@ -188,10 +191,10 @@ fn onboarding_content_ui(
         ui.end_row();
 
         ui.horizontal(|ui| {
-            button_centered_label(ui, "Quick start...");
-            url_large_text_button(re_ui, ui, "Python", PYTHON_QUICKSTART);
+            button_centered_label(ui, "Quick start…");
             // TODO(ab): activate when C++ is ready!
             // url_large_text_button(re_ui, ui, "C++", CPP_QUICKSTART);
+            url_large_text_button(re_ui, ui, "Python", PYTHON_QUICKSTART);
             url_large_text_button(re_ui, ui, "Rust", RUST_QUICKSTART);
         });
 
@@ -199,7 +202,7 @@ fn onboarding_content_ui(
         {
             use re_ui::UICommandSender;
             ui.horizontal(|ui| {
-                if large_text_button(ui, "Open file...").clicked() {
+                if large_text_button(ui, "Open file…").clicked() {
                     _command_sender.send_ui(re_ui::UICommand::Open);
                 }
                 button_centered_label(ui, "Or drop a file anywhere!");
@@ -247,7 +250,7 @@ fn url_large_text_button(
     url: &str,
 ) {
     ui.scope(|ui| {
-        large_button_style(ui);
+        set_large_button_style(ui);
 
         let image = re_ui.icon_image(&re_ui::icons::EXTERNAL_LINK);
         let texture_id = image.texture_id(ui.ctx());
@@ -271,7 +274,7 @@ fn url_large_text_button(
 #[allow(dead_code)] // TODO(ab): remove if/when wasm uses one of these buttons
 fn large_text_button(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) -> egui::Response {
     ui.scope(|ui| {
-        large_button_style(ui);
+        set_large_button_style(ui);
         ui.button(text)
     })
     .inner
@@ -287,17 +290,33 @@ fn image_banner(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, image: &re_ui::Icon, col
     );
 }
 
+/// Strings describing the current state of the Rerun viewer.
+struct StatusStrings {
+    /// General status string (e.g. "Ready", "Loading…", etc.).
+    status: &'static str,
+
+    /// Source string (e.g. listening IP, file path, etc.).
+    source: String,
+
+    /// Whether or not the status is valid once data loading is completed, i.e. if data may still
+    /// be received later.
+    long_term: bool,
+}
+
+impl StatusStrings {
+    fn new(status: &'static str, source: String, long_term: bool) -> Self {
+        Self {
+            status,
+            source,
+            long_term,
+        }
+    }
+}
+
 /// Returns the status strings to be displayed by the loading and welcome screen.
-///
-/// The return 3-tuple includes:
-/// - a general status string
-/// - a source string
-/// - weather or not the status is valid once data loading is completed, i.e. if data may still be
-///   received later
-/// The welcome screen will display the status/source only if the last field is `true`.
-pub fn status_strings(rx: &Receiver<LogMsg>) -> (&'static str, String, bool) {
+fn status_strings(rx: &Receiver<LogMsg>) -> StatusStrings {
     match rx.source() {
-        re_smart_channel::SmartChannelSource::Files { paths } => (
+        re_smart_channel::SmartChannelSource::Files { paths } => StatusStrings::new(
             "Loading…",
             format!(
                 "{}",
@@ -308,26 +327,26 @@ pub fn status_strings(rx: &Receiver<LogMsg>) -> (&'static str, String, bool) {
             false,
         ),
         re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
-            ("Loading…", url.clone(), false)
+            StatusStrings::new("Loading…", url.clone(), false)
         }
         re_smart_channel::SmartChannelSource::RrdWebEventListener => {
-            ("Ready", "Waiting for logging data…".to_owned(), true)
+            StatusStrings::new("Ready", "Waiting for logging data…".to_owned(), true)
         }
-        re_smart_channel::SmartChannelSource::Sdk => (
+        re_smart_channel::SmartChannelSource::Sdk => StatusStrings::new(
             "Ready",
             "Waiting for logging data from SDK".to_owned(),
             true,
         ),
         re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
             // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
-            (
+            StatusStrings::new(
                 "Ready",
                 format!("Waiting for data from {ws_server_url}"),
                 true,
             )
         }
         re_smart_channel::SmartChannelSource::TcpServer { port } => {
-            ("Ready", format!("Listening on port {port}"), true)
+            StatusStrings::new("Ready", format!("Listening on port {port}"), true)
         }
     }
 }

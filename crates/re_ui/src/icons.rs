@@ -109,15 +109,15 @@ pub const CONTAINER: Icon = Icon::new("container", include_bytes!("../data/icons
 
 pub const WELCOME_SCREEN_CONFIGURE: Icon = Icon::new(
     "welcome_screen_configure",
-    include_bytes!("../data/images/welcome_screen_configure.jpg"),
+    include_bytes!("../data/images/welcome_screen_configure.png"),
 );
 
 pub const WELCOME_SCREEN_LIVE_DATA: Icon = Icon::new(
     "welcome_screen_live_data",
-    include_bytes!("../data/images/welcome_screen_live_data.jpg"),
+    include_bytes!("../data/images/welcome_screen_live_data.png"),
 );
 
 pub const WELCOME_SCREEN_RECORDED_DATA: Icon = Icon::new(
     "welcome_screen_recorded_data",
-    include_bytes!("../data/images/welcome_screen_recorded_data.jpg"),
+    include_bytes!("../data/images/welcome_screen_recorded_data.png"),
 );

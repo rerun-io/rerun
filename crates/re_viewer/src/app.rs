@@ -856,13 +856,23 @@ impl App {
             return;
         }
 
+        // Here, we use the type of Receiver as a proxy for which kind of workflow the viewer is
+        // being used in.
         let welcome = match self.rx.source() {
+            // These source are typically "finite". We want the loading screen so long as data is
+            // coming in.
             SmartChannelSource::Files { .. } | SmartChannelSource::RrdHttpStream { .. } => {
                 !self.rx.is_connected()
             }
+            // The workflows associated with these sources typically do not require showing the
+            // welcome screen until after some recording have been loaded and then closed.
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::Sdk
             | SmartChannelSource::WsClient { .. } => false,
+            // This might be the trickiest case. When running the bare executable, we want to show
+            // the welcome screen (default, "new user" workflow). There are other case using Tcp
+            // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
+            // scenarios. In this cases, `--skip-welcome-screen` should be used.
             SmartChannelSource::TcpServer { .. } => true,
         };
 
