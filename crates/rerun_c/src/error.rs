@@ -39,23 +39,23 @@ impl CError {
         }
     }
 
-    pub fn unexpected_null(error: *mut CError, argument_name: &str) {
+    pub fn unexpected_null(error: *mut CError, parameter_name: &str) {
         Self::write_error(
             error,
             CErrorCode::UnexpectedNullArgument,
-            &format!("Unexpected null passed for argument '{argument_name:?}'"),
+            &format!("Unexpected null passed for parameter '{parameter_name:?}'"),
         );
     }
 
     pub fn invalid_str_argument(
         error: *mut CError,
-        argument_name: &str,
+        parameter_name: &str,
         utf8_error: std::str::Utf8Error,
     ) {
         CError::write_error(
             error,
             CErrorCode::InvalidStringArgument,
-            &format!("Failed to interpret argument {argument_name:?} as a UTF-8: {utf8_error}",),
+            &format!("Argument {parameter_name:?} is not valid UTF-8: {utf8_error}",),
         );
     }
 
