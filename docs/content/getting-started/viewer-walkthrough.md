@@ -37,6 +37,8 @@ experimentation and working with examples. You can either follow the [Python Qui
 pip install rerun-sdk
 ```
 
+You can also find `rerun-sdk` on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock).
+
 ## Launching the demo
 
 If you have already followed the Python Quickstart you may have used `rerun_demo` already to run the cube demo.
