@@ -14,7 +14,7 @@ namespace rerun {
         global_log_handler_user_data = userdata;
     }
 
-    void Status::log_error() const {
+    void Status::log() const {
         if (global_log_handler) {
             global_log_handler(*this, global_log_handler_user_data);
         } else {
