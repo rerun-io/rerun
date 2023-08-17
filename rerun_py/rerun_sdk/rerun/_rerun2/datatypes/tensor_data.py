@@ -33,7 +33,7 @@ def _tensordata_buffer_converter(x: datatypes.TensorBufferLike) -> datatypes.Ten
 @define
 class TensorData:
     """
-    A Multi-dimensional `Tensor` of data.
+    A multi-dimensional `Tensor` of data.
 
     The number of dimensions and their respective lengths is specified by the `shape` field.
     The dimensions are ordered from outermost to innermost. For example, in the common case of

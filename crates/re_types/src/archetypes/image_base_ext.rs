@@ -18,7 +18,10 @@ impl ImageBase {
 }
 // ----------------------------------------------------------------------------
 
-/// An Monochrome or RGB Image
+/// An Monochrome, RGB, or RGBA Image
+///
+/// This is an alias for the [`ImageBase`] archetype which correctly populates
+/// [`ImageVariant`] component based on the provided [`TensorData`]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Image(ImageBase);
 
@@ -91,6 +94,12 @@ pub enum ImageConstructionError<T: TryInto<crate::datatypes::TensorData>> {
 }
 
 impl Image {
+    /// Try to construct an [`Image`] from anything that can be converted into [`TensorData`]
+    ///
+    /// Will return an [`ImageConstructionError`] if the shape of the tensor data is invalid
+    /// for treating as an image.
+    ///
+    /// This is useful for constructing a tensor from an ndarray.
     pub fn try_from<T: TryInto<crate::datatypes::TensorData>>(
         data: T,
     ) -> Result<Self, ImageConstructionError<T>> {
@@ -134,6 +143,7 @@ impl Image {
 }
 
 // ----------------------------------------------------------------------------
+// Make it possible to create an ArrayView directly from an Image.
 
 macro_rules! forward_array_views {
     ($type:ty, $alias:ty) => {
@@ -149,6 +159,17 @@ macro_rules! forward_array_views {
 }
 
 forward_array_views!(u8, Image);
+forward_array_views!(u16, Image);
+forward_array_views!(u32, Image);
+forward_array_views!(u64, Image);
+
+forward_array_views!(i8, Image);
+forward_array_views!(i16, Image);
+forward_array_views!(i32, Image);
+forward_array_views!(i64, Image);
+
+// TODO(jleibs): F16 Support
+//forward_array_views!(half::f16, Image);
 forward_array_views!(f32, Image);
 forward_array_views!(f64, Image);
 
