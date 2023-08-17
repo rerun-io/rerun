@@ -16,7 +16,7 @@ def main() -> None:
         [
             (1, "hello"),
             rrd.ClassDescription(
-                (2, "world", [3, 4, 5]),
+                info=(2, "world", [3, 4, 5]),
                 keypoint_annotations=[(17, "head"), (42, "shoulders")],
                 keypoint_connections=[(1, 2), (3, 4)],
             ),
