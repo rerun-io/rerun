@@ -41,9 +41,9 @@ root:
     individual example sections below.
   children:
     - name: paper-walkthrough
-      title: Paper walkthroughs
+      title: Paper Walkthroughs
       prelude: |
-        The following examples use Rerun to create visual walkthrough of papers. They are typically forks
+        The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
         from the official open-source implementations adding Rerun as the visualizer.
         Check out the respective READMEs for installation instructions.
         For the simplest possible examples showing how to use each api,
@@ -52,7 +52,7 @@ root:
         - name: tapir
           python: python/tapir
     - name: real-data
-      title: Examples with real data
+      title: Examples with Real Data
       prelude: |
         The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
         They all require additional data to be downloaded, so an internet connection is needed at least once.
@@ -108,7 +108,7 @@ root:
           python: python/face_tracking
 
     - name: artificial-data
-      title: Examples with artificial data
+      title: Examples with Artificial Data
       prelude: |
         The following examples serve to illustrate various uses of the Rerun logging SDK.
         They should not require any additional data downloads, and should run offline.
