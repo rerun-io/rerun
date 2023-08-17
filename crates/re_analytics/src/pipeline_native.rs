@@ -9,8 +9,6 @@ use crossbeam::{
     select,
 };
 
-use re_log::{error, trace, warn, warn_once};
-
 use crate::{Config, Event, PostHogSink, SinkError};
 
 // TODO(cmc): abstract away the concept of a `Pipeline` behind an actual trait when comes the time
@@ -81,13 +79,13 @@ impl Pipeline {
                     let analytics_id = &config.analytics_id;
                     let session_id = &config.session_id.to_string();
 
-                    trace!(%analytics_id, %session_id, "pipeline catchup thread started");
+                    re_log::trace!(%analytics_id, %session_id, "pipeline catchup thread started");
                     let res = flush_pending_events(&config, &sink);
-                    trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
+                    re_log::trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
                 }
             })
         {
-            re_log::warn!("Failed to spawn analytics thread: {err}");
+            re_log::debug!("Failed to spawn analytics thread: {err}");
         }
 
         if let Err(err) = std::thread::Builder::new().name("pipeline".into()).spawn({
@@ -97,13 +95,13 @@ impl Pipeline {
                 let analytics_id = &config.analytics_id;
                 let session_id = &config.session_id.to_string();
 
-                trace!(%analytics_id, %session_id, "pipeline thread started");
+                re_log::trace!(%analytics_id, %session_id, "pipeline thread started");
                 let res =
                     realtime_pipeline(&config, &sink, session_file, tick, &event_tx, &event_rx);
-                trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
+                re_log::trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
             }
         }) {
-            re_log::warn!("Failed to spawn analytics thread: {err}");
+            re_log::debug!("Failed to spawn analytics thread: {err}");
         }
 
         Ok(Some(Self { event_tx }))
@@ -120,7 +118,7 @@ fn try_send_event(event_tx: &channel::Sender<Result<Event, RecvError>>, event: E
     match event_tx.try_send(Ok(event)) {
         Ok(_) => {}
         Err(channel::TrySendError::Full(_)) => {
-            trace!("dropped event, analytics channel is full");
+            re_log::trace!("dropped event, analytics channel is full");
         }
         Err(channel::TrySendError::Disconnected(_)) => {
             // The only way this can happen is if the other end of the channel was previously
@@ -128,7 +126,7 @@ fn try_send_event(event_tx: &channel::Sender<Result<Event, RecvError>>, event: E
             // Technically, we should call `.unwrap()` here, but analytics _must never_ be the
             // cause of a crash, so let's not take any unnecessary risk and just ignore the
             // error instead.
-            warn_once!("dropped event, analytics channel is disconnected");
+            re_log::debug_once!("dropped event, analytics channel is disconnected");
         }
     }
 }
@@ -157,18 +155,20 @@ fn flush_pending_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<(
             let Ok(mut session_file) = File::open(&path) else { continue; };
             match flush_events(&mut session_file, &analytics_id, session_id, sink) {
                 Ok(_) => {
-                    trace!(%analytics_id, %session_id, ?path, "flushed pending events");
+                    re_log::trace!(%analytics_id, %session_id, ?path, "flushed pending events");
                     match std::fs::remove_file(&path) {
-                        Ok(_) => trace!(%analytics_id, %session_id, ?path, "removed session file"),
+                        Ok(_) => {
+                            re_log::trace!(%analytics_id, %session_id, ?path, "removed session file");
+                        }
                         Err(err) => {
                             // NOTE: this will eventually lead to duplicated data, though we'll be
                             // able to deduplicate it at query time.
-                            trace!(%analytics_id, %session_id, ?path, %err,
+                            re_log::trace!(%analytics_id, %session_id, ?path, %err,
                                 "failed to remove session file");
                         }
                     }
                 }
-                Err(err) => trace!(%analytics_id, %session_id, ?path, %err,
+                Err(err) => re_log::trace!(%analytics_id, %session_id, ?path, %err,
                     "failed to flush pending events"),
             }
         }
@@ -205,7 +205,7 @@ fn realtime_pipeline(
         }
 
         if let Err(err) = session_file.set_len(0) {
-            re_log::warn_once!("couldn't truncate analytics data file: {err}");
+            re_log::debug_once!("couldn't truncate analytics data file: {err}");
             // We couldn't truncate the session file: we'll have to keep it intact for now, which
             // will result in duplicated data that we'll be able to deduplicate at query time.
             return;
@@ -214,12 +214,12 @@ fn realtime_pipeline(
             // We couldn't reset the session file... That one is a bit messy and will likely break
             // analytics for the entire duration of this session, but that really _really_ should
             // never happen.
-            re_log::warn_once!("couldn't seek into analytics data file: {err}");
+            re_log::debug_once!("couldn't seek into analytics data file: {err}");
         }
     };
 
     let on_event = |session_file: &mut _, event| {
-        trace!(
+        re_log::trace!(
             %analytics_id, %session_id,
             "appending event to current session file..."
         );
@@ -257,7 +257,7 @@ fn append_event(
     let mut event_str = match serde_json::to_string(&event) {
         Ok(event_str) => event_str,
         Err(err) => {
-            error!(%err, %analytics_id, %session_id, "corrupt analytics event: discarding");
+            re_log::debug!(%err, %analytics_id, %session_id, "corrupt analytics event: discarding");
             return Ok(());
         }
     };
@@ -272,7 +272,7 @@ fn append_event(
         // We'll try to write a linefeed one more time, just in case, to avoid potentially
         // impacting other events.
         session_file.write_all(b"\n").ok();
-        warn!(%err, %analytics_id, %session_id, "couldn't write to analytics data file");
+        re_log::debug!(%err, %analytics_id, %session_id, "couldn't write to analytics data file");
         return Err(event);
     }
 
@@ -287,7 +287,7 @@ fn flush_events(
     sink: &PostHogSink,
 ) -> Result<(), SinkError> {
     if let Err(err) = session_file.rewind() {
-        warn!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
+        re_log::debug!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
         return Err(SinkError::FileSeek(err));
     }
 
@@ -299,14 +299,14 @@ fn flush_events(
                     Ok(event) => Some(event),
                     Err(err) => {
                         // NOTE: This is effectively where we detect possible half-writes.
-                        error!(%err, %analytics_id, %session_id,
+                        re_log::debug!(%err, %analytics_id, %session_id,
                             "couldn't deserialize event from analytics data file: dropping it");
                         None
                     }
                 }
             }
             Err(err) => {
-                error!(%err, %analytics_id, %session_id,
+                re_log::debug!(%err, %analytics_id, %session_id,
                     "couldn't read line from analytics data file: dropping event");
                 None
             }
@@ -326,7 +326,7 @@ fn flush_events(
             );
         } else {
             // A more unusual error. Show it to the user.
-            re_log::warn_once!(
+            re_log::debug_once!(
                 "Failed to send analytics down the sink, will try again later.\n{err}
             "
             );
@@ -334,7 +334,7 @@ fn flush_events(
         return Err(err);
     }
 
-    trace!(
+    re_log::trace!(
         %analytics_id,
         %session_id,
         num_events = events.len(),
