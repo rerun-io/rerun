@@ -6,7 +6,7 @@
 #include <arrow/buffer.h>
 #pragma GCC diagnostic pop
 
-#include "status_check.hpp"
+#include "error_check.hpp"
 
 #include <rerun/archetypes/points2d.hpp>
 #include <rerun/components/point2d.hpp>
@@ -61,7 +61,7 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
             THEN("creating a new stream logs a null argument error") {
                 check_logged_status(
                     [&] { rr::RecordingStream stream(nullptr, kind); },
-                    rr::StatusCode::UnexpectedNullArgument
+                    rr::ErrorCode::UnexpectedNullArgument
                 );
             }
         }
@@ -69,7 +69,7 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
             THEN("creating a new stream logs an invalid string argument error") {
                 check_logged_status(
                     [&] { rr::RecordingStream stream("\xc3\x28", kind); },
-                    rr::StatusCode::InvalidStringArgument
+                    rr::ErrorCode::InvalidStringArgument
                 );
             }
         }
@@ -193,7 +193,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
 
         AND_GIVEN("a nullptr for the save path") {
             THEN("then the save call returns a null argument error") {
-                CHECK(stream0->save(nullptr).code == rr::StatusCode::UnexpectedNullArgument);
+                CHECK(stream0->save(nullptr).code == rr::ErrorCode::UnexpectedNullArgument);
             }
         }
         AND_GIVEN("valid save path " << test_rrd0) {
@@ -202,7 +202,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                 THEN("then the save call fails") {
                     CHECK(
                         stream0->save(test_rrd0.c_str()).code ==
-                        rr::StatusCode::RecordingStreamSaveFailure
+                        rr::ErrorCode::RecordingStreamSaveFailure
                     );
                 }
             }
@@ -263,14 +263,14 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
 void test_logging_to_connection(const char* address, rr::RecordingStream& stream) {
     AND_GIVEN("a nullptr for the socket address") {
         THEN("then the connect call returns a null argument error") {
-            CHECK(stream.connect(nullptr, 0.0f).code == rr::StatusCode::UnexpectedNullArgument);
+            CHECK(stream.connect(nullptr, 0.0f).code == rr::ErrorCode::UnexpectedNullArgument);
         }
     }
     AND_GIVEN("an invalid address for the socket address") {
         THEN("then the save call fails") {
             CHECK(
                 stream.connect("definitely not valid!", 0.0f).code ==
-                rr::StatusCode::InvalidSocketAddress
+                rr::ErrorCode::InvalidSocketAddress
             );
         }
     }
@@ -337,11 +337,11 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
         rr::RecordingStream stream("test");
 
         AND_GIVEN("an invalid path") {
-            auto variant = GENERATE(table<const char*, rr::StatusCode>({
-                std::tuple<const char*, rr::StatusCode>("////", rr::StatusCode::InvalidEntityPath),
-                std::tuple<const char*, rr::StatusCode>(
+            auto variant = GENERATE(table<const char*, rr::ErrorCode>({
+                std::tuple<const char*, rr::ErrorCode>("////", rr::ErrorCode::InvalidEntityPath),
+                std::tuple<const char*, rr::ErrorCode>(
                     nullptr,
-                    rr::StatusCode::UnexpectedNullArgument
+                    rr::ErrorCode::UnexpectedNullArgument
                 ),
             }));
             const auto [path, error] = variant;
@@ -386,7 +386,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
                     CHECK(
                         stream.try_log_data_row(path, 1, 1, &cell).code ==
-                        rr::StatusCode::UnexpectedNullArgument
+                        rr::ErrorCode::UnexpectedNullArgument
                     );
                 }
             }
@@ -399,7 +399,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
                     CHECK(
                         stream.try_log_data_row(path, 1, 1, &cell).code ==
-                        rr::StatusCode::UnexpectedNullArgument
+                        rr::ErrorCode::UnexpectedNullArgument
                     );
                 }
             }
@@ -413,7 +413,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 THEN("try_log_data_row fails with ArrowIpcMessageParsingFailure") {
                     CHECK(
                         stream.try_log_data_row(path, 1, 1, &cell).code ==
-                        rr::StatusCode::ArrowIpcMessageParsingFailure
+                        rr::ErrorCode::ArrowIpcMessageParsingFailure
                     );
                 }
             }

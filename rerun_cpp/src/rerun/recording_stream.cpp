@@ -29,7 +29,7 @@ namespace rerun {
 
         rr_error status = {};
         this->_id = rr_recording_stream_new(&store_info, &status);
-        Status(status).log_error();
+        Error(status).log_on_failure();
     }
 
     RecordingStream::RecordingStream(RecordingStream&& other)
@@ -75,13 +75,13 @@ namespace rerun {
         }
     }
 
-    Status RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
+    Error RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
         rr_error status = {};
         rr_recording_stream_connect(_id, tcp_addr, flush_timeout_sec, &status);
         return status;
     }
 
-    Status RecordingStream::save(const char* path) {
+    Error RecordingStream::save(const char* path) {
         rr_error status = {};
         rr_recording_stream_save(_id, path, &status);
         return status;
@@ -91,7 +91,7 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    Status RecordingStream::try_log_data_row(
+    Error RecordingStream::try_log_data_row(
         const char* entity_path, size_t num_instances, size_t num_data_cells,
         const DataCell* data_cells
     ) {
@@ -99,8 +99,8 @@ namespace rerun {
         std::vector<rr_data_cell> c_data_cells(num_data_cells);
         for (size_t i = 0; i < num_data_cells; i++) {
             if (data_cells[i].buffer == nullptr) {
-                return Status(
-                    StatusCode::UnexpectedNullArgument,
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
                     "DataCell buffer is null for cell " + std::to_string(i)
                 );
             }

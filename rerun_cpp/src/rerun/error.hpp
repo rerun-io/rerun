@@ -13,7 +13,7 @@ namespace rerun {
     /// Status codes returned by the SDK as part of `Status`.
     ///
     /// Category codes are used to group errors together, but are never returned directly.
-    enum class StatusCode : uint32_t {
+    enum class ErrorCode : uint32_t {
         Ok = 0,
 
         // Invalid argument errors.
@@ -38,46 +38,46 @@ namespace rerun {
     };
 
     /// Callback function type for log handlers.
-    using StatusLogHandler = void (*)(const class Status& status, void* userdata);
+    using StatusLogHandler = void (*)(const class Error& status, void* userdata);
 
     /// Status outcome object (success or error) returned for fallible operations.
     ///
     /// Converts to `true` for success, `false` for failure.
-    class [[nodiscard]] Status {
+    class [[nodiscard]] Error {
       public:
         /// Result code for the given operation.
-        StatusCode code = StatusCode::Ok;
+        ErrorCode code = ErrorCode::Ok;
 
         /// Human readable description of the error.
         std::string description;
 
       public:
-        Status() = default;
+        Error() = default;
 
-        Status(StatusCode _code, std::string _description)
+        Error(ErrorCode _code, std::string _description)
             : code(_code), description(std::move(_description)) {}
 
         /// Construct from a C status object.
-        Status(const rr_error& status);
+        Error(const rr_error& status);
 
         /// Returns true if the code is `Ok`.
         bool is_ok() const {
-            return code == StatusCode::Ok;
+            return code == ErrorCode::Ok;
         }
 
         /// Returns true if the code is not `Ok`.
         bool is_err() const {
-            return code != StatusCode::Ok;
+            return code != ErrorCode::Ok;
         }
 
-        /// Sets global log handler called for `log` and `log_error`.
+        /// Sets global log handler called for `log` and `log_on_failure`.
         ///
         /// The default will log to stderr.
         ///
         /// @param handler The handler to call, or `nullptr` to reset to the default.
         /// @param userdata Userdata pointer that will be passed to each invocation of the handler.
         ///
-        /// @see log, log_error
+        /// @see log, log_on_failure
         static void set_log_handler(StatusLogHandler handler, void* userdata = nullptr);
 
         /// Logs this status via the global log handler.
@@ -88,7 +88,7 @@ namespace rerun {
         /// Logs this status if failed via the global log handler.
         ///
         /// @see set_log_handler
-        void log_error() const {
+        void log_on_failure() const {
             if (is_err()) {
                 log();
             }
