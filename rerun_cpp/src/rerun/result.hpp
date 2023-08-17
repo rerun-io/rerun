@@ -47,7 +47,7 @@ namespace rerun {
 
 #ifdef __cpp_exceptions
         /// Returns the value if status is ok, throws otherwise.
-        T value_or_throw() {
+        T value_or_throw() const {
             error.throw_on_failure();
             return value;
         }
