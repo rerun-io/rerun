@@ -32,7 +32,7 @@ canvas {
 
 * {
   font-family: "Inter", sans-serif;
-  color: #f0f0f0;
+  color: #cad8de;
 }
 
 /* Match the Rerun header bar. */
@@ -74,7 +74,7 @@ p {
 /* Rerun styling for strong text. Matches `TextStyle::Heading`. */
 .strong {
   /*Gray-775*/
-  color: #ffffff;
+  color: #cad8de;
   /* Match current rerun header value */
   font-size: 16px;
 }
@@ -129,6 +129,11 @@ a .button {
   display: flex;
   flex-direction: row;
   gap: 4px;
+
+  /*color: #262626;*/
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .no-select {
@@ -175,7 +180,7 @@ a .button {
   position: absolute;
   top: 100%;
 
-  background: #1c2123;
+  background: #262626;
   border: none;
   border-radius: 6px;
   padding: 12px;
@@ -248,7 +253,7 @@ img.icon {
   top: 100%;
   left: 0;
 
-  background: #1c2123;
+  background: #262626;
   border: none;
   border-radius: 6px;
   padding: 6px;
@@ -287,7 +292,7 @@ a.flat-link {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: #f0f0f0;
+  color: #cad8de;
   font-size: 24px;
   font-family: Ubuntu-Light, Helvetica, sans-serif;
   text-align: center;
