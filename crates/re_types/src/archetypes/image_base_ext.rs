@@ -147,6 +147,8 @@ impl Image {
 
         let non_empty_dims: SmallVec<[usize; 4]> = (first_non_empty..=last_non_empty).collect();
 
+        // Now that we've chosen a set of non-empty dims, match to the correct variant and
+        // label the dimensions accordingly.
         let variant = match non_empty_dims.len() {
             2 => {
                 data.shape[non_empty_dims[0]].name = Some("height".into());
@@ -154,12 +156,6 @@ impl Image {
                 ImageVariant::Mono(true)
             }
             3 => match data.shape[non_empty_dims[2]].size {
-                1 => {
-                    data.shape[non_empty_dims[0]].name = Some("height".into());
-                    data.shape[non_empty_dims[1]].name = Some("width".into());
-                    data.shape[non_empty_dims[2]].name = Some("mono".into());
-                    ImageVariant::Mono(true)
-                }
                 3 => {
                     data.shape[non_empty_dims[0]].name = Some("height".into());
                     data.shape[non_empty_dims[1]].name = Some("width".into());

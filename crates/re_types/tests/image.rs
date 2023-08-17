@@ -159,4 +159,11 @@ fn image_base_ext() {
         ndarray::Array::from_shape_vec((1, 1, 1, 5), vec![1, 2, 3, 4, 5]).unwrap(),
         re_types::datatypes::ImageVariant::Mono(true)
     );
+    // 2x1x3x1 -> rgb
+    check_image_array!(
+        Image,
+        u8,
+        ndarray::Array::from_shape_vec((2, 1, 3, 1), vec![1, 2, 3, 4, 5, 6]).unwrap(),
+        re_types::datatypes::ImageVariant::Rgb(true)
+    );
 }
