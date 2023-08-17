@@ -494,7 +494,8 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             .on_hover_text("This is a tooltip");
 
         ui.label(
-            egui::RichText::new("Welcome to the ReUi example").text_style(ReUi::onboarding_h1()),
+            egui::RichText::new("Welcome to the ReUi example")
+                .text_style(ReUi::welcome_screen_h1()),
         );
 
         Default::default()

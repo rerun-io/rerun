@@ -20,21 +20,19 @@ pub fn welcome_ui(
     rx: &Receiver<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
 ) {
-    let wait_screen = WaitScreen::new();
-
     egui::ScrollArea::horizontal()
         .id_source("welcome screen")
         .stick_to_bottom(true)
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            wait_screen.show(re_ui, ui, rx, command_sender);
+            welcome_ui_impl(re_ui, ui, rx, command_sender);
         });
 }
 
 /// Full-screen UI shown while in loading state.
 pub fn loading_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
     ui.centered_and_justified(|ui| {
-        let (status, source) = status_strings(rx);
+        let (status, source, _) = status_strings(rx);
 
         let style = ui.style();
         let mut layout_job = egui::text::LayoutJob::default();
@@ -59,168 +57,166 @@ pub fn loading_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
     });
 }
 
-//TODO(ab): get rid of that unless we really need state here
-pub struct WaitScreen {}
-
-impl WaitScreen {
-    pub fn new() -> Self {
-        Self {}
+fn welcome_ui_impl(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    rx: &Receiver<LogMsg>,
+    command_sender: &re_viewer_context::CommandSender,
+) {
+    let mut margin = egui::Margin::same(40.0);
+    margin.bottom = 0.0;
+    egui::Frame {
+        inner_margin: margin,
+        ..Default::default()
     }
+    .show(ui, |ui| {
+        ui.vertical(|ui| {
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new("Welcome")
+                        .strong()
+                        .text_style(re_ui::ReUi::welcome_screen_h1()),
+                )
+                .wrap(false),
+            );
 
-    #[allow(clippy::unused_self)]
-    pub fn show(
-        &self,
-        re_ui: &re_ui::ReUi,
-        ui: &mut egui::Ui,
-        rx: &Receiver<LogMsg>,
-        command_sender: &re_viewer_context::CommandSender,
-    ) {
-        let mut margin = egui::Margin::same(40.0);
-        margin.bottom = 0.0;
-        egui::Frame {
-            inner_margin: margin,
-            ..Default::default()
-        }
-        .show(ui, |ui| {
-            ui.vertical(|ui| {
-                ui.add(
-                    egui::Label::new(
-                        egui::RichText::new("Welcome")
-                            .strong()
-                            .text_style(re_ui::ReUi::onboarding_h1()),
-                    )
-                    .wrap(false),
-                );
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new("Visualize multimodal data")
+                        .text_style(re_ui::ReUi::welcome_screen_h2()),
+                )
+                .wrap(false),
+            );
 
-                ui.add(
-                    egui::Label::new(
-                        egui::RichText::new("Visualize multimodal data")
-                            .text_style(re_ui::ReUi::onboarding_h2()),
-                    )
-                    .wrap(false),
-                );
+            ui.add_space(20.0);
 
-                ui.add_space(20.0);
+            onboarding_content_ui(re_ui, ui, command_sender);
 
-                Self::onboarding_content_ui(re_ui, ui, command_sender);
-
+            let (status, source, long_term) = status_strings(rx);
+            if long_term {
                 ui.add_space(55.0);
-
-                let (status, source) = status_strings(rx);
                 ui.vertical_centered(|ui| {
                     ui.label(status);
                     ui.label(egui::RichText::new(source).color(ui.visuals().weak_text_color()));
                 });
-            });
-        });
-    }
-
-    fn onboarding_content_ui(
-        re_ui: &ReUi,
-        ui: &mut Ui,
-        _command_sender: &re_viewer_context::CommandSender,
-    ) {
-        let column_spacing = 15.0;
-        let column_width = ((ui.available_width() - 2. * column_spacing) / 3.0 - 1.0)
-            .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
-
-        let grid = egui::Grid::new("onboarding_grid")
-            .spacing(egui::Vec2::splat(column_spacing))
-            .min_col_width(column_width)
-            .max_col_width(column_width);
-
-        grid.show(ui, |ui| {
-            image_banner(re_ui, ui, &re_ui::icons::ONBOARDING_LIVE_DATA, column_width);
-            image_banner(
-                re_ui,
-                ui,
-                &re_ui::icons::ONBOARDING_RECORDED_DATA,
-                column_width,
-            );
-            image_banner(re_ui, ui, &re_ui::icons::ONBOARDING_CONFIGURE, column_width);
-
-            ui.end_row();
-
-            ui.vertical(|ui| {
-                ui.label(
-                    egui::RichText::new("Connect to live data")
-                        .strong()
-                        .text_style(re_ui::ReUi::onboarding_h3()),
-                );
-                ui.label(
-                    egui::RichText::new(
-                        "Use the Rerun SDK to stream data from your code to the Rerun Viewer. \
-                        Visualize synchronized data from multiple processes, locally or over a \
-                        network.",
-                    )
-                    .text_style(re_ui::ReUi::onboarding_body()),
-                );
-            });
-
-            ui.vertical(|ui| {
-                ui.label(
-                    egui::RichText::new("Load recorded data")
-                        .strong()
-                        .text_style(re_ui::ReUi::onboarding_h3()),
-                );
-                ui.label(
-                    egui::RichText::new(
-                        "Open and visualize recorded data from previous Rerun sessions (.rrd) as \
-                        well as data in formats like .gltf and .jpg.",
-                    )
-                    .text_style(re_ui::ReUi::onboarding_body()),
-                );
-            });
-
-            ui.vertical(|ui| {
-                ui.label(
-                    egui::RichText::new("Configure your views")
-                        .strong()
-                        .text_style(re_ui::ReUi::onboarding_h3()),
-                );
-                ui.label(
-                    egui::RichText::new(
-                        "Add and rearrange views, and configure what data is shown and how. \
-                        Configure interactively in the viewer or (coming soon) directly from code \
-                        in the SDK.",
-                    )
-                    .text_style(re_ui::ReUi::onboarding_body()),
-                );
-            });
-
-            ui.end_row();
-
-            ui.horizontal(|ui| {
-                button_centered_label(ui, "Quick start...");
-                url_large_text_button(re_ui, ui, "Python", PYTHON_QUICKSTART);
-                // TODO(ab): activate when C++ is ready!
-                // url_large_text_button(re_ui, ui, "C++", CPP_QUICKSTART);
-                url_large_text_button(re_ui, ui, "Rust", RUST_QUICKSTART);
-            });
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                use re_ui::UICommandSender;
-                ui.horizontal(|ui| {
-                    if large_text_button(ui, "Open file...").clicked() {
-                        _command_sender.send_ui(re_ui::UICommand::Open);
-                    }
-                    button_centered_label(ui, "Or drop a file anywhere!");
-                });
             }
-
-            #[cfg(target_arch = "wasm32")]
-            ui.horizontal(|ui| {
-                button_centered_label(ui, "Drop a file anywhere!");
-            });
-
-            ui.horizontal(|ui| {
-                url_large_text_button(re_ui, ui, "Learn about Views", SPACE_VIEWS_HELP);
-            });
-
-            ui.end_row();
         });
-    }
+    });
+}
+
+fn onboarding_content_ui(
+    re_ui: &ReUi,
+    ui: &mut Ui,
+    _command_sender: &re_viewer_context::CommandSender,
+) {
+    let column_spacing = 15.0;
+    let column_width = ((ui.available_width() - 2. * column_spacing) / 3.0 - 1.0)
+        .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
+
+    let grid = egui::Grid::new("welcome_screen_grid")
+        .spacing(egui::Vec2::splat(column_spacing))
+        .min_col_width(column_width)
+        .max_col_width(column_width);
+
+    grid.show(ui, |ui| {
+        image_banner(
+            re_ui,
+            ui,
+            &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
+            column_width,
+        );
+        image_banner(
+            re_ui,
+            ui,
+            &re_ui::icons::WELCOME_SCREEN_RECORDED_DATA,
+            column_width,
+        );
+        image_banner(
+            re_ui,
+            ui,
+            &re_ui::icons::WELCOME_SCREEN_CONFIGURE,
+            column_width,
+        );
+
+        ui.end_row();
+
+        ui.vertical(|ui| {
+            ui.label(
+                egui::RichText::new("Connect to live data")
+                    .strong()
+                    .text_style(re_ui::ReUi::welcome_screen_h3()),
+            );
+            ui.label(
+                egui::RichText::new(
+                    "Use the Rerun SDK to stream data from your code to the Rerun Viewer. \
+                     synchronized data from multiple processes, locally or over a network.",
+                )
+                .text_style(re_ui::ReUi::welcome_screen_body()),
+            );
+        });
+
+        ui.vertical(|ui| {
+            ui.label(
+                egui::RichText::new("Load recorded data")
+                    .strong()
+                    .text_style(re_ui::ReUi::welcome_screen_h3()),
+            );
+            ui.label(
+                egui::RichText::new(
+                    "Open and visualize recorded data from previous Rerun sessions (.rrd) as well \
+                    as data in formats like .gltf and .jpg.",
+                )
+                .text_style(re_ui::ReUi::welcome_screen_body()),
+            );
+        });
+
+        ui.vertical(|ui| {
+            ui.label(
+                egui::RichText::new("Configure your views")
+                    .strong()
+                    .text_style(re_ui::ReUi::welcome_screen_h3()),
+            );
+            ui.label(
+                egui::RichText::new(
+                    "Add and rearrange views, and configure what data is shown and how. Configure \
+                    interactively in the viewer or (coming soon) directly from code in the SDK.",
+                )
+                .text_style(re_ui::ReUi::welcome_screen_body()),
+            );
+        });
+
+        ui.end_row();
+
+        ui.horizontal(|ui| {
+            button_centered_label(ui, "Quick start...");
+            url_large_text_button(re_ui, ui, "Python", PYTHON_QUICKSTART);
+            // TODO(ab): activate when C++ is ready!
+            // url_large_text_button(re_ui, ui, "C++", CPP_QUICKSTART);
+            url_large_text_button(re_ui, ui, "Rust", RUST_QUICKSTART);
+        });
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use re_ui::UICommandSender;
+            ui.horizontal(|ui| {
+                if large_text_button(ui, "Open file...").clicked() {
+                    _command_sender.send_ui(re_ui::UICommand::Open);
+                }
+                button_centered_label(ui, "Or drop a file anywhere!");
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        ui.horizontal(|ui| {
+            button_centered_label(ui, "Drop a file anywhere!");
+        });
+
+        ui.horizontal(|ui| {
+            url_large_text_button(re_ui, ui, "Learn about Views", SPACE_VIEWS_HELP);
+        });
+
+        ui.end_row();
+    });
 }
 
 fn button_centered_label(ui: &mut egui::Ui, label: impl Into<egui::WidgetText>) {
@@ -270,6 +266,7 @@ fn url_large_text_button(
     });
 }
 
+#[allow(dead_code)] // TODO(ab): remove if/when wasm uses one of these buttons
 fn large_text_button(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) -> egui::Response {
     ui.scope(|ui| {
         large_button_style(ui);
@@ -288,7 +285,15 @@ fn image_banner(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, image: &re_ui::Icon, col
     );
 }
 
-pub fn status_strings(rx: &Receiver<LogMsg>) -> (&'static str, String) {
+/// Returns the status strings to be displayed by the loading and welcome screen.
+///
+/// The return 3-tuple includes:
+/// - a general status string
+/// - a source string
+/// - weather or not the status is valid once data loading is completed, i.e. if data may still be
+///   received later
+/// The welcome screen will display the status/source only if the last field is `true`.
+pub fn status_strings(rx: &Receiver<LogMsg>) -> (&'static str, String, bool) {
     match rx.source() {
         re_smart_channel::SmartChannelSource::Files { paths } => (
             "Loading…",
@@ -296,22 +301,31 @@ pub fn status_strings(rx: &Receiver<LogMsg>) -> (&'static str, String) {
                 "{}",
                 paths
                     .iter()
-                    .format_with(", ", |path, f| f(&format_args!("{}", path.display())))
+                    .format_with(", ", |path, f| f(&format_args!("{}", path.display()))),
             ),
+            false,
         ),
-        re_smart_channel::SmartChannelSource::RrdHttpStream { url } => ("Loading…", url.clone()),
+        re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
+            ("Loading…", url.clone(), false)
+        }
         re_smart_channel::SmartChannelSource::RrdWebEventListener => {
-            ("Ready", "Waiting for logging data…".to_owned())
+            ("Ready", "Waiting for logging data…".to_owned(), true)
         }
-        re_smart_channel::SmartChannelSource::Sdk => {
-            ("Ready", "Waiting for logging data from SDK".to_owned())
-        }
+        re_smart_channel::SmartChannelSource::Sdk => (
+            "Ready",
+            "Waiting for logging data from SDK".to_owned(),
+            true,
+        ),
         re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
             // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
-            ("Ready", format!("Waiting for data from {ws_server_url}"))
+            (
+                "Ready",
+                format!("Waiting for data from {ws_server_url}"),
+                true,
+            )
         }
         re_smart_channel::SmartChannelSource::TcpServer { port } => {
-            ("Ready", format!("Listening on port {port}"))
+            ("Ready", format!("Listening on port {port}"), true)
         }
     }
 }

@@ -91,23 +91,23 @@ impl ReUi {
 
     /// Welcome screen big title
     #[inline]
-    pub fn onboarding_h1() -> egui::TextStyle {
-        egui::TextStyle::Name("onboarding-h1".into())
+    pub fn welcome_screen_h1() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-scree-h1".into())
     }
 
     #[inline]
-    pub fn onboarding_h2() -> egui::TextStyle {
-        egui::TextStyle::Name("onboarding-h2".into())
+    pub fn welcome_screen_h2() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-scree-h2".into())
     }
 
     #[inline]
-    pub fn onboarding_h3() -> egui::TextStyle {
-        egui::TextStyle::Name("onboarding-h3".into())
+    pub fn welcome_screen_h3() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-scree-h3".into())
     }
 
     #[inline]
-    pub fn onboarding_body() -> egui::TextStyle {
-        egui::TextStyle::Name("onboarding-body".into())
+    pub fn welcome_screen_body() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-scree-body".into())
     }
 
     /// Margin on all sides of views.

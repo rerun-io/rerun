@@ -576,6 +576,11 @@ impl App {
                             ))
                         });
 
+                    // We want the regular UI as soon as a blueprint is available (or, rather, an
+                    // app ID is set). If no recording is available, we use a default, empty one.
+                    // Note that EMPTY_STORE_DB is *not* part of the list of available recordings
+                    // (StoreContext::alternate_recordings), which means that it's not displayed in
+                    // the recordings UI.
                     let store_db = if let Some(store_db) = store_view.recording {
                         store_db
                     } else {
@@ -609,6 +614,9 @@ impl App {
                         render_ctx.before_submit();
                     }
                 } else {
+                    // This is part of the loading vs. welcome screen UI logic. The loading screen
+                    // is displayed when no app ID is set. This is e.g. the initial state for the
+                    // web demos.
                     crate::ui::loading_ui(ui, &self.rx);
                 }
             });
