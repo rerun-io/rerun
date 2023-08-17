@@ -26,7 +26,7 @@ int main() {
     };
     rr_stream.log(
         "strips",
-        rr::archetypes::LineStrips3D({strip1, strip2})
+        rr::LineStrips3D({strip1, strip2})
             .with_colors({0xFF0000FF, 0x00FF00FF})
             .with_radii({0.025f, 0.005f})
             .with_labels({"one strip here", "and one strip there"})

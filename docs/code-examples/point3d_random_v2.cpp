@@ -27,8 +27,5 @@ int main() {
     std::vector<rr::components::Radius> radii(10);
     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
 
-    rr_stream.log(
-        "random",
-        rr::archetypes::Points3D(points3d).with_colors(colors).with_radii(radii)
-    );
+    rr_stream.log("random", rr::Points3D(points3d).with_colors(colors).with_radii(radii));
 }
