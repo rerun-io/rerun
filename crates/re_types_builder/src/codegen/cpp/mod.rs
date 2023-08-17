@@ -1213,7 +1213,7 @@ fn archetype_to_data_cells(
                     if (result.is_err()) {
                         return result.error;
                     }
-                    cells.push_back(result.value);
+                    cells.emplace_back(std::move(result.value));
                 }
             }
         } else {
@@ -1228,7 +1228,7 @@ fn archetype_to_data_cells(
                     if (result.is_err()) {
                         return result.error;
                     }
-                    cells.push_back(result.value);
+                    cells.emplace_back(std::move(result.value));
                 }
             }
         }
