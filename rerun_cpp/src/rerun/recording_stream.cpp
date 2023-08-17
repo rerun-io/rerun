@@ -29,7 +29,7 @@ namespace rerun {
 
         rr_error status = {};
         this->_id = rr_recording_stream_new(&store_info, &status);
-        Status(status).log_error_on_failure();
+        Status(status).log_error();
     }
 
     RecordingStream::RecordingStream(RecordingStream&& other)

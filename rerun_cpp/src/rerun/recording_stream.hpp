@@ -125,7 +125,7 @@ namespace rerun {
         /// TODO(andreas): Would be nice if this were able to combine both log_archetype and
         /// log_components!
         ///
-        /// Logs any failure via `Status::log_error_on_failure`
+        /// Logs any failure via `Status::log_error`
         template <typename T>
         void log(const char* entity_path, const T& archetype) {
             log_archetype(entity_path, archetype);
@@ -135,10 +135,10 @@ namespace rerun {
         ///
         /// Prefer this interface for ease of use over the more general `log_components` interface.
         ///
-        /// Logs any failure via `Status::log_error_on_failure`
+        /// Logs any failure via `Status::log_error`
         template <typename T>
         void log_archetype(const char* entity_path, const T& archetype) {
-            try_log_archetype(entity_path, archetype).log_error_on_failure();
+            try_log_archetype(entity_path, archetype).log_error();
         }
 
         /// Logs a an archetype, returning an error on failure.
@@ -164,10 +164,10 @@ namespace rerun {
         ///
         /// TODO(andreas): More documentation, examples etc.
         ///
-        /// Logs any failure via `Status::log_error_on_failure`
+        /// Logs any failure via `Status::log_error`
         template <typename... Ts>
         void log_components(const char* entity_path, const Ts&... component_array) {
-            try_log_components(entity_path, component_array...).log_error_on_failure();
+            try_log_components(entity_path, component_array...).log_error();
         }
 
         /// Logs a list of component arrays, returning an error on failure.

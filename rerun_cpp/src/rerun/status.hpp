@@ -70,14 +70,14 @@ namespace rerun {
             return code != StatusCode::Ok;
         }
 
-        /// Sets global log handler called for `log` and `log_error_on_failure`.
+        /// Sets global log handler called for `log` and `log_error`.
         ///
         /// The default will log to stderr.
         ///
         /// @param handler The handler to call, or `nullptr` to reset to the default.
         /// @param userdata Userdata pointer that will be passed to each invocation of the handler.
         ///
-        /// @see log, log_error_on_failure
+        /// @see log, log_error
         static void set_log_handler(StatusLogHandler handler, void* userdata = nullptr);
 
         /// Logs this status via the global log handler.
@@ -88,7 +88,7 @@ namespace rerun {
         /// Logs this status if failed via the global log handler.
         ///
         /// @see set_log_handler
-        void log_error_on_failure() const {
+        void log_error() const {
             if (is_err()) {
                 log();
             }
