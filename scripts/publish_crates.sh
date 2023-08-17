@@ -103,6 +103,7 @@ cargo publish $FLAGS -p re_string_interner
 cargo publish $FLAGS -p re_analytics
 cargo publish $FLAGS -p re_crash_handler
 cargo publish $FLAGS -p re_memory
+cargo publish $FLAGS -p re_types
 cargo publish $FLAGS -p re_log_types
 cargo publish $FLAGS -p re_components
 cargo publish $FLAGS -p re_smart_channel
@@ -127,6 +128,7 @@ cargo publish $FLAGS -p re_space_view_spatial
 cargo publish $FLAGS -p re_space_view_text
 cargo publish $FLAGS -p re_space_view_text_box
 cargo publish $FLAGS -p re_space_view_time_series
+cargo publish $FLAGS -p re_space_view_tensor
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun
