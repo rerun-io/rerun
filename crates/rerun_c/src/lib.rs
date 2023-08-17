@@ -97,6 +97,7 @@ pub enum CErrorCode {
 }
 
 #[repr(C)]
+#[derive(Clone)]
 pub struct CError {
     pub code: CErrorCode,
     pub message: [c_char; 512],

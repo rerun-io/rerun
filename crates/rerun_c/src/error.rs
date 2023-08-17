@@ -1,6 +1,11 @@
 use crate::{CError, CErrorCode};
 
 impl CError {
+    const OK: CError = CError {
+        code: CErrorCode::Ok,
+        message: [0; 512],
+    };
+
     #[allow(unsafe_code)]
     pub(crate) fn write_error(error: *mut CError, code: CErrorCode, message: &str) {
         let error = unsafe { error.as_mut() };
@@ -62,8 +67,11 @@ impl CError {
         );
     }
 
-    pub fn set_ok(error: *mut CError) {
-        CError::write_error(error, CErrorCode::Ok, "success");
+    #[allow(unsafe_code)]
+    pub(crate) fn set_ok(error: *mut CError) {
+        if let Some(error) = unsafe { error.as_mut() } {
+            *error = CError::OK.clone();
+        };
     }
 }
 
@@ -76,10 +84,7 @@ mod tests {
     #[test]
     #[allow(unsafe_code)]
     fn write_error_handles_message_overflow() {
-        let mut error = CError {
-            code: CErrorCode::Ok,
-            message: [0; 512],
-        };
+        let mut error = CError::OK.clone();
 
         // With ASCII character.
         let num_expected_bytes = error.message.len() - 1;
