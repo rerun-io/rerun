@@ -158,7 +158,7 @@
 //! We need to the build to be _hermetic_.
 //!
 //! Rust's `file!()` macro already takes care of that to some extent, and we need to match that
-//! behaviour on our side (e.g. by not leaking local paths), otherwise we won't be able to
+//! behavior on our side (e.g. by not leaking local paths), otherwise we won't be able to
 //! compare paths at runtime.
 //!
 //! Think of it as `chroot`ing into our Cargo workspace :)

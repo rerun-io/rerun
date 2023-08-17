@@ -233,7 +233,7 @@ impl eframe::App for ExampleApp {
         //   `Frame`.
         //
         // This way, the content (titles, etc.) is properly inset and benefits from a properly set
-        // clip rectangle for full-span behaviour, without interference from the scroll areas.
+        // clip rectangle for full-span behavior, without interference from the scroll areas.
 
         let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,

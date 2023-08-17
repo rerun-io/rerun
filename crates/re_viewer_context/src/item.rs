@@ -106,7 +106,7 @@ impl ItemCollection {
         None
     }
 
-    /// Retains elements that fulfil a certain condition.
+    /// Retains elements that fulfill a certain condition.
     pub fn retain(&mut self, f: impl Fn(&Item) -> bool) {
         self.items.retain(|item| f(item));
     }
