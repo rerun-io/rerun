@@ -137,6 +137,7 @@ root:
       children:
         - name: tapir
           python: python/tapir
+
     - name: setup
       title: Setup
       prelude: |
