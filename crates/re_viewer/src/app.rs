@@ -850,8 +850,8 @@ impl App {
     /// should show up.
     fn handle_default_blueprint(&mut self, store_hub: &mut StoreHub) {
         if store_hub.current_recording().is_some()
-            | store_hub.app_id().is_some()
-            | self.startup_options.skip_welcome_screen
+            || store_hub.app_id().is_some()
+            || self.startup_options.skip_welcome_screen
         {
             return;
         }
