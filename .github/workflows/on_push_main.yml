@@ -207,8 +207,7 @@ jobs:
           name: "Development Build"
           tag: "prerelease"
           token: ${{ secrets.GITHUB_TOKEN }}
-          generateReleaseNotes: true
+          generateReleaseNotes: false
           allowUpdates: true
           removeArtifacts: true
           replacesArtifacts: true
-
