@@ -83,6 +83,11 @@ ignore = [
   "D415",
   "D416",
 
+  # Black is going to handle this for us, and ruff can't fix this error on its own (yet)
+  # Having ruff check this causes errors that prevent the code-formatting process from
+  # completing.
+  "E501",
+
   # allow relative imports
   "TID252",
 ]
