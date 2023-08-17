@@ -40,7 +40,7 @@ namespace rerun {
 
     RecordingStream::~RecordingStream() {
         // C-Api already specifies that the current constants are not destroyed, but we repeat this
-        // here, since we rely on this invariant in the move concstructor.
+        // here, since we rely on this invariant in the move constructor.
         if (_id != RERUN_REC_STREAM_CURRENT_RECORDING &&
             _id != RERUN_REC_STREAM_CURRENT_BLUEPRINT) {
             rr_recording_stream_free(this->_id);
