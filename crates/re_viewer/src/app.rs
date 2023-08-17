@@ -971,7 +971,8 @@ impl eframe::App for App {
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
 
-        // heuristic to set the app_id to the welcome screen blueprint
+        // Heuristic to set the app_id to the welcome screen blueprint.
+        // Must be called before `read_context` below.
         self.handle_default_blueprint(&mut store_hub);
 
         let store_context = store_hub.read_context();
