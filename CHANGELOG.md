@@ -56,7 +56,7 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 ### In Detail
 #### 🐍 Python SDK
 - Clean up warnings printed when `rr.init` hasn't been called [#2209](https://github.com/rerun-io/rerun/pull/2209)
-- Normalise Python typing syntax to 3.8+ [#2361](https://github.com/rerun-io/rerun/pull/2361)
+- Normalize Python typing syntax to 3.8+ [#2361](https://github.com/rerun-io/rerun/pull/2361)
 - Simpler, sturdier stateful time tracking in both SDKs [#2506](https://github.com/rerun-io/rerun/pull/2506)
 - Fix not taking np.array for single colors [#2569](https://github.com/rerun-io/rerun/pull/2569)
 - Add a basic pyright config [#2610](https://github.com/rerun-io/rerun/pull/2610)
