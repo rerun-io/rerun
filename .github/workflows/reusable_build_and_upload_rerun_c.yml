@@ -170,7 +170,7 @@ jobs:
       - name: Build rerun_c (release)
         uses: actions-rs/cargo@v1
         with:
-          command: run
+          command: build
           args: --locked -p rerun_c -- --release ${{ inputs.EXTRA_FLAGS }}
 
       - id: "auth"
