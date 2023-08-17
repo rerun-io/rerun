@@ -131,6 +131,10 @@ a .button {
   gap: 4px;
 }
 
+.no-select {
+  user-select: none;
+}
+
 .examples {
   position: relative;
   top: 11px;
