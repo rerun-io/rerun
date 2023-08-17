@@ -40,6 +40,17 @@ root:
     set up in a `requirements.txt` next to the example. These are noted in the
     individual example sections below.
   children:
+    - name: paper-walkthrough
+      title: Paper walkthroughs
+      prelude: |
+        The following examples use Rerun to visualize recently published papers. They are typically forks
+        from the official open-source implementations adding Rerun as the visualizer.
+        Check out the respective READMEs for installation instructions.
+        For the simplest possible examples showing how to use each api,
+        check out [Loggable Data Types](/docs/reference/data_types).
+      children:
+        - name: tapir
+          python: python/tapir
     - name: real-data
       title: Examples with real data
       prelude: |
