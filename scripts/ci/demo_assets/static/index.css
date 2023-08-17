@@ -159,13 +159,14 @@ a .button {
 .example-description:hover > .example-description-icon {
   background: #404040;
   border: none;
-  border-radius: 50%;
+  border-radius: 5px;
 }
 
 .example-description-icon {
   display: flex;
   justify-content: center;
-  padding: 6px;
+  margin: 4px;
+  padding: 2px;
   width: 20px;
   height: 20px;
   user-select: none;
@@ -259,6 +260,7 @@ img.icon {
   padding: 6px;
 
   user-select: none;
+  font-size: 12px;
 }
 
 .dropdown-body.visible {
