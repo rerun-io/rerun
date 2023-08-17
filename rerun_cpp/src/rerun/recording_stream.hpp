@@ -224,7 +224,7 @@ namespace rerun {
             std::vector<DataCell>& data_cells, const std::vector<C>& first, const Ts&... rest
         ) {
             const auto cell_result = C::to_data_cell(first.data(), first.size());
-            if (!cell_result.is_ok()) {
+            if (cell_result.is_err()) {
                 return cell_result.error;
             }
             data_cells.push_back(cell_result.value);

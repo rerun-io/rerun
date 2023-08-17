@@ -12,10 +12,10 @@ namespace rerun {
         ARROW_RETURN_NOT_OK(writer->Close());
 
         auto result = output->Finish();
-        if (!result.ok()) {
-            return result.status();
-        } else {
+        if (result.ok()) {
             return result.ValueOrDie();
+        } else {
+            return result.status();
         }
     }
 } // namespace rerun
