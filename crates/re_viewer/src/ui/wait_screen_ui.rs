@@ -226,7 +226,7 @@ fn button_centered_label(ui: &mut egui::Ui, label: impl Into<egui::WidgetText>) 
     });
 }
 
-fn large_button_style(ui: &mut egui::Ui) {
+fn set_large_button_style(ui: &mut egui::Ui) {
     ui.style_mut().spacing.button_padding = egui::vec2(12.0, 9.0);
     let visuals = ui.visuals_mut();
     visuals.widgets.hovered.expansion = 0.0;
