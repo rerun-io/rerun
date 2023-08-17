@@ -2,6 +2,7 @@
 
 #include <rerun/status.hpp>
 
+/// Checks if the given operation logs the expected status code.
 template <typename Op>
 auto check_logged_status(
     Op operation, rerun::StatusCode expected_status_code = rerun::StatusCode::Ok
