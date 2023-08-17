@@ -25,7 +25,7 @@ namespace rerun {
                 if (result.is_err()) {
                     return result.error;
                 }
-                cells.push_back(result.value);
+                cells.emplace_back(std::move(result.value));
             }
             if (radii.has_value()) {
                 const auto& value = radii.value();
@@ -34,7 +34,7 @@ namespace rerun {
                 if (result.is_err()) {
                     return result.error;
                 }
-                cells.push_back(result.value);
+                cells.emplace_back(std::move(result.value));
             }
             if (colors.has_value()) {
                 const auto& value = colors.value();
@@ -43,7 +43,7 @@ namespace rerun {
                 if (result.is_err()) {
                     return result.error;
                 }
-                cells.push_back(result.value);
+                cells.emplace_back(std::move(result.value));
             }
             if (labels.has_value()) {
                 const auto& value = labels.value();
@@ -52,7 +52,7 @@ namespace rerun {
                 if (result.is_err()) {
                     return result.error;
                 }
-                cells.push_back(result.value);
+                cells.emplace_back(std::move(result.value));
             }
             if (class_ids.has_value()) {
                 const auto& value = class_ids.value();
@@ -61,7 +61,7 @@ namespace rerun {
                 if (result.is_err()) {
                     return result.error;
                 }
-                cells.push_back(result.value);
+                cells.emplace_back(std::move(result.value));
             }
             if (keypoint_ids.has_value()) {
                 const auto& value = keypoint_ids.value();
@@ -70,7 +70,7 @@ namespace rerun {
                 if (result.is_err()) {
                     return result.error;
                 }
-                cells.push_back(result.value);
+                cells.emplace_back(std::move(result.value));
             }
             if (instance_keys.has_value()) {
                 const auto& value = instance_keys.value();
@@ -79,7 +79,7 @@ namespace rerun {
                 if (result.is_err()) {
                     return result.error;
                 }
-                cells.push_back(result.value);
+                cells.emplace_back(std::move(result.value));
             }
 
             return cells;

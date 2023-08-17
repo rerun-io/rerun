@@ -19,7 +19,7 @@ namespace rerun {
                 if (result.is_err()) {
                     return result.error;
                 }
-                cells.push_back(result.value);
+                cells.emplace_back(std::move(result.value));
             }
 
             return cells;
