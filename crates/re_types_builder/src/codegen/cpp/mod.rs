@@ -123,6 +123,9 @@ impl CppCodeGenerator {
             let filename = obj.snake_case_name();
 
             let mut hpp_includes = Includes::new(obj.fqname.clone());
+            hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
+            hpp_includes.insert_rerun("result.hpp"); // rerun result is used for serialization methods
+
             let hpp_type_extensions =
                 hpp_type_extensions(&folder_path_sdk, &filename, &mut hpp_includes);
 
@@ -327,8 +330,6 @@ impl QuotedObject {
         let type_name = &obj.name;
         let type_ident = format_ident!("{type_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
-
-        hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
 
         // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
         // TODO(andreas): This drags in arrow headers into the public api though. We probably should try harder with forward declarations.
@@ -641,7 +642,6 @@ impl QuotedObject {
         }))
         .collect_vec();
 
-        hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_system("cstring"); // std::memcpy
 
@@ -1072,16 +1072,16 @@ fn new_arrow_array_builder_method(
         docs: "Creates a new array builder with an array of this type.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { arrow::Result<std::shared_ptr<arrow::#arrow_builder_type>> },
+            return_type: quote! { Result<std::shared_ptr<arrow::#arrow_builder_type>> },
             name_and_parameters: quote!(new_arrow_array_builder(arrow::MemoryPool * memory_pool)),
         },
         definition_body: quote! {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            return arrow::Result(#builder_instantiation);
+            return Result(#builder_instantiation);
         },
         inline: false,
     }
@@ -1105,7 +1105,7 @@ fn fill_arrow_array_builder_method(
         docs: "Fills an arrow array builder with an array of this type.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { arrow::Status },
+            return_type: quote! { Error },
             // TODO(andreas): Pass in validity map.
             name_and_parameters: quote! {
                 fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #type_ident* elements, size_t num_elements)
@@ -1113,17 +1113,17 @@ fn fill_arrow_array_builder_method(
         },
         definition_body: quote! {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Cannot serialize null pointer to arrow array.");
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #fill_builder
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            return arrow::Status::OK();
+            return Error::ok();
         },
         inline: false,
     }
@@ -1156,9 +1156,11 @@ fn component_to_data_cell_method(
             arrow::MemoryPool* pool = arrow::default_memory_pool();
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            ARROW_ASSIGN_OR_RAISE(auto builder, #type_ident::new_arrow_array_builder(pool));
+            auto builder_result = #type_ident::new_arrow_array_builder(pool);
+            RR_RETURN_NOT_OK(builder_result.error);
+            auto builder = std::move(builder_result.value);
             if (instances && num_instances > 0) {
-                ARROW_RETURN_NOT_OK(#type_ident::fill_arrow_array_builder(
+                RR_RETURN_NOT_OK(#type_ident::fill_arrow_array_builder(
                     builder.get(),
                     instances,
                     num_instances
@@ -1177,11 +1179,9 @@ fn component_to_data_cell_method(
             #NEWLINE_TOKEN
             rerun::DataCell cell;
             cell.component_name = #type_ident::NAME;
-            const auto result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            if (result.is_err()) {
-                return result.error;
-            }
-            cell.buffer = std::move(result.value);
+            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
+            RR_RETURN_NOT_OK(ipc_result.error);
+            cell.buffer = std::move(ipc_result.value);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return cell;
@@ -1281,14 +1281,14 @@ fn quote_fill_arrow_array_builder(
             if field.is_nullable {
                 quote! {
                     (void)num_elements;
-                    return arrow::Status::NotImplemented(("TODO(andreas) Handle nullable extensions"));
+                    return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
                 }
             } else {
                 // Trivial forwarding to inner type.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
                 quote! {
                     static_assert(sizeof(#quoted_fqname) == sizeof(#type_ident));
-                    ARROW_RETURN_NOT_OK(#quoted_fqname::fill_arrow_array_builder(
+                    RR_RETURN_NOT_OK(#quoted_fqname::fill_arrow_array_builder(
                         builder, reinterpret_cast<const #quoted_fqname*>(elements), num_elements
                     ));
                 }
@@ -1333,7 +1333,7 @@ fn quote_fill_arrow_array_builder(
                     let variant_append = if variant.typ.is_plural() {
                         quote! {
                             (void)#variant_builder;
-                            return arrow::Status::NotImplemented("TODO(andreas): list types in unions are not yet supported");
+                            return Error(ErrorCode::NotImplemented, "TODO(andreas): list types in unions are not yet supported");
                         }
                     } else {
                         let variant_accessor = quote!(union_instance._data);
@@ -1578,7 +1578,7 @@ fn quote_append_single_value_to_builder(
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
                         if (#field_ptr_accessor) {
-                            ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
+                            RR_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
                         }
                     }
                 }
@@ -1586,7 +1586,7 @@ fn quote_append_single_value_to_builder(
         }
         Type::Object(fqname) => {
             let fqname = quote_fqname_as_type_path(includes, fqname);
-            quote!(ARROW_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, &#value_access, 1));)
+            quote!(RR_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, &#value_access, 1));)
         }
     }
 }
@@ -1707,8 +1707,10 @@ fn quote_arrow_array_builder_type_instantiation(
             if !is_top_level_type {
                 // Propagating error here is hard since we're in a nested context.
                 // But also not that important since we *know* that this only fails for null pools and we already checked that now.
+                // For the unlikely broken case, Rerun result will give us a nullptr which will then
+                // fail the subsequent actions inside arrow, so the error will still propagate.
                 let quoted_fqname = quote_fqname_as_type_path(cpp_includes, fqname);
-                quote!(#quoted_fqname::new_arrow_array_builder(memory_pool).ValueOrDie())
+                quote!(#quoted_fqname::new_arrow_array_builder(memory_pool).value)
             } else if object.is_arrow_transparent() {
                 quote_arrow_array_builder_type_instantiation(
                     &object.fields[0].typ,
