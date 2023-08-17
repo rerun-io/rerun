@@ -67,7 +67,7 @@ class AnnotationInfo:
 
 
 if TYPE_CHECKING:
-    AnnotationInfoLike = Union[AnnotationInfo, Tuple[int, str], Tuple[int, str, datatypes.ColorLike]]
+    AnnotationInfoLike = Union[AnnotationInfo, int, Tuple[int, str], Tuple[int, str, datatypes.ColorLike]]
 else:
     AnnotationInfoLike = Any
 
