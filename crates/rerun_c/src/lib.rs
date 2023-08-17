@@ -156,26 +156,18 @@ pub extern "C" fn rr_version_string() -> *const c_char {
     VERSION.as_ptr()
 }
 
-#[allow(unsafe_code)]
-#[no_mangle]
-pub extern "C" fn rr_recording_stream_new(
-    store_info: *const CStoreInfo,
-    error: *mut CError,
-) -> CRecStreamId {
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecStreamId, CError> {
     initialize_logging();
 
-    let Some(store_info) = ptr::try_ptr_as_ref(store_info, error, "store_info") else {
-        return 0;
-    };
+    let store_info = ptr::try_ptr_as_ref(store_info, "store_info")?;
 
     let CStoreInfo {
         application_id,
         store_kind,
     } = *store_info;
 
-    let Some(application_id) = ptr::try_char_ptr_as_str(application_id, error, "store_info.application_id") else {
-        return 0;
-    };
+    let application_id = ptr::try_char_ptr_as_str(application_id, "store_info.application_id")?;
 
     let mut rec_stream_builder = RecordingStreamBuilder::new(application_id)
         //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
@@ -186,18 +178,29 @@ pub extern "C" fn rr_recording_stream_new(
         rec_stream_builder = rec_stream_builder.blueprint();
     }
 
-    match rec_stream_builder.buffered() {
-        Ok(rec_stream) => {
-            CError::set_ok(error);
-            RECORDING_STREAMS.lock().insert(rec_stream)
-        }
+    let rec_stream = rec_stream_builder.buffered().map_err(|err| {
+        CError::new(
+            CErrorCode::RecordingStreamCreationFailure,
+            &format!("Failed to create recording stream: {err}"),
+        )
+    })?;
+    Ok(RECORDING_STREAMS.lock().insert(rec_stream))
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_new(
+    store_info: *const CStoreInfo,
+    error: *mut CError,
+) -> CRecStreamId {
+    match rr_recording_stream_new_impl(store_info) {
         Err(err) => {
-            CError::write_error(
-                error,
-                CErrorCode::RecordingStreamCreationFailure,
-                &format!("Failed to create recording stream: {err}"),
-            );
+            err.write_error(error);
             0
+        }
+        Ok(id) => {
+            CError::OK.write_error(error);
+            id
         }
     }
 }
@@ -232,6 +235,35 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecStreamId) {
     }
 }
 
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_connect_impl(
+    id: CRecStreamId,
+    tcp_addr: *const c_char,
+    flush_timeout_sec: f32,
+) -> Result<(), CError> {
+    let stream = RECORDING_STREAMS
+        .lock()
+        .get(id)
+        .ok_or(CError::invalid_recording_stream_handle())?;
+
+    let tcp_addr = ptr::try_char_ptr_as_str(tcp_addr, "tcp_addr")?;
+    let tcp_addr = tcp_addr.parse().map_err(|err| {
+        CError::new(
+            CErrorCode::InvalidSocketAddress,
+            &format!("Failed to parse tcp address {tcp_addr:?}: {err}",),
+        )
+    })?;
+
+    let flush_timeout = if flush_timeout_sec >= 0.0 {
+        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
+    } else {
+        None
+    };
+    stream.connect(tcp_addr, flush_timeout);
+
+    Ok(())
+}
+
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_connect(
@@ -240,34 +272,26 @@ pub extern "C" fn rr_recording_stream_connect(
     flush_timeout_sec: f32,
     error: *mut CError,
 ) {
-    let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
-        CError::invalid_recording_stream_handle(error);
-        return;
-    };
+    rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec)
+        .err()
+        .unwrap_or(CError::OK)
+        .write_error(error);
+}
 
-    let Some(tcp_addr) = ptr::try_char_ptr_as_str(tcp_addr, error, "tcp_addr") else {
-        return;
-    };
-    let tcp_addr = match tcp_addr.parse() {
-        Ok(tcp_addr) => tcp_addr,
-        Err(err) => {
-            CError::write_error(
-                error,
-                CErrorCode::InvalidSocketAddress,
-                &format!("Failed to parse tcp address {tcp_addr:?}: {err}",),
-            );
-            return;
-        }
-    };
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_save_impl(id: CRecStreamId, path: *const c_char) -> Result<(), CError> {
+    let stream = RECORDING_STREAMS
+        .lock()
+        .get(id)
+        .ok_or(CError::invalid_recording_stream_handle())?;
 
-    let flush_timeout = if flush_timeout_sec >= 0.0 {
-        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
-    } else {
-        None
-    };
-
-    stream.connect(tcp_addr, flush_timeout);
-    CError::set_ok(error);
+    let path = ptr::try_char_ptr_as_str(path, "path")?;
+    stream.save(path).map_err(|err| {
+        CError::new(
+            CErrorCode::RecordingStreamSaveFailure,
+            &format!("Failed to save recording stream to {path:?}: {err}"),
+        )
+    })
 }
 
 #[allow(unsafe_code)]
@@ -277,42 +301,25 @@ pub extern "C" fn rr_recording_stream_save(
     path: *const c_char,
     error: *mut CError,
 ) {
-    let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
-        CError::invalid_recording_stream_handle(error);
-        return;
-    };
-
-    let Some(path) = ptr::try_char_ptr_as_str(path, error, "path") else {
-        return;
-    };
-
-    if let Err(err) = stream.save(path) {
-        CError::write_error(
-            error,
-            CErrorCode::RecordingStreamSaveFailure,
-            &format!("Failed to save recording stream to {path:?}: {err}"),
-        );
-    } else {
-        CError::set_ok(error);
-    }
+    rr_recording_stream_save_impl(id, path)
+        .err()
+        .unwrap_or(CError::OK)
+        .write_error(error);
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
-pub unsafe extern "C" fn rr_log(
+#[allow(clippy::result_large_err)]
+fn rr_log_impl(
     id: CRecStreamId,
     data_row: *const CDataRow,
     inject_time: bool,
-    error: *mut CError,
-) {
-    let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
-        CError::invalid_recording_stream_handle(error);
-        return;
-    };
+) -> Result<(), CError> {
+    let stream = RECORDING_STREAMS
+        .lock()
+        .get(id)
+        .ok_or(CError::invalid_recording_stream_handle())?;
 
-    let Some(data_row) = ptr::try_ptr_as_ref(data_row, error, "data_row") else {
-        return;
-    };
+    let data_row = ptr::try_ptr_as_ref(data_row, "data_row")?;
 
     let CDataRow {
         entity_path,
@@ -321,19 +328,14 @@ pub unsafe extern "C" fn rr_log(
         data_cells,
     } = *data_row;
 
-    let Some(entity_path) = ptr::try_char_ptr_as_str(entity_path, error, "entity_path") else {
-        return;
-    };
-
+    let entity_path = ptr::try_char_ptr_as_str(entity_path, "entity_path")?;
     let entity_path = match re_log_types::parse_entity_path(entity_path) {
         Ok(entity_path) => EntityPath::from(entity_path),
         Err(err) => {
-            CError::write_error(
-                error,
+            return Err(CError::new(
                 CErrorCode::InvalidEntityPath,
                 &format!("Failed to parse entity path {entity_path:?}: {err}"),
-            );
-            return;
+            ))
         }
     };
 
@@ -351,39 +353,26 @@ pub unsafe extern "C" fn rr_log(
             bytes,
         } = *data_cell;
 
-        let Some(component_name) = ptr::try_char_ptr_as_str(
-            component_name,
-            error,
-            "data_cells[i].component_name",
-        ) else {
-            return;
-        };
+        let component_name =
+            ptr::try_char_ptr_as_str(component_name, "data_cells[i].component_name")?;
         let component_name = ComponentName::from(component_name);
 
         let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
-        let array = match parse_arrow_ipc_encapsulated_message(bytes) {
-            Ok(array) => array,
-            Err(err) => {
-                CError::write_error(
-                    error,
-                    CErrorCode::ArrowIpcMessageParsingFailure,
-                    &format!("Failed to parse Arrow IPC encapsulated message: {err}"),
-                );
-                return;
-            }
-        };
+        let array = parse_arrow_ipc_encapsulated_message(bytes).map_err(|err| {
+            CError::new(
+                CErrorCode::ArrowIpcMessageParsingFailure,
+                &format!("Failed to parse Arrow IPC encapsulated message: {err}"),
+            )
+        })?;
 
-        match DataCell::try_from_arrow(component_name, array) {
-            Ok(cell) => cells.push(cell),
-            Err(err) => {
-                CError::write_error(
-                    error,
+        cells.push(
+            DataCell::try_from_arrow(component_name, array).map_err(|err| {
+                CError::new(
                     CErrorCode::ArrowDataCellError,
                     &format!("Failed to create arrow datacell from message: {err}"),
-                );
-                return;
-            }
-        }
+                )
+            })?,
+        );
     }
 
     let data_row = DataRow {
@@ -396,7 +385,21 @@ pub unsafe extern "C" fn rr_log(
 
     stream.record_row(data_row, inject_time);
 
-    CError::set_ok(error);
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rr_log(
+    id: CRecStreamId,
+    data_row: *const CDataRow,
+    inject_time: bool,
+    error: *mut CError,
+) {
+    rr_log_impl(id, data_row, inject_time)
+        .err()
+        .unwrap_or(CError::OK)
+        .write_error(error);
 }
 
 // ----------------------------------------------------------------------------
