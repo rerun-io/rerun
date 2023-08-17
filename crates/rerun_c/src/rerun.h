@@ -135,7 +135,7 @@ typedef struct rr_error {
     /// Error code indicating the type of error.
     rr_error_code code;
 
-    /// Human readable description of the error, if any.
+    /// Human readable description of the error in null-terminated UTF8.
     char description[512];
 } rr_error;
 
