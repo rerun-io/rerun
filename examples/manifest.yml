@@ -40,17 +40,6 @@ root:
     set up in a `requirements.txt` next to the example. These are noted in the
     individual example sections below.
   children:
-    - name: paper-walkthrough
-      title: Paper Walkthroughs
-      prelude: |
-        The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
-        from the official open-source implementations adding Rerun as the visualizer.
-        Check out the respective READMEs for installation instructions.
-        For the simplest possible examples showing how to use each api,
-        check out [Loggable Data Types](/docs/reference/data_types).
-      children:
-        - name: tapir
-          python: python/tapir
     - name: real-data
       title: Examples with Real Data
       prelude: |
@@ -59,6 +48,18 @@ root:
         Each example downloads it's own data, so no additional steps are needed.
         For the simplest possible examples showing how to use each api,
         check out [Loggable Data Types](/docs/reference/data_types).
+
+        To run these examples sure you have the Rerun repository checked out and the latest SDK installed.
+
+        ```bash
+        pip install --upgrade rerun-sdk  # install the latest Rerun SDK
+        git clone git@github.com:rerun-io/rerun.git  # Clone the repository
+        cd rerun
+        git checkout latest  # Check out the commit matching the latest SDK release
+        ```
+        > Note: Make sure your SDK version matches the examples.
+        For example, if your SDK version is `0.3.1`, check out the matching tag
+        in the Rerun repository by running `git checkout v0.3.1`.
       children:
         - name: arkit_scenes
           python: python/arkit_scenes
@@ -114,6 +115,18 @@ root:
         They should not require any additional data downloads, and should run offline.
         For the simplest possible examples showing how to use each api,
         check out [Loggable Data Types](/docs/reference/data_types).
+
+        To run these examples sure you have the Rerun repository checked out and the latest SDK installed.
+
+        ```bash
+        pip install --upgrade rerun-sdk  # install the latest Rerun SDK
+        git clone git@github.com:rerun-io/rerun.git  # Clone the repository
+        cd rerun
+        git checkout latest  # Check out the commit matching the latest SDK release
+        ```
+        > Note: Make sure your SDK version matches the examples.
+        For example, if your SDK version is `0.3.1`, check out the matching tag
+        in the Rerun repository by running `git checkout v0.3.1`.
       children:
         - name: minimal
           python: python/minimal
@@ -137,18 +150,14 @@ root:
 
         - name: text-logging
           python: python/text_logging
-
-    - name: setup
-      title: Setup
+    - name: paper-walkthrough
+      title: Paper Walkthroughs
       prelude: |
-        Make sure you have the Rerun repository checked out and the latest SDK installed.
-
-        ```bash
-        pip install --upgrade rerun-sdk  # install the latest Rerun SDK
-        git clone git@github.com:rerun-io/rerun.git  # Clone the repository
-        cd rerun
-        git checkout latest  # Check out the commit matching the latest SDK release
-        ```
-        > Note: Make sure your SDK version matches the examples.
-        For example, if your SDK version is `0.3.1`, check out the matching tag
-        in the Rerun repository by running `git checkout v0.3.1`.
+        The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
+        from the official open-source implementations adding Rerun as the visualizer.
+        Check out the respective READMEs for installation instructions.
+        For the simplest possible examples showing how to use each api,
+        check out [Loggable Data Types](/docs/reference/data_types).
+      children:
+        - name: tapir
+          python: python/tapir
