@@ -32,9 +32,9 @@ rr.log_rect("car", bbox)
 </p>
 
 ## Getting started
-* **Python**: `pip install rerun-sdk`
+* **Python**: `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
 * **Rust**: `cargo add rerun`
-* **C / C++**: Coming soon
+* **C / C++**: [Coming soon](https://github.com/rerun-io/rerun/issues/2919)
 
 ### Rerun Viewer binary
 Both the Python and Rust library can start the Rerun Viewer, but to stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
