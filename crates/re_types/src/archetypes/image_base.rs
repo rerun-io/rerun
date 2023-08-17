@@ -15,10 +15,13 @@
 /// The base archetype for all Image variants.
 ///
 /// This archetype is not intended to be used directly, but rather to be
-/// used via the Image, SegmentationImage, and DepthImage archetype aliases.
+/// used via the `Image`, `SegmentationImage`, and `DepthImage` archetype aliases.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ImageBase {
+    /// What variant of image this is.
     pub variant: crate::components::ImageVariant,
+
+    /// The image data. Should always be a rank-2 or rank-3 tensor.
     pub data: crate::components::TensorData,
 }
 

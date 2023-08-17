@@ -13,6 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Clone, Debug, PartialEq)]
+#[repr(transparent)]
 pub struct TensorData(pub crate::datatypes::TensorData);
 
 impl<T: Into<crate::datatypes::TensorData>> From<T> for TensorData {

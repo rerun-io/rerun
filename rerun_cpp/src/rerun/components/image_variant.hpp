@@ -14,7 +14,7 @@
 namespace rerun {
     namespace components {
         struct ImageVariant {
-            rerun::datatypes::ImageVariant data;
+            rerun::datatypes::ImageVariant variant;
 
             /// Name of the component, used for serialization.
             static const char* NAME;
@@ -22,10 +22,10 @@ namespace rerun {
           public:
             ImageVariant() = default;
 
-            ImageVariant(rerun::datatypes::ImageVariant _data) : data(std::move(_data)) {}
+            ImageVariant(rerun::datatypes::ImageVariant _variant) : variant(std::move(_variant)) {}
 
-            ImageVariant& operator=(rerun::datatypes::ImageVariant _data) {
-                data = std::move(_data);
+            ImageVariant& operator=(rerun::datatypes::ImageVariant _variant) {
+                variant = std::move(_variant);
                 return *this;
             }
 

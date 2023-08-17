@@ -10,8 +10,10 @@ namespace rerun.components;
 // ---
 
 table ImageVariant (
+  "attr.arrow.transparent",
   order: 100,
-  "attr.rust.derive": "PartialEq"
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.repr": "transparent"
 ) {
-  data: rerun.datatypes.ImageVariant (order: 100);
+  variant: rerun.datatypes.ImageVariant (order: 100);
 }

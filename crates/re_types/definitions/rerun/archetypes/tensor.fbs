@@ -18,5 +18,6 @@ table Tensor (
   "attr.rust.derive": "PartialEq",
   order: 100
 ) {
+  /// The tensor data
   data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
 }

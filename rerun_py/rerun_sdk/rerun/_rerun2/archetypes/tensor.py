@@ -20,5 +20,9 @@ class Tensor(Archetype):
         metadata={"component": "primary"},
         converter=components.TensorDataArray.from_similar,  # type: ignore[misc]
     )
+    """
+    The tensor data
+    """
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

@@ -10,6 +10,7 @@ struct Unused (order: 100, transparent) {
   unused: bool (order: 100, transparent);
 }
 
+/// An enum indicating the type of `Image`
 // TODO(jleibs): Make this an enum once we have enum support
 // https://github.com/rerun-io/rerun/issues/3009
 union ImageVariant (

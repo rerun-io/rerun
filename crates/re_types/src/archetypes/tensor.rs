@@ -38,6 +38,7 @@
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tensor {
+    /// The tensor data
     pub data: crate::components::TensorData,
 }
 

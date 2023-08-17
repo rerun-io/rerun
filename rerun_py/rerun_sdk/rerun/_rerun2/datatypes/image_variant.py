@@ -17,6 +17,8 @@ __all__ = ["ImageVariant", "ImageVariantArray", "ImageVariantArrayLike", "ImageV
 
 @define
 class ImageVariant:
+    """An enum indicating the type of `Image`."""
+
     inner: bool = field(converter=bool)
     """
     Mono (bool):

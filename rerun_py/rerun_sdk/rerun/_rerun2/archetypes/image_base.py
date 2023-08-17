@@ -18,16 +18,24 @@ class ImageBase(Archetype):
     The base archetype for all Image variants.
 
     This archetype is not intended to be used directly, but rather to be
-    used via the Image, SegmentationImage, and DepthImage archetype aliases.
+    used via the `Image`, `SegmentationImage`, and `DepthImage` archetype aliases.
     """
 
     variant: components.ImageVariantArray = field(
         metadata={"component": "primary"},
         converter=components.ImageVariantArray.from_similar,  # type: ignore[misc]
     )
+    """
+    What variant of image this is.
+    """
+
     data: components.TensorDataArray = field(
         metadata={"component": "primary"},
         converter=components.TensorDataArray.from_similar,  # type: ignore[misc]
     )
+    """
+    The image data. Should always be a rank-2 or rank-3 tensor.
+    """
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

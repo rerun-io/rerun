@@ -57,6 +57,7 @@ namespace rerun {
             };
         } // namespace detail
 
+        /// An enum indicating the type of `Image`
         struct ImageVariant {
             ImageVariant() : _tag(detail::ImageVariantTag::NONE) {}
 
