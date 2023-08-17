@@ -22,7 +22,7 @@ namespace rerun {
         OutOfMemory = 1,
 
         // Invalid argument errors.
-        _CategoryArgument = 0x000000010,
+        _CategoryArgument = 0x0000'0010,
         UnexpectedNullArgument,
         InvalidStringArgument,
         InvalidRecordingStreamHandle,
@@ -30,17 +30,17 @@ namespace rerun {
         InvalidEntityPath,
 
         // Recording stream errors
-        _CategoryRecordingStream = 0x00000100,
+        _CategoryRecordingStream = 0x0000'0100,
         RecordingStreamCreationFailure,
         RecordingStreamSaveFailure,
 
         // Arrow data processing errors.
-        _CategoryArrow = 0x000001000,
+        _CategoryArrow = 0x0000'1000,
         ArrowIpcMessageParsingFailure,
         ArrowDataCellError,
 
         // Errors directly translated from arrow::StatusCode.
-        _CategoryArrowCppStatus = 0x10000000,
+        _CategoryArrowCppStatus = 0x1000'0000,
         ArrowStatusCode_KeyError,
         ArrowStatusCode_TypeError,
         ArrowStatusCode_Invalid,
@@ -57,7 +57,7 @@ namespace rerun {
         ArrowStatusCode_ExecutionError,
         ArrowStatusCode_AlreadyExists,
 
-        Unknown = 0xFFFFFFFF,
+        Unknown = 0xFFFF'FFFF,
     };
 
     /// Callback function type for log handlers.

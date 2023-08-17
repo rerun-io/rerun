@@ -78,22 +78,22 @@ pub struct CDataRow {
 pub enum CErrorCode {
     Ok = 0,
 
-    _CategoryArgument = 0x000000010,
+    _CategoryArgument = 0x0000_00010,
     UnexpectedNullArgument,
     InvalidStringArgument,
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
     InvalidEntityPath,
 
-    _CategoryRecordingStream = 0x000000100,
+    _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamCreationFailure,
     RecordingStreamSaveFailure,
 
-    _CategoryArrow = 0x000001000,
+    _CategoryArrow = 0x0000_1000,
     ArrowIpcMessageParsingFailure,
     ArrowDataCellError,
 
-    Unknown = 0xFFFFFFFF,
+    Unknown = 0xFFFF_FFFF,
 }
 
 #[repr(C)]
