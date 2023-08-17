@@ -1253,6 +1253,7 @@ pub mod reflection {
             // which contains a valid value in this slot
             unsafe { self._tab.get::<u16>(Field::VT_ID, Some(0)).unwrap() }
         }
+        /// Offset into the vtable for tables, or into the struct.
         #[inline]
         pub fn offset(&self) -> u16 {
             // Safety:
