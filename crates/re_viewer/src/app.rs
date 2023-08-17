@@ -814,32 +814,24 @@ impl App {
     fn handle_dropping_files(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         preview_files_being_dropped(egui_ctx);
 
-        // Collect dropped files:
-        if egui_ctx.input(|i| i.raw.dropped_files.len()) > 2 {
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_description("Can only load one file at a time")
-                .show();
-        }
-        if let Some(file) = egui_ctx.input(|i| i.raw.dropped_files.first().cloned()) {
-            if let Some(bytes) = &file.bytes {
-                let mut bytes: &[u8] = &(*bytes)[..];
-                if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
-                    self.on_rrd_loaded(store_hub, rrd);
+        egui_ctx.input(|i| {
+            for file in &i.raw.dropped_files {
+                if let Some(bytes) = &file.bytes {
+                    let mut bytes: &[u8] = &(*bytes)[..];
+                    if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
+                        self.on_rrd_loaded(store_hub, rrd);
+                    }
+                }
 
-                    #[allow(clippy::needless_return)] // false positive on wasm32
-                    return;
+                #[cfg(not(target_arch = "wasm32"))]
+                if let Some(path) = &file.path {
+                    let with_notification = true;
+                    if let Some(rrd) = crate::loading::load_file_path(path, with_notification) {
+                        self.on_rrd_loaded(store_hub, rrd);
+                    }
                 }
             }
-
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(path) = &file.path {
-                let with_notification = true;
-                if let Some(rrd) = crate::loading::load_file_path(path, with_notification) {
-                    self.on_rrd_loaded(store_hub, rrd);
-                }
-            }
-        }
+        });
     }
 
     /// This function will create an empty blueprint whenever the welcome screen should be
