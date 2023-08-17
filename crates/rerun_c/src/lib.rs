@@ -6,7 +6,10 @@
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
 
-use std::ffi::{c_char, CStr, CString};
+mod error;
+mod ptr;
+
+use std::ffi::{c_char, CString};
 
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -22,7 +25,7 @@ use re_sdk::{
 
 type CRecStreamId = u32;
 
-#[repr(i32)]
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CStoreKind {
     /// A recording of user-data.
@@ -68,6 +71,36 @@ pub struct CDataRow {
     pub num_instances: u32,
     pub num_data_cells: u32,
     pub data_cells: *const CDataCell,
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CErrorCode {
+    Ok = 0,
+
+    _CategoryArgument = 0x000000010,
+    UnexpectedNullArgument,
+    InvalidStringArgument,
+    InvalidRecordingStreamHandle,
+    InvalidSocketAddress,
+    InvalidEntityPath,
+
+    _CategoryRecordingStream = 0x000000100,
+    RecordingStreamCreationFailure,
+    RecordingStreamSaveFailure,
+
+    _CategoryArrow = 0x000001000,
+    ArrowIpcMessageParsingFailure,
+    ArrowDataCellError,
+
+    Unknown = 0xFFFFFFFF,
+}
+
+#[repr(C)]
+#[derive(Clone)]
+pub struct CError {
+    pub code: CErrorCode,
+    pub message: [c_char; 512],
 }
 
 // ----------------------------------------------------------------------------
@@ -123,34 +156,50 @@ pub extern "C" fn rr_version_string() -> *const c_char {
     VERSION.as_ptr()
 }
 
-#[allow(unsafe_code)]
-#[no_mangle]
-pub unsafe extern "C" fn rr_recording_stream_new(cstore_info: *const CStoreInfo) -> CRecStreamId {
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecStreamId, CError> {
     initialize_logging();
 
-    let cstore_info = unsafe { &*cstore_info };
+    let store_info = ptr::try_ptr_as_ref(store_info, "store_info")?;
 
     let CStoreInfo {
         application_id,
         store_kind,
-    } = *cstore_info;
-    let application_id = unsafe { CStr::from_ptr(application_id) };
+    } = *store_info;
 
-    let mut rec_stream_builder =
-        RecordingStreamBuilder::new(application_id.to_str().expect("invalid application_id"))
-            //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
-            //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
-            .store_source(re_log_types::StoreSource::CSdk);
+    let application_id = ptr::try_char_ptr_as_str(application_id, "store_info.application_id")?;
+
+    let mut rec_stream_builder = RecordingStreamBuilder::new(application_id)
+        //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
+        //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
+        .store_source(re_log_types::StoreSource::CSdk);
 
     if store_kind == CStoreKind::Blueprint {
         rec_stream_builder = rec_stream_builder.blueprint();
     }
 
-    let rec_stream = rec_stream_builder
-        .buffered()
-        .expect("Failed to create recording stream");
+    let rec_stream = rec_stream_builder.buffered().map_err(|err| {
+        CError::new(
+            CErrorCode::RecordingStreamCreationFailure,
+            &format!("Failed to create recording stream: {err}"),
+        )
+    })?;
+    Ok(RECORDING_STREAMS.lock().insert(rec_stream))
+}
 
-    RECORDING_STREAMS.lock().insert(rec_stream)
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_new(
+    store_info: *const CStoreInfo,
+    error: *mut CError,
+) -> CRecStreamId {
+    match rr_recording_stream_new_impl(store_info) {
+        Err(err) => {
+            err.write_error(error);
+            0
+        }
+        Ok(id) => id,
+    }
 }
 
 #[allow(unsafe_code)]
@@ -183,54 +232,89 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecStreamId) {
     }
 }
 
-#[allow(unsafe_code)]
-#[no_mangle]
-pub unsafe extern "C" fn rr_recording_stream_connect(
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_connect_impl(
     id: CRecStreamId,
     tcp_addr: *const c_char,
     flush_timeout_sec: f32,
-) {
-    let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
-        return;
-    };
+) -> Result<(), CError> {
+    let stream = RECORDING_STREAMS
+        .lock()
+        .get(id)
+        .ok_or(CError::invalid_recording_stream_handle())?;
 
-    let tcp_addr = unsafe { CStr::from_ptr(tcp_addr) };
-    let tcp_addr = tcp_addr.to_str().expect("invalid tcp_addr");
-    let tcp_addr = tcp_addr.parse().expect("failed to parse tcp_addr");
+    let tcp_addr = ptr::try_char_ptr_as_str(tcp_addr, "tcp_addr")?;
+    let tcp_addr = tcp_addr.parse().map_err(|err| {
+        CError::new(
+            CErrorCode::InvalidSocketAddress,
+            &format!("Failed to parse tcp address {tcp_addr:?}: {err}",),
+        )
+    })?;
 
     let flush_timeout = if flush_timeout_sec >= 0.0 {
         Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
     } else {
         None
     };
-
     stream.connect(tcp_addr, flush_timeout);
+
+    Ok(())
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_recording_stream_save(id: CRecStreamId, path: *const c_char) {
-    let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
-        return;
-    };
+pub extern "C" fn rr_recording_stream_connect(
+    id: CRecStreamId,
+    tcp_addr: *const c_char,
+    flush_timeout_sec: f32,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec) {
+        err.write_error(error);
+    }
+}
 
-    let path = unsafe { CStr::from_ptr(path) };
-    let path = path.to_str().expect("invalid path");
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_save_impl(id: CRecStreamId, path: *const c_char) -> Result<(), CError> {
+    let stream = RECORDING_STREAMS
+        .lock()
+        .get(id)
+        .ok_or(CError::invalid_recording_stream_handle())?;
 
-    stream
-        .save(path)
-        .expect("Failed to save recording stream to file");
+    let path = ptr::try_char_ptr_as_str(path, "path")?;
+    stream.save(path).map_err(|err| {
+        CError::new(
+            CErrorCode::RecordingStreamSaveFailure,
+            &format!("Failed to save recording stream to {path:?}: {err}"),
+        )
+    })
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_log(id: CRecStreamId, data_row: *const CDataRow, inject_time: bool) {
-    let Some(stream) = RECORDING_STREAMS.lock().get(id) else {
-        return;
-    };
+pub extern "C" fn rr_recording_stream_save(
+    id: CRecStreamId,
+    path: *const c_char,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_save_impl(id, path) {
+        err.write_error(error);
+    }
+}
 
-    assert!(!data_row.is_null());
-    let data_row = unsafe { &*data_row };
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+fn rr_log_impl(
+    id: CRecStreamId,
+    data_row: *const CDataRow,
+    inject_time: bool,
+) -> Result<(), CError> {
+    let stream = RECORDING_STREAMS
+        .lock()
+        .get(id)
+        .ok_or(CError::invalid_recording_stream_handle())?;
+
+    let data_row = ptr::try_ptr_as_ref(data_row, "data_row")?;
 
     let CDataRow {
         entity_path,
@@ -239,33 +323,52 @@ pub unsafe extern "C" fn rr_log(id: CRecStreamId, data_row: *const CDataRow, inj
         data_cells,
     } = *data_row;
 
-    let entity_path = unsafe { CStr::from_ptr(entity_path) };
-    let entity_path =
-        EntityPath::from(re_log_types::parse_entity_path(entity_path.to_str().unwrap()).unwrap());
+    let entity_path = ptr::try_char_ptr_as_str(entity_path, "entity_path")?;
+    let entity_path = match re_log_types::parse_entity_path(entity_path) {
+        Ok(entity_path) => EntityPath::from(entity_path),
+        Err(err) => {
+            return Err(CError::new(
+                CErrorCode::InvalidEntityPath,
+                &format!("Failed to parse entity path {entity_path:?}: {err}"),
+            ))
+        }
+    };
 
     re_log::debug!(
         "rerun_log {entity_path:?}, num_instances: {num_instances}, num_data_cells: {num_data_cells}",
     );
 
-    let cells = (0..num_data_cells)
-        .map(|i| {
-            let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
-            let CDataCell {
-                component_name,
-                num_bytes,
-                bytes,
-            } = *data_cell;
+    let mut cells = re_log_types::DataCellVec::default();
+    cells.reserve(num_data_cells as usize);
+    for i in 0..num_data_cells {
+        let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
+        let CDataCell {
+            component_name,
+            num_bytes,
+            bytes,
+        } = *data_cell;
 
-            let component_name = unsafe { CStr::from_ptr(component_name) };
-            let component_name = ComponentName::from(component_name.to_str().unwrap());
+        let component_name =
+            ptr::try_char_ptr_as_str(component_name, "data_cells[i].component_name")?;
+        let component_name = ComponentName::from(component_name);
 
-            let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
+        let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
+        let array = parse_arrow_ipc_encapsulated_message(bytes).map_err(|err| {
+            CError::new(
+                CErrorCode::ArrowIpcMessageParsingFailure,
+                &format!("Failed to parse Arrow IPC encapsulated message: {err}"),
+            )
+        })?;
 
-            let array = parse_arrow_ipc_encapsulated_message(bytes).unwrap();
-
-            DataCell::try_from_arrow(component_name, array).unwrap()
-        })
-        .collect();
+        cells.push(
+            DataCell::try_from_arrow(component_name, array).map_err(|err| {
+                CError::new(
+                    CErrorCode::ArrowDataCellError,
+                    &format!("Failed to create arrow datacell from message: {err}"),
+                )
+            })?,
+        );
+    }
 
     let data_row = DataRow {
         row_id: re_sdk::log::RowId::random(),
@@ -276,6 +379,21 @@ pub unsafe extern "C" fn rr_log(id: CRecStreamId, data_row: *const CDataRow, inj
     };
 
     stream.record_row(data_row, inject_time);
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rr_log(
+    id: CRecStreamId,
+    data_row: *const CDataRow,
+    inject_time: bool,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_log_impl(id, data_row, inject_time) {
+        err.write_error(error);
+    }
 }
 
 // ----------------------------------------------------------------------------

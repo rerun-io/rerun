@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "data_cell.hpp"
+#include "error.hpp"
 
 // TODO(#2873): Should avoid leaking arrow headers.
 #include <arrow/result.h>
@@ -47,13 +48,14 @@ namespace rerun {
         RecordingStream(const char* app_id, StoreKind store_kind = StoreKind::Recording);
         ~RecordingStream();
 
+        RecordingStream(RecordingStream&& other);
+
         // TODO(andreas): We could easily make the recording stream trivial to copy by bumping Rusts
         // ref counter by adding a copy of the recording stream to the list of C recording streams.
         // Doing it this way would likely yield the most consistent behavior when interacting with
         // global streams (and especially when interacting with different languages in the same
         // application).
         RecordingStream(const RecordingStream&) = delete;
-        RecordingStream(RecordingStream&&) = delete;
         RecordingStream() = delete;
 
         // -----------------------------------------------------------------------------------------
@@ -100,12 +102,12 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
-        void connect(const char* tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0);
+        Error connect(const char* tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0);
 
         /// Stream all log-data to a given file.
         ///
         /// This function returns immediately.
-        void save(const char* path);
+        Error save(const char* path);
 
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///
@@ -122,6 +124,8 @@ namespace rerun {
         /// Alias for `log_archetype`.
         /// TODO(andreas): Would be nice if this were able to combine both log_archetype and
         /// log_components!
+        ///
+        /// Logs any failure via `Error::log_on_failure`
         template <typename T>
         void log(const char* entity_path, const T& archetype) {
             log_archetype(entity_path, archetype);
@@ -130,12 +134,20 @@ namespace rerun {
         /// Logs an archetype.
         ///
         /// Prefer this interface for ease of use over the more general `log_components` interface.
+        ///
+        /// Logs any failure via `Error::log_on_failure`
         template <typename T>
         void log_archetype(const char* entity_path, const T& archetype) {
-            // TODO(andreas): Handle splats.
-            // TODO(andreas): Error handling.
-            const auto data_cells = archetype.to_data_cells().ValueOrDie();
-            log_data_row(
+            try_log_archetype(entity_path, archetype).log_on_failure();
+        }
+
+        /// Logs a an archetype, returning an error on failure.
+        ///
+        /// @see log_archetype
+        template <typename T>
+        Error try_log_archetype(const char* entity_path, const T& archetype) {
+            const auto data_cells = archetype.to_data_cells().ValueOrDie(); // TODO: Error handling.
+            return try_log_data_row(
                 entity_path,
                 archetype.num_instances(),
                 data_cells.size(),
@@ -151,8 +163,18 @@ namespace rerun {
         /// Expects component arrays as std::vector, std::array or C arrays.
         ///
         /// TODO(andreas): More documentation, examples etc.
+        ///
+        /// Logs any failure via `Error::log_on_failure`
         template <typename... Ts>
         void log_components(const char* entity_path, const Ts&... component_array) {
+            try_log_components(entity_path, component_array...).log_on_failure();
+        }
+
+        /// Logs a list of component arrays, returning an error on failure.
+        ///
+        /// @see log_components
+        template <typename... Ts>
+        Error try_log_components(const char* entity_path, const Ts&... component_array) {
             // TODO(andreas): Handle splats.
             const size_t num_instances = size_of_first_collection(component_array...);
 
@@ -160,14 +182,19 @@ namespace rerun {
             data_cells.reserve(sizeof...(Ts));
             push_data_cells(data_cells, component_array...);
 
-            log_data_row(entity_path, num_instances, data_cells.size(), data_cells.data());
+            return try_log_data_row(
+                entity_path,
+                num_instances,
+                data_cells.size(),
+                data_cells.data()
+            );
         }
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
         /// I.e. logs a number of components arrays (each with a same number of instances) to a
         /// single entity path.
-        void log_data_row(
+        Error try_log_data_row(
             const char* entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells
         );

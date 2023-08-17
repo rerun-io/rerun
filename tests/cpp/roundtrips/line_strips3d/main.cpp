@@ -5,7 +5,7 @@ namespace rr = rerun;
 
 int main(int argc, char** argv) {
     auto rec_stream = rr::RecordingStream("roundtrip_line_strip3d");
-    rec_stream.save(argv[1]);
+    rec_stream.save(argv[1]).throw_on_failure();
 
     rec_stream.log(
         "line_strips3d",
