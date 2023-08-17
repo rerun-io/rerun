@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::datatypes::{ImageVariant, TensorDimension};
 
 use super::ImageBase;
@@ -107,23 +109,67 @@ impl Image {
             .try_into()
             .map_err(|e| ImageConstructionError::TensorDataConversion(e))?;
 
-        let variant = match data.shape.len() {
+        if data.shape.len() < 2 {
+            return Err(ImageConstructionError::BadImageShape(data.shape));
+        }
+
+        let mut iter_non_empty =
+            data.shape
+                .iter()
+                .enumerate()
+                .filter_map(|(ind, dim)| if dim.size != 1 { Some(ind) } else { None });
+
+        // 0 must be valid since shape isn't empty or we would have returned an Err above
+        let mut first_non_empty = iter_non_empty.next().unwrap_or(0);
+        let mut last_non_empty = iter_non_empty.last().unwrap_or(first_non_empty);
+
+        // Note, these are inclusive ranges.
+
+        // First, empty inner dimensions are more likely to be intentional than empty outer dimensions.
+        // Grow to a min-size of 2.
+        // (1x1x3x1) -> 3x1 mono rather than 1x1x3 RGB
+        while last_non_empty - first_non_empty < 1 && last_non_empty < (data.shape.len() - 1) {
+            last_non_empty += 1;
+        }
+
+        // Next, consider empty outer dimensions if we still need them.
+        // Grow up to 3 if the inner dimension is already 3 or 4 (Color Images)
+        // Otherwise, only grow up to 2.
+        // (1x1x3) -> 1x1x3 rgb rather than 1x3 mono
+        let target = match data.shape[last_non_empty].size {
+            3 | 4 => 2,
+            _ => 1,
+        };
+
+        while last_non_empty - first_non_empty < target && first_non_empty > 0 {
+            first_non_empty -= 1;
+        }
+
+        let non_empty_dims: SmallVec<[usize; 4]> = (first_non_empty..=last_non_empty).collect();
+
+        let variant = match non_empty_dims.len() {
             2 => {
-                data.shape[0].name = Some("height".into());
-                data.shape[1].name = Some("width".into());
+                data.shape[non_empty_dims[0]].name = Some("height".into());
+                data.shape[non_empty_dims[1]].name = Some("width".into());
                 ImageVariant::Mono(true)
             }
-            3 => match data.shape[2].size {
+            3 => match data.shape[non_empty_dims[2]].size {
+                1 => {
+                    data.shape[non_empty_dims[0]].name = Some("height".into());
+                    data.shape[non_empty_dims[1]].name = Some("width".into());
+                    data.shape[non_empty_dims[2]].name = Some("mono".into());
+                    ImageVariant::Mono(true)
+                }
                 3 => {
-                    data.shape[0].name = Some("height".into());
-                    data.shape[1].name = Some("width".into());
-                    data.shape[2].name = Some("color".into());
+                    data.shape[non_empty_dims[0]].name = Some("height".into());
+                    data.shape[non_empty_dims[1]].name = Some("width".into());
+                    data.shape[non_empty_dims[2]].name = Some("color".into());
                     ImageVariant::Rgb(true)
                 }
                 4 => {
-                    data.shape[0].name = Some("height".into());
-                    data.shape[1].name = Some("width".into());
-                    data.shape[2].name = Some("color".into());
+                    data.shape[non_empty_dims[0]].name = Some("height".into());
+                    data.shape[non_empty_dims[1]].name = Some("width".into());
+                    data.shape[non_empty_dims[2]].name = Some("color".into());
                     ImageVariant::Rgba(true)
                 }
                 _ => return Err(ImageConstructionError::BadImageShape(data.shape)),

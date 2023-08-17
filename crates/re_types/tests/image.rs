@@ -82,11 +82,46 @@ macro_rules! check_image_array {
 
 #[test]
 fn image_base_ext() {
+    // 1x1 -> mono
+    check_image_array!(
+        Image,
+        u8,
+        ndarray::array![[4]],
+        re_types::datatypes::ImageVariant::Mono(true)
+    );
     // 2x3 -> mono
     check_image_array!(
         Image,
+        u16,
+        ndarray::array![[1, 2, 3], [4, 5, 6]],
+        re_types::datatypes::ImageVariant::Mono(true)
+    );
+    // 1x1x1 -> mono
+    check_image_array!(
+        Image,
+        u32,
+        ndarray::array![[[1]]],
+        re_types::datatypes::ImageVariant::Mono(true)
+    );
+    // 1x3x1 -> mono
+    check_image_array!(
+        Image,
+        u64,
+        ndarray::array![[[1], [2], [3]]],
+        re_types::datatypes::ImageVariant::Mono(true)
+    );
+    // 1x1x3 -> rgb
+    check_image_array!(
+        Image,
         f32,
-        ndarray::array![[1., 2., 3.], [4., 5., 6.]],
+        ndarray::array![[[1.0, 2.0, 3.0]]],
+        re_types::datatypes::ImageVariant::Rgb(true)
+    );
+    // 1x1x5 -> mono
+    check_image_array!(
+        Image,
+        f64,
+        ndarray::array![[[1.0, 2.0, 3.0, 4.0, 5.0]]],
         re_types::datatypes::ImageVariant::Mono(true)
     );
     // 1x2x3 -> rgb
@@ -102,5 +137,26 @@ fn image_base_ext() {
         u8,
         ndarray::array![[[1, 2, 3, 4], [5, 6, 7, 8]]],
         re_types::datatypes::ImageVariant::Rgba(true)
+    );
+    // 1x1x3x1 -> mono
+    check_image_array!(
+        Image,
+        u8,
+        ndarray::Array::from_shape_vec((1, 1, 3, 1), vec![1, 2, 3]).unwrap(),
+        re_types::datatypes::ImageVariant::Mono(true)
+    );
+    // 1x1x1x3 -> rgb
+    check_image_array!(
+        Image,
+        u8,
+        ndarray::Array::from_shape_vec((1, 1, 1, 3), vec![1, 2, 3]).unwrap(),
+        re_types::datatypes::ImageVariant::Rgb(true)
+    );
+    // 1x1x1x5 -> mono
+    check_image_array!(
+        Image,
+        u8,
+        ndarray::Array::from_shape_vec((1, 1, 1, 5), vec![1, 2, 3, 4, 5]).unwrap(),
+        re_types::datatypes::ImageVariant::Mono(true)
     );
 }
