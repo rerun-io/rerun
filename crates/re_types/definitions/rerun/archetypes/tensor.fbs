@@ -6,7 +6,14 @@ include "rerun/components.fbs";
 namespace rerun.archetypes;
 
 
-/// A Generic Tensor
+/// A generic n-dimensional Tensor
+///
+/// \rs ## Example
+/// \rs
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/tensor_simple_v2.rs
+/// \rs ```
+///
 table Tensor (
   "attr.rust.derive": "PartialEq",
   order: 100

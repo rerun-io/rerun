@@ -12,7 +12,10 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A Generic Tensor
+/// The base archetype for all Image variants.
+///
+/// This archetype is not intended to be used directly, but rather to be
+/// used via the Image, SegmentationImage, and DepthImage archetype aliases.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ImageBase {
     pub variant: crate::components::ImageVariant,

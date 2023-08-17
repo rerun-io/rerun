@@ -236,6 +236,7 @@ macro_rules! tensor_type {
             type Error = TensorCastError;
 
             fn try_from(value: ndarray::Array<$type, D>) -> Result<Self, Self::Error> {
+                let value = value.as_standard_layout();
                 let shape = value
                     .shape()
                     .iter()
@@ -249,7 +250,7 @@ macro_rules! tensor_type {
                     .then(|| TensorData {
                         id: TensorId::random(),
                         shape,
-                        buffer: TensorBuffer::$variant(value.into_raw_vec().into()),
+                        buffer: TensorBuffer::$variant(value.to_owned().into_raw_vec().into()),
                     })
                     .ok_or(TensorCastError::NotContiguousStdOrder)
             }

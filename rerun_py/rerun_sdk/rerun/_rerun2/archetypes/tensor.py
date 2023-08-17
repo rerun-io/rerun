@@ -14,7 +14,7 @@ __all__ = ["Tensor"]
 
 @define(str=False, repr=False)
 class Tensor(Archetype):
-    """A Generic Tensor."""
+    """A generic n-dimensional Tensor."""
 
     data: components.TensorDataArray = field(
         metadata={"component": "primary"},

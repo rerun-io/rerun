@@ -295,9 +295,9 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
     // This is difficult to do with regex, because the patterns with newlines overlap.
 
     let start_pattern = "# [doc = \"";
-    let end_pattern = "\"]"; // assues there is no escaped quote followed by a bracket
+    let end_pattern = "\"]\n"; // assues there is no escaped quote followed by a bracket
 
-    let problematic = r#"\"]"#;
+    let problematic = r#"\"]\n"#;
     assert!(
         !code.contains(problematic),
         "The codegen cannot handle the string {problematic} yet"

@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A Generic Tensor
+        /// A generic n-dimensional Tensor
         struct Tensor {
             rerun::components::TensorData data;
 

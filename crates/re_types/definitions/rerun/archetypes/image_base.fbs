@@ -6,7 +6,10 @@ include "rerun/components.fbs";
 namespace rerun.archetypes;
 
 
-/// A Generic Tensor
+/// The base archetype for all Image variants.
+///
+/// This archetype is not intended to be used directly, but rather to be
+/// used via the Image, SegmentationImage, and DepthImage archetype aliases.
 table ImageBase (
   "attr.rust.derive": "PartialEq",
   order: 100

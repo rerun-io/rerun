@@ -13,7 +13,10 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A Generic Tensor
+        /// The base archetype for all Image variants.
+        ///
+        /// This archetype is not intended to be used directly, but rather to be
+        /// used via the Image, SegmentationImage, and DepthImage archetype aliases.
         struct ImageBase {
             rerun::components::ImageVariant variant;
 

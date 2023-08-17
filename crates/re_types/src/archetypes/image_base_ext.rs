@@ -18,7 +18,7 @@ impl ImageBase {
 }
 // ----------------------------------------------------------------------------
 
-/// A Generic Image
+/// An Monochrome or RGB Image
 #[derive(Clone, Debug, PartialEq)]
 pub struct Image(ImageBase);
 
