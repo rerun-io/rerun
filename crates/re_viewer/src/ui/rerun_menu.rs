@@ -1,8 +1,8 @@
 //! The main Rerun drop-down menu found in the top panel.
 
-use egui::NumExt as _;
+use egui::{NumExt as _, Widget};
 
-use re_ui::UICommand;
+use re_ui::{ReUi, UICommand};
 use re_viewer_context::StoreContext;
 
 use crate::App;
@@ -82,11 +82,21 @@ impl App {
             ui.add_space(spacing);
 
             // dont use `hyperlink_to` for styling reasons
-            if ui.button("Help").clicked() {
+            const HELP_URL: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
+
+            let texture_id = self
+                .re_ui()
+                .icon_image(&re_ui::icons::EXTERNAL_LINK)
+                .texture_id(ui.ctx());
+            if egui::Button::image_and_text(texture_id, ReUi::small_icon_size(), "Help")
+                .ui(ui)
+                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                .on_hover_text(HELP_URL)
+                .clicked()
+            {
                 ui.ctx().output_mut(|o| {
                     o.open_url = Some(egui::output::OpenUrl {
-                        url: "https://www.rerun.io/docs/getting-started/viewer-walkthrough"
-                            .to_owned(),
+                        url: HELP_URL.to_owned(),
                         new_tab: true,
                     });
                 });
