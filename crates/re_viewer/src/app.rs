@@ -814,24 +814,23 @@ impl App {
     fn handle_dropping_files(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         preview_files_being_dropped(egui_ctx);
 
-        egui_ctx.input(|i| {
-            for file in &i.raw.dropped_files {
-                if let Some(bytes) = &file.bytes {
-                    let mut bytes: &[u8] = &(*bytes)[..];
-                    if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
-                        self.on_rrd_loaded(store_hub, rrd);
-                    }
-                }
-
-                #[cfg(not(target_arch = "wasm32"))]
-                if let Some(path) = &file.path {
-                    let with_notification = true;
-                    if let Some(rrd) = crate::loading::load_file_path(path, with_notification) {
-                        self.on_rrd_loaded(store_hub, rrd);
-                    }
+        let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
+        for file in dropped_files {
+            if let Some(bytes) = &file.bytes {
+                let mut bytes: &[u8] = &(*bytes)[..];
+                if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
+                    self.on_rrd_loaded(store_hub, rrd);
                 }
             }
-        });
+
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(path) = &file.path {
+                let with_notification = true;
+                if let Some(rrd) = crate::loading::load_file_path(path, with_notification) {
+                    self.on_rrd_loaded(store_hub, rrd);
+                }
+            }
+        }
     }
 
     /// This function will create an empty blueprint whenever the welcome screen should be
