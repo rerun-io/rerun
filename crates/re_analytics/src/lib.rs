@@ -5,6 +5,9 @@
 //! All the data we collect can be found in
 //! <https://github.com/rerun-io/rerun/blob/latest/crates/re_viewer/src/viewer_analytics.rs>.
 
+// We never use any log levels other than `trace` and `debug` because analytics is not important
+// enough to require the attention of our users.
+
 #[cfg(not(target_arch = "wasm32"))]
 mod config_native;
 #[cfg(not(target_arch = "wasm32"))]
@@ -47,7 +50,6 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use re_log::trace;
 use time::OffsetDateTime;
 
 // ----------------------------------------------------------------------------
@@ -253,13 +255,13 @@ pub struct Analytics {
 impl Analytics {
     pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
         let config = Config::load()?;
-        trace!(?config, ?tick, "loaded analytics config");
+        re_log::trace!(?config, ?tick, "loaded analytics config");
 
         if config.is_first_run() {
             eprintln!("{DISCLAIMER}");
 
             config.save()?;
-            trace!(?config, ?tick, "saved analytics config");
+            re_log::trace!(?config, ?tick, "saved analytics config");
         }
 
         let sink = PostHogSink::default();
