@@ -15,6 +15,7 @@ union Angle (
 ) {
   /// \py 3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
   Radians: rerun.datatypes.Float32 (order: 100, transparent),
+
   /// \py 3D rotation angle in degrees. Only one of `degrees` or `radians` should be set.
   Degrees: rerun.datatypes.Float32 (order: 200, transparent),
 }

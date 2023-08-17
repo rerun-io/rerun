@@ -11,6 +11,7 @@
 #include "../components/line_strip2d.hpp"
 #include "../components/radius.hpp"
 #include "../data_cell.hpp"
+#include "../result.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -34,7 +35,7 @@ namespace rerun {
         ///
         /// int main() {
         ///    auto rr_stream = rr::RecordingStream("line_strip2d");
-        ///    rr_stream.connect("127.0.0.1:9876");
+        ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::datatypes::Vec2D> strip1 = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},
         ///    {6.f, 0.f}}; std::vector<rr::datatypes::Vec2D> strip2 =
@@ -60,7 +61,7 @@ namespace rerun {
         ///
         /// int main() {
         ///    auto rr_stream = rr::RecordingStream("line_segments2d");
-        ///    rr_stream.connect("127.0.0.1:9876");
+        ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::datatypes::Vec2D> points = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},
         ///    {6.f, 0.f}}; rr_stream.log("strips", rr::archetypes::LineStrips2D(points));
@@ -182,7 +183,7 @@ namespace rerun {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
 } // namespace rerun

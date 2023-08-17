@@ -11,7 +11,7 @@ SCENARIO("disconnected_space archetype can be serialized" TEST_TAG) {
         auto from_builder = DisconnectedSpace(true);
 
         THEN("serialization succeeds") {
-            CHECK(from_builder.to_data_cells().ok());
+            CHECK(from_builder.to_data_cells().is_ok());
         }
     }
 }

@@ -5,9 +5,7 @@
 #include <vector>
 
 #include "data_cell.hpp"
-
-// TODO(#2873): Should avoid leaking arrow headers.
-#include <arrow/result.h>
+#include "error.hpp"
 
 namespace rerun {
     struct DataCell;
@@ -47,13 +45,14 @@ namespace rerun {
         RecordingStream(const char* app_id, StoreKind store_kind = StoreKind::Recording);
         ~RecordingStream();
 
+        RecordingStream(RecordingStream&& other);
+
         // TODO(andreas): We could easily make the recording stream trivial to copy by bumping Rusts
         // ref counter by adding a copy of the recording stream to the list of C recording streams.
         // Doing it this way would likely yield the most consistent behavior when interacting with
         // global streams (and especially when interacting with different languages in the same
         // application).
         RecordingStream(const RecordingStream&) = delete;
-        RecordingStream(RecordingStream&&) = delete;
         RecordingStream() = delete;
 
         // -----------------------------------------------------------------------------------------
@@ -100,12 +99,12 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
-        void connect(const char* tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0);
+        Error connect(const char* tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0);
 
         /// Stream all log-data to a given file.
         ///
         /// This function returns immediately.
-        void save(const char* path);
+        Error save(const char* path);
 
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///
@@ -122,6 +121,8 @@ namespace rerun {
         /// Alias for `log_archetype`.
         /// TODO(andreas): Would be nice if this were able to combine both log_archetype and
         /// log_components!
+        ///
+        /// Logs any failure via `Error::log_on_failure`
         template <typename T>
         void log(const char* entity_path, const T& archetype) {
             log_archetype(entity_path, archetype);
@@ -130,17 +131,29 @@ namespace rerun {
         /// Logs an archetype.
         ///
         /// Prefer this interface for ease of use over the more general `log_components` interface.
+        ///
+        /// Logs any failure via `Error::log_on_failure`
         template <typename T>
         void log_archetype(const char* entity_path, const T& archetype) {
-            // TODO(andreas): Handle splats.
-            // TODO(andreas): Error handling.
-            const auto data_cells = archetype.to_data_cells().ValueOrDie();
-            log_data_row(
-                entity_path,
-                archetype.num_instances(),
-                data_cells.size(),
-                data_cells.data()
-            );
+            try_log_archetype(entity_path, archetype).log_on_failure();
+        }
+
+        /// Logs a an archetype, returning an error on failure.
+        ///
+        /// @see log_archetype
+        template <typename T>
+        Error try_log_archetype(const char* entity_path, const T& archetype) {
+            const auto data_cells_result = archetype.to_data_cells();
+            if (data_cells_result.is_ok()) {
+                return try_log_data_row(
+                    entity_path,
+                    archetype.num_instances(),
+                    data_cells_result.value.size(),
+                    data_cells_result.value.data()
+                );
+            } else {
+                return data_cells_result.error;
+            }
         }
 
         /// Logs a list of component arrays.
@@ -151,23 +164,41 @@ namespace rerun {
         /// Expects component arrays as std::vector, std::array or C arrays.
         ///
         /// TODO(andreas): More documentation, examples etc.
+        ///
+        /// Logs any failure via `Error::log_on_failure`
         template <typename... Ts>
         void log_components(const char* entity_path, const Ts&... component_array) {
+            try_log_components(entity_path, component_array...).log_on_failure();
+        }
+
+        /// Logs a list of component arrays, returning an error on failure.
+        ///
+        /// @see log_components
+        template <typename... Ts>
+        Error try_log_components(const char* entity_path, const Ts&... component_array) {
             // TODO(andreas): Handle splats.
             const size_t num_instances = size_of_first_collection(component_array...);
 
             std::vector<DataCell> data_cells;
             data_cells.reserve(sizeof...(Ts));
-            push_data_cells(data_cells, component_array...);
+            const auto error = push_data_cells(data_cells, component_array...);
+            if (error.is_err()) {
+                return error;
+            }
 
-            log_data_row(entity_path, num_instances, data_cells.size(), data_cells.data());
+            return try_log_data_row(
+                entity_path,
+                num_instances,
+                data_cells.size(),
+                data_cells.data()
+            );
         }
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
         /// I.e. logs a number of components arrays (each with a same number of instances) to a
         /// single entity path.
-        void log_data_row(
+        Error try_log_data_row(
             const char* entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells
         );
@@ -189,36 +220,44 @@ namespace rerun {
         }
 
         template <typename C, typename... Ts>
-        static void push_data_cells(
+        static Error push_data_cells(
             std::vector<DataCell>& data_cells, const std::vector<C>& first, const Ts&... rest
         ) {
-            // TODO(andreas): Error handling.
-            const auto cell = C::to_data_cell(first.data(), first.size()).ValueOrDie();
-            data_cells.push_back(cell);
-            push_data_cells(data_cells, rest...);
+            const auto cell_result = C::to_data_cell(first.data(), first.size());
+            if (cell_result.is_err()) {
+                return cell_result.error;
+            }
+            data_cells.push_back(cell_result.value);
+            return push_data_cells(data_cells, rest...);
         }
 
         template <size_t N, typename C, typename... Ts>
-        static void push_data_cells(
+        static Error push_data_cells(
             std::vector<DataCell>& data_cells, const std::array<C, N>& first, const Ts&... rest
         ) {
-            // TODO(andreas): Error handling.
-            const auto cell = C::to_data_cell(first.data(), N).ValueOrDie();
-            data_cells.push_back(cell);
-            push_data_cells(data_cells, rest...);
+            const auto cell_result = C::to_data_cell(first.data(), N);
+            if (!cell_result.is_ok()) {
+                return cell_result.error;
+            }
+            data_cells.push_back(cell_result.value);
+            return push_data_cells(data_cells, rest...);
         }
 
         template <size_t N, typename C, typename... Ts>
-        static void push_data_cells(
+        static Error push_data_cells(
             std::vector<DataCell>& data_cells, const C (&first)[N], const Ts&... rest
         ) {
-            // TODO(andreas): Error handling.
-            const auto cell = C::to_data_cell(first, N).ValueOrDie();
-            data_cells.push_back(cell);
-            push_data_cells(data_cells, rest...);
+            const auto cell_result = C::to_data_cell(first, N);
+            if (!cell_result.is_ok()) {
+                return cell_result.error;
+            }
+            data_cells.push_back(cell_result.value);
+            return push_data_cells(data_cells, rest...);
         }
 
-        static void push_data_cells(std::vector<DataCell>&) {}
+        static Error push_data_cells(std::vector<DataCell>&) {
+            return Error();
+        }
 
         RecordingStream(uint32_t id, StoreKind store_kind) : _id(id), _store_kind(store_kind) {}
 

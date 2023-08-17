@@ -190,10 +190,17 @@ impl AppState {
                     ..Default::default()
                 };
 
+                let show_welcome =
+                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
+
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
-                        viewport.viewport_ui(ui, &mut ctx);
+                        if show_welcome {
+                            crate::ui::welcome_ui(re_ui, ui, rx, command_sender);
+                        } else {
+                            viewport.viewport_ui(ui, &mut ctx);
+                        }
                     });
 
                 // If the viewport was user-edited, then disable auto space views

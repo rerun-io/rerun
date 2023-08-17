@@ -1,4 +1,4 @@
-use re_ui::{toasts, CommandPalette, UICommand, UICommandSender};
+use re_ui::{toasts, CommandPalette, ReUi, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -233,7 +233,7 @@ impl eframe::App for ExampleApp {
         //   `Frame`.
         //
         // This way, the content (titles, etc.) is properly inset and benefits from a properly set
-        // clip rectangle for full-span behaviour, without interference from the scroll areas.
+        // clip rectangle for full-span behavior, without interference from the scroll areas.
 
         let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,
@@ -492,6 +492,11 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
         egui::warn_if_debug_build(ui);
         ui.label("Hover me for a tooltip")
             .on_hover_text("This is a tooltip");
+
+        ui.label(
+            egui::RichText::new("Welcome to the ReUi example")
+                .text_style(ReUi::welcome_screen_h1()),
+        );
 
         Default::default()
     }

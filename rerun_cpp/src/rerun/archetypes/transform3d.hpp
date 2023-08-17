@@ -5,6 +5,7 @@
 
 #include "../components/transform3d.hpp"
 #include "../data_cell.hpp"
+#include "../result.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -30,7 +31,7 @@ namespace rerun {
         ///
         /// int main() {
         ///    auto rr_stream = rr::RecordingStream("transform3d");
-        ///    rr_stream.connect("127.0.0.1:9876");
+        ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    auto arrow = rr::archetypes::Arrows3D({0.0f, 1.0f, 0.0f});
         ///
@@ -242,7 +243,7 @@ namespace rerun {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
 } // namespace rerun

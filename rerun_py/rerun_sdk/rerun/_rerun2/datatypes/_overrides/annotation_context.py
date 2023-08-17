@@ -29,7 +29,8 @@ if TYPE_CHECKING:
 
 def classdescription_init(
     self: ClassDescription,
-    info: AnnotationInfoLike,
+    info: AnnotationInfoLike = 0,
+    *,
     keypoint_annotations: Sequence[AnnotationInfoLike] = [],
     keypoint_connections: Sequence[KeypointPairLike] = [],
 ) -> None:
@@ -89,6 +90,8 @@ def classdescription_info_converter(
 
     if isinstance(data, AnnotationInfo):
         return data
+    elif isinstance(data, int):
+        return AnnotationInfo(id=data)
     else:
         return AnnotationInfo(*data)
 

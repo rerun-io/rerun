@@ -3,7 +3,28 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.8.0](https://github.com/rerun-io/rerun/compare/v0.7.0...v0.8.0) - Infrastructure investments and more transform improvements - 2023-07-27
+
+## [0.8.1](https://github.com/rerun-io/rerun/compare/0.8.0...0.8.1) - Bug fixes - 2023-08-17
+
+#### 🐍 Python SDK
+- Add a warning category and stacklevel to rerun warnings.warn calls [#2985](https://github.com/rerun-io/rerun/pull/2985)
+
+#### 🪳 Bug Fixes
+- Fix always redrawing in the presence of a 3D space view [#2900](https://github.com/rerun-io/rerun/pull/2900)
+- Fix unable to set camera spinning until camera has moved [#2990](https://github.com/rerun-io/rerun/pull/2990)
+
+#### 🌁 Viewer Improvements
+- Allow changing plot aspect ratio with scroll + cmd/ctrl + alt [#2742](https://github.com/rerun-io/rerun/pull/2742)
+- Automatically select user timeline if no timeline was explicitly selected yet [#2986](https://github.com/rerun-io/rerun/pull/2986)
+
+#### 🧑‍🏫 Examples
+- Add `Helix` to `demo.rerun.io` [#2930](https://github.com/rerun-io/rerun/pull/2930)
+
+#### 📈 Analytics
+- Make sure `re_analytics` never log higher than at `debug` level [#3014](https://github.com/rerun-io/rerun/pull/3014)
+
+
+## [0.8.0](https://github.com/rerun-io/rerun/compare/0.7.0...0.8.0) - Infrastructure investments and more transform improvements - 2023-07-27
 
 [Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
 
@@ -56,7 +77,7 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 ### In Detail
 #### 🐍 Python SDK
 - Clean up warnings printed when `rr.init` hasn't been called [#2209](https://github.com/rerun-io/rerun/pull/2209)
-- Normalise Python typing syntax to 3.8+ [#2361](https://github.com/rerun-io/rerun/pull/2361)
+- Normalize Python typing syntax to 3.8+ [#2361](https://github.com/rerun-io/rerun/pull/2361)
 - Simpler, sturdier stateful time tracking in both SDKs [#2506](https://github.com/rerun-io/rerun/pull/2506)
 - Fix not taking np.array for single colors [#2569](https://github.com/rerun-io/rerun/pull/2569)
 - Add a basic pyright config [#2610](https://github.com/rerun-io/rerun/pull/2610)
@@ -253,7 +274,7 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 
 
 
-## [0.7.0](https://github.com/rerun-io/rerun/compare/v0.6.0...v0.7.0) - improved transforms, better color mapping, bug & doc fixes - 2023-06-16
+## [0.7.0](https://github.com/rerun-io/rerun/compare/0.6.0...0.7.0) - improved transforms, better color mapping, bug & doc fixes - 2023-06-16
 
 ### Overview & Highlights
 
@@ -345,7 +366,7 @@ here's a smaller release packed with useful improvements 🎉
 - Update pip package `requests` to 2.31 with bug fix [#2426](https://github.com/rerun-io/rerun/pull/2426)
 
 
-## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.1...v0.6.0) - 3D in 2D and SDK batching - 2023-05-26
+## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.1...0.6.0) - 3D in 2D and SDK batching - 2023-05-26
 
 ### Overview & Highlights
 

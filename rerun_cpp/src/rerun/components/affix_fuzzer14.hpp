@@ -5,6 +5,7 @@
 
 #include "../data_cell.hpp"
 #include "../datatypes/affix_fuzzer3.hpp"
+#include "../result.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -44,7 +45,7 @@ namespace rerun {
             );
 
             /// Creates a Rerun DataCell from an array of AffixFuzzer14 components.
-            static arrow::Result<rerun::DataCell> to_data_cell(
+            static Result<rerun::DataCell> to_data_cell(
                 const AffixFuzzer14* instances, size_t num_instances
             );
         };

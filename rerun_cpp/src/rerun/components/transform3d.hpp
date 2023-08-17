@@ -5,6 +5,7 @@
 
 #include "../data_cell.hpp"
 #include "../datatypes/transform3d.hpp"
+#include "../result.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -44,7 +45,7 @@ namespace rerun {
             );
 
             /// Creates a Rerun DataCell from an array of Transform3D components.
-            static arrow::Result<rerun::DataCell> to_data_cell(
+            static Result<rerun::DataCell> to_data_cell(
                 const Transform3D* instances, size_t num_instances
             );
         };

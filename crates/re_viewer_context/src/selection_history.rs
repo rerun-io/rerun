@@ -28,7 +28,7 @@ pub struct SelectionHistory {
 }
 
 impl SelectionHistory {
-    /// Retains all elements that fulfil a certain condition.
+    /// Retains all elements that fulfill a certain condition.
     pub fn retain(&mut self, f: &impl Fn(&Item) -> bool) {
         re_tracing::profile_function!();
 

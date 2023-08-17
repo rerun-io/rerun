@@ -17,4 +17,4 @@ add_executable(rerun_sdk_tests ${rerun_sdk_tests_SRC})
 
 set_default_warning_settings(rerun_sdk_tests)
 
-target_link_libraries(rerun_sdk_tests PRIVATE Catch2::Catch2WithMain rerun_sdk)
+target_link_libraries(rerun_sdk_tests PRIVATE loguru::loguru Catch2::Catch2 rerun_sdk)

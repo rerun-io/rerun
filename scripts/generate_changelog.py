@@ -10,6 +10,7 @@ Finally, copy-paste the output into `CHANGELOG.md` and add a high-level summary 
 """
 from __future__ import annotations
 
+import argparse
 import multiprocessing
 import re
 import sys
@@ -22,7 +23,6 @@ from tqdm import tqdm
 
 OWNER = "rerun-io"
 REPO = "rerun"
-COMMIT_RANGE = "latest..HEAD"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 OFFICIAL_RERUN_DEVS = [
     "abey79",
@@ -113,11 +113,15 @@ def print_section(title: str, items: list[str]) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate a changelog.")
+    parser.add_argument("--commit-range", default="latest..HEAD", help="e.g. 0.8.0..HEAD")
+    args = parser.parse_args()
+
     # Because how we branch, we sometimes get duplicate commits in the changelog unless we check for it
     previous_changelog = open("CHANGELOG.md").read()
 
     repo = Repo(".")
-    commits = list(repo.iter_commits(COMMIT_RANGE))
+    commits = list(repo.iter_commits(args.commit_range))
     commits.reverse()  # Most recent last
     commit_infos = list(map(get_commit_info, commits))
 
@@ -159,7 +163,7 @@ def main() -> None:
         if pr_number is None:
             # Someone committed straight to main:
             summary = f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
-            if summary in previous_changelog:
+            if f"[{hexsha}]" in previous_changelog:
                 print(f"Ignoring dup: {summary}")
                 continue
 
@@ -174,7 +178,7 @@ def main() -> None:
 
             summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
 
-            if summary in previous_changelog:
+            if f"[#{pr_number}]" in previous_changelog:
                 print(f"Ignoring dup: {summary}")
                 continue
 

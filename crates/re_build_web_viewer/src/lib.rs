@@ -59,6 +59,7 @@ pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
     let mut cmd = std::process::Command::new("cargo");
     cmd.args([
         "build",
+        "--quiet",
         "--package",
         crate_name,
         "--lib",

@@ -4,7 +4,7 @@ The simplest example is [`minimal`](minimal/main.py). You may want to start ther
 Read more about our examples at <https://www.rerun.io/examples>.
 
 ## Setup
-First install the Rerun Python SDK with `pip install rerun-sdk`
+First install the Rerun Python SDK with `pip install rerun-sdk` or via [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock).
 
 > Note: Make sure your SDK version matches the code in the examples.
 For example, if your SDK version is `0.4.0`, check out the matching tag

@@ -89,6 +89,27 @@ impl ReUi {
         }
     }
 
+    /// Welcome screen big title
+    #[inline]
+    pub fn welcome_screen_h1() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-h1".into())
+    }
+
+    #[inline]
+    pub fn welcome_screen_h2() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-h2".into())
+    }
+
+    #[inline]
+    pub fn welcome_screen_h3() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-h3".into())
+    }
+
+    #[inline]
+    pub fn welcome_screen_body() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-body".into())
+    }
+
     /// Margin on all sides of views.
     pub fn view_padding() -> f32 {
         12.0
@@ -628,7 +649,7 @@ impl ReUi {
         let rect = response.rect;
         let extent = response.rect.width().min(response.rect.height());
 
-        // Normalised in [0, 1]^2 space.
+        // Normalized in [0, 1]^2 space.
         // Note on how these coords have been computed: https://github.com/rerun-io/rerun/pull/2920
         // Discussion on the future of icons:  https://github.com/rerun-io/rerun/issues/2960
         let mut points = vec![

@@ -7,5 +7,7 @@
 #include "rerun/datatypes.hpp"
 
 // Rerun API.
+#include "rerun/error.hpp"
 #include "rerun/recording_stream.hpp"
+#include "rerun/result.hpp"
 #include "rerun/sdk_info.hpp"

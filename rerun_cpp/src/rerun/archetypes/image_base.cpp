@@ -10,23 +10,23 @@
 
 namespace rerun {
     namespace archetypes {
-        arrow::Result<std::vector<rerun::DataCell>> ImageBase::to_data_cells() const {
+        Result<std::vector<rerun::DataCell>> ImageBase::to_data_cells() const {
             std::vector<rerun::DataCell> cells;
             cells.reserve(2);
 
             {
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::ImageVariant::to_data_cell(&variant, 1)
-                );
-                cells.push_back(cell);
+                const auto result = rerun::components::ImageVariant::to_data_cell(&variant, 1);
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.emplace_back(std::move(result.value));
             }
             {
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::TensorData::to_data_cell(&data, 1)
-                );
-                cells.push_back(cell);
+                const auto result = rerun::components::TensorData::to_data_cell(&data, 1);
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.emplace_back(std::move(result.value));
             }
 
             return cells;

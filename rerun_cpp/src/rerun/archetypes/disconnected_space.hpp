@@ -5,6 +5,7 @@
 
 #include "../components/disconnected_space.hpp"
 #include "../data_cell.hpp"
+#include "../result.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -30,7 +31,7 @@ namespace rerun {
         ///
         /// int main() {
         ///    auto rr_stream = rr::RecordingStream("disconnected_space");
-        ///    rr_stream.connect("127.0.0.1:9876");
+        ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    // These two points can be projected into the same space..
         ///    rr_stream.log(
@@ -65,7 +66,7 @@ namespace rerun {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
 } // namespace rerun

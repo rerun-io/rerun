@@ -5,6 +5,7 @@
 
 #include "../data_cell.hpp"
 #include "../datatypes/vec3d.hpp"
+#include "../result.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -62,7 +63,7 @@ namespace rerun {
             );
 
             /// Creates a Rerun DataCell from an array of Origin3D components.
-            static arrow::Result<rerun::DataCell> to_data_cell(
+            static Result<rerun::DataCell> to_data_cell(
                 const Origin3D* instances, size_t num_instances
             );
         };

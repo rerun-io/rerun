@@ -480,7 +480,7 @@ class SourceFile:
         if line_nr is None and index is not None:
             line_nr = _index_to_line_nr(self.content, index)
         if line_nr is None:
-            return f"{self.path}: {message}"
+            return f"{self.path}:{message}"
         else:
             return f"{self.path}:{line_nr+1}: {message}"
 
@@ -499,11 +499,12 @@ def lint_file(filepath: str, args: Any) -> int:
             num_errors += 1
             print(source.error(error, line_nr=line_nr))
 
-    if filepath.endswith(".rs"):
-        for error, start_idx, end_idx in lint_forbidden_widgets(source.content):
-            if not source.should_ignore_index(start_idx, end_idx):
-                print(source.error(error, index=start_idx))
-                num_errors += 1
+    if filepath.endswith(".rs") or filepath.endswith(".fbs"):
+        if filepath.endswith(".rs"):
+            for error, start_idx, end_idx in lint_forbidden_widgets(source.content):
+                if not source.should_ignore_index(start_idx, end_idx):
+                    print(source.error(error, index=start_idx))
+                    num_errors += 1
 
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
