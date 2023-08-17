@@ -235,6 +235,9 @@ jobs:
             ## Example Hosted App
             https://app.rerun.io/commit/${{ env.SHORT_SHA }}
 
+            ## Demo App
+            https://demo.rerun.io/commit/${{ env.SHORT_SHA }}
+
             ## Wheels can be installed with:
             ```
             pip install --pre -f https://build.rerun.io/commit/${{ env.SHORT_SHA}}/wheels --upgrade rerun-sdk
