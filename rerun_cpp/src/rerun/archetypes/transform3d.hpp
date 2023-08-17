@@ -30,7 +30,7 @@ namespace rerun {
         ///
         /// int main() {
         ///    auto rr_stream = rr::RecordingStream("transform3d");
-        ///    rr_stream.connect("127.0.0.1:9876");
+        ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    auto arrow = rr::archetypes::Arrows3D({0.0f, 1.0f, 0.0f});
         ///
