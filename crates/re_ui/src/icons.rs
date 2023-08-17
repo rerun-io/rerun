@@ -54,6 +54,10 @@ pub const RESET: Icon = Icon::new("reset", include_bytes!("../data/icons/reset.p
 
 pub const CLOSE: Icon = Icon::new("close", include_bytes!("../data/icons/close.png"));
 
+/// Used for HTTP URLs that leads out of the app.
+///
+/// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`
+/// and `.on_hover_text(url)`.
 pub const EXTERNAL_LINK: Icon = Icon::new(
     "external_link",
     include_bytes!("../data/icons/external_link.png"),
