@@ -176,7 +176,7 @@ a .button {
   display: none;
 
   flex-direction: column;
-  gap: 3px;
+  gap: 8px;
 
   position: absolute;
   top: 100%;
@@ -185,6 +185,10 @@ a .button {
   border: none;
   border-radius: 6px;
   padding: 12px;
+
+  font-size: 14px;
+  line-height: 1.33;
+  letter-spacing: 0;
 
   width: 280px;
 }
