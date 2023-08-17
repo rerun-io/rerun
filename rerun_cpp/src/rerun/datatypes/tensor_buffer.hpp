@@ -26,7 +26,6 @@ namespace rerun {
                 I16,
                 I32,
                 I64,
-                F16,
                 F32,
                 F64,
                 JPEG,
@@ -48,8 +47,6 @@ namespace rerun {
                 std::vector<int32_t> i32;
 
                 std::vector<int64_t> i64;
-
-                std::vector<float> f16;
 
                 std::vector<float> f32;
 
@@ -74,7 +71,9 @@ namespace rerun {
             };
         } // namespace detail
 
-        /// Storage for a `Tensor`
+        /// The underlying storage for a `Tensor`.
+        ///
+        /// Tensor elements are stored in a contiguous buffer of a single type.
         struct TensorBuffer {
             TensorBuffer() : _tag(detail::TensorBufferTag::NONE) {}
 
@@ -110,10 +109,6 @@ namespace rerun {
                     }
                     case detail::TensorBufferTag::I64: {
                         _data.i64 = other._data.i64;
-                        break;
-                    }
-                    case detail::TensorBufferTag::F16: {
-                        _data.f16 = other._data.f16;
                         break;
                     }
                     case detail::TensorBufferTag::F32: {
@@ -194,11 +189,6 @@ namespace rerun {
                     case detail::TensorBufferTag::I64: {
                         typedef std::vector<int64_t> TypeAlias;
                         _data.i64.~TypeAlias();
-                        break;
-                    }
-                    case detail::TensorBufferTag::F16: {
-                        typedef std::vector<float> TypeAlias;
-                        _data.f16.~TypeAlias();
                         break;
                     }
                     case detail::TensorBufferTag::F32: {
@@ -287,14 +277,6 @@ namespace rerun {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I64;
                 new (&self._data.i64) TypeAlias(std::move(i64));
-                return self;
-            }
-
-            static TensorBuffer f16(std::vector<float> f16) {
-                typedef std::vector<float> TypeAlias;
-                TensorBuffer self;
-                self._tag = detail::TensorBufferTag::F16;
-                new (&self._data.f16) TypeAlias(std::move(f16));
                 return self;
             }
 

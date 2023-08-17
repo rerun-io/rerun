@@ -165,7 +165,7 @@ impl TensorData {
             TensorBuffer::I32(buf) => Some(TensorElement::I32(buf.0[offset])),
             TensorBuffer::I64(buf) => Some(TensorElement::I64(buf.0[offset])),
             // TODO(jleibs): F16 Support
-            TensorBuffer::F16(buf) => Some(TensorElement::F32(buf.0[offset])),
+            //TensorBuffer::F16(buf) => Some(TensorElement::F16(buf.0[offset])),
             TensorBuffer::F32(buf) => Some(TensorElement::F32(buf.0[offset])),
             TensorBuffer::F64(buf) => Some(TensorElement::F64(buf.0[offset])),
             TensorBuffer::Jpeg(_) => None, // Too expensive to unpack here.
@@ -267,11 +267,13 @@ tensor_type!(i16, I16);
 tensor_type!(i32, I32);
 tensor_type!(i64, I64);
 
+// TODO(jleibs): F16 support
 //tensor_type!(arrow2::types::f16, F16);
 
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
+// TODO(jleibs): F16 support
 // Manual expansion of tensor_type! macro for `half::f16` types. We need to do this
 // because arrow uses its own half type. The two use the same underlying representation
 // but are still distinct types. `half::f16`, however, is more full-featured and
@@ -308,12 +310,12 @@ impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, half::f16, D>
             .collect();
         match view.to_slice() {
             Some(slice) => Ok(TensorData {
-                id: TensorId::random(),
+                uuid: TensorId::random(),
                 shape,
                 buffer: TensorBuffer::F16(Vec::from(bytemuck::cast_slice(slice)).into()),
             }),
             None => Ok(TensorData {
-                id: TensorId::random(),
+                uuid: TensorId::random(),
                 shape,
                 buffer: TensorBuffer::F16(
                     view.iter()
@@ -687,7 +689,8 @@ impl TryFrom<TensorData> for DecodedTensor {
             | TensorBuffer::I16(_)
             | TensorBuffer::I32(_)
             | TensorBuffer::I64(_)
-            | TensorBuffer::F16(_)
+            // TODO(jleibs): F16 support
+            //| TensorBuffer::F16(_)
             | TensorBuffer::F32(_)
             | TensorBuffer::F64(_) => Ok(Self(tensor)),
             TensorBuffer::Jpeg(_) => Err(tensor),
@@ -780,7 +783,8 @@ impl DecodedTensor {
             | TensorBuffer::I16(_)
             | TensorBuffer::I32(_)
             | TensorBuffer::I64(_)
-            | TensorBuffer::F16(_)
+            // TODO(jleibs): F16 support
+            //| TensorBuffer::F16(_)
             | TensorBuffer::F32(_)
             | TensorBuffer::F64(_) => Ok(Self(maybe_encoded_tensor)),
 

@@ -26,7 +26,7 @@ __all__ = [
 
 @define
 class TensorDimension:
-    """Storage for a `Tensor`."""
+    """A single dimension within a multi-dimensional tensor."""
 
     size: int = field(converter=int)
     name: str | None = field(default=None, converter=str_or_none)

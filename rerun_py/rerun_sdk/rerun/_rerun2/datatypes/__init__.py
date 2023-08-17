@@ -75,6 +75,7 @@ from .fuzzy_deps import (
     StringComponentLike,
     StringComponentType,
 )
+from .image_variant import ImageVariant, ImageVariantArray, ImageVariantArrayLike, ImageVariantLike, ImageVariantType
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArray, KeypointPairArrayLike, KeypointPairLike, KeypointPairType
 from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
@@ -100,13 +101,6 @@ from .tensor_dimension import (
     TensorDimensionType,
 )
 from .tensor_id import TensorId, TensorIdArray, TensorIdArrayLike, TensorIdLike, TensorIdType
-from .tensor_meaning import (
-    TensorMeaning,
-    TensorMeaningArray,
-    TensorMeaningArrayLike,
-    TensorMeaningLike,
-    TensorMeaningType,
-)
 from .transform3d import Transform3D, Transform3DArray, Transform3DArrayLike, Transform3DLike, Transform3DType
 from .translation_and_mat3x3 import (
     TranslationAndMat3x3,
@@ -192,6 +186,11 @@ __all__ = [
     "FlattenedScalarArrayLike",
     "FlattenedScalarLike",
     "FlattenedScalarType",
+    "ImageVariant",
+    "ImageVariantArray",
+    "ImageVariantArrayLike",
+    "ImageVariantLike",
+    "ImageVariantType",
     "KeypointId",
     "KeypointIdArray",
     "KeypointIdArrayLike",
@@ -267,11 +266,6 @@ __all__ = [
     "TensorIdArrayLike",
     "TensorIdLike",
     "TensorIdType",
-    "TensorMeaning",
-    "TensorMeaningArray",
-    "TensorMeaningArrayLike",
-    "TensorMeaningLike",
-    "TensorMeaningType",
     "Transform3D",
     "Transform3DArray",
     "Transform3DArrayLike",

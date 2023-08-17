@@ -9,9 +9,9 @@ namespace rerun.components;
 
 // ---
 
-table TensorMeaning (
+table ImageVariant (
   order: 100,
   "attr.rust.derive": "PartialEq"
 ) {
-  data: rerun.datatypes.TensorMeaning (order: 100);
+  data: rerun.datatypes.ImageVariant (order: 100);
 }

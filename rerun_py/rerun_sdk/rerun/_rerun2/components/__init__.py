@@ -91,6 +91,7 @@ from .fuzzy import (
     AffixFuzzer20Array,
     AffixFuzzer20Type,
 )
+from .image_variant import ImageVariantArray, ImageVariantType
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointIdArray, KeypointIdType
 from .label import LabelArray, LabelType
@@ -101,7 +102,6 @@ from .point2d import Point2DArray, Point2DType
 from .point3d import Point3DArray, Point3DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
 from .tensor_data import TensorDataArray, TensorDataType
-from .tensor_meaning import TensorMeaningArray, TensorMeaningType
 from .transform3d import Transform3DArray, Transform3DType
 from .vector3d import Vector3DArray, Vector3DType
 
@@ -195,6 +195,8 @@ __all__ = [
     "DrawOrderArrayLike",
     "DrawOrderLike",
     "DrawOrderType",
+    "ImageVariantArray",
+    "ImageVariantType",
     "InstanceKey",
     "InstanceKeyArray",
     "InstanceKeyArrayLike",
@@ -227,8 +229,6 @@ __all__ = [
     "RadiusType",
     "TensorDataArray",
     "TensorDataType",
-    "TensorMeaningArray",
-    "TensorMeaningType",
     "Transform3DArray",
     "Transform3DType",
     "Vector3DArray",

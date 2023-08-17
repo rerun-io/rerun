@@ -22,12 +22,10 @@ __all__ = ["TensorId", "TensorIdArray", "TensorIdArrayLike", "TensorIdLike", "Te
 
 @define
 class TensorId:
-    """Storage for a `Tensor`."""
-
-    id: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    uuid: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        return np.asarray(self.id, dtype=dtype)
+        return np.asarray(self.uuid, dtype=dtype)
 
 
 TensorIdLike = TensorId

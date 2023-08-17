@@ -12,10 +12,9 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Storage for a `Tensor`
 #[derive(Clone, Debug, Copy, Default, PartialEq)]
 pub struct TensorId {
-    pub id: [u8; 16usize],
+    pub uuid: [u8; 16usize],
 }
 
 impl<'a> From<TensorId> for ::std::borrow::Cow<'a, TensorId> {
@@ -68,27 +67,27 @@ impl crate::Loggable for TensorId {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, id): (Vec<_>, Vec<_>) = data
+            let (somes, uuid): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
                     let datum = datum.map(|datum| {
-                        let Self { id } = datum.into_owned();
-                        id
+                        let Self { uuid } = datum.into_owned();
+                        uuid
                     });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let id_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let uuid_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let id_inner_data: Vec<_> =
-                    id.iter().flatten().flatten().cloned().map(Some).collect();
-                let id_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
-                    id_bitmap.as_ref().map(|bitmap| {
+                let uuid_inner_data: Vec<_> =
+                    uuid.iter().flatten().flatten().cloned().map(Some).collect();
+                let uuid_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                    uuid_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
                             .map(|i| std::iter::repeat(i).take(16usize))
@@ -126,14 +125,14 @@ impl crate::Loggable for TensorId {
                             .to_logical_type()
                             .clone()
                         },
-                        id_inner_data
+                        uuid_inner_data
                             .into_iter()
                             .map(|v| v.unwrap_or_default())
                             .collect(),
-                        id_inner_bitmap,
+                        uuid_inner_bitmap,
                     )
                     .boxed(),
-                    id_bitmap,
+                    uuid_bitmap,
                 )
                 .boxed()
             }
@@ -167,7 +166,7 @@ impl crate::Loggable for TensorId {
                         arrow_data.data_type().clone(),
                     )
                 })
-                .with_context("rerun.datatypes.TensorId#id")?;
+                .with_context("rerun.datatypes.TensorId#uuid")?;
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
@@ -185,7 +184,7 @@ impl crate::Loggable for TensorId {
                                 arrow_data_inner.data_type().clone(),
                             )
                         })
-                        .with_context("rerun.datatypes.TensorId#id")?
+                        .with_context("rerun.datatypes.TensorId#uuid")?
                         .into_iter()
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
@@ -218,9 +217,9 @@ impl crate::Loggable for TensorId {
             .into_iter()
         }
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-        .map(|res| res.map(|id| Some(Self { id })))
+        .map(|res| res.map(|uuid| Some(Self { uuid })))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.datatypes.TensorId#id")
+        .with_context("rerun.datatypes.TensorId#uuid")
         .with_context("rerun.datatypes.TensorId")?)
     }
 

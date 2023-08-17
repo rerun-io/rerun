@@ -1,89 +1,45 @@
 use std::collections::HashMap;
 
 use re_types::{
-    archetypes::{Image, Tensor},
-    datatypes::{
-        TensorBuffer, TensorCastError, TensorData, TensorDimension, TensorId, TensorMeaning,
-    },
+    archetypes::Tensor,
+    datatypes::{TensorBuffer, TensorCastError, TensorData, TensorDimension, TensorId},
     Archetype as _,
 };
 
 mod util;
 
+fn some_id(x: u8) -> TensorId {
+    TensorId {
+        uuid: [x, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    }
+}
+
 #[test]
 fn tensor_roundtrip() {
-    let all_expected = [
-        Tensor {
-            data: TensorData {
-                id: TensorId {
-                    id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-                },
-                shape: vec![
-                    TensorDimension {
-                        size: 2,
-                        name: Some("height".into()),
-                    },
-                    TensorDimension {
-                        size: 3,
-                        name: Some("width".into()),
-                    },
-                ],
-                buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
-            }
-            .into(),
-            meaning: Some(TensorMeaning::ClassId(true).into()),
-        },
-        Tensor {
-            data: TensorData {
-                id: TensorId {
-                    id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-                },
-                shape: vec![
-                    TensorDimension {
-                        size: 2,
-                        name: Some("height".into()),
-                    },
-                    TensorDimension {
-                        size: 3,
-                        name: Some("width".into()),
-                    },
-                ],
-                buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
-            }
-            .into(),
-            meaning: Some(TensorMeaning::Rgba(true).into()),
-        },
-    ];
-
-    let all_arch_serialized = [
-        Tensor::new(TensorData {
-            id: TensorId {
-                id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-            },
+    let all_expected = [Tensor {
+        data: TensorData {
+            id: some_id(0),
             shape: vec![
                 TensorDimension {
                     size: 2,
-                    name: Some("height".into()),
+                    name: None,
                 },
                 TensorDimension {
                     size: 3,
-                    name: Some("width".into()),
+                    name: None,
                 },
             ],
             buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
-        })
-        .with_meaning(TensorMeaning::ClassId(true))
-        .to_arrow(),
-        Image::try_from(ndarray::array![[1., 2., 3.], [4., 5., 6.]])
-            .unwrap()
-            .to_arrow(),
-    ];
+        }
+        .into(),
+    }];
 
-    let expected_extensions: HashMap<_, _> = [
-        ("data", vec!["rerun.components.TensorData"]),
-        ("meaning", vec!["rerun.components.TensorMeaning"]),
-    ]
-    .into();
+    let all_arch_serialized = [Tensor::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
+        .unwrap()
+        .with_id(some_id(0))
+        .to_arrow()];
+
+    let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
 
     for (expected, serialized) in all_expected.into_iter().zip(all_arch_serialized) {
         for (field, array) in &serialized {

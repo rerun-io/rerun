@@ -9,13 +9,17 @@ from .._baseclasses import (
     Archetype,
 )
 
-__all__ = ["Tensor"]
+__all__ = ["ImageBase"]
 
 
 @define(str=False, repr=False)
-class Tensor(Archetype):
+class ImageBase(Archetype):
     """A Generic Tensor."""
 
+    variant: components.ImageVariantArray = field(
+        metadata={"component": "primary"},
+        converter=components.ImageVariantArray.from_similar,  # type: ignore[misc]
+    )
     data: components.TensorDataArray = field(
         metadata={"component": "primary"},
         converter=components.TensorDataArray.from_similar,  # type: ignore[misc]

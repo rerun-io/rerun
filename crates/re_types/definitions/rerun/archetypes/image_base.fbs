@@ -1,0 +1,16 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+
+/// A Generic Tensor
+table ImageBase (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  variant: rerun.components.ImageVariant ("attr.rerun.component_required", required, order: 1000);
+  data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 2000);
+}

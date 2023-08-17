@@ -7,7 +7,7 @@ impl nohash_hasher::IsEnabled for TensorId {}
 impl std::hash::Hash for TensorId {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(bytemuck::cast::<[u8; 16], [u64; 2]>(self.id)[0]);
+        state.write_u64(bytemuck::cast::<[u8; 16], [u64; 2]>(self.uuid)[0]);
     }
 }
 
@@ -15,7 +15,7 @@ impl TensorId {
     #[inline]
     pub fn random() -> Self {
         Self {
-            id: *uuid::Uuid::new_v4().as_bytes(),
+            uuid: *uuid::Uuid::new_v4().as_bytes(),
         }
     }
 }
@@ -23,7 +23,7 @@ impl TensorId {
 impl From<uuid::Uuid> for TensorId {
     fn from(value: uuid::Uuid) -> Self {
         Self {
-            id: *value.as_bytes(),
+            uuid: *value.as_bytes(),
         }
     }
 }

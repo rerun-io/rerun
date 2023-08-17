@@ -10,7 +10,7 @@
 
 namespace rerun {
     namespace datatypes {
-        /// Storage for a `Tensor`
+        /// A single dimension within a multi-dimensional tensor.
         struct TensorDimension {
             uint64_t size;
 

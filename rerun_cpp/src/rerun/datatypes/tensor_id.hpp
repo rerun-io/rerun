@@ -8,30 +8,30 @@
 
 namespace rerun {
     namespace datatypes {
-        /// Storage for a `Tensor`
         struct TensorId {
-            uint8_t id[16];
+            uint8_t uuid[16];
 
           public:
             TensorId() = default;
 
-            TensorId(const uint8_t (&_id)[16])
-                : id{_id[0],
-                     _id[1],
-                     _id[2],
-                     _id[3],
-                     _id[4],
-                     _id[5],
-                     _id[6],
-                     _id[7],
-                     _id[8],
-                     _id[9],
-                     _id[10],
-                     _id[11],
-                     _id[12],
-                     _id[13],
-                     _id[14],
-                     _id[15]} {}
+            TensorId(const uint8_t (&_uuid)[16])
+                : uuid{
+                      _uuid[0],
+                      _uuid[1],
+                      _uuid[2],
+                      _uuid[3],
+                      _uuid[4],
+                      _uuid[5],
+                      _uuid[6],
+                      _uuid[7],
+                      _uuid[8],
+                      _uuid[9],
+                      _uuid[10],
+                      _uuid[11],
+                      _uuid[12],
+                      _uuid[13],
+                      _uuid[14],
+                      _uuid[15]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();

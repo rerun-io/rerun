@@ -32,7 +32,16 @@ def _tensordata_buffer_converter(x: datatypes.TensorBufferLike) -> datatypes.Ten
 
 @define
 class TensorData:
-    """Storage for a `Tensor`."""
+    """
+    A Multi-dimensional `Tensor` of data.
+
+    The number of dimensions and their respective lengths is specified by the `shape` field.
+    The dimensions are ordered from outermost to innermost. For example, in the common case of
+    a 2D RGB Image, the shape would be `[height, width, channel]`.
+
+    These dimensions are combined with an index to look up values from the `buffer` field,
+    which stores a contiguous array of typed values.
+    """
 
     id: datatypes.TensorId = field(converter=_tensordata_id_converter)
     shape: list[datatypes.TensorDimension] = field()
@@ -129,12 +138,6 @@ class TensorDataType(BaseExtensionType):
                                 pa.field(
                                     "I64",
                                     pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})),
-                                    nullable=False,
-                                    metadata={},
-                                ),
-                                pa.field(
-                                    "F16",
-                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
                                     nullable=False,
                                     metadata={},
                                 ),

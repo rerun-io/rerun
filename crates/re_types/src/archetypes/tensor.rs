@@ -16,28 +16,22 @@
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tensor {
     pub data: crate::components::TensorData,
-    pub meaning: Option<crate::components::TensorMeaning>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.TensorMeaning".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.TensorData".into(),
-            "rerun.components.TensorMeaning".into(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 
 impl Tensor {
-    pub const NUM_COMPONENTS: usize = 2usize;
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
 impl crate::Archetype for Tensor {
@@ -73,47 +67,24 @@ impl crate::Archetype for Tensor {
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
         use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::TensorData>::try_to_arrow([&self.data], None);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.TensorData".into(),
-                            Box::new(array.data_type().clone()),
-                            Some("rerun.components.TensorData".into()),
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("data", datatype, false),
-                            array,
-                        )
-                    })
+        Ok([{
+            Some({
+                let array = <crate::components::TensorData>::try_to_arrow([&self.data], None);
+                array.map(|array| {
+                    let datatype = ::arrow2::datatypes::DataType::Extension(
+                        "rerun.components.TensorData".into(),
+                        Box::new(array.data_type().clone()),
+                        Some("rerun.components.TensorData".into()),
+                    );
+                    (
+                        ::arrow2::datatypes::Field::new("data", datatype, false),
+                        array,
+                    )
                 })
-                .transpose()
-                .with_context("rerun.archetypes.Tensor#data")?
-            },
-            {
-                self.meaning
-                    .as_ref()
-                    .map(|single| {
-                        let array =
-                            <crate::components::TensorMeaning>::try_to_arrow([single], None);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.TensorMeaning".into(),
-                                Box::new(array.data_type().clone()),
-                                Some("rerun.components.TensorMeaning".into()),
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("meaning", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Tensor#meaning")?
-            },
-        ]
+            })
+            .transpose()
+            .with_context("rerun.archetypes.Tensor#data")?
+        }]
         .into_iter()
         .flatten()
         .collect())
@@ -143,33 +114,12 @@ impl crate::Archetype for Tensor {
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Tensor#data")?
         };
-        let meaning = if let Some(array) = arrays_by_name.get("meaning") {
-            Some({
-                <crate::components::TensorMeaning>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Tensor#meaning")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Tensor#meaning")?
-            })
-        } else {
-            None
-        };
-        Ok(Self { data, meaning })
+        Ok(Self { data })
     }
 }
 
 impl Tensor {
     pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
-        Self {
-            data: data.into(),
-            meaning: None,
-        }
-    }
-
-    pub fn with_meaning(mut self, meaning: impl Into<crate::components::TensorMeaning>) -> Self {
-        self.meaning = Some(meaning.into());
-        self
+        Self { data: data.into() }
     }
 }

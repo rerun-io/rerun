@@ -5,11 +5,11 @@ namespace rerun.datatypes;
 
 // ---
 
-/// Storage for a `Tensor`
+// A unique id per [`Tensor`].
 struct TensorId (
   order: 100,
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, Default, PartialEq"
 ) {
-  id: [ubyte:16] (order: 100);
+  uuid: [ubyte:16] (order: 100);
 }

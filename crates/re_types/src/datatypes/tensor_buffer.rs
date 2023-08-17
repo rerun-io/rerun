@@ -12,7 +12,9 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Storage for a `Tensor`
+/// The underlying storage for a `Tensor`.
+///
+/// Tensor elements are stored in a contiguous buffer of a single type.
 #[derive(Clone, PartialEq)]
 pub enum TensorBuffer {
     U8(crate::ArrowBuffer<u8>),
@@ -23,7 +25,6 @@ pub enum TensorBuffer {
     I16(crate::ArrowBuffer<i16>),
     I32(crate::ArrowBuffer<i32>),
     I64(crate::ArrowBuffer<i64>),
-    F16(crate::ArrowBuffer<f32>),
     F32(crate::ArrowBuffer<f32>),
     F64(crate::ArrowBuffer<f64>),
     Jpeg(crate::ArrowBuffer<u8>),
@@ -154,17 +155,6 @@ impl crate::Loggable for TensorBuffer {
                     metadata: [].into(),
                 },
                 Field {
-                    name: "F16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
                     name: "F32".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
@@ -199,7 +189,7 @@ impl crate::Loggable for TensorBuffer {
                 },
             ],
             Some(vec![
-                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32, 12i32,
+                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32,
             ]),
             UnionMode::Dense,
         )
@@ -246,10 +236,9 @@ impl crate::Loggable for TensorBuffer {
                         Some(TensorBuffer::I16(_)) => 6i8,
                         Some(TensorBuffer::I32(_)) => 7i8,
                         Some(TensorBuffer::I64(_)) => 8i8,
-                        Some(TensorBuffer::F16(_)) => 9i8,
-                        Some(TensorBuffer::F32(_)) => 10i8,
-                        Some(TensorBuffer::F64(_)) => 11i8,
-                        Some(TensorBuffer::Jpeg(_)) => 12i8,
+                        Some(TensorBuffer::F32(_)) => 9i8,
+                        Some(TensorBuffer::F64(_)) => 10i8,
+                        Some(TensorBuffer::Jpeg(_)) => 11i8,
                     })
                     .collect(),
                 vec![
@@ -752,68 +741,6 @@ impl crate::Loggable for TensorBuffer {
                         }
                     },
                     {
-                        let (somes, f_16): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F16(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(TensorBuffer::F16(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let f_16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let f_16_inner_data: Buffer<_> = f_16
-                                .iter()
-                                .flatten()
-                                .map(|b| b.0.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let f_16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                f_16.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
-                                    f_16_inner_data,
-                                    f_16_inner_bitmap,
-                                )
-                                .boxed(),
-                                f_16_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
                         let (somes, f_32): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F32(_))))
@@ -1009,7 +936,6 @@ impl crate::Loggable for TensorBuffer {
                     let mut i_16_offset = 0;
                     let mut i_32_offset = 0;
                     let mut i_64_offset = 0;
-                    let mut f_16_offset = 0;
                     let mut f_32_offset = 0;
                     let mut f_64_offset = 0;
                     let mut jpeg_offset = 0;
@@ -1059,11 +985,6 @@ impl crate::Loggable for TensorBuffer {
                             Some(TensorBuffer::I64(_)) => {
                                 let offset = i_64_offset;
                                 i_64_offset += 1;
-                                offset
-                            }
-                            Some(TensorBuffer::F16(_)) => {
-                                let offset = f_16_offset;
-                                f_16_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::F32(_)) => {
@@ -1201,17 +1122,6 @@ impl crate::Loggable for TensorBuffer {
                                     metadata: [].into(),
                                 },
                                 Field {
-                                    name: "F16".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
                                     name: "F32".to_owned(),
                                     data_type: DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
@@ -1247,7 +1157,7 @@ impl crate::Loggable for TensorBuffer {
                             ],
                             Some(vec![
                                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,
-                                11i32, 12i32,
+                                11i32,
                             ]),
                             UnionMode::Dense,
                         ),
@@ -1361,17 +1271,6 @@ impl crate::Loggable for TensorBuffer {
                                         metadata: [].into(),
                                     },
                                     Field {
-                                        name: "F16".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
                                         name: "F32".to_owned(),
                                         data_type: DataType::List(Box::new(Field {
                                             name: "item".to_owned(),
@@ -1407,7 +1306,7 @@ impl crate::Loggable for TensorBuffer {
                                 ],
                                 Some(vec![
                                     0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32,
-                                    10i32, 11i32, 12i32,
+                                    10i32, 11i32,
                                 ]),
                                 UnionMode::Dense,
                             ),
@@ -1990,82 +1889,11 @@ impl crate::Loggable for TensorBuffer {
                     }
                     .collect::<Vec<_>>()
                 };
-                let f_16 = {
+                let f_32 = {
                     if 9usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[9usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorBuffer#F16")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorBuffer#F16")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start as usize, end - start as usize)
-                                    };
-                                    let data = crate::ArrowBuffer(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let f_32 = {
-                    if 10usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[10usize];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -2133,10 +1961,10 @@ impl crate::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f_64 = {
-                    if 11usize >= arrow_data_arrays.len() {
+                    if 10usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[11usize];
+                    let arrow_data = &*arrow_data_arrays[10usize];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -2204,10 +2032,10 @@ impl crate::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let jpeg = {
-                    if 12usize >= arrow_data_arrays.len() {
+                    if 11usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[12usize];
+                    let arrow_data = &*arrow_data_arrays[11usize];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -2403,22 +2231,7 @@ impl crate::Loggable for TensorBuffer {
                                         .ok_or_else(crate::DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I64")?
                                 }),
-                                9i8 => TensorBuffer::F16({
-                                    if offset as usize >= f_16.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            f_16.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorBuffer#F16");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { f_16.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorBuffer#F16")?
-                                }),
-                                10i8 => TensorBuffer::F32({
+                                9i8 => TensorBuffer::F32({
                                     if offset as usize >= f_32.len() {
                                         return Err(crate::DeserializationError::offset_oob(
                                             offset as _,
@@ -2433,7 +2246,7 @@ impl crate::Loggable for TensorBuffer {
                                         .ok_or_else(crate::DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F32")?
                                 }),
-                                11i8 => TensorBuffer::F64({
+                                10i8 => TensorBuffer::F64({
                                     if offset as usize >= f_64.len() {
                                         return Err(crate::DeserializationError::offset_oob(
                                             offset as _,
@@ -2448,7 +2261,7 @@ impl crate::Loggable for TensorBuffer {
                                         .ok_or_else(crate::DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F64")?
                                 }),
-                                12i8 => TensorBuffer::Jpeg({
+                                11i8 => TensorBuffer::Jpeg({
                                     if offset as usize >= jpeg.len() {
                                         return Err(crate::DeserializationError::offset_oob(
                                             offset as _,
@@ -2562,17 +2375,6 @@ impl crate::Loggable for TensorBuffer {
                                                     metadata: [].into(),
                                                 },
                                                 Field {
-                                                    name: "F16".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Float32,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
                                                     name: "F32".to_owned(),
                                                     data_type: DataType::List(Box::new(Field {
                                                         name: "item".to_owned(),
@@ -2608,7 +2410,7 @@ impl crate::Loggable for TensorBuffer {
                                             ],
                                             Some(vec![
                                                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32,
-                                                8i32, 9i32, 10i32, 11i32, 12i32,
+                                                8i32, 9i32, 10i32, 11i32,
                                             ]),
                                             UnionMode::Dense,
                                         ),

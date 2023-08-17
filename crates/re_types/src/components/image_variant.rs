@@ -13,36 +13,36 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct TensorMeaning(pub crate::datatypes::TensorMeaning);
+pub struct ImageVariant(pub crate::datatypes::ImageVariant);
 
-impl<T: Into<crate::datatypes::TensorMeaning>> From<T> for TensorMeaning {
+impl<T: Into<crate::datatypes::ImageVariant>> From<T> for ImageVariant {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<TensorMeaning> for ::std::borrow::Cow<'a, TensorMeaning> {
+impl<'a> From<ImageVariant> for ::std::borrow::Cow<'a, ImageVariant> {
     #[inline]
-    fn from(value: TensorMeaning) -> Self {
+    fn from(value: ImageVariant) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a TensorMeaning> for ::std::borrow::Cow<'a, TensorMeaning> {
+impl<'a> From<&'a ImageVariant> for ::std::borrow::Cow<'a, ImageVariant> {
     #[inline]
-    fn from(value: &'a TensorMeaning) -> Self {
+    fn from(value: &'a ImageVariant) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for TensorMeaning {
+impl crate::Loggable for ImageVariant {
     type Name = crate::ComponentName;
     type Item<'a> = Option<Self>;
     type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.components.TensorMeaning".into()
+        "rerun.components.ImageVariant".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -58,7 +58,13 @@ impl crate::Loggable for TensorMeaning {
                     metadata: [].into(),
                 },
                 Field {
-                    name: "Data".to_owned(),
+                    name: "Mono".to_owned(),
+                    data_type: DataType::Boolean,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Rgb".to_owned(),
                     data_type: DataType::Boolean,
                     is_nullable: false,
                     metadata: [].into(),
@@ -70,13 +76,7 @@ impl crate::Loggable for TensorMeaning {
                     metadata: [].into(),
                 },
                 Field {
-                    name: "Mono".to_owned(),
-                    data_type: DataType::Boolean,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "ClassId".to_owned(),
+                    name: "Segmentation".to_owned(),
                     data_type: DataType::Boolean,
                     is_nullable: false,
                     metadata: [].into(),
@@ -122,9 +122,9 @@ impl crate::Loggable for TensorMeaning {
             {
                 _ = data0_bitmap;
                 _ = extension_wrapper;
-                crate::datatypes::TensorMeaning::try_to_arrow_opt(
+                crate::datatypes::ImageVariant::try_to_arrow_opt(
                     data0,
-                    Some("rerun.components.TensorMeaning"),
+                    Some("rerun.components.ImageVariant"),
                 )?
             }
         })
@@ -140,14 +140,14 @@ impl crate::Loggable for TensorMeaning {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
-            crate::datatypes::TensorMeaning::try_from_arrow_opt(arrow_data)
-                .with_context("rerun.components.TensorMeaning#data")?
+            crate::datatypes::ImageVariant::try_from_arrow_opt(arrow_data)
+                .with_context("rerun.components.ImageVariant#data")?
                 .into_iter()
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
                 .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.components.TensorMeaning#data")
-                .with_context("rerun.components.TensorMeaning")?,
+                .with_context("rerun.components.ImageVariant#data")
+                .with_context("rerun.components.ImageVariant")?,
         )
     }
 
@@ -167,4 +167,4 @@ impl crate::Loggable for TensorMeaning {
     }
 }
 
-impl crate::Component for TensorMeaning {}
+impl crate::Component for ImageVariant {}

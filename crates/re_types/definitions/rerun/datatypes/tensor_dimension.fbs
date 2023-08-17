@@ -5,7 +5,8 @@ namespace rerun.datatypes;
 
 // ---
 
-/// Storage for a `Tensor`
+/// A single dimension within a multi-dimensional tensor.
+// TODO(jleibs): Support for stride.
 table TensorDimension (
   order: 100,
   "attr.rust.derive_only": "Clone, Default, PartialEq"

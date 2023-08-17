@@ -39,9 +39,9 @@ namespace rerun {
             auto value_builder = static_cast<arrow::UInt8Builder *>(builder->value_builder());
 
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
-            static_assert(sizeof(elements[0].id) == sizeof(elements[0]));
+            static_assert(sizeof(elements[0].uuid) == sizeof(elements[0]));
             ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                elements[0].id,
+                elements[0].uuid,
                 static_cast<int64_t>(num_elements * 16),
                 nullptr
             ));

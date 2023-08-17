@@ -12,5 +12,4 @@ table Tensor (
   order: 100
 ) {
   data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
-  meaning: rerun.components.TensorMeaning ("attr.rerun.component_recommended", nullable, order: 2000);
 }

@@ -12,7 +12,14 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Storage for a `Tensor`
+/// A Multi-dimensional `Tensor` of data.
+///
+/// The number of dimensions and their respective lengths is specified by the `shape` field.
+/// The dimensions are ordered from outermost to innermost. For example, in the common case of
+/// a 2D RGB Image, the shape would be `[height, width, channel]`.
+///
+/// These dimensions are combined with an index to look up values from the `buffer` field,
+/// which stores a contiguous array of typed values.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TensorData {
     pub id: crate::datatypes::TensorId,
@@ -132,8 +139,8 @@ impl crate::Loggable for TensorData {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::datatypes::TensorId { id } = datum.clone();
-                                            id
+                                            let crate::datatypes::TensorId { uuid } = datum.clone();
+                                            uuid
                                         })
                                         .unwrap_or_default()
                                 })
@@ -410,7 +417,7 @@ impl crate::Loggable for TensorData {
                             })
                             .map(|res_or_opt| {
                                 res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|id| crate::datatypes::TensorId { id })
+                                    res_or_opt.map(|uuid| crate::datatypes::TensorId { uuid })
                                 })
                             })
                             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
