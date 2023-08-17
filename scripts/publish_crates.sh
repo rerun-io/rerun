@@ -90,11 +90,11 @@ export RERUN_IS_PUBLISHING=yes
 
 echo "Publishing crates…"
 
-cargo publish $FLAGS -p re_types_builder
 cargo publish $FLAGS -p re_build_info
 cargo publish $FLAGS -p re_build_tools
 cargo publish $FLAGS -p re_log
 cargo publish $FLAGS -p re_tracing
+cargo publish $FLAGS -p re_types_builder
 cargo publish $FLAGS -p re_int_histogram
 cargo publish $FLAGS -p re_error
 cargo publish $FLAGS -p re_tuid
