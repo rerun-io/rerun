@@ -13,10 +13,6 @@ on:
         required: false
         type: string
         default: "prerelease"
-      EXTRA_FLAGS:
-        required: false
-        type: string
-        default: ""
       RELEASE_COMMIT:
         required: false
         type: string
@@ -53,10 +49,6 @@ on:
         required: false
         type: string
         default: "prerelease"
-      EXTRA_FLAGS:
-        required: false
-        type: string
-        default: ""
       RELEASE_COMMIT:
         required: false
         type: string
@@ -171,7 +163,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --locked -p rerun_c -- --release ${{ inputs.EXTRA_FLAGS }}
+          args: --locked -p rerun_c --release
 
       - id: "auth"
         uses: google-github-actions/auth@v1
