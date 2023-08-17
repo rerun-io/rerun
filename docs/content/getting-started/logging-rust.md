@@ -122,7 +122,7 @@ In particular, when using the Rust SDK, you work directly with [`components`](ht
 By logging multiple components to an Entity, one can build up Primitives that can later be visualized in the viewer.
 For more information on how the rerun data model works, refer to our section on [entities and components](../concepts/entity-component.md).
 
-Logging components is a only a matter of calling [`MsgSender::with_component`](https://docs.rs/rerun/latest/rerun/struct.MsgSender.html#method.with_component) using any type that implements the [`Component` trait](https://docs.rs/rerun/latest/rerun/trait.Component.html). We provide [a few of those](https://docs.rs/rerun/latest/rerun/trait.Component.html#implementors)).
+Logging components is a only a matter of calling [`MsgSender::with_component`](https://docs.rs/rerun/latest/rerun/struct.MsgSender.html#method.with_component) using any type that implements the [`Component` trait](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html). We provide [a few of those](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html#implementors)).
 
 #### `Batches`
 
