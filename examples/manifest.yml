@@ -51,6 +51,8 @@ root:
       children:
         - name: tapir
           python: python/tapir
+        - name: slahmr
+          python: python/slahmr
 
     - name: real-data
       title: Examples with Real Data
