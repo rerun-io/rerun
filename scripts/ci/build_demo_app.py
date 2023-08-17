@@ -183,10 +183,13 @@ def main() -> None:
         build_python_sdk()
         build_wasm()
 
-    shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
     examples = collect_examples()
     assert len(examples) > 0, "No examples found"
-    save_examples_rrd(examples)
+
+    if not args.skip_build:
+        shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
+        save_examples_rrd(examples)
+
     render_examples(examples)
     copy_static_assets(examples)
     copy_wasm(examples)
