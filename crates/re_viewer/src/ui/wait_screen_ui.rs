@@ -113,7 +113,8 @@ fn onboarding_content_ui(
     _command_sender: &re_viewer_context::CommandSender,
 ) {
     let column_spacing = 15.0;
-    let column_width = ((ui.available_width() - 2. * column_spacing) / 3.0 - 1.0)
+    let stability_adjustment = 1.0; // minimize jitter with sizing and scroll bars
+    let column_width = ((ui.available_width() - 2. * column_spacing) / 3.0 - stability_adjustment)
         .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
 
     let grid = egui::Grid::new("welcome_screen_grid")
