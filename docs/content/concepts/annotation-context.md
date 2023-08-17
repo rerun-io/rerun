@@ -54,7 +54,7 @@ The Annotation Context is defined as a list of Class Descriptions that define ho
 Annotation contexts are logged with:
 
 * Python: [`log_annotation_context`](https://ref.rerun.io/docs/python/latest/common/annotations/#rerun.log_annotation_context)
-* Rust: [`AnnotationContext`](https://docs.rs/rerun/latest/rerun/external/re_log_types/component_types/context/struct.AnnotationContext.html)
+* Rust: [`AnnotationContext`](https://docs.rs/rerun/latest/rerun/components/struct.AnnotationContext.html)
 
 code-example: annotation-context
 
