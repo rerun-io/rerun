@@ -7,7 +7,7 @@
 #include <stdexcept>
 #endif
 
-struct rr_status;
+struct rr_error;
 
 namespace rerun {
     /// Status codes returned by the SDK as part of `Status`.
@@ -58,7 +58,7 @@ namespace rerun {
             : code(_code), description(std::move(_description)) {}
 
         /// Construct from a C status object.
-        Status(const rr_status& status);
+        Status(const rr_error& status);
 
         operator bool() const {
             return code == StatusCode::Ok;

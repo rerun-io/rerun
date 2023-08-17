@@ -27,7 +27,7 @@ namespace rerun {
         store_info.application_id = app_id;
         store_info.store_kind = store_kind_to_c(store_kind);
 
-        rr_status status = {};
+        rr_error status = {};
         this->_id = rr_recording_stream_new(&store_info, &status);
         Status(status).log_error_on_failure();
     }
@@ -76,13 +76,13 @@ namespace rerun {
     }
 
     Status RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
-        rr_status status = {};
+        rr_error status = {};
         rr_recording_stream_connect(_id, tcp_addr, flush_timeout_sec, &status);
         return status;
     }
 
     Status RecordingStream::save(const char* path) {
-        rr_status status = {};
+        rr_error status = {};
         rr_recording_stream_save(_id, path, &status);
         return status;
     }
@@ -116,7 +116,7 @@ namespace rerun {
         c_data_row.num_data_cells = static_cast<uint32_t>(num_data_cells);
         c_data_row.data_cells = c_data_cells.data();
 
-        rr_status status = {};
+        rr_error status = {};
         rr_log(_id, &c_data_row, true, &status);
         return status;
     }

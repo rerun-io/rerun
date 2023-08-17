@@ -6,7 +6,7 @@ namespace rerun {
     static StatusLogHandler global_log_handler = nullptr;
     static void* global_log_handler_user_data = nullptr;
 
-    Status::Status(const rr_status& status)
+    Status::Status(const rr_error& status)
         : code(static_cast<StatusCode>(status.code)), description(status.description) {}
 
     void Status::set_log_handler(StatusLogHandler handler, void* userdata) {

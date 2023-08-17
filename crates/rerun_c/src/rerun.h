@@ -97,47 +97,47 @@ typedef struct {
     const rr_data_cell* data_cells;
 } rr_data_row;
 
-/// Status codes returned by the Rerun C SDK as part of `rr_status`.
+/// Error codes returned by the Rerun C SDK as part of `rr_error`.
 ///
 /// Category codes are used to group errors together, but are never returned directly.
-typedef uint32_t rr_status_code;
+typedef uint32_t rr_error_code;
 
 enum {
-    RERUN_ERROR_CODE_OK = 0,
+    RR_ERROR_CODE_OK = 0,
 
     // Invalid argument errors.
-    _RERUN_ERROR_CODE_CATEGORY_ARGUMENT = 0x000000010,
-    RERUN_ERROR_CODE_UNEXPECTED_NULL_ARGUMENT,
-    RERUN_ERROR_CODE_INVALID_STRING_ARGUMENT,
-    RERUN_ERROR_CODE_INVALID_RECORDING_STREAM_HANDLE,
-    RERUN_ERROR_CODE_INVALID_SOCKET_ADDRESS,
-    RERUN_ERROR_CODE_INVALID_ENTITY_PATH,
+    _RR_ERROR_CODE_CATEGORY_ARGUMENT = 0x000000010,
+    RR_ERROR_CODE_UNEXPECTED_NULL_ARGUMENT,
+    RR_ERROR_CODE_INVALID_STRING_ARGUMENT,
+    RR_ERROR_CODE_INVALID_RECORDING_STREAM_HANDLE,
+    RR_ERROR_CODE_INVALID_SOCKET_ADDRESS,
+    RR_ERROR_CODE_INVALID_ENTITY_PATH,
 
     // Recording stream errors
-    _RERUN_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
-    RERUN_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
-    RERUN_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
+    _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
+    RR_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
+    RR_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
 
     // Arrow data processing errors.
-    _RERUN_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
-    RERUN_ERROR_CODE_ARROW_IPC_MESSAGE_PARSING_FAILURE,
-    RERUN_ERROR_CODE_ARROW_DATA_CELL_ERROR,
+    _RR_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
+    RR_ERROR_CODE_ARROW_IPC_MESSAGE_PARSING_FAILURE,
+    RR_ERROR_CODE_ARROW_DATA_CELL_ERROR,
 
     // Generic errors.
-    RERUN_ERROR_CODE_UNKNOWN,
+    RR_ERROR_CODE_UNKNOWN,
 };
 
-/// Status outcome object (success or error) that may be filled for fallible operations.
+/// Error outcome object (success or error) that may be filled for fallible operations.
 ///
 /// Passing this error struct is always optional, and you can pass `NULL` if you don't care about
 /// the error in which case failure will be silent.
-typedef struct rr_status {
+typedef struct rr_error {
     /// Error code indicating the type of error.
-    rr_status_code code;
+    rr_error_code code;
 
     /// Human readable description of the error, if any.
     char description[512];
-} rr_status;
+} rr_error;
 
 // ----------------------------------------------------------------------------
 // Functions:
@@ -155,7 +155,7 @@ extern const char* rr_version_string(void);
 ///
 /// @return A handle to the recording stream, or null if an error occurred.
 extern rr_recording_stream rr_recording_stream_new(
-    const rr_store_info* store_info, rr_status* status
+    const rr_store_info* store_info, rr_error* error
 );
 
 /// Free the given recording stream. The handle will be invalid after this.
@@ -189,15 +189,13 @@ extern void rr_recording_stream_set_thread_local(
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
 extern void rr_recording_stream_connect(
-    rr_recording_stream stream, const char* tcp_addr, float flush_timeout_sec, rr_status* status
+    rr_recording_stream stream, const char* tcp_addr, float flush_timeout_sec, rr_error* error
 );
 
 /// Stream all log-data to a given file.
 ///
 /// This function returns immediately.
-extern void rr_recording_stream_save(
-    rr_recording_stream stream, const char* path, rr_status* status
-);
+extern void rr_recording_stream_save(rr_recording_stream stream, const char* path, rr_error* error);
 
 /// Initiates a flush the batching pipeline and waits for it to propagate.
 ///
@@ -210,7 +208,7 @@ extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
 extern void rr_log(
-    rr_recording_stream stream, const rr_data_row* data_row, bool inject_time, rr_status* status
+    rr_recording_stream stream, const rr_data_row* data_row, bool inject_time, rr_error* error
 );
 
 // ----------------------------------------------------------------------------
