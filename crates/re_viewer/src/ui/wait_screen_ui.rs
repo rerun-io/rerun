@@ -20,9 +20,8 @@ pub fn welcome_ui(
     rx: &Receiver<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
 ) {
-    egui::ScrollArea::horizontal()
+    egui::ScrollArea::both()
         .id_source("welcome screen")
-        .stick_to_bottom(true)
         .auto_shrink([false, false])
         .show(ui, |ui| {
             welcome_ui_impl(re_ui, ui, rx, command_sender);
