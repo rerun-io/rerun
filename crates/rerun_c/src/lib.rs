@@ -198,10 +198,7 @@ pub extern "C" fn rr_recording_stream_new(
             err.write_error(error);
             0
         }
-        Ok(id) => {
-            CError::OK.write_error(error);
-            id
-        }
+        Ok(id) => id,
     }
 }
 
@@ -272,10 +269,9 @@ pub extern "C" fn rr_recording_stream_connect(
     flush_timeout_sec: f32,
     error: *mut CError,
 ) {
-    rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec)
-        .err()
-        .unwrap_or(CError::OK)
-        .write_error(error);
+    if let Err(err) = rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec) {
+        err.write_error(error);
+    }
 }
 
 #[allow(clippy::result_large_err)]
@@ -301,10 +297,9 @@ pub extern "C" fn rr_recording_stream_save(
     path: *const c_char,
     error: *mut CError,
 ) {
-    rr_recording_stream_save_impl(id, path)
-        .err()
-        .unwrap_or(CError::OK)
-        .write_error(error);
+    if let Err(err) = rr_recording_stream_save_impl(id, path) {
+        err.write_error(error);
+    }
 }
 
 #[allow(unsafe_code)]
@@ -396,10 +391,9 @@ pub unsafe extern "C" fn rr_log(
     inject_time: bool,
     error: *mut CError,
 ) {
-    rr_log_impl(id, data_row, inject_time)
-        .err()
-        .unwrap_or(CError::OK)
-        .write_error(error);
+    if let Err(err) = rr_log_impl(id, data_row, inject_time) {
+        err.write_error(error);
+    }
 }
 
 // ----------------------------------------------------------------------------

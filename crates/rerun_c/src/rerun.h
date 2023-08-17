@@ -131,6 +131,7 @@ enum {
 ///
 /// Passing this error struct is always optional, and you can pass `NULL` if you don't care about
 /// the error in which case failure will be silent.
+/// If no error occurs, the error struct will be left untouched.
 typedef struct rr_error {
     /// Error code indicating the type of error.
     rr_error_code code;
