@@ -3,7 +3,7 @@ use web_time::Instant;
 use re_data_store::store_db::StoreDb;
 use re_log_types::{LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::Receiver;
+use re_smart_channel::{Receiver, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
@@ -47,6 +47,8 @@ pub struct StartupOptions {
     /// Set the screen resolution in logical points.
     #[cfg(not(target_arch = "wasm32"))]
     pub resolution_in_points: Option<[f32; 2]>,
+
+    pub skip_welcome_screen: bool,
 }
 
 impl Default for StartupOptions {
@@ -60,6 +62,8 @@ impl Default for StartupOptions {
 
             #[cfg(not(target_arch = "wasm32"))]
             resolution_in_points: None,
+
+            skip_welcome_screen: false,
         }
     }
 }
@@ -199,7 +203,7 @@ impl App {
             rx,
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::default()),
+            store_hub: Some(StoreHub::new()),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -564,43 +568,56 @@ impl App {
                 self.style_panel_ui(egui_ctx, ui);
 
                 if let Some(store_view) = store_context {
-                    // TODO(jleibs): We don't necessarily want to show the wait
-                    // screen just because we're missing a recording. If we've
-                    // loaded a blueprint, we can still show the empty layouts or
-                    // static data, but we need to jump through some hoops to
-                    // handle a missing `RecordingConfig` in this case.
-                    if let Some(store_db) = store_view.recording {
-                        // TODO(andreas): store the re_renderer somewhere else.
-                        let egui_renderer = {
-                            let render_state = frame.wgpu_render_state().unwrap();
-                            &mut render_state.renderer.write()
-                        };
-                        if let Some(render_ctx) = egui_renderer
-                            .callback_resources
-                            .get_mut::<re_renderer::RenderContext>()
-                        {
-                            render_ctx.begin_frame();
+                    static EMPTY_STORE_DB: once_cell::sync::Lazy<StoreDb> =
+                        once_cell::sync::Lazy::new(|| {
+                            StoreDb::new(re_log_types::StoreId::from_string(
+                                StoreKind::Recording,
+                                "<EMPTY>".to_owned(),
+                            ))
+                        });
 
-                            self.state.show(
-                                app_blueprint,
-                                ui,
-                                render_ctx,
-                                store_db,
-                                store_view,
-                                &self.re_ui,
-                                &self.component_ui_registry,
-                                &self.space_view_class_registry,
-                                &self.rx,
-                                &self.command_sender,
-                            );
-
-                            render_ctx.before_submit();
-                        }
+                    // We want the regular UI as soon as a blueprint is available (or, rather, an
+                    // app ID is set). If no recording is available, we use a default, empty one.
+                    // Note that EMPTY_STORE_DB is *not* part of the list of available recordings
+                    // (StoreContext::alternate_recordings), which means that it's not displayed in
+                    // the recordings UI.
+                    let store_db = if let Some(store_db) = store_view.recording {
+                        store_db
                     } else {
-                        crate::ui::wait_screen_ui(ui, &self.rx);
+                        &EMPTY_STORE_DB
+                    };
+
+                    // TODO(andreas): store the re_renderer somewhere else.
+                    let egui_renderer = {
+                        let render_state = frame.wgpu_render_state().unwrap();
+                        &mut render_state.renderer.write()
+                    };
+                    if let Some(render_ctx) = egui_renderer
+                        .callback_resources
+                        .get_mut::<re_renderer::RenderContext>()
+                    {
+                        render_ctx.begin_frame();
+
+                        self.state.show(
+                            app_blueprint,
+                            ui,
+                            render_ctx,
+                            store_db,
+                            store_view,
+                            &self.re_ui,
+                            &self.component_ui_registry,
+                            &self.space_view_class_registry,
+                            &self.rx,
+                            &self.command_sender,
+                        );
+
+                        render_ctx.before_submit();
                     }
                 } else {
-                    crate::ui::wait_screen_ui(ui, &self.rx);
+                    // This is part of the loading vs. welcome screen UI logic. The loading screen
+                    // is displayed when no app ID is set. This is e.g. the initial state for the
+                    // web demos.
+                    crate::ui::loading_ui(ui, &self.rx);
                 }
             });
     }
@@ -824,6 +841,45 @@ impl App {
             }
         }
     }
+
+    /// This function will create an empty blueprint whenever the welcome screen should be
+    /// displayed.
+    ///
+    /// The welcome screen can be displayed only when a blueprint is available (and no recording is
+    /// loaded). This function implements the heuristic which determines when the welcome screen
+    /// should show up.
+    fn handle_default_blueprint(&mut self, store_hub: &mut StoreHub) {
+        if store_hub.current_recording().is_some()
+            || store_hub.selected_application_id().is_some()
+            || self.startup_options.skip_welcome_screen
+        {
+            return;
+        }
+
+        // Here, we use the type of Receiver as a proxy for which kind of workflow the viewer is
+        // being used in.
+        let welcome = match self.rx.source() {
+            // These source are typically "finite". We want the loading screen so long as data is
+            // coming in.
+            SmartChannelSource::Files { .. } | SmartChannelSource::RrdHttpStream { .. } => {
+                !self.rx.is_connected()
+            }
+            // The workflows associated with these sources typically do not require showing the
+            // welcome screen until after some recording have been loaded and then closed.
+            SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::Sdk
+            | SmartChannelSource::WsClient { .. } => false,
+            // This might be the trickiest case. When running the bare executable, we want to show
+            // the welcome screen (default, "new user" workflow). There are other case using Tcp
+            // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
+            // scenarios. In this cases, `--skip-welcome-screen` should be used.
+            SmartChannelSource::TcpServer { .. } => true,
+        };
+
+        if welcome {
+            store_hub.set_app_id(StoreHub::welcome_screen_app_id());
+        }
+    }
 }
 
 impl eframe::App for App {
@@ -924,6 +980,10 @@ impl eframe::App for App {
         self.state.cleanup(&store_hub);
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
+
+        // Heuristic to set the app_id to the welcome screen blueprint.
+        // Must be called before `read_context` below.
+        self.handle_default_blueprint(&mut store_hub);
 
         let store_context = store_hub.read_context();
 
