@@ -18,6 +18,7 @@ _deps
 
 # Python virtual environment:
 **/venv*
+.python-version
 
 # Python build artifacts:
 __pycache__
