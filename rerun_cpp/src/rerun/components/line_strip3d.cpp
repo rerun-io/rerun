@@ -62,7 +62,7 @@ namespace rerun {
             return arrow::Status::OK();
         }
 
-        arrow::Result<rerun::DataCell> LineStrip3D::to_data_cell(
+        Result<rerun::DataCell> LineStrip3D::to_data_cell(
             const LineStrip3D *instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
@@ -83,10 +83,11 @@ namespace rerun {
 
             rerun::DataCell cell;
             cell.component_name = LineStrip3D::NAME;
-            ARROW_ASSIGN_OR_RAISE(
-                cell.buffer,
-                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
-            );
+            const auto result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
+            if (result.is_err()) {
+                return result.error;
+            }
+            cell.buffer = std::move(result.value);
 
             return cell;
         }

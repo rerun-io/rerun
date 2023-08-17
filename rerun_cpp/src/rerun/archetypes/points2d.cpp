@@ -16,72 +16,79 @@
 
 namespace rerun {
     namespace archetypes {
-        arrow::Result<std::vector<rerun::DataCell>> Points2D::to_data_cells() const {
+        Result<std::vector<rerun::DataCell>> Points2D::to_data_cells() const {
             std::vector<rerun::DataCell> cells;
             cells.reserve(8);
 
             {
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::Point2D::to_data_cell(points.data(), points.size())
-                );
-                cells.push_back(cell);
+                const auto result =
+                    rerun::components::Point2D::to_data_cell(points.data(), points.size());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.push_back(result.value);
             }
             if (radii.has_value()) {
                 const auto& value = radii.value();
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::Radius::to_data_cell(value.data(), value.size())
-                );
-                cells.push_back(cell);
+                const auto result =
+                    rerun::components::Radius::to_data_cell(value.data(), value.size());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.push_back(result.value);
             }
             if (colors.has_value()) {
                 const auto& value = colors.value();
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::Color::to_data_cell(value.data(), value.size())
-                );
-                cells.push_back(cell);
+                const auto result =
+                    rerun::components::Color::to_data_cell(value.data(), value.size());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.push_back(result.value);
             }
             if (labels.has_value()) {
                 const auto& value = labels.value();
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::Label::to_data_cell(value.data(), value.size())
-                );
-                cells.push_back(cell);
+                const auto result =
+                    rerun::components::Label::to_data_cell(value.data(), value.size());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.push_back(result.value);
             }
             if (draw_order.has_value()) {
                 const auto& value = draw_order.value();
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::DrawOrder::to_data_cell(&value, 1)
-                );
-                cells.push_back(cell);
+                const auto result = rerun::components::DrawOrder::to_data_cell(&value, 1);
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.push_back(result.value);
             }
             if (class_ids.has_value()) {
                 const auto& value = class_ids.value();
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::ClassId::to_data_cell(value.data(), value.size())
-                );
-                cells.push_back(cell);
+                const auto result =
+                    rerun::components::ClassId::to_data_cell(value.data(), value.size());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.push_back(result.value);
             }
             if (keypoint_ids.has_value()) {
                 const auto& value = keypoint_ids.value();
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::KeypointId::to_data_cell(value.data(), value.size())
-                );
-                cells.push_back(cell);
+                const auto result =
+                    rerun::components::KeypointId::to_data_cell(value.data(), value.size());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.push_back(result.value);
             }
             if (instance_keys.has_value()) {
                 const auto& value = instance_keys.value();
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::InstanceKey::to_data_cell(value.data(), value.size())
-                );
-                cells.push_back(cell);
+                const auto result =
+                    rerun::components::InstanceKey::to_data_cell(value.data(), value.size());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.push_back(result.value);
             }
 
             return cells;

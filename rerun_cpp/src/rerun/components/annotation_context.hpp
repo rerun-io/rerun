@@ -5,6 +5,7 @@
 
 #include "../data_cell.hpp"
 #include "../datatypes/class_description_map_elem.hpp"
+#include "../result.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -65,7 +66,7 @@ namespace rerun {
             );
 
             /// Creates a Rerun DataCell from an array of AnnotationContext components.
-            static arrow::Result<rerun::DataCell> to_data_cell(
+            static Result<rerun::DataCell> to_data_cell(
                 const AnnotationContext* instances, size_t num_instances
             );
         };

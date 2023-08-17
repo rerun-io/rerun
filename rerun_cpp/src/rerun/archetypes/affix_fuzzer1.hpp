@@ -24,6 +24,7 @@
 #include "../components/affix_fuzzer8.hpp"
 #include "../components/affix_fuzzer9.hpp"
 #include "../data_cell.hpp"
+#include "../result.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -619,7 +620,7 @@ namespace rerun {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
 } // namespace rerun

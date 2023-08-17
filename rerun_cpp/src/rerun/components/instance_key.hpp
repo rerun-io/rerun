@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../data_cell.hpp"
+#include "../result.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
@@ -42,7 +43,7 @@ namespace rerun {
             );
 
             /// Creates a Rerun DataCell from an array of InstanceKey components.
-            static arrow::Result<rerun::DataCell> to_data_cell(
+            static Result<rerun::DataCell> to_data_cell(
                 const InstanceKey* instances, size_t num_instances
             );
         };

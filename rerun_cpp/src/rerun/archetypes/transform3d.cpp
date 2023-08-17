@@ -9,16 +9,16 @@
 
 namespace rerun {
     namespace archetypes {
-        arrow::Result<std::vector<rerun::DataCell>> Transform3D::to_data_cells() const {
+        Result<std::vector<rerun::DataCell>> Transform3D::to_data_cells() const {
             std::vector<rerun::DataCell> cells;
             cells.reserve(1);
 
             {
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::Transform3D::to_data_cell(&transform, 1)
-                );
-                cells.push_back(cell);
+                const auto result = rerun::components::Transform3D::to_data_cell(&transform, 1);
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.push_back(result.value);
             }
 
             return cells;
