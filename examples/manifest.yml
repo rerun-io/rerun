@@ -43,7 +43,7 @@ root:
     - name: paper-walkthrough
       title: Paper walkthroughs
       prelude: |
-        The following examples use Rerun to visualize recently published papers. They are typically forks
+        The following examples use Rerun to create visual walkthrough of papers. They are typically forks
         from the official open-source implementations adding Rerun as the visualizer.
         Check out the respective READMEs for installation instructions.
         For the simplest possible examples showing how to use each api,
