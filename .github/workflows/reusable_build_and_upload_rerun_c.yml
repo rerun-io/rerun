@@ -186,7 +186,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "./target/release/${{ needs.set-config.outputs.LIB_NAME }}"
-          destination: "rerun-builds/rerun_c/commit/${{ steps.short-sha.outputs.SHORT_SHA }}/${{ inputs.PLATFORM }}"
+          destination: "rerun-builds/commit/${{ steps.short-sha.outputs.SHORT_SHA }}rerun_c/${{ inputs.PLATFORM }}"
           parent: false
 
       - name: "Upload web-viewer (adhoc)"
@@ -194,5 +194,5 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "./target/release/${{ needs.set-config.outputs.LIB_NAME }}"
-          destination: "rerun-builds/rerun_c/adhoc/${{inputs.ADHOC_NAME}}/${{ inputs.PLATFORM }}"
+          destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false

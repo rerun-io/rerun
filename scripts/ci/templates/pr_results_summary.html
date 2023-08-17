@@ -35,6 +35,16 @@
             <a href="{{ build.hosted_app }}" target="_blank">{{ build.hosted_app }}</a>
         </div>
         {% endif %}
+        {% if build.rerun_c_libraries %}
+        <div class="rerun_c_libraries">
+            <h3>Rerun C build:</h3>
+            <ul>
+                {% for library in build.rerun_c_libraries %}
+                <li><a href="{{ library }}" target="_blank">{{ library.split('/')[-1] }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
         {% if build.bench_results %}
         <h3><a href="{{ build.bench_results }}" target="_blank">Benchmark Results</a></h3>
         {% endif %}
