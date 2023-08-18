@@ -12,7 +12,7 @@ namespace rerun.components;
 table ImageVariant (
   "attr.arrow.transparent",
   order: 100,
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.repr": "transparent"
 ) {
   variant: rerun.datatypes.ImageVariant (order: 100);

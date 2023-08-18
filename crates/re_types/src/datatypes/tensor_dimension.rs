@@ -13,7 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A single dimension within a multi-dimensional tensor.
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct TensorDimension {
     pub size: u64,
     pub name: Option<crate::ArrowString>,

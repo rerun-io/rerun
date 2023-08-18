@@ -14,7 +14,7 @@ struct Unused (order: 100, transparent) {
 // TODO(jleibs): Make this an enum once we have enum support
 // https://github.com/rerun-io/rerun/issues/3009
 union ImageVariant (
-  "attr.rust.derive": "Copy, PartialEq",
+  "attr.rust.derive": "Copy, Eq, PartialEq",
   order: 200
 ) {
   /// An MxN tensor, treated as a grayscale image.

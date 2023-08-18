@@ -13,7 +13,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// An enum indicating the type of `Image`
-#[derive(Clone, Debug, Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, Eq, PartialEq)]
 pub enum ImageVariant {
     /// An MxN tensor, treated as a grayscale image.
     Mono(bool),

@@ -9,7 +9,7 @@ namespace rerun.datatypes;
 // TODO(jleibs): Support for stride.
 table TensorDimension (
   order: 100,
-  "attr.rust.derive_only": "Clone, Default, PartialEq"
+  "attr.rust.derive_only": "Clone, Default, Eq, PartialEq"
 ) {
   size: ulong (order: 100);
   name: string (order: 200, nullable);

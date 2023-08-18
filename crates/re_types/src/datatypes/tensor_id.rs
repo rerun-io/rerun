@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug, Copy, Default, PartialEq)]
+#[derive(Clone, Debug, Copy, Default, Eq, PartialEq)]
 pub struct TensorId {
     pub uuid: [u8; 16usize],
 }
