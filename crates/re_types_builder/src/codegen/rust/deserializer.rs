@@ -54,7 +54,7 @@ pub fn quote_arrow_deserializer(
     let data_src = format_ident!("data");
 
     let datatype = &arrow_registry.get(&obj.fqname);
-    let quoted_datatype = ArrowDataTypeTokenizer(datatype, false);
+    let quoted_datatype = quote! { Self::to_arrow_datatype() };
 
     let obj_fqname = obj.fqname.as_str();
     let is_arrow_transparent = obj.datatype.is_none();

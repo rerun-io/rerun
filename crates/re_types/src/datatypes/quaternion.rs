@@ -104,15 +104,7 @@ impl crate::Loggable for Quaternion {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.datatypes.Quaternion".to_owned(),
-                            Box::new(DataType::FixedSizeList(
-                                Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
-                                4usize,
-                            )),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()

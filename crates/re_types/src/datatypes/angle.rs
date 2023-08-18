@@ -132,7 +132,7 @@ impl crate::Loggable for Angle {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
+                                Self::to_arrow_datatype().to_logical_type().clone()
                             },
                             radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             radians_bitmap,
@@ -158,7 +158,7 @@ impl crate::Loggable for Angle {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
+                                Self::to_arrow_datatype().to_logical_type().clone()
                             },
                             degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             degrees_bitmap,
@@ -246,30 +246,7 @@ impl crate::Loggable for Angle {
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            DataType::Union(
-                                vec![
-                                    Field {
-                                        name: "_null_markers".to_owned(),
-                                        data_type: DataType::Null,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Radians".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Degrees".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                ],
-                                Some(vec![0i32, 1i32, 2i32]),
-                                UnionMode::Dense,
-                            ),
+                            Self::to_arrow_datatype(),
                             data.data_type().clone(),
                         )
                     })
@@ -358,30 +335,7 @@ impl crate::Loggable for Angle {
                                 }),
                                 _ => {
                                     return Err(crate::DeserializationError::missing_union_arm(
-                                        DataType::Union(
-                                            vec![
-                                                Field {
-                                                    name: "_null_markers".to_owned(),
-                                                    data_type: DataType::Null,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "Radians".to_owned(),
-                                                    data_type: DataType::Float32,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "Degrees".to_owned(),
-                                                    data_type: DataType::Float32,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                            ],
-                                            Some(vec![0i32, 1i32, 2i32]),
-                                            UnionMode::Dense,
-                                        ),
+                                        Self::to_arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ))

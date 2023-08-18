@@ -196,15 +196,7 @@ impl crate::Loggable for ClassDescription {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
+                                    Self::to_arrow_datatype().to_logical_type().clone()
                                 },
                                 offsets,
                                 {
@@ -260,15 +252,7 @@ impl crate::Loggable for ClassDescription {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::KeypointPair>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
+                                    Self::to_arrow_datatype().to_logical_type().clone()
                                 },
                                 offsets,
                                 {
@@ -354,39 +338,7 @@ impl crate::Loggable for ClassDescription {
                 let info = {
                     if !arrays_by_name.contains_key("info") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "info".to_owned(),
-                                    data_type:
-                                        <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "keypoint_annotations".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "keypoint_connections".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::KeypointPair>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "info",
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
@@ -399,39 +351,7 @@ impl crate::Loggable for ClassDescription {
                 let keypoint_annotations = {
                     if !arrays_by_name.contains_key("keypoint_annotations") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "info".to_owned(),
-                                    data_type:
-                                        <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "keypoint_annotations".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "keypoint_connections".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::KeypointPair>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "keypoint_annotations",
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
@@ -505,39 +425,7 @@ impl crate::Loggable for ClassDescription {
                 let keypoint_connections = {
                     if !arrays_by_name.contains_key("keypoint_connections") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "info".to_owned(),
-                                    data_type:
-                                        <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "keypoint_annotations".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "keypoint_connections".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::KeypointPair>::to_arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "keypoint_connections",
                         ))
                         .with_context("rerun.datatypes.ClassDescription");

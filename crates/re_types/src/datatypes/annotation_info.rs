@@ -131,7 +131,7 @@ impl crate::Loggable for AnnotationInfo {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                DataType::UInt16.to_logical_type().clone()
+                                Self::to_arrow_datatype().to_logical_type().clone()
                             },
                             id.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             id_bitmap,
@@ -177,13 +177,12 @@ impl crate::Loggable for AnnotationInfo {
                             )
                             .unwrap()
                             .into();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
                                     {
                                         _ = extension_wrapper;
-                                        DataType::Utf8.to_logical_type().clone()
+                                        Self::to_arrow_datatype().to_logical_type().clone()
                                     },
                                     offsets,
                                     inner_data,
@@ -214,7 +213,7 @@ impl crate::Loggable for AnnotationInfo {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                DataType::UInt32.to_logical_type().clone()
+                                Self::to_arrow_datatype().to_logical_type().clone()
                             },
                             color
                                 .into_iter()
@@ -289,26 +288,7 @@ impl crate::Loggable for AnnotationInfo {
                 let id = {
                     if !arrays_by_name.contains_key("id") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "id".to_owned(),
-                                    data_type: DataType::UInt16,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "label".to_owned(),
-                                    data_type: <crate::datatypes::Label>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "color".to_owned(),
-                                    data_type: <crate::datatypes::Color>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "id",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");
@@ -329,26 +309,7 @@ impl crate::Loggable for AnnotationInfo {
                 let label = {
                     if !arrays_by_name.contains_key("label") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "id".to_owned(),
-                                    data_type: DataType::UInt16,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "label".to_owned(),
-                                    data_type: <crate::datatypes::Label>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "color".to_owned(),
-                                    data_type: <crate::datatypes::Color>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "label",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");
@@ -401,26 +362,7 @@ impl crate::Loggable for AnnotationInfo {
                 let color = {
                     if !arrays_by_name.contains_key("color") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "id".to_owned(),
-                                    data_type: DataType::UInt16,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "label".to_owned(),
-                                    data_type: <crate::datatypes::Label>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "color".to_owned(),
-                                    data_type: <crate::datatypes::Color>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "color",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");
