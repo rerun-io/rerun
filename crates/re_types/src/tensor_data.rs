@@ -1,6 +1,6 @@
 use half::f16;
 
-/// The data types supported by a [`crate::Tensor`].
+/// The data types supported by a [`crate::datatypes::TensorData`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TensorDataType {
     /// Unsigned 8 bit integer.

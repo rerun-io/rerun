@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::datatypes::{ImageVariant, TensorDimension};
+use crate::datatypes::{ImageVariant, TensorData, TensorDimension};
 
 use super::ImageBase;
 
@@ -9,7 +9,7 @@ impl ImageBase {
     pub fn with_id(self, id: crate::datatypes::TensorId) -> Self {
         Self {
             variant: self.variant,
-            data: crate::datatypes::TensorData {
+            data: TensorData {
                 id,
                 shape: self.data.0.shape,
                 buffer: self.data.0.buffer,
@@ -34,7 +34,7 @@ impl Image {
         &self.0
     }
 
-    pub fn data(&self) -> &crate::datatypes::TensorData {
+    pub fn data(&self) -> &TensorData {
         &self.base().data.0
     }
 }
@@ -103,7 +103,7 @@ impl crate::Archetype for Image {
 }
 
 #[derive(thiserror::Error, Clone, Debug)]
-pub enum ImageConstructionError<T: TryInto<crate::datatypes::TensorData>> {
+pub enum ImageConstructionError<T: TryInto<TensorData>> {
     #[error("Could not convert source to TensorData")]
     TensorDataConversion(T::Error),
 
@@ -118,10 +118,8 @@ impl Image {
     /// for treating as an image.
     ///
     /// This is useful for constructing a tensor from an ndarray.
-    pub fn try_from<T: TryInto<crate::datatypes::TensorData>>(
-        data: T,
-    ) -> Result<Self, ImageConstructionError<T>> {
-        let mut data: crate::datatypes::TensorData = data
+    pub fn try_from<T: TryInto<TensorData>>(data: T) -> Result<Self, ImageConstructionError<T>> {
+        let mut data: TensorData = data
             .try_into()
             .map_err(ImageConstructionError::TensorDataConversion)?;
 
