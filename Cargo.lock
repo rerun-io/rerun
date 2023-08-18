@@ -4920,7 +4920,6 @@ dependencies = [
  "parking_lot 0.12.1",
  "re_log",
  "re_sdk",
- "re_types",
 ]
 
 [[package]]
