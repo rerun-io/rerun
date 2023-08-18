@@ -429,6 +429,9 @@ pub enum DeserializationError {
 
     #[error("Datacell deserialization Failed: {0}")]
     DataCellError(String),
+
+    #[error("Validation Error: {0}")]
+    ValidationError(String),
 }
 
 impl DeserializationError {
@@ -515,7 +518,8 @@ impl DeserializationError {
                 Some(backtrace.clone())
             }
             DeserializationError::ArrowConvertFailure(_)
-            | DeserializationError::DataCellError(_) => None,
+            | DeserializationError::DataCellError(_)
+            | DeserializationError::ValidationError(_) => None,
         }
     }
 }

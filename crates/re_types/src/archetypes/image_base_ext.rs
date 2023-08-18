@@ -82,7 +82,23 @@ impl crate::Archetype for Image {
     ) -> crate::DeserializationResult<Self> {
         let base = ImageBase::try_from_arrow(arrow_data)?;
 
-        Ok(Self(base))
+        let non_empty_dim_inds = find_non_empty_dim_indices(&base.data.0.shape);
+
+        let variant = base.variant.0;
+        let dims = non_empty_dim_inds.len();
+        let last_dim_size = non_empty_dim_inds
+            .last()
+            .map_or(0, |i| base.data.0.shape[*i].size);
+
+        match (variant, dims, last_dim_size) {
+            (ImageVariant::Mono(_), 2, _)
+            | (ImageVariant::Rgb(_), 3, 3)
+            | (ImageVariant::Rgba(_), 3, 4) => Ok(Self(base)),
+            _ => Err(crate::DeserializationError::ValidationError(format!(
+                "Invalid ImageBase for Image. Variant: {:?}, Shape: {:?}",
+                base.variant.0, base.data.0.shape
+            ))),
+        }
     }
 }
 
@@ -109,63 +125,25 @@ impl Image {
             .try_into()
             .map_err(|e| ImageConstructionError::TensorDataConversion(e))?;
 
-        if data.shape.len() < 2 {
-            return Err(ImageConstructionError::BadImageShape(data.shape));
-        }
+        let non_empty_dim_inds = find_non_empty_dim_indices(&data.shape);
 
-        let mut iter_non_empty =
-            data.shape
-                .iter()
-                .enumerate()
-                .filter_map(|(ind, dim)| if dim.size != 1 { Some(ind) } else { None });
-
-        // 0 must be valid since shape isn't empty or we would have returned an Err above
-        let mut first_non_empty = iter_non_empty.next().unwrap_or(0);
-        let mut last_non_empty = iter_non_empty.last().unwrap_or(first_non_empty);
-
-        // Note, these are inclusive ranges.
-
-        // First, empty inner dimensions are more likely to be intentional than empty outer dimensions.
-        // Grow to a min-size of 2.
-        // (1x1x3x1) -> 3x1 mono rather than 1x1x3 RGB
-        while last_non_empty - first_non_empty < 1 && last_non_empty < (data.shape.len() - 1) {
-            last_non_empty += 1;
-        }
-
-        // Next, consider empty outer dimensions if we still need them.
-        // Grow up to 3 if the inner dimension is already 3 or 4 (Color Images)
-        // Otherwise, only grow up to 2.
-        // (1x1x3) -> 1x1x3 rgb rather than 1x3 mono
-        let target = match data.shape[last_non_empty].size {
-            3 | 4 => 2,
-            _ => 1,
-        };
-
-        while last_non_empty - first_non_empty < target && first_non_empty > 0 {
-            first_non_empty -= 1;
-        }
-
-        let non_empty_dims: SmallVec<[usize; 4]> = (first_non_empty..=last_non_empty).collect();
-
-        // Now that we've chosen a set of non-empty dims, match to the correct variant and
-        // label the dimensions accordingly.
-        let variant = match non_empty_dims.len() {
+        let variant = match non_empty_dim_inds.len() {
             2 => {
-                data.shape[non_empty_dims[0]].name = Some("height".into());
-                data.shape[non_empty_dims[1]].name = Some("width".into());
+                data.shape[non_empty_dim_inds[0]].name = Some("height".into());
+                data.shape[non_empty_dim_inds[1]].name = Some("width".into());
                 ImageVariant::Mono(true)
             }
-            3 => match data.shape[non_empty_dims[2]].size {
+            3 => match data.shape[non_empty_dim_inds[2]].size {
                 3 => {
-                    data.shape[non_empty_dims[0]].name = Some("height".into());
-                    data.shape[non_empty_dims[1]].name = Some("width".into());
-                    data.shape[non_empty_dims[2]].name = Some("color".into());
+                    data.shape[non_empty_dim_inds[0]].name = Some("height".into());
+                    data.shape[non_empty_dim_inds[1]].name = Some("width".into());
+                    data.shape[non_empty_dim_inds[2]].name = Some("color".into());
                     ImageVariant::Rgb(true)
                 }
                 4 => {
-                    data.shape[non_empty_dims[0]].name = Some("height".into());
-                    data.shape[non_empty_dims[1]].name = Some("width".into());
-                    data.shape[non_empty_dims[2]].name = Some("color".into());
+                    data.shape[non_empty_dim_inds[0]].name = Some("height".into());
+                    data.shape[non_empty_dim_inds[1]].name = Some("width".into());
+                    data.shape[non_empty_dim_inds[2]].name = Some("color".into());
                     ImageVariant::Rgba(true)
                 }
                 _ => return Err(ImageConstructionError::BadImageShape(data.shape)),
@@ -182,6 +160,47 @@ impl Image {
     pub fn with_id(self, id: crate::datatypes::TensorId) -> Self {
         Self(self.0.with_id(id))
     }
+}
+
+// Returns the indices of an appropriate set of non-empty dimensions
+fn find_non_empty_dim_indices(shape: &Vec<TensorDimension>) -> SmallVec<[usize; 4]> {
+    if shape.len() < 2 {
+        return SmallVec::<_>::new();
+    }
+
+    let mut iter_non_empty =
+        shape
+            .iter()
+            .enumerate()
+            .filter_map(|(ind, dim)| if dim.size != 1 { Some(ind) } else { None });
+
+    // 0 must be valid since shape isn't empty or we would have returned an Err above
+    let mut first_non_empty = iter_non_empty.next().unwrap_or(0);
+    let mut last_non_empty = iter_non_empty.last().unwrap_or(first_non_empty);
+
+    // Note, these are inclusive ranges.
+
+    // First, empty inner dimensions are more likely to be intentional than empty outer dimensions.
+    // Grow to a min-size of 2.
+    // (1x1x3x1) -> 3x1 mono rather than 1x1x3 RGB
+    while last_non_empty - first_non_empty < 1 && last_non_empty < (shape.len() - 1) {
+        last_non_empty += 1;
+    }
+
+    // Next, consider empty outer dimensions if we still need them.
+    // Grow up to 3 if the inner dimension is already 3 or 4 (Color Images)
+    // Otherwise, only grow up to 2.
+    // (1x1x3) -> 1x1x3 rgb rather than 1x3 mono
+    let target = match shape[last_non_empty].size {
+        3 | 4 => 2,
+        _ => 1,
+    };
+
+    while last_non_empty - first_non_empty < target && first_non_empty > 0 {
+        first_non_empty -= 1;
+    }
+
+    (first_non_empty..=last_non_empty).collect()
 }
 
 // ----------------------------------------------------------------------------
