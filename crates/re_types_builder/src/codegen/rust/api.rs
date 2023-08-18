@@ -422,7 +422,7 @@ impl QuotedObject {
                 filepath
             },
             name: obj.name.clone(),
-            is_testing: obj.fqname.contains("rerun.testing"),
+            is_testing: obj.is_testing(),
             tokens,
         }
     }
@@ -507,7 +507,7 @@ impl QuotedObject {
                 filepath
             },
             name: obj.name.clone(),
-            is_testing: obj.fqname.contains("rerun.testing"),
+            is_testing: obj.is_testing(),
             tokens,
         }
     }

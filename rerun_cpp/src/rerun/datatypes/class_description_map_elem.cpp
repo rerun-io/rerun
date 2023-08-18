@@ -3,8 +3,8 @@
 
 #include "class_description_map_elem.hpp"
 
-#include "../datatypes/class_description.hpp"
-#include "../datatypes/class_id.hpp"
+#include "class_description.hpp"
+#include "class_id.hpp"
 
 #include <arrow/api.h>
 

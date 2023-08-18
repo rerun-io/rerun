@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/keypoint_id.hpp"
+#include "keypoint_id.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>

@@ -3,8 +3,8 @@
 
 #include "translation_and_mat3x3.hpp"
 
-#include "../datatypes/mat3x3.hpp"
-#include "../datatypes/vec3d.hpp"
+#include "mat3x3.hpp"
+#include "vec3d.hpp"
 
 #include <arrow/api.h>
 
