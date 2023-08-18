@@ -128,7 +128,7 @@ jobs:
         with:
           name: Sizes
           tool: customSmallerIsBetter
-          output-file-path: /tmp/benchmark
+          output-file-path: /tmp/data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Show alert with commit on detecting possible size regression
