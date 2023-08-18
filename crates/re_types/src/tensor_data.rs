@@ -194,7 +194,7 @@ impl TensorDataTypeTrait for f64 {
     const DTYPE: TensorDataType = TensorDataType::F64;
 }
 
-/// The data that can be stored in a [`crate::Tensor`].
+/// The data that can be stored in a [`crate::datatypes::TensorData`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TensorElement {
     /// Unsigned 8 bit integer.
