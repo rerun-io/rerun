@@ -149,6 +149,7 @@ jobs:
 
       - uses: actions/checkout@v3
         with:
+          fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
           ref: ${{ inputs.RELEASE_COMMIT || github.sha }}
 
       - name: Set up Rust
