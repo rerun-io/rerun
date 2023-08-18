@@ -125,17 +125,24 @@ def compare(previous_path: str, current_path: str, threshold: float) -> None:
             sign = "+" if change > 0 else ""
 
             if abs(current - previous) >= min_change:
-                rows.append((name, cell(previous, div), cell(current, div), sign + str(change) + "%"))
+                rows.append(
+                    (
+                        name,
+                        f"{cell(previous, div)} {unit}",
+                        f"{cell(current, div)} {unit}",
+                        sign + str(change) + "%",
+                    )
+                )
         elif "current" in entry:
             value = entry["current"]["value"]
             unit = entry["current"]["unit"]
 
-            rows.append((name, "<none>", value, "+100%"))
+            rows.append((name, "<none>", f"{value} {unit}", "+100%"))
         elif "previous" in entry:
             value = entry["previous"]["value"]
             unit = entry["previous"]["unit"]
 
-            rows.append((name, value, "<deleted>", "-100%"))
+            rows.append((name, f"{value} {unit}", "<deleted>", "-100%"))
 
     if len(rows) > 0:
         sys.stdout.write(render_table_rows(rows, headers))

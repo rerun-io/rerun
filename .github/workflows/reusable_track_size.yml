@@ -91,7 +91,7 @@ jobs:
 
           echo "$data" > "/tmp/data.json"
 
-          comparison=$(python3 scripts/ci/sizes.py compare --threshold=10 "/tmp/prev.json" "/tmp/data.json")
+          comparison=$(python3 scripts/ci/sizes.py compare --threshold=5 "/tmp/prev.json" "/tmp/data.json")
           echo "$comparison"
 
           {
