@@ -9,12 +9,12 @@ Use the script:
     python3 scripts/ci/sizes.py --help
 
     python3 scripts/ci/sizes.py measure \
-        "WASM (release)":web_viewer/re_viewer_bg.wasm \
-        "WASM (debug)":web_viewer/re_viewer_debug_bg.wasm
+        "Wasm (release)":web_viewer/re_viewer_bg.wasm \
+        "Wasm (debug)":web_viewer/re_viewer_debug_bg.wasm
 
     python3 scripts/ci/sizes.py measure --format=table \
-        "WASM (release)":web_viewer/re_viewer_bg.wasm \
-        "WASM (debug)":web_viewer/re_viewer_debug_bg.wasm
+        "Wasm (release)":web_viewer/re_viewer_bg.wasm \
+        "Wasm (debug)":web_viewer/re_viewer_debug_bg.wasm
 
     python3 scripts/ci/sizes.py compare --threshold=20 previous.json current.json
 """

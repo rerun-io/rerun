@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   wasm:
-    name: "WASM"
+    name: "Wasm"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -70,10 +70,10 @@ jobs:
         run: |
           entries=()
 
-          entries+="WASM (release):web_viewer/re_viewer_bg.wasm:MB"
+          entries+="Wasm (release):web_viewer/re_viewer_bg.wasm:MB"
           entries+="JS (release):web_viewer/re_viewer.js:KB"
 
-          entries+="WASM (debug):web_viewer/re_viewer_debug_bg.wasm:MB"
+          entries+="Wasm (debug):web_viewer/re_viewer_debug_bg.wasm:MB"
           entries+="JS (debug):web_viewer/re_viewer_debug.js:KB"
 
           for file in web_demo/examples/**/*.rrd; do
