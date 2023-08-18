@@ -1,0 +1,156 @@
+name: "Track Size"
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      ADHOC_NAME:
+        required: false
+        type: string
+        default: ""
+      PR_NUMBER:
+        required: false
+        type: number
+
+permissions:
+  contents: write
+  id-token: write
+  deployments: write
+  pull-requests: write
+
+jobs:
+  track-sizes:
+    name: "Track Sizes"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get context
+        id: context
+        run: |
+          echo "head_short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+          if [ -n ${{ inputs.PR_NUMBER }} ]; then
+            base_short_sha=$(echo ${{ github.event.pull_request.base.sha }} | cut -c1-7)
+          else
+            base_short_sha=$short_sha
+          fi
+          echo "base_short_sha=$base_short_sha" >> "$GITHUB_OUTPUT"
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+        with:
+          version: ">= 363.0.0"
+
+      - name: Download web_viewer
+        uses: actions/download-artifact@v3
+        with:
+          name: web_viewer
+          path: web_viewer
+
+      - name: Download web_demo
+        uses: actions/download-artifact@v3
+        with:
+          name: web_demo
+          path: web_demo
+
+      - name: Download base branch results
+        run: |
+          file_path="gs://rerun-builds/sizes/commit/${{ steps.context.outputs.base_short_sha }}/data.json"
+
+          if [ "$(gsutil -q stat $file_path ; echo $?)" = 0 ]; then
+            gsutil cp $file_path "/tmp/prev.json"
+          else
+            echo "[]" > "/tmp/prev.json"
+          fi
+
+      - name: Measure sizes
+        id: measure
+        shell: bash
+        run: |
+          entries=()
+
+          entries+=("Wasm:web_viewer/re_viewer_bg.wasm:MB")
+          entries+=("JS:web_viewer/re_viewer.js:KB")
+
+          for file in web_demo/examples/**/*.rrd; do
+            name=$(basename $(dirname "$file"))
+            entries+=("$name.rrd:$file:KB")
+          done
+
+          data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
+          echo "$data"
+
+          echo "$data" > "/tmp/data.json"
+
+          comparison=$(python3 scripts/ci/sizes.py compare --threshold=5 "/tmp/prev.json" "/tmp/data.json")
+          echo "$comparison"
+
+          {
+            echo 'comparison<<EOF'
+            echo "$comparison"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -n "$comparison" ]; then
+            echo "is_comparison_set=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_comparison_set=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload data to GCS (commit)
+        if: inputs.ADHOC_NAME == ''
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: /tmp/data.json
+          destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.head_short_sha }}"
+
+      - name: Upload data to GCS (adhoc)
+        if: inputs.ADHOC_NAME != ''
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: /tmp/data.json
+          destination: "rerun-builds/sizes/adhoc/${{ inputs.ADHOC_NAME }}"
+
+      - name: Store benchmark result
+        # Only run on `main`
+        if: github.ref == 'refs/heads/main'
+        # https://github.com/benchmark-action/github-action-benchmark
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Sizes
+          tool: customSmallerIsBetter
+          output-file-path: /tmp/benchmark
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Show alert with commit on detecting possible size regression
+          comment-on-alert: true
+          alert-threshold: "110%"
+          fail-on-alert: false
+          comment-always: false
+
+          save-data-file: true
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/sizes
+          max-items-in-chart: 30
+
+      - name: Create PR comment
+        if: inputs.PR_NUMBER != '' && steps.measure.outputs.is_comparison_set == 'true'
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            # Size changes
+
+            ${{ steps.measure.outputs.comparison }}
+
