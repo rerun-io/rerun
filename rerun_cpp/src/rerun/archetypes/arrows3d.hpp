@@ -51,7 +51,7 @@ namespace rerun {
         ///        colors.push_back({static_cast<uint8_t>(255 - c), c, 128, 128});
         ///    }
         ///
-        ///    rr_stream.log("arrows", rr::archetypes::Arrows3D(vectors).with_colors(colors));
+        ///    rr_stream.log("arrows", rr::Arrows3D(vectors).with_colors(colors));
         /// }
         ///```
         struct Arrows3D {
