@@ -335,6 +335,7 @@ enum InnerRepr {
     NativeIterable,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn quote_arrow_field_serializer(
     objects: &Objects,
     extension_wrapper: Option<&str>,
