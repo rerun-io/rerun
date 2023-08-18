@@ -30,10 +30,20 @@ jobs:
       - name: Get context
         id: context
         run: |
-          echo "full_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-          echo "short_sha=$(echo ${{github.sha}} | cut -c1-7)" >> "$GITHUB_OUTPUT"
-          echo "main_branch_full_sha=$(git rev-parse origin/main)" >> "$GITHUB_OUTPUT"
-          echo "main_branch_short_sha=$(git rev-parse origin/main | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          echo "head_short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+          if [ -n ${{ inputs.PR_NUMBER }} ]; then
+            base_short_sha=$(echo ${{ github.event.pull_request.base.sha }} | cut -c1-7)
+          else
+            base_short_sha=$short_sha
+          fi
+          echo "base_short_sha=$base_short_sha" >> "$GITHUB_OUTPUT"
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v1"
@@ -52,9 +62,9 @@ jobs:
           name: web_demo
           path: web_demo
 
-      - name: Download main branch results
+      - name: Download base branch results
         run: |
-          file_path="gs://rerun-builds/sizes/commit/${{ steps.context.outputs.main_branch_short_sha }}/data.json"
+          file_path="gs://rerun-builds/sizes/commit/${{ steps.context.outputs.base_short_sha }}/data.json"
           gsutil -q stat $file_path
           status_code=$?
 
@@ -94,7 +104,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: /tmp/data.json
-          destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.short_sha }}"
+          destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.head_short_sha }}"
 
       - name: Upload data to GCS (adhoc)
         if: inputs.ADHOC_NAME != ''
