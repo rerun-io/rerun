@@ -137,12 +137,12 @@ def compare(previous_path: str, current_path: str, threshold: float) -> None:
             value = entry["current"]["value"]
             unit = entry["current"]["unit"]
 
-            rows.append((name, "<none>", f"{value} {unit}", "+100%"))
+            rows.append((name, "(none)", f"{value} {unit}", "+100%"))
         elif "previous" in entry:
             value = entry["previous"]["value"]
             unit = entry["previous"]["unit"]
 
-            rows.append((name, f"{value} {unit}", "<deleted>", "-100%"))
+            rows.append((name, f"{value} {unit}", "(deleted)", "-100%"))
 
     if len(rows) > 0:
         sys.stdout.write(render_table_rows(rows, headers))
