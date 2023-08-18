@@ -102,6 +102,9 @@ pub struct App {
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
 
+    /// Was a recording ever loaded? Used by the heuristic controlling the welcome screen.
+    recording_seen: bool,
+
     /// Toast notifications.
     toasts: toasts::Toasts,
 
@@ -209,6 +212,8 @@ impl App {
             memory_panel_open: false,
 
             style_panel_open: false,
+
+            recording_seen: false,
 
             latest_queue_interest: web_time::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
 
@@ -582,6 +587,7 @@ impl App {
                     // (StoreContext::alternate_recordings), which means that it's not displayed in
                     // the recordings UI.
                     let store_db = if let Some(store_db) = store_view.recording {
+                        self.recording_seen = true;
                         store_db
                     } else {
                         &EMPTY_STORE_DB
@@ -840,10 +846,16 @@ impl App {
     /// loaded). This function implements the heuristic which determines when the welcome screen
     /// should show up.
     fn handle_default_blueprint(&mut self, store_hub: &mut StoreHub) {
-        if store_hub.current_recording().is_some()
-            || store_hub.selected_application_id().is_some()
-            || self.startup_options.skip_welcome_screen
+        // Don't show the welcome screen if we have actual data to display.
+        if store_hub.current_recording().is_some() || store_hub.selected_application_id().is_some()
         {
+            return;
+        }
+
+        // Don't show the welcome screen if the `--skip-welcome-screen` flag was used (e.g. by the
+        // Python SDK), until some data has been loaded and shown. This way, we *still* show the
+        // welcome screen when the user closes all recordings after, e.g., running a Python example.
+        if self.startup_options.skip_welcome_screen && !self.recording_seen {
             return;
         }
 
