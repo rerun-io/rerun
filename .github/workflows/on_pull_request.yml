@@ -63,6 +63,15 @@ jobs:
       SOURCE_LINK_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
+  track-sizes:
+    name: "Track Sizes"
+    needs: [build-web-demo]
+    uses: ./.github/workflows/reusable_track_size.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
+
   upload-web-demo:
     name: "Upload Web Demo"
     needs: [build-web-demo]

@@ -59,6 +59,14 @@ jobs:
       WHEEL_ARTIFACT_NAME: linux-wheel
     secrets: inherit
 
+  track-sizes:
+    name: "Track Sizes"
+    needs: [build-web-demo]
+    uses: ./.github/workflows/reusable_track_size.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+    secrets: inherit
+
   upload-web-demo:
     name: "Upload Web Demo"
     needs: [build-web-demo]
