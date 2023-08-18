@@ -56,9 +56,7 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
             builds_bucket.blob(f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a"),
             builds_bucket.blob(f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a"),
         ]
-        rerun_libraries = [
-            f"https://build.rerun.io/commit/{blob.name}" for blob in rerun_libraries_blobs if blob.exists()
-        ]
+        rerun_libraries = [f"https://build.rerun.io/{blob.name}" for blob in rerun_libraries_blobs if blob.exists()]
         if rerun_libraries:
             print(f"Found rerun_c libraries for commit: {commit_short}")
             found["rerun_c_libraries"] = rerun_libraries

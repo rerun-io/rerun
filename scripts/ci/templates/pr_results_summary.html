@@ -40,7 +40,7 @@
             <h3>Rerun C build:</h3>
             <ul>
                 {% for library in build.rerun_c_libraries %}
-                <li><a href="{{ library }}" target="_blank">{{ library.split('/')[-1] }}</a></li>
+                <li><a href="{{ library }}" target="_blank">{{ library.substr(library.lastIndexOf('rerun_c')) }}</a></li>
                 {% endfor %}
             </ul>
         </div>
