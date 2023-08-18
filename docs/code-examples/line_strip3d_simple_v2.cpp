@@ -18,5 +18,5 @@ int main() {
         {0.f, 1.f, 0.f},
         {0.f, 1.f, 1.f},
     };
-    rr_stream.log("strips", rr::archetypes::LineStrips3D(points));
+    rr_stream.log("strips", rr::LineStrips3D(points));
 }
