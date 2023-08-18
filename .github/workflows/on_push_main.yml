@@ -207,7 +207,15 @@ jobs:
     concurrency:
       group: push-${{ github.ref_name }}-prerelease
       cancel-in-progress: true
-    needs: [upload-web, generate-pip-index]
+    needs:
+      [
+        upload-web,
+        generate-pip-index,
+        build-rerun_c-and-upload-linux,
+        build-rerun_c-and-upload-macos-intel,
+        build-rerun_c-and-upload-macos-arm,
+        build-rerun_c-and-upload-windows,
+      ]
     runs-on: "ubuntu-latest"
     steps:
       - name: Add SHORT_SHA env property with commit short sha
