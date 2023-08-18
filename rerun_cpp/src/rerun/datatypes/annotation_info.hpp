@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../datatypes/color.hpp"
-#include "../datatypes/label.hpp"
+#include "color.hpp"
+#include "label.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>

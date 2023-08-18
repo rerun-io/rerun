@@ -3,9 +3,9 @@
 
 #include "tensor_data.hpp"
 
-#include "../datatypes/tensor_buffer.hpp"
-#include "../datatypes/tensor_dimension.hpp"
-#include "../datatypes/tensor_id.hpp"
+#include "tensor_buffer.hpp"
+#include "tensor_dimension.hpp"
+#include "tensor_id.hpp"
 
 #include <arrow/api.h>
 

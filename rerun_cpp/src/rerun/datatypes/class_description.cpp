@@ -3,8 +3,8 @@
 
 #include "class_description.hpp"
 
-#include "../datatypes/annotation_info.hpp"
-#include "../datatypes/keypoint_pair.hpp"
+#include "annotation_info.hpp"
+#include "keypoint_pair.hpp"
 
 #include <arrow/api.h>
 

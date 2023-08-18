@@ -3,7 +3,7 @@
 
 #include "keypoint_pair.hpp"
 
-#include "../datatypes/keypoint_id.hpp"
+#include "keypoint_id.hpp"
 
 #include <arrow/api.h>
 

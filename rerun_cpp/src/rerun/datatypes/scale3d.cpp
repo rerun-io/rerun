@@ -3,7 +3,7 @@
 
 #include "scale3d.hpp"
 
-#include "../datatypes/vec3d.hpp"
+#include "vec3d.hpp"
 
 #include <arrow/api.h>
 

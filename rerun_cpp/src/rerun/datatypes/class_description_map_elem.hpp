@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../datatypes/class_description.hpp"
-#include "../datatypes/class_id.hpp"
+#include "class_description.hpp"
+#include "class_id.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>

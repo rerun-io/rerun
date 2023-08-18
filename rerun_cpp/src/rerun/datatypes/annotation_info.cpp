@@ -3,8 +3,8 @@
 
 #include "annotation_info.hpp"
 
-#include "../datatypes/color.hpp"
-#include "../datatypes/label.hpp"
+#include "color.hpp"
+#include "label.hpp"
 
 #include <arrow/api.h>
 

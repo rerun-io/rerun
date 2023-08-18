@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../datatypes/translation_and_mat3x3.hpp"
-#include "../datatypes/translation_rotation_scale3d.hpp"
+#include "translation_and_mat3x3.hpp"
+#include "translation_rotation_scale3d.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>

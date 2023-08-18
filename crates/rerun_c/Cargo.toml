@@ -33,7 +33,6 @@ test = false
 [dependencies]
 re_log.workspace = true
 re_sdk.workspace = true
-re_types.workspace = true
 
 arrow2.workspace = true
 ahash.workspace = true
