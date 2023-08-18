@@ -6,7 +6,7 @@ use quote::{format_ident, quote};
 use crate::{ArrowRegistry, Object, Objects};
 
 use super::{
-    arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
+    arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path},
     util::is_tuple_struct_from_obj,
 };
 
@@ -77,10 +77,14 @@ pub fn quote_arrow_serializer(
             quote!(Self { #quoted_data_dst })
         };
 
+        let datatype = &arrow_registry.get(&obj_field.fqname);
+        let quoted_datatype = quote! { Self::to_arrow_datatype() };
+
         let quoted_serializer = quote_arrow_field_serializer(
             objects,
             Some(obj.fqname.as_str()),
-            &arrow_registry.get(&obj_field.fqname),
+            datatype,
+            &quoted_datatype,
             obj_field.is_nullable,
             &bitmap_dst,
             &quoted_data_dst,
@@ -123,10 +127,15 @@ pub fn quote_arrow_serializer(
                     let data_dst = format_ident!("{}", obj_field.name);
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
+                    let inner_datatype = &arrow_registry.get(&obj_field.fqname);
+                    let quoted_inner_datatype =
+                        super::arrow::ArrowDataTypeTokenizer(inner_datatype, false);
+
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
                         None,
-                        &arrow_registry.get(&obj_field.fqname),
+                        inner_datatype,
+                        &quoted_inner_datatype,
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,
@@ -186,10 +195,14 @@ pub fn quote_arrow_serializer(
                     let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
+                    let inner_datatype = &arrow_registry.get(&obj_field.fqname);
+                    let quoted_inner_datatype = super::arrow::ArrowDataTypeTokenizer(inner_datatype, false);
+
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
                         None,
-                        &arrow_registry.get(&obj_field.fqname),
+                        inner_datatype,
+                        &quoted_inner_datatype,
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,
@@ -323,16 +336,17 @@ enum InnerRepr {
     NativeIterable,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn quote_arrow_field_serializer(
     objects: &Objects,
     extension_wrapper: Option<&str>,
     datatype: &DataType,
+    quoted_datatype: &dyn quote::ToTokens,
     is_nullable: bool,
     bitmap_src: &proc_macro2::Ident,
     data_src: &proc_macro2::Ident,
     inner_repr: InnerRepr,
 ) -> TokenStream {
-    let quoted_datatype = ArrowDataTypeTokenizer(datatype, false);
     let quoted_datatype = if let Some(ext) = extension_wrapper {
         quote!(DataType::Extension(#ext.to_owned(), Box::new(#quoted_datatype), None))
     } else {
@@ -500,6 +514,7 @@ fn quote_arrow_field_serializer(
 
         DataType::List(inner) | DataType::FixedSizeList(inner, _) => {
             let inner_datatype = inner.data_type();
+            let quoted_inner_datatype = super::arrow::ArrowDataTypeTokenizer(inner_datatype, false);
 
             // Note: We only use the ArrowBuffer optimization for `Lists` but not `FixedSizeList`.
             // This is because the `ArrowBuffer` has a dynamic length, which would add more overhead
@@ -522,6 +537,7 @@ fn quote_arrow_field_serializer(
                 objects,
                 extension_wrapper,
                 inner_datatype,
+                &quoted_inner_datatype,
                 inner.is_nullable,
                 &quoted_inner_bitmap,
                 &quoted_inner_data,

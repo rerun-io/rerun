@@ -401,48 +401,7 @@ impl crate::Loggable for ImageVariant {
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            DataType::Union(
-                                vec![
-                                    Field {
-                                        name: "_null_markers".to_owned(),
-                                        data_type: DataType::Null,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Mono".to_owned(),
-                                        data_type: DataType::Boolean,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Rgb".to_owned(),
-                                        data_type: DataType::Boolean,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Rgba".to_owned(),
-                                        data_type: DataType::Boolean,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Segmentation".to_owned(),
-                                        data_type: DataType::Boolean,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Depth".to_owned(),
-                                        data_type: DataType::Boolean,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                ],
-                                Some(vec![0i32, 1i32, 2i32, 3i32, 4i32, 5i32]),
-                                UnionMode::Dense,
-                            ),
+                            Self::to_arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
@@ -630,48 +589,7 @@ impl crate::Loggable for ImageVariant {
                                 }),
                                 _ => {
                                     return Err(crate::DeserializationError::missing_union_arm(
-                                        DataType::Union(
-                                            vec![
-                                                Field {
-                                                    name: "_null_markers".to_owned(),
-                                                    data_type: DataType::Null,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "Mono".to_owned(),
-                                                    data_type: DataType::Boolean,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "Rgb".to_owned(),
-                                                    data_type: DataType::Boolean,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "Rgba".to_owned(),
-                                                    data_type: DataType::Boolean,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "Segmentation".to_owned(),
-                                                    data_type: DataType::Boolean,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "Depth".to_owned(),
-                                                    data_type: DataType::Boolean,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                            ],
-                                            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32, 5i32]),
-                                            UnionMode::Dense,
-                                        ),
+                                        Self::to_arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ))

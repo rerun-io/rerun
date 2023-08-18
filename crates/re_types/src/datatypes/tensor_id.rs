@@ -100,15 +100,7 @@ impl crate::Loggable for TensorId {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.datatypes.TensorId".to_owned(),
-                            Box::new(DataType::FixedSizeList(
-                                Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::UInt8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
-                                16usize,
-                            )),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()

@@ -28,7 +28,7 @@ use time_ranges_ui::TimeRangesUi;
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct TimePanel {
-    data_dentity_graph_painter: data_density_graph::DataDensityGraphPainter,
+    data_density_graph_painter: data_density_graph::DataDensityGraphPainter,
 
     /// Width of the entity name columns previous frame.
     prev_col_width: f32,
@@ -48,7 +48,7 @@ pub struct TimePanel {
 impl Default for TimePanel {
     fn default() -> Self {
         Self {
-            data_dentity_graph_painter: Default::default(),
+            data_density_graph_painter: Default::default(),
             prev_col_width: 400.0,
             next_col_right: 0.0,
             time_ranges_ui: Default::default(),
@@ -189,7 +189,7 @@ impl TimePanel {
     fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         re_tracing::profile_function!();
 
-        self.data_dentity_graph_painter.begin_frame(ui.ctx());
+        self.data_density_graph_painter.begin_frame(ui.ctx());
 
         //               |timeline            |
         // ------------------------------------
@@ -201,7 +201,8 @@ impl TimePanel {
 
         let time_x_left =
             (ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x)
-                .at_most(ui.max_rect().right() - 100.0);
+                .at_most(ui.max_rect().right() - 100.0)
+                .at_least(80.); // cover the empty recording case
 
         // Where the time will be shown.
         let time_bg_x_range = Rangef::new(time_x_left, ui.max_rect().right());
@@ -235,7 +236,7 @@ impl TimePanel {
             })
             .response
             .on_hover_text(
-                "A hierarchial view of the paths used during logging.\n\
+                "A hierarchical view of the paths used during logging.\n\
                         \n\
                         On the right you can see when there was a log event for a stream.",
             );
@@ -413,7 +414,7 @@ impl TimePanel {
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 
-        // From the left of the label, all the way to the rigthmost of the time panel
+        // From the left of the label, all the way to the rightmost of the time panel
         let full_width_rect = Rect::from_x_y_ranges(
             response_rect.left()..=ui.max_rect().right(),
             response_rect.y_range(),
@@ -440,7 +441,7 @@ impl TimePanel {
                 Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
 
             data_density_graph::data_density_graph_ui(
-                &mut self.data_dentity_graph_painter,
+                &mut self.data_density_graph_painter,
                 ctx,
                 time_area_response,
                 time_area_painter,
@@ -505,7 +506,7 @@ impl TimePanel {
 
                 self.next_col_right = self.next_col_right.max(response_rect.right());
 
-                // From the left of the label, all the way to the rigthmost of the time panel
+                // From the left of the label, all the way to the rightmost of the time panel
                 let full_width_rect = Rect::from_x_y_ranges(
                     response_rect.left()..=ui.max_rect().right(),
                     response_rect.y_range(),
@@ -536,7 +537,7 @@ impl TimePanel {
                     );
 
                     data_density_graph::data_density_graph_ui(
-                        &mut self.data_dentity_graph_painter,
+                        &mut self.data_density_graph_painter,
                         ctx,
                         time_area_response,
                         time_area_painter,

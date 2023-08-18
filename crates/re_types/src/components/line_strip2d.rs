@@ -117,12 +117,7 @@ impl crate::Loggable for LineStrip2D {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.components.LineStrip2D".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: <crate::datatypes::Vec2D>::to_arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }))),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()

@@ -104,15 +104,7 @@ impl crate::Loggable for Mat3x3 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.datatypes.Mat3x3".to_owned(),
-                            Box::new(DataType::FixedSizeList(
-                                Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
-                                9usize,
-                            )),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()

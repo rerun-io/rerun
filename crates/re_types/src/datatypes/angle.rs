@@ -247,30 +247,7 @@ impl crate::Loggable for Angle {
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            DataType::Union(
-                                vec![
-                                    Field {
-                                        name: "_null_markers".to_owned(),
-                                        data_type: DataType::Null,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Radians".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "Degrees".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                ],
-                                Some(vec![0i32, 1i32, 2i32]),
-                                UnionMode::Dense,
-                            ),
+                            Self::to_arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
@@ -361,30 +338,7 @@ impl crate::Loggable for Angle {
                                 }),
                                 _ => {
                                     return Err(crate::DeserializationError::missing_union_arm(
-                                        DataType::Union(
-                                            vec![
-                                                Field {
-                                                    name: "_null_markers".to_owned(),
-                                                    data_type: DataType::Null,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "Radians".to_owned(),
-                                                    data_type: DataType::Float32,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "Degrees".to_owned(),
-                                                    data_type: DataType::Float32,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                            ],
-                                            Some(vec![0i32, 1i32, 2i32]),
-                                            UnionMode::Dense,
-                                        ),
+                                        Self::to_arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ))

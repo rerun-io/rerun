@@ -348,26 +348,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                 let translation = {
                     if !arrays_by_name.contains_key("translation") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "translation".to_owned(),
-                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "matrix".to_owned(),
-                                    data_type: <crate::datatypes::Mat3x3>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "from_parent".to_owned(),
-                                    data_type: DataType::Boolean,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "translation",
                         ))
                         .with_context("rerun.datatypes.TranslationAndMat3x3");
@@ -453,26 +434,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                 let matrix = {
                     if !arrays_by_name.contains_key("matrix") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "translation".to_owned(),
-                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "matrix".to_owned(),
-                                    data_type: <crate::datatypes::Mat3x3>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "from_parent".to_owned(),
-                                    data_type: DataType::Boolean,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "matrix",
                         ))
                         .with_context("rerun.datatypes.TranslationAndMat3x3");
@@ -556,26 +518,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                 let from_parent = {
                     if !arrays_by_name.contains_key("from_parent") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "translation".to_owned(),
-                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "matrix".to_owned(),
-                                    data_type: <crate::datatypes::Mat3x3>::to_arrow_datatype(),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "from_parent".to_owned(),
-                                    data_type: DataType::Boolean,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "from_parent",
                         ))
                         .with_context("rerun.datatypes.TranslationAndMat3x3");

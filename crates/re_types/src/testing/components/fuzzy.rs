@@ -1231,13 +1231,7 @@ impl crate::Loggable for AffixFuzzer7 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer7".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type:
-                                    <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            }))),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -1419,7 +1413,7 @@ impl crate::Loggable for AffixFuzzer8 {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.testing.components.AffixFuzzer8".to_owned(),
-                        Box::new(DataType::Float32),
+                        Box::new(Self::to_arrow_datatype()),
                         None,
                     )
                     .to_logical_type()
@@ -1556,7 +1550,7 @@ impl crate::Loggable for AffixFuzzer9 {
                             _ = extension_wrapper;
                             DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer9".to_owned(),
-                                Box::new(DataType::Utf8),
+                                Box::new(Self::to_arrow_datatype()),
                                 None,
                             )
                             .to_logical_type()
@@ -1727,7 +1721,7 @@ impl crate::Loggable for AffixFuzzer10 {
                             _ = extension_wrapper;
                             DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer10".to_owned(),
-                                Box::new(DataType::Utf8),
+                                Box::new(Self::to_arrow_datatype()),
                                 None,
                             )
                             .to_logical_type()
@@ -1908,12 +1902,7 @@ impl crate::Loggable for AffixFuzzer11 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer11".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            }))),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -2129,12 +2118,7 @@ impl crate::Loggable for AffixFuzzer12 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer12".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }))),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -2407,12 +2391,7 @@ impl crate::Loggable for AffixFuzzer13 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer13".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            }))),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -3021,13 +3000,7 @@ impl crate::Loggable for AffixFuzzer16 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer16".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type:
-                                    <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }))),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -3241,13 +3214,7 @@ impl crate::Loggable for AffixFuzzer17 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer17".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type:
-                                    <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            }))),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -3461,13 +3428,7 @@ impl crate::Loggable for AffixFuzzer18 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer18".to_owned(),
-                            Box::new(DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type:
-                                    <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            }))),
+                            Box::new(Self::to_arrow_datatype()),
                             None,
                         )
                         .to_logical_type()

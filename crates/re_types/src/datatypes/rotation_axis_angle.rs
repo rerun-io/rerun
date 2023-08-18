@@ -250,20 +250,7 @@ impl crate::Loggable for RotationAxisAngle {
                 let axis = {
                     if !arrays_by_name.contains_key("axis") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "axis".to_owned(),
-                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "angle".to_owned(),
-                                    data_type: <crate::datatypes::Angle>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "axis",
                         ))
                         .with_context("rerun.datatypes.RotationAxisAngle");
@@ -347,20 +334,7 @@ impl crate::Loggable for RotationAxisAngle {
                 let angle = {
                     if !arrays_by_name.contains_key("angle") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "axis".to_owned(),
-                                    data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "angle".to_owned(),
-                                    data_type: <crate::datatypes::Angle>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "angle",
                         ))
                         .with_context("rerun.datatypes.RotationAxisAngle");

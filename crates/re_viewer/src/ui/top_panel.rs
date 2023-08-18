@@ -166,10 +166,11 @@ fn website_link_ui(ui: &mut egui::Ui, app: &mut App) {
 
     let image_size = icon_image.size_vec2() * (desired_height / icon_image.size_vec2().y);
     let texture_id = icon_image.texture_id(ui.ctx());
+    let url = "https://rerun.io/";
     let response = ui
         .add(egui::ImageButton::new(texture_id, image_size))
-        .on_hover_cursor(egui::CursorIcon::PointingHand);
-    let url = "https://rerun.io/";
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text(url);
     if response.clicked() {
         ui.ctx().output_mut(|o| {
             o.open_url = Some(egui::output::OpenUrl {

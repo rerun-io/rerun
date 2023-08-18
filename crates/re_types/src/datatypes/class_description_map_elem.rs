@@ -215,21 +215,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                 let class_id = {
                     if !arrays_by_name.contains_key("class_id") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "class_id".to_owned(),
-                                    data_type: <crate::datatypes::ClassId>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "class_description".to_owned(),
-                                    data_type:
-                                        <crate::datatypes::ClassDescription>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "class_id",
                         ))
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");
@@ -252,21 +238,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                 let class_description = {
                     if !arrays_by_name.contains_key("class_description") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "class_id".to_owned(),
-                                    data_type: <crate::datatypes::ClassId>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "class_description".to_owned(),
-                                    data_type:
-                                        <crate::datatypes::ClassDescription>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "class_description",
                         ))
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");

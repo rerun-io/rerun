@@ -327,27 +327,11 @@ impl crate::Loggable for TensorData {
                     .collect();
                 let id = {
                     if !arrays_by_name.contains_key("id") {
-                        return Err(
-                                crate::DeserializationError::missing_struct_field(
-                                    DataType::Struct(
-                                        vec![
-                                            Field { name : "id".to_owned(), data_type : < crate
-                                            ::datatypes::TensorId > ::to_arrow_datatype(), is_nullable :
-                                            false, metadata : [].into(), }, Field { name : "shape"
-                                            .to_owned(), data_type : DataType::List(Box::new(Field {
-                                            name : "item".to_owned(), data_type : < crate
-                                            ::datatypes::TensorDimension > ::to_arrow_datatype(),
-                                            is_nullable : false, metadata : [].into(), })), is_nullable
-                                            : false, metadata : [].into(), }, Field { name : "buffer"
-                                            .to_owned(), data_type : < crate ::datatypes::TensorBuffer >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), },
-                                        ],
-                                    ),
-                                    "id",
-                                ),
-                            )
-                            .with_context("rerun.datatypes.TensorData");
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            Self::to_arrow_datatype(),
+                            "id",
+                        ))
+                        .with_context("rerun.datatypes.TensorData");
                     }
                     let arrow_data = &**arrays_by_name["id"];
                     {
@@ -427,27 +411,11 @@ impl crate::Loggable for TensorData {
                 };
                 let shape = {
                     if !arrays_by_name.contains_key("shape") {
-                        return Err(
-                                crate::DeserializationError::missing_struct_field(
-                                    DataType::Struct(
-                                        vec![
-                                            Field { name : "id".to_owned(), data_type : < crate
-                                            ::datatypes::TensorId > ::to_arrow_datatype(), is_nullable :
-                                            false, metadata : [].into(), }, Field { name : "shape"
-                                            .to_owned(), data_type : DataType::List(Box::new(Field {
-                                            name : "item".to_owned(), data_type : < crate
-                                            ::datatypes::TensorDimension > ::to_arrow_datatype(),
-                                            is_nullable : false, metadata : [].into(), })), is_nullable
-                                            : false, metadata : [].into(), }, Field { name : "buffer"
-                                            .to_owned(), data_type : < crate ::datatypes::TensorBuffer >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), },
-                                        ],
-                                    ),
-                                    "shape",
-                                ),
-                            )
-                            .with_context("rerun.datatypes.TensorData");
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            Self::to_arrow_datatype(),
+                            "shape",
+                        ))
+                        .with_context("rerun.datatypes.TensorData");
                     }
                     let arrow_data = &**arrays_by_name["shape"];
                     {
@@ -514,27 +482,11 @@ impl crate::Loggable for TensorData {
                 };
                 let buffer = {
                     if !arrays_by_name.contains_key("buffer") {
-                        return Err(
-                                crate::DeserializationError::missing_struct_field(
-                                    DataType::Struct(
-                                        vec![
-                                            Field { name : "id".to_owned(), data_type : < crate
-                                            ::datatypes::TensorId > ::to_arrow_datatype(), is_nullable :
-                                            false, metadata : [].into(), }, Field { name : "shape"
-                                            .to_owned(), data_type : DataType::List(Box::new(Field {
-                                            name : "item".to_owned(), data_type : < crate
-                                            ::datatypes::TensorDimension > ::to_arrow_datatype(),
-                                            is_nullable : false, metadata : [].into(), })), is_nullable
-                                            : false, metadata : [].into(), }, Field { name : "buffer"
-                                            .to_owned(), data_type : < crate ::datatypes::TensorBuffer >
-                                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                                            .into(), },
-                                        ],
-                                    ),
-                                    "buffer",
-                                ),
-                            )
-                            .with_context("rerun.datatypes.TensorData");
+                        return Err(crate::DeserializationError::missing_struct_field(
+                            Self::to_arrow_datatype(),
+                            "buffer",
+                        ))
+                        .with_context("rerun.datatypes.TensorData");
                     }
                     let arrow_data = &**arrays_by_name["buffer"];
                     crate::datatypes::TensorBuffer::try_from_arrow_opt(arrow_data)

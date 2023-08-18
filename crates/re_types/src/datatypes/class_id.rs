@@ -82,7 +82,7 @@ impl crate::Loggable for ClassId {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.datatypes.ClassId".to_owned(),
-                        Box::new(DataType::UInt16),
+                        Box::new(Self::to_arrow_datatype()),
                         None,
                     )
                     .to_logical_type()

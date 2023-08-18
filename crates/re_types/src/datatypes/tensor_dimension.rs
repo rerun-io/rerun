@@ -219,20 +219,7 @@ impl crate::Loggable for TensorDimension {
                 let size = {
                     if !arrays_by_name.contains_key("size") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "size".to_owned(),
-                                    data_type: DataType::UInt64,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "name".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "size",
                         ))
                         .with_context("rerun.datatypes.TensorDimension");
@@ -254,20 +241,7 @@ impl crate::Loggable for TensorDimension {
                 let name = {
                     if !arrays_by_name.contains_key("name") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "size".to_owned(),
-                                    data_type: DataType::UInt64,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "name".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "name",
                         ))
                         .with_context("rerun.datatypes.TensorDimension");
