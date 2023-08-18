@@ -16,6 +16,10 @@
             margin-left: 20px;
         }
 
+        .rerun_c-libraries {
+            margin-left: 20px;
+        }
+
         .wheel-list {
             margin-left: 20px;
         }
@@ -36,11 +40,11 @@
         </div>
         {% endif %}
         {% if build.rerun_c_libraries %}
-        <div class="rerun_c_libraries">
+        <div class="rerun_c-libraries">
             <h3>Rerun C build:</h3>
             <ul>
                 {% for library in build.rerun_c_libraries %}
-                <li><a href="{{ library }}" target="_blank">{{ library.substr(library.lastIndexOf('rerun_c')) }}</a></li>
+                <li><a href="{{ library }}" target="_blank">{{ library }}</a></li>
                 {% endfor %}
             </ul>
         </div>
