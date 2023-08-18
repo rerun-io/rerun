@@ -65,10 +65,8 @@ jobs:
       - name: Download base branch results
         run: |
           file_path="gs://rerun-builds/sizes/commit/${{ steps.context.outputs.base_short_sha }}/data.json"
-          gsutil -q stat $file_path
-          status_code=$?
 
-          if [[ $status_code == 0 ]]; then
+          if [ "$(gsutil -q stat $file_path ; echo $?)" = 0 ]; then
             gsutil cp $file_path "/tmp/prev.json"
           else
             echo "[]" > "/tmp/prev.json"
