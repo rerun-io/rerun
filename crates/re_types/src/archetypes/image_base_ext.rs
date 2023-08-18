@@ -123,7 +123,7 @@ impl Image {
     ) -> Result<Self, ImageConstructionError<T>> {
         let mut data: crate::datatypes::TensorData = data
             .try_into()
-            .map_err(|e| ImageConstructionError::TensorDataConversion(e))?;
+            .map_err(ImageConstructionError::TensorDataConversion)?;
 
         let non_empty_dim_inds = find_non_empty_dim_indices(&data.shape);
 
