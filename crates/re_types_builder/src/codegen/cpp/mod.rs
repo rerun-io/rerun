@@ -336,10 +336,7 @@ impl QuotedObject {
         let type_ident = format_ident!("{type_name}"); // The PascalCase name of the object type.
         let quoted_docs = quote_docstrings(&obj.docs);
 
-        // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
-        // TODO(andreas): This drags in arrow headers into the public api though. We probably should try harder with forward declarations.
-        hpp_includes.system.insert("arrow/type_fwd.h".to_owned());
-        let mut cpp_includes = Includes::default();
+        let mut cpp_includes = Includes::new(obj.fqname.clone());
         #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
@@ -362,7 +359,6 @@ impl QuotedObject {
         let (constants_hpp, constants_cpp) =
             quote_constants_header_and_cpp(obj, objects, &type_ident);
         let mut methods = Vec::new();
-        let mut methods_serialize_utils = Vec::new();
 
         match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
@@ -655,14 +651,10 @@ impl QuotedObject {
         }))
         .collect_vec();
 
-        hpp_includes.system.insert("utility".to_owned()); // std::move
-        hpp_includes.system.insert("cstring".to_owned()); // std::memcpy
+        hpp_includes.insert_system("utility"); // std::move
+        hpp_includes.insert_system("cstring"); // std::memcpy
 
-        // Doing our own forward declarations doesn't get us super far since some arrow types like `FloatBuilder` are type aliases.
-        // TODO(andreas): This drags in arrow headers into the public api though. We probably should try harder with forward declarations.
-        hpp_includes.system.insert("arrow/type_fwd.h".to_owned());
-
-        let mut cpp_includes = Includes::default();
+        let mut cpp_includes = Includes::new(obj.fqname.clone());
         #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
@@ -1122,7 +1114,7 @@ fn fill_arrow_array_builder_method(
     hpp_declarations: &mut ForwardDecls,
     objects: &Objects,
 ) -> Method {
-    cpp_includes.insert_system("arrow/builder.h".to_owned());
+    cpp_includes.insert_system("arrow/builder.h");
 
     let builder = format_ident!("builder");
     let arrow_builder_type = arrow_array_builder_type_object(obj, objects, hpp_declarations);
@@ -1881,6 +1873,8 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
 }
 
 fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStream {
+    includes.insert_rerun_type(fqname);
+
     let fqname = fqname
         .replace(".testing", "")
         .replace('.', "::")
