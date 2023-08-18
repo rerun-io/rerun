@@ -1,4 +1,7 @@
-use crate::{ArrowBuffer, TensorDataType, TensorElement};
+use crate::{TensorDataType, TensorElement};
+
+#[cfg(feature = "image")]
+use crate::ArrowBuffer;
 
 use super::{TensorBuffer, TensorData, TensorDimension, TensorId};
 
