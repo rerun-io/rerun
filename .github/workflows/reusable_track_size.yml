@@ -120,7 +120,7 @@ jobs:
           path: /tmp/data.json
           destination: "rerun-builds/sizes/adhoc/${{ inputs.ADHOC_NAME }}"
 
-      - name: Store benchmark result
+      - name: Store result
         # Only run on `main`
         if: github.ref == 'refs/heads/main'
         # https://github.com/benchmark-action/github-action-benchmark
@@ -128,7 +128,7 @@ jobs:
         with:
           name: Sizes
           tool: customSmallerIsBetter
-          output-file-path: /tmp/benchmark
+          output-file-path: /tmp/data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Show alert with commit on detecting possible size regression
