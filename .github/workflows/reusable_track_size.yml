@@ -83,16 +83,28 @@ jobs:
 
           for file in web_demo/examples/**/*.rrd; do
             name=$(basename $(dirname "$file"))
-            entries+=("$dir.rrd:$file:KB")
+            entries+=("$name.rrd:$file:KB")
           done
 
           data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
           echo "$data"
+
           echo "$data" > "/tmp/data.json"
 
           comparison=$(python3 scripts/ci/sizes.py compare --threshold=10 "/tmp/prev.json" "/tmp/data.json")
           echo "$comparison"
-          echo "comparison=$comparison" >> "$GITHUB_OUTPUT"
+
+          {
+            echo 'comparison<<EOF'
+            echo "$comparison"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -n "$comparison" ]; then
+            echo "is_comparison_set=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_comparison_set=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload data to GCS (commit)
         if: inputs.ADHOC_NAME == ''
@@ -132,7 +144,7 @@ jobs:
           max-items-in-chart: 30
 
       - name: Create PR comment
-        if: inputs.PR_NUMBER != '' && steps.measure.outputs.comparison != ''
+        if: inputs.PR_NUMBER != '' && steps.measure.outputs.is_comparison_set == 'true'
         # https://github.com/mshick/add-pr-comment
         uses: mshick/add-pr-comment@v2.8.1
         with:
