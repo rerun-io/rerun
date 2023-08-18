@@ -1048,8 +1048,14 @@ fn single_field_constructor_methods(
     methods
 }
 
-fn arrow_data_type_method(obj: &Object, objects: &Objects, cpp_includes: &mut Includes) -> Method {
-    cpp_includes.system.insert("arrow/api.h".to_owned());
+fn arrow_data_type_method(
+    obj: &Object,
+    objects: &Objects,
+    cpp_includes: &mut Includes,
+    hpp_declarations: &mut ForwardDecls,
+) -> Method {
+    cpp_includes.insert_system("arrow/type_fwd.h");
+    hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("DataType")));
 
     let quoted_datatype = quote_arrow_data_type(
         &Type::Object(obj.fqname.clone()),
@@ -1079,7 +1085,8 @@ fn new_arrow_array_builder_method(
     cpp_includes: &mut Includes,
     hpp_declarations: &mut ForwardDecls,
 ) -> Method {
-    cpp_includes.system.insert("arrow/api.h".to_owned());
+    cpp_includes.insert_system("arrow/builder.h");
+    hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("MemoryPool")));
 
     let builder_instantiation = quote_arrow_array_builder_type_instantiation(
         &Type::Object(obj.fqname.clone()),
@@ -1115,7 +1122,7 @@ fn fill_arrow_array_builder_method(
     hpp_declarations: &mut ForwardDecls,
     objects: &Objects,
 ) -> Method {
-    cpp_includes.system.insert("arrow/api.h".to_owned());
+    cpp_includes.insert_system("arrow/builder.h".to_owned());
 
     let builder = format_ident!("builder");
     let arrow_builder_type = arrow_array_builder_type_object(obj, objects, hpp_declarations);
@@ -1159,7 +1166,7 @@ fn component_to_data_cell_method(
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
     cpp_includes.insert_rerun("arrow.hpp"); // ipc_from_table
-    cpp_includes.insert_system("arrow/api.h");
+    cpp_includes.insert_system("arrow/table.h"); // Table::Make
 
     let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
 
@@ -1219,7 +1226,6 @@ fn archetype_to_data_cells(
 ) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
-    cpp_includes.insert_system("arrow/api.h");
 
     // TODO(andreas): Splats need to be handled separately.
 
