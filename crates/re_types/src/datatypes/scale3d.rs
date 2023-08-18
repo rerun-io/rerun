@@ -159,7 +159,17 @@ impl crate::Loggable for Scale3D {
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    )
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 PrimitiveArray::new(
                                     {
@@ -197,7 +207,7 @@ impl crate::Loggable for Scale3D {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::Float32.to_logical_type().clone()
                             },
                             uniform.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             uniform_bitmap,

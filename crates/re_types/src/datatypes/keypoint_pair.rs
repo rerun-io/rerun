@@ -116,7 +116,7 @@ impl crate::Loggable for KeypointPair {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::UInt16.to_logical_type().clone()
                             },
                             keypoint0
                                 .into_iter()
@@ -151,7 +151,7 @@ impl crate::Loggable for KeypointPair {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::UInt16.to_logical_type().clone()
                             },
                             keypoint1
                                 .into_iter()

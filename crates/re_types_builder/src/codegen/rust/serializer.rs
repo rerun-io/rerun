@@ -127,14 +127,15 @@ pub fn quote_arrow_serializer(
                     let data_dst = format_ident!("{}", obj_field.name);
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
-                    let datatype = &arrow_registry.get(&obj_field.fqname);
-                    let quoted_datatype = quote! { Self::to_arrow_datatype() };
+                    let inner_datatype = &arrow_registry.get(&obj_field.fqname);
+                    let quoted_inner_datatype =
+                        super::arrow::ArrowDataTypeTokenizer(inner_datatype, false);
 
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
                         None,
-                        datatype,
-                        &quoted_datatype,
+                        inner_datatype,
+                        &quoted_inner_datatype,
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,
@@ -194,14 +195,14 @@ pub fn quote_arrow_serializer(
                     let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
-                    let datatype = &arrow_registry.get(&obj_field.fqname);
-                    let quoted_datatype = quote! { Self::to_arrow_datatype() };
+                    let inner_datatype = &arrow_registry.get(&obj_field.fqname);
+                    let quoted_inner_datatype = super::arrow::ArrowDataTypeTokenizer(inner_datatype, false);
 
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
                         None,
-                        datatype,
-                        &quoted_datatype,
+                        inner_datatype,
+                        &quoted_inner_datatype,
                         obj_field.is_nullable,
                         &bitmap_dst,
                         &data_dst,

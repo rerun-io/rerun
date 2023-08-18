@@ -196,7 +196,15 @@ impl crate::Loggable for ClassDescription {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type:
+                                            <crate::datatypes::AnnotationInfo>::to_arrow_datatype(),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }))
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 offsets,
                                 {
@@ -252,7 +260,15 @@ impl crate::Loggable for ClassDescription {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type:
+                                            <crate::datatypes::KeypointPair>::to_arrow_datatype(),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }))
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 offsets,
                                 {

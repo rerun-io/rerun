@@ -161,7 +161,17 @@ impl crate::Loggable for Rotation3D {
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        4usize,
+                                    )
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 PrimitiveArray::new(
                                     {

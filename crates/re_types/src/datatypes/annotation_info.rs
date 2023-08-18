@@ -131,7 +131,7 @@ impl crate::Loggable for AnnotationInfo {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::UInt16.to_logical_type().clone()
                             },
                             id.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             id_bitmap,
@@ -177,12 +177,13 @@ impl crate::Loggable for AnnotationInfo {
                             )
                             .unwrap()
                             .into();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
                                     {
                                         _ = extension_wrapper;
-                                        Self::to_arrow_datatype().to_logical_type().clone()
+                                        DataType::Utf8.to_logical_type().clone()
                                     },
                                     offsets,
                                     inner_data,
@@ -213,7 +214,7 @@ impl crate::Loggable for AnnotationInfo {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::UInt32.to_logical_type().clone()
                             },
                             color
                                 .into_iter()

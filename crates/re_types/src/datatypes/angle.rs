@@ -132,7 +132,7 @@ impl crate::Loggable for Angle {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::Float32.to_logical_type().clone()
                             },
                             radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             radians_bitmap,
@@ -158,7 +158,7 @@ impl crate::Loggable for Angle {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::Float32.to_logical_type().clone()
                             },
                             degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             degrees_bitmap,

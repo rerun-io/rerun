@@ -118,7 +118,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::UInt16.to_logical_type().clone()
                             },
                             class_id
                                 .into_iter()

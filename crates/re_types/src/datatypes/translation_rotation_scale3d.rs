@@ -169,7 +169,17 @@ impl crate::Loggable for TranslationRotationScale3D {
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    )
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 PrimitiveArray::new(
                                     {
@@ -254,7 +264,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         BooleanArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::Boolean.to_logical_type().clone()
                             },
                             from_parent
                                 .into_iter()

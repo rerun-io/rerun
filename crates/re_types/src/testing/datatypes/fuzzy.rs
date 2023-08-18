@@ -105,7 +105,7 @@ impl crate::Loggable for FlattenedScalar {
                     PrimitiveArray::new(
                         {
                             _ = extension_wrapper;
-                            Self::to_arrow_datatype().to_logical_type().clone()
+                            DataType::Float32.to_logical_type().clone()
                         },
                         value.into_iter().map(|v| v.unwrap_or_default()).collect(),
                         value_bitmap,
@@ -384,7 +384,7 @@ impl crate::Loggable for AffixFuzzer1 {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::Float32.to_logical_type().clone()
                             },
                             single_float_optional
                                 .into_iter()
@@ -430,7 +430,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                 Utf8Array::<i32>::new_unchecked(
                                     {
                                         _ = extension_wrapper;
-                                        Self::to_arrow_datatype().to_logical_type().clone()
+                                        DataType::Utf8.to_logical_type().clone()
                                     },
                                     offsets,
                                     inner_data,
@@ -479,7 +479,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                 Utf8Array::<i32>::new_unchecked(
                                     {
                                         _ = extension_wrapper;
-                                        Self::to_arrow_datatype().to_logical_type().clone()
+                                        DataType::Utf8.to_logical_type().clone()
                                     },
                                     offsets,
                                     inner_data,
@@ -534,7 +534,14 @@ impl crate::Loggable for AffixFuzzer1 {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    }))
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 offsets,
                                 PrimitiveArray::new(
@@ -591,7 +598,14 @@ impl crate::Loggable for AffixFuzzer1 {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Utf8,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }))
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 offsets,
                                 {
@@ -673,7 +687,14 @@ impl crate::Loggable for AffixFuzzer1 {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Utf8,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    }))
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 offsets,
                                 {
@@ -732,7 +753,7 @@ impl crate::Loggable for AffixFuzzer1 {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::Float32.to_logical_type().clone()
                             },
                             flattened_scalar
                                 .into_iter()
@@ -790,7 +811,7 @@ impl crate::Loggable for AffixFuzzer1 {
                         BooleanArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::Boolean.to_logical_type().clone()
                             },
                             from_parent
                                 .into_iter()
@@ -1720,7 +1741,7 @@ impl crate::Loggable for AffixFuzzer3 {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::Float32.to_logical_type().clone()
                             },
                             degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             degrees_bitmap,
@@ -1749,7 +1770,7 @@ impl crate::Loggable for AffixFuzzer3 {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::Float32.to_logical_type().clone()
                             },
                             radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             radians_bitmap,
@@ -1794,7 +1815,10 @@ impl crate::Loggable for AffixFuzzer3 {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::List(Box::new(Field { name : "item".to_owned(),
+                        data_type : < crate ::testing::datatypes::AffixFuzzer1 >
+                        ::to_arrow_datatype(), is_nullable : false, metadata : [].into(),
+                        })).to_logical_type().clone()
                                 },
                                 offsets,
                                 {
@@ -1853,7 +1877,17 @@ impl crate::Loggable for AffixFuzzer3 {
                             FixedSizeListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    )
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 PrimitiveArray::new(
                                     {
@@ -2490,7 +2524,10 @@ impl crate::Loggable for AffixFuzzer4 {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::List(Box::new(Field { name : "item".to_owned(),
+                        data_type : < crate ::testing::datatypes::AffixFuzzer3 >
+                        ::to_arrow_datatype(), is_nullable : false, metadata : [].into(),
+                        })).to_logical_type().clone()
                                 },
                                 offsets,
                                 {
@@ -2545,7 +2582,10 @@ impl crate::Loggable for AffixFuzzer4 {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    Self::to_arrow_datatype().to_logical_type().clone()
+                                    DataType::List(Box::new(Field { name : "item".to_owned(),
+                        data_type : < crate ::testing::datatypes::AffixFuzzer3 >
+                        ::to_arrow_datatype(), is_nullable : true, metadata : [].into(),
+                        })).to_logical_type().clone()
                                 },
                                 offsets,
                                 {
@@ -3220,7 +3260,7 @@ impl crate::Loggable for AffixFuzzer20 {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                Self::to_arrow_datatype().to_logical_type().clone()
+                                DataType::UInt32.to_logical_type().clone()
                             },
                             p.into_iter()
                                 .map(|datum| {
@@ -3281,7 +3321,7 @@ impl crate::Loggable for AffixFuzzer20 {
                                 Utf8Array::<i32>::new_unchecked(
                                     {
                                         _ = extension_wrapper;
-                                        Self::to_arrow_datatype().to_logical_type().clone()
+                                        DataType::Utf8.to_logical_type().clone()
                                     },
                                     offsets,
                                     inner_data,
