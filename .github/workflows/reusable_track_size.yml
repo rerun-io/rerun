@@ -21,8 +21,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  wasm:
-    name: "Wasm"
+  track-sizes:
+    name: "Track Sizes"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
