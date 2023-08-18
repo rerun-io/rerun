@@ -78,23 +78,23 @@ jobs:
         run: |
           entries=()
 
-          entries+="Wasm (release):web_viewer/re_viewer_bg.wasm:MB"
-          entries+="JS (release):web_viewer/re_viewer.js:KB"
+          entries+=("Wasm (release):web_viewer/re_viewer_bg.wasm:MB")
+          entries+=("JS (release):web_viewer/re_viewer.js:KB")
 
-          entries+="Wasm (debug):web_viewer/re_viewer_debug_bg.wasm:MB"
-          entries+="JS (debug):web_viewer/re_viewer_debug.js:KB"
+          entries+=("Wasm (debug):web_viewer/re_viewer_debug_bg.wasm:MB")
+          entries+=("JS (debug):web_viewer/re_viewer_debug.js:KB")
 
           for file in web_demo/examples/**/*.rrd; do
             name=$(basename $(dirname "$file"))
-            entries+="$dir.rrd:$file:KB"
+            entries+=("$dir.rrd:$file:KB")
           done
 
           data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
-          echo $data
+          echo "$data"
           echo "$data" > "/tmp/data.json"
 
           comparison=$(python3 scripts/ci/sizes.py compare --threshold=10 "/tmp/prev.json" "/tmp/data.json")
-          echo $comparison
+          echo "$comparison"
           echo "comparison=$comparison" >> "$GITHUB_OUTPUT"
 
       - name: Upload data to GCS (commit)
