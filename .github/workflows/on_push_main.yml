@@ -68,6 +68,14 @@ jobs:
       MARK_PRERELEASE_FOR_MAINLINE: true
     secrets: inherit
 
+  track-sizes:
+    name: "Track Sizes"
+    needs: [build-web-demo]
+    uses: ./.github/workflows/reusable_track_size.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+    secrets: inherit
+
   build-linux:
     needs: [checks]
     name: "Linux: Build/Test Wheels"
