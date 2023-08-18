@@ -167,7 +167,7 @@ def measure(files: list[str], format: Format) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
 
-    cmds_parser = parser.add_subparsers(title="cmds", dest="cmd")
+    cmds_parser = parser.add_subparsers(title="cmds", dest="cmd", help="Command")
 
     compare_parser = cmds_parser.add_parser("compare", help="Compare results")
     compare_parser.add_argument("before", type=str, help="Previous result .json file")
@@ -177,7 +177,7 @@ def main() -> None:
         type=float,
         required=False,
         default=20,
-        help="Only print row if value is `N%` larger or smaller",
+        help="Only print row if value is N%% larger or smaller",
     )
 
     measure_parser = cmds_parser.add_parser("measure", help="Measure sizes")
@@ -188,7 +188,7 @@ def main() -> None:
         default=Format.JSON,
         help="Format to render",
     )
-    measure_parser.add_argument("files", nargs="*", help="Entries to measure. Format: `name:path[:unit]`")
+    measure_parser.add_argument("files", nargs="*", help="Entries to measure. Format: name:path[:unit]")
 
     args = parser.parse_args()
 
