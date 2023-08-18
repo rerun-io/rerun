@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../datatypes/angle.hpp"
-#include "../datatypes/vec3d.hpp"
+#include "angle.hpp"
+#include "vec3d.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>

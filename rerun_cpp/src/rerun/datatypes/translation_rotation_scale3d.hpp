@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "../datatypes/rotation3d.hpp"
-#include "../datatypes/scale3d.hpp"
-#include "../datatypes/vec3d.hpp"
+#include "rotation3d.hpp"
+#include "scale3d.hpp"
+#include "vec3d.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>

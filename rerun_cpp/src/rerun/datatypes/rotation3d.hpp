@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../datatypes/quaternion.hpp"
-#include "../datatypes/rotation_axis_angle.hpp"
+#include "quaternion.hpp"
+#include "rotation_axis_angle.hpp"
 
 #include <arrow/type_fwd.h>
 #include <cstdint>
