@@ -10,8 +10,8 @@
 #include "../components/line_strip3d.hpp"
 #include "../components/radius.hpp"
 #include "../data_cell.hpp"
+#include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <utility>
@@ -53,7 +53,7 @@ namespace rerun {
         ///    };
         ///    rr_stream.log(
         ///        "strips",
-        ///        rr::archetypes::LineStrips3D({strip1, strip2})
+        ///        rr::LineStrips3D({strip1, strip2})
         ///            .with_colors({0xFF0000FF, 0x00FF00FF})
         ///            .with_radii({0.025f, 0.005f})
         ///            .with_labels({"one strip here", "and one strip there"})
@@ -83,7 +83,7 @@ namespace rerun {
         ///        {0.f, 1.f, 0.f},
         ///        {0.f, 1.f, 1.f},
         ///    };
-        ///    rr_stream.log("segments", rr::archetypes::LineStrips3D(points));
+        ///    rr_stream.log("segments", rr::LineStrips3D(points));
         /// }
         ///```
         struct LineStrips3D {
@@ -187,7 +187,7 @@ namespace rerun {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
 } // namespace rerun

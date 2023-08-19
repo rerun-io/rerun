@@ -11,8 +11,8 @@
 #include "../components/point3d.hpp"
 #include "../components/radius.hpp"
 #include "../data_cell.hpp"
+#include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <utility>
@@ -35,8 +35,7 @@ namespace rerun {
         ///    auto rr_stream = rr::RecordingStream("points3d_simple");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    rr_stream.log("points", rr::archetypes::Points3D({{0.0f, 0.0f, 0.0f},
-        ///    {1.0f, 1.0f, 1.0f}}));
+        ///    rr_stream.log("points", rr::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
         /// }
         ///```
         struct Points3D {
@@ -172,7 +171,7 @@ namespace rerun {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
 } // namespace rerun

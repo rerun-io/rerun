@@ -262,7 +262,7 @@ def run_web(examples: list[str], parallel: bool) -> None:
 def run_save(examples: list[str]) -> None:
     for path in examples:
         if path not in HAS_NO_RERUN_ARGS:
-            process = run_py_example(path, save="out.rrd")
+            process = run_py_example(path, save=os.path.join(path, "out.rrd"))
             print(f"{output_from_process(process)}\n")
 
 

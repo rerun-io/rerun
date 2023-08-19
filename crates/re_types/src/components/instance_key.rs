@@ -79,7 +79,7 @@ impl crate::Loggable for InstanceKey {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.components.InstanceKey".to_owned(),
-                        Box::new(DataType::UInt64),
+                        Box::new(Self::to_arrow_datatype()),
                         None,
                     )
                     .to_logical_type()

@@ -98,6 +98,10 @@ struct Args {
     #[clap(long)]
     screenshot_to: Option<std::path::PathBuf>,
 
+    /// Do not display the welcome screen.
+    #[clap(long)]
+    skip_welcome_screen: bool,
+
     /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
     #[clap(long)]
     strict: bool,
@@ -401,6 +405,8 @@ async fn run_impl(
         }),
         persist_state: args.persist_state,
         screenshot_to_path_then_quit: args.screenshot_to.clone(),
+
+        skip_welcome_screen: args.skip_welcome_screen,
 
         // TODO(emilk): make it easy to set this on eframe instead
         resolution_in_points: if let Some(size) = &args.window_size {

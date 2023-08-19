@@ -6,7 +6,9 @@
 #include "../arrow.hpp"
 #include "../datatypes/vec3d.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/table.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace components {
@@ -17,46 +19,50 @@ namespace rerun {
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::FixedSizeListBuilder>>
-            Vector3D::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+        Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Vector3D::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(
-                rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie()
-            );
+            return Result(rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).value);
         }
 
-        arrow::Status Vector3D::fill_arrow_array_builder(
+        Error Vector3D::fill_arrow_array_builder(
             arrow::FixedSizeListBuilder *builder, const Vector3D *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             static_assert(sizeof(rerun::datatypes::Vec3D) == sizeof(Vector3D));
-            ARROW_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
                 builder,
                 reinterpret_cast<const rerun::datatypes::Vec3D *>(elements),
                 num_elements
             ));
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
 
-        arrow::Result<rerun::DataCell> Vector3D::to_data_cell(
+        Result<rerun::DataCell> Vector3D::to_data_cell(
             const Vector3D *instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
             arrow::MemoryPool *pool = arrow::default_memory_pool();
 
-            ARROW_ASSIGN_OR_RAISE(auto builder, Vector3D::new_arrow_array_builder(pool));
+            auto builder_result = Vector3D::new_arrow_array_builder(pool);
+            RR_RETURN_NOT_OK(builder_result.error);
+            auto builder = std::move(builder_result.value);
             if (instances && num_instances > 0) {
-                ARROW_RETURN_NOT_OK(
+                RR_RETURN_NOT_OK(
                     Vector3D::fill_arrow_array_builder(builder.get(), instances, num_instances)
                 );
             }
@@ -68,10 +74,9 @@ namespace rerun {
 
             rerun::DataCell cell;
             cell.component_name = Vector3D::NAME;
-            ARROW_ASSIGN_OR_RAISE(
-                cell.buffer,
-                rerun::ipc_from_table(*arrow::Table::Make(schema, {array}))
-            );
+            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
+            RR_RETURN_NOT_OK(ipc_result.error);
+            cell.buffer = std::move(ipc_result.value);
 
             return cell;
         }

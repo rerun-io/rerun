@@ -82,7 +82,7 @@ impl crate::Loggable for DisconnectedSpace {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.components.DisconnectedSpace".to_owned(),
-                        Box::new(DataType::Boolean),
+                        Box::new(Self::to_arrow_datatype()),
                         None,
                     )
                     .to_logical_type()

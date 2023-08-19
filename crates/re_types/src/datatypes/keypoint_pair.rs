@@ -220,20 +220,7 @@ impl crate::Loggable for KeypointPair {
                 let keypoint0 = {
                     if !arrays_by_name.contains_key("keypoint0") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "keypoint0".to_owned(),
-                                    data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "keypoint1".to_owned(),
-                                    data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "keypoint0",
                         ))
                         .with_context("rerun.datatypes.KeypointPair");
@@ -255,20 +242,7 @@ impl crate::Loggable for KeypointPair {
                 let keypoint1 = {
                     if !arrays_by_name.contains_key("keypoint1") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            DataType::Struct(vec![
-                                Field {
-                                    name: "keypoint0".to_owned(),
-                                    data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "keypoint1".to_owned(),
-                                    data_type: <crate::datatypes::KeypointId>::to_arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
+                            Self::to_arrow_datatype(),
                             "keypoint1",
                         ))
                         .with_context("rerun.datatypes.KeypointPair");

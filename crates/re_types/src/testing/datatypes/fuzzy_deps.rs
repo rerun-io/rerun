@@ -78,7 +78,7 @@ impl crate::Loggable for PrimitiveComponent {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.testing.datatypes.PrimitiveComponent".to_owned(),
-                        Box::new(DataType::UInt32),
+                        Box::new(Self::to_arrow_datatype()),
                         None,
                     )
                     .to_logical_type()
@@ -216,7 +216,7 @@ impl crate::Loggable for StringComponent {
                             _ = extension_wrapper;
                             DataType::Extension(
                                 "rerun.testing.datatypes.StringComponent".to_owned(),
-                                Box::new(DataType::Utf8),
+                                Box::new(Self::to_arrow_datatype()),
                                 None,
                             )
                             .to_logical_type()
