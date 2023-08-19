@@ -6,6 +6,7 @@
 #include "affix_fuzzer4.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <rerun/result.hpp>
 #include <utility>

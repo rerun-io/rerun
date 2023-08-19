@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <rerun/result.hpp>
 #include <string>
 #include <utility>

@@ -8,6 +8,7 @@
 #include "vec3d.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 
 namespace arrow {

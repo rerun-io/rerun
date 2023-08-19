@@ -7,6 +7,7 @@
 #include "string_component.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <rerun/result.hpp>
 
 namespace arrow {

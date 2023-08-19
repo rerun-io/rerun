@@ -7,6 +7,7 @@
 #include "vec3d.hpp"
 
 #include <cstdint>
+#include <memory>
 
 namespace arrow {
     class DataType;

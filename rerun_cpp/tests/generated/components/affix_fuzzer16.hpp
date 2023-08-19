@@ -6,6 +6,7 @@
 #include "../datatypes/affix_fuzzer3.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>

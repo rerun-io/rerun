@@ -8,6 +8,7 @@
 #include "../result.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <utility>
 #include <vector>
 

@@ -6,6 +6,7 @@
 #include "../result.hpp"
 
 #include <cstdint>
+#include <memory>
 
 namespace arrow {
     class DataType;

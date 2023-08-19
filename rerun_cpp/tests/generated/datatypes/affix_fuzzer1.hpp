@@ -6,6 +6,7 @@
 #include "flattened_scalar.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <rerun/result.hpp>
 #include <string>

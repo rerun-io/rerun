@@ -8,6 +8,7 @@
 #include "keypoint_pair.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace arrow {

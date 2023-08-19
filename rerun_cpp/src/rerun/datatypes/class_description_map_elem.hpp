@@ -8,6 +8,7 @@
 #include "class_id.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <utility>
 
 namespace arrow {
