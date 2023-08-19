@@ -5,8 +5,6 @@
 
 #include "../components/disconnected_space.hpp"
 
-#include <arrow/api.h>
-
 namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> DisconnectedSpace::to_data_cells() const {

@@ -3,12 +3,18 @@
 
 #pragma once
 
+#include "../result.hpp"
 #include "vec3d.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <cstring>
 #include <utility>
+
+namespace arrow {
+    class DataType;
+    class DenseUnionBuilder;
+    class MemoryPool;
+} // namespace arrow
 
 namespace rerun {
     namespace datatypes {
@@ -108,12 +114,12 @@ namespace rerun {
             static const std::shared_ptr<arrow::DataType> &to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
-            static arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
+            static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
                 arrow::MemoryPool *memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static arrow::Status fill_arrow_array_builder(
+            static Error fill_arrow_array_builder(
                 arrow::DenseUnionBuilder *builder, const Scale3D *elements, size_t num_elements
             );
 

@@ -5,8 +5,6 @@
 
 #include "../components/annotation_context.hpp"
 
-#include <arrow/api.h>
-
 namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> AnnotationContext::to_data_cells() const {

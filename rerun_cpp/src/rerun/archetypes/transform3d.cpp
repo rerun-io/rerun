@@ -5,8 +5,6 @@
 
 #include "../components/transform3d.hpp"
 
-#include <arrow/api.h>
-
 namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> Transform3D::to_data_cells() const {

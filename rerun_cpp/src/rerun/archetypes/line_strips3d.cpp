@@ -10,8 +10,6 @@
 #include "../components/line_strip3d.hpp"
 #include "../components/radius.hpp"
 
-#include <arrow/api.h>
-
 namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> LineStrips3D::to_data_cells() const {

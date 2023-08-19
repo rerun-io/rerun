@@ -3,13 +3,19 @@
 
 #pragma once
 
+#include "../result.hpp"
 #include "color.hpp"
 #include "label.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <utility>
+
+namespace arrow {
+    class DataType;
+    class MemoryPool;
+    class StructBuilder;
+} // namespace arrow
 
 namespace rerun {
     namespace datatypes {
@@ -46,12 +52,12 @@ namespace rerun {
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
-            static arrow::Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
+            static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
                 arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static arrow::Status fill_arrow_array_builder(
+            static Error fill_arrow_array_builder(
                 arrow::StructBuilder* builder, const AnnotationInfo* elements, size_t num_elements
             );
         };
