@@ -3,7 +3,9 @@
 
 #include "affix_fuzzer8.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/table.h>
+#include <arrow/type_fwd.h>
 #include <rerun/arrow.hpp>
 
 namespace rerun {
@@ -15,24 +17,27 @@ namespace rerun {
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::FloatBuilder>> AffixFuzzer8::new_arrow_array_builder(
+        Result<std::shared_ptr<arrow::FloatBuilder>> AffixFuzzer8::new_arrow_array_builder(
             arrow::MemoryPool* memory_pool
         ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
+            return Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
         }
 
-        arrow::Status AffixFuzzer8::fill_arrow_array_builder(
+        Error AffixFuzzer8::fill_arrow_array_builder(
             arrow::FloatBuilder* builder, const AffixFuzzer8* elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -45,7 +50,7 @@ namespace rerun {
                 }
             }
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
 
         Result<rerun::DataCell> AffixFuzzer8::to_data_cell(
@@ -54,9 +59,11 @@ namespace rerun {
             // TODO(andreas): Allow configuring the memory pool.
             arrow::MemoryPool* pool = arrow::default_memory_pool();
 
-            ARROW_ASSIGN_OR_RAISE(auto builder, AffixFuzzer8::new_arrow_array_builder(pool));
+            auto builder_result = AffixFuzzer8::new_arrow_array_builder(pool);
+            RR_RETURN_NOT_OK(builder_result.error);
+            auto builder = std::move(builder_result.value);
             if (instances && num_instances > 0) {
-                ARROW_RETURN_NOT_OK(
+                RR_RETURN_NOT_OK(
                     AffixFuzzer8::fill_arrow_array_builder(builder.get(), instances, num_instances)
                 );
             }
@@ -69,11 +76,9 @@ namespace rerun {
 
             rerun::DataCell cell;
             cell.component_name = AffixFuzzer8::NAME;
-            const auto result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            if (result.is_err()) {
-                return result.error;
-            }
-            cell.buffer = std::move(result.value);
+            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
+            RR_RETURN_NOT_OK(ipc_result.error);
+            cell.buffer = std::move(ipc_result.value);
 
             return cell;
         }

@@ -3,7 +3,8 @@
 
 #include "angle.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
@@ -16,14 +17,14 @@ namespace rerun {
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>> Angle::new_arrow_array_builder(
+        Result<std::shared_ptr<arrow::DenseUnionBuilder>> Angle::new_arrow_array_builder(
             arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::DenseUnionBuilder>(
+            return Result(std::make_shared<arrow::DenseUnionBuilder>(
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
@@ -34,14 +35,17 @@ namespace rerun {
             ));
         }
 
-        arrow::Status Angle::fill_arrow_array_builder(
+        Error Angle::fill_arrow_array_builder(
             arrow::DenseUnionBuilder *builder, const Angle *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -72,7 +76,7 @@ namespace rerun {
                 }
             }
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

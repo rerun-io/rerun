@@ -12,7 +12,6 @@
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <utility>

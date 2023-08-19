@@ -5,7 +5,7 @@ use quote::quote;
 
 use crate::objects::is_testing_fqname;
 
-use super::{NEWLINE_TOKEN, SYS_INCLUDE_PATH_PREFIX_TOKEN, SYS_INCLUDE_PATH_SUFFIX_TOKEN};
+use super::{ANGLE_BRACKET_LEFT_TOKEN, ANGLE_BRACKET_RIGHT_TOKEN, NEWLINE_TOKEN};
 
 /// Keeps track of necessary includes for a file.
 pub struct Includes {
@@ -92,7 +92,7 @@ impl quote::ToTokens for Includes {
         let hash = quote! { # };
         let system = system.iter().map(|name| {
             // Need to mark system includes with tokens since they are usually not idents (can contain slashes and dots)
-            quote! { #hash include #SYS_INCLUDE_PATH_PREFIX_TOKEN #name #SYS_INCLUDE_PATH_SUFFIX_TOKEN #NEWLINE_TOKEN }
+            quote! { #hash include #ANGLE_BRACKET_LEFT_TOKEN #name #ANGLE_BRACKET_RIGHT_TOKEN #NEWLINE_TOKEN }
         });
         let local = local.iter().map(|name| {
             quote! { #hash include #name #NEWLINE_TOKEN }

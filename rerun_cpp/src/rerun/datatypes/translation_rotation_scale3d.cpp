@@ -7,7 +7,8 @@
 #include "scale3d.hpp"
 #include "vec3d.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
@@ -21,33 +22,36 @@ namespace rerun {
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::StructBuilder>>
+        Result<std::shared_ptr<arrow::StructBuilder>>
             TranslationRotationScale3D::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::StructBuilder>(
+            return Result(std::make_shared<arrow::StructBuilder>(
                 to_arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rerun::datatypes::Rotation3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rerun::datatypes::Scale3D::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).value,
+                    rerun::datatypes::Rotation3D::new_arrow_array_builder(memory_pool).value,
+                    rerun::datatypes::Scale3D::new_arrow_array_builder(memory_pool).value,
                     std::make_shared<arrow::BooleanBuilder>(memory_pool),
                 })
             ));
         }
 
-        arrow::Status TranslationRotationScale3D::fill_arrow_array_builder(
+        Error TranslationRotationScale3D::fill_arrow_array_builder(
             arrow::StructBuilder *builder, const TranslationRotationScale3D *elements,
             size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             {
@@ -57,7 +61,7 @@ namespace rerun {
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.translation.has_value()) {
-                        ARROW_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
+                        RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
                             field_builder,
                             &element.translation.value(),
                             1
@@ -74,7 +78,7 @@ namespace rerun {
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.rotation.has_value()) {
-                        ARROW_RETURN_NOT_OK(rerun::datatypes::Rotation3D::fill_arrow_array_builder(
+                        RR_RETURN_NOT_OK(rerun::datatypes::Rotation3D::fill_arrow_array_builder(
                             field_builder,
                             &element.rotation.value(),
                             1
@@ -91,7 +95,7 @@ namespace rerun {
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.scale.has_value()) {
-                        ARROW_RETURN_NOT_OK(rerun::datatypes::Scale3D::fill_arrow_array_builder(
+                        RR_RETURN_NOT_OK(rerun::datatypes::Scale3D::fill_arrow_array_builder(
                             field_builder,
                             &element.scale.value(),
                             1
@@ -111,7 +115,7 @@ namespace rerun {
             }
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

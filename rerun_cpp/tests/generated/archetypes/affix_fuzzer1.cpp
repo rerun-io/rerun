@@ -24,8 +24,6 @@
 #include "../components/affix_fuzzer8.hpp"
 #include "../components/affix_fuzzer9.hpp"
 
-#include <arrow/api.h>
-
 namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> AffixFuzzer1::to_data_cells() const {
