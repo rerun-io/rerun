@@ -495,6 +495,7 @@ impl QuotedObject {
 
                     // Provide a non-array version if it's a vector.
                     if let Type::Vector { elem_type } = &obj_field.typ {
+                        hpp_includes.insert_system("vector"); // std::vector
                         let elem_type = quote_element_type(&mut hpp_includes, elem_type);
                         methods.push(Method {
                             docs: obj_field.docs.clone().into(),
@@ -1218,6 +1219,7 @@ fn archetype_to_data_cells(
 ) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
+    hpp_includes.insert_system("vector"); // std::vector
 
     // TODO(andreas): Splats need to be handled separately.
 
