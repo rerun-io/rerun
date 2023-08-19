@@ -376,12 +376,14 @@ impl QuotedObject {
                 methods.push(arrow_data_type_method(
                     obj,
                     objects,
+                    &mut hpp_includes,
                     &mut cpp_includes,
                     &mut hpp_declarations,
                 ));
                 methods.push(new_arrow_array_builder_method(
                     obj,
                     objects,
+                    &mut hpp_includes,
                     &mut cpp_includes,
                     &mut hpp_declarations,
                 ));
@@ -712,12 +714,14 @@ impl QuotedObject {
         methods.push(arrow_data_type_method(
             obj,
             objects,
+            &mut hpp_includes,
             &mut cpp_includes,
             &mut hpp_declarations,
         ));
         methods.push(new_arrow_array_builder_method(
             obj,
             objects,
+            &mut hpp_includes,
             &mut cpp_includes,
             &mut hpp_declarations,
         ));
@@ -1044,9 +1048,11 @@ fn single_field_constructor_methods(
 fn arrow_data_type_method(
     obj: &Object,
     objects: &Objects,
+    hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
     hpp_declarations: &mut ForwardDecls,
 ) -> Method {
+    hpp_includes.insert_system("memory"); // std::shared_ptr
     cpp_includes.insert_system("arrow/type_fwd.h");
     hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("DataType")));
 
@@ -1075,9 +1081,11 @@ fn arrow_data_type_method(
 fn new_arrow_array_builder_method(
     obj: &Object,
     objects: &Objects,
+    hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
     hpp_declarations: &mut ForwardDecls,
 ) -> Method {
+    hpp_includes.insert_system("memory"); // std::shared_ptr
     cpp_includes.insert_system("arrow/builder.h");
     hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("MemoryPool")));
 
@@ -1156,6 +1164,7 @@ fn component_to_data_cell_method(
     hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
 ) -> Method {
+    hpp_includes.insert_system("memory"); // std::shared_ptr
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
     cpp_includes.insert_rerun("arrow.hpp"); // ipc_from_table
