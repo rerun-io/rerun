@@ -36,7 +36,11 @@ pub const ROLL_MOUSE_MODIFIER: egui::Modifiers = egui::Modifiers::ALT;
 pub const SPEED_UP_3D_MODIFIER: egui::Modifiers = egui::Modifiers::SHIFT;
 
 /// Which modifier slows down the 3D camera movement.
+#[cfg(target_os = "macos")]
 pub const SLOW_DOWN_3D_MODIFIER: egui::Modifiers = egui::Modifiers::CTRL;
+
+#[cfg(not(target_os = "macos"))]
+pub const SLOW_DOWN_3D_MODIFIER: egui::Modifiers = egui::Modifiers::ALT;
 
 /// Key to restore the camera.
 pub const TRACKED_CAMERA_RESTORE_KEY: egui::Key = egui::Key::Escape;
