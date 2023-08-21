@@ -6,7 +6,7 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -166,6 +166,12 @@ impl Lines3DPart {
     }
 }
 
+impl NamedViewSystem for Lines3DPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Lines3D".into()
+    }
+}
+
 impl ViewPartSystem for Lines3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         LineStrips3D::all_components().try_into().unwrap()
@@ -179,7 +185,7 @@ impl ViewPartSystem for Lines3DPart {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_scope!("Lines3DPart");
 
-        process_archetype_views::<LineStrips3D, { LineStrips3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Lines3DPart, LineStrips3D, { LineStrips3D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

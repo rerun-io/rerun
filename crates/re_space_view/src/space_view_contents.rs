@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
-use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities, ViewPartSystemId};
+use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities, ViewSystemName};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -301,8 +301,11 @@ impl SpaceViewContents {
 
         for path in paths {
             // TODO(andreas/jleibs): Incoming entities should already "know" what system they belong to.
+            // WARNING: This is less clear with ContextSystems.
+            // Generally, we don't want the user to have control over context systems since they "prepare" data for PartSystems.
+            // -> Context systems should be a direct consequence of the PartSystems that are active for a given entity.
             self.per_system_entity_list
-                .entry(ViewPartSystemId::UNKNOWN)
+                .entry(ViewSystemName::unknown())
                 .or_default()
                 .insert(path.clone());
 

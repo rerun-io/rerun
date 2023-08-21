@@ -1,11 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet};
-
-use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection,
-    ViewPartSystemId, ViewQuery, ViewerContext,
+    ViewQuery, ViewerContext,
 };
 
 use crate::{

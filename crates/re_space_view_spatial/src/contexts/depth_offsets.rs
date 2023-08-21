@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
 use re_types::{components::DrawOrder, Loggable as _};
-use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};
+use re_viewer_context::{ArchetypeDefinition, NamedViewSystem, ViewContextSystem};
 
 /// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].
 #[derive(Default)]
@@ -16,6 +16,12 @@ pub struct EntityDepthOffsets {
     pub lines2d: re_renderer::DepthOffset,
     pub image: re_renderer::DepthOffset,
     pub points: re_renderer::DepthOffset,
+}
+
+impl NamedViewSystem for EntityDepthOffsets {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "EntityDepthOffsets".into()
+    }
 }
 
 impl ViewContextSystem for EntityDepthOffsets {
@@ -43,7 +49,7 @@ impl ViewContextSystem for EntityDepthOffsets {
 
         // Use a BTreeSet for entity hashes to get a stable order.
         let mut entities_per_draw_order = BTreeMap::<DrawOrder, BTreeSet<DrawOrderTarget>>::new();
-        for (ent_path, _) in query.iter_entities() {
+        for (ent_path, _) in query.iter_entities_for_system(Self::name()) {
             if let Some(draw_order) = store.query_latest_component::<DrawOrder>(
                 ent_path,
                 &ctx.rec_cfg.time_ctrl.current_query(),

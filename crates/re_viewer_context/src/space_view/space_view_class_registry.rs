@@ -1,8 +1,8 @@
 use ahash::HashMap;
 
 use crate::{
-    DynSpaceViewClass, SpaceViewClassName, ViewContextCollection, ViewContextSystem,
-    ViewPartCollection, ViewPartSystem,
+    DynSpaceViewClass, NamedViewSystem, SpaceViewClassName, ViewContextCollection,
+    ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemName,
 };
 
 use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
@@ -26,23 +26,20 @@ pub enum SpaceViewClassRegistryError {
 /// for every instance of the space view class this belongs to.
 #[derive(Default)]
 pub struct SpaceViewSystemRegistry {
-    contexts: HashMap<std::any::TypeId, Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
-    parts: HashMap<std::any::TypeId, Box<dyn Fn() -> Box<dyn ViewPartSystem>>>,
+    contexts: HashMap<ViewSystemName, Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
+    parts: HashMap<ViewSystemName, Box<dyn Fn() -> Box<dyn ViewPartSystem>>>,
 }
 
 impl SpaceViewSystemRegistry {
     /// Registers a new [`ViewContextSystem`] type for this space view class that will be created and executed every frame.
     ///
     /// It is not allowed to register a given type more than once.
-    pub fn register_context_system<T: ViewContextSystem + Default + 'static>(
+    pub fn register_context_system<T: ViewContextSystem + NamedViewSystem + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         if self
             .contexts
-            .insert(
-                std::any::TypeId::of::<T>(),
-                Box::new(|| Box::<T>::default()),
-            )
+            .insert(T::name(), Box::new(|| Box::<T>::default()))
             .is_some()
         {
             Err(SpaceViewClassRegistryError::DuplicateContextSystem(
@@ -56,15 +53,12 @@ impl SpaceViewSystemRegistry {
     /// Registers a new [`ViewPartSystem`] type for this space view class that will be created and executed every frame.
     ///
     /// It is not allowed to register a given type more than once.
-    pub fn register_part_system<T: ViewPartSystem + Default + 'static>(
+    pub fn register_part_system<T: ViewPartSystem + NamedViewSystem + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         if self
             .parts
-            .insert(
-                std::any::TypeId::of::<T>(),
-                Box::new(|| Box::<T>::default()),
-            )
+            .insert(T::name(), Box::new(|| Box::<T>::default()))
             .is_some()
         {
             Err(SpaceViewClassRegistryError::DuplicateContextSystem(
@@ -79,10 +73,10 @@ impl SpaceViewSystemRegistry {
         ViewContextCollection {
             systems: self
                 .contexts
-                .values()
-                .map(|f| {
-                    let context = f();
-                    (context.as_any().type_id(), context)
+                .iter()
+                .map(|(name, factory)| {
+                    let part = factory();
+                    (*name, part)
                 })
                 .collect(),
         }
@@ -92,10 +86,10 @@ impl SpaceViewSystemRegistry {
         ViewPartCollection {
             systems: self
                 .parts
-                .values()
-                .map(|f| {
-                    let part = f();
-                    (part.as_any().type_id(), part)
+                .iter()
+                .map(|(name, factory)| {
+                    let part = factory();
+                    (*name, part)
                 })
                 .collect(),
         }

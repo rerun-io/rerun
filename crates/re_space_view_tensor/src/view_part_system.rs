@@ -4,13 +4,19 @@ use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::{TimeInt, Timeline};
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 #[derive(Default)]
 pub struct TensorSystem {
     pub tensors: std::collections::BTreeMap<InstancePath, DecodedTensor>,
+}
+
+impl NamedViewSystem for TensorSystem {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Tensor".into()
+    }
 }
 
 impl ViewPartSystem for TensorSystem {
@@ -48,7 +54,7 @@ impl ViewPartSystem for TensorSystem {
         re_tracing::profile_function!();
 
         let store = &ctx.store_db.entity_db.data_store;
-        for (ent_path, props) in query.iter_entities() {
+        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(tensor) = store.query_latest_component::<Tensor>(ent_path, &timeline_query)

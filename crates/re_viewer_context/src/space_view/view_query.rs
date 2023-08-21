@@ -1,7 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap, TimeInt, Timeline};
 
-use crate::{PerSystemEntities, SpaceViewHighlights, SpaceViewId, ViewPartSystemId};
+use crate::{PerSystemEntities, SpaceViewHighlights, SpaceViewId, ViewSystemName};
 
 pub struct ViewQuery<'s> {
     /// The id of the space in which context the query happens.
@@ -37,7 +37,7 @@ impl<'s> ViewQuery<'s> {
     /// Also includes the corresponding [`EntityProperties`].
     pub fn iter_entities_for_system(
         &self,
-        system: ViewPartSystemId,
+        system: ViewSystemName,
     ) -> impl Iterator<Item = (&EntityPath, EntityProperties)> {
         self.per_system_entities.get(&system).map_or(
             itertools::Either::Left(std::iter::empty()),

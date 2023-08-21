@@ -6,7 +6,7 @@ use re_types::{
     Archetype,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -171,6 +171,12 @@ impl Points2DPart {
     }
 }
 
+impl NamedViewSystem for Points2DPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Points2D".into()
+    }
+}
+
 impl ViewPartSystem for Points2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         Points2D::all_components().try_into().unwrap()
@@ -184,7 +190,7 @@ impl ViewPartSystem for Points2DPart {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_scope!("Points2DPart");
 
-        process_archetype_views::<Points2D, { Points2D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Points2DPart, Points2D, { Points2D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

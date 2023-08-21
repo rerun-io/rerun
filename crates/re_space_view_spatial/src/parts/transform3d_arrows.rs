@@ -6,8 +6,8 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -22,6 +22,12 @@ pub struct Transform3DArrowsPart(SpatialViewPartData);
 impl Default for Transform3DArrowsPart {
     fn default() -> Self {
         Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
+    }
+}
+
+impl NamedViewSystem for Transform3DArrowsPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Transform3DArrows".into()
     }
 }
 
@@ -43,7 +49,7 @@ impl ViewPartSystem for Transform3DArrowsPart {
 
         let store = &ctx.store_db.entity_db.data_store;
         let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
-        for (ent_path, props) in query.iter_entities() {
+        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             if store
                 .query_latest_component::<Transform3D>(ent_path, &latest_at_query)
                 .is_none()

@@ -5,8 +5,8 @@ use re_query::{
 use re_renderer::DepthOffset;
 use re_types::{Archetype, ComponentName};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewQuery, ViewerContext,
 };
 
 use crate::contexts::{
@@ -18,7 +18,7 @@ use crate::contexts::{
 ///
 /// The callback passed in gets passed a long an [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
-pub fn process_entity_views<'a, Primary, const N: usize, F>(
+pub fn process_entity_views<'a, System: NamedViewSystem, Primary, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
@@ -52,7 +52,7 @@ where
     let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
-    for (ent_path, props) in query.iter_entities() {
+    for (ent_path, props) in query.iter_entities_for_system(System::name()) {
         let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
             continue;
         };
@@ -101,7 +101,7 @@ where
 /// The callback passed in gets passed a long an [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
 #[allow(dead_code)]
-pub fn process_archetype_views<'a, A, const N: usize, F>(
+pub fn process_archetype_views<'a, System: NamedViewSystem, A, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
@@ -123,7 +123,7 @@ where
     let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
-    for (ent_path, props) in query.iter_entities() {
+    for (ent_path, props) in query.iter_entities_for_system(System::name()) {
         let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
             continue;
         };

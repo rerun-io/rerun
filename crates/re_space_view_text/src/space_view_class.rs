@@ -1,4 +1,3 @@
-use nohash_hasher::IntSet;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;

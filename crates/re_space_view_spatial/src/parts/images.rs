@@ -17,11 +17,11 @@ use re_types::{
     components::{Color, DrawOrder, InstanceKey},
     Loggable as _,
 };
-use re_viewer_context::ViewContextCollection;
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,
     TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery, ViewerContext,
 };
+use re_viewer_context::{NamedViewSystem, ViewContextCollection};
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
@@ -380,6 +380,12 @@ impl ImagesPart {
     }
 }
 
+impl NamedViewSystem for ImagesPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Images".into()
+    }
+}
+
 impl ViewPartSystem for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
@@ -417,7 +423,7 @@ impl ViewPartSystem for ImagesPart {
         let mut depth_clouds = Vec::new();
 
         let transforms = view_ctx.get::<TransformContext>()?;
-        process_entity_views::<_, 4, _>(
+        process_entity_views::<ImagesPart, _, 4, _>(
             ctx,
             query,
             view_ctx,

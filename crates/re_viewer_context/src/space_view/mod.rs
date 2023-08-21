@@ -7,6 +7,7 @@
 mod auto_spawn_heuristic;
 mod dyn_space_view_class;
 mod highlights;
+mod named_system;
 mod space_view_class;
 mod space_view_class_placeholder;
 mod space_view_class_registry;
@@ -20,14 +21,13 @@ pub use dyn_space_view_class::{
     SpaceViewState,
 };
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
+pub use named_system::{NamedViewSystem, PerSystemEntities, ViewSystemName};
 pub use space_view_class::SpaceViewClass;
 pub use space_view_class_registry::{
     SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistry,
 };
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
-pub use view_part_system::{
-    PerSystemEntities, ViewPartCollection, ViewPartSystem, ViewPartSystemId,
-};
+pub use view_part_system::{ViewPartCollection, ViewPartSystem};
 pub use view_query::ViewQuery;
 
 // ---------------------------------------------------------------------------

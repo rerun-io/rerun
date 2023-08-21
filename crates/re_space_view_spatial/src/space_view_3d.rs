@@ -1,16 +1,14 @@
-use re_arrow_store::LatestAtQuery;
-use re_components::Pinhole;
-use re_log_types::{EntityPath, Timeline};
+use re_log_types::EntityPath;
 use re_viewer_context::{
-    AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection,
-    ViewQuery, ViewerContext,
+    AutoSpawnHeuristic, NamedViewSystem as _, PerSystemEntities, SpaceViewClass,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use crate::{
     contexts::{register_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    parts::{calculate_bounding_box, register_parts},
+    parts::{calculate_bounding_box, register_parts, CamerasPart},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
 };
@@ -65,22 +63,13 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(mut score) = score {
             // If there's a camera at a non-root path, make 3D view higher priority.
-            for ent_path in per_system_entities {
-                if ent_path == space_origin {
-                    continue;
-                }
-
-                if ctx
-                    .store_db
-                    .store()
-                    .query_latest_component::<Pinhole>(
-                        ent_path,
-                        &LatestAtQuery::latest(Timeline::log_time()),
-                    )
-                    .is_some()
-                {
-                    score += 100.0;
-                }
+            if per_system_entities
+                .get(&CamerasPart::name())
+                .map_or(false, |c| {
+                    c.is_empty() && (!c.contains(space_origin) || c.len() > 1)
+                })
+            {
+                score += 100.0;
             }
 
             AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)
