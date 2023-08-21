@@ -3,8 +3,8 @@ use glam::Affine3A;
 use macaw::{vec3, BoundingBox, IsoTransform, Mat4, Quat, Vec3};
 
 use re_space_view::controls::{
-    DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
-    SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER,
+    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
+    ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER,
 };
 
 use crate::space_camera_3d::SpaceCamera3D;
@@ -389,7 +389,10 @@ impl OrbitEye {
                 } else {
                     1.0
                 })
-                * (if input.modifiers.contains(SLOW_DOWN_3D_MODIFIER) {
+                * (if input
+                    .modifiers
+                    .contains(RuntimeModifiers::slow_down(&egui_ctx.os()))
+                {
                     0.1
                 } else {
                     1.0
