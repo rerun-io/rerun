@@ -35,11 +35,12 @@ pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use space_view::{
-    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, SpaceViewClass,
+    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClass,
     SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
-    ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
+    ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewPartSystemId,
+    ViewQuery,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

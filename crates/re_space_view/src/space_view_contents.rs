@@ -1,8 +1,8 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
-use re_viewer_context::DataBlueprintGroupHandle;
+use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities, ViewPartSystemId};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -95,7 +95,7 @@ pub struct SpaceViewContents {
     /// Two things to keep in sync:
     /// * children on [`DataBlueprintGroup`] this is on
     /// * elements in [`Self::path_to_group`]
-    entity_paths: IntSet<EntityPath>,
+    per_system_entity_list: PerSystemEntities,
 
     /// Root group, always exists as a placeholder
     root_group_handle: DataBlueprintGroupHandle,
@@ -109,7 +109,7 @@ impl SpaceViewContents {
         let Self {
             groups,
             path_to_group,
-            entity_paths,
+            per_system_entity_list: entity_paths,
             root_group_handle,
             data_blueprints,
         } = self;
@@ -122,7 +122,7 @@ impl SpaceViewContents {
                     .map_or(true, |other_val| val.has_edits(other_val))
             })
             || *path_to_group != other.path_to_group
-            || *entity_paths != other.entity_paths
+            || *entity_paths != other.per_system_entity_list
             || *root_group_handle != other.root_group_handle
             || data_blueprints.has_edits(&other.data_blueprints)
     }
@@ -139,7 +139,7 @@ impl Default for SpaceViewContents {
         Self {
             groups,
             path_to_group: path_to_blueprint,
-            entity_paths: IntSet::default(),
+            per_system_entity_list: BTreeMap::default(),
             root_group_handle: root_group,
             data_blueprints: DataBlueprints::default(),
         }
@@ -206,12 +206,43 @@ impl SpaceViewContents {
     }
 
     pub fn contains_entity(&self, path: &EntityPath) -> bool {
-        self.entity_paths.contains(path)
+        // If an entity is in path_to_group it is *likely* also an entity in the Space View.
+        // However, it could be that the path *only* refers to a group, not also an entity.
+        // So once we resolved the group, we need to check if it contains the entity of interest.
+        self.path_to_group
+            .get(path)
+            .and_then(|group| {
+                self.groups
+                    .get(*group)
+                    .and_then(|group| group.entities.get(path))
+            })
+            .is_some()
     }
 
     /// List of all entities that we query via this data blueprint collection.
-    pub fn entity_paths(&self) -> &IntSet<EntityPath> {
-        &self.entity_paths
+    pub fn entity_paths(&self) -> impl Iterator<Item = &EntityPath> {
+        // Each entity is only ever in one group, therefore collecting all entities from all groups, gives us all entities.
+        self.groups.values().flat_map(|group| group.entities.iter())
+    }
+
+    pub fn per_system_entities(&self) -> &PerSystemEntities {
+        &self.per_system_entity_list
+    }
+
+    pub fn contains_all_entities_from(&self, other: &SpaceViewContents) -> bool {
+        for (system, entities) in &other.per_system_entity_list {
+            let Some(self_entities) = self.per_system_entity_list.get(system) else {
+                if entities.is_empty() {
+                    continue;
+                } else {
+                    return false;
+                }
+            };
+            if !entities.is_subset(self_entities) {
+                return false;
+            }
+        }
+        true
     }
 
     /// Should be called on frame start.
@@ -269,7 +300,11 @@ impl SpaceViewContents {
         let mut new_leaf_groups = Vec::new();
 
         for path in paths {
-            self.entity_paths.insert(path.clone());
+            // TODO(andreas/jleibs): Incoming entities should already "know" what system they belong to.
+            self.per_system_entity_list
+                .entry(ViewPartSystemId::UNKNOWN)
+                .or_default()
+                .insert(path.clone());
 
             // Is there already a group associated with this exact path? (maybe because a child was logged there earlier)
             // If so, we can simply move it under this existing group.
@@ -392,6 +427,8 @@ impl SpaceViewContents {
     ///
     /// If the entity was not known by this data blueprint tree nothing happens.
     pub fn remove_entity(&mut self, path: &EntityPath) {
+        re_tracing::profile_function!();
+
         if let Some(group_handle) = self.path_to_group.get(path) {
             if let Some(group) = self.groups.get_mut(*group_handle) {
                 group.entities.remove(path);
@@ -399,7 +436,10 @@ impl SpaceViewContents {
             }
         }
         self.path_to_group.remove(path);
-        self.entity_paths.remove(path);
+
+        for per_system_list in self.per_system_entity_list.values_mut() {
+            per_system_list.remove(path);
+        }
     }
 
     /// Removes a group and all its entities and subgroups from the blueprint tree
@@ -420,7 +460,9 @@ impl SpaceViewContents {
 
         // Remove all child entities.
         for entity_path in &group.entities {
-            self.entity_paths.remove(entity_path);
+            for per_system_list in self.per_system_entity_list.values_mut() {
+                per_system_list.remove(entity_path);
+            }
         }
 
         // Remove from `path_to_group` map.

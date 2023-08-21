@@ -177,11 +177,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     // So let's skip that.
                     return false;
                 }
-
-                if space_view_candidate
+                if existing_view
                     .contents
-                    .entity_paths()
-                    .is_subset(existing_view.contents.entity_paths())
+                    .contains_all_entities_from(&space_view_candidate.contents)
                 {
                     // This space view wouldn't add anything we haven't already
                     return false;

@@ -1,11 +1,11 @@
-use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, SpaceViewClassName,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities,
+    SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistry, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 /// Defines a class of space view.
@@ -53,7 +53,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         &self,
         _ctx: &ViewerContext<'_>,
         _space_origin: &EntityPath,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(ent_paths.len() as f32)
     }
@@ -74,7 +74,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         &self,
         _ctx: &mut ViewerContext<'_>,
         _state: &Self::State,
-        _ent_paths: &IntSet<EntityPath>,
+        _ent_paths: &PerSystemEntities,
         _entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
     }
@@ -157,7 +157,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         &self,
         ctx: &ViewerContext<'_>,
         space_origin: &EntityPath,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         self.auto_spawn_heuristic(ctx, space_origin, ent_paths)
     }
@@ -171,7 +171,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
         entity_properties: &mut EntityPropertyMap,
     ) {
         typed_state_wrapper_mut(state, |state| {

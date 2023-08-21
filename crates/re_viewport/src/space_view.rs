@@ -131,7 +131,7 @@ impl SpaceViewBlueprint {
         self.class(ctx.space_view_class_registry).on_frame_start(
             ctx,
             view_state,
-            &self.contents.entity_paths().clone(), // Clone to work around borrow checker.
+            &self.contents.per_system_entities().clone(), // Clone to work around borrow checker.
             self.contents.data_blueprints_individual(),
         );
 
@@ -200,7 +200,7 @@ impl SpaceViewBlueprint {
         let query = re_viewer_context::ViewQuery {
             space_view_id: self.id,
             space_origin: &self.space_origin,
-            entity_paths: self.contents.entity_paths(),
+            per_system_entities: self.contents.per_system_entities(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             entity_props_map: self.contents.data_blueprints_projected(),

@@ -152,7 +152,7 @@ pub fn default_created_space_views(
                 c.class(ctx.space_view_class_registry).auto_spawn_heuristic(
                     ctx,
                     &c.space_origin,
-                    c.contents.entity_paths(),
+                    c.contents.per_system_entities(),
                 ),
                 c,
             )
@@ -261,7 +261,6 @@ pub fn default_created_space_views(
                     let entities = candidate
                         .contents
                         .entity_paths()
-                        .iter()
                         .filter(|path| !images_of_different_size.contains(path))
                         .cloned()
                         .collect_vec();

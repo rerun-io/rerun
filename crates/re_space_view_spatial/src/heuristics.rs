@@ -1,18 +1,17 @@
 use egui::NumExt as _;
-use nohash_hasher::IntSet;
 
 use re_components::{Pinhole, Tensor, TensorDataMeaning};
 use re_data_store::EditableAutoValue;
 use re_log_types::{EntityPath, Timeline};
 use re_types::components::Transform3D;
-use re_viewer_context::{AutoSpawnHeuristic, SpaceViewClassName, ViewerContext};
+use re_viewer_context::{AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassName, ViewerContext};
 
 use crate::{parts::SpatialViewPartData, view_kind::SpatialSpaceViewKind};
 
 pub fn auto_spawn_heuristic(
     class: &SpaceViewClassName,
     ctx: &ViewerContext<'_>,
-    ent_paths: &IntSet<EntityPath>,
+    ent_paths: &PerSystemEntities,
     view_kind: SpatialSpaceViewKind,
 ) -> AutoSpawnHeuristic {
     re_tracing::profile_function!();
@@ -35,7 +34,7 @@ pub fn auto_spawn_heuristic(
         })
         .collect::<Vec<_>>();
 
-    for ent_path in ent_paths {
+    for ent_path in ent_paths.keys() {
         let Some(components) = store.all_components(&timeline, ent_path) else {
                 continue;
             };
@@ -58,14 +57,15 @@ pub fn auto_spawn_heuristic(
 
 pub fn update_object_property_heuristics(
     ctx: &mut ViewerContext<'_>,
-    ent_paths: &IntSet<EntityPath>,
+    ent_paths: &PerSystemEntities,
     entity_properties: &mut re_data_store::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
     spatial_kind: SpatialSpaceViewKind,
 ) {
     re_tracing::profile_function!();
 
-    for entity_path in ent_paths {
+    // TODO(andreas/jleibs): Make use of the fact that we know now which parts are in use per entity.
+    for entity_path in ent_paths.keys() {
         // Do pinhole properties before, since they may be used in transform3d heuristics.
         update_pinhole_property_heuristics(ctx, entity_path, entity_properties, scene_bbox_accum);
         update_depth_cloud_property_heuristics(ctx, entity_path, entity_properties, spatial_kind);

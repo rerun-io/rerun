@@ -1,9 +1,26 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use ahash::HashMap;
 use re_log_types::{ComponentName, EntityPath};
 
 use crate::{ArchetypeDefinition, SpaceViewSystemExecutionError, ViewQuery, ViewerContext};
 
 use super::view_context_system::ViewContextCollection;
+
+/// Unique identifier for a part system.
+///
+/// Note that this is unique across the entire application.
+/// It is created by hashing the [`crate::SpaceViewClass`] name and the [`crate::ViewPartSystem`] index within.
+#[derive(
+    Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+)]
+pub struct ViewPartSystemId(u64);
+
+impl ViewPartSystemId {
+    pub const UNKNOWN: ViewPartSystemId = ViewPartSystemId(0);
+}
+
+pub type PerSystemEntities = BTreeMap<ViewPartSystemId, BTreeSet<EntityPath>>;
 
 /// Element of a scene derived from a single archetype query.
 ///
