@@ -39,7 +39,6 @@ canvas {
 .header {
   width: 100%;
   height: 44px;
-  /* background: #111415; */
   /* Actual value from Rerun Viewer */
   background: #141414;
 }
@@ -129,8 +128,6 @@ a .button {
   display: flex;
   flex-direction: row;
   gap: 4px;
-
-  /*color: #262626;*/
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
