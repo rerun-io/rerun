@@ -170,7 +170,7 @@ fn add_entities_line_ui(
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
 
-        let space_view_id = if space_view.data_blueprint.contains_entity(entity_path) {
+        let space_view_id = if space_view.contents.contains_entity(entity_path) {
             Some(space_view.id)
         } else {
             None
@@ -196,7 +196,7 @@ fn add_entities_line_ui(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if space_view.data_blueprint.contains_entity(entity_path) {
+            if space_view.contents.contains_entity(entity_path) {
                 if ctx
                     .re_ui
                     .small_icon_button(ui, &re_ui::icons::REMOVE)
@@ -307,7 +307,7 @@ fn create_entity_add_info(
             if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path) {
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
-                        already_added: space_view.data_blueprint.contains_entity(entity_path),
+                        already_added: space_view.contents.contains_entity(entity_path),
                     },
                     Err(reason) => CanAddToSpaceView::No {
                         reason: reason.to_string(),

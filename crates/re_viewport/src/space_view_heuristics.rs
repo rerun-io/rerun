@@ -88,13 +88,13 @@ fn is_interesting_space_view_at_root(
 ) -> bool {
     // Not interesting if it has only data blueprint groups and no direct entities.
     // -> If there In that case we want spaceviews at those groups.
-    if candidate.data_blueprint.root_group().entities.is_empty() {
+    if candidate.contents.root_group().entities.is_empty() {
         return false;
     }
 
     // If there are any images directly under the root, don't create root space either.
     // -> For images we want more fine grained control and resort to child-of-root spaces only.
-    for entity_path in &candidate.data_blueprint.root_group().entities {
+    for entity_path in &candidate.contents.root_group().entities {
         if contains_any_image(entity_path, data_store, query) {
             return false;
         }
@@ -152,7 +152,7 @@ pub fn default_created_space_views(
                 c.class(ctx.space_view_class_registry).auto_spawn_heuristic(
                     ctx,
                     &c.space_origin,
-                    c.data_blueprint.entity_paths(),
+                    c.contents.entity_paths(),
                 ),
                 c,
             )
@@ -197,7 +197,7 @@ pub fn default_created_space_views(
 
         // For tensors create one space view for each tensor (even though we're able to stack them in one view)
         if is_tensor_class(candidate.class_name()) {
-            for entity_path in candidate.data_blueprint.entity_paths() {
+            for entity_path in candidate.contents.entity_paths() {
                 let mut space_view = SpaceViewBlueprint::new(
                     *candidate.class_name(),
                     entity_path,
@@ -220,7 +220,7 @@ pub fn default_created_space_views(
             let mut images_by_bucket: HashMap<ImageBucketing, Vec<EntityPath>> = HashMap::default();
 
             // For this we're only interested in the direct children.
-            for entity_path in &candidate.data_blueprint.root_group().entities {
+            for entity_path in &candidate.contents.root_group().entities {
                 if let Some(tensor) = store.query_latest_component::<Tensor>(entity_path, &query) {
                     if let Some([height, width, _]) = tensor.image_height_width_channels() {
                         if store
@@ -259,7 +259,7 @@ pub fn default_created_space_views(
                         .cloned()
                         .collect::<IntSet<_>>();
                     let entities = candidate
-                        .data_blueprint
+                        .contents
                         .entity_paths()
                         .iter()
                         .filter(|path| !images_of_different_size.contains(path))

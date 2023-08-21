@@ -119,7 +119,7 @@ impl<'a> ViewportBlueprint<'a> {
             Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
                 if let Some(space_view) = self.space_view(space_view_id) {
                     space_view
-                        .data_blueprint
+                        .contents
                         .group(*data_blueprint_group_handle)
                         .is_some()
                 } else {
@@ -179,7 +179,7 @@ impl<'a> ViewportBlueprint<'a> {
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {
-                if space_view.data_blueprint.contains_entity(path) {
+                if space_view.contents.contains_entity(path) {
                     Some(*space_view_id)
                 } else {
                     None

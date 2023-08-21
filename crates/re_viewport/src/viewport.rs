@@ -179,9 +179,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 }
 
                 if space_view_candidate
-                    .data_blueprint
+                    .contents
                     .entity_paths()
-                    .is_subset(existing_view.data_blueprint.entity_paths())
+                    .is_subset(existing_view.contents.entity_paths())
                 {
                     // This space view wouldn't add anything we haven't already
                     return false;

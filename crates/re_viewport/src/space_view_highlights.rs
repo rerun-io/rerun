@@ -47,7 +47,7 @@ pub fn highlights_for_space_view(
                         // (Due to the way outline masks work in re_renderer, we can't leave the hover channel empty)
                         let selection_mask = next_selection_mask();
 
-                        space_view.data_blueprint.visit_group_entities_recursively(
+                        space_view.contents.visit_group_entities_recursively(
                             *group_handle,
                             &mut |entity_path: &EntityPath| {
                                 highlighted_entity_paths
@@ -122,7 +122,7 @@ pub fn highlights_for_space_view(
                         // Everything in the same group should receive the same selection outline.
                         let hover_mask = next_hover_mask();
 
-                        space_view.data_blueprint.visit_group_entities_recursively(
+                        space_view.contents.visit_group_entities_recursively(
                             *group_handle,
                             &mut |entity_path: &EntityPath| {
                                 highlighted_entity_paths

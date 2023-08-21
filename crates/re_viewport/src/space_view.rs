@@ -1,6 +1,6 @@
 use re_data_store::{EntityPath, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{DataBlueprintTree, ScreenshotMode};
+use re_space_view::{ScreenshotMode, SpaceViewContents};
 use re_viewer_context::{
     DynSpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
     SpaceViewSystemRegistry, ViewerContext,
@@ -28,7 +28,7 @@ pub struct SpaceViewBlueprint {
 
     /// The data blueprint tree, has blueprint settings for all blueprint groups and entities in this spaceview.
     /// It determines which entities are part of the spaceview.
-    pub data_blueprint: DataBlueprintTree,
+    pub contents: SpaceViewContents,
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
@@ -42,7 +42,7 @@ impl SpaceViewBlueprint {
             display_name,
             class_name,
             space_origin,
-            data_blueprint,
+            contents: data_blueprint,
             entities_determined_by_user,
         } = self;
 
@@ -50,7 +50,7 @@ impl SpaceViewBlueprint {
             || display_name != &other.display_name
             || class_name != &other.class_name
             || space_origin != &other.space_origin
-            || data_blueprint.has_edits(&other.data_blueprint)
+            || data_blueprint.has_edits(&other.contents)
             || entities_determined_by_user != &other.entities_determined_by_user
     }
 }
@@ -72,7 +72,7 @@ impl SpaceViewBlueprint {
             format!("/ ({space_view_class})")
         };
 
-        let mut data_blueprint_tree = DataBlueprintTree::default();
+        let mut data_blueprint_tree = SpaceViewContents::default();
         data_blueprint_tree
             .insert_entities_according_to_hierarchy(queries_entities.iter(), space_path);
 
@@ -81,7 +81,7 @@ impl SpaceViewBlueprint {
             class_name: space_view_class,
             id: SpaceViewId::random(),
             space_origin: space_path.clone(),
-            data_blueprint: data_blueprint_tree,
+            contents: data_blueprint_tree,
             entities_determined_by_user: false,
         }
     }
@@ -114,7 +114,7 @@ impl SpaceViewBlueprint {
             // Add entities that have been logged since we were created
             let queries_entities =
                 default_queried_entities(ctx, &self.class_name, &self.space_origin, spaces_info);
-            self.data_blueprint.insert_entities_according_to_hierarchy(
+            self.contents.insert_entities_according_to_hierarchy(
                 queries_entities.iter(),
                 &self.space_origin,
             );
@@ -131,12 +131,12 @@ impl SpaceViewBlueprint {
         self.class(ctx.space_view_class_registry).on_frame_start(
             ctx,
             view_state,
-            &self.data_blueprint.entity_paths().clone(), // Clone to work around borrow checker.
-            self.data_blueprint.data_blueprints_individual(),
+            &self.contents.entity_paths().clone(), // Clone to work around borrow checker.
+            self.contents.data_blueprints_individual(),
         );
 
         // Propagate any heuristic changes that may have been in `on_frame_start` made to blueprints right away.
-        self.data_blueprint.propagate_individual_to_tree();
+        self.contents.propagate_individual_to_tree();
     }
 
     fn handle_pending_screenshots(&self, data: &[u8], extent: glam::UVec2, mode: ScreenshotMode) {
@@ -200,10 +200,10 @@ impl SpaceViewBlueprint {
         let query = re_viewer_context::ViewQuery {
             space_view_id: self.id,
             space_origin: &self.space_origin,
-            entity_paths: self.data_blueprint.entity_paths(),
+            entity_paths: self.contents.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            entity_props_map: self.data_blueprint.data_blueprints_projected(),
+            entity_props_map: self.contents.data_blueprints_projected(),
             highlights,
         };
 
@@ -219,7 +219,7 @@ impl SpaceViewBlueprint {
         re_tracing::profile_function!();
 
         tree.visit_children_recursively(&mut |path: &EntityPath| {
-            self.data_blueprint.remove_entity(path);
+            self.contents.remove_entity(path);
             self.entities_determined_by_user = true;
         });
     }
@@ -238,7 +238,7 @@ impl SpaceViewBlueprint {
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
             if is_entity_processed_by_class(ctx, &self.class_name, entity_path)
-                && !self.data_blueprint.contains_entity(entity_path)
+                && !self.contents.contains_entity(entity_path)
                 && spaces_info
                     .is_reachable_by_transform(entity_path, &self.space_origin)
                     .is_ok()
@@ -248,7 +248,7 @@ impl SpaceViewBlueprint {
         });
 
         if !entities.is_empty() {
-            self.data_blueprint
+            self.contents
                 .insert_entities_according_to_hierarchy(entities.iter(), &self.space_origin);
             self.entities_determined_by_user = true;
         }

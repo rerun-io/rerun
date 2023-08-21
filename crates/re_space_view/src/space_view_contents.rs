@@ -79,7 +79,7 @@ impl DataBlueprints {
 
 /// Tree of all data blueprint groups for a single space view.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
-pub struct DataBlueprintTree {
+pub struct SpaceViewContents {
     /// All data blueprint groups.
     groups: SlotMap<DataBlueprintGroupHandle, DataBlueprintGroup>,
 
@@ -95,7 +95,6 @@ pub struct DataBlueprintTree {
     /// Two things to keep in sync:
     /// * children on [`DataBlueprintGroup`] this is on
     /// * elements in [`Self::path_to_group`]
-    /// TODO(andreas): Can we reduce the amount of these dependencies?
     entity_paths: IntSet<EntityPath>,
 
     /// Root group, always exists as a placeholder
@@ -105,7 +104,7 @@ pub struct DataBlueprintTree {
 }
 
 /// Determine whether this `DataBlueprintTree` has user-edits relative to another `DataBlueprintTree`
-impl DataBlueprintTree {
+impl SpaceViewContents {
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             groups,
@@ -129,7 +128,7 @@ impl DataBlueprintTree {
     }
 }
 
-impl Default for DataBlueprintTree {
+impl Default for SpaceViewContents {
     fn default() -> Self {
         let mut groups = SlotMap::default();
         let root_group = groups.insert(DataBlueprintGroup::default());
@@ -147,7 +146,7 @@ impl Default for DataBlueprintTree {
     }
 }
 
-impl DataBlueprintTree {
+impl SpaceViewContents {
     /// Returns a handle to the root data blueprint.
     ///
     /// Even if there are no other groups, we always have a root group at the top.
@@ -225,7 +224,7 @@ impl DataBlueprintTree {
         // and/or when new entity paths are added, but such memoization would add complexity.
 
         fn project_tree(
-            tree: &mut DataBlueprintTree,
+            tree: &mut SpaceViewContents,
             parent_properties: &EntityProperties,
             group_handle: DataBlueprintGroupHandle,
         ) {

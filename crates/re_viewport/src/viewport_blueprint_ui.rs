@@ -150,7 +150,7 @@ impl ViewportBlueprint<'_> {
         let item = Item::SpaceView(space_view.id);
         let is_selected = ctx.selection().contains(&item);
 
-        let root_group = space_view.data_blueprint.root_group();
+        let root_group = space_view.contents.root_group();
         let default_open = Self::default_open_for_group(root_group);
         let collapsing_header_id = ui.id().with(space_view.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -189,7 +189,7 @@ impl ViewportBlueprint<'_> {
             Self::data_blueprint_tree_ui(
                 ctx,
                 ui,
-                space_view.data_blueprint.root_handle(),
+                space_view.contents.root_handle(),
                 space_view,
                 visible,
             );
@@ -214,7 +214,7 @@ impl ViewportBlueprint<'_> {
         space_view: &mut SpaceViewBlueprint,
         space_view_visible: bool,
     ) {
-        let Some(group) = space_view.data_blueprint.group(group_handle) else {
+        let Some(group) = space_view.contents.group(group_handle) else {
                 debug_assert!(false, "Invalid group handle in blueprint group tree");
                 return;
             };
@@ -237,7 +237,7 @@ impl ViewportBlueprint<'_> {
 
             ui.horizontal(|ui| {
                 let mut properties = space_view
-                    .data_blueprint
+                    .contents
                     .data_blueprints_individual()
                     .get(entity_path);
                 blueprint_row_with_buttons(
@@ -267,7 +267,7 @@ impl ViewportBlueprint<'_> {
                         .changed()
                         {
                             space_view
-                                .data_blueprint
+                                .contents
                                 .data_blueprints_individual()
                                 .set(entity_path.clone(), properties);
                         }
@@ -276,7 +276,7 @@ impl ViewportBlueprint<'_> {
                             .on_hover_text("Remove Entity from the Space View")
                             .clicked()
                         {
-                            space_view.data_blueprint.remove_entity(entity_path);
+                            space_view.contents.remove_entity(entity_path);
                             space_view.entities_determined_by_user = true;
                         }
                     },
@@ -285,7 +285,7 @@ impl ViewportBlueprint<'_> {
         }
 
         for child_group_handle in &children {
-            let Some(child_group) = space_view.data_blueprint.group_mut(*child_group_handle) else {
+            let Some(child_group) = space_view.contents.group_mut(*child_group_handle) else {
                     debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
                     continue;
                 };
@@ -345,7 +345,7 @@ impl ViewportBlueprint<'_> {
                 );
             });
             if remove_group {
-                space_view.data_blueprint.remove_group(*child_group_handle);
+                space_view.contents.remove_group(*child_group_handle);
                 space_view.entities_determined_by_user = true;
             }
         }
