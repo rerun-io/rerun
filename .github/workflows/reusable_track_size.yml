@@ -83,7 +83,7 @@ jobs:
 
           for file in web_demo/examples/**/*.rrd; do
             name=$(basename $(dirname "$file"))
-            entries+=("$name.rrd:$file:kiB")
+            entries+=("$name.rrd:$file:MiB")
           done
 
           data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
