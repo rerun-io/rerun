@@ -79,11 +79,11 @@ jobs:
           entries=()
 
           entries+=("Wasm:web_viewer/re_viewer_bg.wasm:MiB")
-          entries+=("JS:web_viewer/re_viewer.js:KiB")
+          entries+=("JS:web_viewer/re_viewer.js:kiB")
 
           for file in web_demo/examples/**/*.rrd; do
             name=$(basename $(dirname "$file"))
-            entries+=("$name.rrd:$file:KiB")
+            entries+=("$name.rrd:$file:kiB")
           done
 
           data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
