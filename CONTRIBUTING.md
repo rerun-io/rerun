@@ -49,6 +49,14 @@ To get an overview of the crates, read their documentation with:
 cargo doc --no-deps --open
 ```
 
+You can see how they connect by plotting their dependency tree with:
+
+```
+cargo install cargo-depgraph
+cargo depgraph --all-deps --workspace-only --all-features --dedup-transitive-deps | dot -Tpng > deps.png
+open deps.png
+```
+
 To learn about the viewer, run:
 
 ```
