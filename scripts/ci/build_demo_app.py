@@ -176,6 +176,7 @@ def main() -> None:
     )
 
     parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK and web viewer Wasm.")
+    parser.add_argument("--skip-examples", action="store_true", help="Skip running the examples.")
 
     args = parser.parse_args()
 
@@ -183,10 +184,13 @@ def main() -> None:
         build_python_sdk()
         build_wasm()
 
-    shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
     examples = collect_examples()
     assert len(examples) > 0, "No examples found"
-    save_examples_rrd(examples)
+
+    if not args.skip_examples:
+        shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
+        save_examples_rrd(examples)
+
     render_examples(examples)
     copy_static_assets(examples)
     copy_wasm(examples)

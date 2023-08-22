@@ -6,7 +6,9 @@
 #include "../arrow.hpp"
 #include "../datatypes/vec3d.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/table.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace components {
@@ -19,27 +21,30 @@ namespace rerun {
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::ListBuilder>> LineStrip3D::new_arrow_array_builder(
+        Result<std::shared_ptr<arrow::ListBuilder>> LineStrip3D::new_arrow_array_builder(
             arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::ListBuilder>(
+            return Result(std::make_shared<arrow::ListBuilder>(
                 memory_pool,
-                rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).ValueOrDie()
+                rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).value
             ));
         }
 
-        arrow::Status LineStrip3D::fill_arrow_array_builder(
+        Error LineStrip3D::fill_arrow_array_builder(
             arrow::ListBuilder *builder, const LineStrip3D *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             auto value_builder =
@@ -51,7 +56,7 @@ namespace rerun {
                 const auto &element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(builder->Append());
                 if (element.points.data()) {
-                    ARROW_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
+                    RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
                         value_builder,
                         element.points.data(),
                         element.points.size()
@@ -59,7 +64,7 @@ namespace rerun {
                 }
             }
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
 
         Result<rerun::DataCell> LineStrip3D::to_data_cell(
@@ -68,9 +73,11 @@ namespace rerun {
             // TODO(andreas): Allow configuring the memory pool.
             arrow::MemoryPool *pool = arrow::default_memory_pool();
 
-            ARROW_ASSIGN_OR_RAISE(auto builder, LineStrip3D::new_arrow_array_builder(pool));
+            auto builder_result = LineStrip3D::new_arrow_array_builder(pool);
+            RR_RETURN_NOT_OK(builder_result.error);
+            auto builder = std::move(builder_result.value);
             if (instances && num_instances > 0) {
-                ARROW_RETURN_NOT_OK(
+                RR_RETURN_NOT_OK(
                     LineStrip3D::fill_arrow_array_builder(builder.get(), instances, num_instances)
                 );
             }
@@ -83,11 +90,9 @@ namespace rerun {
 
             rerun::DataCell cell;
             cell.component_name = LineStrip3D::NAME;
-            const auto result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            if (result.is_err()) {
-                return result.error;
-            }
-            cell.buffer = std::move(result.value);
+            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
+            RR_RETURN_NOT_OK(ipc_result.error);
+            cell.buffer = std::move(ipc_result.value);
 
             return cell;
         }

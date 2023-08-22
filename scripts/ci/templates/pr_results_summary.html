@@ -16,6 +16,10 @@
             margin-left: 20px;
         }
 
+        .rerun_c-libraries {
+            margin-left: 20px;
+        }
+
         .wheel-list {
             margin-left: 20px;
         }
@@ -33,6 +37,16 @@
         <div class="hosted-app">
             <h3>Hosted App:</h3>
             <a href="{{ build.hosted_app }}" target="_blank">{{ build.hosted_app }}</a>
+        </div>
+        {% endif %}
+        {% if build.rerun_c_libraries %}
+        <div class="rerun_c-libraries">
+            <h3>Rerun C build:</h3>
+            <ul>
+                {% for library in build.rerun_c_libraries %}
+                <li><a href="{{ library }}" target="_blank">{{ library }}</a></li>
+                {% endfor %}
+            </ul>
         </div>
         {% endif %}
         {% if build.bench_results %}

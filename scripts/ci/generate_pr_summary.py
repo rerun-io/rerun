@@ -49,6 +49,18 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
             print(f"Found web assets commit: {commit_short}")
             found["hosted_app"] = f"https://app.rerun.io/commit/{commit_short}"
 
+        # Check if there are rerun_c libraries
+        rerun_libraries_blobs = [
+            builds_bucket.blob(f"commit/{commit_short}/rerun_c/windows/rerun_c.lib"),
+            builds_bucket.blob(f"commit/{commit_short}/rerun_c/linux/librerun_c.a"),
+            builds_bucket.blob(f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a"),
+            builds_bucket.blob(f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a"),
+        ]
+        rerun_libraries = [f"https://build.rerun.io/{blob.name}" for blob in rerun_libraries_blobs if blob.exists()]
+        if rerun_libraries:
+            print(f"Found rerun_c libraries for commit: {commit_short}")
+            found["rerun_c_libraries"] = rerun_libraries
+
         # Check if there are benchmark results
         bench_blob = builds_bucket.blob(f"commit/{commit_short}/bench_results.txt")
         if bench_blob.exists():

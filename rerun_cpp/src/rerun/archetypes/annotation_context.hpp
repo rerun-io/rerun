@@ -7,9 +7,9 @@
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <utility>
+#include <vector>
 
 namespace rerun {
     namespace archetypes {
@@ -37,7 +37,7 @@ namespace rerun {
         ///    // Log an annotation context to assign a label and color to each class
         ///    rr_stream.log(
         ///        "/",
-        ///        rr::archetypes::AnnotationContext({
+        ///        rr::AnnotationContext({
         ///            rr::datatypes::AnnotationInfo(1, "red", rr::datatypes::Color(255, 0, 0)),
         ///            rr::datatypes::AnnotationInfo(2, "green", rr::datatypes::Color(0, 255, 0)),
         ///        })
@@ -46,8 +46,7 @@ namespace rerun {
         ///    // Log a batch of 2 arrows with different `class_ids`
         ///    rr_stream.log(
         ///        "arrows",
-        ///        rr::archetypes::Arrows3D({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f,
-        ///        0.0f}}).with_class_ids({1, 2})
+        ///        rr::Arrows3D({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}).with_class_ids({1, 2})
         ///    );
         /// }
         ///```

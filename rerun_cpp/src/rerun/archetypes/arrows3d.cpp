@@ -11,8 +11,6 @@
 #include "../components/radius.hpp"
 #include "../components/vector3d.hpp"
 
-#include <arrow/api.h>
-
 namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> Arrows3D::to_data_cells() const {

@@ -96,7 +96,7 @@ impl crate::Loggable for Color {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.components.Color".to_owned(),
-                        Box::new(DataType::UInt32),
+                        Box::new(Self::to_arrow_datatype()),
                         None,
                     )
                     .to_logical_type()

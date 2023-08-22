@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 
-add_subdirectory(tests)
-
 # NOTE: CMake docs strongly discourages using GLOB, and instead suggests
 # manually listing all the files, like it's 1972.
 # However, that won't work for use since we auto-generate the source tree.
@@ -71,3 +69,6 @@ if(ARROW_LINK_SHARED)
 else()
     target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_static)
 endif()
+
+# -----------------------------------------------------------------------------
+add_subdirectory(tests)
