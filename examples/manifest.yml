@@ -162,19 +162,19 @@ root:
         For the simplest possible examples showing how to use each api,
         check out [Loggable Data Types](/docs/reference/data_types).
       children:
-        - name: tapir
-          python: python/tapir
-        - name: slahmr
-          python: python/slahmr
-        - name: limap
-          python: python/limap
-        - name: widebaseline
-          python: python/widebaseline
         - name: differentiable_blocks_world
           python: python/differentiable_blocks_world
+        - name: tapir
+          python: python/tapir
+        - name: widebaseline
+          python: python/widebaseline
         - name: shape_pointe
           python: python/shape_pointe
+        - name: limap
+          python: python/limap
         - name: simplerecon
           python: python/simplerecon
         - name: mcc
           python: python/mcc
+        - name: slahmr
+          python: python/slahmr
