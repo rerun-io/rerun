@@ -42,8 +42,6 @@ impl ViewPartSystem for Transform3DArrowsPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("TransformGizmoPart");
-
         let mut line_builder = view_ctx.get::<SharedRenderBuilders>()?.lines();
         let transforms = view_ctx.get::<TransformContext>()?;
 

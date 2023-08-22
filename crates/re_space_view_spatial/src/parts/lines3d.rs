@@ -183,8 +183,6 @@ impl ViewPartSystem for Lines3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("Lines3DPart");
-
         process_archetype_views::<Lines3DPart, LineStrips3D, { LineStrips3D::NUM_COMPONENTS }, _>(
             ctx,
             query,

@@ -34,8 +34,6 @@ impl ViewContextSystem for EntityDepthOffsets {
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
-        re_tracing::profile_function!();
-
         #[derive(PartialEq, PartialOrd, Eq, Ord)]
         enum DrawOrderTarget {
             Entity(EntityPathHash),

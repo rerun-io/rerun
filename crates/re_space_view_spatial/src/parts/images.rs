@@ -418,8 +418,6 @@ impl ViewPartSystem for ImagesPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("ImagesPart");
-
         let mut depth_clouds = Vec::new();
 
         let transforms = view_ctx.get::<TransformContext>()?;

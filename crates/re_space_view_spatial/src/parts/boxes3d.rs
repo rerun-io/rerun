@@ -129,8 +129,6 @@ impl ViewPartSystem for Boxes3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("Boxes3DPart");
-
         process_entity_views::<Boxes3DPart, Box3D, 8, _>(
             ctx,
             query,

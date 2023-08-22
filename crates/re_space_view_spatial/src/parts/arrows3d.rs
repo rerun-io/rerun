@@ -183,8 +183,6 @@ impl ViewPartSystem for Arrows3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("Arrows3DPart");
-
         process_archetype_views::<Arrows3DPart, Arrows3D, { Arrows3D::NUM_COMPONENTS }, _>(
             ctx,
             query,

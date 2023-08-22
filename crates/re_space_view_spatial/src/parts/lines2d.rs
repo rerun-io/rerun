@@ -175,8 +175,6 @@ impl ViewPartSystem for Lines2DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("Lines2DPart");
-
         process_archetype_views::<Lines2DPart, LineStrips2D, { LineStrips2D::NUM_COMPONENTS }, _>(
             ctx,
             query,

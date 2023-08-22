@@ -24,8 +24,6 @@ impl ViewContextSystem for NonInteractiveEntities {
         _ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
-        re_tracing::profile_function!();
-
         self.0 = query
             .entity_props_map
             .iter()

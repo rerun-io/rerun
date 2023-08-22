@@ -89,7 +89,6 @@ impl ViewPartSystem for MeshPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("MeshPart");
 
         let mut instances = Vec::new();
 

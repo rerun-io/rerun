@@ -188,8 +188,6 @@ impl ViewPartSystem for Points2DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("Points2DPart");
-
         process_archetype_views::<Points2DPart, Points2D, { Points2D::NUM_COMPONENTS }, _>(
             ctx,
             query,

@@ -183,8 +183,6 @@ impl ViewPartSystem for CamerasPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("CamerasPart");
-
         let transforms = view_ctx.get::<TransformContext>()?;
         let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
 
