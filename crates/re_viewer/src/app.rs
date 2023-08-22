@@ -345,7 +345,7 @@ impl App {
     fn run_ui_command(
         &mut self,
         _frame: &mut eframe::Frame,
-        egui_ctx: &egui::Context,
+        _egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
@@ -372,7 +372,7 @@ impl App {
             }
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
-                let egui_ctx = egui_ctx.clone();
+                let egui_ctx = _egui_ctx.clone();
                 self.open_file_promise = Some(poll_promise::Promise::spawn_async(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
