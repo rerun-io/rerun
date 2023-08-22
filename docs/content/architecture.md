@@ -49,8 +49,34 @@ Users can extend the Viewer with arbitrary visualizations of their own making.
 
 *Message: show future-proofness by showing strong foundations and strong reasons to use them.*
 
-- [Apache Arrow](https://arrow.apache.org)
-- **Rust**: the only mainstream language that is both fast and safe. https://www.rerun.io/blog/why-rust
-- We use [WebAssembly](https://webassembly.org) to get the viewer running at high speeds inside a browser or anywhere you can embed a web-view. For the native viewer we compile natively (no need for Electron!)
-- [egui](https://www.egui.rs)
-- [wgpu](https://wgpu.rs)
+### [Apache Arrow](https://arrow.apache.org/overview/)
+Arrow is a language-independent columnar memory format for arbitrary data. We use it to encode the log data on-the-wire and in our data store.
+
+### Rust
+The only mainstream language that is both fast and safe. https://www.rerun.io/blog/why-rust
+
+### Wasm
+We use [Wasm](https://webassembly.org) to get the viewer running at high speeds inside a browser or anywhere you can embed a web-view. For the native viewer we compile natively (no need for Electron!)
+
+### `egui``
+[egui](https://www.egui.rs) is an easy-to-use cross-platform, [immediate mode GUI](https://github.com/emilk/egui#why-immediate-mode) created by our CTO.
+
+### `wgpu``
+[wgpu](https://wgpu.rs) provides a high-performance abstraction over Vulkan, Metal, D3D12, D3D11, OpenGLES, WebGL and [WebGPU](https://en.wikipedia.org/wiki/WebGPU). This lets us write the same code graphics code for native as for web.
+
+We use the WebGL backend when compiling for web. Once WebGPU is available in most browsers, we can easily switch to it for a nice performance boost!
+
+We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/re_renderer/README.md).
+
+
+## Immediate mode
+The Rerun Viewer uses an [immediate mode GUI](https://github.com/emilk/egui#why-immediate-mode), [`egui`](https://www.egui.rs/). This means that each frame the entire GUI is being laid out from scratch.
+
+In fact, the whole of the Rerun Viewer is written in an immediate mode style. Each rendered frame it will query the in-RAM data store, massage the results, and feed it to the renderer.
+
+The advantage of immediate mode is that is removes all state management. There is no callbacks that are called when some state has already changed, and the state of the blueprint is always in sync with what you see on screen.
+
+Immediate mode is also a forcing function, forcing us to relentlessly optimize our code.
+This leads to a very responsive GUI, where there is no "hickups" when switching data source or doing time scrubbing.
+
+Of course, this will only take us so far. In the future we plan on caching queries and work submitted to the renderer so that we don't perform unnecessary work each frame. We also plan on doing larger operation in background threads. This will be necessary in order to support viewing large datasets, e.g. several million points. The plan is still to do so within an immediate mode framework, retaining most of the advantages of stateless code.

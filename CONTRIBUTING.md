@@ -82,3 +82,17 @@ You can set up [`sccache`](https://github.com/mozilla/sccache) to speed up re-co
 
 ### Other
 You can view higher log levels with `export RUST_LOG=debug` or `export RUST_LOG=trace`.
+
+## Wasm
+Wasm (short for [WebAssembly](https://webassembly.org/)) is a binary instruction format supported by all major browser.
+The Rerun Viewer can be compiled to Wasm and run in a browser.
+
+Threading support in Wasm is nascent, so care must we taken that we don't spawn any threads when compiling for `wasm32`.
+
+Wasm has no access to the host system, except via JS calls (something that may change once [WASI](https://wasi.dev/) rolls out), so when compiling for `wasm32` you can NOT use the Rust standard library to:
+* Access files
+* Read environment variables
+* Get the current time (use [`instant`](https://crates.io/crates/instant) instead)
+* Use networking (use [`ehttp`](https://github.com/emilk/ehttp), [`reqwest`](https://github.com/seanmonstar/reqwest), or [`ewebsock`](https://github.com/rerun-io/ewebsock) instead)
+* etc
+
