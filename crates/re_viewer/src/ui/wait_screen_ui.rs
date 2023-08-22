@@ -109,7 +109,7 @@ fn welcome_ui_impl(
 fn onboarding_content_ui(
     re_ui: &ReUi,
     ui: &mut Ui,
-    _command_sender: &re_viewer_context::CommandSender,
+    command_sender: &re_viewer_context::CommandSender,
 ) {
     let column_spacing = 15.0;
     let stability_adjustment = 1.0; // minimize jitter with sizing and scroll bars
@@ -198,12 +198,11 @@ fn onboarding_content_ui(
             url_large_text_button(re_ui, ui, "Rust", RUST_QUICKSTART);
         });
 
-        #[cfg(not(target_arch = "wasm32"))]
         {
-            use re_ui::UICommandSender;
+            use re_ui::UICommandSender as _;
             ui.horizontal(|ui| {
                 if large_text_button(ui, "Open file…").clicked() {
-                    _command_sender.send_ui(re_ui::UICommand::Open);
+                    command_sender.send_ui(re_ui::UICommand::Open);
                 }
                 button_centered_label(ui, "Or drop a file anywhere!");
             });
