@@ -1,11 +1,11 @@
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 
 use re_data_store::{EntityPath, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{ScreenshotMode, SpaceViewContents};
 use re_viewer_context::{
     DynSpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    SpaceViewSystemRegistry, ViewSystemName, ViewerContext,
+    SpaceViewSystemRegistry, ViewerContext,
 };
 
 use crate::{
@@ -39,6 +39,7 @@ pub struct SpaceViewBlueprint {
 }
 
 // Default needed for deserialization when adding/changing fields.
+// TODO: this didn't work out
 impl Default for SpaceViewBlueprint {
     fn default() -> Self {
         Self {
@@ -131,8 +132,13 @@ impl SpaceViewBlueprint {
     ) {
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
-            let queries_entities =
-                default_queried_entities(ctx, &self.class_name, &self.space_origin, spaces_info);
+            let queries_entities = default_queried_entities(
+                ctx,
+                &self.class_name,
+                &self.space_origin,
+                spaces_info,
+                entities_per_system,
+            );
             self.contents.insert_entities_according_to_hierarchy(
                 queries_entities.iter(),
                 &self.space_origin,
@@ -275,10 +281,7 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub fn reset_systems_per_entity_path(
-        &mut self,
-        entities_per_system: &IntMap<ViewSystemName, Vec<EntityPath>>,
-    ) {
+    pub fn reset_systems_per_entity_path(&mut self, entities_per_system: &EntitiesPerSystem) {
         re_tracing::profile_function!();
 
         let space_view_entities: IntSet<EntityPath> =

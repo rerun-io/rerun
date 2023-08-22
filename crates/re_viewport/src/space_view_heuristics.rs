@@ -13,7 +13,7 @@ use smallvec::SmallVec;
 
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 
-pub type EntitiesPerSystem = IntMap<ViewSystemName, Vec<EntityPath>>;
+pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
 pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassName, EntitiesPerSystem>;
 
 // ---------------------------------------------------------------------------
@@ -38,6 +38,8 @@ pub fn all_possible_space_views(
 ) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();
 
+    let empty_entities_per_system = EntitiesPerSystem::default();
+
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
     // as well as all direct descendants of the root.
     let root_children = &ctx.store_db.entity_db.tree.children;
@@ -55,11 +57,16 @@ pub fn all_possible_space_views(
                 .iter_classes()
                 .filter_map(|class| {
                     let class_name = class.name();
+                    let entities_per_system = entities_per_system_per_class
+                        .get(&class_name)
+                        .unwrap_or(&empty_entities_per_system);
+
                     let entities = default_queried_entities(
                         ctx,
                         &class_name,
                         candidate_space_path,
                         spaces_info,
+                        entities_per_system,
                     );
                     if entities.is_empty() {
                         None
@@ -77,10 +84,9 @@ pub fn all_possible_space_views(
     // TODO: There's a lot of overlapping computation here.
     // This categorization should happen only once globally.
     for candidate in &mut candidates {
-        let empty_map = EntitiesPerSystem::default();
         let entities_per_system = entities_per_system_per_class
             .get(candidate.class_name())
-            .unwrap_or(&empty_map);
+            .unwrap_or(&empty_entities_per_system);
         candidate.reset_systems_per_entity_path(entities_per_system);
     }
 
@@ -349,16 +355,23 @@ pub fn default_queried_entities(
     class: &SpaceViewClassName,
     space_path: &EntityPath,
     spaces_info: &SpaceInfoCollection,
+    entities_per_system: &EntitiesPerSystem,
 ) -> Vec<EntityPath> {
     re_tracing::profile_function!();
 
     let mut entities = Vec::new();
     let space_info = spaces_info.get_first_parent_with_info(space_path);
 
+    // Filter out entities that are not used in any of the part (!) systems of this class.
     let parts = ctx
         .space_view_class_registry
         .get_system_registry_or_log_error(class)
         .new_part_collection();
+    let entities_used_by_any_part_system = entities_per_system
+        .iter()
+        .filter(|(system, _)| parts.get_by_name(**system).is_ok())
+        .flat_map(|(_, entities)| entities.iter().cloned())
+        .collect::<IntSet<_>>();
 
     space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
         entities.extend(
@@ -367,11 +380,7 @@ pub fn default_queried_entities(
                 .iter()
                 .filter(|ent_path| {
                     (ent_path.is_descendant_of(space_path) || ent_path == &space_path)
-                        && is_entity_processed_by_part_collection(
-                            ctx.store_db.store(),
-                            &parts,
-                            ent_path,
-                        )
+                        && entities_used_by_any_part_system.contains(ent_path)
                 })
                 .cloned(),
         );
@@ -380,7 +389,7 @@ pub fn default_queried_entities(
     entities
 }
 
-/// Returns true if an entity is processed by any of the given [`re_viewer_context::ViewPartSystem`]s.
+// TODO: Still used in a bunch of places, but should be goverend by the single global list.
 pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
     class: &SpaceViewClassName,
@@ -495,7 +504,7 @@ pub fn default_entities_per_system_per_class(
                             .or_default()
                             .entry(*system)
                             .or_default()
-                            .push(ent_path.clone());
+                            .insert(ent_path.clone());
                     }
                 }
             }
