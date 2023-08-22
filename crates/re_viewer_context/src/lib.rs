@@ -70,6 +70,10 @@ pub mod external {
 pub struct SpaceViewId(uuid::Uuid);
 
 impl SpaceViewId {
+    pub fn invalid() -> Self {
+        Self(uuid::Uuid::nil())
+    }
+
     pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())
     }
