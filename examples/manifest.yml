@@ -57,6 +57,8 @@ root:
           python: python/limap
         - name: widebaseline
           python: python/widebaseline
+        - name: differentiable_blocks_world
+          python: python/differentiable_blocks_world
 
     - name: real-data
       title: Examples with Real Data
