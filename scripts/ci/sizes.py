@@ -137,7 +137,7 @@ def compare(previous_path: str, current_path: str, threshold: float) -> None:
             value = entry["current"]["value"]
             unit = entry["current"]["unit"]
 
-            rows.append((name, "(none)", f"{value:.2f} {unit}", "+100%"))
+            rows.append((name, "(none)", f"{value} {unit}", "+100%"))
         elif "previous" in entry:
             value = entry["previous"]["value"]
             unit = entry["previous"]["unit"]
