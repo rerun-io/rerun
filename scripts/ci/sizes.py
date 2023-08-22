@@ -142,7 +142,7 @@ def compare(previous_path: str, current_path: str, threshold: float) -> None:
             value = entry["previous"]["value"]
             unit = entry["previous"]["unit"]
 
-            rows.append((name, f"{value:.2f} {unit}", "(deleted)", "-100%"))
+            rows.append((name, f"{value} {unit}", "(deleted)", "-100%"))
 
     if len(rows) > 0:
         sys.stdout.write(render_table_rows(rows, headers))
