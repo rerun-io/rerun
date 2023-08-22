@@ -23,5 +23,5 @@ We depend on a number of third party libraries, most notably:
 * [PyO3](https://github.com/PyO3/pyo3) for python bindings
 
 If you want to learn more about the different parts of the SDK & viewer and how they work, check out
-[this architecture overview](https://github.com/rerun-io/rerun/blob/latest/ARCHITECTURE.md)
+[this architecture overview](../architecture.md)
 for an introduction.
