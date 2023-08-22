@@ -845,23 +845,23 @@ impl App {
     /// The welcome screen can be displayed only when a blueprint is available (and no recording is
     /// loaded). This function implements the heuristic which determines when the welcome screen
     /// should show up.
-    fn handle_default_blueprint(&mut self, store_hub: &mut StoreHub) {
+    fn should_show_welcome_screen(&mut self, store_hub: &mut StoreHub) -> bool {
         // Don't show the welcome screen if we have actual data to display.
         if store_hub.current_recording().is_some() || store_hub.selected_application_id().is_some()
         {
-            return;
+            return false;
         }
 
         // Don't show the welcome screen if the `--skip-welcome-screen` flag was used (e.g. by the
         // Python SDK), until some data has been loaded and shown. This way, we *still* show the
         // welcome screen when the user closes all recordings after, e.g., running a Python example.
         if self.startup_options.skip_welcome_screen && !self.recording_seen {
-            return;
+            return false;
         }
 
         // Here, we use the type of Receiver as a proxy for which kind of workflow the viewer is
         // being used in.
-        let welcome = match self.rx.source() {
+        match self.rx.source() {
             // These source are typically "finite". We want the loading screen so long as data is
             // coming in.
             SmartChannelSource::Files { .. } | SmartChannelSource::RrdHttpStream { .. } => {
@@ -877,10 +877,6 @@ impl App {
             // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
             // scenarios. In this cases, `--skip-welcome-screen` should be used.
             SmartChannelSource::TcpServer { .. } => true,
-        };
-
-        if welcome {
-            store_hub.set_app_id(StoreHub::welcome_screen_app_id());
         }
     }
 }
@@ -986,7 +982,9 @@ impl eframe::App for App {
 
         // Heuristic to set the app_id to the welcome screen blueprint.
         // Must be called before `read_context` below.
-        self.handle_default_blueprint(&mut store_hub);
+        if self.should_show_welcome_screen(&mut store_hub) {
+            store_hub.set_app_id(StoreHub::welcome_screen_app_id());
+        }
 
         let store_context = store_hub.read_context();
 
