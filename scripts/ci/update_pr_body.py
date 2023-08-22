@@ -20,9 +20,11 @@ from jinja2.sandbox import SandboxedEnvironment
 
 
 DOCS_PREVIEW_MARKER = "<!--DOCS-PREVIEW-->"
-DOCS_PREVIEW_BARE_LINK = "- [Docs preview](https://rerun.io/preview/{{ pr.commit }}/docs) <!--DOCS-PREVIEW-->"
+DOCS_PREVIEW_BARE_LINK = "- [Docs preview](https://rerun.io/preview/{{ pr.commit }}/docs)" \
+                         " <!--DOCS-PREVIEW-->"
 EXAMPLES_PREVIEW_MARKER = "<!--EXAMPLES-PREVIEW-->"
-EXAMPLES_PREVIEW_BARE_LINK = "- [Examples preview](https://rerun.io/preview/{{ pr.commit }}/examples) <!--EXAMPLES-PREVIEW-->"
+EXAMPLES_PREVIEW_BARE_LINK = "- [Examples preview](https://rerun.io/preview/{{ pr.commit }}/examples)" \
+                             " <!--EXAMPLES-PREVIEW-->"
 
 
 def encode_uri_component(value: str) -> str:
@@ -54,11 +56,11 @@ def main() -> None:
     new_body = pr.body
 
     docs_preview_link_end = new_body.find(DOCS_PREVIEW_MARKER) + len(DOCS_PREVIEW_MARKER)
-    docs_preview_link_start = new_body.rfind("\n", 0, docs_preview_link_end)
+    docs_preview_link_start = new_body.rfind("\n", 0, docs_preview_link_end) + 1
     new_body = new_body[:docs_preview_link_start] + DOCS_PREVIEW_BARE_LINK + new_body[docs_preview_link_end:]
 
     examples_preview_link_end = new_body.find(EXAMPLES_PREVIEW_MARKER) + len(EXAMPLES_PREVIEW_MARKER)
-    examples_preview_link_start = new_body.rfind("\n", 0, examples_preview_link_end)
+    examples_preview_link_start = new_body.rfind("\n", 0, examples_preview_link_end) + 1
     new_body = new_body[:examples_preview_link_start] + EXAMPLES_PREVIEW_BARE_LINK + new_body[examples_preview_link_end:]
 
     new_body = env.from_string(new_body).render(
@@ -70,7 +72,7 @@ def main() -> None:
     )
 
     if new_body != pr.body:
-        print("updated")
+        print("updated pr body")
         pr.edit(body=new_body)
 
 
