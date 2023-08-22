@@ -11,7 +11,7 @@ use re_viewer_context::{
 use crate::{
     space_info::SpaceInfoCollection,
     space_view_heuristics::{
-        default_queried_entities, is_entity_processed_by_class, EntitiesPerSystem,
+        is_entity_processed_by_class, reachable_entities_from_root, EntitiesPerSystem,
     },
 };
 
@@ -74,10 +74,10 @@ impl SpaceViewBlueprint {
 }
 
 impl SpaceViewBlueprint {
-    pub fn new(
+    pub fn new<'a>(
         space_view_class: SpaceViewClassName,
         space_path: &EntityPath,
-        queries_entities: &[EntityPath],
+        queries_entities: impl Iterator<Item = &'a EntityPath>,
     ) -> Self {
         // We previously named the [`SpaceView`] after the [`EntityPath`] if there was only a single entity. However,
         // this led to somewhat confusing and inconsistent behavior. See https://github.com/rerun-io/rerun/issues/1220
@@ -91,8 +91,7 @@ impl SpaceViewBlueprint {
         };
 
         let mut data_blueprint_tree = SpaceViewContents::default();
-        data_blueprint_tree
-            .insert_entities_according_to_hierarchy(queries_entities.iter(), space_path);
+        data_blueprint_tree.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
         Self {
             display_name,
@@ -130,18 +129,15 @@ impl SpaceViewBlueprint {
         entities_per_system: &EntitiesPerSystem,
     ) {
         if !self.entities_determined_by_user {
-            // Add entities that have been logged since we were created
-            let queries_entities = default_queried_entities(
-                ctx,
-                &self.class_name,
-                &self.space_origin,
-                spaces_info,
-                entities_per_system,
-            );
-            self.contents.insert_entities_according_to_hierarchy(
-                queries_entities.iter(),
-                &self.space_origin,
-            );
+            // Add entities that have been logged since we were created.
+            let reachable_entities = reachable_entities_from_root(&self.space_origin, spaces_info);
+            let queries_entities = reachable_entities.iter().filter(|ent_path| {
+                entities_per_system
+                    .iter()
+                    .any(|(_, ents)| ents.contains(ent_path))
+            });
+            self.contents
+                .insert_entities_according_to_hierarchy(queries_entities, &self.space_origin);
         }
 
         self.reset_systems_per_entity_path(entities_per_system);

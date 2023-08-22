@@ -30,6 +30,20 @@ fn is_tensor_class(class: &SpaceViewClassName) -> bool {
 
 // ---------------------------------------------------------------------------
 
+fn candidate_space_view_paths<'a>(
+    ctx: &ViewerContext<'a>,
+    spaces_info: &'a SpaceInfoCollection,
+) -> impl Iterator<Item = &'a EntityPath> {
+    // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
+    // as well as all direct descendants of the root.
+    let root_children = &ctx.store_db.entity_db.tree.children;
+    spaces_info
+        .iter()
+        .map(|info| &info.path)
+        .chain(root_children.values().map(|sub_tree| &sub_tree.path))
+        .unique()
+}
+
 /// List out all space views we allow the user to create.
 pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
@@ -38,17 +52,19 @@ pub fn all_possible_space_views(
 ) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();
 
-    let empty_entities_per_system = EntitiesPerSystem::default();
-    let empty_entities = IntSet::default();
+    for (class_name, entities_per_system) in entities_per_system_per_class {
+        for (system_name, entities) in entities_per_system {
+            if entities.is_empty() {
+                re_log::warn!(
+                    "SpaceViewClassRegistry: No entities for system {:?} of class {:?}",
+                    system_name,
+                    class_name
+                );
+            }
+        }
+    }
 
-    // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
-    // as well as all direct descendants of the root.
-    let root_children = &ctx.store_db.entity_db.tree.children;
-    let candidate_space_paths = spaces_info
-        .iter()
-        .map(|info| &info.path)
-        .chain(root_children.values().map(|sub_tree| &sub_tree.path))
-        .unique();
+    let empty_entities_per_system = EntitiesPerSystem::default();
 
     // Filter out entities that are not used in any of the part (!) systems of this class.
     let entities_used_by_any_part_system_of_class: IntMap<_, _> = ctx
@@ -70,32 +86,31 @@ pub fn all_possible_space_views(
         .collect();
 
     // For each candidate, create space views for all possible classes.
-    let mut candidates = candidate_space_paths
+    let mut candidates = candidate_space_view_paths(ctx, spaces_info)
         .flat_map(|candidate_space_path| {
-            ctx.space_view_class_registry
-                .iter_classes()
-                .filter_map(|class| {
-                    let class_name = class.name();
-                    let entities_used_by_any_part_system =
-                        entities_used_by_any_part_system_of_class
-                            .get(&class_name)
-                            .unwrap_or(&empty_entities);
+            let reachable_entities =
+                reachable_entities_from_root(candidate_space_path, spaces_info);
+            if reachable_entities.is_empty() {
+                return Vec::new();
+            }
 
-                    let entities = reachable_entities_from_root(
-                        candidate_space_path,
-                        spaces_info,
-                        entities_used_by_any_part_system,
+            entities_used_by_any_part_system_of_class
+                .iter()
+                .filter_map(|(class_name, entities_used_by_any_part_system)| {
+                    let candidate = SpaceViewBlueprint::new(
+                        *class_name,
+                        &candidate_space_path.clone(),
+                        reachable_entities
+                            .iter()
+                            .filter(|ent_path| entities_used_by_any_part_system.contains(ent_path)),
                     );
-                    if entities.is_empty() {
-                        None
+                    if candidate.contents.entity_paths().next().is_some() {
+                        Some(candidate)
                     } else {
-                        Some(SpaceViewBlueprint::new(
-                            class_name,
-                            &candidate_space_path.clone(),
-                            &entities,
-                        ))
+                        None
                     }
                 })
+                .collect_vec()
         })
         .collect_vec();
 
@@ -242,7 +257,7 @@ pub fn default_created_space_views(
                 let mut space_view = SpaceViewBlueprint::new(
                     *candidate.class_name(),
                     entity_path,
-                    &[entity_path.clone()],
+                    std::iter::once(entity_path),
                 );
                 space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
                 space_views.push((space_view, AutoSpawnHeuristic::AlwaysSpawn));
@@ -309,7 +324,7 @@ pub fn default_created_space_views(
                     let mut space_view = SpaceViewBlueprint::new(
                         *candidate.class_name(),
                         &candidate.space_origin,
-                        &entities,
+                        entities.iter(),
                     );
                     space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
                     space_views.push((space_view, AutoSpawnHeuristic::AlwaysSpawn));
@@ -361,56 +376,30 @@ pub fn default_created_space_views(
     space_views.into_iter().map(|(s, _)| s).collect()
 }
 
-/// List of entities a space view queries by default for a given category.
-///
-/// These are all entities which are reachable and
-/// match at least one archetypes that is processed by at least one [`re_viewer_context::ViewPartSystem`]
-/// of the given [`re_viewer_context::SpaceViewClass`]
-pub fn default_queried_entities(
-    ctx: &ViewerContext<'_>,
-    class: &SpaceViewClassName,
-    space_path: &EntityPath,
-    spaces_info: &SpaceInfoCollection,
-    entities_per_system: &EntitiesPerSystem,
-) -> Vec<EntityPath> {
-    re_tracing::profile_function!();
-
-    // Filter out entities that are not used in any of the part (!) systems of this class.
-    let parts = ctx
-        .space_view_class_registry
-        .get_system_registry_or_log_error(class)
-        .new_part_collection();
-    let entities_used_by_any_part_system = entities_per_system
-        .iter()
-        .filter(|(system, _)| parts.get_by_name(**system).is_ok())
-        .flat_map(|(_, entities)| entities.iter().cloned())
-        .collect::<IntSet<_>>();
-
-    reachable_entities_from_root(space_path, spaces_info, &entities_used_by_any_part_system)
-}
-
-fn reachable_entities_from_root(
+pub fn reachable_entities_from_root(
     root: &EntityPath,
     spaces_info: &SpaceInfoCollection,
-    allowed_entities: &IntSet<EntityPath>,
 ) -> Vec<EntityPath> {
     re_tracing::profile_function!();
 
     let mut entities = Vec::new();
     let space_info = spaces_info.get_first_parent_with_info(root);
 
-    space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-        entities.extend(
-            space_info
-                .descendants_without_transform
-                .iter()
-                .filter(|ent_path| {
-                    (ent_path.is_descendant_of(root) || ent_path == &root)
-                        && allowed_entities.contains(ent_path)
-                })
-                .cloned(),
-        );
-    });
+    if &space_info.path == root {
+        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
+            entities.extend(space_info.descendants_without_transform.iter().cloned());
+        });
+    } else {
+        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
+            entities.extend(
+                space_info
+                    .descendants_without_transform
+                    .iter()
+                    .filter(|ent_path| (ent_path.is_descendant_of(root) || ent_path == &root))
+                    .cloned(),
+            );
+        });
+    }
 
     entities
 }
