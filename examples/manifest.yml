@@ -53,6 +53,8 @@ root:
           python: python/tapir
         - name: slahmr
           python: python/slahmr
+        - name: limap
+          python: python/limap
 
     - name: real-data
       title: Examples with Real Data
