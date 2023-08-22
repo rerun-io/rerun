@@ -58,7 +58,7 @@ class Example:
             check=True,
         )
 
-        print(f"{rrd_path}: {os.path.getsize(rrd_path) / 1e6:.1f} MB")
+        print(f"{rrd_path}: {os.path.getsize(rrd_path) / (1024 * 1024):.1f} MiB")
 
     def supports_save(self) -> bool:
         with open(self.path) as f:
