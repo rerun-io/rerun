@@ -1,5 +1,3 @@
-use nohash_hasher::IntSet;
-
 use re_data_store::{EntityPath, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{ScreenshotMode, SpaceViewContents};
@@ -279,21 +277,18 @@ impl SpaceViewBlueprint {
     pub fn reset_systems_per_entity_path(&mut self, entities_per_system: &EntitiesPerSystem) {
         re_tracing::profile_function!();
 
-        let space_view_entities: IntSet<EntityPath> =
-            self.contents.entity_paths().cloned().collect();
-
-        let per_system_entities = self.contents.per_system_entities_mut();
-        per_system_entities.clear();
-
+        let mut per_system_entities = re_viewer_context::PerSystemEntities::new();
         for (system, entities) in entities_per_system {
             per_system_entities.insert(
                 *system,
-                entities
-                    .iter()
-                    .filter(|ent_path| space_view_entities.contains(ent_path))
+                self.contents
+                    .entity_paths()
+                    .filter(|ent_path| entities.contains(ent_path))
                     .cloned()
                     .collect(),
             );
         }
+
+        *self.contents.per_system_entities_mut() = per_system_entities;
     }
 }

@@ -1,15 +1,17 @@
 use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
+use smallvec::SmallVec;
+
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_components::{Pinhole, Tensor};
 use re_data_store::EntityPath;
 use re_types::components::DisconnectedSpace;
 use re_types::ComponentName;
-use re_viewer_context::{SpaceViewClassName, ViewContextCollection, ViewSystemName, ViewerContext};
-
-use re_viewer_context::{AutoSpawnHeuristic, ViewPartCollection};
-use smallvec::SmallVec;
+use re_viewer_context::{
+    AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
+    ViewSystemName, ViewerContext,
+};
 
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 
@@ -86,7 +88,7 @@ pub fn all_possible_space_views(
         .collect();
 
     // For each candidate, create space views for all possible classes.
-    let mut candidates = candidate_space_view_paths(ctx, spaces_info)
+    candidate_space_view_paths(ctx, spaces_info)
         .flat_map(|candidate_space_path| {
             let reachable_entities =
                 reachable_entities_from_root(candidate_space_path, spaces_info);
@@ -112,16 +114,7 @@ pub fn all_possible_space_views(
                 })
                 .collect_vec()
         })
-        .collect_vec();
-
-    for candidate in &mut candidates {
-        let entities_per_system = entities_per_system_per_class
-            .get(candidate.class_name())
-            .unwrap_or(&empty_entities_per_system);
-        candidate.reset_systems_per_entity_path(entities_per_system);
-    }
-
-    candidates
+        .collect_vec()
 }
 
 fn contains_any_image(
@@ -201,19 +194,7 @@ pub fn default_created_space_views(
     re_tracing::profile_function!();
 
     let store = ctx.store_db.store();
-    let candidates = all_possible_space_views(ctx, spaces_info, entities_per_system_per_class)
-        .into_iter()
-        .map(|c| {
-            (
-                c.class(ctx.space_view_class_registry).auto_spawn_heuristic(
-                    ctx,
-                    &c.space_origin,
-                    c.contents.per_system_entities(),
-                ),
-                c,
-            )
-        })
-        .collect::<Vec<_>>();
+    let candidates = all_possible_space_views(ctx, spaces_info, entities_per_system_per_class);
 
     // All queries are "right most" on the log timeline.
     let query = LatestAtQuery::latest(Timeline::log_time());
@@ -221,7 +202,7 @@ pub fn default_created_space_views(
     // First pass to look for interesting roots, as their existence influences the heuristic for non-roots!
     let classes_with_interesting_roots = candidates
         .iter()
-        .filter_map(|(_, space_view_candidate)| {
+        .filter_map(|space_view_candidate| {
             (space_view_candidate.space_origin.is_root()
                 && is_interesting_space_view_at_root(store, space_view_candidate, &query))
             .then_some(*space_view_candidate.class_name())
@@ -232,7 +213,21 @@ pub fn default_created_space_views(
 
     // Main pass through all candidates.
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
-    for (spawn_heuristic, candidate) in candidates {
+    for mut candidate in candidates {
+        // In order to have per_system_entities correctly computed, we need to reset it first - freshly created ones do not.
+        let Some(entities_per_system) = entities_per_system_per_class.get(candidate.class_name()) else {
+            // Should never reach this, but if we would there would be no entities in this candidate so skipping makes sense.
+            continue;
+        };
+        candidate.reset_systems_per_entity_path(entities_per_system);
+        let spawn_heuristic = candidate
+            .class(ctx.space_view_class_registry)
+            .auto_spawn_heuristic(
+                ctx,
+                &candidate.space_origin,
+                candidate.contents.per_system_entities(),
+            );
+
         if spawn_heuristic == AutoSpawnHeuristic::NeverSpawn {
             continue;
         }
