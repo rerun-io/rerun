@@ -10,7 +10,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer3::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer3::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field("degrees", arrow::float32(), false),
@@ -19,7 +19,7 @@ namespace rerun {
                     "craziness",
                     arrow::list(arrow::field(
                         "item",
-                        rerun::datatypes::AffixFuzzer1::to_arrow_datatype(),
+                        rerun::datatypes::AffixFuzzer1::arrow_datatype(),
                         false
                     )),
                     false
@@ -56,7 +56,7 @@ namespace rerun {
                         3
                     ),
                 }),
-                to_arrow_datatype()
+                arrow_datatype()
             ));
         }
 

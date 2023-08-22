@@ -43,7 +43,7 @@ impl crate::Loggable for InstanceKey {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::UInt64
     }
@@ -79,7 +79,7 @@ impl crate::Loggable for InstanceKey {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.components.InstanceKey".to_owned(),
-                        Box::new(Self::to_arrow_datatype()),
+                        Box::new(Self::arrow_datatype()),
                         None,
                     )
                     .to_logical_type()

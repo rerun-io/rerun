@@ -43,7 +43,7 @@ impl crate::Loggable for FlattenedScalar {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "value".to_owned(),
@@ -79,11 +79,11 @@ impl crate::Loggable for FlattenedScalar {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype()),
+                        Box::new(<crate::testing::datatypes::FlattenedScalar>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype()
+                    <crate::testing::datatypes::FlattenedScalar>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -155,7 +155,7 @@ impl crate::Loggable for FlattenedScalar {
                 let value = {
                     if !arrays_by_name.contains_key("value") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "value",
                         ))
                         .with_context("rerun.testing.datatypes.FlattenedScalar");
@@ -250,7 +250,7 @@ impl crate::Loggable for AffixFuzzer1 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
@@ -312,7 +312,7 @@ impl crate::Loggable for AffixFuzzer1 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -351,11 +351,11 @@ impl crate::Loggable for AffixFuzzer1 {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype()),
+                        Box::new(<crate::testing::datatypes::AffixFuzzer1>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype()
+                    <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -838,44 +838,87 @@ impl crate::Loggable for AffixFuzzer1 {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data =
-                data.as_any()
-                    .downcast_ref::<::arrow2::array::StructArray>()
-                    .ok_or_else(|| {
-                        crate::DeserializationError::datatype_mismatch(
-                            DataType::Struct(vec![
-                            Field { name : "single_float_optional".to_owned(), data_type
-                            : DataType::Float32, is_nullable : true, metadata : []
-                            .into(), }, Field { name : "single_string_required"
-                            .to_owned(), data_type : DataType::Utf8, is_nullable : false,
-                            metadata : [].into(), }, Field { name :
-                            "single_string_optional".to_owned(), data_type :
-                            DataType::Utf8, is_nullable : true, metadata : [].into(), },
-                            Field { name : "many_floats_optional".to_owned(), data_type :
-                            DataType::List(Box::new(Field { name : "item".to_owned(),
-                            data_type : DataType::Float32, is_nullable : true, metadata :
-                            [].into(), })), is_nullable : true, metadata : [].into(), },
-                            Field { name : "many_strings_required".to_owned(), data_type
-                            : DataType::List(Box::new(Field { name : "item".to_owned(),
-                            data_type : DataType::Utf8, is_nullable : false, metadata :
-                            [].into(), })), is_nullable : false, metadata : [].into(), },
-                            Field { name : "many_strings_optional".to_owned(), data_type
-                            : DataType::List(Box::new(Field { name : "item".to_owned(),
-                            data_type : DataType::Utf8, is_nullable : true, metadata : []
-                            .into(), })), is_nullable : true, metadata : [].into(), },
-                            Field { name : "flattened_scalar".to_owned(), data_type :
-                            DataType::Float32, is_nullable : false, metadata : [].into(),
-                            }, Field { name : "almost_flattened_scalar".to_owned(),
-                            data_type : < crate ::testing::datatypes::FlattenedScalar >
-                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                            .into(), }, Field { name : "from_parent".to_owned(),
-                            data_type : DataType::Boolean, is_nullable : true, metadata :
-                            [].into(), },
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Struct(vec![
+                            Field {
+                                name: "single_float_optional".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "single_string_required".to_owned(),
+                                data_type: DataType::Utf8,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "single_string_optional".to_owned(),
+                                data_type: DataType::Utf8,
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "many_floats_optional".to_owned(),
+                                data_type: DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                })),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "many_strings_required".to_owned(),
+                                data_type: DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "many_strings_optional".to_owned(),
+                                data_type: DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                })),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "flattened_scalar".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "almost_flattened_scalar".to_owned(),
+                                data_type:
+                                    <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "from_parent".to_owned(),
+                                data_type: DataType::Boolean,
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
                         ]),
-                            data.data_type().clone(),
-                        )
-                    })
-                    .with_context("rerun.testing.datatypes.AffixFuzzer1")?;
+                        data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.testing.datatypes.AffixFuzzer1")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -888,7 +931,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let single_float_optional = {
                     if !arrays_by_name.contains_key("single_float_optional") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "single_float_optional",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -909,7 +952,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let single_string_required = {
                     if !arrays_by_name.contains_key("single_string_required") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "single_string_required",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -964,7 +1007,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let single_string_optional = {
                     if !arrays_by_name.contains_key("single_string_optional") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "single_string_optional",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -1019,7 +1062,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let many_floats_optional = {
                     if !arrays_by_name.contains_key("many_floats_optional") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "many_floats_optional",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -1096,7 +1139,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let many_strings_required = {
                     if !arrays_by_name.contains_key("many_strings_required") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "many_strings_required",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -1216,7 +1259,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let many_strings_optional = {
                     if !arrays_by_name.contains_key("many_strings_optional") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "many_strings_optional",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -1336,7 +1379,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let flattened_scalar = {
                     if !arrays_by_name.contains_key("flattened_scalar") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "flattened_scalar",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -1357,7 +1400,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let almost_flattened_scalar = {
                     if !arrays_by_name.contains_key("almost_flattened_scalar") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "almost_flattened_scalar",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -1372,7 +1415,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 let from_parent = {
                     if !arrays_by_name.contains_key("from_parent") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "from_parent",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -1494,7 +1537,7 @@ impl crate::Loggable for AffixFuzzer2 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Float32
     }
@@ -1532,7 +1575,7 @@ impl crate::Loggable for AffixFuzzer2 {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.testing.datatypes.AffixFuzzer2".to_owned(),
-                        Box::new(Self::to_arrow_datatype()),
+                        Box::new(Self::arrow_datatype()),
                         None,
                     )
                     .to_logical_type()
@@ -1625,7 +1668,7 @@ impl crate::Loggable for AffixFuzzer3 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Union(
             vec![
@@ -1651,7 +1694,7 @@ impl crate::Loggable for AffixFuzzer3 {
                     name: "craziness".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -1700,11 +1743,11 @@ impl crate::Loggable for AffixFuzzer3 {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype()),
+                        Box::new(<crate::testing::datatypes::AffixFuzzer3>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype()
+                    <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -1817,7 +1860,7 @@ impl crate::Loggable for AffixFuzzer3 {
                                     _ = extension_wrapper;
                                     DataType::List(Box::new(Field { name : "item".to_owned(),
                         data_type : < crate ::testing::datatypes::AffixFuzzer1 >
-                        ::to_arrow_datatype(), is_nullable : false, metadata : [].into(),
+                        ::arrow_datatype(), is_nullable : false, metadata : [].into(),
                         })).to_logical_type().clone()
                                 },
                                 offsets,
@@ -1974,7 +2017,7 @@ impl crate::Loggable for AffixFuzzer3 {
                             }, Field { name : "craziness".to_owned(), data_type :
                             DataType::List(Box::new(Field { name : "item".to_owned(),
                             data_type : < crate ::testing::datatypes::AffixFuzzer1 >
-                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            ::arrow_datatype(), is_nullable : false, metadata : []
                             .into(), })), is_nullable : false, metadata : [].into(), },
                             Field { name : "fixed_size_shenanigans".to_owned(), data_type
                             : DataType::FixedSizeList(Box::new(Field { name : "item"
@@ -1997,7 +2040,7 @@ impl crate::Loggable for AffixFuzzer3 {
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             data.data_type().clone(),
                         )
                     })
@@ -2058,7 +2101,7 @@ impl crate::Loggable for AffixFuzzer3 {
                                 DataType::List(
                                     Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                                        data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                                         is_nullable: false,
                                         metadata: [].into(),
                                     }),
@@ -2305,7 +2348,7 @@ impl crate::Loggable for AffixFuzzer3 {
                                         _ => {
                                             return Err(
                                                     crate::DeserializationError::missing_union_arm(
-                                                        Self::to_arrow_datatype(),
+                                                        Self::arrow_datatype(),
                                                         "<invalid>",
                                                         *typ as _,
                                                     ),
@@ -2374,7 +2417,7 @@ impl crate::Loggable for AffixFuzzer4 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Union(
             vec![
@@ -2386,7 +2429,7 @@ impl crate::Loggable for AffixFuzzer4 {
                 },
                 Field {
                     name: "single_required".to_owned(),
-                    data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                    data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },
@@ -2394,7 +2437,7 @@ impl crate::Loggable for AffixFuzzer4 {
                     name: "many_required".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -2405,7 +2448,7 @@ impl crate::Loggable for AffixFuzzer4 {
                     name: "many_optional".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                         is_nullable: true,
                         metadata: [].into(),
                     })),
@@ -2440,11 +2483,11 @@ impl crate::Loggable for AffixFuzzer4 {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype()),
+                        Box::new(<crate::testing::datatypes::AffixFuzzer4>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype()
+                    <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -2526,7 +2569,7 @@ impl crate::Loggable for AffixFuzzer4 {
                                     _ = extension_wrapper;
                                     DataType::List(Box::new(Field { name : "item".to_owned(),
                         data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                        ::to_arrow_datatype(), is_nullable : false, metadata : [].into(),
+                        ::arrow_datatype(), is_nullable : false, metadata : [].into(),
                         })).to_logical_type().clone()
                                 },
                                 offsets,
@@ -2584,8 +2627,8 @@ impl crate::Loggable for AffixFuzzer4 {
                                     _ = extension_wrapper;
                                     DataType::List(Box::new(Field { name : "item".to_owned(),
                         data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                        ::to_arrow_datatype(), is_nullable : true, metadata : [].into(),
-                        })).to_logical_type().clone()
+                        ::arrow_datatype(), is_nullable : true, metadata : [].into(), }))
+                        .to_logical_type().clone()
                                 },
                                 offsets,
                                 {
@@ -2658,18 +2701,18 @@ impl crate::Loggable for AffixFuzzer4 {
                             DataType::Null, is_nullable : true, metadata : [].into(), },
                             Field { name : "single_required".to_owned(), data_type : <
                             crate ::testing::datatypes::AffixFuzzer3 >
-                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            ::arrow_datatype(), is_nullable : false, metadata : []
                             .into(), }, Field { name : "many_required".to_owned(),
                             data_type : DataType::List(Box::new(Field { name : "item"
                             .to_owned(), data_type : < crate
-                            ::testing::datatypes::AffixFuzzer3 > ::to_arrow_datatype(),
+                            ::testing::datatypes::AffixFuzzer3 > ::arrow_datatype(),
                             is_nullable : false, metadata : [].into(), })), is_nullable :
                             false, metadata : [].into(), }, Field { name :
                             "many_optional".to_owned(), data_type :
                             DataType::List(Box::new(Field { name : "item".to_owned(),
                             data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                            ::to_arrow_datatype(), is_nullable : true, metadata : []
-                            .into(), })), is_nullable : false, metadata : [].into(), },
+                            ::arrow_datatype(), is_nullable : true, metadata : [].into(),
+                            })), is_nullable : false, metadata : [].into(), },
                         ],
                             Some(vec![0i32, 1i32, 2i32, 3i32]),
                             UnionMode::Dense,
@@ -2686,7 +2729,7 @@ impl crate::Loggable for AffixFuzzer4 {
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             data.data_type().clone(),
                         )
                     })
@@ -2721,7 +2764,7 @@ impl crate::Loggable for AffixFuzzer4 {
                                 DataType::List(
                                     Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                                        data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                                         is_nullable: false,
                                         metadata: [].into(),
                                     }),
@@ -2796,7 +2839,7 @@ impl crate::Loggable for AffixFuzzer4 {
                                 DataType::List(
                                     Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+                                        data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                                         is_nullable: true,
                                         metadata: [].into(),
                                     }),
@@ -2921,7 +2964,7 @@ impl crate::Loggable for AffixFuzzer4 {
                                 }),
                                 _ => {
                                     return Err(crate::DeserializationError::missing_union_arm(
-                                        Self::to_arrow_datatype(),
+                                        Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ))
@@ -2993,11 +3036,11 @@ impl crate::Loggable for AffixFuzzer5 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "single_optional_union".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }])
@@ -3029,11 +3072,11 @@ impl crate::Loggable for AffixFuzzer5 {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer5>::to_arrow_datatype()),
+                        Box::new(<crate::testing::datatypes::AffixFuzzer5>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::testing::datatypes::AffixFuzzer5>::to_arrow_datatype()
+                    <crate::testing::datatypes::AffixFuzzer5>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -3090,8 +3133,7 @@ impl crate::Loggable for AffixFuzzer5 {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
                             name: "single_optional_union".to_owned(),
-                            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(
-                            ),
+                            data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
                             is_nullable: true,
                             metadata: [].into(),
                         }]),
@@ -3111,7 +3153,7 @@ impl crate::Loggable for AffixFuzzer5 {
                 let single_optional_union = {
                     if !arrays_by_name.contains_key("single_optional_union") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "single_optional_union",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer5");
@@ -3189,18 +3231,18 @@ impl crate::Loggable for AffixFuzzer20 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "p".to_owned(),
-                data_type: <crate::testing::datatypes::PrimitiveComponent>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::PrimitiveComponent>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
             Field {
                 name: "s".to_owned(),
-                data_type: <crate::testing::datatypes::StringComponent>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::StringComponent>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -3233,11 +3275,11 @@ impl crate::Loggable for AffixFuzzer20 {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer20>::to_arrow_datatype()),
+                        Box::new(<crate::testing::datatypes::AffixFuzzer20>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::testing::datatypes::AffixFuzzer20>::to_arrow_datatype()
+                    <crate::testing::datatypes::AffixFuzzer20>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -3348,24 +3390,24 @@ impl crate::Loggable for AffixFuzzer20 {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![
+            let data =
+                data.as_any()
+                    .downcast_ref::<::arrow2::array::StructArray>()
+                    .ok_or_else(|| {
+                        crate::DeserializationError::datatype_mismatch(
+                            DataType::Struct(vec![
                             Field { name : "p".to_owned(), data_type : < crate
                             ::testing::datatypes::PrimitiveComponent >
-                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            ::arrow_datatype(), is_nullable : false, metadata : []
                             .into(), }, Field { name : "s".to_owned(), data_type : <
                             crate ::testing::datatypes::StringComponent >
-                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            ::arrow_datatype(), is_nullable : false, metadata : []
                             .into(), },
                         ]),
-                        data.data_type().clone(),
-                    )
-                })
-                .with_context("rerun.testing.datatypes.AffixFuzzer20")?;
+                            data.data_type().clone(),
+                        )
+                    })
+                    .with_context("rerun.testing.datatypes.AffixFuzzer20")?;
             if data.is_empty() {
                 Vec::new()
             } else {
@@ -3378,7 +3420,7 @@ impl crate::Loggable for AffixFuzzer20 {
                 let p = {
                     if !arrays_by_name.contains_key("p") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "p",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer20");
@@ -3402,7 +3444,7 @@ impl crate::Loggable for AffixFuzzer20 {
                 let s = {
                     if !arrays_by_name.contains_key("s") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "s",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer20");

@@ -442,7 +442,7 @@ macro_rules! component_legacy_shim {
             }
 
             #[inline]
-            fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+            fn arrow_datatype() -> arrow2::datatypes::DataType {
                 <Self as re_log_types::LegacyComponent>::field()
                     .data_type()
                     .clone()

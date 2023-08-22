@@ -10,7 +10,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer1::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer1::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("single_float_optional", arrow::float32(), true),
                 arrow::field("single_string_required", arrow::utf8(), false),
@@ -33,7 +33,7 @@ namespace rerun {
                 arrow::field("flattened_scalar", arrow::float32(), false),
                 arrow::field(
                     "almost_flattened_scalar",
-                    rerun::datatypes::FlattenedScalar::to_arrow_datatype(),
+                    rerun::datatypes::FlattenedScalar::arrow_datatype(),
                     false
                 ),
                 arrow::field("from_parent", arrow::boolean(), true),
@@ -49,7 +49,7 @@ namespace rerun {
             }
 
             return Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+                arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::FloatBuilder>(memory_pool),
