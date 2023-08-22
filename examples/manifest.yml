@@ -63,6 +63,8 @@ root:
           python: python/shape_pointe
         - name: simplerecon
           python: python/simplerecon
+        - name: mcc
+          python: python/mcc
 
     - name: real-data
       title: Examples with Real Data
