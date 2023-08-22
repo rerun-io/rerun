@@ -39,7 +39,6 @@ pub struct SpaceViewBlueprint {
 }
 
 // Default needed for deserialization when adding/changing fields.
-// TODO: this didn't work out
 impl Default for SpaceViewBlueprint {
     fn default() -> Self {
         Self {
