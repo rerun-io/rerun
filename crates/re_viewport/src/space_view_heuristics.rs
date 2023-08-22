@@ -19,7 +19,7 @@ pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
 pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassName, EntitiesPerSystem>;
 
 // ---------------------------------------------------------------------------
-// TODO(andreas): Figure out how we can move heuristics based on concrete space view classes into the classes themselves.
+// TODO(#3079): Knowledge of specific space view classes should not leak here.
 
 /// Returns true if a class is one of our spatial classes.
 fn is_spatial_class(class: &SpaceViewClassName) -> bool {
