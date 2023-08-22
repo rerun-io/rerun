@@ -223,9 +223,8 @@ fn update_transform3d_lines_heuristics(
         if let Some(pinhole_path) = is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx) {
             // If there's a pinhole, we orient ourselves on its image plane distance
             let pinhole_path_props = entity_properties.get(pinhole_path);
-            properties.transform_3d_size = EditableAutoValue::Auto(
-                pinhole_path_props.pinhole_image_plane_distance.get() * 0.25,
-            );
+            properties.transform_3d_size =
+                EditableAutoValue::Auto(*pinhole_path_props.pinhole_image_plane_distance * 0.25);
         } else {
             // Size should be proportional to the scene extent, here covered by its diagonal
             let diagonal_length = (scene_bbox_accum.max - scene_bbox_accum.min).length();

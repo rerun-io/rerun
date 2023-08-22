@@ -61,7 +61,7 @@ impl CamerasPart {
                 return;
             };
 
-        let frustum_length = *props.pinhole_image_plane_distance.get();
+        let frustum_length = *props.pinhole_image_plane_distance;
 
         // If the camera is our reference, there is nothing for us to display.
         if transforms.reference_path() == ent_path {
