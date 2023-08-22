@@ -49,6 +49,7 @@ def main() -> None:
         pr={
             "number": args.pr_number,
             "branch": pr.head.ref,
+            "commit": latest_commit,
         },
     )
 
