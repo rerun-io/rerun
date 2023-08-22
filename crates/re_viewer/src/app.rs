@@ -279,12 +279,13 @@ impl App {
 
     fn run_pending_ui_commands(
         &mut self,
+        frame: &mut eframe::Frame,
+        egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
-        frame: &mut eframe::Frame,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(cmd, app_blueprint, store_context, frame);
+            self.run_ui_command(frame, egui_ctx, app_blueprint, store_context, cmd);
         }
     }
 
@@ -343,10 +344,11 @@ impl App {
 
     fn run_ui_command(
         &mut self,
-        cmd: UICommand,
+        _frame: &mut eframe::Frame,
+        egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
-        _frame: &mut eframe::Frame,
+        cmd: UICommand,
     ) {
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
@@ -370,8 +372,12 @@ impl App {
             }
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
-                self.open_file_promise =
-                    Some(poll_promise::Promise::spawn_async(open_rrd_dialog()));
+                let egui_ctx = egui_ctx.clone();
+                self.open_file_promise = Some(poll_promise::Promise::spawn_async(async move {
+                    let file = async_open_rrd_dialog().await;
+                    egui_ctx.request_repaint(); // Wake ui thread
+                    file
+                }));
             }
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context
@@ -1036,7 +1042,7 @@ impl eframe::App for App {
             self.command_sender.send_ui(cmd);
         }
 
-        self.run_pending_ui_commands(&app_blueprint, store_context.as_ref(), frame);
+        self.run_pending_ui_commands(frame, egui_ctx, &app_blueprint, store_context.as_ref());
 
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
@@ -1179,7 +1185,7 @@ fn open_rrd_dialog() -> Option<std::path::PathBuf> {
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn open_rrd_dialog() -> Option<FileContents> {
+async fn async_open_rrd_dialog() -> Option<FileContents> {
     let res = rfd::AsyncFileDialog::new()
         .add_filter("Rerun data file", &["rrd"])
         .pick_file()
