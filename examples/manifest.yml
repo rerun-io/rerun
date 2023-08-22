@@ -61,6 +61,8 @@ root:
           python: python/differentiable_blocks_world
         - name: shape_pointe
           python: python/shape_pointe
+        - name: simplerecon
+          python: python/simplerecon
 
     - name: real-data
       title: Examples with Real Data
