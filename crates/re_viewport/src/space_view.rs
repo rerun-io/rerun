@@ -39,6 +39,8 @@ pub struct SpaceViewBlueprint {
     pub entities_determined_by_user: bool,
 }
 
+// TODO: impl default to fix crashes
+
 /// Determine whether this `SpaceViewBlueprint` has user-edits relative to another `SpaceViewBlueprint`
 impl SpaceViewBlueprint {
     pub fn has_edits(&self, other: &Self) -> bool {
