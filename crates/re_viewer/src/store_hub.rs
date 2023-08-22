@@ -28,6 +28,9 @@ pub struct StoreHub {
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_dbs: StoreBundle,
 
+    /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
+    was_recording_active: bool,
+
     // The [`StoreGeneration`] from when the [`StoreDb`] was last saved
     #[cfg(not(target_arch = "wasm32"))]
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
@@ -68,6 +71,8 @@ impl StoreHub {
             selected_application_id: None,
             blueprint_by_app_id: blueprints,
             store_dbs: Default::default(),
+
+            was_recording_active: false,
 
             #[cfg(not(target_arch = "wasm32"))]
             blueprint_last_save: Default::default(),
@@ -114,6 +119,13 @@ impl StoreHub {
             })
     }
 
+    /// Keeps track if a recording was every activated.
+    ///
+    /// This useful for the heuristic controlling the welcome screen.
+    pub fn was_recording_active(&self) -> bool {
+        self.was_recording_active
+    }
+
     /// Change the selected/visible recording id.
     /// This will also change the application-id to match the newly selected recording.
     pub fn set_recording_id(&mut self, recording_id: StoreId) {
@@ -128,6 +140,7 @@ impl StoreHub {
         }
 
         self.selected_rec_id = Some(recording_id);
+        self.was_recording_active = true;
     }
 
     pub fn remove_recording_id(&mut self, recording_id: &StoreId) {
