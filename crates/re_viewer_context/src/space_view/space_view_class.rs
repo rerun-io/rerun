@@ -202,23 +202,30 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         query: &ViewQuery<'_>,
     ) {
         // TODO(andreas): We should be able to parallelize both of these loops
-        let mut view_ctx = systems.new_context_collection();
-        for system in view_ctx.systems.values_mut() {
-            re_tracing::profile_scope!(&format!("{}::execute", system.name()));
-            system.execute(ctx, query);
-        }
-
-        let mut parts = systems.new_part_collection();
-        let mut draw_data = Vec::new();
-        for part in parts.systems.values_mut() {
-            re_tracing::profile_scope!(&format!("{}::execute", part.name()));
-            match part.execute(ctx, query, &view_ctx) {
-                Ok(part_draw_data) => draw_data.extend(part_draw_data),
-                Err(err) => {
-                    re_log::error_once!("Error executing view part system: {}", err);
+        let view_ctx = {
+            re_tracing::profile_scope!("ViewContextSystem::execute");
+            let mut view_ctx = systems.new_context_collection();
+            for (name, system) in &mut view_ctx.systems {
+                re_tracing::profile_scope!(name.as_str());
+                system.execute(ctx, query);
+            }
+            view_ctx
+        };
+        let (parts, draw_data) = {
+            re_tracing::profile_scope!("ViewPartSystem::execute");
+            let mut parts = systems.new_part_collection();
+            let mut draw_data = Vec::new();
+            for (name, part) in &mut parts.systems {
+                re_tracing::profile_scope!(name.as_str());
+                match part.execute(ctx, query, &view_ctx) {
+                    Ok(part_draw_data) => draw_data.extend(part_draw_data),
+                    Err(err) => {
+                        re_log::error_once!("Error executing view part system: {}", err);
+                    }
                 }
             }
-        }
+            (parts, draw_data)
+        };
 
         typed_state_wrapper_mut(state, |state| {
             if let Err(err) = self.ui(ctx, ui, state, &view_ctx, &parts, query, draw_data) {
