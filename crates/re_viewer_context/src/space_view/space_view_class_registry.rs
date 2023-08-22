@@ -188,6 +188,15 @@ impl SpaceViewClassRegistry {
         }
     }
 
+    /// Iterates over all registered Space View class names and their system registries.
+    pub fn iter_system_registries(
+        &self,
+    ) -> impl Iterator<Item = (&SpaceViewClassName, &SpaceViewSystemRegistry)> {
+        self.registry
+            .iter()
+            .map(|(name, entry)| (name, &entry.systems))
+    }
+
     /// Iterates over all registered Space View class types.
     pub fn iter_classes(&self) -> impl Iterator<Item = &dyn DynSpaceViewClass> {
         self.registry.values().map(|entry| entry.class.as_ref())

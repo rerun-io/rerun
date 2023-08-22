@@ -1,15 +1,20 @@
 use ahash::HashMap;
 use itertools::Itertools;
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_components::{Pinhole, Tensor};
 use re_data_store::EntityPath;
 use re_types::components::DisconnectedSpace;
-use re_viewer_context::{SpaceViewClassName, ViewerContext};
+use re_types::ComponentName;
+use re_viewer_context::{SpaceViewClassName, ViewContextCollection, ViewSystemName, ViewerContext};
 
 use re_viewer_context::{AutoSpawnHeuristic, ViewPartCollection};
+use smallvec::SmallVec;
 
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
+
+pub type EntitiesPerSystem = IntMap<ViewSystemName, Vec<EntityPath>>;
+pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassName, EntitiesPerSystem>;
 
 // ---------------------------------------------------------------------------
 // TODO(andreas): Figure out how we can move heuristics based on concrete space view classes into the classes themselves.
@@ -29,6 +34,7 @@ fn is_tensor_class(class: &SpaceViewClassName) -> bool {
 pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
+    entities_per_system_per_class: &EntitiesPerSystemPerClass,
 ) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();
 
@@ -71,7 +77,11 @@ pub fn all_possible_space_views(
     // TODO: There's a lot of overlapping computation here.
     // This categorization should happen only once globally.
     for candidate in &mut candidates {
-        candidate.reset_systems_per_entity_path(ctx);
+        let empty_map = EntitiesPerSystem::default();
+        let entities_per_system = entities_per_system_per_class
+            .get(candidate.class_name())
+            .unwrap_or(&empty_map);
+        candidate.reset_systems_per_entity_path(entities_per_system);
     }
 
     candidates
@@ -149,11 +159,12 @@ fn is_interesting_space_view_not_at_root(
 pub fn default_created_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
+    entities_per_system_per_class: &EntitiesPerSystemPerClass,
 ) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();
 
     let store = ctx.store_db.store();
-    let candidates = all_possible_space_views(ctx, spaces_info)
+    let candidates = all_possible_space_views(ctx, spaces_info, entities_per_system_per_class)
         .into_iter()
         .map(|c| {
             (
@@ -399,4 +410,97 @@ fn is_entity_processed_by_part_collection(
     }
 
     false
+}
+
+pub fn default_entities_per_system_per_class(
+    ctx: &mut ViewerContext<'_>,
+) -> EntitiesPerSystemPerClass {
+    re_tracing::profile_function!();
+
+    // TODO(andreas): Handle several primary components.
+    let system_collections_per_class: IntMap<
+        SpaceViewClassName,
+        (ViewContextCollection, ViewPartCollection),
+    > = ctx
+        .space_view_class_registry
+        .iter_system_registries()
+        .map(|(class_name, entry)| {
+            (
+                *class_name,
+                (entry.new_context_collection(), entry.new_part_collection()),
+            )
+        })
+        .collect();
+
+    let primary_component_per_system = {
+        re_tracing::profile_scope!("gather primary component per system");
+
+        let mut primary_component_per_system: IntMap<
+            ComponentName,
+            IntMap<SpaceViewClassName, SmallVec<[ViewSystemName; 2]>>,
+        > = IntMap::default();
+        for (class_name, (context_collection, part_collection)) in &system_collections_per_class {
+            for (system_name, part) in part_collection.iter_with_names() {
+                primary_component_per_system
+                    .entry(*part.archetype().first())
+                    .or_default()
+                    .entry(*class_name)
+                    .or_default()
+                    .push(system_name);
+            }
+            for (system_name, part) in context_collection.iter_with_names() {
+                for archetype in part.archetypes() {
+                    primary_component_per_system
+                        .entry(*archetype.first())
+                        .or_default()
+                        .entry(*class_name)
+                        .or_default()
+                        .push(system_name);
+                }
+            }
+        }
+        primary_component_per_system
+    };
+
+    let mut per_class_per_system_entities = EntitiesPerSystemPerClass::default();
+
+    let store = ctx.store_db.store();
+    for ent_path in ctx.store_db.entity_db.entity_paths() {
+        let Some(components) = store.all_components(&re_log_types::Timeline::log_time(), ent_path) else {
+                continue;
+            };
+
+        for component in &components {
+            if let Some(systems_per_class) = primary_component_per_system.get(component) {
+                for (class, systems) in systems_per_class.iter() {
+                    let Some((_, part_collection)) = system_collections_per_class.get(class) else {
+                        continue;
+                    };
+
+                    for system in systems {
+                        // TODO(andreas/jleibs): This is only needed because of images.
+                        // The `queries_any_components_of` method should go away entirely after #3032 lands
+                        if let Ok(view_part_system) = part_collection.get_by_name(*system) {
+                            if !view_part_system.queries_any_components_of(
+                                store,
+                                ent_path,
+                                &components,
+                            ) {
+                                continue;
+                            }
+                        }
+
+                        per_class_per_system_entities
+                            .entry(*class)
+                            .or_default()
+                            .entry(*system)
+                            .or_default()
+                            .push(ent_path.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    per_class_per_system_entities
 }

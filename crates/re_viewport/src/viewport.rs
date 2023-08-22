@@ -6,8 +6,9 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use egui_tiles::Behavior;
-use re_ui::ReUi;
+use nohash_hasher::IntMap;
 
+use re_ui::ReUi;
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewHighlights,
     SpaceViewId, SpaceViewState, ViewerContext,
@@ -15,8 +16,9 @@ use re_viewer_context::{
 
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::default_created_space_views,
-    space_view_highlights::highlights_for_space_view, viewport_blueprint::load_viewport_blueprint,
+    space_view_heuristics::{default_created_space_views, default_entities_per_system_per_class},
+    space_view_highlights::highlights_for_space_view,
+    viewport_blueprint::load_viewport_blueprint,
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
@@ -151,17 +153,26 @@ impl<'a, 'b> Viewport<'a, 'b> {
     ) {
         re_tracing::profile_function!();
 
+        let entities_per_system_per_class = default_entities_per_system_per_class(ctx);
+
         for space_view in self.blueprint.space_views.values_mut() {
             let space_view_state = self.state.space_view_state_mut(
                 ctx.space_view_class_registry,
                 space_view.id,
                 space_view.class_name(),
             );
-            space_view.on_frame_start(ctx, spaces_info, space_view_state);
+
+            let empty_map = IntMap::default();
+            let entities_per_system = entities_per_system_per_class
+                .get(space_view.class_name())
+                .unwrap_or(&empty_map);
+            space_view.on_frame_start(ctx, spaces_info, space_view_state, entities_per_system);
         }
 
         if self.blueprint.auto_space_views {
-            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
+            for space_view_candidate in
+                default_created_space_views(ctx, spaces_info, &entities_per_system_per_class)
+            {
                 if self.should_auto_add_space_view(&space_view_candidate) {
                     self.blueprint.add_space_view(space_view_candidate);
                 }

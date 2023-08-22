@@ -16,7 +16,7 @@ use crate::{
     },
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
-    space_view_heuristics::default_created_space_views,
+    space_view_heuristics::{default_created_space_views, default_entities_per_system_per_class},
 };
 
 // ----------------------------------------------------------------------------
@@ -65,7 +65,10 @@ impl<'a> ViewportBlueprint<'a> {
         *has_been_user_edited = Default::default();
         *auto_space_views = Default::default();
 
-        for space_view in default_created_space_views(ctx, spaces_info) {
+        let entities_per_system_per_class = default_entities_per_system_per_class(ctx);
+        for space_view in
+            default_created_space_views(ctx, spaces_info, &entities_per_system_per_class)
+        {
             self.add_space_view(space_view);
         }
     }
