@@ -1,9 +1,14 @@
+use itertools::Itertools as _;
+use nohash_hasher::IntMap;
+
 use re_data_store::{EntityPath, EntityTree, TimeInt};
+use re_log_types::Timeline;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{ScreenshotMode, SpaceViewContents};
+use re_types::ComponentName;
 use re_viewer_context::{
     DynSpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    SpaceViewSystemRegistry, ViewerContext,
+    SpaceViewSystemRegistry, ViewSystemName, ViewerContext,
 };
 
 use crate::{
@@ -119,6 +124,8 @@ impl SpaceViewBlueprint {
                 &self.space_origin,
             );
         }
+
+        self.reset_systems_per_entity_path(ctx);
 
         while ScreenshotProcessor::next_readback_result(
             ctx.render_ctx,
@@ -251,6 +258,67 @@ impl SpaceViewBlueprint {
             self.contents
                 .insert_entities_according_to_hierarchy(entities.iter(), &self.space_origin);
             self.entities_determined_by_user = true;
+        }
+    }
+
+    pub fn reset_systems_per_entity_path(&mut self, ctx: &ViewerContext<'_>) {
+        re_tracing::profile_function!();
+
+        let class_entry = ctx
+            .space_view_class_registry
+            .get_system_registry_or_log_error(&self.class_name);
+
+        // TODO(andreas): Handle several primary components.
+        let mut primary_component_per_system: IntMap<ComponentName, Vec<ViewSystemName>> =
+            IntMap::default();
+        let part_collection = class_entry.new_part_collection();
+        for (name, part) in part_collection.iter_with_names() {
+            primary_component_per_system
+                .entry(*part.archetype().first())
+                .or_default()
+                .push(name);
+        }
+        for (name, part) in class_entry.new_context_collection().iter_with_names() {
+            for archetype in part.archetypes() {
+                primary_component_per_system
+                    .entry(*archetype.first())
+                    .or_default()
+                    .push(name);
+            }
+        }
+
+        let entities = self.contents.entity_paths().cloned().collect_vec();
+        let per_system_entities = self.contents.per_system_entities_mut();
+        per_system_entities.clear();
+
+        let store = ctx.store_db.store();
+        for ent_path in entities {
+            let Some(components) = store.all_components(&Timeline::log_time(), &ent_path) else {
+                continue;
+            };
+
+            for component in &components {
+                if let Some(systems) = primary_component_per_system.get(component) {
+                    for system in systems {
+                        // TODO(andreas/jleibs): This is only needed because of images.
+                        // The XXX method should go away entirely after #3032 lands
+                        if let Ok(view_part_system) = part_collection.get_by_name(*system) {
+                            if !view_part_system.queries_any_components_of(
+                                store,
+                                &ent_path,
+                                &components,
+                            ) {
+                                continue;
+                            }
+                        }
+
+                        per_system_entities
+                            .entry(*system)
+                            .or_default()
+                            .insert(ent_path.clone());
+                    }
+                }
+            }
         }
     }
 }

@@ -65,6 +65,7 @@ pub struct ViewPartCollection {
 }
 
 impl ViewPartCollection {
+    #[inline]
     pub fn get<T: ViewPartSystem + NamedViewSystem + 'static>(
         &self,
     ) -> Result<&T, SpaceViewSystemExecutionError> {
@@ -74,10 +75,23 @@ impl ViewPartCollection {
             .ok_or_else(|| SpaceViewSystemExecutionError::PartSystemNotFound(T::name().as_str()))
     }
 
+    #[inline]
+    pub fn get_by_name(
+        &self,
+        name: ViewSystemName,
+    ) -> Result<&dyn ViewPartSystem, SpaceViewSystemExecutionError> {
+        self.systems
+            .get(&name)
+            .map(|s| s.as_ref())
+            .ok_or_else(|| SpaceViewSystemExecutionError::PartSystemNotFound(name.as_str()))
+    }
+
+    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &dyn ViewPartSystem> {
         self.systems.values().map(|s| s.as_ref())
     }
 
+    #[inline]
     pub fn iter_with_names(&self) -> impl Iterator<Item = (ViewSystemName, &dyn ViewPartSystem)> {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }

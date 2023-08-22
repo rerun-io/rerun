@@ -13,11 +13,11 @@ pub enum SpaceViewClassRegistryError {
     #[error("Space View with class name {0:?} was already registered.")]
     DuplicateClassName(SpaceViewClassName),
 
-    #[error("Context System {0:?} was already registered.")]
-    DuplicateContextSystem(&'static str),
+    #[error("A Context System with name {0:?} was already registered.")]
+    NameAlreadyInUseForContextSystem(&'static str),
 
-    #[error("Part System {0:?} was already registered.")]
-    DuplicatePartSystem(&'static str),
+    #[error("A View Part System with name {0:?} was already registered.")]
+    NameAlreadyInUseForViewSystem(&'static str),
 }
 
 /// System registry for a space view class.
@@ -37,14 +37,19 @@ impl SpaceViewSystemRegistry {
     pub fn register_context_system<T: ViewContextSystem + NamedViewSystem + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
+        // Name should also not overlap with part systems.
+        if self.parts.contains_key(&T::name()) {
+            return Err(SpaceViewClassRegistryError::NameAlreadyInUseForViewSystem(
+                T::name().as_str(),
+            ));
+        }
+
         if self
             .contexts
             .insert(T::name(), Box::new(|| Box::<T>::default()))
             .is_some()
         {
-            Err(SpaceViewClassRegistryError::DuplicateContextSystem(
-                std::any::type_name::<T>(),
-            ))
+            Err(SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(T::name().as_str()))
         } else {
             Ok(())
         }
@@ -56,20 +61,27 @@ impl SpaceViewSystemRegistry {
     pub fn register_part_system<T: ViewPartSystem + NamedViewSystem + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
+        // Name should also not overlap with context systems.
+        if self.parts.contains_key(&T::name()) {
+            return Err(
+                SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(T::name().as_str()),
+            );
+        }
+
         if self
             .parts
             .insert(T::name(), Box::new(|| Box::<T>::default()))
             .is_some()
         {
-            Err(SpaceViewClassRegistryError::DuplicateContextSystem(
-                std::any::type_name::<T>(),
+            Err(SpaceViewClassRegistryError::NameAlreadyInUseForViewSystem(
+                T::name().as_str(),
             ))
         } else {
             Ok(())
         }
     }
 
-    pub(crate) fn new_context_collection(&self) -> ViewContextCollection {
+    pub fn new_context_collection(&self) -> ViewContextCollection {
         ViewContextCollection {
             systems: self
                 .contexts

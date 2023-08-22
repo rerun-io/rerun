@@ -229,6 +229,10 @@ impl SpaceViewContents {
         &self.per_system_entity_list
     }
 
+    pub fn per_system_entities_mut(&mut self) -> &mut PerSystemEntities {
+        &mut self.per_system_entity_list
+    }
+
     pub fn contains_all_entities_from(&self, other: &SpaceViewContents) -> bool {
         for (system, entities) in &other.per_system_entity_list {
             let Some(self_entities) = self.per_system_entity_list.get(system) else {

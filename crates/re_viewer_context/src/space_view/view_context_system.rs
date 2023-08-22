@@ -35,4 +35,10 @@ impl ViewContextCollection {
             .and_then(|s| s.as_any().downcast_ref())
             .ok_or_else(|| SpaceViewSystemExecutionError::ContextSystemNotFound(T::name().as_str()))
     }
+
+    pub fn iter_with_names(
+        &self,
+    ) -> impl Iterator<Item = (ViewSystemName, &dyn ViewContextSystem)> {
+        self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
+    }
 }

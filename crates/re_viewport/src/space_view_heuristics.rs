@@ -43,7 +43,7 @@ pub fn all_possible_space_views(
 
     // For each candidate, create space views for all possible classes.
     // TODO(andreas): Could save quite a view allocations here by re-using component- and parts arrays.
-    candidate_space_paths
+    let mut candidates = candidate_space_paths
         .flat_map(|candidate_space_path| {
             ctx.space_view_class_registry
                 .iter_classes()
@@ -66,7 +66,15 @@ pub fn all_possible_space_views(
                     }
                 })
         })
-        .collect()
+        .collect_vec();
+
+    // TODO: There's a lot of overlapping computation here.
+    // This categorization should happen only once globally.
+    for candidate in &mut candidates {
+        candidate.reset_systems_per_entity_path(ctx);
+    }
+
+    candidates
 }
 
 fn contains_any_image(
