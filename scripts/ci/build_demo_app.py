@@ -47,8 +47,14 @@ class Example:
             f"--save={rrd_path}",
         ]
 
+        # Configure flushing so that:
+        # * the resulting file size is deterministic
+        # * the file is chunked into small batches for better streaming
+        env = {**os.environ, "RERUN_FLUSH_TICK_SECS": "1000000000", "RERUN_FLUSH_NUM_BYTES": str(128 * 1024)}
+
         subprocess.run(
             args + self.build_args,
+            env=env,
             check=True,
         )
 
