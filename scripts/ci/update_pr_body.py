@@ -18,7 +18,6 @@ from github import Github
 from jinja2 import DebugUndefined, select_autoescape
 from jinja2.sandbox import SandboxedEnvironment
 
-
 DOCS_PREVIEW_MARKER = "<!--DOCS-PREVIEW-->"
 DOCS_PREVIEW_BARE_LINK  = "- [Docs preview](https://rerun.io/preview/{{ pr.commit }}/docs) <!--DOCS-PREVIEW-->"
 EXAMPLES_PREVIEW_MARKER = "<!--EXAMPLES-PREVIEW-->"
