@@ -181,6 +181,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
     }
 
     fn should_auto_add_space_view(&self, space_view_candidate: &SpaceViewBlueprint) -> bool {
+        re_tracing::profile_function!();
+
         for existing_view in self.blueprint.space_views.values() {
             if existing_view.space_origin == space_view_candidate.space_origin {
                 if existing_view.entities_determined_by_user {

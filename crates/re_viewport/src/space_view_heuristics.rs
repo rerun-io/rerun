@@ -39,6 +39,7 @@ pub fn all_possible_space_views(
     re_tracing::profile_function!();
 
     let empty_entities_per_system = EntitiesPerSystem::default();
+    let empty_entities = IntSet::default();
 
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
     // as well as all direct descendants of the root.
@@ -49,24 +50,41 @@ pub fn all_possible_space_views(
         .chain(root_children.values().map(|sub_tree| &sub_tree.path))
         .unique();
 
+    // Filter out entities that are not used in any of the part (!) systems of this class.
+    let entities_used_by_any_part_system_of_class: IntMap<_, _> = ctx
+        .space_view_class_registry
+        .iter_system_registries()
+        .map(|(class_name, system_registry)| {
+            let parts = system_registry.new_part_collection();
+            (
+                *class_name,
+                entities_per_system_per_class
+                    .get(class_name)
+                    .unwrap_or(&empty_entities_per_system)
+                    .iter()
+                    .filter(|(system, _)| parts.get_by_name(**system).is_ok())
+                    .flat_map(|(_, entities)| entities.iter().cloned())
+                    .collect::<IntSet<_>>(),
+            )
+        })
+        .collect();
+
     // For each candidate, create space views for all possible classes.
-    // TODO(andreas): Could save quite a view allocations here by re-using component- and parts arrays.
     let mut candidates = candidate_space_paths
         .flat_map(|candidate_space_path| {
             ctx.space_view_class_registry
                 .iter_classes()
                 .filter_map(|class| {
                     let class_name = class.name();
-                    let entities_per_system = entities_per_system_per_class
-                        .get(&class_name)
-                        .unwrap_or(&empty_entities_per_system);
+                    let entities_used_by_any_part_system =
+                        entities_used_by_any_part_system_of_class
+                            .get(&class_name)
+                            .unwrap_or(&empty_entities);
 
-                    let entities = default_queried_entities(
-                        ctx,
-                        &class_name,
+                    let entities = reachable_entities_from_root(
                         candidate_space_path,
                         spaces_info,
-                        entities_per_system,
+                        entities_used_by_any_part_system,
                     );
                     if entities.is_empty() {
                         None
@@ -81,8 +99,6 @@ pub fn all_possible_space_views(
         })
         .collect_vec();
 
-    // TODO: There's a lot of overlapping computation here.
-    // This categorization should happen only once globally.
     for candidate in &mut candidates {
         let entities_per_system = entities_per_system_per_class
             .get(candidate.class_name())
@@ -359,9 +375,6 @@ pub fn default_queried_entities(
 ) -> Vec<EntityPath> {
     re_tracing::profile_function!();
 
-    let mut entities = Vec::new();
-    let space_info = spaces_info.get_first_parent_with_info(space_path);
-
     // Filter out entities that are not used in any of the part (!) systems of this class.
     let parts = ctx
         .space_view_class_registry
@@ -373,14 +386,27 @@ pub fn default_queried_entities(
         .flat_map(|(_, entities)| entities.iter().cloned())
         .collect::<IntSet<_>>();
 
+    reachable_entities_from_root(space_path, spaces_info, &entities_used_by_any_part_system)
+}
+
+fn reachable_entities_from_root(
+    root: &EntityPath,
+    spaces_info: &SpaceInfoCollection,
+    allowed_entities: &IntSet<EntityPath>,
+) -> Vec<EntityPath> {
+    re_tracing::profile_function!();
+
+    let mut entities = Vec::new();
+    let space_info = spaces_info.get_first_parent_with_info(root);
+
     space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
         entities.extend(
             space_info
                 .descendants_without_transform
                 .iter()
                 .filter(|ent_path| {
-                    (ent_path.is_descendant_of(space_path) || ent_path == &space_path)
-                        && entities_used_by_any_part_system.contains(ent_path)
+                    (ent_path.is_descendant_of(root) || ent_path == &root)
+                        && allowed_entities.contains(ent_path)
                 })
                 .cloned(),
         );
@@ -389,7 +415,7 @@ pub fn default_queried_entities(
     entities
 }
 
-// TODO: Still used in a bunch of places, but should be goverend by the single global list.
+// TODO(andreas): Still used in a bunch of places, but use the global `EntitiesPerSystemPerClass` list.
 pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
     class: &SpaceViewClassName,
