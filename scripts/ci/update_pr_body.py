@@ -54,7 +54,6 @@ def main() -> None:
 
     new_body = pr.body
 
-
     docs_preview_link_end = new_body.find(DOCS_PREVIEW_MARKER)
     if docs_preview_link_end != -1:
         docs_preview_link_end += len(DOCS_PREVIEW_MARKER)
