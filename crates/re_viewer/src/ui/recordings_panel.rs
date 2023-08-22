@@ -13,9 +13,8 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
             ui,
             "Recordings",
             Some("These are the Recordings currently loaded in the Viewer"),
-            |_ui| {
-                #[cfg(not(target_arch = "wasm32"))]
-                add_button_ui(ctx, _ui);
+            |ui| {
+                add_button_ui(ctx, ui);
             },
         );
     });
@@ -149,7 +148,6 @@ fn recording_ui(
         .show(ui)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn add_button_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     use re_ui::UICommandSender;
 

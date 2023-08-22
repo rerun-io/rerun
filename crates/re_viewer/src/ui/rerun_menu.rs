@@ -34,10 +34,10 @@ impl App {
 
             ui.add_space(spacing);
 
+            UICommand::Open.menu_button_ui(ui, &self.command_sender);
+
             #[cfg(not(target_arch = "wasm32"))]
             {
-                UICommand::Open.menu_button_ui(ui, &self.command_sender);
-
                 self.save_buttons_ui(ui, _store_context);
 
                 UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);

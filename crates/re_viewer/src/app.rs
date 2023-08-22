@@ -7,8 +7,8 @@ use re_smart_channel::{Receiver, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
-    DynSpaceViewClass, PlayState, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    StoreContext, SystemCommand, SystemCommandSender,
+    DynSpaceViewClass, FileContents, PlayState, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, StoreContext, SystemCommand, SystemCommandSender,
 };
 
 use crate::{
@@ -92,6 +92,9 @@ pub struct App {
     component_ui_registry: ComponentUiRegistry,
 
     rx: Receiver<LogMsg>,
+
+    #[cfg(target_arch = "wasm32")]
+    open_file_promise: Option<poll_promise::Promise<Option<FileContents>>>,
 
     /// What is serialized
     pub(crate) state: AppState,
@@ -201,6 +204,8 @@ impl App {
             text_log_rx,
             component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx,
+            #[cfg(target_arch = "wasm32")]
+            open_file_promise: Default::default(),
             state,
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::new()),
@@ -297,8 +302,9 @@ impl App {
             SystemCommand::CloseRecordingId(recording_id) => {
                 store_hub.remove_recording_id(&recording_id);
             }
+
             #[cfg(not(target_arch = "wasm32"))]
-            SystemCommand::LoadRrd(path) => {
+            SystemCommand::LoadRrdPath(path) => {
                 let with_notification = true;
                 if let Some(rrd) = crate::loading::load_file_path(&path, with_notification) {
                     let store_id = rrd.store_dbs().next().map(|db| db.store_id().clone());
@@ -308,6 +314,18 @@ impl App {
                     }
                 }
             }
+
+            SystemCommand::LoadRrdContents(FileContents { file_name, bytes }) => {
+                let bytes: &[u8] = &bytes;
+                if let Some(rrd) = crate::loading::load_file_contents(&file_name, bytes) {
+                    let store_id = rrd.store_dbs().next().map(|db| db.store_id().clone());
+                    store_hub.add_bundle(rrd);
+                    if let Some(store_id) = store_id {
+                        store_hub.set_recording_id(store_id);
+                    }
+                }
+            }
+
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 let blueprint_db = store_hub.store_db_mut(&blueprint_id);
@@ -347,8 +365,13 @@ impl App {
             UICommand::Open => {
                 if let Some(rrd_file) = open_rrd_dialog() {
                     self.command_sender
-                        .send_system(SystemCommand::LoadRrd(rrd_file));
+                        .send_system(SystemCommand::LoadRrdPath(rrd_file));
                 }
+            }
+            #[cfg(target_arch = "wasm32")]
+            UICommand::Open => {
+                self.open_file_promise =
+                    Some(poll_promise::Promise::spawn_async(open_rrd_dialog()));
             }
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context
@@ -919,6 +942,17 @@ impl eframe::App for App {
             self.ram_limit_warner.update();
         }
 
+        #[cfg(target_arch = "wasm32")]
+        if let Some(promise) = &self.open_file_promise {
+            if let Some(contents_opt) = promise.ready() {
+                if let Some(contents) = contents_opt {
+                    self.command_sender
+                        .send_system(SystemCommand::LoadRrdContents(contents.clone()));
+                }
+                self.open_file_promise = None;
+            }
+        }
+
         #[cfg(not(target_arch = "wasm32"))]
         if self.screenshotter.is_screenshotting() {
             // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
@@ -1138,12 +1172,35 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::path::PathBuf;
-#[cfg(not(target_arch = "wasm32"))]
-fn open_rrd_dialog() -> Option<PathBuf> {
+fn open_rrd_dialog() -> Option<std::path::PathBuf> {
     rfd::FileDialog::new()
-        .add_filter("rerun data file", &["rrd"])
+        .add_filter("Rerun data file", &["rrd"])
         .pick_file()
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn open_rrd_dialog() -> Option<FileContents> {
+    let res = rfd::AsyncFileDialog::new()
+        .add_filter("Rerun data file", &["rrd"])
+        .pick_file()
+        .await;
+
+    match res {
+        Some(file) => Some({
+            let file_name = file.file_name();
+            re_log::debug!("Reading {file_name}…");
+            let bytes = file.read().await;
+            re_log::debug!(
+                "{file_name} was {}",
+                re_format::format_bytes(bytes.len() as _)
+            );
+            FileContents {
+                file_name,
+                bytes: bytes.into(),
+            }
+        }),
+        None => None,
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
