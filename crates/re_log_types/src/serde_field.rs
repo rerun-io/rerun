@@ -63,14 +63,17 @@ where
 
 impl<T> ArrowDeserialize for SerdeField<T>
 where
-    T: serde::ser::Serialize + serde::de::DeserializeOwned,
+    T: serde::ser::Serialize + serde::de::DeserializeOwned + Default,
 {
     type ArrayType = BinaryArray<i32>;
 
     #[inline]
     fn arrow_deserialize(v: <&Self::ArrayType as IntoIterator>::Item) -> Option<T> {
         re_tracing::profile_function!();
-        v.and_then(|v| rmp_serde::from_slice::<T>(v).ok())
+        Some(
+            v.and_then(|v| rmp_serde::from_slice::<T>(v).ok())
+                .unwrap_or_default(),
+        )
     }
 }
 
@@ -79,7 +82,7 @@ mod tests {
     use super::SerdeField;
     use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-    #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+    #[derive(Clone, Debug, PartialEq, Default, serde::Deserialize, serde::Serialize)]
     struct SomeStruct {
         foo: String,
         bar: u32,
