@@ -12,7 +12,7 @@ Use the script:
         "Wasm (release)":web_viewer/re_viewer_bg.wasm \
         "Wasm (debug)":web_viewer/re_viewer_debug_bg.wasm
 
-    python3 scripts/ci/sizes.py measure --format=table \
+    python3 scripts/ci/sizes.py measure --format=github \
         "Wasm (release)":web_viewer/re_viewer_bg.wasm \
         "Wasm (debug)":web_viewer/re_viewer_debug_bg.wasm
 
@@ -30,7 +30,7 @@ from typing import Any
 
 
 def get_unit(size: int | float) -> str:
-    UNITS = ["B", "KB", "MB", "GB", "TB"]
+    UNITS = ["B", "kiB", "MiB", "GiB", "TiB"]
 
     unit_index = 0
     while size > 1024:
@@ -42,19 +42,19 @@ def get_unit(size: int | float) -> str:
 
 DIVISORS = {
     "B": 1,
-    "KB": 1024,
-    "MB": 1024 * 1024,
-    "GB": 1024 * 1024 * 1024,
-    "TB": 1024 * 1024 * 1024 * 1024,
+    "kiB": 1024,
+    "MiB": 1024 * 1024,
+    "GiB": 1024 * 1024 * 1024,
+    "TiB": 1024 * 1024 * 1024 * 1024,
 }
 
 
 def get_divisor(unit: str) -> int:
-    return DIVISORS[unit.upper()] or 1
+    return DIVISORS[unit]
 
 
 def cell(value: float, div: float) -> str:
-    return str(round(value / div, 3))
+    return f"{value / div:.2f}"
 
 
 def render_table_dict(data: list[dict[str, str]]) -> str:
@@ -130,19 +130,19 @@ def compare(previous_path: str, current_path: str, threshold: float) -> None:
                         name,
                         f"{cell(previous, div)} {unit}",
                         f"{cell(current, div)} {unit}",
-                        sign + str(change) + "%",
+                        f"{sign}{change:.2f}%",
                     )
                 )
         elif "current" in entry:
             value = entry["current"]["value"]
             unit = entry["current"]["unit"]
 
-            rows.append((name, "(none)", f"{value} {unit}", "+100%"))
+            rows.append((name, "(none)", f"{value:.2f} {unit}", "+100%"))
         elif "previous" in entry:
             value = entry["previous"]["value"]
             unit = entry["previous"]["unit"]
 
-            rows.append((name, f"{value} {unit}", "(deleted)", "-100%"))
+            rows.append((name, f"{value:.2f} {unit}", "(deleted)", "-100%"))
 
     if len(rows) > 0:
         sys.stdout.write(render_table_rows(rows, headers))
@@ -162,7 +162,7 @@ def measure(files: list[str], format: Format) -> None:
         output.append(
             {
                 "name": name,
-                "value": str(round(size / div, 3)),
+                "value": str(round(size / div, 2)),
                 "unit": unit,
             }
         )
