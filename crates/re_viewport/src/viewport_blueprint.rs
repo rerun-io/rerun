@@ -61,9 +61,9 @@ impl<'a> ViewportBlueprint<'a> {
 
         *space_views = Default::default();
         *tree = Default::default();
-        *maximized = Default::default();
-        *has_been_user_edited = Default::default();
-        *auto_space_views = Default::default();
+        *maximized = None;
+        *has_been_user_edited = false;
+        *auto_space_views = AutoSpaceViews::default_for(self.blueprint_db.store_info()).0;
 
         for space_view in default_created_space_views(ctx, spaces_info) {
             self.add_space_view(space_view);
@@ -303,11 +303,7 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         .query_timeless_component::<AutoSpaceViews>(&VIEWPORT_PATH.into())
         .unwrap_or_else(|| {
             // Only enable auto-space-views if this is the app-default blueprint
-            AutoSpaceViews(
-                blueprint_db
-                    .store_info()
-                    .map_or(false, |ri| ri.is_app_default_blueprint()),
-            )
+            AutoSpaceViews::default_for(blueprint_db.store_info())
         });
 
     let space_view_maximized = blueprint_db

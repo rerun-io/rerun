@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use re_log_types::{serde_field::SerdeField, ComponentName, LegacyComponent};
+use re_log_types::{serde_field::SerdeField, ComponentName, LegacyComponent, StoreInfo};
 
 pub use re_viewer_context::SpaceViewId;
 
@@ -18,9 +18,15 @@ pub const VIEWPORT_PATH: &str = "viewport";
 ///     DataType::Boolean
 /// );
 /// ```
-#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(transparent)]
 pub struct AutoSpaceViews(pub bool);
+
+impl AutoSpaceViews {
+    pub fn default_for(store_info: Option<&StoreInfo>) -> Self {
+        Self(store_info.map_or(false, |ri| ri.is_app_default_blueprint()))
+    }
+}
 
 impl LegacyComponent for AutoSpaceViews {
     #[inline]
