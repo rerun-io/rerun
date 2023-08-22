@@ -9,11 +9,11 @@ Rerun provides a fast and extensible data visualization infrastructure for all k
 
 It is designed to be fast, flexible, extensible, and easily integrated anywhere.
 
-The Rerun Viewer can be compiled to Wasm, allowing it to [run in a browser](https://demo.rerun.io/version/0.8.1) and be embedded anywhere you can put a web-view [(e.g. in Jupyter Notebook)](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_).
+The Rerun Viewer can be compiled to Wasm, allowing it to [run in a browser](https://demo.rerun.io/) and be embedded anywhere you can put a web-view [(e.g. in Jupyter Notebook)](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_).
 
-Use one of out logging SDKs to produce log data that is then either live-streamed to the Rerun Viewer, or stored in a file for later viewing.
+Use one of our logging SDKs to produce log data that is then either live-streamed to the Rerun Viewer, or stored in a file for later viewing.
 
-Rerun is open-source, being built in the open on GitHub.
+Rerun is open-source, being built in the open [on GitHub](https://github.com/rerun-io/rerun).
 
 ## Architecture Overview
 
@@ -56,17 +56,15 @@ Arrow is a language-independent columnar memory format for arbitrary data. We us
 The only mainstream language that is both fast and safe. https://www.rerun.io/blog/why-rust
 
 ### Wasm
-We use [Wasm](https://webassembly.org) to get the viewer running at high speeds inside a browser or anywhere you can embed a web-view. For the native viewer we compile natively (no need for Electron!)
+We use [Wasm](https://webassembly.org) to get the viewer running at high speeds inside a browser or anywhere you can embed a web-view, but we also have native binaries (no need for Electron).
 
-### `egui``
+### `egui`
 [egui](https://www.egui.rs) is an easy-to-use cross-platform, [immediate mode GUI](https://github.com/emilk/egui#why-immediate-mode) created by our CTO.
 
-### `wgpu``
-[wgpu](https://wgpu.rs) provides a high-performance abstraction over Vulkan, Metal, D3D12, D3D11, OpenGLES, WebGL and [WebGPU](https://en.wikipedia.org/wiki/WebGPU). This lets us write the same code graphics code for native as for web.
+### `wgpu`
+[wgpu](https://wgpu.rs) provides a high-performance abstraction over Vulkan, Metal, D3D12, D3D11, OpenGLES, WebGL and [WebGPU](https://en.wikipedia.org/wiki/WebGPU). This lets us write the same code graphics code for native as for web. We use the WebGL backend when compiling for web, but will switch to WebGPU once it is available in more browsers.
 
-We use the WebGL backend when compiling for web. Once WebGPU is available in most browsers, we can easily switch to it for a nice performance boost!
-
-We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/re_renderer/README.md).
+We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](https://github.com/rerun-io/rerun/tree/main/crates/re_renderer).
 
 
 ## Immediate mode
@@ -76,7 +74,7 @@ In fact, the whole of the Rerun Viewer is written in an immediate mode style. Ea
 
 The advantage of immediate mode is that is removes all state management. There is no callbacks that are called when some state has already changed, and the state of the blueprint is always in sync with what you see on screen.
 
-Immediate mode is also a forcing function, forcing us to relentlessly optimize our code.
+Immediate mode is also a forcing function, pressuring us to relentlessly optimize our code.
 This leads to a very responsive GUI, where there is no "hickups" when switching data source or doing time scrubbing.
 
 Of course, this will only take us so far. In the future we plan on caching queries and work submitted to the renderer so that we don't perform unnecessary work each frame. We also plan on doing larger operation in background threads. This will be necessary in order to support viewing large datasets, e.g. several million points. The plan is still to do so within an immediate mode framework, retaining most of the advantages of stateless code.
