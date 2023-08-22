@@ -39,7 +39,19 @@ pub struct SpaceViewBlueprint {
     pub entities_determined_by_user: bool,
 }
 
-// TODO: impl default to fix crashes
+// Default needed for deserialization when adding/changing fields.
+impl Default for SpaceViewBlueprint {
+    fn default() -> Self {
+        Self {
+            id: SpaceViewId::invalid(),
+            display_name: "invalid".to_owned(),
+            class_name: SpaceViewClassName::new("invalid"),
+            space_origin: EntityPath::root(),
+            contents: Default::default(),
+            entities_determined_by_user: Default::default(),
+        }
+    }
+}
 
 /// Determine whether this `SpaceViewBlueprint` has user-edits relative to another `SpaceViewBlueprint`
 impl SpaceViewBlueprint {
