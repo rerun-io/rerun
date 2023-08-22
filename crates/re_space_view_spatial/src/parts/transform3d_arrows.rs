@@ -51,7 +51,7 @@ impl ViewPartSystem for Transform3DArrowsPart {
                 continue;
             }
 
-            if !props.transform_3d_visible.get() {
+            if !*props.transform_3d_visible {
                 continue;
             }
 
@@ -72,7 +72,7 @@ impl ViewPartSystem for Transform3DArrowsPart {
                 &mut line_builder,
                 world_from_obj,
                 Some(ent_path),
-                *props.transform_3d_size.get(),
+                *props.transform_3d_size,
                 query
                     .highlights
                     .entity_outline_mask(ent_path.hash())

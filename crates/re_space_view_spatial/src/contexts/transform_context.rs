@@ -186,7 +186,7 @@ impl TransformContext {
                 &child_tree.path,
                 data_store,
                 query,
-                |p| *entity_properties.get(p).pinhole_image_plane_distance.get(),
+                |p| *entity_properties.get(p).pinhole_image_plane_distance,
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
