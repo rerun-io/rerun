@@ -49,7 +49,7 @@ where
     ///
     /// Do *not* make this public as we need to guarantee that the memory is *never* read from!
     #[inline(always)]
-    fn as_slice(&mut self) -> &mut [u8] {
+    fn as_mut_byte_slice(&mut self) -> &mut [u8] {
         // TODO(andreas): Is this access slow given that it internally goes through a trait interface? Should we keep the pointer around?
         &mut self.write_view[self.unwritten_element_range.start * std::mem::size_of::<T>()
             ..self.unwritten_element_range.end * std::mem::size_of::<T>()]
@@ -61,7 +61,7 @@ where
     #[inline]
     pub fn extend_from_slice(&mut self, elements: &[T]) {
         let bytes = bytemuck::cast_slice(elements);
-        self.as_slice()[..bytes.len()].copy_from_slice(bytes);
+        self.as_mut_byte_slice()[..bytes.len()].copy_from_slice(bytes);
         self.unwritten_element_range.start += elements.len();
     }
 
@@ -84,7 +84,15 @@ where
     /// Panics if the data no longer fits into the buffer.
     #[inline]
     pub fn push(&mut self, element: T) {
-        self.as_slice()[..std::mem::size_of::<T>()].copy_from_slice(bytemuck::bytes_of(&element));
+        assert!(
+            self.unwritten_element_range.start < self.unwritten_element_range.end,
+            "CpuWriteGpuReadBuffer<{}> is full ({} elements written)",
+            std::any::type_name::<T>(),
+            self.unwritten_element_range.start,
+        );
+
+        self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
+            .copy_from_slice(bytemuck::bytes_of(&element));
         self.unwritten_element_range.start += 1;
     }
 
