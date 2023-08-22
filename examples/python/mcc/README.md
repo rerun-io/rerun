@@ -7,23 +7,23 @@ thumbnail: https://static.rerun.io/e62757c5953407373f2279be37a80748334cb6d7_mcc_
 
 By combining MetaAI's [Segment Anything Model (SAM)](https://github.com/facebookresearch/segment-anything) and [Multiview Compressive Coding (MCC)](https://github.com/facebookresearch/MCC) we can get a 3D object from a single image.
 
-TODO v1
+TODO(roym899) v1
 
 The basic idea is to use SAM to create a generic object mask so we can exclude the background.
 
-TODO v2
+TODO(roym899) v2
 
 The next step is to generate a depth image. Here we use the awesome [ZoeDepth](https://github.com/isl-org/ZoeDepth) to get realistic depth from the color image.
 
-TODO v3
+TODO(roym899) v3
 
 With depth, color, and an object mask we have everything needed to create a colored point cloud of the object from a single view
 
-TODO v4
+TODO(roym899) v4
 
 MCC encodes the colored points and then creates a reconstruction by sweeping through the volume, querying the network for occupancy and color at each point.
 
-TODO v5
+TODO(roym899) v5
 
 This is a really great example of how a lot of cool solutions are built these days; by stringing together more targeted pre-trained models.The details of the three building blocks can be found in the respective papers:
 - [Segment Anything](https://arxiv.org/abs/2304.02643) by Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alexander C. Berg, Wan-Yen Lo, Piotr Dollár, and Ross Girshick

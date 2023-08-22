@@ -7,7 +7,7 @@ thumbnail: https://static.rerun.io/2bca79bebaf58c7f8780756e07b93798abe5f6d8_wide
 
 Novel view synthesis has made remarkable progress in recent years, but most methods require per-scene optimization on many images. In their #CVPR2023 paper @du_yilun et al. propose a method that works with just 2 views. I created a visual walkthrough of the work with @rerundotio.
 
-TODO v1
+TODO(roym899) v1
 
 “Learning to Render Novel Views from Wide-Baseline Stereo Pairs” describes a three stage approach. (a) Image features for each input view are extracted.  (b) Features along the target rays are collected. (c) The color is predicted through the use of cross-attention.
 
@@ -21,10 +21,10 @@ TODO v1
 
 To render a pixel its corresponding ray is projected onto each input image. Instead of uniformly sampling along the ray in 3D, the samples are distributed such that they are equally spaced on the image plane. The same points are also projected onto the other view (light color).
 
-TODO v2
+TODO(roym899) v2
 
 The image features at these samples are used to synthesize new views. The method learns to attend to the features close to the surface. Here we show the attention maps for one pixel, and the resulting pseudo depth maps if we interpret the attention as a probability distribution.
 
-TODO v3
+TODO(roym899) v3
 
 Make sure to check out the [paper](https://arxiv.org/abs/2304.08463) by Yilun Du, Cameron Smith, Ayush Tewari, Vincent Sitzmann to learn about the details of the method.
