@@ -55,6 +55,8 @@ root:
           python: python/slahmr
         - name: limap
           python: python/limap
+        - name: widebaseline
+          python: python/widebaseline
 
     - name: real-data
       title: Examples with Real Data
