@@ -225,7 +225,7 @@ impl ImagesPart {
                 }
             };
 
-            if *ent_props.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth {
+            if *ent_props.backproject_depth && tensor.meaning == TensorDataMeaning::Depth {
                 if let Some(parent_pinhole_path) = transforms.parent_pinhole(ent_path) {
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
@@ -342,11 +342,11 @@ impl ImagesPart {
             &tensor_stats,
         )?;
 
-        let depth_from_world_scale = *properties.depth_from_world_scale.get();
+        let depth_from_world_scale = *properties.depth_from_world_scale;
 
         let world_depth_from_texture_depth = 1.0 / depth_from_world_scale;
 
-        let colormap = match *properties.color_mapper.get() {
+        let colormap = match *properties.color_mapper {
             re_data_store::ColorMapper::Colormap(colormap) => match colormap {
                 re_data_store::Colormap::Grayscale => Colormap::Grayscale,
                 re_data_store::Colormap::Turbo => Colormap::Turbo,
@@ -362,7 +362,7 @@ impl ImagesPart {
         // at that distance.
         let fov_y = intrinsics.fov_y().unwrap_or(1.0);
         let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * height as f32);
-        let radius_scale = *properties.backproject_radius_scale.get();
+        let radius_scale = *properties.backproject_radius_scale;
         let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
         Ok(DepthCloud {

@@ -439,7 +439,7 @@ fn pinhole_props_ui(
         .is_some()
     {
         ui.label("Image plane distance");
-        let mut distance = *entity_props.pinhole_image_plane_distance.get();
+        let mut distance = *entity_props.pinhole_image_plane_distance;
         let speed = (distance * 0.05).at_least(0.01);
         if ui
             .add(
@@ -477,7 +477,7 @@ fn depth_props_ui(
         .query_latest_component_at_closest_ancestor::<Pinhole>(entity_path, &query)?
         .0;
 
-    let mut backproject_depth = *entity_props.backproject_depth.get();
+    let mut backproject_depth = *entity_props.backproject_depth;
 
     if ctx
         .re_ui

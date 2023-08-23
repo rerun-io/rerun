@@ -75,6 +75,8 @@ where
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.get()
+        match self {
+            EditableAutoValue::Auto(v) | EditableAutoValue::UserEdited(v) => v,
+        }
     }
 }

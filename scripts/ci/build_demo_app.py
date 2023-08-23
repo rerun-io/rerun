@@ -47,12 +47,18 @@ class Example:
             f"--save={rrd_path}",
         ]
 
+        # Configure flushing so that:
+        # * the resulting file size is deterministic
+        # * the file is chunked into small batches for better streaming
+        env = {**os.environ, "RERUN_FLUSH_TICK_SECS": "1000000000", "RERUN_FLUSH_NUM_BYTES": str(128 * 1024)}
+
         subprocess.run(
             args + self.build_args,
+            env=env,
             check=True,
         )
 
-        print(f"{rrd_path}: {os.path.getsize(rrd_path) / 1e6:.1f} MB")
+        print(f"{rrd_path}: {os.path.getsize(rrd_path) / (1024 * 1024):.1f} MiB")
 
     def supports_save(self) -> bool:
         with open(self.path) as f:
