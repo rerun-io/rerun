@@ -270,7 +270,7 @@ impl DataCell {
     // `(component, type)` tuple kinda thing.
     #[inline]
     pub fn from_native_empty<C: Component>() -> Self {
-        Self::from_arrow_empty(C::name(), C::to_arrow_datatype())
+        Self::from_arrow_empty(C::name(), C::arrow_datatype())
     }
 
     /// Builds an empty `DataCell` from an arrow datatype.

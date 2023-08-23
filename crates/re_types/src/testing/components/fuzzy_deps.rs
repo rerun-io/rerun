@@ -42,7 +42,7 @@ impl crate::Loggable for PrimitiveComponent {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::UInt32
     }
@@ -167,7 +167,7 @@ impl crate::Loggable for StringComponent {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Utf8
     }

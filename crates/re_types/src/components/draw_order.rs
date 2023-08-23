@@ -49,7 +49,7 @@ impl crate::Loggable for DrawOrder {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Float32
     }
@@ -85,7 +85,7 @@ impl crate::Loggable for DrawOrder {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.components.DrawOrder".to_owned(),
-                        Box::new(Self::to_arrow_datatype()),
+                        Box::new(Self::arrow_datatype()),
                         None,
                     )
                     .to_logical_type()

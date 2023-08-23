@@ -50,6 +50,6 @@ impl arrow2_convert::field::ArrowField for Point2D {
 
     fn data_type() -> arrow2::datatypes::DataType {
         use crate::Loggable as _;
-        Self::to_arrow_datatype()
+        Self::arrow_datatype()
     }
 }

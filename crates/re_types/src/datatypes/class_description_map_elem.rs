@@ -47,18 +47,18 @@ impl crate::Loggable for ClassDescriptionMapElem {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "class_id".to_owned(),
-                data_type: <crate::datatypes::ClassId>::to_arrow_datatype(),
+                data_type: <crate::datatypes::ClassId>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
             Field {
                 name: "class_description".to_owned(),
-                data_type: <crate::datatypes::ClassDescription>::to_arrow_datatype(),
+                data_type: <crate::datatypes::ClassDescription>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -91,11 +91,11 @@ impl crate::Loggable for ClassDescriptionMapElem {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::ClassDescriptionMapElem>::to_arrow_datatype()),
+                        Box::new(<crate::datatypes::ClassDescriptionMapElem>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::ClassDescriptionMapElem>::to_arrow_datatype()
+                    <crate::datatypes::ClassDescriptionMapElem>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -186,14 +186,13 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         DataType::Struct(vec![
                             Field {
                                 name: "class_id".to_owned(),
-                                data_type: <crate::datatypes::ClassId>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::ClassId>::arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
                             Field {
                                 name: "class_description".to_owned(),
-                                data_type: <crate::datatypes::ClassDescription>::to_arrow_datatype(
-                                ),
+                                data_type: <crate::datatypes::ClassDescription>::arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
@@ -214,7 +213,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                 let class_id = {
                     if !arrays_by_name.contains_key("class_id") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "class_id",
                         ))
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");
@@ -236,7 +235,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                 let class_description = {
                     if !arrays_by_name.contains_key("class_description") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "class_description",
                         ))
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");

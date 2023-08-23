@@ -13,7 +13,7 @@ namespace rerun {
     namespace components {
         const char* DrawOrder::NAME = "rerun.draw_order";
 
-        const std::shared_ptr<arrow::DataType>& DrawOrder::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& DrawOrder::arrow_datatype() {
             static const auto datatype = arrow::float32();
             return datatype;
         }
@@ -67,8 +67,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema =
-                arrow::schema({arrow::field(DrawOrder::NAME, DrawOrder::to_arrow_datatype(), false)}
-                );
+                arrow::schema({arrow::field(DrawOrder::NAME, DrawOrder::arrow_datatype(), false)});
 
             rerun::DataCell cell;
             cell.component_name = DrawOrder::NAME;

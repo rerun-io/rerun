@@ -14,8 +14,8 @@ namespace rerun {
     namespace components {
         const char *Label::NAME = "rerun.label";
 
-        const std::shared_ptr<arrow::DataType> &Label::to_arrow_datatype() {
-            static const auto datatype = rerun::datatypes::Label::to_arrow_datatype();
+        const std::shared_ptr<arrow::DataType> &Label::arrow_datatype() {
+            static const auto datatype = rerun::datatypes::Label::arrow_datatype();
             return datatype;
         }
 
@@ -68,7 +68,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema =
-                arrow::schema({arrow::field(Label::NAME, Label::to_arrow_datatype(), false)});
+                arrow::schema({arrow::field(Label::NAME, Label::arrow_datatype(), false)});
 
             rerun::DataCell cell;
             cell.component_name = Label::NAME;

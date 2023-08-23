@@ -48,7 +48,7 @@ impl crate::Loggable for Rotation3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Union(
             vec![
@@ -60,13 +60,13 @@ impl crate::Loggable for Rotation3D {
                 },
                 Field {
                     name: "Quaternion".to_owned(),
-                    data_type: <crate::datatypes::Quaternion>::to_arrow_datatype(),
+                    data_type: <crate::datatypes::Quaternion>::arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },
                 Field {
                     name: "AxisAngle".to_owned(),
-                    data_type: <crate::datatypes::RotationAxisAngle>::to_arrow_datatype(),
+                    data_type: <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },
@@ -98,11 +98,11 @@ impl crate::Loggable for Rotation3D {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::Rotation3D>::to_arrow_datatype()),
+                        Box::new(<crate::datatypes::Rotation3D>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::Rotation3D>::to_arrow_datatype()
+                    <crate::datatypes::Rotation3D>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -272,14 +272,14 @@ impl crate::Loggable for Rotation3D {
                                 },
                                 Field {
                                     name: "Quaternion".to_owned(),
-                                    data_type: <crate::datatypes::Quaternion>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::Quaternion>::arrow_datatype(),
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
                                 Field {
                                     name: "AxisAngle".to_owned(),
                                     data_type:
-                                        <crate::datatypes::RotationAxisAngle>::to_arrow_datatype(),
+                                        <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
@@ -299,7 +299,7 @@ impl crate::Loggable for Rotation3D {
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             data.data_type().clone(),
                         )
                     })
@@ -443,7 +443,7 @@ impl crate::Loggable for Rotation3D {
                                 }),
                                 _ => {
                                     return Err(crate::DeserializationError::missing_union_arm(
-                                        Self::to_arrow_datatype(),
+                                        Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ))

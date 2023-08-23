@@ -59,11 +59,11 @@ impl crate::Loggable for LineStrip2D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::datatypes::Vec2D>::to_arrow_datatype(),
+            data_type: <crate::datatypes::Vec2D>::arrow_datatype(),
             is_nullable: false,
             metadata: [].into(),
         }))
@@ -117,7 +117,7 @@ impl crate::Loggable for LineStrip2D {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.components.LineStrip2D".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -213,7 +213,7 @@ impl crate::Loggable for LineStrip2D {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
-                            data_type: <crate::datatypes::Vec2D>::to_arrow_datatype(),
+                            data_type: <crate::datatypes::Vec2D>::arrow_datatype(),
                             is_nullable: false,
                             metadata: [].into(),
                         })),

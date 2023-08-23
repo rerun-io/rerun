@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& StringComponent::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& StringComponent::arrow_datatype() {
             static const auto datatype = arrow::utf8();
             return datatype;
         }

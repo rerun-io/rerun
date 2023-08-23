@@ -14,8 +14,8 @@ namespace rerun {
     namespace components {
         const char *ClassId::NAME = "rerun.components.ClassId";
 
-        const std::shared_ptr<arrow::DataType> &ClassId::to_arrow_datatype() {
-            static const auto datatype = rerun::datatypes::ClassId::to_arrow_datatype();
+        const std::shared_ptr<arrow::DataType> &ClassId::arrow_datatype() {
+            static const auto datatype = rerun::datatypes::ClassId::arrow_datatype();
             return datatype;
         }
 
@@ -70,7 +70,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema =
-                arrow::schema({arrow::field(ClassId::NAME, ClassId::to_arrow_datatype(), false)});
+                arrow::schema({arrow::field(ClassId::NAME, ClassId::arrow_datatype(), false)});
 
             rerun::DataCell cell;
             cell.component_name = ClassId::NAME;
