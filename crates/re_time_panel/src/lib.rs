@@ -12,11 +12,13 @@ mod time_selection_ui;
 
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, PointerButton, Rect, Shape, Vec2};
+use std::slice;
 
 use re_data_store::{EntityTree, InstancePath, TimeHistogram};
 use re_data_ui::item_ui;
 use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
-use re_viewer_context::{Item, TimeControl, TimeView, ViewerContext};
+use re_ui::list_item::ListItem;
+use re_viewer_context::{HoverHighlight, Item, TimeControl, TimeView, ViewerContext};
 
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
@@ -356,6 +358,8 @@ impl TimePanel {
             // We implement drag-to-scroll manually instead!
             .drag_to_scroll(false)
             .show(ui, |ui| {
+                ui.spacing_mut().item_spacing.y = 0.0; // no spacing needed for ListItems
+
                 if time_area_response.dragged_by(PointerButton::Primary) {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
@@ -394,23 +398,30 @@ impl TimePanel {
             format!("{last_path_part}/") // show we have children with a /
         };
 
-        let collapsing_header_id = ui.make_persistent_id(&tree.path);
+        let collapsing_header_id = ui.make_persistent_id(ui.id().with(&tree.path));
         let default_open = tree.path.len() <= 1 && !tree.is_leaf();
-        let (_collapsing_button_response, custom_header_response, body_returned) =
-            egui::collapsing_header::CollapsingState::load_with_default_open(
-                ui.ctx(),
-                collapsing_header_id,
-                default_open,
-            )
-            .show_header(ui, |ui| {
-                item_ui::entity_path_button_to(ctx, ui, None, &tree.path, text)
-            })
-            .body(|ui| {
+
+        let item = Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone()));
+        let is_selected = ctx.selection().contains(&item);
+        let is_item_hovered =
+            ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
+
+        let re_ui::list_item::ShowCollapsingResponse {
+            item_response: response,
+            body_response,
+        } = ListItem::new(ctx.re_ui, text)
+            .selected(is_selected)
+            .force_hovered(is_item_hovered)
+            .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
                 self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
             });
 
-        let is_closed = body_returned.is_none();
-        let response = custom_header_response.response;
+        let response = response
+            .on_hover_ui(|ui| re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, &tree.path));
+
+        item_ui::select_hovered_on_click(ctx, &response, slice::from_ref(&item));
+
+        let is_closed = body_response.is_none();
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 
@@ -427,8 +438,6 @@ impl TimePanel {
         // show the data in the time area:
 
         if is_visible && is_closed {
-            let item = Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone()));
-
             paint_streams_guide_line(ctx, &item, ui, response_rect);
 
             let empty = re_data_store::TimeHistogram::default();
@@ -486,21 +495,26 @@ impl TimePanel {
                 }
 
                 let component_path = ComponentPath::new(tree.path.clone(), *component_name);
+                let component_name = component_path.component_name.short_name();
+                let item = Item::ComponentPath(component_path);
 
-                let response = ui
-                    .horizontal(|ui| {
-                        // Add some spacing to match CollapsingHeader:
-                        ui.spacing_mut().item_spacing.x = 0.0;
-                        let response =
-                            ui.allocate_response(egui::vec2(indent, 0.0), egui::Sense::hover());
-                        ui.painter().circle_filled(
-                            response.rect.center(),
-                            2.0,
-                            ui.visuals().text_color(),
-                        );
-                        item_ui::component_path_button(ctx, ui, &component_path);
+                let response = ListItem::new(ctx.re_ui, component_name)
+                    .selected(ctx.selection().contains(&item))
+                    .force_hovered(
+                        ctx.selection_state().highlight_for_ui_element(&item)
+                            == HoverHighlight::Hovered,
+                    )
+                    .with_icon_fn(|re_ui, ui, rect, visual| {
+                        ui.painter()
+                            .circle_filled(rect.center(), 2.0, visual.text_color());
                     })
-                    .response;
+                    .show(ui);
+
+                re_data_ui::item_ui::select_hovered_on_click(
+                    ctx,
+                    &response,
+                    slice::from_ref(&item),
+                );
 
                 let response_rect = response.rect;
 
@@ -528,7 +542,6 @@ impl TimePanel {
                     });
 
                     // show the data in the time area:
-                    let item = Item::ComponentPath(component_path);
                     paint_streams_guide_line(ctx, &item, ui, response_rect);
 
                     let row_rect = Rect::from_x_y_ranges(

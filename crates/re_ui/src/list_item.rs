@@ -137,7 +137,11 @@ impl<'a> ListItem<'a> {
 
     /// Provide a closure to display on-hover buttons on the right of the item.
     ///
-    /// Note that the a right to left layout is used, so the right-most button must be added first.
+    /// Notes:
+    /// - If buttons are used, the item will allocate the full available width of the parent. If the
+    ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
+    ///   used, the item will only allocate the width needed for the text and icons if any.
+    /// - A right to left layout is used, so the right-most button must be added first.
     pub fn with_buttons(
         mut self,
         buttons: impl FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a,
@@ -198,7 +202,23 @@ impl<'a> ListItem<'a> {
             0.0
         };
 
-        let desired_size = egui::vec2(ui.available_width(), ReUi::list_item_height());
+        let desired_width = if self.buttons_fn.is_some() {
+            ui.available_width()
+        } else {
+            let text_job = self.text.clone().into_text_job(
+                ui.style(),
+                egui::FontSelection::Default,
+                Align::LEFT,
+            );
+
+            let text_width = ui.fonts(|f| text_job.into_galley(f)).size().x;
+
+            // The `ceil()` is needed to avoid some rounding errors which leads to text being
+            // truncated even though we allocated enough space.
+            (collapse_extra + icon_extra + text_width).ceil()
+        };
+
+        let desired_size = egui::vec2(desired_width, ReUi::list_item_height());
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
 
         // override_hover should not affect the returned response
