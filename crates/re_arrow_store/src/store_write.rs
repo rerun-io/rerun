@@ -437,6 +437,13 @@ impl IndexedBucket {
         } = &mut *inner;
 
         // append time to primary column and update time range appropriately
+
+        if let Some(last_time) = col_time.last() {
+            if time.as_i64() < *last_time {
+                *is_sorted = false;
+            }
+        }
+
         col_time.push(time.as_i64());
         *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
         size_bytes_added += time.as_i64().total_size_bytes();
@@ -494,9 +501,6 @@ impl IndexedBucket {
                 column.0.push(none_cell);
             }
         }
-
-        // TODO(#433): re_datastore: properly handle already sorted data during insertion
-        *is_sorted = false;
 
         *size_bytes += size_bytes_added;
 
