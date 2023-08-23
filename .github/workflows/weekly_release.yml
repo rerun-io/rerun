@@ -41,8 +41,8 @@ jobs:
           commit-message: "[weekly-release] ${{ env.CRATE_VERSION }}"
           title: "Release ${{ env.CRATE_VERSION }}"
           labels: |
-            "⛴ release"
-            "exclude from changelog"
+            ⛴ release
+            exclude from changelog
           committer: "Rerun Bot <bot@rerun.io>"
           author: "Rerun Bot <bot@rerun.io>"
           body: |
