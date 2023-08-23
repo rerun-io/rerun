@@ -86,6 +86,9 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
 
 impl Transform3D {
     pub const NUM_COMPONENTS: usize = 1usize;
+    pub const fn marker_component() -> Transform3DMarker {
+        Transform3DMarker
+    }
 }
 
 impl crate::Archetype for Transform3D {
@@ -121,6 +124,7 @@ impl crate::Archetype for Transform3D {
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
         use crate::{Loggable as _, ResultExt as _};
+        <Transform3DMarker>::try_to_arrow([Self::marker_component()], None);
         Ok([{
             Some({
                 let array = <crate::components::Transform3D>::try_to_arrow([&self.transform], None);
@@ -169,6 +173,109 @@ impl crate::Archetype for Transform3D {
         Ok(Self { transform })
     }
 }
+
+/// Marker component indicating that the associated data was logged using the high-level archetype-based APIs.
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+pub struct Transform3DMarker;
+
+impl<'a> From<Transform3DMarker> for ::std::borrow::Cow<'a, Transform3DMarker> {
+    #[inline]
+    fn from(value: Transform3DMarker) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Transform3DMarker> for ::std::borrow::Cow<'a, Transform3DMarker> {
+    #[inline]
+    fn from(value: &'a Transform3DMarker) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Loggable for Transform3DMarker {
+    type Name = crate::ComponentName;
+    type Item<'a> = Option<Self>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
+    #[inline]
+    fn name() -> Self::Name {
+        "rerun.components.Transform3DMarker".into()
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Null
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok(NullArray::new(
+            {
+                _ = extension_wrapper;
+                DataType::Extension(
+                    "rerun.components.Transform3DMarker".to_owned(),
+                    Box::new(Self::to_arrow_datatype()),
+                    None,
+                )
+                .to_logical_type()
+                .clone()
+            },
+            1,
+        )
+        .boxed())
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        Ok(vec![
+            Some(Self);
+            data.as_any()
+                .downcast_ref::<NullArray>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Float32,
+                        data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.Transform3DMarker")?
+                .null_count()
+        ])
+    }
+
+    #[inline]
+    fn try_iter_from_arrow(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
+    where
+        Self: Sized,
+    {
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+    }
+
+    #[inline]
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
+        item
+    }
+}
+
+impl crate::Component for Transform3DMarker {}
 
 impl Transform3D {
     pub fn new(transform: impl Into<crate::components::Transform3D>) -> Self {

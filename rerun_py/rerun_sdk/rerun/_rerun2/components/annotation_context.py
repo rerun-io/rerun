@@ -2,26 +2,42 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
+    TYPE_CHECKING, SupportsFloat, Literal)
 
-import pyarrow as pa
 from attrs import define, field
+import numpy as np
+import numpy.typing as npt
+import pyarrow as pa
 
-from .. import datatypes
 from .._baseclasses import (
-    BaseExtensionArray,
+    Archetype,
     BaseExtensionType,
+    BaseExtensionArray,
+    BaseDelegatingExtensionType,
+    BaseDelegatingExtensionArray
+)
+from .._converters import (
+    int_or_none,
+    float_or_none,
+    bool_or_none,
+    str_or_none,
+    to_np_uint8,
+    to_np_uint16,
+    to_np_uint32,
+    to_np_uint64,
+    to_np_int8,
+    to_np_int16,
+    to_np_int32,
+    to_np_int64,
+    to_np_bool,
+    to_np_float16,
+    to_np_float32,
+    to_np_float64
 )
 from ._overrides import annotationcontext_class_map_converter, annotationcontext_native_to_pa_array  # noqa: F401
-
-__all__ = [
-    "AnnotationContext",
-    "AnnotationContextArray",
-    "AnnotationContextArrayLike",
-    "AnnotationContextLike",
-    "AnnotationContextType",
-]
-
+from .. import datatypes
+__all__ = ["AnnotationContext", "AnnotationContextArray", "AnnotationContextArrayLike", "AnnotationContextLike", "AnnotationContextType"]
 
 @define
 class AnnotationContext:
@@ -42,95 +58,17 @@ AnnotationContextLike = AnnotationContext
 AnnotationContextArrayLike = Union[
     AnnotationContext,
     Sequence[AnnotationContextLike],
-    datatypes.ClassDescription,
-    Sequence[datatypes.ClassDescriptionMapElemLike],
+    datatypes.ClassDescription, Sequence[datatypes.ClassDescriptionMapElemLike]
 ]
 
 
 # --- Arrow support ---
 
-
 class AnnotationContextType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self,
-            pa.list_(
-                pa.field(
-                    "item",
-                    pa.struct(
-                        [
-                            pa.field("class_id", pa.uint16(), nullable=False, metadata={}),
-                            pa.field(
-                                "class_description",
-                                pa.struct(
-                                    [
-                                        pa.field(
-                                            "info",
-                                            pa.struct(
-                                                [
-                                                    pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                                    pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                                    pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                                                ]
-                                            ),
-                                            nullable=False,
-                                            metadata={},
-                                        ),
-                                        pa.field(
-                                            "keypoint_annotations",
-                                            pa.list_(
-                                                pa.field(
-                                                    "item",
-                                                    pa.struct(
-                                                        [
-                                                            pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                                            pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                                            pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                                                        ]
-                                                    ),
-                                                    nullable=False,
-                                                    metadata={},
-                                                )
-                                            ),
-                                            nullable=False,
-                                            metadata={},
-                                        ),
-                                        pa.field(
-                                            "keypoint_connections",
-                                            pa.list_(
-                                                pa.field(
-                                                    "item",
-                                                    pa.struct(
-                                                        [
-                                                            pa.field(
-                                                                "keypoint0", pa.uint16(), nullable=False, metadata={}
-                                                            ),
-                                                            pa.field(
-                                                                "keypoint1", pa.uint16(), nullable=False, metadata={}
-                                                            ),
-                                                        ]
-                                                    ),
-                                                    nullable=False,
-                                                    metadata={},
-                                                )
-                                            ),
-                                            nullable=False,
-                                            metadata={},
-                                        ),
-                                    ]
-                                ),
-                                nullable=False,
-                                metadata={},
-                            ),
-                        ]
-                    ),
-                    nullable=False,
-                    metadata={},
-                )
-            ),
-            "rerun.annotation_context",
+            self, pa.list_(pa.field("item", pa.struct([pa.field("class_id", pa.uint16(), nullable=False, metadata={}), pa.field("class_description", pa.struct([pa.field("info", pa.struct([pa.field("id", pa.uint16(), nullable=False, metadata={}), pa.field("label", pa.utf8(), nullable=True, metadata={}), pa.field("color", pa.uint32(), nullable=True, metadata={})]), nullable=False, metadata={}), pa.field("keypoint_annotations", pa.list_(pa.field("item", pa.struct([pa.field("id", pa.uint16(), nullable=False, metadata={}), pa.field("label", pa.utf8(), nullable=True, metadata={}), pa.field("color", pa.uint32(), nullable=True, metadata={})]), nullable=False, metadata={})), nullable=False, metadata={}), pa.field("keypoint_connections", pa.list_(pa.field("item", pa.struct([pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}), pa.field("keypoint1", pa.uint16(), nullable=False, metadata={})]), nullable=False, metadata={})), nullable=False, metadata={})]), nullable=False, metadata={})]), nullable=False, metadata={})), "rerun.annotation_context"
         )
-
 
 class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
     _EXTENSION_NAME = "rerun.annotation_context"
@@ -140,8 +78,9 @@ class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
         return annotationcontext_native_to_pa_array(data, data_type)
 
-
 AnnotationContextType._ARRAY_TYPE = AnnotationContextArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AnnotationContextType())
+
+

@@ -70,7 +70,11 @@ impl CodeGenerator for RustCodeGenerator {
             components_testing_path,
             arrow_registry,
             objects,
-            &objects.ordered_objects(ObjectKind::Component.into()),
+            &objects
+                .ordered_objects(ObjectKind::Component.into())
+                .into_iter()
+                .filter(|obj| !obj.is_marker_component())
+                .collect::<Vec<_>>(),
         ));
 
         let archetypes_path = self.crate_path.join("src/archetypes");
@@ -388,7 +392,9 @@ impl QuotedObject {
             .map(|obj_field| ObjectFieldTokenizer(obj, obj_field));
 
         let is_tuple_struct = is_tuple_struct_from_obj(obj);
-        let quoted_struct = if is_tuple_struct {
+        let quoted_struct = if obj.is_marker_component() {
+            quote! { pub struct #name; }
+        } else if is_tuple_struct {
             quote! { pub struct #name(#(#quoted_fields,)*); }
         } else {
             quote! { pub struct #name { #(#quoted_fields,)* }}
@@ -1029,6 +1035,11 @@ fn quote_trait_impls_from_obj(
                 })
             };
 
+            let quoted_marker_name = format_ident!("{}", obj.marker_name());
+            let quoted_marker =
+                QuotedObject::from_struct(arrow_registry, objects, &objects[&obj.marker_fqname()])
+                    .tokens;
+
             quote! {
                 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_required]> =
                     once_cell::sync::Lazy::new(|| {[#required]});
@@ -1044,6 +1055,10 @@ fn quote_trait_impls_from_obj(
 
                 impl #name {
                     pub const NUM_COMPONENTS: usize = #num_all;
+
+                    pub const fn marker_component() -> #quoted_marker_name {
+                        #quoted_marker_name
+                    }
                 }
 
                 impl crate::Archetype for #name {
@@ -1077,7 +1092,10 @@ fn quote_trait_impls_from_obj(
                         &self,
                     ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
                         use crate::{Loggable as _, ResultExt as _};
-                        Ok([ #({ #all_serializers },)* ].into_iter().flatten().collect())
+                        Ok([
+                            #({ #all_serializers },)*,
+                            <#quoted_marker_name>::try_to_arrow([Self::marker_component()], None),
+                        ].into_iter().flatten().collect())
                     }
 
                     #[inline]
@@ -1098,6 +1116,9 @@ fn quote_trait_impls_from_obj(
                         })
                     }
                 }
+
+                // TODO: it sucks that this is right in the middle of everything
+                #quoted_marker
             }
         }
     }

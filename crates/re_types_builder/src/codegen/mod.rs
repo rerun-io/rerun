@@ -17,7 +17,7 @@ pub const AUTOGEN_WARNING: &str =
 
 // ---
 
-mod common;
+pub(crate) mod common;
 use self::common::{get_documentation, StringExt};
 
 mod cpp;

@@ -18,6 +18,26 @@ pub fn quote_arrow_serializer(
     obj: &Object,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
+    if obj.is_marker_component() {
+        let fqname = &obj.fqname;
+        return quote! {
+            NullArray::new(
+                {
+                    _ = extension_wrapper;
+                    DataType::Extension(
+                        #fqname.to_owned(),
+                        Box::new(Self::to_arrow_datatype()),
+                        None,
+                    )
+                    .to_logical_type()
+                    .clone()
+                },
+                1,
+            )
+            .boxed()
+        };
+    }
+
     let datatype = &arrow_registry.get(&obj.fqname);
 
     let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };

@@ -10,8 +10,8 @@ use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
 
 use crate::{
-    root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType,
+    codegen::common::generate_marker_component, root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal,
+    FbsField, FbsKeyValue, FbsObject, FbsSchema, FbsType,
 };
 
 // ---
@@ -52,6 +52,14 @@ impl Objects {
         // resolve objects
         for obj in schema.objects().iter() {
             let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
+
+            // If this is an archetype, let's automatically generated an `Object` for its marker
+            // component too.
+            if resolved_obj.kind == ObjectKind::Archetype {
+                let marker = generate_marker_component(&resolved_obj);
+                resolved_objs.insert(marker.fqname.clone(), marker);
+            }
+
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
 
@@ -153,6 +161,7 @@ impl Objects {
     }
 }
 
+// TODO: explain those filters.
 impl Objects {
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
@@ -174,6 +183,7 @@ impl Objects {
         let objs = self
             .objects
             .values()
+            .filter(|obj| !obj.is_marker_component())
             .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
 
         let mut objs = objs.collect::<Vec<_>>();
@@ -582,6 +592,25 @@ impl Object {
         self.attrs.try_get(self.fqname.as_str(), name)
     }
 
+    /// Returns the name of the associated marker component.
+    ///
+    /// Only makes sense for archetypes. Panics otherwise.
+    pub fn marker_name(&self) -> String {
+        assert_eq!(self.kind, ObjectKind::Archetype);
+        format!("{}Marker", self.name)
+    }
+
+    /// Returns the fully-qualified name of the associated marker component.
+    ///
+    /// Only makes sense for archetypes. Panics otherwise.
+    pub fn marker_fqname(&self) -> String {
+        assert_eq!(self.kind, ObjectKind::Archetype);
+        format!(
+            "{}Marker",
+            self.fqname.replace("rerun.archetypes", "rerun.components")
+        )
+    }
+
     pub fn is_struct(&self) -> bool {
         match &self.specifics {
             ObjectSpecifics::Struct {} => true,
@@ -603,11 +632,16 @@ impl Object {
         }
     }
 
+    pub fn is_marker_component(&self) -> bool {
+        self.is_struct() && self.fields.is_empty()
+    }
+
     pub fn is_arrow_transparent(&self) -> bool {
-        self.kind == ObjectKind::Component
-            || self
-                .try_get_attr::<String>(crate::ATTR_ARROW_TRANSPARENT)
-                .is_some()
+        !self.is_marker_component()
+            && (self.kind == ObjectKind::Component
+                || self
+                    .try_get_attr::<String>(crate::ATTR_ARROW_TRANSPARENT)
+                    .is_some())
     }
 
     fn is_transparent(&self) -> bool {
@@ -1121,7 +1155,7 @@ impl ElementType {
 
 /// A collection of arbitrary attributes.
 #[derive(Debug, Default, Clone)]
-pub struct Attributes(HashMap<String, Option<String>>);
+pub struct Attributes(pub HashMap<String, Option<String>>);
 
 impl Attributes {
     fn from_raw_attrs(

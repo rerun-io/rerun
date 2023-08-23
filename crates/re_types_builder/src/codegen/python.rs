@@ -35,7 +35,9 @@ trait PythonObjectExt {
 
 impl PythonObjectExt for Object {
     fn is_delegating_component(&self) -> bool {
-        self.kind == ObjectKind::Component && matches!(self.fields[0].typ, Type::Object(_))
+        !self.is_marker_component()
+            && self.kind == ObjectKind::Component
+            && matches!(self.fields[0].typ, Type::Object(_))
     }
 
     fn is_non_delegating_component(&self) -> bool {
@@ -583,14 +585,22 @@ impl QuotedObject {
         match kind {
             ObjectKind::Archetype => (),
             ObjectKind::Component => {
-                // a component might be either delegating to a datatype or using a native type
-                if let Type::Object(ref dtype_fqname) = obj.fields[0].typ {
-                    let dtype_obj = &objects[dtype_fqname];
-                    code.push_text(
-                        quote_arrow_support_from_delegating_component(obj, dtype_obj),
-                        1,
-                        0,
-                    );
+                if !obj.is_marker_component() {
+                    // a component might be either delegating to a datatype or using a native type
+                    if let Type::Object(ref dtype_fqname) = obj.fields[0].typ {
+                        let dtype_obj = &objects[dtype_fqname];
+                        code.push_text(
+                            quote_arrow_support_from_delegating_component(obj, dtype_obj),
+                            1,
+                            0,
+                        );
+                    } else {
+                        code.push_text(
+                            quote_arrow_support_from_obj(arrow_registry, overrides, obj),
+                            1,
+                            0,
+                        );
+                    }
                 } else {
                     code.push_text(
                         quote_arrow_support_from_obj(arrow_registry, overrides, obj),
@@ -817,6 +827,10 @@ fn quote_array_method_from_obj(
     objects: &Objects,
     obj: &Object,
 ) -> String {
+    if obj.is_marker_component() {
+        return String::new();
+    }
+
     // TODO(cmc): should be using the native type, but need to compare numpy types etc
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
 
@@ -855,6 +869,10 @@ fn quote_array_method_from_obj(
 ///
 /// Only applies to datatypes and components.
 fn quote_native_types_method_from_obj(objects: &Objects, obj: &Object) -> String {
+    if obj.is_marker_component() {
+        return String::new();
+    }
+
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
     let typ = typ.as_str();
     if

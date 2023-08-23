@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use camino::Utf8PathBuf;
 
-use crate::Docs;
+use crate::{Attributes, Docs, LazyDatatype, Object, ObjectKind};
 
 /// Retrieves the global and tagged documentation from a [`Docs`] object.
 pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
@@ -94,4 +94,35 @@ pub fn write_file(filepath: &Utf8PathBuf, source: String) {
 
     std::fs::write(filepath, source)
         .unwrap_or_else(|err| panic!("Failed to write file {filepath:?}: {err}"));
+}
+
+/// Generates an appropriate marker component given an archetype `Object`.
+pub fn generate_marker_component(obj: &Object) -> Object {
+    assert_eq!(ObjectKind::Archetype, obj.kind);
+    let Object {
+        virtpath,
+        filepath,
+        pkg_name,
+        ..
+    } = obj;
+    Object {
+        virtpath: virtpath.clone(),
+        filepath: filepath.clone(),
+        fqname: obj.marker_fqname(),
+        pkg_name: pkg_name.clone(),
+        name: obj.marker_name(),
+        docs: Docs {
+            doc: vec!["Marker component indicating that the associated data was logged using the high-level archetype-based APIs.".into()],
+            tagged_docs: Default::default(),
+            included_files: Default::default(),
+        },
+        kind: ObjectKind::Component,
+        attrs: Attributes([
+            ("attr.rust.derive".into(), Some("Copy, PartialEq, Eq".into())),
+        ].into_iter().collect()),
+        order: u32::MAX,
+        fields: vec![],
+        specifics: crate::ObjectSpecifics::Struct,
+        datatype: Some(LazyDatatype::Null),
+    }
 }

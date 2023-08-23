@@ -49,6 +49,10 @@ impl ArrowRegistry {
     // ---
 
     fn arrow_datatype_from_object(&mut self, obj: &mut Object) -> LazyDatatype {
+        if obj.is_marker_component() {
+            return LazyDatatype::Null;
+        }
+
         let is_struct = obj.is_struct();
         let is_arrow_transparent = obj.is_arrow_transparent();
         let num_fields = obj.fields.len();

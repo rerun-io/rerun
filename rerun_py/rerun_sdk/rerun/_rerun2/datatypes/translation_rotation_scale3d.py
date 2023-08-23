@@ -2,26 +2,42 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
+    TYPE_CHECKING, SupportsFloat, Literal)
 
-import pyarrow as pa
 from attrs import define, field
+import numpy as np
+import numpy.typing as npt
+import pyarrow as pa
 
-from .. import datatypes
 from .._baseclasses import (
-    BaseExtensionArray,
+    Archetype,
     BaseExtensionType,
+    BaseExtensionArray,
+    BaseDelegatingExtensionType,
+    BaseDelegatingExtensionArray
+)
+from .._converters import (
+    int_or_none,
+    float_or_none,
+    bool_or_none,
+    str_or_none,
+    to_np_uint8,
+    to_np_uint16,
+    to_np_uint32,
+    to_np_uint64,
+    to_np_int8,
+    to_np_int16,
+    to_np_int32,
+    to_np_int64,
+    to_np_bool,
+    to_np_float16,
+    to_np_float32,
+    to_np_float64
 )
 from ._overrides import translationrotationscale3d_init  # noqa: F401
-
-__all__ = [
-    "TranslationRotationScale3D",
-    "TranslationRotationScale3DArray",
-    "TranslationRotationScale3DArrayLike",
-    "TranslationRotationScale3DLike",
-    "TranslationRotationScale3DType",
-]
-
+from .. import datatypes
+__all__ = ["TranslationRotationScale3D", "TranslationRotationScale3DArray", "TranslationRotationScale3DArrayLike", "TranslationRotationScale3DLike", "TranslationRotationScale3DType"]
 
 def _translationrotationscale3d_translation_converter(x: datatypes.Vec3DLike | None) -> datatypes.Vec3D | None:
     if x is None:
@@ -50,11 +66,14 @@ def _translationrotationscale3d_scale_converter(x: datatypes.Scale3DLike | None)
         return datatypes.Scale3D(x)
 
 
+
 @define(init=False)
 class TranslationRotationScale3D:
-    """Representation of an affine transform via separate translation, rotation & scale."""
+    """
+    Representation of an affine transform via separate translation, rotation & scale.
+    """
 
-    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+    def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]
         translationrotationscale3d_init(self, *args, **kwargs)
 
     from_parent: bool = field(converter=bool)
@@ -63,16 +82,12 @@ class TranslationRotationScale3D:
     Otherwise, the transform maps from the space to its parent.
     """
 
-    translation: datatypes.Vec3D | None = field(
-        default=None, converter=_translationrotationscale3d_translation_converter
-    )
+    translation: datatypes.Vec3D | None = field(default=None, converter=_translationrotationscale3d_translation_converter)
     """
     3D translation vector, applied last.
     """
 
-    rotation: datatypes.Rotation3D | None = field(
-        default=None, converter=_translationrotationscale3d_rotation_converter
-    )
+    rotation: datatypes.Rotation3D | None = field(default=None, converter=_translationrotationscale3d_rotation_converter)
     """
     3D rotation, applied second.
     """
@@ -83,98 +98,22 @@ class TranslationRotationScale3D:
     """
 
 
+
 TranslationRotationScale3DLike = TranslationRotationScale3D
 TranslationRotationScale3DArrayLike = Union[
     TranslationRotationScale3D,
     Sequence[TranslationRotationScale3DLike],
+    
 ]
 
 
 # --- Arrow support ---
 
-
 class TranslationRotationScale3DType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self,
-            pa.struct(
-                [
-                    pa.field(
-                        "translation",
-                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
-                        nullable=True,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "rotation",
-                        pa.dense_union(
-                            [
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field(
-                                    "Quaternion",
-                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4),
-                                    nullable=False,
-                                    metadata={},
-                                ),
-                                pa.field(
-                                    "AxisAngle",
-                                    pa.struct(
-                                        [
-                                            pa.field(
-                                                "axis",
-                                                pa.list_(
-                                                    pa.field("item", pa.float32(), nullable=False, metadata={}), 3
-                                                ),
-                                                nullable=False,
-                                                metadata={},
-                                            ),
-                                            pa.field(
-                                                "angle",
-                                                pa.dense_union(
-                                                    [
-                                                        pa.field(
-                                                            "_null_markers", pa.null(), nullable=True, metadata={}
-                                                        ),
-                                                        pa.field("Radians", pa.float32(), nullable=False, metadata={}),
-                                                        pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
-                                                    ]
-                                                ),
-                                                nullable=False,
-                                                metadata={},
-                                            ),
-                                        ]
-                                    ),
-                                    nullable=False,
-                                    metadata={},
-                                ),
-                            ]
-                        ),
-                        nullable=True,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "scale",
-                        pa.dense_union(
-                            [
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field(
-                                    "ThreeD",
-                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
-                                    nullable=False,
-                                    metadata={},
-                                ),
-                                pa.field("Uniform", pa.float32(), nullable=False, metadata={}),
-                            ]
-                        ),
-                        nullable=True,
-                        metadata={},
-                    ),
-                    pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
-                ]
-            ),
-            "rerun.datatypes.TranslationRotationScale3D",
+            self, pa.struct([pa.field("translation", pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3), nullable=True, metadata={}), pa.field("rotation", pa.dense_union([pa.field("_null_markers", pa.null(), nullable=True, metadata={}), pa.field("Quaternion", pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4), nullable=False, metadata={}), pa.field("AxisAngle", pa.struct([pa.field("axis", pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3), nullable=False, metadata={}), pa.field("angle", pa.dense_union([pa.field("_null_markers", pa.null(), nullable=True, metadata={}), pa.field("Radians", pa.float32(), nullable=False, metadata={}), pa.field("Degrees", pa.float32(), nullable=False, metadata={})]), nullable=False, metadata={})]), nullable=False, metadata={})]), nullable=True, metadata={}), pa.field("scale", pa.dense_union([pa.field("_null_markers", pa.null(), nullable=True, metadata={}), pa.field("ThreeD", pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3), nullable=False, metadata={}), pa.field("Uniform", pa.float32(), nullable=False, metadata={})]), nullable=True, metadata={}), pa.field("from_parent", pa.bool_(), nullable=False, metadata={})]), "rerun.datatypes.TranslationRotationScale3D"
         )
-
 
 class TranslationRotationScale3DArray(BaseExtensionArray[TranslationRotationScale3DArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.TranslationRotationScale3D"
@@ -184,8 +123,9 @@ class TranslationRotationScale3DArray(BaseExtensionArray[TranslationRotationScal
     def _native_to_pa_array(data: TranslationRotationScale3DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError
 
-
 TranslationRotationScale3DType._ARRAY_TYPE = TranslationRotationScale3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TranslationRotationScale3DType())
+
+

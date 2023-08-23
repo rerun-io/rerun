@@ -135,6 +135,9 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
 
 impl LineStrips2D {
     pub const NUM_COMPONENTS: usize = 7usize;
+    pub const fn marker_component() -> LineStrips2DMarker {
+        LineStrips2DMarker
+    }
 }
 
 impl crate::Archetype for LineStrips2D {
@@ -170,6 +173,7 @@ impl crate::Archetype for LineStrips2D {
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
         use crate::{Loggable as _, ResultExt as _};
+        <LineStrips2DMarker>::try_to_arrow([Self::marker_component()], None);
         Ok([
             {
                 Some({
@@ -422,6 +426,109 @@ impl crate::Archetype for LineStrips2D {
         })
     }
 }
+
+/// Marker component indicating that the associated data was logged using the high-level archetype-based APIs.
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+pub struct LineStrips2DMarker;
+
+impl<'a> From<LineStrips2DMarker> for ::std::borrow::Cow<'a, LineStrips2DMarker> {
+    #[inline]
+    fn from(value: LineStrips2DMarker) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a LineStrips2DMarker> for ::std::borrow::Cow<'a, LineStrips2DMarker> {
+    #[inline]
+    fn from(value: &'a LineStrips2DMarker) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Loggable for LineStrips2DMarker {
+    type Name = crate::ComponentName;
+    type Item<'a> = Option<Self>;
+    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
+
+    #[inline]
+    fn name() -> Self::Name {
+        "rerun.components.LineStrips2DMarker".into()
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Null
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok(NullArray::new(
+            {
+                _ = extension_wrapper;
+                DataType::Extension(
+                    "rerun.components.LineStrips2DMarker".to_owned(),
+                    Box::new(Self::to_arrow_datatype()),
+                    None,
+                )
+                .to_logical_type()
+                .clone()
+            },
+            1,
+        )
+        .boxed())
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        Ok(vec![
+            Some(Self);
+            data.as_any()
+                .downcast_ref::<NullArray>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Float32,
+                        data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.LineStrips2DMarker")?
+                .null_count()
+        ])
+    }
+
+    #[inline]
+    fn try_iter_from_arrow(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Self::Iter<'_>>
+    where
+        Self: Sized,
+    {
+        Ok(Self::try_from_arrow_opt(data)?.into_iter())
+    }
+
+    #[inline]
+    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
+        item
+    }
+}
+
+impl crate::Component for LineStrips2DMarker {}
 
 impl LineStrips2D {
     pub fn new(

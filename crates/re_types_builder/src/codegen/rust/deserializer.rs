@@ -50,6 +50,25 @@ pub fn quote_arrow_deserializer(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
+    if obj.is_marker_component() {
+        let fqname = &obj.fqname;
+        return quote! {
+            vec![
+                Some(Self);
+                data.as_any()
+                    .downcast_ref::<NullArray>()
+                    .ok_or_else(|| {
+                        crate::DeserializationError::datatype_mismatch(
+                            DataType::Float32,
+                            data.data_type().clone(),
+                        )
+                    })
+                    .with_context(#fqname)?
+                    .null_count()
+            ]
+        };
+    }
+
     // Runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
     let data_src = format_ident!("data");
 
