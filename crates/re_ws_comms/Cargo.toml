@@ -41,6 +41,7 @@ tls = [
 [dependencies]
 re_log.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
+re_tracing.workspace = true
 
 anyhow.workspace = true
 bincode = "1.3"

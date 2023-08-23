@@ -89,6 +89,7 @@ pub fn server_url(local_addr: &std::net::SocketAddr) -> String {
 const PREFIX: [u8; 4] = *b"RR00";
 
 pub fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
+    re_tracing::profile_function!();
     use bincode::Options as _;
     let mut bytes = PREFIX.to_vec();
     bincode::DefaultOptions::new()
@@ -98,6 +99,7 @@ pub fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
 }
 
 pub fn decode_log_msg(data: &[u8]) -> Result<LogMsg, RerunServerError> {
+    re_tracing::profile_function!();
     let payload = data
         .strip_prefix(&PREFIX)
         .ok_or(RerunServerError::InvalidMessagePrefix)?;
