@@ -1,7 +1,6 @@
 use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
-use smallvec::SmallVec;
 
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_components::{Pinhole, Tensor};
@@ -12,6 +11,7 @@ use re_viewer_context::{
     AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
     ViewSystemName, ViewerContext,
 };
+use tinyvec::TinyVec;
 
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 
@@ -456,7 +456,7 @@ pub fn default_entities_per_system_per_class(
 
         let mut primary_component_per_system: IntMap<
             ComponentName,
-            IntMap<SpaceViewClassName, SmallVec<[ViewSystemName; 2]>>,
+            IntMap<SpaceViewClassName, TinyVec<[ViewSystemName; 2]>>,
         > = IntMap::default();
         for (class_name, (context_collection, part_collection)) in &system_collections_per_class {
             for (system_name, part) in part_collection.iter_with_names() {

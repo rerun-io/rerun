@@ -11,9 +11,14 @@ re_string_interner::declare_new_type!(
 );
 
 impl ViewSystemName {
-    // TODO(andreas): We should not need this. Using 'unknown' is risking heuristics to not get up-to-date information.
     pub fn unknown() -> Self {
         "unknown".into()
+    }
+}
+
+impl Default for ViewSystemName {
+    fn default() -> Self {
+        Self::unknown()
     }
 }
 

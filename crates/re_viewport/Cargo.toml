@@ -45,4 +45,4 @@ image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 nohash-hasher = "0.2"
 serde = "1.0"
-smallvec.workspace = true
+tinyvec.workspace = true
