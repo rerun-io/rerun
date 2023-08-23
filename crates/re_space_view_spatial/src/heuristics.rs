@@ -232,7 +232,7 @@ fn update_transform3d_lines_heuristics(
                 // If there's a pinhole, we orient ourselves on its image plane distance
                 let pinhole_path_props = entity_properties.get(pinhole_path);
                 properties.transform_3d_size = EditableAutoValue::Auto(
-                    pinhole_path_props.pinhole_image_plane_distance.get() * 0.25,
+                    *pinhole_path_props.pinhole_image_plane_distance * 0.25,
                 );
             } else {
                 // Size should be proportional to the scene extent, here covered by its diagonal

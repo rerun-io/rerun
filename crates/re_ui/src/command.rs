@@ -13,7 +13,6 @@ pub trait UICommandSender {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter)]
 pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
-    #[cfg(not(target_arch = "wasm32"))]
     Open,
     #[cfg(not(target_arch = "wasm32"))]
     Save,
@@ -84,7 +83,6 @@ impl UICommand {
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
 
-            #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => ("Open…", "Open a Rerun Data File (.rrd)"),
 
             UICommand::CloseCurrentRecording => (
@@ -190,7 +188,6 @@ impl UICommand {
             UICommand::Save => Some(cmd(Key::S)),
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::SaveSelection => Some(cmd_alt(Key::S)),
-            #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => Some(cmd(Key::O)),
             UICommand::CloseCurrentRecording => None,
 

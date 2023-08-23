@@ -19,6 +19,12 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 #[tokio::main]
 async fn main() -> anyhow::Result<std::process::ExitCode> {
     re_log::setup_native_logging();
+
+    rayon::ThreadPoolBuilder::new()
+        .thread_name(|i| format!("rayon-{i}"))
+        .build_global()
+        .unwrap();
+
     let build_info = re_build_info::build_info!();
     rerun::run(build_info, rerun::CallSource::Cli, std::env::args())
         .await
