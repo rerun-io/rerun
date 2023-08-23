@@ -399,7 +399,7 @@ pub fn reachable_entities_from_root(
     entities
 }
 
-// TODO(andreas): Still used in a bunch of places, but use the global `EntitiesPerSystemPerClass` list.
+// TODO(andreas): Still used in a bunch of places. Should instead use the global `EntitiesPerSystemPerClass` list.
 pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
     class: &SpaceViewClassName,

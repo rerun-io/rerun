@@ -186,7 +186,7 @@ impl ViewportBlueprint<'_> {
             );
         })
         .body(|ui| {
-            Self::data_blueprint_tree_ui(
+            Self::space_view_blueprint_ui(
                 ctx,
                 ui,
                 space_view.contents.root_handle(),
@@ -207,7 +207,7 @@ impl ViewportBlueprint<'_> {
         action
     }
 
-    fn data_blueprint_tree_ui(
+    fn space_view_blueprint_ui(
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         group_handle: DataBlueprintGroupHandle,
@@ -219,7 +219,7 @@ impl ViewportBlueprint<'_> {
                 return;
             };
 
-        // TODO(andreas): These clones are workarounds against borrowing multiple times from data_blueprint_tree.
+        // TODO(andreas): These clones are workarounds against borrowing multiple times from space_view_blueprint_ui.
         let children = group.children.clone();
         let entities = group.entities.clone();
         let group_name = group.display_name.clone();
@@ -336,7 +336,7 @@ impl ViewportBlueprint<'_> {
                 );
             })
             .body(|ui| {
-                Self::data_blueprint_tree_ui(
+                Self::space_view_blueprint_ui(
                     ctx,
                     ui,
                     *child_group_handle,

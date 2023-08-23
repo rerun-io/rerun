@@ -58,7 +58,7 @@ impl SpaceViewBlueprint {
             display_name,
             class_name,
             space_origin,
-            contents: data_blueprint,
+            contents,
             entities_determined_by_user,
         } = self;
 
@@ -66,7 +66,7 @@ impl SpaceViewBlueprint {
             || display_name != &other.display_name
             || class_name != &other.class_name
             || space_origin != &other.space_origin
-            || data_blueprint.has_edits(&other.contents)
+            || contents.has_edits(&other.contents)
             || entities_determined_by_user != &other.entities_determined_by_user
     }
 }
@@ -88,15 +88,15 @@ impl SpaceViewBlueprint {
             format!("/ ({space_view_class})")
         };
 
-        let mut data_blueprint_tree = SpaceViewContents::default();
-        data_blueprint_tree.insert_entities_according_to_hierarchy(queries_entities, space_path);
+        let mut contents = SpaceViewContents::default();
+        contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
         Self {
             display_name,
             class_name: space_view_class,
             id: SpaceViewId::random(),
             space_origin: space_path.clone(),
-            contents: data_blueprint_tree,
+            contents,
             entities_determined_by_user: false,
         }
     }
@@ -274,6 +274,7 @@ impl SpaceViewBlueprint {
         }
     }
 
+    /// Resets the [`SpaceViewContents::per_system_entities`] for all paths that are part of this space view.
     pub fn reset_systems_per_entity_path(&mut self, entities_per_system: &EntitiesPerSystem) {
         re_tracing::profile_function!();
 
