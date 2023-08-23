@@ -89,7 +89,6 @@ impl ViewPartSystem for MeshPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-
         let mut instances = Vec::new();
 
         process_entity_views::<MeshPart, _, 3, _>(

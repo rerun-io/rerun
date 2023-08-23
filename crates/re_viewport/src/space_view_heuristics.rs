@@ -16,6 +16,7 @@ use tinyvec::TinyVec;
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 
 pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
+
 pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassName, EntitiesPerSystem>;
 
 // ---------------------------------------------------------------------------
