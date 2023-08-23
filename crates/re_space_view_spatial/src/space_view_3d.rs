@@ -66,7 +66,11 @@ impl SpaceViewClass for SpatialSpaceView3D {
             if per_system_entities
                 .get(&CamerasPart::name())
                 .map_or(false, |c| {
-                    c.is_empty() && (!c.contains(space_origin) || c.len() > 1)
+                    if c.contains(space_origin) {
+                        c.len() > 1 // Need another camera!
+                    } else {
+                        !c.is_empty()
+                    }
                 })
             {
                 score += 100.0;
