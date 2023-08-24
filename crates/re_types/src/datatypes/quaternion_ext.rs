@@ -28,7 +28,7 @@ impl From<Quaternion> for glam::Quat {
     #[inline]
     fn from(q: Quaternion) -> Self {
         let [x, y, z, w] = q.0;
-        Self::from_xyzw(x, y, z, w)
+        Self::from_xyzw(x, y, z, w).normalize()
     }
 }
 

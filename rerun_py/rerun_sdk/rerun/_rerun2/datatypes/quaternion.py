@@ -23,7 +23,12 @@ __all__ = ["Quaternion", "QuaternionArray", "QuaternionArrayLike", "QuaternionLi
 
 @define(init=False)
 class Quaternion:
-    """A Quaternion represented by 4 real numbers."""
+    """
+    A Quaternion represented by 4 real numbers.
+
+    Note: although the x,y,z,w components of the quaternion will be passed through to the
+    datastore as provided, when used in the viewer Quaternions will always be normalized.
+    """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         quaternion_init(self, *args, **kwargs)
