@@ -81,7 +81,7 @@ impl From<Transform3D> for glam::Affine3A {
                 from_parent: _,
             }) => glam::Affine3A::from_scale_rotation_translation(
                 scale.map_or(glam::Vec3::ONE, |s| s.into()),
-                rotation.map_or(glam::Quat::IDENTITY, |q| q.into()),
+                rotation.map_or(glam::Quat::IDENTITY, |q| glam::Quat::from(q).normalize()),
                 translation.map_or(glam::Vec3::ZERO, |v| v.into()),
             ),
         }
