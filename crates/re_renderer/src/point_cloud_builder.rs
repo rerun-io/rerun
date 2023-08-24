@@ -1,3 +1,5 @@
+use re_log::ResultExt;
+
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
     draw_phases::PickingLayerObjectId,
@@ -212,26 +214,32 @@ impl<'a> PointCloudBatchBuilder<'a> {
         }
         {
             re_tracing::profile_scope!("colors");
-            if let Ok(num_written) = self.0.color_buffer.extend(colors.take(num_points)) {
+            if let Some(num_written) = self
+                .0
+                .color_buffer
+                .extend(colors.take(num_points))
+                .unwrap_debug_or_log_error()
+            {
                 // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
                 self.0
                     .color_buffer
                     .fill_n(Color32::TRANSPARENT, num_points - num_written)
-                    .ok();
+                    .unwrap_debug_or_log_error();
             }
         }
         {
             re_tracing::profile_scope!("picking_instance_ids");
-            if let Ok(num_written) = self
+            if let Some(num_written) = self
                 .0
                 .picking_instance_ids_buffer
                 .extend(picking_instance_ids.take(num_points))
+                .unwrap_debug_or_log_error()
             {
                 // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
                 self.0
                     .picking_instance_ids_buffer
                     .fill_n(PickingLayerInstanceId::default(), num_points - num_written)
-                    .ok();
+                    .unwrap_debug_or_log_error();
             }
         }
 

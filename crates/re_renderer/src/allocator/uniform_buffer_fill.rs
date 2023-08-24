@@ -1,3 +1,5 @@
+use re_log::ResultExt;
+
 pub use super::cpu_write_gpu_read_belt::{CpuWriteGpuReadBelt, CpuWriteGpuReadBuffer};
 
 use crate::{wgpu_resources::BindGroupEntry, DebugLabel, RenderContext};
@@ -75,14 +77,14 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
         &ctx.gpu_resources.buffers,
         num_buffers as _,
     );
-    staging_buffer.extend(content).ok(); // We just allocated the buffer for this exact size.
+    staging_buffer.extend(content).unwrap_debug_or_log_error();
     staging_buffer
         .copy_to_buffer(
             ctx.active_frame.before_view_builder_encoder.lock().get(),
             &buffer,
             0,
         )
-        .ok(); // We just allocated the target buffer for this exact size.
+        .unwrap_debug_or_log_error();
 
     (0..num_buffers)
         .map(|i| BindGroupEntry::Buffer {

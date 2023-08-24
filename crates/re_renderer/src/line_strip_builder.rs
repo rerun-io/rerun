@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use re_log::ResultExt;
+
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
     renderer::{
@@ -190,8 +192,8 @@ impl<'a> LineBatchBuilder<'a> {
     pub fn add_strip(&mut self, points: impl Iterator<Item = glam::Vec3>) -> LineStripBuilder<'_> {
         if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
             re_log::error_once!(
-                "Reached maximum number of supported line strips of {}.
-     See also https://github.com/rerun-io/rerun/issues/957",
+                "Reached maximum number of supported line strips of {}. \
+                 See also https://github.com/rerun-io/rerun/issues/957",
                 LineDrawData::MAX_NUM_STRIPS
             );
             return LineStripBuilder::placeholder(self.0);
@@ -521,6 +523,6 @@ impl<'a> Drop for LineStripBuilder<'a> {
         self.builder
             .picking_instance_ids_buffer
             .fill_n(self.picking_instance_id, self.strip_range.len())
-            .ok(); // May run out of space, but we should have already handled that earlier.
+            .unwrap_debug_or_log_error(); // May run out of space, but we should have already handled that earlier.
     }
 }
