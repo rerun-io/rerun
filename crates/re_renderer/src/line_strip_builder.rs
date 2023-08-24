@@ -492,6 +492,7 @@ impl<'a> Drop for LineStripBuilder<'a> {
         }
         self.builder
             .picking_instance_ids_buffer
-            .extend(std::iter::repeat(self.picking_instance_id).take(self.strip_range.len()));
+            .fill_n(self.picking_instance_id, self.strip_range.len())
+            .ok(); // May run out of space, but we should have already handled that earlier.
     }
 }

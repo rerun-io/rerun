@@ -106,7 +106,7 @@ impl RenderDepthClouds {
                 std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
             );
 
-            builder.into_draw_data(re_ctx)
+            builder.into_draw_data(re_ctx).unwrap()
         };
 
         let mut view_builder = ViewBuilder::new(

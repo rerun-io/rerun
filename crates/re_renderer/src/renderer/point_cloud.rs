@@ -162,8 +162,8 @@ pub struct PointCloudVertex {
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {
-    #[error("Size of vertex & color array was not equal")]
-    NumberOfColorsNotEqualNumberOfVertices,
+    #[error("Failed to transfer data to the GPU")]
+    FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
 /// Textures are 2D since 1D textures are very limited in size (8k typically).
@@ -183,7 +183,10 @@ impl PointCloudDrawData {
     /// Number of vertices and colors has to be equal.
     ///
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
-    pub fn new(ctx: &mut RenderContext, mut builder: PointCloudBuilder) -> Self {
+    pub fn new(
+        ctx: &mut RenderContext,
+        mut builder: PointCloudBuilder,
+    ) -> Result<Self, PointCloudDrawDataError> {
         re_tracing::profile_function!();
 
         let mut renderers = ctx.renderers.write();
@@ -198,11 +201,11 @@ impl PointCloudDrawData {
         let batches = builder.batches.as_slice();
 
         if vertices.is_empty() {
-            return PointCloudDrawData {
+            return Ok(PointCloudDrawData {
                 bind_group_all_points: None,
                 bind_group_all_points_outline_mask: None,
                 batches: Vec::new(),
-            };
+            });
         }
 
         let fallback_batches = [PointCloudBatchInfo {
@@ -302,10 +305,8 @@ impl PointCloudDrawData {
             staging_buffer.extend(vertices.iter().map(|point| gpu_data::PositionData {
                 pos: point.position,
                 radius: point.radius,
-            }));
-            staging_buffer.extend(
-                std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_elements_padding),
-            );
+            }))?;
+            staging_buffer.fill_n(gpu_data::PositionData::zeroed(), num_elements_padding)?;
             staging_buffer.copy_to_texture2d(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 wgpu::ImageCopyTexture {
@@ -315,12 +316,12 @@ impl PointCloudDrawData {
                     aspect: wgpu::TextureAspect::All,
                 },
                 texture_copy_extent,
-            );
+            )?;
         }
 
         builder
             .color_buffer
-            .extend(std::iter::repeat(ecolor::Color32::TRANSPARENT).take(num_elements_padding));
+            .fill_n(ecolor::Color32::TRANSPARENT, num_elements_padding)?;
         builder.color_buffer.copy_to_texture2d(
             ctx.active_frame.before_view_builder_encoder.lock().get(),
             wgpu::ImageCopyTexture {
@@ -330,11 +331,11 @@ impl PointCloudDrawData {
                 aspect: wgpu::TextureAspect::All,
             },
             texture_copy_extent,
-        );
+        )?;
 
         builder
             .picking_instance_ids_buffer
-            .extend(std::iter::repeat(Default::default()).take(num_elements_padding));
+            .fill_n(Default::default(), num_elements_padding)?;
         builder.picking_instance_ids_buffer.copy_to_texture2d(
             ctx.active_frame.before_view_builder_encoder.lock().get(),
             wgpu::ImageCopyTexture {
@@ -344,7 +345,7 @@ impl PointCloudDrawData {
                 aspect: wgpu::TextureAspect::All,
             },
             texture_copy_extent,
-        );
+        )?;
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -488,11 +489,11 @@ impl PointCloudDrawData {
             }
         }
 
-        PointCloudDrawData {
+        Ok(PointCloudDrawData {
             bind_group_all_points: Some(bind_group_all_points),
             bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
-        }
+        })
     }
 }
 
