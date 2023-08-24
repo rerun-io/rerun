@@ -7,8 +7,8 @@ use crate::{
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum CpuWriteGpuReadError {
-    #[error("Buffer is full, can't append more data!")]
-    BufferFull,
+    #[error("Buffer is full, can't append more data! Buffer has capacity for {buffer_element_capacity} elements.")]
+    BufferFull { buffer_element_capacity: usize },
 
     #[error("Target buffer has a size of {target_buffer_size}, can't write {copy_size} bytes with an offset of {destination_offset}!")]
     TargetBufferTooSmall {
@@ -81,7 +81,9 @@ where
     pub fn extend_from_slice(&mut self, elements: &[T]) -> Result<(), CpuWriteGpuReadError> {
         let (result, elements) = if elements.len() > self.remaining_capacity() {
             (
-                Err(CpuWriteGpuReadError::BufferFull),
+                Err(CpuWriteGpuReadError::BufferFull {
+                    buffer_element_capacity: self.capacity(),
+                }),
                 &elements[..self.remaining_capacity()],
             )
         } else {
@@ -108,7 +110,9 @@ where
 
         for element in elements {
             if self.unwritten_element_range.start >= self.unwritten_element_range.end {
-                return Err(CpuWriteGpuReadError::BufferFull);
+                return Err(CpuWriteGpuReadError::BufferFull {
+                    buffer_element_capacity: self.capacity(),
+                });
             }
 
             self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
@@ -125,7 +129,9 @@ where
     pub fn fill_n(&mut self, element: T, num_elements: usize) -> Result<(), CpuWriteGpuReadError> {
         let (result, num_elements) = if num_elements > self.remaining_capacity() {
             (
-                Err(CpuWriteGpuReadError::BufferFull),
+                Err(CpuWriteGpuReadError::BufferFull {
+                    buffer_element_capacity: self.capacity(),
+                }),
                 self.remaining_capacity(),
             )
         } else {
@@ -152,7 +158,9 @@ where
     #[inline]
     pub fn push(&mut self, element: T) -> Result<(), CpuWriteGpuReadError> {
         if self.remaining_capacity() == 0 {
-            return Err(CpuWriteGpuReadError::BufferFull);
+            return Err(CpuWriteGpuReadError::BufferFull {
+                buffer_element_capacity: self.capacity(),
+            });
         }
 
         self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
@@ -172,6 +180,11 @@ where
     #[inline]
     pub fn remaining_capacity(&self) -> usize {
         self.unwritten_element_range.end - self.unwritten_element_range.start
+    }
+
+    /// Total number of elements that the buffer can hold.
+    pub fn capacity(&self) -> usize {
+        self.unwritten_element_range.end
     }
 
     /// Copies all so far written data to a rectangle on a single 2d texture layer.
