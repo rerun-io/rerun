@@ -634,6 +634,15 @@ impl Object {
     pub fn snake_case_name(&self) -> String {
         crate::to_snake_case(&self.name)
     }
+
+    /// Returns true if this object is part of testing and not to be used in the production SDK.
+    pub fn is_testing(&self) -> bool {
+        is_testing_fqname(&self.fqname)
+    }
+}
+
+pub fn is_testing_fqname(fqname: &str) -> bool {
+    fqname.contains("rerun.testing")
 }
 
 /// Properties specific to either structs or unions, but not both.

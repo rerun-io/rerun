@@ -130,6 +130,10 @@ rs-lint:
     cargo doc --quiet --document-private-items --no-deps --all-features
     cargo test --quiet --doc --all-features # runs all doc-tests
 
+# Lint Rust code for the wasm target
+rs-lint-wasm:
+    scripts/clippy_wasm.sh
+
 # Run all examples with the specified args
 rs-run-all *ARGS:
     #!/usr/bin/env bash

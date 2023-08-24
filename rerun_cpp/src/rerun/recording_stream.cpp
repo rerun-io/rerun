@@ -6,7 +6,7 @@
 #include <vector>
 
 namespace rerun {
-    static int32_t store_kind_to_c(StoreKind store_kind) {
+    static rr_store_kind store_kind_to_c(StoreKind store_kind) {
         switch (store_kind) {
             case StoreKind::Recording:
                 return RERUN_STORE_KIND_RECORDING;
@@ -27,11 +27,24 @@ namespace rerun {
         store_info.application_id = app_id;
         store_info.store_kind = store_kind_to_c(store_kind);
 
-        this->_id = rr_recording_stream_new(&store_info);
+        rr_error status = {};
+        this->_id = rr_recording_stream_new(&store_info, &status);
+        Error(status).log_on_failure();
+    }
+
+    RecordingStream::RecordingStream(RecordingStream&& other)
+        : _id(other._id), _store_kind(other._store_kind) {
+        // Set to `RERUN_REC_STREAM_CURRENT_RECORDING` since it's a no-op on destruction.
+        other._id = RERUN_REC_STREAM_CURRENT_RECORDING;
     }
 
     RecordingStream::~RecordingStream() {
-        rr_recording_stream_free(this->_id);
+        // C-Api already specifies that the current constants are not destroyed, but we repeat this
+        // here, since we rely on this invariant in the move constructor.
+        if (_id != RERUN_REC_STREAM_CURRENT_RECORDING &&
+            _id != RERUN_REC_STREAM_CURRENT_BLUEPRINT) {
+            rr_recording_stream_free(this->_id);
+        }
     }
 
     void RecordingStream::set_global() {
@@ -62,25 +75,36 @@ namespace rerun {
         }
     }
 
-    void RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
-        rr_recording_stream_connect(_id, tcp_addr, flush_timeout_sec);
+    Error RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
+        rr_error status = {};
+        rr_recording_stream_connect(_id, tcp_addr, flush_timeout_sec, &status);
+        return status;
     }
 
-    void RecordingStream::save(const char* path) {
-        rr_recording_stream_save(_id, path);
+    Error RecordingStream::save(const char* path) {
+        rr_error status = {};
+        rr_recording_stream_save(_id, path, &status);
+        return status;
     }
 
     void RecordingStream::flush_blocking() {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    void RecordingStream::log_data_row(
+    Error RecordingStream::try_log_data_row(
         const char* entity_path, size_t num_instances, size_t num_data_cells,
         const DataCell* data_cells
     ) {
         // Map to C API:
         std::vector<rr_data_cell> c_data_cells(num_data_cells);
         for (size_t i = 0; i < num_data_cells; i++) {
+            if (data_cells[i].buffer == nullptr) {
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "DataCell buffer is null for cell " + std::to_string(i)
+                );
+            }
+
             c_data_cells[i].component_name = data_cells[i].component_name;
             c_data_cells[i].num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size());
             c_data_cells[i].bytes = data_cells[i].buffer->data();
@@ -92,6 +116,8 @@ namespace rerun {
         c_data_row.num_data_cells = static_cast<uint32_t>(num_data_cells);
         c_data_row.data_cells = c_data_cells.data();
 
-        rr_log(_id, &c_data_row, true);
+        rr_error status = {};
+        rr_log(_id, &c_data_row, true, &status);
+        return status;
     }
 } // namespace rerun

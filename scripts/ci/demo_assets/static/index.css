@@ -7,7 +7,6 @@ body {
   background: #0d1011;
 }
 
-
 /* Allow canvas to fill entire web page: */
 html,
 body {
@@ -32,19 +31,16 @@ canvas {
 }
 
 * {
-  font-family: 'Inter', sans-serif;
-  color: #f0f0f0;
+  font-family: "Inter", sans-serif;
+  color: #cad8de;
 }
-
 
 /* Match the Rerun header bar. */
 .header {
   width: 100%;
   height: 44px;
-  /* background: #111415; */
   /* Actual value from Rerun Viewer */
   background: #141414;
-
 }
 
 /* Create a container filling the remaining space. */
@@ -52,7 +48,6 @@ canvas {
   position: absolute;
   height: calc(100vh - 44px);
   width: 100vw;
-
 }
 
 /* Centered div inside the container. */
@@ -78,7 +73,7 @@ p {
 /* Rerun styling for strong text. Matches `TextStyle::Heading`. */
 .strong {
   /*Gray-775*/
-  color: #ffffff;
+  color: #cad8de;
   /* Match current rerun header value */
   font-size: 16px;
 }
@@ -103,7 +98,7 @@ a .button {
   display: inline-block;
   background: white;
   color: black;
-  padding: .75rem 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 8px;
   text-decoration: none;
   font-weight: 500;
@@ -133,6 +128,13 @@ a .button {
   display: flex;
   flex-direction: row;
   gap: 4px;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.no-select {
+  user-select: none;
 }
 
 .examples {
@@ -147,20 +149,21 @@ a .button {
   border-radius: 33%;
 }
 
-.example-description:hover>.example-description-body {
+.example-description:hover > .example-description-body {
   display: flex;
 }
 
-.example-description:hover>.example-description-icon {
+.example-description:hover > .example-description-icon {
   background: #404040;
   border: none;
-  border-radius: 50%;
+  border-radius: 5px;
 }
 
 .example-description-icon {
   display: flex;
   justify-content: center;
-  padding: 6px;
+  margin: 4px;
+  padding: 2px;
   width: 20px;
   height: 20px;
   user-select: none;
@@ -170,20 +173,24 @@ a .button {
   display: none;
 
   flex-direction: column;
-  gap: 3px;
+  gap: 8px;
 
   position: absolute;
   top: 100%;
 
-  background: #1c2123;
+  background: #262626;
   border: none;
   border-radius: 6px;
   padding: 12px;
 
+  font-size: 13px;
+  line-height: 1.33;
+  letter-spacing: 0;
+
   width: 280px;
 }
 
-.example-description-body>p {
+.example-description-body > p {
   margin: 0;
 }
 
@@ -225,7 +232,7 @@ img.icon {
   line-height: 16px;
 }
 
-.dropdown-title>img {
+.dropdown-title > img {
   width: 16px;
   height: 16px;
 }
@@ -248,12 +255,13 @@ img.icon {
   top: 100%;
   left: 0;
 
-  background: #1c2123;
+  background: #262626;
   border: none;
   border-radius: 6px;
   padding: 6px;
 
   user-select: none;
+  font-size: 12px;
 }
 
 .dropdown-body.visible {
@@ -287,7 +295,7 @@ a.flat-link {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: #f0f0f0;
+  color: #cad8de;
   font-size: 24px;
   font-family: Ubuntu-Light, Helvetica, sans-serif;
   text-align: center;
@@ -302,3 +310,4 @@ a.button {
   text-decoration: none;
   font-weight: 500;
 }
+

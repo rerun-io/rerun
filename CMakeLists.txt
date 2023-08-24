@@ -55,6 +55,22 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 17)
 endif()
 
+# ------------------------------------------------------------------------------
+# Loguru logging library (https://github.com/emilk/loguru):
+set(CMAKE_DL_LIBS "dl") # Required by Loguru for backtraces
+
+# Loguru, see https://github.com/emilk/loguru/blob/master/loguru_cmake_example/CMakeLists.txt
+include(FetchContent)
+FetchContent_Declare(LoguruGitRepo
+    GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
+    GIT_TAG "master"
+)
+
+# set any loguru compile-time flags before calling MakeAvailable()
+set(LOGURU_STACKTRACES 1)
+FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
+
+# ------------------------------------------------------------------------------
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library
 add_subdirectory(examples/cpp/minimal)
 add_subdirectory(tests/cpp)

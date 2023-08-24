@@ -3566,6 +3566,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcf2a02372dfae23c9c01267fb296b8a3413bb4e45fbd589c3ac73c6dcfbb305"
 dependencies = [
  "static_assertions",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -4902,6 +4904,7 @@ dependencies = [
  "anyhow",
  "document-features",
  "mimalloc",
+ "rayon",
  "re_build_info",
  "re_build_tools",
  "re_log",
@@ -4920,7 +4923,6 @@ dependencies = [
  "parking_lot 0.12.1",
  "re_log",
  "re_sdk",
- "re_types",
 ]
 
 [[package]]

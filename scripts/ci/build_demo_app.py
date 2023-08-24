@@ -47,12 +47,18 @@ class Example:
             f"--save={rrd_path}",
         ]
 
+        # Configure flushing so that:
+        # * the resulting file size is deterministic
+        # * the file is chunked into small batches for better streaming
+        env = {**os.environ, "RERUN_FLUSH_TICK_SECS": "1000000000", "RERUN_FLUSH_NUM_BYTES": str(128 * 1024)}
+
         subprocess.run(
             args + self.build_args,
+            env=env,
             check=True,
         )
 
-        print(f"{rrd_path}: {os.path.getsize(rrd_path) / 1e6:.1f} MB")
+        print(f"{rrd_path}: {os.path.getsize(rrd_path) / (1024 * 1024):.1f} MiB")
 
     def supports_save(self) -> bool:
         with open(self.path) as f:
@@ -176,6 +182,7 @@ def main() -> None:
     )
 
     parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK and web viewer Wasm.")
+    parser.add_argument("--skip-examples", action="store_true", help="Skip running the examples.")
 
     args = parser.parse_args()
 
@@ -183,10 +190,13 @@ def main() -> None:
         build_python_sdk()
         build_wasm()
 
-    shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
     examples = collect_examples()
     assert len(examples) > 0, "No examples found"
-    save_examples_rrd(examples)
+
+    if not args.skip_examples:
+        shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
+        save_examples_rrd(examples)
+
     render_examples(examples)
     copy_static_assets(examples)
     copy_wasm(examples)

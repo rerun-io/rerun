@@ -4,12 +4,17 @@ use camino::Utf8Path;
 
 const DEFINITIONS_DIR_PATH: &str = "crates/re_types/definitions";
 const ENTRYPOINT_PATH: &str = "crates/re_types/definitions/rerun/archetypes.fbs";
-const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp/src/rerun";
+const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = "crates/re_types/.";
 const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun/_rerun2";
 
 fn main() {
     re_log::setup_native_logging();
+
+    rayon::ThreadPoolBuilder::new()
+        .thread_name(|i| format!("rayon-{i}"))
+        .build_global()
+        .unwrap();
 
     let mut profiler = re_tracing::Profiler::default();
 

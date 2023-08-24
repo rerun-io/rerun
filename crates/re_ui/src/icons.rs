@@ -54,6 +54,15 @@ pub const RESET: Icon = Icon::new("reset", include_bytes!("../data/icons/reset.p
 
 pub const CLOSE: Icon = Icon::new("close", include_bytes!("../data/icons/close.png"));
 
+/// Used for HTTP URLs that leads out of the app.
+///
+/// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`
+/// and `.on_hover_text(url)`.
+pub const EXTERNAL_LINK: Icon = Icon::new(
+    "external_link",
+    include_bytes!("../data/icons/external_link.png"),
+);
+
 pub const SPACE_VIEW_TEXT: Icon = Icon::new(
     "spaceview_text",
     include_bytes!("../data/icons/spaceview_text.png"),
@@ -97,3 +106,18 @@ pub const SPACE_VIEW_UNKNOWN: Icon = Icon::new(
 );
 
 pub const CONTAINER: Icon = Icon::new("container", include_bytes!("../data/icons/container.png"));
+
+pub const WELCOME_SCREEN_CONFIGURE: Icon = Icon::new(
+    "welcome_screen_configure",
+    include_bytes!("../data/images/welcome_screen_configure.png"),
+);
+
+pub const WELCOME_SCREEN_LIVE_DATA: Icon = Icon::new(
+    "welcome_screen_live_data",
+    include_bytes!("../data/images/welcome_screen_live_data.png"),
+);
+
+pub const WELCOME_SCREEN_RECORDED_DATA: Icon = Icon::new(
+    "welcome_screen_recorded_data",
+    include_bytes!("../data/images/welcome_screen_recorded_data.png"),
+);

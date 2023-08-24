@@ -11,8 +11,8 @@
 #include "../components/radius.hpp"
 #include "../components/vector3d.hpp"
 #include "../data_cell.hpp"
+#include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <utility>
@@ -36,7 +36,7 @@ namespace rerun {
         ///
         /// int main() {
         ///    auto rr_stream = rr::RecordingStream("arrow3d");
-        ///    rr_stream.connect("127.0.0.1:9876");
+        ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::components::Vector3D> vectors;
         ///    std::vector<rr::components::Color> colors;
@@ -50,7 +50,7 @@ namespace rerun {
         ///        colors.push_back({static_cast<uint8_t>(255 - c), c, 128, 128});
         ///    }
         ///
-        ///    rr_stream.log("arrows", rr::archetypes::Arrows3D(vectors).with_colors(colors));
+        ///    rr_stream.log("arrows", rr::Arrows3D(vectors).with_colors(colors));
         /// }
         ///```
         struct Arrows3D {
@@ -177,7 +177,7 @@ namespace rerun {
             }
 
             /// Creates a list of Rerun DataCell from this archetype.
-            arrow::Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            Result<std::vector<rerun::DataCell>> to_data_cells() const;
         };
     } // namespace archetypes
 } // namespace rerun

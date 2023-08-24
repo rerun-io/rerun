@@ -3,12 +3,12 @@ use web_time::Instant;
 use re_data_store::store_db::StoreDb;
 use re_log_types::{LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::Receiver;
+use re_smart_channel::{Receiver, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
-    DynSpaceViewClass, PlayState, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    StoreContext, SystemCommand, SystemCommandSender,
+    DynSpaceViewClass, FileContents, PlayState, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, StoreContext, SystemCommand, SystemCommandSender,
 };
 
 use crate::{
@@ -47,6 +47,8 @@ pub struct StartupOptions {
     /// Set the screen resolution in logical points.
     #[cfg(not(target_arch = "wasm32"))]
     pub resolution_in_points: Option<[f32; 2]>,
+
+    pub skip_welcome_screen: bool,
 }
 
 impl Default for StartupOptions {
@@ -60,6 +62,8 @@ impl Default for StartupOptions {
 
             #[cfg(not(target_arch = "wasm32"))]
             resolution_in_points: None,
+
+            skip_welcome_screen: false,
         }
     }
 }
@@ -88,6 +92,9 @@ pub struct App {
     component_ui_registry: ComponentUiRegistry,
 
     rx: Receiver<LogMsg>,
+
+    #[cfg(target_arch = "wasm32")]
+    open_file_promise: Option<poll_promise::Promise<Option<FileContents>>>,
 
     /// What is serialized
     pub(crate) state: AppState,
@@ -197,9 +204,11 @@ impl App {
             text_log_rx,
             component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx,
+            #[cfg(target_arch = "wasm32")]
+            open_file_promise: Default::default(),
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::default()),
+            store_hub: Some(StoreHub::new()),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -270,12 +279,13 @@ impl App {
 
     fn run_pending_ui_commands(
         &mut self,
+        frame: &mut eframe::Frame,
+        egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
-        frame: &mut eframe::Frame,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(cmd, app_blueprint, store_context, frame);
+            self.run_ui_command(frame, egui_ctx, app_blueprint, store_context, cmd);
         }
     }
 
@@ -293,8 +303,9 @@ impl App {
             SystemCommand::CloseRecordingId(recording_id) => {
                 store_hub.remove_recording_id(&recording_id);
             }
+
             #[cfg(not(target_arch = "wasm32"))]
-            SystemCommand::LoadRrd(path) => {
+            SystemCommand::LoadRrdPath(path) => {
                 let with_notification = true;
                 if let Some(rrd) = crate::loading::load_file_path(&path, with_notification) {
                     let store_id = rrd.store_dbs().next().map(|db| db.store_id().clone());
@@ -304,6 +315,18 @@ impl App {
                     }
                 }
             }
+
+            SystemCommand::LoadRrdContents(FileContents { file_name, bytes }) => {
+                let bytes: &[u8] = &bytes;
+                if let Some(rrd) = crate::loading::load_file_contents(&file_name, bytes) {
+                    let store_id = rrd.store_dbs().next().map(|db| db.store_id().clone());
+                    store_hub.add_bundle(rrd);
+                    if let Some(store_id) = store_id {
+                        store_hub.set_recording_id(store_id);
+                    }
+                }
+            }
+
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 let blueprint_db = store_hub.store_db_mut(&blueprint_id);
@@ -321,10 +344,11 @@ impl App {
 
     fn run_ui_command(
         &mut self,
-        cmd: UICommand,
+        _frame: &mut eframe::Frame,
+        _egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
-        _frame: &mut eframe::Frame,
+        cmd: UICommand,
     ) {
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
@@ -343,8 +367,17 @@ impl App {
             UICommand::Open => {
                 if let Some(rrd_file) = open_rrd_dialog() {
                     self.command_sender
-                        .send_system(SystemCommand::LoadRrd(rrd_file));
+                        .send_system(SystemCommand::LoadRrdPath(rrd_file));
                 }
+            }
+            #[cfg(target_arch = "wasm32")]
+            UICommand::Open => {
+                let egui_ctx = _egui_ctx.clone();
+                self.open_file_promise = Some(poll_promise::Promise::spawn_async(async move {
+                    let file = async_open_rrd_dialog().await;
+                    egui_ctx.request_repaint(); // Wake ui thread
+                    file
+                }));
             }
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context
@@ -564,43 +597,56 @@ impl App {
                 self.style_panel_ui(egui_ctx, ui);
 
                 if let Some(store_view) = store_context {
-                    // TODO(jleibs): We don't necessarily want to show the wait
-                    // screen just because we're missing a recording. If we've
-                    // loaded a blueprint, we can still show the empty layouts or
-                    // static data, but we need to jump through some hoops to
-                    // handle a missing `RecordingConfig` in this case.
-                    if let Some(store_db) = store_view.recording {
-                        // TODO(andreas): store the re_renderer somewhere else.
-                        let egui_renderer = {
-                            let render_state = frame.wgpu_render_state().unwrap();
-                            &mut render_state.renderer.write()
-                        };
-                        if let Some(render_ctx) = egui_renderer
-                            .callback_resources
-                            .get_mut::<re_renderer::RenderContext>()
-                        {
-                            render_ctx.begin_frame();
+                    static EMPTY_STORE_DB: once_cell::sync::Lazy<StoreDb> =
+                        once_cell::sync::Lazy::new(|| {
+                            StoreDb::new(re_log_types::StoreId::from_string(
+                                StoreKind::Recording,
+                                "<EMPTY>".to_owned(),
+                            ))
+                        });
 
-                            self.state.show(
-                                app_blueprint,
-                                ui,
-                                render_ctx,
-                                store_db,
-                                store_view,
-                                &self.re_ui,
-                                &self.component_ui_registry,
-                                &self.space_view_class_registry,
-                                &self.rx,
-                                &self.command_sender,
-                            );
-
-                            render_ctx.before_submit();
-                        }
+                    // We want the regular UI as soon as a blueprint is available (or, rather, an
+                    // app ID is set). If no recording is available, we use a default, empty one.
+                    // Note that EMPTY_STORE_DB is *not* part of the list of available recordings
+                    // (StoreContext::alternate_recordings), which means that it's not displayed in
+                    // the recordings UI.
+                    let store_db = if let Some(store_db) = store_view.recording {
+                        store_db
                     } else {
-                        crate::ui::wait_screen_ui(ui, &self.rx);
+                        &EMPTY_STORE_DB
+                    };
+
+                    // TODO(andreas): store the re_renderer somewhere else.
+                    let egui_renderer = {
+                        let render_state = frame.wgpu_render_state().unwrap();
+                        &mut render_state.renderer.write()
+                    };
+                    if let Some(render_ctx) = egui_renderer
+                        .callback_resources
+                        .get_mut::<re_renderer::RenderContext>()
+                    {
+                        render_ctx.begin_frame();
+
+                        self.state.show(
+                            app_blueprint,
+                            ui,
+                            render_ctx,
+                            store_db,
+                            store_view,
+                            &self.re_ui,
+                            &self.component_ui_registry,
+                            &self.space_view_class_registry,
+                            &self.rx,
+                            &self.command_sender,
+                        );
+
+                        render_ctx.before_submit();
                     }
                 } else {
-                    crate::ui::wait_screen_ui(ui, &self.rx);
+                    // This is part of the loading vs. welcome screen UI logic. The loading screen
+                    // is displayed when no app ID is set. This is e.g. the initial state for the
+                    // web demos.
+                    crate::ui::loading_ui(ui, &self.rx);
                 }
             });
     }
@@ -797,21 +843,12 @@ impl App {
     fn handle_dropping_files(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         preview_files_being_dropped(egui_ctx);
 
-        // Collect dropped files:
-        if egui_ctx.input(|i| i.raw.dropped_files.len()) > 2 {
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_description("Can only load one file at a time")
-                .show();
-        }
-        if let Some(file) = egui_ctx.input(|i| i.raw.dropped_files.first().cloned()) {
+        let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
+        for file in dropped_files {
             if let Some(bytes) = &file.bytes {
                 let mut bytes: &[u8] = &(*bytes)[..];
                 if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
                     self.on_rrd_loaded(store_hub, rrd);
-
-                    #[allow(clippy::needless_return)] // false positive on wasm32
-                    return;
                 }
             }
 
@@ -822,6 +859,47 @@ impl App {
                     self.on_rrd_loaded(store_hub, rrd);
                 }
             }
+        }
+    }
+
+    /// This function will create an empty blueprint whenever the welcome screen should be
+    /// displayed.
+    ///
+    /// The welcome screen can be displayed only when a blueprint is available (and no recording is
+    /// loaded). This function implements the heuristic which determines when the welcome screen
+    /// should show up.
+    fn should_show_welcome_screen(&mut self, store_hub: &mut StoreHub) -> bool {
+        // Don't show the welcome screen if we have actual data to display.
+        if store_hub.current_recording().is_some() || store_hub.selected_application_id().is_some()
+        {
+            return false;
+        }
+
+        // Don't show the welcome screen if the `--skip-welcome-screen` flag was used (e.g. by the
+        // Python SDK), until some data has been loaded and shown. This way, we *still* show the
+        // welcome screen when the user closes all recordings after, e.g., running a Python example.
+        if self.startup_options.skip_welcome_screen && !store_hub.was_recording_active() {
+            return false;
+        }
+
+        // Here, we use the type of Receiver as a proxy for which kind of workflow the viewer is
+        // being used in.
+        match self.rx.source() {
+            // These source are typically "finite". We want the loading screen so long as data is
+            // coming in.
+            SmartChannelSource::Files { .. } | SmartChannelSource::RrdHttpStream { .. } => {
+                !self.rx.is_connected()
+            }
+            // The workflows associated with these sources typically do not require showing the
+            // welcome screen until after some recording have been loaded and then closed.
+            SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::Sdk
+            | SmartChannelSource::WsClient { .. } => false,
+            // This might be the trickiest case. When running the bare executable, we want to show
+            // the welcome screen (default, "new user" workflow). There are other case using Tcp
+            // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
+            // scenarios. In this cases, `--skip-welcome-screen` should be used.
+            SmartChannelSource::TcpServer { .. } => true,
         }
     }
 }
@@ -870,6 +948,17 @@ impl eframe::App for App {
         if self.startup_options.memory_limit.limit.is_none() {
             // we only warn about high memory usage if the user hasn't specified a limit
             self.ram_limit_warner.update();
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        if let Some(promise) = &self.open_file_promise {
+            if let Some(contents_opt) = promise.ready() {
+                if let Some(contents) = contents_opt {
+                    self.command_sender
+                        .send_system(SystemCommand::LoadRrdContents(contents.clone()));
+                }
+                self.open_file_promise = None;
+            }
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -925,6 +1014,12 @@ impl eframe::App for App {
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
 
+        // Heuristic to set the app_id to the welcome screen blueprint.
+        // Must be called before `read_context` below.
+        if self.should_show_welcome_screen(&mut store_hub) {
+            store_hub.set_app_id(StoreHub::welcome_screen_app_id());
+        }
+
         let store_context = store_hub.read_context();
 
         let app_blueprint = AppBlueprint::new(store_context.as_ref(), egui_ctx);
@@ -951,7 +1046,7 @@ impl eframe::App for App {
             self.command_sender.send_ui(cmd);
         }
 
-        self.run_pending_ui_commands(&app_blueprint, store_context.as_ref(), frame);
+        self.run_pending_ui_commands(frame, egui_ctx, &app_blueprint, store_context.as_ref());
 
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
@@ -1087,12 +1182,35 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::path::PathBuf;
-#[cfg(not(target_arch = "wasm32"))]
-fn open_rrd_dialog() -> Option<PathBuf> {
+fn open_rrd_dialog() -> Option<std::path::PathBuf> {
     rfd::FileDialog::new()
-        .add_filter("rerun data file", &["rrd"])
+        .add_filter("Rerun data file", &["rrd"])
         .pick_file()
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn async_open_rrd_dialog() -> Option<FileContents> {
+    let res = rfd::AsyncFileDialog::new()
+        .add_filter("Rerun data file", &["rrd"])
+        .pick_file()
+        .await;
+
+    match res {
+        Some(file) => Some({
+            let file_name = file.file_name();
+            re_log::debug!("Reading {file_name}…");
+            let bytes = file.read().await;
+            re_log::debug!(
+                "{file_name} was {}",
+                re_format::format_bytes(bytes.len() as _)
+            );
+            FileContents {
+                file_name,
+                bytes: bytes.into(),
+            }
+        }),
+        None => None,
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

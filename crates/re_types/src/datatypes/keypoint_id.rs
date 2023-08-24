@@ -84,7 +84,7 @@ impl crate::Loggable for KeypointId {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.datatypes.KeypointId".to_owned(),
-                        Box::new(DataType::UInt16),
+                        Box::new(Self::to_arrow_datatype()),
                         None,
                     )
                     .to_logical_type()

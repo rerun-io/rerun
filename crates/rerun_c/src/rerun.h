@@ -13,8 +13,13 @@ extern "C" {
 // ----------------------------------------------------------------------------
 // Types:
 
-#define RERUN_STORE_KIND_RECORDING 1
-#define RERUN_STORE_KIND_BLUEPRINT 2
+/// Type of store log messages are sent to.
+typedef uint32_t rr_store_kind;
+
+enum {
+    RERUN_STORE_KIND_RECORDING = 1,
+    RERUN_STORE_KIND_BLUEPRINT = 2,
+};
 
 /// Special value for `rr_recording_stream` methods to indicate the most appropriate
 /// globally available recording stream for recordings.
@@ -50,16 +55,16 @@ extern "C" {
 /// set it as a the global.
 typedef uint32_t rr_recording_stream;
 
-struct rr_store_info {
+typedef struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
     const char* application_id;
 
     /// `RERUN_STORE_KIND_RECORDING` or `RERUN_STORE_KIND_BLUEPRINT`
-    int32_t store_kind;
-};
+    rr_store_kind store_kind;
+} rr_store_info;
 
 /// Arrow-encoded data of a single component for a single entity.
-struct rr_data_cell {
+typedef struct rr_data_cell {
     const char* component_name;
 
     /// The number of bytes in the `bytes` field.
@@ -73,11 +78,11 @@ struct rr_data_cell {
     /// * <https://arrow.apache.org/docs/format/Columnar.html#format-ipc>
     /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
     const uint8_t* bytes;
-};
+} rr_data_cell;
 
 /// Arrow-encoded log data for a single entity.
 /// May contain many components.
-struct rr_data_row {
+typedef struct {
     /// Where to log to, e.g. `world/camera`.
     const char* entity_path;
 
@@ -89,8 +94,51 @@ struct rr_data_row {
     uint32_t num_data_cells;
 
     /// One for each component.
-    const struct rr_data_cell* data_cells;
+    const rr_data_cell* data_cells;
+} rr_data_row;
+
+/// Error codes returned by the Rerun C SDK as part of `rr_error`.
+///
+/// Category codes are used to group errors together, but are never returned directly.
+typedef uint32_t rr_error_code;
+
+enum {
+    RR_ERROR_CODE_OK = 0,
+
+    // Invalid argument errors.
+    _RR_ERROR_CODE_CATEGORY_ARGUMENT = 0x00000010,
+    RR_ERROR_CODE_UNEXPECTED_NULL_ARGUMENT,
+    RR_ERROR_CODE_INVALID_STRING_ARGUMENT,
+    RR_ERROR_CODE_INVALID_RECORDING_STREAM_HANDLE,
+    RR_ERROR_CODE_INVALID_SOCKET_ADDRESS,
+    RR_ERROR_CODE_INVALID_ENTITY_PATH,
+
+    // Recording stream errors
+    _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
+    RR_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
+    RR_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
+
+    // Arrow data processing errors.
+    _RR_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
+    RR_ERROR_CODE_ARROW_IPC_MESSAGE_PARSING_FAILURE,
+    RR_ERROR_CODE_ARROW_DATA_CELL_ERROR,
+
+    // Generic errors.
+    RR_ERROR_CODE_UNKNOWN,
 };
+
+/// Error outcome object (success or error) that may be filled for fallible operations.
+///
+/// Passing this error struct is always optional, and you can pass `NULL` if you don't care about
+/// the error in which case failure will be silent.
+/// If no error occurs, the error struct will be left untouched.
+typedef struct rr_error {
+    /// Error code indicating the type of error.
+    rr_error_code code;
+
+    /// Human readable description of the error in null-terminated UTF8.
+    char description[512];
+} rr_error;
 
 // ----------------------------------------------------------------------------
 // Functions:
@@ -105,7 +153,11 @@ extern const char* rr_version_string(void);
 /// Usually you only have one recording stream, so you can call
 /// `rr_recording_stream_set_global` afterwards once to make it available globally via
 /// `RERUN_REC_STREAM_CURRENT_RECORDING` and `RERUN_REC_STREAM_CURRENT_BLUEPRINT` respectively.
-extern rr_recording_stream rr_recording_stream_new(const struct rr_store_info* store_info);
+///
+/// @return A handle to the recording stream, or null if an error occurred.
+extern rr_recording_stream rr_recording_stream_new(
+    const rr_store_info* store_info, rr_error* error
+);
 
 /// Free the given recording stream. The handle will be invalid after this.
 ///
@@ -118,11 +170,13 @@ extern void rr_recording_stream_free(rr_recording_stream stream);
 
 /// Replaces the currently active recording of the specified type in the global scope with
 /// the specified one.
-extern void rr_recording_stream_set_global(rr_recording_stream stream, int32_t store_kind);
+extern void rr_recording_stream_set_global(rr_recording_stream stream, rr_store_kind store_kind);
 
 /// Replaces the currently active recording of the specified type in the thread-local scope
 /// with the specified one.
-extern void rr_recording_stream_set_thread_local(rr_recording_stream stream, int32_t store_kind);
+extern void rr_recording_stream_set_thread_local(
+    rr_recording_stream stream, rr_store_kind store_kind
+);
 
 /// Connect to a remote Rerun Viewer on the given ip:port.
 ///
@@ -133,17 +187,16 @@ extern void rr_recording_stream_set_thread_local(rr_recording_stream stream, int
 /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
 /// and can cause a call to `flush` to block indefinitely.
 ///
-/// This function returns immediately.
-/// No-op for destroyed/non-existing streams.
+/// This function returns immediately and will only raise an error for argument parsing errors,
+/// not for connection errors as these happen asynchronously.
 extern void rr_recording_stream_connect(
-    rr_recording_stream stream, const char* tcp_addr, float flush_timeout_sec
+    rr_recording_stream stream, const char* tcp_addr, float flush_timeout_sec, rr_error* error
 );
 
 /// Stream all log-data to a given file.
 ///
 /// This function returns immediately.
-/// No-op for destroyed/non-existing streams.
-extern void rr_recording_stream_save(rr_recording_stream stream, const char* path);
+extern void rr_recording_stream_save(rr_recording_stream stream, const char* path, rr_error* error);
 
 /// Initiates a flush the batching pipeline and waits for it to propagate.
 ///
@@ -155,10 +208,8 @@ extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 ///
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
-///
-/// No-op for destroyed/non-existing streams.
 extern void rr_log(
-    rr_recording_stream stream, const struct rr_data_row* data_row, bool inject_time
+    rr_recording_stream stream, const rr_data_row* data_row, bool inject_time, rr_error* error
 );
 
 // ----------------------------------------------------------------------------

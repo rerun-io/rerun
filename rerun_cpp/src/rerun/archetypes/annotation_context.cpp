@@ -5,20 +5,18 @@
 
 #include "../components/annotation_context.hpp"
 
-#include <arrow/api.h>
-
 namespace rerun {
     namespace archetypes {
-        arrow::Result<std::vector<rerun::DataCell>> AnnotationContext::to_data_cells() const {
+        Result<std::vector<rerun::DataCell>> AnnotationContext::to_data_cells() const {
             std::vector<rerun::DataCell> cells;
             cells.reserve(1);
 
             {
-                ARROW_ASSIGN_OR_RAISE(
-                    const auto cell,
-                    rerun::components::AnnotationContext::to_data_cell(&context, 1)
-                );
-                cells.push_back(cell);
+                const auto result = rerun::components::AnnotationContext::to_data_cell(&context, 1);
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.emplace_back(std::move(result.value));
             }
 
             return cells;

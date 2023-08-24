@@ -54,6 +54,7 @@ impl WebHandle {
                             limit: Some(2_500_000_000),
                         },
                         persist_state,
+                        skip_welcome_screen: false,
                     };
                     let re_ui = crate::customize_eframe(cc);
                     let url = url.unwrap_or_else(|| get_url(&cc.integration_info));

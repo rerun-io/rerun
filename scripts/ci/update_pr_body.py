@@ -18,6 +18,13 @@ from github import Github
 from jinja2 import DebugUndefined, select_autoescape
 from jinja2.sandbox import SandboxedEnvironment
 
+DOCS_PREVIEW_MARKER = "<!--DOCS-PREVIEW-->"
+DOCS_PREVIEW_BARE_LINK = "- [Docs preview](https://rerun.io/preview/{{ pr.commit }}/docs) <!--DOCS-PREVIEW-->"
+EXAMPLES_PREVIEW_MARKER = "<!--EXAMPLES-PREVIEW-->"
+EXAMPLES_PREVIEW_BARE_LINK = (
+    "- [Examples preview](https://rerun.io/preview/{{ pr.commit }}/examples) <!--EXAMPLES-PREVIEW-->"
+)
+
 
 def encode_uri_component(value: str) -> str:
     return urllib.parse.quote(value, safe="")
@@ -45,15 +52,33 @@ def main() -> None:
     )
     env.filters["encode_uri_component"] = encode_uri_component
 
-    body = env.from_string(pr.body).render(
+    new_body = pr.body
+
+    docs_preview_link_end = new_body.find(DOCS_PREVIEW_MARKER)
+    if docs_preview_link_end != -1:
+        docs_preview_link_end += len(DOCS_PREVIEW_MARKER)
+        docs_preview_link_start = new_body.rfind("\n", 0, docs_preview_link_end) + 1
+        new_body = new_body[:docs_preview_link_start] + DOCS_PREVIEW_BARE_LINK + new_body[docs_preview_link_end:]
+
+    examples_preview_link_end = new_body.find(EXAMPLES_PREVIEW_MARKER)
+    if examples_preview_link_end != -1:
+        len(EXAMPLES_PREVIEW_MARKER)
+        examples_preview_link_start = new_body.rfind("\n", 0, examples_preview_link_end) + 1
+        new_body = (
+            new_body[:examples_preview_link_start] + EXAMPLES_PREVIEW_BARE_LINK + new_body[examples_preview_link_end:]
+        )
+
+    new_body = env.from_string(new_body).render(
         pr={
             "number": args.pr_number,
             "branch": pr.head.ref,
+            "commit": latest_commit.sha,
         },
     )
 
-    if body != pr.body:
-        pr.edit(body=body)
+    if new_body != pr.body:
+        print("updated pr body")
+        pr.edit(body=new_body)
 
 
 if __name__ == "__main__":

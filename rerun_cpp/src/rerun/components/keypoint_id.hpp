@@ -5,10 +5,21 @@
 
 #include "../data_cell.hpp"
 #include "../datatypes/keypoint_id.hpp"
+#include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
+#include <memory>
 #include <utility>
+
+namespace arrow {
+    template <typename T>
+    class NumericBuilder;
+
+    class DataType;
+    class MemoryPool;
+    class UInt16Type;
+    using UInt16Builder = NumericBuilder<UInt16Type>;
+} // namespace arrow
 
 namespace rerun {
     namespace components {
@@ -35,17 +46,17 @@ namespace rerun {
             static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
-            static arrow::Result<std::shared_ptr<arrow::UInt16Builder>> new_arrow_array_builder(
+            static Result<std::shared_ptr<arrow::UInt16Builder>> new_arrow_array_builder(
                 arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static arrow::Status fill_arrow_array_builder(
+            static Error fill_arrow_array_builder(
                 arrow::UInt16Builder* builder, const KeypointId* elements, size_t num_elements
             );
 
             /// Creates a Rerun DataCell from an array of KeypointId components.
-            static arrow::Result<rerun::DataCell> to_data_cell(
+            static Result<rerun::DataCell> to_data_cell(
                 const KeypointId* instances, size_t num_instances
             );
         };
