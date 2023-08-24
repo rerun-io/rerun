@@ -188,6 +188,15 @@ impl<'a> LineBatchBuilder<'a> {
 
     /// Adds a 3D series of line connected points.
     pub fn add_strip(&mut self, points: impl Iterator<Item = glam::Vec3>) -> LineStripBuilder<'_> {
+        if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
+            re_log::error_once!(
+                "Reached maximum number of supported line strips of {}.
+     See also https://github.com/rerun-io/rerun/issues/957",
+                LineDrawData::MAX_NUM_STRIPS
+            );
+            return LineStripBuilder::placeholder(self.0);
+        }
+
         let old_strip_count = self.0.strips.len();
         let old_vertex_count = self.0.vertices.len();
         let strip_index = old_strip_count as _;
@@ -218,6 +227,15 @@ impl<'a> LineBatchBuilder<'a> {
         &mut self,
         segments: impl Iterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_> {
+        if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
+            re_log::error_once!(
+                "Reached maximum number of supported line strips of {}.
+     See also https://github.com/rerun-io/rerun/issues/957",
+                LineDrawData::MAX_NUM_STRIPS
+            );
+            return LineStripBuilder::placeholder(self.0);
+        }
+
         debug_assert_eq!(
             self.0.strips.len(),
             self.0.picking_instance_ids_buffer.num_written()
@@ -438,6 +456,16 @@ pub struct LineStripBuilder<'a> {
 }
 
 impl<'a> LineStripBuilder<'a> {
+    fn placeholder(series_builder: &'a mut LineStripSeriesBuilder) -> Self {
+        Self {
+            builder: series_builder,
+            outline_mask_ids: OutlineMaskPreference::NONE,
+            picking_instance_id: PickingLayerInstanceId::default(),
+            vertex_range: 0..0,
+            strip_range: 0..0,
+        }
+    }
+
     #[inline]
     pub fn radius(self, radius: Size) -> Self {
         for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
