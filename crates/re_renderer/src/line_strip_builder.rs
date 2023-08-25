@@ -231,8 +231,8 @@ impl<'a> LineBatchBuilder<'a> {
     ) -> LineStripBuilder<'_> {
         if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
             re_log::error_once!(
-                "Reached maximum number of supported line strips of {}.
-     See also https://github.com/rerun-io/rerun/issues/957",
+                "Reached maximum number of supported line strips of {}. \
+                 See also https://github.com/rerun-io/rerun/issues/957",
                 LineDrawData::MAX_NUM_STRIPS
             );
             return LineStripBuilder::placeholder(self.0);

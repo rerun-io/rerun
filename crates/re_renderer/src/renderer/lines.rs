@@ -422,15 +422,17 @@ impl LineDrawData {
         );
 
         let vertices = if vertices.len() >= Self::MAX_NUM_VERTICES {
-            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}.
- See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
+            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}. \
+                                See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
             &vertices[..Self::MAX_NUM_VERTICES]
         } else {
             &vertices[..]
         };
         let strips = if strips.len() > Self::MAX_NUM_STRIPS {
-            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. This may lead to rendering artifacts.
- See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_STRIPS, strips.len());
+            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. \
+                                 This may lead to rendering artifacts. \
+                                 See also https://github.com/rerun-io/rerun/issues/957",
+                                 Self::MAX_NUM_STRIPS, strips.len());
             &strips[..Self::MAX_NUM_STRIPS]
         } else {
             // Can only check for strip index validity if we haven't clamped the strips!

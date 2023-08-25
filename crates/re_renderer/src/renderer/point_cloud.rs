@@ -238,8 +238,8 @@ impl PointCloudDrawData {
 
         let vertices = if vertices.len() > Self::MAX_NUM_POINTS {
             re_log::error_once!(
-                "Reached maximum number of supported points. Clamping down to {}, passed were {}.
- See also https://github.com/rerun-io/rerun/issues/957",
+                "Reached maximum number of supported points. Clamping down to {}, passed were {}. \
+                See also https://github.com/rerun-io/rerun/issues/957",
                 Self::MAX_NUM_POINTS,
                 vertices.len()
             );
