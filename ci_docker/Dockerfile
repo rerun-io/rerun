@@ -46,7 +46,7 @@ RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.69.0 \
+    RUST_VERSION=1.72.0 \
     RUSTUP_VERSION=1.26.0
 
 # Install Rust
