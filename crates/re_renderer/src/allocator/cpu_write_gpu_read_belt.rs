@@ -5,6 +5,25 @@ use crate::{
     wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool},
 };
 
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum CpuWriteGpuReadError {
+    #[error("Buffer is full, can't append more data! Buffer has capacity for {buffer_element_capacity} elements.")]
+    BufferFull { buffer_element_capacity: usize },
+
+    #[error("Target buffer has a size of {target_buffer_size}, can't write {copy_size} bytes with an offset of {destination_offset}!")]
+    TargetBufferTooSmall {
+        target_buffer_size: u64,
+        copy_size: u64,
+        destination_offset: u64,
+    },
+
+    #[error("Target texture doesn't fit the size of the written data to this buffer! Texture size: {target_texture_size} bytes, written data size: {written_data_size} bytes")]
+    TargetTextureBufferSizeMismatch {
+        target_texture_size: u64,
+        written_data_size: usize,
+    },
+}
+
 /// A sub-allocated staging buffer that can be written to.
 ///
 /// Behaves a bit like a fixed sized `Vec` in that far it keeps track of how many elements were written to it.
@@ -57,49 +76,115 @@ where
 
     /// Pushes a slice of elements into the buffer.
     ///
-    /// Panics if the data no longer fits into the buffer.
+    /// If the buffer is not big enough, only the first `self.remaining_capacity()` elements are pushed before returning an error.
     #[inline]
-    pub fn extend_from_slice(&mut self, elements: &[T]) {
+    pub fn extend_from_slice(&mut self, elements: &[T]) -> Result<(), CpuWriteGpuReadError> {
+        let (result, elements) = if elements.len() > self.remaining_capacity() {
+            (
+                Err(CpuWriteGpuReadError::BufferFull {
+                    buffer_element_capacity: self.capacity(),
+                }),
+                &elements[..self.remaining_capacity()],
+            )
+        } else {
+            (Ok(()), elements)
+        };
+
         let bytes = bytemuck::cast_slice(elements);
         self.as_mut_byte_slice()[..bytes.len()].copy_from_slice(bytes);
         self.unwritten_element_range.start += elements.len();
+
+        result
     }
 
     /// Pushes several elements into the buffer.
     ///
-    /// Panics if there are more elements than there is space in the buffer.
-    ///
-    /// Returns number of elements pushed.
+    /// If the buffer is not big enough, only the first `self.remaining_capacity()` elements are pushed before returning an error.
+    /// Otherwise, returns the number of elements pushed for convenience.
     #[inline]
-    pub fn extend(&mut self, elements: impl Iterator<Item = T>) -> usize {
+    pub fn extend(
+        &mut self,
+        elements: impl Iterator<Item = T>,
+    ) -> Result<usize, CpuWriteGpuReadError> {
         let num_written_before = self.num_written();
+
         for element in elements {
-            self.push(element);
+            if self.unwritten_element_range.start >= self.unwritten_element_range.end {
+                return Err(CpuWriteGpuReadError::BufferFull {
+                    buffer_element_capacity: self.capacity(),
+                });
+            }
+
+            self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
+                .copy_from_slice(bytemuck::bytes_of(&element));
+            self.unwritten_element_range.start += 1;
         }
-        self.num_written() - num_written_before
+
+        Ok(self.num_written() - num_written_before)
+    }
+
+    /// Fills the buffer with n instances of an element.
+    ///
+    /// If the buffer is not big enough, only the first `self.remaining_capacity()` elements are pushed before returning an error.
+    pub fn fill_n(&mut self, element: T, num_elements: usize) -> Result<(), CpuWriteGpuReadError> {
+        let (result, num_elements) = if num_elements > self.remaining_capacity() {
+            (
+                Err(CpuWriteGpuReadError::BufferFull {
+                    buffer_element_capacity: self.capacity(),
+                }),
+                self.remaining_capacity(),
+            )
+        } else {
+            (Ok(()), num_elements)
+        };
+
+        let mut offset = 0;
+        let buffer_bytes = self.as_mut_byte_slice();
+        let element_bytes = bytemuck::bytes_of(&element);
+
+        for _ in 0..num_elements {
+            let end = offset + std::mem::size_of::<T>();
+            buffer_bytes[offset..end].copy_from_slice(element_bytes);
+            offset = end;
+        }
+        self.unwritten_element_range.start += num_elements;
+
+        result
     }
 
     /// Pushes a single element into the buffer and advances the write pointer.
     ///
     /// Panics if the data no longer fits into the buffer.
     #[inline]
-    pub fn push(&mut self, element: T) {
-        assert!(
-            self.unwritten_element_range.start < self.unwritten_element_range.end,
-            "CpuWriteGpuReadBuffer<{}> is full ({} elements written)",
-            std::any::type_name::<T>(),
-            self.unwritten_element_range.start,
-        );
+    pub fn push(&mut self, element: T) -> Result<(), CpuWriteGpuReadError> {
+        if self.remaining_capacity() == 0 {
+            return Err(CpuWriteGpuReadError::BufferFull {
+                buffer_element_capacity: self.capacity(),
+            });
+        }
 
         self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
             .copy_from_slice(bytemuck::bytes_of(&element));
         self.unwritten_element_range.start += 1;
+
+        Ok(())
     }
 
     /// The number of elements pushed into the buffer so far.
     #[inline]
     pub fn num_written(&self) -> usize {
         self.unwritten_element_range.start
+    }
+
+    /// The number of elements that can still be pushed into the buffer.
+    #[inline]
+    pub fn remaining_capacity(&self) -> usize {
+        self.unwritten_element_range.end - self.unwritten_element_range.start
+    }
+
+    /// Total number of elements that the buffer can hold.
+    pub fn capacity(&self) -> usize {
+        self.unwritten_element_range.end
     }
 
     /// Copies all so far written data to a rectangle on a single 2d texture layer.
@@ -114,16 +199,19 @@ where
         encoder: &mut wgpu::CommandEncoder,
         destination: wgpu::ImageCopyTexture<'_>,
         copy_extent: glam::UVec2,
-    ) {
+    ) -> Result<(), CpuWriteGpuReadError> {
         let buffer_info = Texture2DBufferInfo::new(destination.texture.format(), copy_extent);
 
         // Validate that we stay within the written part of the slice (wgpu can't fully know our intention here, so we have to check).
         // We go one step further and require the size to be exactly equal - it's too unlikely that you wrote more than is needed!
         // (and if you did you probably have regrets anyways!)
-        debug_assert_eq!(
-            buffer_info.buffer_size_padded as usize,
-            self.num_written() * std::mem::size_of::<T>()
-        );
+        if buffer_info.buffer_size_padded as usize != self.num_written() * std::mem::size_of::<T>()
+        {
+            return Err(CpuWriteGpuReadError::TargetTextureBufferSizeMismatch {
+                target_texture_size: buffer_info.buffer_size_padded,
+                written_data_size: self.num_written() * std::mem::size_of::<T>(),
+            });
+        }
 
         encoder.copy_buffer_to_texture(
             wgpu::ImageCopyBuffer {
@@ -141,6 +229,8 @@ where
                 depth_or_array_layers: 1,
             },
         );
+
+        Ok(())
     }
 
     /// Copies the entire buffer to another buffer and drops it.
@@ -149,13 +239,17 @@ where
         encoder: &mut wgpu::CommandEncoder,
         destination: &GpuBuffer,
         destination_offset: wgpu::BufferAddress,
-    ) {
+    ) -> Result<(), CpuWriteGpuReadError> {
         let copy_size = (std::mem::size_of::<T>() * self.unwritten_element_range.start) as u64;
 
-        // Wgpu does validation as well, but in debug mode we want to panic if the buffer doesn't fit.
-        debug_assert!(copy_size <= destination_offset + destination.size(),
-            "Target buffer has a size of {}, can't write {copy_size} bytes with an offset of {destination_offset}!",
-            destination.size());
+        // Wgpu does validation as well, but we want to be able to track this error right away.
+        if copy_size > destination_offset + destination.size() {
+            return Err(CpuWriteGpuReadError::TargetBufferTooSmall {
+                target_buffer_size: destination.size(),
+                copy_size,
+                destination_offset,
+            });
+        }
 
         encoder.copy_buffer_to_buffer(
             &self.chunk_buffer,
@@ -164,6 +258,8 @@ where
             destination_offset,
             copy_size,
         );
+
+        Ok(())
     }
 }
 

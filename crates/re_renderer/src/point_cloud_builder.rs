@@ -1,7 +1,12 @@
+use re_log::ResultExt;
+
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
     draw_phases::PickingLayerObjectId,
-    renderer::{PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudVertex},
+    renderer::{
+        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+        PointCloudVertex,
+    },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
     Size,
 };
@@ -97,7 +102,10 @@ impl PointCloudBuilder {
     }
 
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
-    pub fn into_draw_data(self, ctx: &mut crate::context::RenderContext) -> PointCloudDrawData {
+    pub fn into_draw_data(
+        self,
+        ctx: &mut crate::context::RenderContext,
+    ) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
         PointCloudDrawData::new(ctx, self)
     }
 }
@@ -206,22 +214,33 @@ impl<'a> PointCloudBatchBuilder<'a> {
         }
         {
             re_tracing::profile_scope!("colors");
-            let num_written = self.0.color_buffer.extend(colors.take(num_points));
-            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
-            self.0
+            if let Some(num_written) = self
+                .0
                 .color_buffer
-                .extend(std::iter::repeat(Color32::TRANSPARENT).take(num_points - num_written));
+                .extend(colors.take(num_points))
+                .unwrap_debug_or_log_error()
+            {
+                // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
+                self.0
+                    .color_buffer
+                    .fill_n(Color32::TRANSPARENT, num_points - num_written)
+                    .unwrap_debug_or_log_error();
+            }
         }
         {
             re_tracing::profile_scope!("picking_instance_ids");
-            let num_written = self
+            if let Some(num_written) = self
                 .0
                 .picking_instance_ids_buffer
-                .extend(picking_instance_ids.take(num_points));
-            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
-            self.0.picking_instance_ids_buffer.extend(
-                std::iter::repeat(PickingLayerInstanceId::default()).take(num_points - num_written),
-            );
+                .extend(picking_instance_ids.take(num_points))
+                .unwrap_debug_or_log_error()
+            {
+                // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
+                self.0
+                    .picking_instance_ids_buffer
+                    .fill_n(PickingLayerInstanceId::default(), num_points - num_written)
+                    .unwrap_debug_or_log_error();
+            }
         }
 
         self
