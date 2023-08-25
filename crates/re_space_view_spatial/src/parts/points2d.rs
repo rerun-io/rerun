@@ -145,13 +145,8 @@ impl Points2DPart {
                 picking_instance_ids.collect()
             };
 
-            let mut point_range_builder = point_batch.add_points_2d(
-                arch_view.num_instances(),
-                &positions,
-                &radii,
-                &colors,
-                &picking_instance_ids,
-            );
+            let mut point_range_builder =
+                point_batch.add_points_2d(&positions, &radii, &colors, &picking_instance_ids);
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {

@@ -1,3 +1,5 @@
+use itertools::izip;
+
 use re_log::ResultExt;
 
 use crate::{
@@ -155,24 +157,24 @@ impl<'a> PointCloudBatchBuilder<'a> {
     ///
     /// Returns a `PointBuilder` which can be used to set the colors, radii, and user-data for the points.
     ///
-    /// Will *always* add `num_points`, no matter how many elements are in the iterators.
-    /// Missing elements will be filled up with defaults (in case of positions that's the origin)
+    /// Will add all positions. Missing elements in other slices will be filled up with defaults.
     ///
     /// TODO(#957): Clamps number of points to the allowed per-builder maximum.
     #[inline]
     pub fn add_points(
         mut self,
-        mut num_points: usize,
-        positions: impl Iterator<Item = glam::Vec3>,
-        radii: impl Iterator<Item = Size>,
-        colors: impl Iterator<Item = Color32>,
-        picking_instance_ids: impl Iterator<Item = PickingLayerInstanceId>,
+        positions: &[glam::Vec3],
+        radii: &[Size],
+        colors: &[Color32],
+        picking_instance_ids: &[PickingLayerInstanceId],
     ) -> Self {
         // TODO(jleibs): Figure out if we can plumb-through proper support for `Iterator::size_hints()`
         // or potentially make `FixedSizedIterator` work correctly. This should be possible size the
         // underlying arrow structures are of known-size, but carries some complexity with the amount of
         // chaining, joining, filtering, etc. that happens along the way.
         re_tracing::profile_function!();
+
+        let mut num_points = positions.len();
 
         debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
         debug_assert_eq!(
@@ -195,52 +197,45 @@ impl<'a> PointCloudBatchBuilder<'a> {
 
         {
             re_tracing::profile_scope!("positions & radii");
-            let num_before = self.0.vertices.len();
             self.0.vertices.extend(
-                positions
+                izip!(positions.iter().copied(), radii.iter().copied())
                     .take(num_points)
-                    .zip(radii.take(num_points))
                     .map(|(position, radius)| PointCloudVertex { position, radius }),
-            );
-            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
-            let num_default = num_points - (self.0.vertices.len() - num_before);
-            self.0.vertices.extend(
-                std::iter::repeat(PointCloudVertex {
-                    position: glam::Vec3::ZERO,
-                    radius: Size::AUTO,
-                })
-                .take(num_default),
             );
         }
         {
             re_tracing::profile_scope!("colors");
-            if let Some(num_written) = self
-                .0
+
+            self.0
                 .color_buffer
-                .extend(colors.take(num_points))
-                .unwrap_debug_or_log_error()
-            {
-                // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
-                self.0
-                    .color_buffer
-                    .fill_n(Color32::TRANSPARENT, num_points - num_written)
-                    .unwrap_debug_or_log_error();
-            }
+                .extend_from_slice(colors)
+                .unwrap_debug_or_log_error();
+
+            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
+            self.0
+                .color_buffer
+                .fill_n(
+                    Color32::TRANSPARENT,
+                    num_points.saturating_sub(colors.len()),
+                )
+                .unwrap_debug_or_log_error();
         }
         {
             re_tracing::profile_scope!("picking_instance_ids");
-            if let Some(num_written) = self
-                .0
+
+            self.0
                 .picking_instance_ids_buffer
-                .extend(picking_instance_ids.take(num_points))
-                .unwrap_debug_or_log_error()
-            {
-                // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
-                self.0
-                    .picking_instance_ids_buffer
-                    .fill_n(PickingLayerInstanceId::default(), num_points - num_written)
-                    .unwrap_debug_or_log_error();
-            }
+                .extend_from_slice(picking_instance_ids)
+                .unwrap_debug_or_log_error();
+
+            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
+            self.0
+                .picking_instance_ids_buffer
+                .fill_n(
+                    PickingLayerInstanceId::default(),
+                    num_points.saturating_sub(picking_instance_ids.len()),
+                )
+                .unwrap_debug_or_log_error();
         }
 
         self
@@ -248,26 +243,18 @@ impl<'a> PointCloudBatchBuilder<'a> {
 
     /// Adds several 2D points (assumes Z=0). Uses an autogenerated depth value, the same for all points passed.
     ///
-    /// Will *always* add `num_points`, no matter how many elements are in the iterators.
-    /// Missing elements will be filled up with defaults (in case of positions that's the origin)
+    /// Will add all positions. Missing elements in other slices will be filled up with defaults.
     #[inline]
     pub fn add_points_2d(
         self,
-        num_points: usize,
         positions: &[glam::Vec3],
         radii: &[Size],
         colors: &[Color32],
         picking_instance_ids: &[PickingLayerInstanceId],
     ) -> Self {
         re_tracing::profile_function!();
-        self.add_points(
-            num_points,
-            positions.iter().copied(),
-            radii.iter().copied(),
-            colors.iter().copied(),
-            picking_instance_ids.iter().copied(),
-        )
-        .flags(PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES)
+        self.add_points(positions, radii, colors, picking_instance_ids)
+            .flags(PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES)
     }
 
     /// Adds (!) flags for this batch.

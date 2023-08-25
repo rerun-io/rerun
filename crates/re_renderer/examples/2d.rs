@@ -171,7 +171,6 @@ impl framework::Example for Render2D {
         // The third point is automatic thickness which is determined by the point renderer implementation.
         let mut point_cloud_builder = PointCloudBuilder::new(re_ctx);
         point_cloud_builder.batch("points").add_points_2d(
-            4,
             &[
                 glam::vec3(500.0, 120.0, 0.0),
                 glam::vec3(520.0, 120.0, 0.0),
@@ -236,7 +235,7 @@ impl framework::Example for Render2D {
             point_cloud_builder
                 .batch("points overlapping with lines")
                 .depth_offset(5)
-                .add_points_2d(num_points, &positions, &sizes, &colors, &picking_ids);
+                .add_points_2d(&positions, &sizes, &colors, &picking_ids);
         }
 
         let line_strip_draw_data = line_strip_builder.into_draw_data(re_ctx).unwrap();
