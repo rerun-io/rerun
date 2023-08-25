@@ -112,7 +112,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.rscript_setup(args, "rerun-example-Depth Guided Stable Diffusion")
+    rr.script_setup(args, "rerun-example-Depth Guided Stable Diffusion")
 
     image_path = args.image_path  # type: str
     if not image_path:

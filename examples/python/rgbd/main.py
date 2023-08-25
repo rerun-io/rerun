@@ -144,7 +144,7 @@ if __name__ == "__main__":
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.rscript_setup(args, "rerun-example-rgbd")
+    rr.script_setup(args, "rerun-example-rgbd")
     recording_path = ensure_recording_downloaded(args.recording)
 
     log_nyud_data(

@@ -274,7 +274,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Simple example of a ROS node that republishes to Rerun.")
     rr.script_add_args(parser)
     args, unknownargs = parser.parse_known_args()
-    rr.rscript_setup(args, "rerun-example-ros_node")
+    rr.script_setup(args, "rerun-example-ros_node")
 
     # Any remaining args go to rclpy
     rclpy.init(args=unknownargs)

@@ -40,7 +40,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.rscript_setup(args, "rerun-example-roundtrip_points3d")
+    rr.script_setup(args, "rerun-example-roundtrip_points3d")
 
     rr2.log("points3d", points3d)
 

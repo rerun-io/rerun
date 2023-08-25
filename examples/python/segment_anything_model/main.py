@@ -183,7 +183,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.rscript_setup(args, "rerun-example-segment_anything_model")
+    rr.script_setup(args, "rerun-example-segment_anything_model")
     logging.getLogger().addHandler(rr.LoggingHandler("logs"))
     logging.getLogger().setLevel(logging.INFO)
 

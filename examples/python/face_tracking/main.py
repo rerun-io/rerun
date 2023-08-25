@@ -407,7 +407,7 @@ def main() -> None:
     args, unknown = parser.parse_known_args()
     for arg in unknown:
         logging.warning(f"unknown arg: {arg}")
-    rr.rscript_setup(args, "rerun-example-mp_face_detection")
+    rr.script_setup(args, "rerun-example-mp_face_detection")
 
     if args.demo_image:
         if not SAMPLE_IMAGE_PATH.exists():

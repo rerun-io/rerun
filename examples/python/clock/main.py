@@ -72,6 +72,6 @@ if __name__ == "__main__":
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.rscript_setup(args, "rerun-example-clock")
+    rr.script_setup(args, "rerun-example-clock")
     log_clock(args.steps)
     rr.script_teardown(args)

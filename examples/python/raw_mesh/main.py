@@ -87,7 +87,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.rscript_setup(args, "rerun-example-raw_mesh")
+    rr.script_setup(args, "rerun-example-raw_mesh")
 
     scene_path = args.scene_path
     if scene_path is None:

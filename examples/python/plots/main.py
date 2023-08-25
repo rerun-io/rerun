@@ -86,7 +86,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.rscript_setup(args, "rerun-example-plot")
+    rr.script_setup(args, "rerun-example-plot")
 
     log_parabola()
     log_trig()

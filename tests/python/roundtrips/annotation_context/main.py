@@ -27,7 +27,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.rscript_setup(args, "rerun-example-roundtrip_annotation_context")
+    rr.script_setup(args, "rerun-example-roundtrip_annotation_context")
 
     rr2.log("annotation_context", annotation_context)
 

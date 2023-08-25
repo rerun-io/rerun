@@ -167,7 +167,7 @@ def main() -> None:
     if args.resize:
         args.resize = tuple(int(x) for x in args.resize.split("x"))
 
-    rr.rscript_setup(args, "rerun-example-structure_from_motion")
+    rr.script_setup(args, "rerun-example-structure_from_motion")
     dataset_path = get_downloaded_dataset_path(args.dataset)
     read_and_log_sparse_reconstruction(dataset_path, filter_output=not args.unfiltered, resize=args.resize)
     rr.script_teardown(args)
