@@ -1,7 +1,7 @@
 use egui::{Ui, Widget};
 use itertools::Itertools;
 use re_log_types::LogMsg;
-use re_smart_channel::Receiver;
+use re_smart_channel::{ReceiveSet, SmartChannelSource};
 
 use re_ui::ReUi;
 
@@ -17,7 +17,7 @@ const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer
 pub fn welcome_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    rx: &Receiver<LogMsg>,
+    rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
 ) {
     egui::ScrollArea::both()
@@ -29,37 +29,38 @@ pub fn welcome_ui(
 }
 
 /// Full-screen UI shown while in loading state.
-pub fn loading_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
+pub fn loading_ui(ui: &mut egui::Ui, rx: &ReceiveSet<LogMsg>) {
     ui.centered_and_justified(|ui| {
-        let status_strings = status_strings(rx);
-
-        let style = ui.style();
-        let mut layout_job = egui::text::LayoutJob::default();
-        layout_job.append(
-            status_strings.status,
-            0.0,
-            egui::TextFormat::simple(
-                egui::TextStyle::Heading.resolve(style),
-                style.visuals.strong_text_color(),
-            ),
-        );
-        layout_job.append(
-            &format!("\n\n{}", status_strings.source),
-            0.0,
-            egui::TextFormat::simple(
-                egui::TextStyle::Body.resolve(style),
-                style.visuals.text_color(),
-            ),
-        );
-        layout_job.halign = egui::Align::Center;
-        ui.label(layout_job);
+        // TODO: not the best wait screen when loading multiple different things
+        for status_strings in status_strings(rx) {
+            let style = ui.style();
+            let mut layout_job = egui::text::LayoutJob::default();
+            layout_job.append(
+                status_strings.status,
+                0.0,
+                egui::TextFormat::simple(
+                    egui::TextStyle::Heading.resolve(style),
+                    style.visuals.strong_text_color(),
+                ),
+            );
+            layout_job.append(
+                &format!("\n\n{}", status_strings.source),
+                0.0,
+                egui::TextFormat::simple(
+                    egui::TextStyle::Body.resolve(style),
+                    style.visuals.text_color(),
+                ),
+            );
+            layout_job.halign = egui::Align::Center;
+            ui.label(layout_job);
+        }
     });
 }
 
 fn welcome_ui_impl(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    rx: &Receiver<LogMsg>,
+    rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
 ) {
     let mut margin = egui::Margin::same(40.0);
@@ -91,16 +92,17 @@ fn welcome_ui_impl(
 
             onboarding_content_ui(re_ui, ui, command_sender);
 
-            let status_strings = status_strings(rx);
-            if status_strings.long_term {
-                ui.add_space(55.0);
-                ui.vertical_centered(|ui| {
-                    ui.label(status_strings.status);
-                    ui.label(
-                        egui::RichText::new(status_strings.source)
-                            .color(ui.visuals().weak_text_color()),
-                    );
-                });
+            for status_strings in status_strings(rx) {
+                if status_strings.long_term {
+                    ui.add_space(55.0);
+                    ui.vertical_centered(|ui| {
+                        ui.label(status_strings.status);
+                        ui.label(
+                            egui::RichText::new(status_strings.source)
+                                .color(ui.visuals().weak_text_color()),
+                        );
+                    });
+                }
             }
         });
     });
@@ -313,8 +315,15 @@ impl StatusStrings {
 }
 
 /// Returns the status strings to be displayed by the loading and welcome screen.
-fn status_strings(rx: &Receiver<LogMsg>) -> StatusStrings {
-    match rx.source() {
+fn status_strings(rx: &ReceiveSet<LogMsg>) -> Vec<StatusStrings> {
+    rx.sources()
+        .into_iter()
+        .map(|s| status_string(&s))
+        .collect()
+}
+
+fn status_string(source: &SmartChannelSource) -> StatusStrings {
+    match source {
         re_smart_channel::SmartChannelSource::Files { paths } => StatusStrings::new(
             "Loading…",
             format!(

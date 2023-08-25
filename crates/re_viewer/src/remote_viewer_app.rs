@@ -72,15 +72,14 @@ impl RemoteViewerApp {
 
         match re_ws_comms::Connection::viewer_to_server(self.url.clone(), callback) {
             Ok(connection) => {
-                let app = crate::App::from_receiver(
+                let mut app = crate::App::new(
                     self.build_info,
                     &self.app_env,
                     self.startup_options.clone(),
                     self.re_ui.clone(),
                     storage,
-                    rx,
                 );
-
+                app.add_receiver(rx);
                 self.app = Some((connection, app));
             }
             Err(err) => {

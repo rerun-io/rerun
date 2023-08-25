@@ -44,14 +44,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_viewer::run_native_app(Box::new(move |cc, re_ui| {
         let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
 
-        let mut app = re_viewer::App::from_receiver(
+        let mut app = re_viewer::App::new(
             re_viewer::build_info(),
             &app_env,
             startup_options,
             re_ui,
             cc.storage,
-            rx,
         );
+        app.add_receiver(rx);
 
         // Register the custom space view
         app.add_space_view_class::<color_coordinates_space_view::ColorCoordinatesSpaceView>()

@@ -584,14 +584,14 @@ async fn run_impl(
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let mut app = re_viewer::App::from_receiver(
+            let mut app = re_viewer::App::new(
                 _build_info,
                 &call_source.app_env(),
                 startup_options,
                 re_ui,
                 cc.storage,
-                rx,
             );
+            app.add_receiver(rx);
             app.set_profiler(profiler);
             Box::new(app)
         }))

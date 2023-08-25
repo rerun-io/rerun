@@ -2,7 +2,7 @@ use ahash::HashMap;
 
 use re_data_store::StoreDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
-use re_smart_channel::Receiver;
+use re_smart_channel::ReceiveSet;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SpaceViewClassRegistry, StoreContext, ViewerContext,
@@ -79,7 +79,7 @@ impl AppState {
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
-        rx: &Receiver<LogMsg>,
+        rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
     ) {
         re_tracing::profile_function!();

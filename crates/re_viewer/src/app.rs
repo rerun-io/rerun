@@ -3,7 +3,7 @@ use web_time::Instant;
 use re_data_store::store_db::StoreDb;
 use re_log_types::{LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{Receiver, SmartChannelSource};
+use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
@@ -91,7 +91,7 @@ pub struct App {
 
     component_ui_registry: ComponentUiRegistry,
 
-    rx: Receiver<LogMsg>,
+    rx: ReceiveSet<LogMsg>,
 
     #[cfg(target_arch = "wasm32")]
     open_file_promise: Option<poll_promise::Promise<Option<FileContents>>>,
@@ -131,13 +131,12 @@ pub struct App {
 
 impl App {
     /// Create a viewer that receives new log messages over time
-    pub fn from_receiver(
+    pub fn new(
         build_info: re_build_info::BuildInfo,
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
-        rx: Receiver<LogMsg>,
     ) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         if re_log::add_boxed_logger(Box::new(logger)).is_err() {
@@ -203,7 +202,7 @@ impl App {
 
             text_log_rx,
             component_ui_registry: re_data_ui::create_component_ui_registry(),
-            rx,
+            rx: Default::default(),
             #[cfg(target_arch = "wasm32")]
             open_file_promise: Default::default(),
             state,
@@ -254,7 +253,11 @@ impl App {
         self.screenshotter.is_screenshotting()
     }
 
-    pub fn msg_receiver(&self) -> &Receiver<LogMsg> {
+    pub fn add_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
+        self.rx.add(rx);
+    }
+
+    pub fn msg_receive_set(&self) -> &ReceiveSet<LogMsg> {
         &self.rx
     }
 
@@ -687,7 +690,7 @@ impl App {
 
         let start = web_time::Instant::now();
 
-        while let Ok(msg) = self.rx.try_recv() {
+        while let Some((channel_source, msg)) = self.rx.try_recv() {
             let msg = match msg.payload {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
@@ -707,7 +710,7 @@ impl App {
             let store_db = store_hub.store_db_mut(store_id);
 
             if store_db.data_source.is_none() {
-                store_db.data_source = Some(self.rx.source().clone());
+                store_db.data_source = Some((*channel_source).clone());
             }
 
             if let Err(err) = store_db.add(&msg) {
@@ -886,25 +889,39 @@ impl App {
             return false;
         }
 
+        let sources = self.rx.sources();
+
+        if sources.is_empty() {
+            return true;
+        }
+
         // Here, we use the type of Receiver as a proxy for which kind of workflow the viewer is
         // being used in.
-        match self.rx.source() {
-            // These source are typically "finite". We want the loading screen so long as data is
-            // coming in.
-            SmartChannelSource::Files { .. } | SmartChannelSource::RrdHttpStream { .. } => {
-                !self.rx.is_connected()
+        for source in sources {
+            match &*source {
+                // These source are typically "finite". We want the loading screen so long as data is
+                // coming in.
+                SmartChannelSource::Files { .. } | SmartChannelSource::RrdHttpStream { .. } => {
+                    return true;
+                }
+
+                // The workflows associated with these sources typically do not require showing the
+                // welcome screen until after some recording have been loaded and then closed.
+                SmartChannelSource::RrdWebEventListener
+                | SmartChannelSource::Sdk
+                | SmartChannelSource::WsClient { .. } => {}
+
+                // This might be the trickiest case. When running the bare executable, we want to show
+                // the welcome screen (default, "new user" workflow). There are other case using Tcp
+                // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
+                // scenarios. In this cases, `--skip-welcome-screen` should be used.
+                SmartChannelSource::TcpServer { .. } => {
+                    return true;
+                }
             }
-            // The workflows associated with these sources typically do not require showing the
-            // welcome screen until after some recording have been loaded and then closed.
-            SmartChannelSource::RrdWebEventListener
-            | SmartChannelSource::Sdk
-            | SmartChannelSource::WsClient { .. } => false,
-            // This might be the trickiest case. When running the bare executable, we want to show
-            // the welcome screen (default, "new user" workflow). There are other case using Tcp
-            // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
-            // scenarios. In this cases, `--skip-welcome-screen` should be used.
-            SmartChannelSource::TcpServer { .. } => true,
         }
+
+        false
     }
 }
 
