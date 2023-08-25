@@ -4596,6 +4596,7 @@ dependencies = [
  "re_build_tools",
  "re_error",
  "re_string_interner",
+ "re_tracing",
  "re_types_builder",
  "serde",
  "similar-asserts",

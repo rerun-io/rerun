@@ -43,6 +43,7 @@ impl ComponentWithInstances {
     pub fn iter_instance_keys(
         &self,
     ) -> impl Iterator<Item = re_types::components::InstanceKey> + '_ {
+        re_tracing::profile_function!();
         self.instance_keys.to_native::<InstanceKey>()
     }
 
@@ -268,6 +269,7 @@ impl<A: Archetype> ArchetypeView<A> {
     /// Iterate over the [`InstanceKey`]s.
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
+        re_tracing::profile_function!();
         // TODO(https://github.com/rerun-io/rerun/issues/2750): Maybe make this an intersection instead
         self.required_comp().iter_instance_keys()
     }
@@ -284,6 +286,7 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_required_component<'a, C: Component + Default + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
+        re_tracing::profile_function!();
         debug_assert!(A::required_components()
             .iter()
             .any(|c| c.as_ref() == C::name()));
@@ -311,6 +314,7 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = Option<C>> + '_> {
+        re_tracing::profile_function!();
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {

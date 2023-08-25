@@ -47,6 +47,8 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
     label: DebugLabel,
     content: impl ExactSizeIterator<Item = T>,
 ) -> Vec<BindGroupEntry> {
+    re_tracing::profile_function!(label.get().unwrap_or_default());
+
     #[allow(clippy::let_unit_value)]
     let _ = UniformBufferAlignmentCheck::<T>::CHECK;
 

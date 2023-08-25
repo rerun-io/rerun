@@ -1,3 +1,5 @@
+use itertools::izip;
+
 use re_log::ResultExt;
 
 use crate::{
@@ -5,7 +7,7 @@ use crate::{
     draw_phases::PickingLayerObjectId,
     renderer::{
         PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        PointCloudVertex,
+        PositionRadius,
     },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
     Size,
@@ -14,7 +16,7 @@ use crate::{
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].
 pub struct PointCloudBuilder {
     // Size of `point`/color` must be equal.
-    pub vertices: Vec<PointCloudVertex>,
+    pub vertices: Vec<PositionRadius>,
 
     pub(crate) color_buffer: CpuWriteGpuReadBuffer<Color32>,
     pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
@@ -81,12 +83,7 @@ impl PointCloudBuilder {
     // Iterate over all batches, yielding the batch info and a point vertex iterator.
     pub fn iter_vertices_by_batch(
         &self,
-    ) -> impl Iterator<
-        Item = (
-            &PointCloudBatchInfo,
-            impl Iterator<Item = &PointCloudVertex>,
-        ),
-    > {
+    ) -> impl Iterator<Item = (&PointCloudBatchInfo, impl Iterator<Item = &PositionRadius>)> {
         let mut vertex_offset = 0;
         self.batches.iter().map(move |batch| {
             let out = (
@@ -155,24 +152,26 @@ impl<'a> PointCloudBatchBuilder<'a> {
     ///
     /// Returns a `PointBuilder` which can be used to set the colors, radii, and user-data for the points.
     ///
-    /// Will *always* add `num_points`, no matter how many elements are in the iterators.
-    /// Missing elements will be filled up with defaults (in case of positions that's the origin)
+    /// Will add all positions.
+    /// Missing radii will default to `Size::AUTO`.
+    /// Missing colors will default to white.
     ///
     /// TODO(#957): Clamps number of points to the allowed per-builder maximum.
     #[inline]
     pub fn add_points(
         mut self,
-        mut num_points: usize,
-        positions: impl Iterator<Item = glam::Vec3>,
-        radii: impl Iterator<Item = Size>,
-        colors: impl Iterator<Item = Color32>,
-        picking_instance_ids: impl Iterator<Item = PickingLayerInstanceId>,
+        positions: &[glam::Vec3],
+        radii: &[Size],
+        colors: &[Color32],
+        picking_ids: &[PickingLayerInstanceId],
     ) -> Self {
         // TODO(jleibs): Figure out if we can plumb-through proper support for `Iterator::size_hints()`
         // or potentially make `FixedSizedIterator` work correctly. This should be possible size the
         // underlying arrow structures are of known-size, but carries some complexity with the amount of
         // chaining, joining, filtering, etc. that happens along the way.
         re_tracing::profile_function!();
+
+        let mut num_points = positions.len();
 
         debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
         debug_assert_eq!(
@@ -182,8 +181,8 @@ impl<'a> PointCloudBatchBuilder<'a> {
 
         if num_points + self.0.vertices.len() > PointCloudDrawData::MAX_NUM_POINTS {
             re_log::error_once!(
-                "Reached maximum number of supported points of {}.
-     See also https://github.com/rerun-io/rerun/issues/957",
+                "Reached maximum number of supported points of {}. \
+                 See also https://github.com/rerun-io/rerun/issues/957",
                 PointCloudDrawData::MAX_NUM_POINTS
             );
             num_points = PointCloudDrawData::MAX_NUM_POINTS - self.0.vertices.len();
@@ -191,82 +190,76 @@ impl<'a> PointCloudBatchBuilder<'a> {
         if num_points == 0 {
             return self;
         }
+
+        // Shorten slices if needed:
+        let positions = &positions[0..num_points.min(positions.len())];
+        let radii = &radii[0..num_points.min(radii.len())];
+        let colors = &colors[0..num_points.min(colors.len())];
+        let picking_ids = &picking_ids[0..num_points.min(picking_ids.len())];
+
         self.batch_mut().point_count += num_points as u32;
 
         {
-            re_tracing::profile_scope!("positions");
-            let num_before = self.0.vertices.len();
+            re_tracing::profile_scope!("positions & radii");
             self.0.vertices.extend(
-                positions
-                    .take(num_points)
-                    .zip(radii.take(num_points))
-                    .map(|(position, radius)| PointCloudVertex { position, radius }),
-            );
-            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
-            let num_default = num_points - (self.0.vertices.len() - num_before);
-            self.0.vertices.extend(
-                std::iter::repeat(PointCloudVertex {
-                    position: glam::Vec3::ZERO,
-                    radius: Size::AUTO,
-                })
-                .take(num_default),
+                izip!(
+                    positions.iter().copied(),
+                    radii.iter().copied().chain(std::iter::repeat(Size::AUTO))
+                )
+                .map(|(pos, radius)| PositionRadius { pos, radius }),
             );
         }
         {
             re_tracing::profile_scope!("colors");
-            if let Some(num_written) = self
-                .0
+
+            self.0
                 .color_buffer
-                .extend(colors.take(num_points))
-                .unwrap_debug_or_log_error()
-            {
-                // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
-                self.0
-                    .color_buffer
-                    .fill_n(Color32::TRANSPARENT, num_points - num_written)
-                    .unwrap_debug_or_log_error();
-            }
+                .extend_from_slice(colors)
+                .unwrap_debug_or_log_error();
+
+            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
+            self.0
+                .color_buffer
+                .fill_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
+                .unwrap_debug_or_log_error();
         }
         {
-            re_tracing::profile_scope!("picking_instance_ids");
-            if let Some(num_written) = self
-                .0
+            re_tracing::profile_scope!("picking_ids");
+
+            self.0
                 .picking_instance_ids_buffer
-                .extend(picking_instance_ids.take(num_points))
-                .unwrap_debug_or_log_error()
-            {
-                // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
-                self.0
-                    .picking_instance_ids_buffer
-                    .fill_n(PickingLayerInstanceId::default(), num_points - num_written)
-                    .unwrap_debug_or_log_error();
-            }
+                .extend_from_slice(picking_ids)
+                .unwrap_debug_or_log_error();
+
+            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
+            self.0
+                .picking_instance_ids_buffer
+                .fill_n(
+                    PickingLayerInstanceId::default(),
+                    num_points.saturating_sub(picking_ids.len()),
+                )
+                .unwrap_debug_or_log_error();
         }
 
         self
     }
 
-    /// Adds several 2D points. Uses an autogenerated depth value, the same for all points passed.
+    /// Adds several 2D points (assumes Z=0). Uses an autogenerated depth value, the same for all points passed.
     ///
-    /// Will *always* add `num_points`, no matter how many elements are in the iterators.
-    /// Missing elements will be filled up with defaults (in case of positions that's the origin)
+    /// Will add all positions.
+    /// Missing radii will default to `Size::AUTO`.
+    /// Missing colors will default to white.
     #[inline]
     pub fn add_points_2d(
         self,
-        num_points: usize,
-        positions: impl Iterator<Item = glam::Vec2>,
-        radii: impl Iterator<Item = Size>,
-        colors: impl Iterator<Item = Color32>,
-        picking_instance_ids: impl Iterator<Item = PickingLayerInstanceId>,
+        positions: &[glam::Vec3],
+        radii: &[Size],
+        colors: &[Color32],
+        picking_ids: &[PickingLayerInstanceId],
     ) -> Self {
-        self.add_points(
-            num_points,
-            positions.map(|p| p.extend(0.0)),
-            radii,
-            colors,
-            picking_instance_ids,
-        )
-        .flags(PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES)
+        re_tracing::profile_function!();
+        self.add_points(positions, radii, colors, picking_ids)
+            .flags(PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES)
     }
 
     /// Adds (!) flags for this batch.

@@ -44,6 +44,7 @@ impl Points3DPart {
         annotation_infos: &'a [ResolvedAnnotationInfo],
         world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
+        re_tracing::profile_function!();
         let labels = itertools::izip!(
             annotation_infos.iter(),
             arch_view.iter_required_component::<Point3D>()?,
@@ -90,6 +91,8 @@ impl Points3DPart {
         let radii = process_radii(arch_view, ent_path)?;
 
         if arch_view.num_instances() <= self.max_labels {
+            re_tracing::profile_scope!("labels");
+
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
                 process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
@@ -119,23 +122,36 @@ impl Points3DPart {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-            let point_positions = {
-                re_tracing::profile_scope!("collect_points");
-                arch_view
-                    .iter_required_component::<Point3D>()?
-                    .map(glam::Vec3::from)
-            };
+            let point_positions = arch_view
+                .iter_required_component::<Point3D>()?
+                .map(glam::Vec3::from);
 
             let picking_instance_ids = arch_view
                 .iter_instance_keys()
                 .map(picking_id_from_instance_key);
-            let mut point_range_builder = point_batch.add_points(
-                arch_view.num_instances(),
-                point_positions,
-                radii,
-                colors,
-                picking_instance_ids,
-            );
+
+            let point_positions: Vec<glam::Vec3> = {
+                re_tracing::profile_scope!("collect_positions");
+                point_positions.collect()
+            };
+
+            let radii: Vec<_> = {
+                re_tracing::profile_scope!("collect_radii");
+                radii.collect()
+            };
+
+            let colors: Vec<_> = {
+                re_tracing::profile_scope!("collect_colors");
+                colors.collect()
+            };
+
+            let picking_instance_ids: Vec<_> = {
+                re_tracing::profile_scope!("collect_picking_instance_ids");
+                picking_instance_ids.collect()
+            };
+
+            let mut point_range_builder =
+                point_batch.add_points(&point_positions, &radii, &colors, &picking_instance_ids);
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
