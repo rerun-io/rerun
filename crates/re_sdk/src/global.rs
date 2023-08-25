@@ -235,6 +235,7 @@ impl RecordingStream {
     }
 
     fn forget_any(scope: RecordingScope, kind: StoreKind) {
+        #![allow(clippy::mem_forget)] // Intentionally leak memory and bypass drop cleanup
         match kind {
             StoreKind::Recording => match scope {
                 RecordingScope::Global => {
