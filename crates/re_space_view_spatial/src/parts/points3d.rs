@@ -44,6 +44,7 @@ impl Points3DPart {
         annotation_infos: &'a [ResolvedAnnotationInfo],
         world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
+        re_tracing::profile_function!();
         let labels = itertools::izip!(
             annotation_infos.iter(),
             arch_view.iter_required_component::<Point3D>()?,
@@ -90,6 +91,8 @@ impl Points3DPart {
         let radii = process_radii(arch_view, ent_path)?;
 
         if arch_view.num_instances() <= self.max_labels {
+            re_tracing::profile_scope!("labels");
+
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
                 process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
