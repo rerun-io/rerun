@@ -80,7 +80,11 @@ comfy-table = { version = "6.1", default-features = false }
 const_panic = { version = "0.2.8", features = ["rust_1_64"] }
 crossbeam = "0.8"
 ecolor = "0.22.0"
-eframe = { version = "0.22.0", default-features = false, features = ["x11"] }
+eframe = { version = "0.22.0", default-features = false, features = [
+  "default_fonts",
+  "wayland",
+  "x11",
+] }
 egui = { version = "0.22.0", features = ["extra_debug_asserts", "log"] }
 egui_extras = { version = "0.22.0", features = ["log"] }
 egui_tiles = { version = "0.2" }
