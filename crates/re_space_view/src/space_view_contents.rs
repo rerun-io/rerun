@@ -92,9 +92,11 @@ pub struct SpaceViewContents {
 
     /// List of all entities that we query via this data blueprint collection.
     ///
-    /// Two things to keep in sync:
-    /// * children on [`DataBlueprintGroup`] this is on
-    /// * elements in [`Self::path_to_group`]
+    /// Currently this is reset every frame in [`Self::reset_per_system_entities`].
+    /// In the future, we may want to keep this around and only add/remove systems
+    /// for entities. But at this point we'd likely handle the heuristics a bit differently as well
+    /// and don't use serde here for serialization.
+    #[serde(skip)]
     per_system_entity_list: PerSystemEntities,
 
     /// Root group, always exists as a placeholder
