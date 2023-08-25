@@ -11,6 +11,7 @@ pub trait ResultExt<T, E> {
 }
 
 impl<T, E> ResultExt<T, E> for Result<T, E> {
+    #[track_caller]
     fn ok_or_log_error(self) -> Option<T>
     where
         E: std::fmt::Display,
@@ -18,12 +19,14 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
         match self {
             Ok(t) => Some(t),
             Err(err) => {
-                log::error!("{err}");
+                let loc = std::panic::Location::caller();
+                log::error!("{}:{} {err}", loc.file(), loc.line());
                 None
             }
         }
     }
 
+    #[track_caller]
     fn unwrap_debug_or_log_error(self) -> Option<T>
     where
         E: std::fmt::Display + std::fmt::Debug,
