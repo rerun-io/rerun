@@ -10,7 +10,7 @@ use crate::{
 pub struct Receiver<T: Send> {
     pub(crate) rx: crossbeam::channel::Receiver<SmartMessage<T>>,
     pub(crate) stats: Arc<SharedStats>,
-    pub(crate) source: SmartChannelSource,
+    pub(crate) source: Arc<SmartChannelSource>,
     pub(crate) connected: AtomicBool,
 }
 

@@ -140,7 +140,7 @@ pub fn smart_channel<T: Send>(
     source: SmartChannelSource,
 ) -> (Sender<T>, Receiver<T>) {
     let stats = Arc::new(SharedStats::default());
-    smart_channel_with_stats(sender_source, source, stats)
+    smart_channel_with_stats(sender_source, Arc::new(source), stats)
 }
 
 /// Create a new channel using the same stats as some other.
@@ -148,7 +148,7 @@ pub fn smart_channel<T: Send>(
 /// This is a very leaky abstraction, and it would be nice to refactor some day
 pub(crate) fn smart_channel_with_stats<T: Send>(
     sender_source: SmartMessageSource,
-    source: SmartChannelSource,
+    source: Arc<SmartChannelSource>,
     stats: Arc<SharedStats>,
 ) -> (Sender<T>, Receiver<T>) {
     let (tx, rx) = crossbeam::channel::unbounded();
