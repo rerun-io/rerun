@@ -4341,6 +4341,8 @@ name = "re_smart_channel"
 version = "0.9.0-alpha.2+dev"
 dependencies = [
  "crossbeam",
+ "parking_lot 0.12.1",
+ "re_tracing",
  "web-time",
 ]
 

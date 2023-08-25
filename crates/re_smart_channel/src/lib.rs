@@ -9,9 +9,11 @@ use web_time::Instant;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 
+mod receive_set;
 mod receiver;
 mod sender;
 
+pub use receive_set::ReceiveSet;
 pub use receiver::Receiver;
 pub use sender::Sender;
 
