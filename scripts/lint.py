@@ -25,6 +25,7 @@ wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"nb_")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
 explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
+ellipsis = re.compile(r"[^.]\.\.\.[^\-.0-9a-zA-Z]")
 
 
 def lint_line(line: str, file_extension: str = "rs") -> str | None:
@@ -43,6 +44,10 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
 
         if " github " in line:
             return "It's 'GitHub', not 'github'"
+
+    if file_extension in ("md", "rs"):
+        if ellipsis.search(line):
+            return "Use … instead of ..."
 
     if "FIXME" in line:
         return "we prefer TODO over FIXME"
