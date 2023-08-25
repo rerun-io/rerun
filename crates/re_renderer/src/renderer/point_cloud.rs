@@ -32,7 +32,6 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
     },
-    Size,
 };
 
 use super::{
@@ -59,13 +58,17 @@ mod gpu_data {
     use crate::{draw_phases::PickingLayerObjectId, wgpu_buffer_types, Size};
 
     // Don't use `wgsl_buffer_types` since this data doesn't go into a buffer, so alignment rules don't apply like on buffers..
+
+    /// Position and radius.
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct PositionData {
+    pub struct PositionRadius {
         pub pos: glam::Vec3,
+
+        /// Radius of the point in world space
         pub radius: Size, // Might use a f16 here to free memory for more data!
     }
-    static_assertions::assert_eq_size!(PositionData, glam::Vec4);
+    static_assertions::assert_eq_size!(PositionRadius, glam::Vec4);
 
     /// Uniform buffer that changes once per draw data rendering.
     #[repr(C, align(256))]
@@ -150,15 +153,7 @@ pub struct PointCloudBatchInfo {
     pub depth_offset: DepthOffset,
 }
 
-/// Description of a point cloud.
-#[derive(Clone)]
-pub struct PointCloudVertex {
-    /// Connected points. Must be at least 2.
-    pub position: glam::Vec3,
-
-    /// Radius of the point in world space
-    pub radius: Size,
-}
+pub use gpu_data::PositionRadius;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {
@@ -226,7 +221,7 @@ impl PointCloudDrawData {
 
         // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
         static_assertions::const_assert_eq!(
-            DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32
+            DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionRadius>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
             0
         );
@@ -302,11 +297,8 @@ impl PointCloudDrawData {
                 &ctx.gpu_resources.buffers,
                 num_points_written,
             );
-            staging_buffer.extend(vertices.iter().map(|point| gpu_data::PositionData {
-                pos: point.position,
-                radius: point.radius,
-            }))?;
-            staging_buffer.fill_n(gpu_data::PositionData::zeroed(), num_elements_padding)?;
+            staging_buffer.extend_from_slice(vertices)?;
+            staging_buffer.fill_n(gpu_data::PositionRadius::zeroed(), num_elements_padding)?;
             staging_buffer.copy_to_texture2d(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 wgpu::ImageCopyTexture {

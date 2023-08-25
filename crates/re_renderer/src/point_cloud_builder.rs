@@ -7,7 +7,7 @@ use crate::{
     draw_phases::PickingLayerObjectId,
     renderer::{
         PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        PointCloudVertex,
+        PositionRadius,
     },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
     Size,
@@ -16,7 +16,7 @@ use crate::{
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].
 pub struct PointCloudBuilder {
     // Size of `point`/color` must be equal.
-    pub vertices: Vec<PointCloudVertex>,
+    pub vertices: Vec<PositionRadius>,
 
     pub(crate) color_buffer: CpuWriteGpuReadBuffer<Color32>,
     pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
@@ -83,12 +83,7 @@ impl PointCloudBuilder {
     // Iterate over all batches, yielding the batch info and a point vertex iterator.
     pub fn iter_vertices_by_batch(
         &self,
-    ) -> impl Iterator<
-        Item = (
-            &PointCloudBatchInfo,
-            impl Iterator<Item = &PointCloudVertex>,
-        ),
-    > {
+    ) -> impl Iterator<Item = (&PointCloudBatchInfo, impl Iterator<Item = &PositionRadius>)> {
         let mut vertex_offset = 0;
         self.batches.iter().map(move |batch| {
             let out = (
@@ -200,7 +195,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             self.0.vertices.extend(
                 izip!(positions.iter().copied(), radii.iter().copied())
                     .take(num_points)
-                    .map(|(position, radius)| PointCloudVertex { position, radius }),
+                    .map(|(pos, radius)| PositionRadius { pos, radius }),
             );
         }
         {
