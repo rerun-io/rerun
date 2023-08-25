@@ -77,7 +77,6 @@ camino = "1.1"
 cfg-if = "1.0"
 clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
-const_panic = { version = "0.2.8", features = ["rust_1_64"] }
 crossbeam = "0.8"
 ecolor = "0.22.0"
 eframe = { version = "0.22.0", default-features = false, features = ["x11"] }
