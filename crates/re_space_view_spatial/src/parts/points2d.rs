@@ -120,11 +120,12 @@ impl Points2DPart {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-            let point_positions = {
+            let point_positions: Vec<glam::Vec3> = {
                 re_tracing::profile_scope!("collect_points");
                 arch_view
                     .iter_required_component::<Point2D>()?
                     .map(|pt| pt.into())
+                    .collect()
             };
 
             let picking_instance_ids = arch_view
@@ -133,7 +134,7 @@ impl Points2DPart {
 
             let mut point_range_builder = point_batch.add_points_2d(
                 arch_view.num_instances(),
-                point_positions,
+                point_positions.iter().copied(),
                 radii,
                 colors,
                 picking_instance_ids,

@@ -171,10 +171,10 @@ impl framework::Example for Render2D {
         point_cloud_builder.batch("points").add_points_2d(
             4,
             [
-                glam::vec2(500.0, 120.0),
-                glam::vec2(520.0, 120.0),
-                glam::vec2(540.0, 120.0),
-                glam::vec2(560.0, 120.0),
+                glam::vec3(500.0, 120.0, 0.0),
+                glam::vec3(520.0, 120.0, 0.0),
+                glam::vec3(540.0, 120.0, 0.0),
+                glam::vec3(560.0, 120.0, 0.0),
             ]
             .into_iter(),
             [
@@ -220,10 +220,11 @@ impl framework::Example for Render2D {
                 .add_points_2d(
                     num_points,
                     (0..num_points).map(|i| {
-                        glam::vec2(
+                        glam::vec3(
                             30.0 * i as f32 + 20.0,
                             y_range.start
                                 + (y_range.end - y_range.start) / num_points as f32 * i as f32,
+                            0.0,
                         )
                     }),
                     std::iter::repeat(size),
