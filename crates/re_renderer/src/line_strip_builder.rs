@@ -229,6 +229,8 @@ impl<'a> LineBatchBuilder<'a> {
         &mut self,
         segments: impl Iterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_> {
+        #![allow(clippy::tuple_array_conversions)] // false positive
+
         if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
             re_log::error_once!(
                 "Reached maximum number of supported line strips of {}. \
