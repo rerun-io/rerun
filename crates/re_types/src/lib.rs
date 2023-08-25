@@ -215,6 +215,7 @@ pub trait Loggable: Sized {
     fn try_from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
+        re_tracing::profile_function!();
         Ok(Self::try_iter_from_arrow(data)?
             .map(Self::convert_item_to_opt_self)
             .collect())

@@ -68,6 +68,7 @@ serde = { version = "1", optional = true, features = ["derive", "rc"] }
 
 # Rerun
 re_string_interner.workspace = true
+re_tracing.workspace = true
 
 [dev-dependencies]
 
