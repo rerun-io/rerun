@@ -194,7 +194,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
         self.batch_mut().point_count += num_points as u32;
 
         {
-            re_tracing::profile_scope!("positions");
+            re_tracing::profile_scope!("positions & radii");
             let num_before = self.0.vertices.len();
             self.0.vertices.extend(
                 positions
