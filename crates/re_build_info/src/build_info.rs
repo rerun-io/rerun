@@ -7,7 +7,7 @@
 ///
 /// There are a few other cases though, like
 /// - `git` is not installed
-/// - the user downloaded rerun as a tarball and then imported via a `path = ...` import
+/// - the user downloaded rerun as a tarball and then imported via a `path = …` import
 /// - others?
 #[derive(Copy, Clone, Debug)]
 pub struct BuildInfo {

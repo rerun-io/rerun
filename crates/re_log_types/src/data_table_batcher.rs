@@ -418,7 +418,7 @@ fn batching_thread(
         // table.sort();
 
         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
-        // as long the batching thread is alive... which is where we currently are.
+        // as long the batching thread is alive… which is where we currently are.
         tx_table.send(table).ok();
 
         acc.reset();

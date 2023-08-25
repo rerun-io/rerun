@@ -14,7 +14,7 @@
 //! [people](https://gamedev.net/forums/topic/702292-performance-fastest-quad-drawing/5406023/)
 //! [point](https://www.reddit.com/r/vulkan/comments/le74sr/why_gpu_instancing_is_slow_for_small_meshes/)
 //! [out](https://www.reddit.com/r/vulkan/comments/47kfve/instanced_rendering_performance/)
-//! [...](https://www.reddit.com/r/opengl/comments/q7yikr/how_to_draw_several_quads_through_instancing/).
+//! […](https://www.reddit.com/r/opengl/comments/q7yikr/how_to_draw_several_quads_through_instancing/).
 //!
 //! Instead, we use a single (un-instanced) triangle list draw call and use the vertex id to orient ourselves in the vertex shader
 //! (e.g. the index of the current quad is `vertex_idx / 6` etc.).
@@ -88,10 +88,10 @@
 //! Again, we keep all the geometry calculating logic in the vertex shader.
 //!
 //! For all batches, independent whether we use caps or not our topology is as follow:
-//!            _________________________________________________________
-//!            \  |                         |\  |                       |\
-//!             \ |  ... n strip quads ...  | \ | ... m strip quads ... | \
-//!              \|_________________________|__\|_______________________|__\
+//!            _________________________________________________
+//!            \  |                     |\  |                   |\
+//!             \ |  … n strip quads …  | \ | … m strip quads … | \
+//!              \|_____________________|__\|___________________|__\
 //! (start cap triangle only)         (start+end triangle)              (end triangle only)
 //!
 //!
