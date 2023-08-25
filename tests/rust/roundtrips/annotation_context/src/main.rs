@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
 
     let default_enabled = true;
     args.rerun.clone().run(
-        "roundtrip_annotation_context",
+        "rerun-example-roundtrip_annotation_context",
         default_enabled,
         move |rec_stream| {
             run(&rec_stream, &args).unwrap();
