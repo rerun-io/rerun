@@ -422,15 +422,15 @@ async fn run_impl(
             .url_or_paths
             .iter()
             .cloned()
-            .map(ArgumentCategory::from_uri)
+            .map(DataSource::from_uri)
             .collect_vec();
 
         if arguments.len() == 1 {
             match arguments[0].clone() {
-                ArgumentCategory::RrdHttpUrl(url) => {
+                DataSource::RrdHttpUrl(url) => {
                     re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
                 }
-                ArgumentCategory::FilePath(path) => {
+                DataSource::FilePath(path) => {
                     let (tx, rx) = re_smart_channel::smart_channel(
                         re_smart_channel::SmartMessageSource::File(path.clone()),
                         re_smart_channel::SmartChannelSource::Files {
@@ -443,7 +443,7 @@ async fn run_impl(
                         .with_context(|| format!("{path:?}"))?;
                     rx
                 }
-                ArgumentCategory::WebSocketAddr(rerun_server_ws_url) => {
+                DataSource::WebSocketAddr(rerun_server_ws_url) => {
                     // We are connecting to a server at a websocket address:
 
                     if args.web_viewer {
@@ -486,7 +486,7 @@ async fn run_impl(
             // Load many files:
             let mut paths = vec![];
             for argument in arguments {
-                if let ArgumentCategory::FilePath(path) = argument {
+                if let DataSource::FilePath(path) = argument {
                     paths.push(path);
                 } else {
                     // TODO(#2121): Support loading multiple `http://` and `ws://` urls
@@ -673,8 +673,9 @@ fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data
     }
 }
 
+/// Somewhere we can get Rerun messages from.
 #[derive(Clone)]
-enum ArgumentCategory {
+enum DataSource {
     /// A remote RRD file, served over http.
     RrdHttpUrl(String),
 
@@ -685,8 +686,8 @@ enum ArgumentCategory {
     WebSocketAddr(String),
 }
 
-impl ArgumentCategory {
-    pub fn from_uri(mut uri: String) -> ArgumentCategory {
+impl DataSource {
+    pub fn from_uri(mut uri: String) -> DataSource {
         fn looks_like_windows_abs_path(path: &str) -> bool {
             let path = path.as_bytes();
             // "C:/" etc
@@ -759,20 +760,20 @@ impl ArgumentCategory {
         let path = std::path::Path::new(&uri).to_path_buf();
 
         if uri.starts_with("file://") || path.exists() {
-            ArgumentCategory::FilePath(path)
+            DataSource::FilePath(path)
         } else if uri.starts_with("http://")
             || uri.starts_with("https://")
             || (uri.starts_with("www.") && uri.ends_with(".rrd"))
         {
-            ArgumentCategory::RrdHttpUrl(uri)
+            DataSource::RrdHttpUrl(uri)
         } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
-            ArgumentCategory::WebSocketAddr(uri)
+            DataSource::WebSocketAddr(uri)
 
         // Now we are into heuristics territory:
         } else if looks_like_a_file_path(&uri) {
-            ArgumentCategory::FilePath(path)
+            DataSource::FilePath(path)
         } else if uri.ends_with(".rrd") {
-            ArgumentCategory::RrdHttpUrl(uri)
+            DataSource::RrdHttpUrl(uri)
         } else {
             // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
@@ -780,7 +781,7 @@ impl ArgumentCategory {
             if !uri.contains("://") {
                 uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
             }
-            ArgumentCategory::WebSocketAddr(uri)
+            DataSource::WebSocketAddr(uri)
         }
     }
 }
@@ -805,8 +806,8 @@ fn test_argument_categorization() {
     for uri in file {
         assert!(
             matches!(
-                ArgumentCategory::from_uri(uri.to_owned()),
-                ArgumentCategory::FilePath(_)
+                DataSource::from_uri(uri.to_owned()),
+                DataSource::FilePath(_)
             ),
             "Expected {uri:?} to be categorized as FilePath"
         );
@@ -815,8 +816,8 @@ fn test_argument_categorization() {
     for uri in http {
         assert!(
             matches!(
-                ArgumentCategory::from_uri(uri.to_owned()),
-                ArgumentCategory::RrdHttpUrl(_)
+                DataSource::from_uri(uri.to_owned()),
+                DataSource::RrdHttpUrl(_)
             ),
             "Expected {uri:?} to be categorized as RrdHttpUrl"
         );
@@ -825,8 +826,8 @@ fn test_argument_categorization() {
     for uri in ws {
         assert!(
             matches!(
-                ArgumentCategory::from_uri(uri.to_owned()),
-                ArgumentCategory::WebSocketAddr(_)
+                DataSource::from_uri(uri.to_owned()),
+                DataSource::WebSocketAddr(_)
             ),
             "Expected {uri:?} to be categorized as WebSocketAddr"
         );
