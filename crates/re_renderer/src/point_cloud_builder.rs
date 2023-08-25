@@ -254,13 +254,20 @@ impl<'a> PointCloudBatchBuilder<'a> {
     pub fn add_points_2d(
         self,
         num_points: usize,
-        positions: impl Iterator<Item = glam::Vec3>,
-        radii: impl Iterator<Item = Size>,
-        colors: impl Iterator<Item = Color32>,
-        picking_instance_ids: impl Iterator<Item = PickingLayerInstanceId>,
+        positions: &[glam::Vec3],
+        radii: &[Size],
+        colors: &[Color32],
+        picking_instance_ids: &[PickingLayerInstanceId],
     ) -> Self {
-        self.add_points(num_points, positions, radii, colors, picking_instance_ids)
-            .flags(PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES)
+        re_tracing::profile_function!();
+        self.add_points(
+            num_points,
+            positions.iter().copied(),
+            radii.iter().copied(),
+            colors.iter().copied(),
+            picking_instance_ids.iter().copied(),
+        )
+        .flags(PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES)
     }
 
     /// Adds (!) flags for this batch.
