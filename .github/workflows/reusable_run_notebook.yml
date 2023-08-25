@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: rerunio/ci_docker:0.8
+      image: rerunio/ci_docker:0.9
 
     steps:
       - uses: actions/checkout@v3
