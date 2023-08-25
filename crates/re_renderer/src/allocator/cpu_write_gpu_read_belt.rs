@@ -106,6 +106,7 @@ where
         &mut self,
         elements: impl Iterator<Item = T>,
     ) -> Result<usize, CpuWriteGpuReadError> {
+        re_tracing::profile_function!();
         let num_written_before = self.num_written();
 
         for element in elements {
@@ -127,6 +128,7 @@ where
     ///
     /// If the buffer is not big enough, only the first `self.remaining_capacity()` elements are pushed before returning an error.
     pub fn fill_n(&mut self, element: T, num_elements: usize) -> Result<(), CpuWriteGpuReadError> {
+        re_tracing::profile_function!();
         let (result, num_elements) = if num_elements > self.remaining_capacity() {
             (
                 Err(CpuWriteGpuReadError::BufferFull {

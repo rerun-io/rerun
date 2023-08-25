@@ -311,6 +311,7 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = Option<C>> + '_> {
+        re_tracing::profile_function!();
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
