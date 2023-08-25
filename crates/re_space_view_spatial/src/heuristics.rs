@@ -37,8 +37,8 @@ pub fn auto_spawn_heuristic(
 
     for ent_path in ent_paths {
         let Some(components) = store.all_components(&timeline, ent_path) else {
-                continue;
-            };
+            continue;
+        };
 
         for part in &parts_with_view_kind {
             if part.queries_any_components_of(store, ent_path, &components) {

@@ -699,7 +699,9 @@ fn quote_arrow_field_deserializer(
         }
 
         DataType::Struct(_) | DataType::Union(_, _, _) => {
-            let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
+            let DataType::Extension(fqname, _, _) = datatype else {
+                unreachable!()
+            };
             let fqname_use = quote_fqname_as_type_path(fqname);
             quote!(#fqname_use::try_from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
         }

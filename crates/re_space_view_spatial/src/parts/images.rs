@@ -57,7 +57,9 @@ fn to_textured_rect(
 ) -> Option<re_renderer::renderer::TexturedRect> {
     re_tracing::profile_function!();
 
-    let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
+    let Some([height, width, _]) = tensor.image_height_width_channels() else {
+        return None;
+    };
 
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
@@ -209,7 +211,9 @@ impl ImagesPart {
             ent_view.iter_component::<DrawOrder>()?
         ) {
             re_tracing::profile_scope!("loop_iter");
-            let Some(tensor) = tensor else { continue; };
+            let Some(tensor) = tensor else {
+                continue;
+            };
 
             if !tensor.is_shaped_like_an_image() {
                 return Ok(());
@@ -305,10 +309,9 @@ impl ImagesPart {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        let Some(intrinsics) = store.query_latest_component::<Pinhole>(
-            parent_pinhole_path,
-            &ctx.current_query(),
-        ) else {
+        let Some(intrinsics) =
+            store.query_latest_component::<Pinhole>(parent_pinhole_path, &ctx.current_query())
+        else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 

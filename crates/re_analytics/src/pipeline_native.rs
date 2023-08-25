@@ -142,19 +142,29 @@ fn flush_pending_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<(
     for entry in read_dir {
         // NOTE: all of these can only be transient I/O errors, so no reason to delete the
         // associated file; we'll retry later.
-        let Ok(entry) = entry else { continue; };
-        let Ok(name) = entry.file_name().into_string() else { continue; };
-        let Ok(metadata) = entry.metadata() else { continue; };
+        let Ok(entry) = entry else {
+            continue;
+        };
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
         let path = entry.path();
 
         if metadata.is_file() {
-            let Some(session_id) = name.strip_suffix(".json") else { continue; };
+            let Some(session_id) = name.strip_suffix(".json") else {
+                continue;
+            };
 
             if session_id == current_session_id {
                 continue;
             }
 
-            let Ok(mut session_file) = File::open(&path) else { continue; };
+            let Ok(mut session_file) = File::open(&path) else {
+                continue;
+            };
             match flush_events(&mut session_file, &analytics_id, session_id, sink) {
                 Ok(_) => {
                     re_log::trace!(%analytics_id, %session_id, ?path, "flushed pending events");

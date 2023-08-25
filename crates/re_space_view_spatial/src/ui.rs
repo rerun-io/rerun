@@ -518,7 +518,9 @@ pub fn picking(
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
         let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.store_db.entity_db)
-            else { continue; };
+        else {
+            continue;
+        };
 
         if response.double_clicked() {
             // Select entire entity on double-click:
