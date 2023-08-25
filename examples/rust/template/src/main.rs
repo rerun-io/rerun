@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _ = rec_stream;
 
-    // ... example code
+    // … example code
 
     rerun::native_viewer::show(storage.take())?;
 

@@ -104,7 +104,7 @@ impl DataStore {
             id = self.query_id.load(Ordering::Relaxed),
             timeline = ?timeline,
             entity = %ent_path,
-            "query started..."
+            "query started…"
         );
 
         let timeless: Option<IntSet<_>> = self
@@ -215,7 +215,7 @@ impl DataStore {
             entity = %ent_path,
             %primary,
             ?components,
-            "query started..."
+            "query started…"
         );
 
         let cells = self
@@ -405,7 +405,7 @@ impl DataStore {
             query = ?query,
             entity = %ent_path,
             ?components,
-            "query started..."
+            "query started…"
         );
 
         let temporal = self
@@ -694,14 +694,14 @@ impl IndexedBucket {
             ?components,
             timeline = %self.timeline.name(),
             time = self.timeline.typ().format(time),
-            "searching for primary & secondary cells..."
+            "searching for primary & secondary cells…"
         );
 
         let time_row_nr = col_time.partition_point(|t| *t <= time.as_i64()) as i64;
 
         // The partition point is always _beyond_ the index that we're looking for.
         // A partition point of 0 thus means that we're trying to query for data that lives
-        // _before_ the beginning of time... there's nothing to be found there.
+        // _before_ the beginning of time… there's nothing to be found there.
         if time_row_nr == 0 {
             return None;
         }
@@ -818,7 +818,7 @@ impl IndexedBucket {
             ?components,
             timeline = %self.timeline.name(),
             time_range = self.timeline.typ().format_range(time_range),
-            "searching for time & component cell numbers..."
+            "searching for time & component cell numbers…"
         );
 
         let time_row_nr = col_time.partition_point(|t| *t < time_range.min.as_i64()) as u64;
@@ -1005,7 +1005,7 @@ impl PersistentIndexedTable {
             %primary,
             ?components,
             timeless = true,
-            "searching for primary & secondary cells..."
+            "searching for primary & secondary cells…"
         );
 
         // find the primary row number's row.

@@ -174,7 +174,7 @@ fn write_file(filepath: &Utf8PathBuf, mut source: String) {
             // NOTE: Formatting code requires both `black` and `ruff` to be in $PATH, but only for contributors,
             // not end users.
             // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
-            // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
+            // .fbs files… and even then, this won't crash if they are missing, it will just fail to pass
             // the CI!
             re_log::warn_once!(
                 "Failed to format Python code: {err}. Make sure `black` and `ruff` are installed."
@@ -992,7 +992,7 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
         } else if from.starts_with("rerun.components") {
             "from .. import components".to_owned()
         } else if from.starts_with("rerun.archetypes") {
-            // NOTE: This is assuming importing other archetypes is legal... which whether it is or
+            // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
             "from .. import archetypes".to_owned()
         } else if from.is_empty() {
@@ -1197,7 +1197,7 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
             } else if from.starts_with("rerun.components") {
                 format!("components.{class}")
             } else if from.starts_with("rerun.archetypes") {
-                // NOTE: This is assuming importing other archetypes is legal... which whether it is or
+                // NOTE: This is assuming importing other archetypes is legal… which whether it is or
                 // isn't for this code generator to say.
                 format!("archetypes.{class}")
             } else if from.is_empty() {

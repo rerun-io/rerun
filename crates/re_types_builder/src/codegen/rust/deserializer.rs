@@ -132,7 +132,7 @@ pub fn quote_arrow_deserializer(
                         let #data_dst = {
                             // NOTE: `arrays_by_name` is a runtime collection of all of the input's
                             // payload's struct fields, while `#field_name` is the field we're
-                            // looking for at comptime... there's no guarantee it's actually there at
+                            // looking for at comptime… there's no guarantee it's actually there at
                             // runtime!
                             if !arrays_by_name.contains_key(#field_name) {
                                 return Err(crate::DeserializationError::missing_struct_field(
@@ -227,7 +227,7 @@ pub fn quote_arrow_deserializer(
                             let #data_dst = {
                                 // NOTE: `data_src_arrays` is a runtime collection of all of the
                                 // input's payload's union arms, while `#i` is our comptime union
-                                // arm counter... there's no guarantee it's actually there at
+                                // arm counter… there's no guarantee it's actually there at
                                 // runtime!
                                 if #i >= #data_src_arrays.len() {
                                     // By not returning an error but rather defaulting to an empty

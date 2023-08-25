@@ -194,8 +194,8 @@ impl TimePanel {
         //               |timeline            |
         // ------------------------------------
         // tree          |streams             |
-        //               |  . .   .    ...    |
-        //               |             ...  . |
+        //               |  . .   .   . . .   |
+        //               |            . . . . |
 
         self.next_col_right = ui.min_rect().left(); // next_col_right will expand during the call
 

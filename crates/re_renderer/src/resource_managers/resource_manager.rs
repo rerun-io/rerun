@@ -45,6 +45,9 @@ pub enum ResourceManagerError {
 
     #[error("Invalid mesh given as input")]
     InvalidMesh(#[from] crate::mesh::MeshError),
+
+    #[error("Failed to transfer data to the GPU")]
+    FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
 #[derive(Clone, Copy)]

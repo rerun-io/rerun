@@ -167,7 +167,7 @@ impl framework::Example for Picking {
                     point_set.picking_ids.iter().cloned(),
                 );
         }
-        view_builder.queue_draw(point_builder.into_draw_data(re_ctx));
+        view_builder.queue_draw(point_builder.into_draw_data(re_ctx).unwrap());
 
         let instances = self
             .model_mesh_instances

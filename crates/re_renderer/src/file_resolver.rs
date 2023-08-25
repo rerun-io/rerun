@@ -612,7 +612,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         }
 
         // The imported path looks relative. Try to join it with the importer's and see if
-        // that leads somewhere... if it does: import that.
+        // that leads somewhere… if it does: import that.
         {
             let path = cwd.as_ref().join(&path).clean();
             if self.fs.exists(&path) {

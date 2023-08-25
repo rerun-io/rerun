@@ -368,7 +368,7 @@ impl IndexedBucketInner {
     /// stack and heap included, in bytes.
     ///
     /// This is a best-effort approximation, adequate for most purposes (stats,
-    /// triggering GCs, ...).
+    /// triggering GCs, …).
     #[inline]
     pub fn compute_size_bytes(&mut self) -> u64 {
         re_tracing::profile_function!();

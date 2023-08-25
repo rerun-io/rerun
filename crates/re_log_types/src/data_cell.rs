@@ -42,7 +42,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 ///
 /// ## Layout
 ///
-/// A cell is an array of component instances: `[C, C, C, ...]`.
+/// A cell is an array of component instances: `[C, C, C, …]`.
 ///
 /// Consider this example:
 /// ```ignore
@@ -133,7 +133,7 @@ pub struct DataCellInner {
     /// costly operation.
     pub(crate) size_bytes: u64,
 
-    /// A uniformly typed list of values for the given component type: `[C, C, C, ...]`
+    /// A uniformly typed list of values for the given component type: `[C, C, C, …]`
     ///
     /// Includes the data, its schema and probably soon the component metadata
     /// (e.g. the `ComponentName`).
@@ -332,12 +332,12 @@ impl DataCell {
     ///
     /// Useful when dealing with cells of different lengths in context that don't allow for it.
     ///
-    /// * Before: `[C, C, C, ...]`
+    /// * Before: `[C, C, C, …]`
     /// * After: `ListArray[ [C, C, C, C] ]`
     //
     // TODO(#1696): this shouldn't be public, need to make it private once the store has been
     // patched to use datacells directly.
-    // TODO(cmc): effectively, this returns a `DataColumn`... think about that.
+    // TODO(cmc): effectively, this returns a `DataColumn`… think about that.
     #[doc(hidden)]
     #[inline]
     pub fn to_arrow_monolist(&self) -> Box<dyn arrow2::array::Array> {

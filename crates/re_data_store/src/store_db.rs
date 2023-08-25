@@ -102,7 +102,7 @@ impl EntityDb {
                     DataCell::from_arrow_empty(cell.component_name(), cell.datatype().clone());
 
                 // NOTE(cmc): The fact that this inserts data to multiple entity paths using a
-                // single `RowId` is... interesting. Keep it in mind.
+                // single `RowId` is… interesting. Keep it in mind.
                 let row = DataRow::from_cells1(
                     row_id,
                     row.entity_path.clone(),
@@ -134,7 +134,7 @@ impl EntityDb {
                     DataCell::from_arrow_empty(component_path.component_name, data_type.clone());
 
                 // NOTE(cmc): The fact that this inserts data to multiple entity paths using a
-                // single `RowId` is... interesting. Keep it in mind.
+                // single `RowId` is… interesting. Keep it in mind.
                 let row = DataRow::from_cells1(
                     row_id,
                     component_path.entity_path.clone(),

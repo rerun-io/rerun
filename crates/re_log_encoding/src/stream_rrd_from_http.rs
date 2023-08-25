@@ -112,7 +112,7 @@ mod web_event_listener {
     ///
     /// From javascript you can send an rrd using:
     /// ``` ignore
-    /// var rrd = new Uint8Array(...); // Get an RRD from somewhere
+    /// var rrd = new Uint8Array(…); // Get an RRD from somewhere
     /// window.postMessage(rrd, "*")
     /// ```
     pub fn stream_rrd_from_event_listener(on_msg: Arc<HttpMessageCallback>) {
