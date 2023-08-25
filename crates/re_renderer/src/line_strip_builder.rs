@@ -440,7 +440,7 @@ pub struct LineStripBuilder<'a> {
 impl<'a> LineStripBuilder<'a> {
     #[inline]
     pub fn radius(self, radius: Size) -> Self {
-        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
+        for strip in &mut self.builder.strips[self.strip_range.clone()] {
             strip.radius = radius;
         }
         self
@@ -448,7 +448,7 @@ impl<'a> LineStripBuilder<'a> {
 
     #[inline]
     pub fn color(self, color: Color32) -> Self {
-        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
+        for strip in &mut self.builder.strips[self.strip_range.clone()] {
             strip.color = color;
         }
         self
@@ -457,7 +457,7 @@ impl<'a> LineStripBuilder<'a> {
     /// Adds (!) flags to the line strip.
     #[inline]
     pub fn flags(self, flags: LineStripFlags) -> Self {
-        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
+        for strip in &mut self.builder.strips[self.strip_range.clone()] {
             strip.flags |= flags;
         }
         self

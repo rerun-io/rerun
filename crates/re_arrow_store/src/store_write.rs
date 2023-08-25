@@ -851,7 +851,7 @@ impl PersistentIndexedTable {
         // 2-way merge, step 2: right-to-left
         //
         // fill unimpacted secondary indices with null values
-        for (component, column) in columns.iter_mut() {
+        for (component, column) in &mut *columns {
             // The cluster key always gets added one way or another, don't try to force fill it!
             if *component == self.cluster_key {
                 continue;

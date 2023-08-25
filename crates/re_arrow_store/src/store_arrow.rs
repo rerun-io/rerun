@@ -111,14 +111,14 @@ fn serialize(
             serialize_control_columns(col_time, col_insert_id, col_row_id, col_num_instances)?;
         schema.fields.extend(control_schema.fields);
         schema.metadata.extend(control_schema.metadata);
-        columns.extend(control_columns.into_iter());
+        columns.extend(control_columns);
     }
 
     {
         let (data_schema, data_columns) = serialize_data_columns(cluster_key, table)?;
         schema.fields.extend(data_schema.fields);
         schema.metadata.extend(data_schema.metadata);
-        columns.extend(data_columns.into_iter());
+        columns.extend(data_columns);
     }
 
     Ok((schema, Chunk::new(columns)))

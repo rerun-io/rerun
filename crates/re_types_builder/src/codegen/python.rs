@@ -432,7 +432,7 @@ impl QuotedObject {
             // field converters preprocessing pass — must be performed here because we must autogen
             // converter function *before* the class
             let mut field_converters: HashMap<String, String> = HashMap::new();
-            for field in fields.iter() {
+            for field in fields {
                 let (default_converter, converter_function) =
                     quote_field_converter_from_field(obj, objects, field);
 

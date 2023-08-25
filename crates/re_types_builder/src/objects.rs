@@ -50,7 +50,7 @@ impl Objects {
         }
 
         // resolve objects
-        for obj in schema.objects().iter() {
+        for obj in schema.objects() {
             let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }

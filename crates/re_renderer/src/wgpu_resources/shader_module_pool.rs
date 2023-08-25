@@ -130,7 +130,7 @@ impl GpuShaderModulePool {
             // our direct and indirect dependencies (#import)!
             let mut paths = vec![desc.source.clone()];
             if let Ok(source_interpolated) = resolver.populate(&desc.source) {
-                paths.extend(source_interpolated.imports.into_iter());
+                paths.extend(source_interpolated.imports);
             }
 
             paths.iter().any(|p| updated_paths.contains(p)).then(|| {

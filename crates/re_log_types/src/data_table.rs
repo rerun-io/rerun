@@ -589,21 +589,21 @@ impl DataTable {
             let (control_schema, control_columns) = self.serialize_time_columns();
             schema.fields.extend(control_schema.fields);
             schema.metadata.extend(control_schema.metadata);
-            columns.extend(control_columns.into_iter());
+            columns.extend(control_columns);
         }
 
         {
             let (control_schema, control_columns) = self.serialize_control_columns()?;
             schema.fields.extend(control_schema.fields);
             schema.metadata.extend(control_schema.metadata);
-            columns.extend(control_columns.into_iter());
+            columns.extend(control_columns);
         }
 
         {
             let (data_schema, data_columns) = self.serialize_data_columns()?;
             schema.fields.extend(data_schema.fields);
             schema.metadata.extend(data_schema.metadata);
-            columns.extend(data_columns.into_iter());
+            columns.extend(data_columns);
         }
 
         Ok((schema, Chunk::new(columns)))
