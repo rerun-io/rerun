@@ -343,6 +343,9 @@ pub enum LineDrawDataError {
 
     #[error("A resource failed to resolve.")]
     PoolError(#[from] PoolError),
+
+    #[error("Failed to transfer data to the GPU")]
+    FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
 // Textures are 2D since 1D textures are very limited in size (8k typically).
@@ -419,15 +422,17 @@ impl LineDrawData {
         );
 
         let vertices = if vertices.len() >= Self::MAX_NUM_VERTICES {
-            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}.
- See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
+            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}. \
+                                See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
             &vertices[..Self::MAX_NUM_VERTICES]
         } else {
             &vertices[..]
         };
         let strips = if strips.len() > Self::MAX_NUM_STRIPS {
-            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. This may lead to rendering artifacts.
- See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_STRIPS, strips.len());
+            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. \
+                                 This may lead to rendering artifacts. \
+                                 See also https://github.com/rerun-io/rerun/issues/957",
+                                 Self::MAX_NUM_STRIPS, strips.len());
             &strips[..Self::MAX_NUM_STRIPS]
         } else {
             // Can only check for strip index validity if we haven't clamped the strips!
@@ -579,8 +584,7 @@ impl LineDrawData {
                 strip_texture_extent,
             );
 
-            picking_instance_ids_buffer
-                .extend(std::iter::repeat(Default::default()).take(num_strips_padding));
+            picking_instance_ids_buffer.fill_n(Default::default(), num_strips_padding)?;
             picking_instance_ids_buffer.copy_to_texture2d(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 wgpu::ImageCopyTexture {
@@ -590,7 +594,7 @@ impl LineDrawData {
                     aspect: wgpu::TextureAspect::All,
                 },
                 glam::uvec2(strip_texture_extent.width, strip_texture_extent.height),
-            );
+            )?;
         }
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(

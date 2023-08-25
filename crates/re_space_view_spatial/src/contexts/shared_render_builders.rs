@@ -44,7 +44,13 @@ impl SharedRenderBuilders {
             self.points
                 .lock()
                 .take()
-                .map(|l| l.into_draw_data(render_ctx).into()),
+                .and_then(|l| match l.into_draw_data(render_ctx) {
+                    Ok(d) => Some(d.into()),
+                    Err(err) => {
+                        re_log::error_once!("Failed to build point draw data: {err}");
+                        None
+                    }
+                }),
         );
         result
     }
