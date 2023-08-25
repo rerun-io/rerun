@@ -182,8 +182,8 @@ impl<'a> PointCloudBatchBuilder<'a> {
 
         if num_points + self.0.vertices.len() > PointCloudDrawData::MAX_NUM_POINTS {
             re_log::error_once!(
-                "Reached maximum number of supported points of {}.
-     See also https://github.com/rerun-io/rerun/issues/957",
+                "Reached maximum number of supported points of {}. \
+                 See also https://github.com/rerun-io/rerun/issues/957",
                 PointCloudDrawData::MAX_NUM_POINTS
             );
             num_points = PointCloudDrawData::MAX_NUM_POINTS - self.0.vertices.len();
