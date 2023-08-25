@@ -115,4 +115,31 @@ impl<T: Send> ReceiveSet<T> {
             }
         }
     }
+
+    pub fn recv_timeout(
+        &self,
+        timeout: std::time::Duration,
+    ) -> Option<(Arc<SmartChannelSource>, SmartMessage<T>)> {
+        re_tracing::profile_function!();
+
+        let mut rx = self.receivers.lock();
+
+        loop {
+            rx.retain(|r| r.is_connected());
+            if rx.is_empty() {
+                return None;
+            }
+
+            let mut sel = Select::new();
+            for r in rx.iter() {
+                sel.recv(&r.rx);
+            }
+
+            let oper = sel.select_timeout(timeout).ok()?;
+            let index = oper.index();
+            if let Ok(msg) = oper.recv(&rx[index].rx) {
+                return Some((rx[index].source.clone(), msg));
+            }
+        }
+    }
 }

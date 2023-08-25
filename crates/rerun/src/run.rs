@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use itertools::Itertools;
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use re_log_types::{LogMsg, PythonVersion};
-use re_smart_channel::{Receiver, SmartMessagePayload};
+use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 use anyhow::Context as _;
 use clap::Subcommand;
@@ -417,108 +418,7 @@ async fn run_impl(
     };
 
     // Where do we get the data from?
-    let rx = if !args.url_or_paths.is_empty() {
-        let arguments = args
-            .url_or_paths
-            .iter()
-            .cloned()
-            .map(DataSource::from_uri)
-            .collect_vec();
-
-        if arguments.len() == 1 {
-            match arguments[0].clone() {
-                DataSource::RrdHttpUrl(url) => {
-                    re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
-                }
-                DataSource::FilePath(path) => {
-                    let (tx, rx) = re_smart_channel::smart_channel(
-                        re_smart_channel::SmartMessageSource::File(path.clone()),
-                        re_smart_channel::SmartChannelSource::Files {
-                            paths: vec![path.clone()],
-                        },
-                    );
-                    let store_id =
-                        re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                    load_file_to_channel_at(store_id, &path, tx)
-                        .with_context(|| format!("{path:?}"))?;
-                    rx
-                }
-                DataSource::WebSocketAddr(rerun_server_ws_url) => {
-                    // We are connecting to a server at a websocket address:
-
-                    if args.web_viewer {
-                        #[cfg(feature = "web_viewer")]
-                        {
-                            let web_viewer = host_web_viewer(
-                                args.bind.clone(),
-                                args.web_viewer_port,
-                                true,
-                                rerun_server_ws_url,
-                            );
-                            // We return here because the running [`WebViewerServer`] is all we need.
-                            // The page we open will be pointed at a websocket url hosted by a *different* server.
-                            return web_viewer.await;
-                        }
-                        #[cfg(not(feature = "web_viewer"))]
-                        {
-                            _ = rerun_server_ws_url;
-                            panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
-                        }
-                    } else {
-                        #[cfg(feature = "native_viewer")]
-                        return native_viewer_connect_to_ws_url(
-                            _build_info,
-                            call_source.app_env(),
-                            startup_options,
-                            profiler,
-                            rerun_server_ws_url,
-                        );
-
-                        #[cfg(not(feature = "native_viewer"))]
-                        {
-                            _ = (call_source, rerun_server_ws_url);
-                            anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature");
-                        }
-                    }
-                }
-            }
-        } else {
-            // Load many files:
-            let mut paths = vec![];
-            for argument in arguments {
-                if let DataSource::FilePath(path) = argument {
-                    paths.push(path);
-                } else {
-                    // TODO(#2121): Support loading multiple `http://` and `ws://` urls
-                    anyhow::bail!("Can only load a single URL, or multiple files. See https://github.com/rerun-io/rerun/issues/2121");
-                }
-            }
-
-            let (tx, rx) = re_smart_channel::smart_channel(
-                // NOTE: We can't know yet, each file will get its own properly sourced sender a
-                // few lines below.
-                re_smart_channel::SmartMessageSource::Unknown,
-                re_smart_channel::SmartChannelSource::Files {
-                    paths: paths.clone(),
-                },
-            );
-
-            let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-
-            // Load the files in parallel, and log errors.
-            // Failing to log one out of many files is not a big deal.
-            for path in paths {
-                let tx = tx.clone_as(re_smart_channel::SmartMessageSource::File(path.clone()));
-                let store_id = store_id.clone();
-                rayon::spawn(move || {
-                    if let Err(err) = load_file_to_channel_at(store_id, &path, tx) {
-                        re_log::error!("Failed to load {path:?}: {err}");
-                    }
-                });
-            }
-            rx
-        }
-    } else {
+    let rx: Vec<Receiver<LogMsg>> = if args.url_or_paths.is_empty() {
         #[cfg(feature = "server")]
         {
             let server_options = re_sdk_comms::ServerOptions {
@@ -527,18 +427,73 @@ async fn run_impl(
                 // `rerun.spawn()` doesn't need to log that a connection has been made
                 quiet: call_source.is_python(),
             };
-            re_sdk_comms::serve(&args.bind, args.port, server_options).await?
+            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options).await?;
+            vec![rx]
         }
 
         #[cfg(not(feature = "server"))]
         anyhow::bail!("No url or .rrd path given");
+    } else {
+        let arguments = args
+            .url_or_paths
+            .iter()
+            .cloned()
+            .map(DataSource::from_uri)
+            .collect_vec();
+
+        if arguments.len() == 1 {
+            if let DataSource::WebSocketAddr(rerun_server_ws_url) = arguments[0].clone() {
+                // We are connecting to a server at a websocket address:
+                if args.web_viewer {
+                    #[cfg(feature = "web_viewer")]
+                    {
+                        let web_viewer = host_web_viewer(
+                            args.bind.clone(),
+                            args.web_viewer_port,
+                            true,
+                            rerun_server_ws_url,
+                        );
+                        // We return here because the running [`WebViewerServer`] is all we need.
+                        // The page we open will be pointed at a websocket url hosted by a *different* server.
+                        return web_viewer.await;
+                    }
+                    #[cfg(not(feature = "web_viewer"))]
+                    {
+                        _ = rerun_server_ws_url;
+                        panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
+                    }
+                } else {
+                    #[cfg(feature = "native_viewer")]
+                    return native_viewer_connect_to_ws_url(
+                        _build_info,
+                        call_source.app_env(),
+                        startup_options,
+                        profiler,
+                        rerun_server_ws_url,
+                    );
+
+                    #[cfg(not(feature = "native_viewer"))]
+                    {
+                        _ = (call_source, rerun_server_ws_url);
+                        anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature");
+                    }
+                }
+            }
+        }
+
+        arguments
+            .into_par_iter()
+            .map(stream_data_source)
+            .collect::<Result<Vec<_>, _>>()?
     };
 
     // Now what do we do with the data?
 
     if args.test_receive {
+        let rx = ReceiveSet::new(rx);
         assert_receive_into_store_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
+        let rx = ReceiveSet::new(rx);
         Ok(stream_to_rrd(&rx, &rrd_path.into())?)
     } else if args.web_viewer {
         #[cfg(feature = "web_viewer")]
@@ -558,6 +513,7 @@ async fn run_impl(
             let ws_server =
                 re_ws_comms::RerunServer::new(args.bind.clone(), args.ws_server_port).await?;
             let ws_server_url = ws_server.server_url();
+            let rx = ReceiveSet::new(rx);
             let ws_server_handle = tokio::spawn(ws_server.listen(rx));
 
             // This is the server that serves the Wasm+HTML:
@@ -583,7 +539,6 @@ async fn run_impl(
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::new(
                 _build_info,
                 &call_source.app_env(),
@@ -591,7 +546,10 @@ async fn run_impl(
                 re_ui,
                 cc.storage,
             );
-            app.add_receiver(rx);
+            for rx in rx {
+                let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
+                app.add_receiver(rx);
+            }
             app.set_profiler(profiler);
             Box::new(app)
         }))
@@ -621,9 +579,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 }
 
 // NOTE: This is only used as part of end-to-end tests.
-fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::StoreDb> {
-    use re_smart_channel::RecvTimeoutError;
-
+fn assert_receive_into_store_db(rx: &ReceiveSet<LogMsg>) -> anyhow::Result<re_data_store::StoreDb> {
     re_log::info!("Receiving messages into a StoreDb…");
 
     let mut db: Option<re_data_store::StoreDb> = None;
@@ -633,8 +589,12 @@ fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data
     let timeout = std::time::Duration::from_secs(12);
 
     loop {
+        if !rx.is_connected() {
+            anyhow::bail!("Channel disconnected without a Goodbye message.");
+        }
+
         match rx.recv_timeout(timeout) {
-            Ok(msg) => {
+            Some((_, msg)) => {
                 re_log::info_once!("Received first message.");
 
                 match msg.payload {
@@ -660,14 +620,11 @@ fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data
                     }
                 }
             }
-            Err(RecvTimeoutError::Timeout) => {
+            None => {
                 anyhow::bail!(
                     "Didn't receive any messages within {} seconds. Giving up.",
                     timeout.as_secs()
                 );
-            }
-            Err(RecvTimeoutError::Disconnected) => {
-                anyhow::bail!("Channel disconnected without a Goodbye message.");
             }
         }
     }
@@ -786,6 +743,58 @@ impl DataSource {
     }
 }
 
+fn stream_data_source(data_source: DataSource) -> anyhow::Result<Receiver<LogMsg>> {
+    match data_source {
+        DataSource::RrdHttpUrl(url) => {
+            Ok(re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url))
+        }
+        DataSource::FilePath(path) => {
+            let (tx, rx) = re_smart_channel::smart_channel(
+                re_smart_channel::SmartMessageSource::File(path.clone()),
+                re_smart_channel::SmartChannelSource::Files {
+                    paths: vec![path.clone()],
+                },
+            );
+            let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+            load_file_to_channel_at(store_id, &path, tx).with_context(|| format!("{path:?}"))?;
+            Ok(rx)
+        }
+        DataSource::WebSocketAddr(rerun_server_ws_url) => connect_to_ws_url(&rerun_server_ws_url),
+    }
+}
+
+fn connect_to_ws_url(url: &str) -> anyhow::Result<Receiver<LogMsg>> {
+    let (tx, rx) = re_smart_channel::smart_channel(
+        re_smart_channel::SmartMessageSource::WsClient {
+            ws_server_url: url.to_owned(),
+        },
+        re_smart_channel::SmartChannelSource::WsClient {
+            ws_server_url: url.to_owned(),
+        },
+    );
+
+    re_log::info!("Connecting to WS server at {:?}…", url);
+
+    let callback = move |binary: Vec<u8>| match re_ws_comms::decode_log_msg(&binary) {
+        Ok(log_msg) => {
+            if tx.send(log_msg).is_ok() {
+                std::ops::ControlFlow::Continue(())
+            } else {
+                re_log::info!("Failed to send log message to viewer - closing");
+                std::ops::ControlFlow::Break(())
+            }
+        }
+        Err(err) => {
+            re_log::error!("Failed to parse message: {err}");
+            std::ops::ControlFlow::Break(())
+        }
+    };
+
+    let connection = re_ws_comms::Connection::viewer_to_server(url.to_owned(), callback)?;
+    std::mem::drop(connection); // Never close the connection. TODO: is this wise?
+    Ok(rx)
+}
+
 #[test]
 fn test_argument_categorization() {
     let file = [
@@ -858,6 +867,7 @@ fn native_viewer_connect_to_ws_url(
     Ok(())
 }
 
+// Sometimes blocking
 #[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
 fn load_file_to_channel_at(
     store_id: re_log_types::StoreId,
@@ -915,6 +925,7 @@ fn load_file_to_channel_at(
     }
 }
 
+// Non-blocking
 fn load_rrd_file_to_channel(
     path: std::path::PathBuf,
     tx: re_smart_channel::Sender<LogMsg>,
@@ -942,7 +953,7 @@ fn load_rrd_file_to_channel(
 }
 
 fn stream_to_rrd(
-    rx: &re_smart_channel::Receiver<LogMsg>,
+    rx: &re_smart_channel::ReceiveSet<LogMsg>,
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;
