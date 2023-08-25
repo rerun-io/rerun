@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
-use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities, ViewSystemName};
+use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -304,15 +304,6 @@ impl SpaceViewContents {
         let mut new_leaf_groups = Vec::new();
 
         for path in paths {
-            // TODO(andreas/jleibs): Incoming entities should already "know" what system they belong to.
-            // WARNING: This is less clear with ContextSystems.
-            // Generally, we don't want the user to have control over context systems since they "prepare" data for PartSystems.
-            // -> Context systems should be a direct consequence of the PartSystems that are active for a given entity.
-            self.per_system_entity_list
-                .entry(ViewSystemName::unknown())
-                .or_default()
-                .insert(path.clone());
-
             // Is there already a group associated with this exact path? (maybe because a child was logged there earlier)
             // If so, we can simply move it under this existing group.
             let group_handle = if let Some(group_handle) = self.path_to_group.get(path) {

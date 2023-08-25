@@ -10,15 +10,9 @@ re_string_interner::declare_new_type!(
     pub struct ViewSystemName;
 );
 
-impl ViewSystemName {
-    pub fn unknown() -> Self {
-        "unknown".into()
-    }
-}
-
 impl Default for ViewSystemName {
     fn default() -> Self {
-        Self::unknown()
+        "unknown".into()
     }
 }
 
