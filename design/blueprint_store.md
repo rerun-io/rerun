@@ -106,18 +106,18 @@ The assorted objects used in blueprint construction are:
     - `Container`: A view that specifies layout of sub-views (interface only)
         - `HorizontalLayout`
         - `VerticalLayout`
-        - ... additional layouts
+        - … additional layouts
     - `SpaceView`: An actual view of data in a coordinate space.
         - `View2D`
         - `View3D`
         - `ViewTimeSeries`
-        - ... additional space-views
+        - … additional space-views
  - `Data`: A query that builds archetypes to draw in the space view
     - `Auto`: A query to automatically build archetypes from an entity path
     - `Points2D`: A query to build a Points2D archetype
     - `Points3D`: A query to build a Points3D archetype
     - `Image`: A query to build an Image archetype
-    - ... additional typed archetype queries
+    - … additional typed archetype queries
  - `DataGroup`: A group of archetype queries with potentially shared overrides or defaults.
     - `RecursiveAuto`: A special DataGroup that recursively includes `Auto` queries for all entities under a given path.
 
@@ -192,7 +192,7 @@ For example:
 /space_views
     /e514aac1
         .space_view_class: SpaceViewClass::View3D
-        .eye: View3d::Eye(...)
+        .eye: View3d::Eye(…)
         .contents: [BlueprintId("/data_groups/b117f5b9"), BlueprintId("/data_groups/8ee750a4")]
     /e9f36821
         ...
@@ -206,8 +206,8 @@ For example:
         .contents: [EntityPath(BlueprintStore, "/static/7db713c0")]
 /static
     /7db713c0
-        .positions: [...]
-        .colors: [...]
+        .positions: […]
+        .colors: […]
 ```
 
 Note that this means the blueprint store is mostly organized flatly with the hierarchy being represented by

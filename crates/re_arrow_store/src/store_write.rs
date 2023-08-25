@@ -129,7 +129,7 @@ impl DataStore {
                 .collect::<Vec<_>>(),
             entity = %ent_path,
             components = ?cells.iter().map(|cell| cell.component_name()).collect_vec(),
-            "insertion started..."
+            "insertion started…"
         );
 
         let cluster_cell_pos = cells
@@ -155,7 +155,7 @@ impl DataStore {
             None
         } else {
             // The caller has not specified any cluster component, and so we'll have to generate
-            // one... unless we've already generated one of this exact length in the past,
+            // one… unless we've already generated one of this exact length in the past,
             // in which case we can simply re-use that cell.
 
             Some(self.generate_cluster_cell(num_instances))

@@ -131,7 +131,7 @@ fn main() {
     // actually turn out _not_ to be canonicalized in practice, which of course will break
     // hermeticity checks later down the line.
     //
-    // So: canonicalize them all, just in case... ¯\_(ツ)_/¯
+    // So: canonicalize them all, just in case… ¯\_(ツ)_/¯
     let manifest_path = std::fs::canonicalize(manifest_path).unwrap();
     let shader_dir = std::fs::canonicalize(shader_dir).unwrap();
 
@@ -212,7 +212,7 @@ pub fn init() {
         // The only way to make hermeticity checks work for top-level files would be to read all
         // Rust files and parse all `include_file!` statements in those, so that we actually
         // know what those external top-level files are to begin with.
-        // Not worth it... for now.
+        // Not worth it… for now.
         if is_release || targets_wasm {
             check_hermeticity(&manifest_path, entry.path()); // will fail if not hermetic
         }

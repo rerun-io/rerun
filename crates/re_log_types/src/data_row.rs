@@ -171,7 +171,7 @@ impl std::ops::DerefMut for RowId {
 /// ## Layout
 ///
 /// A row is a collection of cells where each cell must either be empty (a clear), unit-lengthed
-/// (a splat) or `num_instances` long (standard): `[[C1, C1, C1], [], [C3], [C4, C4, C4], ...]`.
+/// (a splat) or `num_instances` long (standard): `[[C1, C1, C1], [], [C3], [C4, C4, C4], …]`.
 ///
 /// Consider this example:
 /// ```ignore
