@@ -98,7 +98,7 @@ pub fn build_data_row_from_components(
 
     let cells = arrays
         .into_iter()
-        .zip(fields.into_iter())
+        .zip(fields)
         .map(|(value, field)| DataCell::from_arrow(field.name.into(), value))
         .collect_vec();
 
