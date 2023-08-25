@@ -226,7 +226,7 @@ impl CrateVersion {
     pub const fn parse(version_string: &str) -> Self {
         match Self::try_parse(version_string) {
             Ok(version) => version,
-            Err(err) => {
+            Err(_err) => {
                 // We previously used const_panic to concatenate the actual version but it crashed
                 // the 1.72.0 linker on mac :/
                 panic!("invalid version string")
