@@ -11,10 +11,15 @@ allow-unwrap-in-tests = true
 # We want suggestions, even if it changes public API.
 avoid-breaking-exported-api = false
 
+excessive-nesting-threshold = 16 # TODO(emilk): lower this
+
 max-fn-params-bools = 2 # TODO(emilk): decrease this to 1
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#/large_include_file
 max-include-file-size = 1000000
+
+# https://rust-lang.github.io/rust-clippy/master/index.html#/large_stack_frames
+stack-size-threshold = 512000
 
 too-many-lines-threshold = 600 # TODO(emilk): decrease this
 

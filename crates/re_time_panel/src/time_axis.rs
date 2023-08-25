@@ -78,7 +78,7 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
 
     // Only collapse gaps that take up a significant portion of the total time,
     // measured as the fraction of the total time that the gap represents.
-    let min_collapse_fraction: f64 = (2.0 / (times.total_count() - 1) as f64).max(0.35);
+    let min_collapse_fraction = (2.0 / (times.total_count() - 1) as f64).max(0.35);
 
     let mut gap_threshold = u64::MAX;
     let mut uncollapsed_time = total_time_span;
