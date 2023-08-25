@@ -2,7 +2,7 @@
 import rerun as rr
 from scipy.spatial.transform import Rotation
 
-rr.init("box3d", spawn=True)
+rr.init("rerun-example-box3d", spawn=True)
 
 rr.log_annotation_context(
     "/",

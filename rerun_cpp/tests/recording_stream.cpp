@@ -70,8 +70,9 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
     GIVEN("recording stream kind" << kind) {
         AND_GIVEN("a valid application id") {
             THEN("creating a new stream does not log an error") {
-                rr::RecordingStream stream =
-                    check_logged_error([&] { return rr::RecordingStream("test", kind); });
+                rr::RecordingStream stream = check_logged_error([&] {
+                    return rr::RecordingStream("rerun-example-test", kind);
+                });
 
                 AND_THEN("it does not crash on destruction") {}
 

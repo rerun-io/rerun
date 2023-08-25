@@ -2,7 +2,7 @@
 use rerun::{components::Rect2D, datatypes::Vec4D, MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-rect2d").memory()?;
 
     MsgSender::new("simple")
         .with_component(&[Rect2D::XYWH(Vec4D([-1., -1., 2., 2.]).into())])?

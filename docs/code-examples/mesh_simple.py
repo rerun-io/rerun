@@ -1,7 +1,7 @@
 """Log a simple colored triangle."""
 import rerun as rr
 
-rr.init("mesh", spawn=True)
+rr.init("rerun-example-mesh", spawn=True)
 
 rr.log_mesh(
     "triangle",

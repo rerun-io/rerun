@@ -3,7 +3,7 @@ use rerun::components::{Mesh3D, MeshId, RawMesh3D};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-mesh").memory()?;
 
     let mesh = RawMesh3D {
         mesh_id: MeshId::random(),

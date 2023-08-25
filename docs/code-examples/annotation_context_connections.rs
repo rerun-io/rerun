@@ -5,7 +5,8 @@ use rerun::datatypes::{AnnotationInfo, ClassDescription, Color, KeypointPair, La
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+    let (rec_stream, storage) =
+        RecordingStreamBuilder::new("rerun-example-annotation_context_connections").memory()?;
 
     // Log an annotation context to assign a label and color to each class
     // Create a class description with labels and color for each keypoint ID as well as some

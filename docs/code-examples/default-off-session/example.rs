@@ -1,1 +1,1 @@
-let recording = rerun::RecordingStreamBuilder::new("pouet").default_enabled(false);
+let recording = rerun::RecordingStreamBuilder::new("rerun-example-pouet").default_enabled(false);

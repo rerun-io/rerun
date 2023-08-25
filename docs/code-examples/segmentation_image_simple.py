@@ -8,7 +8,7 @@ image = np.zeros((200, 300), dtype=np.uint8)
 image[50:100, 50:120] = 1
 image[100:180, 130:280] = 2
 
-rr.init("segmentation_image", spawn=True)
+rr.init("rerun-example-segmentation_image", spawn=True)
 
 # Assign a label and color to each class
 rr.log_annotation_context(

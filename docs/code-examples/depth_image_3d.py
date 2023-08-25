@@ -9,7 +9,7 @@ image[50:150, 50:150] = 20000
 image[130:180, 100:280] = 45000
 
 
-rr.init("depth_image", spawn=True)
+rr.init("rerun-example-depth_image", spawn=True)
 
 # If we log a pinhole camera model, the depth gets automatically back-projected to 3D
 rr.log_pinhole(

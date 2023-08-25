@@ -75,7 +75,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "text_logging")
+    rr.rscript_setup(args, "rerun-example-text_logging")
 
     setup_logging()
     for frame_offset in range(args.repeat):

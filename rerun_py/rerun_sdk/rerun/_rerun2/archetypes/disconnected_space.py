@@ -28,7 +28,7 @@ class DisconnectedSpace(Archetype):
     import rerun as rr
     import rerun.experimental as rr2
 
-    rr.init("disconnect_space", spawn=True)
+    rr.init("rerun-example-disconnect_space", spawn=True)
 
     # These two points can be projected into the same space..
     rr2.log("world/room1/point", rr2.Points3D([[0, 0, 0]]))

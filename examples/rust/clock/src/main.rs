@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
     let default_enabled = true;
     args.rerun
         .clone()
-        .run("clock", default_enabled, move |rec_stream| {
+        .run("rerun-example-clock", default_enabled, move |rec_stream| {
             run(&rec_stream, &args).unwrap();
         })
 }

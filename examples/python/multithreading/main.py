@@ -24,7 +24,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "multithreading")
+    rr.rscript_setup(args, "rerun-example-multithreading")
 
     threads = []
     for i in range(10):

@@ -3,7 +3,7 @@ import logging
 
 import rerun as rr
 
-rr.init("text_entry", spawn=True)
+rr.init("rerun-example-text_entry", spawn=True)
 
 # Log a direct entry directly
 rr.log_text_entry("logs", "this entry has loglevel TRACE", level=rr.LogLevel.TRACE)

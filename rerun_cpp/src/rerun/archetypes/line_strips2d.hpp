@@ -33,7 +33,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("line_strip2d");
+        ///    auto rr_stream = rr::RecordingStream("rerun-example-line_strip2d");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::datatypes::Vec2D> strip1 = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},
@@ -59,7 +59,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("line_segments2d");
+        ///    auto rr_stream = rr::RecordingStream("rerun-example-line_segments2d");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::datatypes::Vec2D> points = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},

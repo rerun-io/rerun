@@ -1,7 +1,7 @@
 """Log a simple set of line segments."""
 import rerun as rr
 
-rr.init("line_segments2d", spawn=True)
+rr.init("rerun-example-line_segments2d", spawn=True)
 
 rr.log_line_segments(
     "simple",

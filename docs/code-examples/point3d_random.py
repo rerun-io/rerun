@@ -2,7 +2,7 @@
 import rerun as rr
 from numpy.random import default_rng
 
-rr.init("points", spawn=True)
+rr.init("rerun-example-points", spawn=True)
 rng = default_rng(12345)
 
 positions = rng.uniform(-5, 5, size=[10, 3])

@@ -38,7 +38,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "roundtrip_line_strips3d")
+    rr.rscript_setup(args, "rerun-example-roundtrip_line_strips3d")
 
     rr2.log("line_strips3d", line_strips3d)
 

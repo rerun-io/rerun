@@ -24,7 +24,7 @@ class Transform3D(Archetype):
     import rerun.experimental as rr2
     from rerun.experimental import dt as rrd
 
-    rr.init("transform3d", spawn=True)
+    rr.init("rerun-example-transform3d", spawn=True)
 
     origin = [0, 0, 0]
     base_vector = [0, 1, 0]

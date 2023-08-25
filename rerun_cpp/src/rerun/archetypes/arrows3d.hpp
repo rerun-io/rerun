@@ -35,7 +35,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("arrow3d");
+        ///    auto rr_stream = rr::RecordingStream("rerun-example-arrow3d");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::components::Vector3D> vectors;

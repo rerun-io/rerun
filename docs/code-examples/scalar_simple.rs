@@ -6,7 +6,7 @@ use rerun::time::{TimeType, Timeline};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-scalar").memory()?;
 
     let step_timeline = Timeline::new("step", TimeType::Sequence);
 

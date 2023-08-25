@@ -700,9 +700,11 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let default_enabled = true;
-    args.rerun
-        .clone()
-        .run("test_api_rs", default_enabled, move |rec_stream| {
+    args.rerun.clone().run(
+        "rerun-example-test_api_rs",
+        default_enabled,
+        move |rec_stream| {
             run(&rec_stream, &args).unwrap();
-        })
+        },
+    )
 }

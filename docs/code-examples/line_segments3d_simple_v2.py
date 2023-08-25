@@ -3,7 +3,7 @@ import numpy as np
 import rerun as rr
 import rerun.experimental as rr2
 
-rr.init("line_segments3d", spawn=True)
+rr.init("rerun-example-line_segments3d", spawn=True)
 
 rr2.log(
     "segments",

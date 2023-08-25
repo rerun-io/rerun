@@ -14,7 +14,7 @@ def run_cube(args: argparse.Namespace):
 
     from rerun_demo.data import build_color_grid
 
-    rr.script_setup(args, "Cube")
+    rr.rscript_setup(args, "rerun-example-Cube")
 
     STEPS = 100
     twists = math.pi * np.sin(np.linspace(0, math.tau, STEPS)) / 4

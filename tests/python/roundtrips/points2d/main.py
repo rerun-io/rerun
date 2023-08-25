@@ -42,7 +42,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "roundtrip_points2d")
+    rr.rscript_setup(args, "rerun-example-roundtrip_points2d")
 
     rr2.log("points2d", points2d)
     # Hack to establish 2d view bounds

@@ -17,7 +17,7 @@ draw.rounded_rectangle((50, 50, 150, 150), fill=(0, 255, 0), radius=20)
 image.save(file_path)
 
 
-rr.init("images_adv", spawn=True)
+rr.init("rerun-example-images_adv", spawn=True)
 
 # Log the image from the file.
 rr.log_image_file("from_file", img_path=Path(file_path))

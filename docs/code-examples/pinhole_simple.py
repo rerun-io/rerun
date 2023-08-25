@@ -2,7 +2,7 @@
 import numpy as np
 import rerun as rr
 
-rr.init("pinhole", spawn=True)
+rr.init("rerun-example-pinhole", spawn=True)
 rng = np.random.default_rng(12345)
 
 image = rng.uniform(0, 255, size=[3, 3, 3])

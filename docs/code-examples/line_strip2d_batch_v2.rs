@@ -6,7 +6,8 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+    let (rec_stream, storage) =
+        RecordingStreamBuilder::new("rerun-example-line_strip2d").memory()?;
 
     let strip1 = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
     #[rustfmt::skip]
