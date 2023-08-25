@@ -17,7 +17,7 @@ homepage = "https://rerun.io"
 include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
-rust-version = "1.69"
+rust-version = "1.72"
 version = "0.9.0-alpha.2+dev"
 
 [workspace.dependencies]
@@ -77,7 +77,6 @@ camino = "1.1"
 cfg-if = "1.0"
 clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
-const_panic = { version = "0.2.8", features = ["rust_1_64"] }
 crossbeam = "0.8"
 ecolor = "0.22.0"
 eframe = { version = "0.22.0", default-features = false, features = [
@@ -94,7 +93,7 @@ enumset = "1.0.12"
 epaint = "0.22.0"
 glam = "0.22"
 gltf = "1.1"
-half = "=2.2.1" # Pinned because of https://github.com/starkat99/half-rs/issues/97
+half = "2.3.1"
 image = { version = "0.24", default-features = false }
 itertools = "0.11"
 lazy_static = "1.4"

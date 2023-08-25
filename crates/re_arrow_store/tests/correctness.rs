@@ -271,12 +271,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 fn gc_correct() {
     init_logs();
 
-    let mut store = DataStore::new(
-        InstanceKey::name(),
-        DataStoreConfig {
-            ..Default::default()
-        },
-    );
+    let mut store = DataStore::new(InstanceKey::name(), DataStoreConfig::default());
 
     let stats_empty = DataStoreStats::from_store(&store);
 

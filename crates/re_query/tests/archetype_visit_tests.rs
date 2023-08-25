@@ -89,11 +89,7 @@ fn joined_iter_dense_primary() {
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [points_comp, colors_comp]);
 
-    let expected_colors = vec![
-        None, //
-        Some(Color::from(1)),
-        Some(Color::from(2)),
-    ];
+    let expected_colors = [None, Some(Color::from(1)), Some(Color::from(2))];
 
     let results = itertools::izip!(
         expected_colors.iter(),
@@ -135,7 +131,7 @@ fn joined_iter_dense_secondary() {
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [points_comp, colors_comp]);
 
-    let expected_colors = vec![
+    let expected_colors = [
         Some(Color::from(0)), //
         Some(Color::from(2)),
         Some(Color::from(4)),
@@ -189,7 +185,7 @@ fn complex_joined_iter() {
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [points_comp, colors_comp]);
 
-    let expected_colors = vec![
+    let expected_colors = [
         None,
         Some(Color::from(17)), //
         None,

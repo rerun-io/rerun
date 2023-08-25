@@ -6,13 +6,15 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main clippy.toml:
 
-msrv = "1.69"
+msrv = "1.72"
 
 allow-unwrap-in-tests = true
 
 # https://doc.rust-lang.org/nightly/clippy/lint_configuration.html#avoid-breaking-exported-api
 # We want suggestions, even if it changes public API.
 avoid-breaking-exported-api = false
+
+excessive-nesting-threshold = 16 # TODO(emilk): lower this
 
 max-fn-params-bools = 2 # TODO(emilk): decrease this to 1
 

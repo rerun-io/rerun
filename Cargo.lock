@@ -985,15 +985,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "const_panic"
-version = "0.2.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6051f239ecec86fde3410901ab7860d458d160371533842974fc61f96d15879b"
-dependencies = [
- "typewit",
-]
-
-[[package]]
 name = "convert_case"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1734,7 +1725,7 @@ checksum = "79386fdcec5e0fde91b1a6a5bcd89677d1f9304f7f986b154a1b9109038854d9"
 dependencies = [
  "az",
  "bytemuck",
- "half 2.2.1",
+ "half 1.8.2",
  "serde",
  "typenum",
 ]
@@ -2137,11 +2128,12 @@ checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
 name = "half"
-version = "2.2.1"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02b4af3693f1b705df946e9fe5631932443781d0aabb423b62fcd4d73f6d2fd0"
+checksum = "bc52e53916c08643f1b56ec082790d1e86a32e58dc5268f897f313fbae7b4872"
 dependencies = [
  "bytemuck",
+ "cfg-if",
  "crunchy",
  "serde",
 ]
@@ -3162,7 +3154,7 @@ version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "437213adf41bbccf4aeae535fbfcdad0f6fed241e1ae182ebe97fa1f3ce19389"
 dependencies = [
- "half 2.2.1",
+ "half 2.3.1",
  "libc",
  "ndarray",
  "num-complex",
@@ -3975,9 +3967,6 @@ dependencies = [
 [[package]]
 name = "re_build_info"
 version = "0.9.0-alpha.2+dev"
-dependencies = [
- "const_panic",
-]
 
 [[package]]
 name = "re_build_tools"
@@ -4015,7 +4004,7 @@ dependencies = [
  "document-features",
  "ecolor",
  "glam",
- "half 2.2.1",
+ "half 2.3.1",
  "image",
  "itertools 0.11.0",
  "lazy_static",
@@ -4181,7 +4170,7 @@ dependencies = [
  "crossbeam",
  "document-features",
  "fixed",
- "half 2.2.1",
+ "half 2.3.1",
  "itertools 0.11.0",
  "nohash-hasher",
  "num-derive",
@@ -4266,7 +4255,7 @@ dependencies = [
  "getrandom",
  "glam",
  "gltf",
- "half 2.2.1",
+ "half 2.3.1",
  "image",
  "itertools 0.11.0",
  "log",
@@ -4432,7 +4421,7 @@ dependencies = [
  "bytemuck",
  "eframe",
  "egui",
- "half 2.2.1",
+ "half 2.3.1",
  "ndarray",
  "re_arrow_store",
  "re_components",
@@ -4717,7 +4706,7 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "glam",
- "half 2.2.1",
+ "half 2.3.1",
  "itertools 0.11.0",
  "lazy_static",
  "macaw",
@@ -5969,12 +5958,6 @@ name = "typenum"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
-
-[[package]]
-name = "typewit"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e5cee357cc77d1e02f10a3e6c4e13b8462fafab05998b62d331b7d9485589ff"
 
 [[package]]
 name = "uds_windows"

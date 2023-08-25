@@ -52,7 +52,7 @@ impl Default for TimePanel {
             prev_col_width: 400.0,
             next_col_right: 0.0,
             time_ranges_ui: Default::default(),
-            time_control_ui: TimeControlUi::default(),
+            time_control_ui: TimeControlUi,
         }
     }
 }

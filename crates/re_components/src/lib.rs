@@ -187,7 +187,7 @@ where
         array: &mut Self::MutableArrayType,
     ) -> arrow2::error::Result<()> {
         let values = array.mut_values();
-        for i in v.iter() {
+        for i in v {
             <T as ArrowSerialize>::arrow_serialize(i, values)?;
         }
         array.try_push_valid()

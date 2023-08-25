@@ -515,7 +515,7 @@ where
 {
     #[inline]
     fn from(values: [C; 1]) -> Self {
-        Self::from_native(values.into_iter())
+        Self::from_native(values)
     }
 }
 
@@ -537,7 +537,7 @@ where
 {
     #[inline]
     fn from(c: Vec<C>) -> Self {
-        Self::from_native(c.into_iter())
+        Self::from_native(c)
     }
 }
 

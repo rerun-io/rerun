@@ -112,7 +112,8 @@ impl ViewContextSystem for TransformContext {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
                     "Path {} is not part of the global Entity tree whereas its child {} is",
-                    parent_path, query.space_origin
+                    parent_path,
+                    query.space_origin
                 );
                 return;
             };

@@ -120,7 +120,9 @@ impl MsgSender {
         for (field, array) in serialized {
             // NOTE: Unreachable, a top-level Field will always be a component, and thus an
             // extension.
-            let DataType::Extension(_, _, legacy_fqname) = field.data_type else { unreachable!() };
+            let DataType::Extension(_, _, legacy_fqname) = field.data_type else {
+                unreachable!()
+            };
             this = this.with_cell(DataCell::from_arrow(
                 // NOTE: Unwrapping is safe as we always include the legacy fqname into the Field's
                 // metadata while migrating towards HOPE.

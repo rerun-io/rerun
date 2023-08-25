@@ -20,7 +20,9 @@ pub fn quote_arrow_serializer(
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
 
-    let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
+    let DataType::Extension(fqname, _, _) = datatype else {
+        unreachable!()
+    };
     let fqname_use = quote_fqname_as_type_path(fqname);
     let quoted_datatype = quote! {
         (if let Some(ext) = extension_wrapper {
@@ -683,7 +685,9 @@ fn quote_arrow_field_serializer(
 
         DataType::Struct(_) | DataType::Union(_, _, _) => {
             // NOTE: We always wrap objects with full extension metadata.
-            let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
+            let DataType::Extension(fqname, _, _) = datatype else {
+                unreachable!()
+            };
             let fqname_use = quote_fqname_as_type_path(fqname);
             let quoted_extension_wrapper =
                 extension_wrapper.map_or_else(|| quote!(None::<&str>), |ext| quote!(Some(#ext)));

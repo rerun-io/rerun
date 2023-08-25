@@ -522,7 +522,9 @@ fn connect(
 #[pyfunction]
 #[pyo3(signature = (path, recording = None))]
 fn save(path: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
 
     recording
         .save(path)
@@ -592,7 +594,9 @@ fn serve(
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
-        let Some(recording) = get_data_recording(recording) else { return Ok(()); };
+        let Some(recording) = get_data_recording(recording) else {
+            return Ok(());
+        };
 
         let _guard = enter_tokio_runtime();
 
@@ -627,7 +631,9 @@ fn serve(
 /// or shown with `show`.
 #[pyfunction]
 fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else { return; };
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         recording.disconnect();
@@ -637,7 +643,9 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
 /// Block until outstanding data has been flushed to the sink
 #[pyfunction]
 fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else { return; };
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         if blocking {
@@ -652,25 +660,33 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 
 #[pyfunction]
 fn set_time_sequence(timeline: &str, sequence: Option<i64>, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else { return; };
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
     recording.set_time_sequence(timeline, sequence);
 }
 
 #[pyfunction]
 fn set_time_seconds(timeline: &str, seconds: Option<f64>, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else { return; };
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
     recording.set_time_seconds(timeline, seconds);
 }
 
 #[pyfunction]
 fn set_time_nanos(timeline: &str, nanos: Option<i64>, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else { return; };
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
     recording.set_time_nanos(timeline, nanos);
 }
 
 #[pyfunction]
 fn reset_time(recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else { return; };
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
     recording.reset_time();
 }
 
@@ -724,7 +740,9 @@ fn log_view_coordinates(
     timeless: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
 
     if coordinates.handedness() == Some(Handedness::Left) {
         re_log::warn_once!(
@@ -792,7 +810,9 @@ fn log_meshes(
     timeless: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
 
     let entity_path = parse_entity_path(entity_path_str)?;
 
@@ -906,7 +926,9 @@ fn log_mesh_file(
     mesh_path: Option<PathBuf>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
 
     let entity_path = parse_entity_path(entity_path_str)?;
 
@@ -998,7 +1020,9 @@ fn log_image_file(
     timeless: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
 
     let entity_path = parse_entity_path(entity_path)?;
 
@@ -1054,7 +1078,9 @@ fn log_cleared(
     recursive: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
 
     let entity_path = parse_entity_path(entity_path)?;
 
@@ -1083,7 +1109,9 @@ fn set_panel(
     expanded: bool,
     blueprint: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    let Some(blueprint) = get_blueprint_recording(blueprint) else { return Ok(()); };
+    let Some(blueprint) = get_blueprint_recording(blueprint) else {
+        return Ok(());
+    };
 
     // TODO(jleibs): Validation this is a valid blueprint path?
     let entity_path = parse_entity_path(entity_path)?;
@@ -1112,7 +1140,9 @@ fn add_space_view(
     entity_paths: Vec<&str>,
     blueprint: Option<&PyRecordingStream>,
 ) {
-    let Some(blueprint) = get_blueprint_recording(blueprint) else { return; };
+    let Some(blueprint) = get_blueprint_recording(blueprint) else {
+        return;
+    };
 
     let mut space_view = SpaceViewBlueprint::new(
         "Spatial".into(),
@@ -1152,7 +1182,9 @@ fn add_space_view(
 
 #[pyfunction]
 fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
-    let Some(blueprint) = get_blueprint_recording(blueprint) else { return; };
+    let Some(blueprint) = get_blueprint_recording(blueprint) else {
+        return;
+    };
 
     let enable_auto_space = AutoSpaceViews(enabled);
 
@@ -1182,7 +1214,9 @@ fn log_arrow_msg(
     timeless: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
 
     let entity_path = parse_entity_path(entity_path)?;
 
