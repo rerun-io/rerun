@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap, TimeInt, Timeline};
 
@@ -50,6 +51,14 @@ impl<'s> ViewQuery<'s> {
                 )
             },
         )
+    }
+
+    /// Iterates over all entities of the [`ViewQuery`].
+    pub fn iter_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
+        self.per_system_entities
+            .values()
+            .flat_map(|entities| entities.iter())
+            .unique()
     }
 
     pub fn latest_at_query(&self) -> LatestAtQuery {

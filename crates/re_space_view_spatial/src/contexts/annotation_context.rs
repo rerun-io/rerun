@@ -24,13 +24,8 @@ impl ViewContextSystem for AnnotationSceneContext {
     ) {
         // We create a list of *all* entities here, do not only iterate over those with annotation context.
         // TODO(andreas): But knowing ahead of time where we have annotation contexts could be used for optimization.
-        // TODO(andreas): This curiously seems to be the only place where we get a view query and are interested in _all_ entities.
-        //                We know that this deals with duplicates entities just fine, so we just concat all per-system entities here.
-        let entities = query
-            .per_system_entities
-            .values()
-            .flat_map(|entities| entities.iter());
-        self.0.load(ctx, &query.latest_at_query(), entities);
+        self.0
+            .load(ctx, &query.latest_at_query(), query.iter_entities());
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
