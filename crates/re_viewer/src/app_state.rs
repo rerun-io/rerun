@@ -167,21 +167,13 @@ impl AppState {
 
                         // ListItem don't need vertical spacing so we disable it, but restore it
                         // before drawing the blueprint panel.
-                        // TODO(ab): remove this once the blueprint tree uses list items
-                        let v_space = ui.spacing().item_spacing.y;
                         ui.spacing_mut().item_spacing.y = 0.0;
 
                         recordings_panel_ui(&mut ctx, ui);
 
-                        // TODO(ab): remove this frame once the blueprint tree uses list items
-                        egui::Frame {
-                            inner_margin: re_ui::ReUi::panel_margin(),
-                            ..Default::default()
-                        }
-                        .show(ui, |ui| {
-                            ui.spacing_mut().item_spacing.y = v_space;
-                            blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
-                        });
+                        ui.add_space(4.0);
+
+                        blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
                     },
                 );
 

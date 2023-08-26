@@ -72,10 +72,11 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
                     .send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
             }
         } else {
-            ctx.re_ui
-                .list_item(app_id)
-                .active(false)
-                .show_collapsing(ui, true, |_, ui| {
+            ctx.re_ui.list_item(app_id).active(false).show_collapsing(
+                ui,
+                ui.id().with(app_id),
+                true,
+                |_, ui| {
                     for store_db in store_dbs {
                         if recording_ui(
                             ctx.re_ui,
@@ -92,7 +93,8 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
                             ));
                         }
                     }
-                });
+                },
+            );
         }
     }
 }

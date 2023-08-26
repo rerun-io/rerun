@@ -1,8 +1,9 @@
 use itertools::Itertools;
 use re_data_store::InstancePath;
-use re_data_ui::item_ui;
+use re_data_ui::{item_ui, DataUi};
 use re_space_view::DataBlueprintGroup;
-use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
+use re_ui::list_item::ListItem;
+use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, UiVerbosity, ViewerContext};
 
 use crate::{
     space_view_heuristics::all_possible_space_views, SpaceInfoCollection, SpaceViewBlueprint,
@@ -95,33 +96,28 @@ impl ViewportBlueprint<'_> {
         let mut visible = self.tree.is_visible(tile_id);
 
         let default_open = true;
-        egui::collapsing_header::CollapsingState::load_with_default_open(
-            ui.ctx(),
-            egui::Id::new((tile_id, "tree")),
-            default_open,
-        )
-        .show_header(ui, |ui| {
-            blueprint_row_with_buttons(
-                ctx.re_ui,
-                ui,
-                true,
-                visible,
-                false,
-                |ui| ui.label(format!("{:?}", container.kind())),
-                |re_ui, ui| {
-                    visibility_changed =
-                        visibility_button_ui(re_ui, ui, true, &mut visible).changed();
-                    if re_ui
-                        .small_icon_button(ui, &re_ui::icons::REMOVE)
-                        .on_hover_text("Remove container")
-                        .clicked()
-                    {
-                        action = TreeAction::Remove;
-                    }
-                },
-            );
-        })
-        .body(|ui| container.retain(|child| self.tile_ui(ctx, ui, child) == TreeAction::Keep));
+
+        ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
+            .subdued(true)
+            .with_buttons(|re_ui, ui| {
+                //TODO(ab): deduplicate that
+                let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
+
+                visibility_changed = vis_response.changed();
+
+                let response = re_ui
+                    .small_icon_button(ui, &re_ui::icons::REMOVE)
+                    .on_hover_text("Remove container");
+
+                if response.clicked() {
+                    action = TreeAction::Remove;
+                }
+
+                response | vis_response
+            })
+            .show_collapsing(ui, ui.id().with(tile_id), default_open, |_, ui| {
+                container.retain(|child| self.tile_ui(ctx, ui, child) == TreeAction::Keep);
+            });
 
         if visibility_changed {
             self.has_been_user_edited = true;
@@ -147,53 +143,50 @@ impl ViewportBlueprint<'_> {
         let mut visibility_changed = false;
         let mut action = TreeAction::Keep;
         let mut visible = self.tree.is_visible(tile_id);
+        let visible_child = visible;
         let item = Item::SpaceView(space_view.id);
-        let is_selected = ctx.selection().contains(&item);
 
         let root_group = space_view.data_blueprint.root_group();
         let default_open = Self::default_open_for_group(root_group);
         let collapsing_header_id = ui.id().with(space_view.id);
-        egui::collapsing_header::CollapsingState::load_with_default_open(
-            ui.ctx(),
-            collapsing_header_id,
-            default_open,
-        )
-        .show_header(ui, |ui| {
-            blueprint_row_with_buttons(
-                ctx.re_ui,
-                ui,
-                true,
-                visible,
-                is_selected,
-                |ui| {
-                    let response = crate::item_ui::space_view_button(ctx, ui, space_view);
-                    if response.clicked() {
-                        focus_tab(&mut self.tree, space_view_id);
-                    }
-                    response
-                },
-                |re_ui, ui| {
-                    visibility_changed =
-                        visibility_button_ui(re_ui, ui, true, &mut visible).changed();
-                    if re_ui
-                        .small_icon_button(ui, &re_ui::icons::REMOVE)
-                        .on_hover_text("Remove Space View from the Viewport")
-                        .clicked()
-                    {
-                        action = TreeAction::Remove;
-                    }
-                },
-            );
-        })
-        .body(|ui| {
-            Self::data_blueprint_tree_ui(
-                ctx,
-                ui,
-                space_view.data_blueprint.root_handle(),
-                space_view,
-                visible,
-            );
-        });
+
+        let response = ListItem::new(ctx.re_ui, space_view.display_name.clone())
+            .selected(ctx.selection().contains(&item))
+            .subdued(!visible)
+            .with_icon(space_view.class(ctx.space_view_class_registry).icon())
+            .with_buttons(|re_ui, ui| {
+                //TODO(ab): deduplicate that
+                let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
+
+                visibility_changed = vis_response.changed();
+
+                let response = re_ui
+                    .small_icon_button(ui, &re_ui::icons::REMOVE)
+                    .on_hover_text("Remove Space View from the Viewport");
+
+                if response.clicked() {
+                    action = TreeAction::Remove;
+                }
+
+                response | vis_response
+            })
+            .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
+                Self::data_blueprint_tree_ui(
+                    ctx,
+                    ui,
+                    space_view.data_blueprint.root_handle(),
+                    space_view,
+                    visible_child,
+                );
+            })
+            .item_response
+            .on_hover_text("Space View");
+
+        if response.clicked() {
+            focus_tab(&mut self.tree, space_view_id);
+        }
+
+        item_ui::cursor_interact_with_selectable(ctx, response, item);
 
         if visibility_changed {
             self.has_been_user_edited = true;
@@ -235,53 +228,48 @@ impl ViewportBlueprint<'_> {
                 InstancePath::entity_splat(entity_path.clone()),
             ));
 
-            ui.horizontal(|ui| {
-                let mut properties = space_view
-                    .data_blueprint
-                    .data_blueprints_individual()
-                    .get(entity_path);
-                blueprint_row_with_buttons(
-                    ctx.re_ui,
-                    ui,
-                    group_is_visible,
-                    properties.visible,
-                    is_selected,
-                    |ui| {
-                        let name = entity_path.iter().last().unwrap().to_string();
-                        let label = format!("🔹 {name}");
-                        re_data_ui::item_ui::data_blueprint_button_to(
-                            ctx,
-                            ui,
-                            label,
-                            space_view.id,
-                            entity_path,
-                        )
-                    },
-                    |re_ui, ui| {
-                        if visibility_button_ui(
-                            re_ui,
-                            ui,
-                            group_is_visible,
-                            &mut properties.visible,
-                        )
-                        .changed()
-                        {
-                            space_view
-                                .data_blueprint
-                                .data_blueprints_individual()
-                                .set(entity_path.clone(), properties);
-                        }
-                        if re_ui
-                            .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove Entity from the Space View")
-                            .clicked()
-                        {
-                            space_view.data_blueprint.remove_entity(entity_path);
-                            space_view.entities_determined_by_user = true;
-                        }
-                    },
-                );
-            });
+            let item = Item::InstancePath(
+                Some(space_view.id),
+                InstancePath::entity_splat(entity_path.clone()),
+            );
+
+            let mut properties = space_view
+                .data_blueprint
+                .data_blueprints_individual()
+                .get(entity_path);
+            let name = entity_path.iter().last().unwrap().to_string();
+            let label = format!("🔹 {name}");
+            let response = ListItem::new(ctx.re_ui, label)
+                .selected(is_selected)
+                .subdued(!group_is_visible || !properties.visible)
+                .with_buttons(|re_ui, ui| {
+                    let vis_response =
+                        visibility_button_ui(re_ui, ui, group_is_visible, &mut properties.visible);
+                    if vis_response.changed() {
+                        space_view
+                            .data_blueprint
+                            .data_blueprints_individual()
+                            .set(entity_path.clone(), properties);
+                    }
+                    let response = re_ui
+                        .small_icon_button(ui, &re_ui::icons::REMOVE)
+                        .on_hover_text("Remove Entity from the Space View");
+
+                    if response.clicked() {
+                        space_view.data_blueprint.remove_entity(entity_path);
+                        space_view.entities_determined_by_user = true;
+                    }
+                    response | vis_response
+                })
+                .show(ui)
+                //TODO(ab): refactor that (duplicated from data_blueprint_button_to)
+                .on_hover_ui(|ui| {
+                    ui.strong("Space View Entity");
+                    ui.label(format!("Path: {entity_path}"));
+                    entity_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+                });
+
+            item_ui::cursor_interact_with_selectable(ctx, response, item);
         }
 
         for child_group_handle in &children {
@@ -290,60 +278,53 @@ impl ViewportBlueprint<'_> {
                     continue;
                 };
 
-            let is_selected = ctx.selection().contains(&Item::DataBlueprintGroup(
-                space_view.id,
-                *child_group_handle,
-            ));
+            let item = Item::DataBlueprintGroup(space_view.id, *child_group_handle);
+            let is_selected = ctx.selection().contains(&item);
 
             let mut remove_group = false;
             let default_open = Self::default_open_for_group(child_group);
-            egui::collapsing_header::CollapsingState::load_with_default_open(
-                ui.ctx(),
-                ui.id().with(child_group_handle),
-                default_open,
-            )
-            .show_header(ui, |ui| {
-                blueprint_row_with_buttons(
-                    ctx.re_ui,
+
+            let mut child_group_visible = child_group.properties_individual.visible;
+            let response = ListItem::new(ctx.re_ui, child_group.display_name.clone())
+                .selected(is_selected)
+                .subdued(!child_group_visible || !group_is_visible)
+                .with_icon(&re_ui::icons::CONTAINER)
+                .with_buttons(|re_ui, ui| {
+                    let vis_response =
+                        visibility_button_ui(re_ui, ui, group_is_visible, &mut child_group_visible);
+                    let response = re_ui
+                        .small_icon_button(ui, &re_ui::icons::REMOVE)
+                        .on_hover_text("Remove Group and all its children from the Space View");
+                    if response.clicked() {
+                        remove_group = true;
+                    }
+                    response | vis_response
+                })
+                .show_collapsing(
                     ui,
-                    group_is_visible,
-                    child_group.properties_individual.visible,
-                    is_selected,
-                    |ui| {
-                        item_ui::data_blueprint_group_button_to(
+                    ui.id().with(child_group_handle),
+                    default_open,
+                    |_, ui| {
+                        Self::data_blueprint_tree_ui(
                             ctx,
                             ui,
-                            child_group.display_name.clone(),
-                            space_view.id,
                             *child_group_handle,
-                        )
-                    },
-                    |re_ui, ui| {
-                        visibility_button_ui(
-                            re_ui,
-                            ui,
-                            group_is_visible,
-                            &mut child_group.properties_individual.visible,
+                            space_view,
+                            space_view_visible,
                         );
-                        if re_ui
-                            .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove Group and all its children from the Space View")
-                            .clicked()
-                        {
-                            remove_group = true;
-                        }
                     },
-                );
-            })
-            .body(|ui| {
-                Self::data_blueprint_tree_ui(
-                    ctx,
-                    ui,
-                    *child_group_handle,
-                    space_view,
-                    space_view_visible,
-                );
-            });
+                )
+                .item_response
+                .on_hover_text("Group");
+
+            re_data_ui::item_ui::cursor_interact_with_selectable(ctx, response, item);
+
+            // needed by the borrow checker
+            let Some(child_group) = space_view.data_blueprint.group_mut(*child_group_handle) else {
+                unreachable!("we did the same thing just above");
+            };
+            child_group.properties_individual.visible = child_group_visible;
+
             if remove_group {
                 space_view.data_blueprint.remove_group(*child_group_handle);
                 space_view.entities_determined_by_user = true;
@@ -400,100 +381,6 @@ fn focus_tab(tree: &mut egui_tiles::Tree<SpaceViewId>, tab: &SpaceViewId) {
         egui_tiles::Tile::Pane(space_view_id) => space_view_id == tab,
         egui_tiles::Tile::Container(_) => false,
     });
-}
-
-/// Show a single button (`add_content`), justified,
-/// and show a visibility button if the row is hovered.
-///
-/// Returns true if visibility changed.
-#[allow(clippy::fn_params_excessive_bools)]
-fn blueprint_row_with_buttons(
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    enabled: bool,
-    visible: bool,
-    selected: bool,
-    add_content: impl FnOnce(&mut egui::Ui) -> egui::Response,
-    add_on_hover_buttons: impl FnOnce(&re_ui::ReUi, &mut egui::Ui),
-) {
-    let where_to_add_hover_rect = ui.painter().add(egui::Shape::Noop);
-
-    // Make the main button span the whole width to make it easier to click:
-    let main_button_response = ui
-        .with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-            ui.style_mut().wrap = Some(false);
-
-            // Turn off the background color of hovered buttons.
-            // Why? Because we add a manual hover-effect later.
-            // Why? Because we want that hover-effect even when only the visibility button is hovered.
-            let visuals = ui.visuals_mut();
-            visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.open.weak_bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.open.bg_fill = egui::Color32::TRANSPARENT;
-
-            if ui
-                .interact(ui.max_rect(), ui.id(), egui::Sense::hover())
-                .hovered()
-            {
-                // Clip the main button so that the on-hover buttons have room to cover it.
-                // Ideally we would only clip the button _text_, not the button background, but that's not possible.
-                let mut clip_rect = ui.max_rect();
-                let on_hover_buttons_width = 36.0;
-                clip_rect.max.x -= on_hover_buttons_width;
-                ui.set_clip_rect(clip_rect);
-            }
-
-            if !visible || !enabled {
-                // Dim the appearance of things added by `add_content`:
-                let widget_visuals = &mut ui.visuals_mut().widgets;
-
-                fn dim_color(color: &mut egui::Color32) {
-                    *color = color.gamma_multiply(0.5);
-                }
-                dim_color(&mut widget_visuals.noninteractive.fg_stroke.color);
-                dim_color(&mut widget_visuals.inactive.fg_stroke.color);
-            }
-
-            add_content(ui)
-        })
-        .inner;
-
-    let main_button_rect = main_button_response.rect;
-
-    // We check the same rectangle as the main button,
-    // but we will also catch hovers on the visibility button (if any).
-    let button_hovered = ui
-        .interact(main_button_rect, ui.id(), egui::Sense::hover())
-        .hovered();
-    if button_hovered {
-        // Just put the buttons on top of the existing ui:
-        let mut ui = ui.child_ui(
-            ui.max_rect(),
-            egui::Layout::right_to_left(egui::Align::Center),
-        );
-        add_on_hover_buttons(re_ui, &mut ui);
-    }
-
-    // The main button might have been highlighted because what it was referring
-    // to was hovered somewhere else, and then we also want it highlighted here.
-    if button_hovered || main_button_response.highlighted() || selected {
-        // Highlight the row:
-        let visuals = ui.visuals().widgets.hovered;
-
-        let bg_fill = if selected {
-            ui.style().visuals.selection.bg_fill
-        } else {
-            visuals.bg_fill
-        };
-        let hover_rect = main_button_rect.expand(visuals.expansion);
-        ui.painter().set(
-            where_to_add_hover_rect,
-            egui::Shape::rect_filled(hover_rect, visuals.rounding, bg_fill),
-        );
-    }
 }
 
 fn visibility_button_ui(
