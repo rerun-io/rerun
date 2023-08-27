@@ -10,6 +10,8 @@ use re_viewer_context::{
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
+use itertools::Itertools as _;
+
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     parts::{
@@ -122,36 +124,34 @@ impl Points3DPart {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-            let point_positions = arch_view
-                .iter_required_component::<Point3D>()?
-                .map(glam::Vec3::from);
+            let (positions, radii, colors, picking_instance_ids) = join4(
+                || {
+                    re_tracing::profile_scope!("positions");
+                    arch_view
+                        .iter_required_component::<Point3D>()
+                        .map(|p| p.map(glam::Vec3::from).collect_vec())
+                },
+                || {
+                    re_tracing::profile_scope!("radii");
+                    radii.collect_vec()
+                },
+                || {
+                    re_tracing::profile_scope!("colors");
+                    colors.collect_vec()
+                },
+                || {
+                    re_tracing::profile_scope!("picking_ids");
+                    arch_view
+                        .iter_instance_keys()
+                        .map(picking_id_from_instance_key)
+                        .collect_vec()
+                },
+            );
 
-            let picking_instance_ids = arch_view
-                .iter_instance_keys()
-                .map(picking_id_from_instance_key);
-
-            let point_positions: Vec<glam::Vec3> = {
-                re_tracing::profile_scope!("collect_positions");
-                point_positions.collect()
-            };
-
-            let radii: Vec<_> = {
-                re_tracing::profile_scope!("collect_radii");
-                radii.collect()
-            };
-
-            let colors: Vec<_> = {
-                re_tracing::profile_scope!("collect_colors");
-                colors.collect()
-            };
-
-            let picking_instance_ids: Vec<_> = {
-                re_tracing::profile_scope!("collect_picking_instance_ids");
-                picking_instance_ids.collect()
-            };
+            let positions = positions?;
 
             let mut point_range_builder =
-                point_batch.add_points(&point_positions, &radii, &colors, &picking_instance_ids);
+                point_batch.add_points(&positions, &radii, &colors, &picking_instance_ids);
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
@@ -217,5 +217,25 @@ impl ViewPartSystem for Points3DPart {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+/// Run 4 things in parallel
+fn join4<A: Send, B: Send, C: Send, D: Send>(
+    a: impl FnOnce() -> A + Send,
+    b: impl FnOnce() -> B + Send,
+    c: impl FnOnce() -> C + Send,
+    d: impl FnOnce() -> D + Send,
+) -> (A, B, C, D) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        re_tracing::profile_function!();
+        let ((a, b), (c, d)) = rayon::join(|| rayon::join(a, b), || rayon::join(c, d));
+        (a, b, c, d)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        (a(), b(), c(), d())
     }
 }
