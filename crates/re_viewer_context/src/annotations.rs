@@ -136,13 +136,14 @@ pub struct ResolvedAnnotationInfo {
 }
 
 impl ResolvedAnnotationInfo {
+    /// `rgba` should be unmultiplied
     pub fn color(
         &self,
-        color: Option<&[u8; 4]>,
+        rgba: Option<&[u8; 4]>,
         default_color: DefaultColor<'_>,
     ) -> re_renderer::Color32 {
-        if let Some([r, g, b, a]) = color {
-            re_renderer::Color32::from_rgba_premultiplied(*r, *g, *b, *a)
+        if let Some([r, g, b, a]) = rgba {
+            re_renderer::Color32::from_rgba_unmultiplied(*r, *g, *b, *a)
         } else if let Some(color) = self.annotation_info.as_ref().and_then(|info| {
             info.color
                 .map(|c| c.into())

@@ -46,6 +46,6 @@ impl Color {
 impl From<Color> for ecolor::Color32 {
     fn from(color: Color) -> Self {
         let [r, g, b, a] = color.to_array();
-        Self::from_rgba_premultiplied(r, g, b, a)
+        Self::from_rgba_unmultiplied(r, g, b, a)
     }
 }
