@@ -167,7 +167,7 @@ impl Points2DPart {
             }
         };
 
-        load_keypoint_connections(ent_context, ent_path, keypoints);
+        load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         self.data.extend_bounding_box_with_points(
             arch_view

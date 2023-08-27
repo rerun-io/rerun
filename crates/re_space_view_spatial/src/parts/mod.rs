@@ -224,11 +224,13 @@ pub struct UiLabel {
 pub fn load_keypoint_connections(
     ent_context: &SpatialSceneEntityContext<'_>,
     ent_path: &re_data_store::EntityPath,
-    keypoints: Keypoints,
+    keypoints: &Keypoints,
 ) {
     if keypoints.is_empty() {
         return;
     }
+
+    re_tracing::profile_function!();
 
     // Generate keypoint connections if any.
     let mut line_builder = ent_context.shared_render_builders.lines();
@@ -240,7 +242,7 @@ pub fn load_keypoint_connections(
     for ((class_id, _time), keypoints_in_class) in keypoints {
         let resolved_class_description = ent_context
             .annotations
-            .resolved_class_description(Some(class_id));
+            .resolved_class_description(Some(*class_id));
 
         let Some(class_description) = resolved_class_description.class_description else {
             continue;
