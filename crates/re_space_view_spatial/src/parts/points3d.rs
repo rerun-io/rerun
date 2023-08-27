@@ -179,10 +179,13 @@ impl Points3DPart {
 
         load_keypoint_connections(ent_context, ent_path, &keypoints);
 
-        {
-            // Suprisingly expensive 😬
-            re_tracing::profile_scope!("drop(annotation_infos)");
-            std::mem::drop(annotation_infos);
+        #[cfg(not(target_arch = "wasm32"))]
+        if annotation_infos.len() > 1000 {
+            // Dropping this is surprisingly expensive, so do it in a background thread:
+            rayon::spawn(move || {
+                re_tracing::profile_scope!("drop(annotation_infos)");
+                std::mem::drop(annotation_infos);
+            });
         }
 
         Ok(())
