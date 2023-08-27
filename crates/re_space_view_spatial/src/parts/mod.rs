@@ -168,6 +168,8 @@ where
         let resolved_annotation = annotations
             .resolved_class_description(None)
             .annotation_info();
+
+        re_tracing::profile_scope!("vec!");
         return Ok((
             vec![resolved_annotation; arch_view.num_instances()],
             keypoints,
