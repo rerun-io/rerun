@@ -81,7 +81,7 @@ impl From<ClassDescription> for CachedClassDescription {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct ResolvedClassDescription<'a> {
     pub class_id: Option<ClassId>,
     pub class_description: Option<&'a ClassDescription>,
