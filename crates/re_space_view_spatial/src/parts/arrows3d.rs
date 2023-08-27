@@ -7,7 +7,7 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -41,7 +41,7 @@ impl Arrows3DPart {
         arch_view: &'a ArchetypeView<Arrows3D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
-        annotation_infos: &'a [ResolvedAnnotationInfo],
+        annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(

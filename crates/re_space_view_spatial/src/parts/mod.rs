@@ -29,7 +29,7 @@ use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
-    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewSystemRegistry,
+    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewSystemRegistry,
     ViewPartCollection, ViewQuery,
 };
 
@@ -105,7 +105,7 @@ pub fn picking_id_from_instance_key(
 pub fn process_colors<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &'a EntityPath,
-    annotation_infos: &'a [ResolvedAnnotationInfo],
+    annotation_infos: &'a ResolvedAnnotationInfos,
 ) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError> {
     re_tracing::profile_function!();
     let default_color = DefaultColor::EntityPath(ent_path);
@@ -153,7 +153,7 @@ fn process_annotations_and_keypoints<Primary, A: Archetype>(
     arch_view: &re_query::ArchetypeView<A>,
     annotations: &Arc<Annotations>,
     mut primary_into_position: impl FnMut(&Primary) -> glam::Vec3,
-) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), re_query::QueryError>
+) -> Result<(ResolvedAnnotationInfos, Keypoints), re_query::QueryError>
 where
     Primary: re_types::Component + Clone + Default,
 {
@@ -169,9 +169,8 @@ where
             .resolved_class_description(None)
             .annotation_info();
 
-        re_tracing::profile_scope!("vec!");
         return Ok((
-            vec![resolved_annotation; arch_view.num_instances()],
+            ResolvedAnnotationInfos::Same(arch_view.num_instances(), resolved_annotation),
             keypoints,
         ));
     }
@@ -196,7 +195,7 @@ where
     })
     .collect();
 
-    Ok((annotation_info, keypoints))
+    Ok((ResolvedAnnotationInfos::Many(annotation_info), keypoints))
 }
 
 #[derive(Clone)]

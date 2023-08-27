@@ -131,6 +131,8 @@ impl<'a> ResolvedClassDescription<'a> {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 #[derive(Clone, Default)]
 pub struct ResolvedAnnotationInfo {
     pub class_id: Option<ClassId>,
@@ -173,6 +175,30 @@ impl ResolvedAnnotationInfo {
         }
     }
 }
+
+// ----------------------------------------------------------------------------
+
+/// Many [`ResolvedAnnotationInfo`], with optimization
+/// for a common case where they are all the same.
+pub enum ResolvedAnnotationInfos {
+    /// All the same
+    Same(usize, ResolvedAnnotationInfo),
+
+    /// All different
+    Many(Vec<ResolvedAnnotationInfo>),
+}
+
+impl ResolvedAnnotationInfos {
+    pub fn iter(&self) -> impl Iterator<Item = &ResolvedAnnotationInfo> {
+        use itertools::Either;
+        match self {
+            Self::Same(n, info) => Either::Left(std::iter::repeat(info).take(*n)),
+            Self::Many(infos) => Either::Right(infos.iter()),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 #[derive(Default, Clone, Debug)]
 pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);

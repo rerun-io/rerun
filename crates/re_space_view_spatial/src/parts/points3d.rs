@@ -6,7 +6,7 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -43,7 +43,7 @@ impl Points3DPart {
         arch_view: &'a ArchetypeView<Points3D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
-        annotation_infos: &'a [ResolvedAnnotationInfo],
+        annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         re_tracing::profile_function!();
@@ -178,15 +178,6 @@ impl Points3DPart {
         }
 
         load_keypoint_connections(ent_context, ent_path, &keypoints);
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if annotation_infos.len() > 1000 {
-            // Dropping this is surprisingly expensive, so do it in a background thread:
-            rayon::spawn(move || {
-                re_tracing::profile_scope!("drop(annotation_infos)");
-                std::mem::drop(annotation_infos);
-            });
-        }
 
         Ok(())
     }
