@@ -174,6 +174,12 @@ impl Points3DPart {
 
         load_keypoint_connections(ent_context, ent_path, &keypoints);
 
+        {
+            // Suprisingly expensive 😬
+            re_tracing::profile_scope!("drop(annotation_infos)");
+            std::mem::drop(annotation_infos);
+        }
+
         self.data.extend_bounding_box_with_points(
             arch_view
                 .iter_required_component::<Point3D>()?
