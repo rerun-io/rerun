@@ -170,6 +170,11 @@ impl Points3DPart {
                     }
                 }
             }
+
+            self.data.extend_bounding_box_with_points(
+                positions.iter().copied(),
+                ent_context.world_from_obj,
+            );
         }
 
         load_keypoint_connections(ent_context, ent_path, &keypoints);
@@ -179,13 +184,6 @@ impl Points3DPart {
             re_tracing::profile_scope!("drop(annotation_infos)");
             std::mem::drop(annotation_infos);
         }
-
-        self.data.extend_bounding_box_with_points(
-            arch_view
-                .iter_required_component::<Point3D>()?
-                .map(glam::Vec3::from),
-            ent_context.world_from_obj,
-        );
 
         Ok(())
     }
