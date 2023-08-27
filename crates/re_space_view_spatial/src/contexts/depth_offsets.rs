@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use nohash_hasher::IntMap;
+
 use re_log_types::EntityPathHash;
 use re_types::{components::DrawOrder, Loggable as _};
 use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};

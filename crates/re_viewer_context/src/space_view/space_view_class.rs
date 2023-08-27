@@ -201,19 +201,29 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         systems: &SpaceViewSystemRegistry,
         query: &ViewQuery<'_>,
     ) {
+        re_tracing::profile_function!();
+
         // TODO(andreas): We should be able to parallelize both of these loops
         let mut view_ctx = systems.new_context_collection();
-        for system in view_ctx.systems.values_mut() {
-            system.execute(ctx, query);
+
+        {
+            re_tracing::profile_scope!("ViewContextSystem");
+            for system in view_ctx.systems.values_mut() {
+                system.execute(ctx, query);
+            }
         }
 
         let mut parts = systems.new_part_collection();
         let mut draw_data = Vec::new();
-        for part in parts.systems.values_mut() {
-            match part.execute(ctx, query, &view_ctx) {
-                Ok(part_draw_data) => draw_data.extend(part_draw_data),
-                Err(err) => {
-                    re_log::error_once!("Error executing view part system: {}", err);
+
+        {
+            re_tracing::profile_scope!("ViewPartSystem");
+            for part in parts.systems.values_mut() {
+                match part.execute(ctx, query, &view_ctx) {
+                    Ok(part_draw_data) => draw_data.extend(part_draw_data),
+                    Err(err) => {
+                        re_log::error_once!("Error executing view part system: {}", err);
+                    }
                 }
             }
         }

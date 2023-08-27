@@ -66,6 +66,7 @@ impl ViewContextSystem for SharedRenderBuilders {
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         _query: &re_viewer_context::ViewQuery<'_>,
     ) {
+        re_tracing::profile_function!();
         self.lines = Mutex::new(Some(
             LineStripSeriesBuilder::new(ctx.render_ctx)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
