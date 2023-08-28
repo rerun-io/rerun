@@ -44,14 +44,11 @@ impl SpaceViewSystemRegistry {
             ));
         }
 
-        if self
-            .contexts
-            .insert(T::name(), Box::new(|| Box::<T>::default()))
-            .is_some()
-        {
-            Err(SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(T::name().as_str()))
-        } else {
+        if let std::collections::hash_map::Entry::Vacant(e) = self.contexts.entry(T::name()) {
+            e.insert(Box::new(|| Box::<T>::default()));
             Ok(())
+        } else {
+            Err(SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(T::name().as_str()))
         }
     }
 
@@ -68,16 +65,13 @@ impl SpaceViewSystemRegistry {
             );
         }
 
-        if self
-            .parts
-            .insert(T::name(), Box::new(|| Box::<T>::default()))
-            .is_some()
-        {
+        if let std::collections::hash_map::Entry::Vacant(e) = self.parts.entry(T::name()) {
+            e.insert(Box::new(|| Box::<T>::default()));
+            Ok(())
+        } else {
             Err(SpaceViewClassRegistryError::NameAlreadyInUseForViewSystem(
                 T::name().as_str(),
             ))
-        } else {
-            Ok(())
         }
     }
 
