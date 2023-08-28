@@ -97,22 +97,22 @@ impl<T: Send> ReceiveSet<T> {
 
         let mut rx = self.receivers.lock();
 
-        loop {
-            rx.retain(|r| r.is_connected());
-            if rx.is_empty() {
-                return None;
-            }
+        rx.retain(|r| r.is_connected());
+        if rx.is_empty() {
+            return None;
+        }
 
-            let mut sel = Select::new();
-            for r in rx.iter() {
-                sel.recv(&r.rx);
-            }
+        let mut sel = Select::new();
+        for r in rx.iter() {
+            sel.recv(&r.rx);
+        }
 
-            let oper = sel.try_select().ok()?;
-            let index = oper.index();
-            if let Ok(msg) = oper.recv(&rx[index].rx) {
-                return Some((rx[index].source.clone(), msg));
-            }
+        let oper = sel.try_select().ok()?;
+        let index = oper.index();
+        if let Ok(msg) = oper.recv(&rx[index].rx) {
+            Some((rx[index].source.clone(), msg))
+        } else {
+            None
         }
     }
 
@@ -124,22 +124,22 @@ impl<T: Send> ReceiveSet<T> {
 
         let mut rx = self.receivers.lock();
 
-        loop {
-            rx.retain(|r| r.is_connected());
-            if rx.is_empty() {
-                return None;
-            }
+        rx.retain(|r| r.is_connected());
+        if rx.is_empty() {
+            return None;
+        }
 
-            let mut sel = Select::new();
-            for r in rx.iter() {
-                sel.recv(&r.rx);
-            }
+        let mut sel = Select::new();
+        for r in rx.iter() {
+            sel.recv(&r.rx);
+        }
 
-            let oper = sel.select_timeout(timeout).ok()?;
-            let index = oper.index();
-            if let Ok(msg) = oper.recv(&rx[index].rx) {
-                return Some((rx[index].source.clone(), msg));
-            }
+        let oper = sel.select_timeout(timeout).ok()?;
+        let index = oper.index();
+        if let Ok(msg) = oper.recv(&rx[index].rx) {
+            Some((rx[index].source.clone(), msg))
+        } else {
+            None
         }
     }
 }
