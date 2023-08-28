@@ -1,7 +1,7 @@
 """Log a simple line strip."""
 import rerun as rr
 
-rr.init("rerun-example-line_strip3d", spawn=True)
+rr.init("rerun_example_line_strip3d", spawn=True)
 
 rr.log_line_strip(
     "simple",

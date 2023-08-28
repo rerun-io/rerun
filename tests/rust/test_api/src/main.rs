@@ -701,7 +701,7 @@ fn main() -> anyhow::Result<()> {
 
     let default_enabled = true;
     args.rerun.clone().run(
-        "rerun-example-test_api_rs",
+        "rerun_example_test_api_rs",
         default_enabled,
         move |rec_stream| {
             run(&rec_stream, &args).unwrap();

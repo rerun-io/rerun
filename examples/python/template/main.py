@@ -20,7 +20,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun-example-my_example_name")
+    rr.script_setup(args, "rerun_example_my_example_name")
 
     # ... example code
 

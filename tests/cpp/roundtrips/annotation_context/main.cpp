@@ -4,7 +4,7 @@
 namespace rr = rerun;
 
 int main(int argc, char** argv) {
-    auto rec_stream = rr::RecordingStream("rerun-example-roundtrip_annotation_context");
+    auto rec_stream = rr::RecordingStream("rerun_example_roundtrip_annotation_context");
     rec_stream.save(argv[1]).throw_on_failure();
 
     rec_stream.log(

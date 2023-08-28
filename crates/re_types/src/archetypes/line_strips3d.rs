@@ -24,7 +24,7 @@
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec_stream, storage) =
-///        RecordingStreamBuilder::new("rerun-example-line_strip3d").memory()?;
+///        RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
 ///
 ///    let strip1 = [[0., 0., 2.], [1., 0., 2.], [1., 1., 2.], [0., 1., 2.]];
 ///    let strip2 = [
@@ -58,7 +58,7 @@
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec_stream, storage) =
-///        RecordingStreamBuilder::new("rerun-example-line_segments3d").memory()?;
+///        RecordingStreamBuilder::new("rerun_example_line_segments3d").memory()?;
 ///
 ///    let points = [
 ///        [0., 0., 0.],

@@ -50,7 +50,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun-example-DNA Abacus")
+    rr.script_setup(args, "rerun_example_dna_abacus")
     log_data()
     rr.script_teardown(args)
 

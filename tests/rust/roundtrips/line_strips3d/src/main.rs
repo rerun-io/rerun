@@ -33,7 +33,7 @@ fn main() -> anyhow::Result<()> {
 
     let default_enabled = true;
     args.rerun.clone().run(
-        "rerun-example-roundtrip_line_strips3d",
+        "rerun_example_roundtrip_line_strips3d",
         default_enabled,
         move |rec_stream| {
             run(&rec_stream, &args).unwrap();

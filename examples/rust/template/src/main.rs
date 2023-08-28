@@ -4,7 +4,7 @@ use rerun::RecordingStreamBuilder;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun-example-my_example_name").memory()?;
+        RecordingStreamBuilder::new("rerun_example_my_example_name").memory()?;
 
     let _ = rec_stream;
 

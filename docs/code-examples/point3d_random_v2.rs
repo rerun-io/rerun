@@ -6,7 +6,7 @@ use rerun::{archetypes::Points3D, components::Color, MsgSender, RecordingStreamB
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun-example-points3d_random").memory()?;
+        RecordingStreamBuilder::new("rerun_example_points3d_random").memory()?;
 
     let mut rng = rand::thread_rng();
     let dist = Uniform::new(-5., 5.);

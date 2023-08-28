@@ -7,7 +7,7 @@ use rerun::{
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun-example-line_segments2d").memory()?;
+        RecordingStreamBuilder::new("rerun_example_line_segments2d").memory()?;
 
     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
     MsgSender::from_archetype("segments", &LineStrips2D::new(points.chunks(2)))?

@@ -50,7 +50,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 ///
 /// ``` no_run
 /// # use re_sdk::RecordingStreamBuilder;
-/// let rec_stream = RecordingStreamBuilder::new("rerun-example-app").save("my_recording.rrd")?;
+/// let rec_stream = RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 #[derive(Debug)]
@@ -75,7 +75,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// # use re_sdk::RecordingStreamBuilder;
-    /// let rec_stream = RecordingStreamBuilder::new("rerun-example-app").save("my_recording.rrd")?;
+    /// let rec_stream = RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     //
@@ -165,7 +165,7 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```
-    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun-example-app").buffered()?;
+    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun_example_app").buffered()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn buffered(self) -> RecordingStreamResult<RecordingStream> {
@@ -190,7 +190,7 @@ impl RecordingStreamBuilder {
     /// ```
     /// # fn log_data(_: &re_sdk::RecordingStream) { }
     ///
-    /// let (rec_stream, storage) = re_sdk::RecordingStreamBuilder::new("rerun-example-app").memory()?;
+    /// let (rec_stream, storage) = re_sdk::RecordingStreamBuilder::new("rerun_example_app").memory()?;
     ///
     /// log_data(&rec_stream);
     ///
@@ -226,7 +226,7 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```no_run
-    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun-example-app")
+    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
     ///     .connect(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
@@ -254,7 +254,7 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```no_run
-    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun-example-app").save("my_recording.rrd")?;
+    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
@@ -300,7 +300,7 @@ impl RecordingStreamBuilder {
     /// };
     /// let _tokio_runtime_guard = tokio_runtime_handle.enter();
     ///
-    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun-example-app")
+    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
     ///     .serve("0.0.0.0", Default::default(), Default::default(), true)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
@@ -1099,7 +1099,7 @@ mod tests {
 
     #[test]
     fn never_flush() {
-        let rec_stream = RecordingStreamBuilder::new("rerun-example-never_flush")
+        let rec_stream = RecordingStreamBuilder::new("rerun_example_never_flush")
             .enabled(true)
             .batcher_config(DataTableBatcherConfig::NEVER)
             .buffered()
@@ -1164,7 +1164,7 @@ mod tests {
 
     #[test]
     fn always_flush() {
-        let rec_stream = RecordingStreamBuilder::new("rerun-example-always_flush")
+        let rec_stream = RecordingStreamBuilder::new("rerun_example_always_flush")
             .enabled(true)
             .batcher_config(DataTableBatcherConfig::ALWAYS)
             .buffered()
@@ -1244,7 +1244,7 @@ mod tests {
 
     #[test]
     fn flush_hierarchy() {
-        let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-flush_hierarchy")
+        let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_flush_hierarchy")
             .enabled(true)
             .batcher_config(DataTableBatcherConfig::NEVER)
             .memory()
@@ -1300,7 +1300,7 @@ mod tests {
 
     #[test]
     fn disabled() {
-        let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-disabled")
+        let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_disabled")
             .enabled(false)
             .batcher_config(DataTableBatcherConfig::ALWAYS)
             .memory()

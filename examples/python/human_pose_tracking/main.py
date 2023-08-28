@@ -151,7 +151,7 @@ def main() -> None:
     rr.script_add_args(parser)
 
     args = parser.parse_args()
-    rr.script_setup(args, "rerun-example-human_pose_tracking")
+    rr.script_setup(args, "rerun_example_human_pose_tracking")
 
     video_path = args.video_path  # type: str
     if not video_path:

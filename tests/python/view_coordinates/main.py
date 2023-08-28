@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK
 rr.script_add_args(parser)
 args = parser.parse_args()
 
-rr.script_setup(args, "rerun-example-view_coordinates")
+rr.script_setup(args, "rerun_example_view_coordinates")
 
 # Log sphere of colored points to make it easier to orient ourselves.
 # See https://math.stackexchange.com/a/1586185

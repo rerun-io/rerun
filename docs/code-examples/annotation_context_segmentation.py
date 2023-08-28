@@ -1,7 +1,7 @@
 import numpy as np
 import rerun as rr
 
-rr.init("rerun-example-annotation_context_segmentation", spawn=True)
+rr.init("rerun_example_annotation_context_segmentation", spawn=True)
 
 # Create a simple segmentation image
 image = np.zeros((200, 300), dtype=np.uint8)

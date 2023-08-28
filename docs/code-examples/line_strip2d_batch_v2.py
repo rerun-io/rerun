@@ -2,7 +2,7 @@
 import rerun as rr
 import rerun.experimental as rr2
 
-rr.init("rerun-example-line_strip2d", spawn=True)
+rr.init("rerun_example_line_strip2d", spawn=True)
 
 rr2.log(
     "batch",

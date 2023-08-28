@@ -76,7 +76,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     rr.script_add_args(parser)
     args = parser.parse_args()
-    rr.script_setup(args, "rerun-example-dicom_mri")
+    rr.script_setup(args, "rerun_example_dicom_mri")
     dicom_files = ensure_dataset_downloaded()
     read_and_log_dicom_dataset(dicom_files)
     rr.script_teardown(args)

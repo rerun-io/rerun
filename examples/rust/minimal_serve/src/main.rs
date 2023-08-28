@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
     let _guard = rt.enter();
 
-    let rec_stream = RecordingStreamBuilder::new("rerun-example-minimal_serve_rs").serve(
+    let rec_stream = RecordingStreamBuilder::new("rerun_example_minimal_serve_rs").serve(
         "0.0.0.0",
         Default::default(),
         Default::default(),

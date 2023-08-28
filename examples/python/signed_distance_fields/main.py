@@ -204,7 +204,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun-example-signed_distance_fields")
+    rr.script_setup(args, "rerun_example_signed_distance_fields")
 
     mesh_path = args.mesh_path
     if mesh_path is None:

@@ -5,7 +5,7 @@ use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun-example-line_strip3d").memory()?;
+        RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
 
     let points = vec![
         [0., 0., 0.],

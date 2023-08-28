@@ -199,7 +199,7 @@ impl ViewerAnalytics {
                 store_info
                     .application_id
                     .as_str()
-                    .starts_with("rerun-example"),
+                    .starts_with("rerun_example"),
             );
         }
 

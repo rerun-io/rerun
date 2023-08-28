@@ -20,7 +20,7 @@ def task(child_index: int) -> None:
     # so all of these processes will have their log data merged in the viewer.
     # Caution: if you manually specified `recording_id` in the parent, you also must
     # pass the same `recording_id` here.
-    rr.init("rerun-example-multiprocessing")
+    rr.init("rerun_example_multiprocessing")
 
     # We then have to connect to the viewer instance.
     rr.connect()
@@ -40,7 +40,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Test multi-process logging to the same Rerun server")
     parser.parse_args()
 
-    rr.init("rerun-example-multiprocessing")
+    rr.init("rerun_example_multiprocessing")
     rr.spawn(connect=False)  # this is the viewer that each child process will connect to
 
     task(0)

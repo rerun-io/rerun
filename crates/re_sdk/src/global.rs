@@ -287,7 +287,7 @@ mod tests {
         assert!(RecordingStream::get(StoreKind::Blueprint, None).is_none());
 
         // nothing is set -- explicit wins
-        let explicit = RecordingStreamBuilder::new("rerun-example-explicit")
+        let explicit = RecordingStreamBuilder::new("rerun_example_explicit")
             .buffered()
             .unwrap();
         check_store_id(
@@ -299,14 +299,14 @@ mod tests {
             RecordingStream::get(StoreKind::Blueprint, explicit.clone().into()),
         );
 
-        let global_data = RecordingStreamBuilder::new("rerun-example-global_data")
+        let global_data = RecordingStreamBuilder::new("rerun_example_global_data")
             .buffered()
             .unwrap();
         assert!(
             RecordingStream::set_global(StoreKind::Recording, Some(global_data.clone())).is_none()
         );
 
-        let global_blueprint = RecordingStreamBuilder::new("rerun-example-global_blueprint")
+        let global_blueprint = RecordingStreamBuilder::new("rerun_example_global_blueprint")
             .buffered()
             .unwrap();
         assert!(
@@ -349,7 +349,7 @@ mod tests {
                         RecordingStream::get(StoreKind::Blueprint, None),
                     );
 
-                    let local_data = RecordingStreamBuilder::new("rerun-example-local_data")
+                    let local_data = RecordingStreamBuilder::new("rerun_example_local_data")
                         .buffered()
                         .unwrap();
                     assert!(RecordingStream::set_thread_local(
@@ -359,7 +359,7 @@ mod tests {
                     .is_none());
 
                     let local_blueprint =
-                        RecordingStreamBuilder::new("rerun-example-local_blueprint")
+                        RecordingStreamBuilder::new("rerun_example_local_blueprint")
                             .buffered()
                             .unwrap();
                     assert!(RecordingStream::set_thread_local(
@@ -403,7 +403,7 @@ mod tests {
             RecordingStream::get(StoreKind::Blueprint, None),
         );
 
-        let local_data = RecordingStreamBuilder::new("rerun-example-local_data")
+        let local_data = RecordingStreamBuilder::new("rerun_example_local_data")
             .buffered()
             .unwrap();
         assert!(
@@ -411,7 +411,7 @@ mod tests {
                 .is_none()
         );
 
-        let local_blueprint = RecordingStreamBuilder::new("rerun-example-local_blueprint")
+        let local_blueprint = RecordingStreamBuilder::new("rerun_example_local_blueprint")
             .buffered()
             .unwrap();
         assert!(RecordingStream::set_thread_local(

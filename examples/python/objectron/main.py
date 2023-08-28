@@ -279,7 +279,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun-example-objectron")
+    rr.script_setup(args, "rerun_example_objectron")
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 

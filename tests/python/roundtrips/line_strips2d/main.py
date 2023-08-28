@@ -40,7 +40,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun-example-roundtrip_line_strips2d")
+    rr.script_setup(args, "rerun_example_roundtrip_line_strips2d")
 
     rr2.log("line_strips2d", line_strips2d)
     # Hack to establish 2d view bounds

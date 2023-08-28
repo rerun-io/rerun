@@ -31,7 +31,7 @@
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec_stream, storage) =
-///        RecordingStreamBuilder::new("rerun-example-transform3d").memory()?;
+///        RecordingStreamBuilder::new("rerun_example_transform3d").memory()?;
 ///
 ///    let vector = Vector3D::from((0.0, 1.0, 0.0));
 ///

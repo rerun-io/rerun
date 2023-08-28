@@ -190,7 +190,7 @@ fn main() -> anyhow::Result<()> {
 
     let default_enabled = true;
     args.rerun.clone().run(
-        "rerun-example-raw_mesh_rs",
+        "rerun_example_raw_mesh_rs",
         default_enabled,
         move |rec_stream| {
             run(&rec_stream, &args).unwrap();

@@ -33,7 +33,7 @@
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec_stream, storage) =
-///        RecordingStreamBuilder::new("rerun-example-annotation_context_rects").memory()?;
+///        RecordingStreamBuilder::new("rerun_example_annotation_context_rects").memory()?;
 ///
 ///    // Log an annotation context to assign a label and color to each class
 ///    let annotation = AnnotationContext::new([

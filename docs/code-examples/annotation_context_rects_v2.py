@@ -1,7 +1,7 @@
 import rerun as rr
 import rerun.experimental as rr2
 
-rr.init("rerun-example-annotation_context_rects", spawn=True)
+rr.init("rerun_example_annotation_context_rects", spawn=True)
 
 # Log an annotation context to assign a label and color to each class
 rr2.log(

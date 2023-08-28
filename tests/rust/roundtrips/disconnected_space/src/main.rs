@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
 
     let default_enabled = true;
     args.rerun.clone().run(
-        "rerun-example-roundtrip_disconnected_space",
+        "rerun_example_roundtrip_disconnected_space",
         default_enabled,
         move |rec_stream| {
             run(&rec_stream, &args).unwrap();

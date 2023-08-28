@@ -26,7 +26,7 @@ class Arrows3D(Archetype):
     import rerun as rr
     import rerun.experimental as rr2
 
-    rr.init("rerun-example-arrow3d", spawn=True)
+    rr.init("rerun_example_arrow3d", spawn=True)
 
     lengths = np.log2(np.arange(0, 100) + 1)
     angles = np.arange(start=0, stop=tau, step=tau * 0.01)

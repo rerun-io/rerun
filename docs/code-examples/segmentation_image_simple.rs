@@ -7,7 +7,7 @@ use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun-example-segmentation_image").memory()?;
+        RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
 
     // create a segmentation image
     let mut image = Array::<u8, _>::zeros((200, 300).f());

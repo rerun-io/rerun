@@ -8,7 +8,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-points2d").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_points2d").memory()?;
 
     let mut rng = rand::thread_rng();
     let position_distribs = Uniform::new(-3., 3.);

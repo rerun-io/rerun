@@ -28,7 +28,7 @@
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-arrow3d").memory()?;
+///    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
 ///
 ///    let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
 ///        .map(|i| {

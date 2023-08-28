@@ -4,7 +4,7 @@ use rerun::components::Tensor;
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-images").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_images").memory()?;
 
     let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
     image.slice_mut(s![.., .., 0]).fill(255);

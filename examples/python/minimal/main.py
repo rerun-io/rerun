@@ -10,7 +10,7 @@ import rerun as rr  # pip install rerun-sdk
 # sanity-check since all other example scripts take arguments:
 assert len(sys.argv) == 1, f"{sys.argv[0]} does not take any arguments"
 
-rr.init("rerun-example-minimal", spawn=True)
+rr.init("rerun_example_minimal", spawn=True)
 
 positions = np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T
 colors = np.vstack([rgb.ravel() for rgb in np.mgrid[3 * [slice(0, 255, 10j)]]]).astype(np.uint8).T

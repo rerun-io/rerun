@@ -24,7 +24,7 @@ class LineStrips3D(Archetype):
     import rerun as rr
     import rerun.experimental as rr2
 
-    rr.init("rerun-example-line_strip3d", spawn=True)
+    rr.init("rerun_example_line_strip3d", spawn=True)
 
     rr2.log(
        "batch",
@@ -60,7 +60,7 @@ class LineStrips3D(Archetype):
     import rerun as rr
     import rerun.experimental as rr2
 
-    rr.init("rerun-example-line_segments3d", spawn=True)
+    rr.init("rerun_example_line_segments3d", spawn=True)
 
     rr2.log(
        "segments",

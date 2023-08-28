@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 
     LOG_F(INFO, "Rerun C++ SDK version: %s", rr::version_string());
 
-    auto rr_stream = rr::RecordingStream("rerun-example-cpp-app");
+    auto rr_stream = rr::RecordingStream("rerun_example_cpp_app");
     rr_stream.connect("127.0.0.1:9876").throw_on_failure();
 
     // Log points with the archetype api - this is the preferred way of logging.

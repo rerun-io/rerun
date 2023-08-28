@@ -64,7 +64,7 @@ Create a new python script with the following code:
 import rerun as rr  # NOTE: `rerun`, not `rerun-sdk`!
 import numpy as np
 
-rr.init("rerun-example-my data", spawn=True)
+rr.init("rerun_example_my_data", spawn=True)
 
 positions = np.zeros((10, 3))
 positions[:,0] = np.linspace(-10,10,10)
@@ -96,7 +96,7 @@ built-in demo, you can use the following numpy incantation.
 import rerun as rr
 import numpy as np
 
-rr.init("rerun-example-my data", spawn=True)
+rr.init("rerun_example_my_data", spawn=True)
 
 SIZE = 10
 

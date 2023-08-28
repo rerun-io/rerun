@@ -19,7 +19,7 @@ Use one of our logging APIs (Python or Rust) to log rich data, such as images an
 ```py
 import rerun as rr
 
-rr.init("rerun-example-app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
+rr.init("rerun_example_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
 
 rr.log_image("rgb_image", image)
 rr.log_points("points", positions)

@@ -3,7 +3,7 @@ use rerun::components::TextEntry;
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-text_entry").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_text_entry").memory()?;
 
     MsgSender::new("logs")
         .with_component(&[TextEntry::new(

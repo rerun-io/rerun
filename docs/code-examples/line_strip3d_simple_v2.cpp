@@ -5,7 +5,7 @@
 namespace rr = rerun;
 
 int main() {
-    auto rr_stream = rr::RecordingStream("rerun-example-line_strip3d");
+    auto rr_stream = rr::RecordingStream("rerun_example_line_strip3d");
     rr_stream.connect("127.0.0.1:9876").throw_on_failure();
 
     std::vector<rr::datatypes::Vec3D> points = {

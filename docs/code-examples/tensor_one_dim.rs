@@ -6,7 +6,7 @@ use rerun::components::Tensor;
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun-example-tensors").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_tensors").memory()?;
 
     let mut data = Array::<f64, _>::default((100).f());
     data.map_inplace(|x| *x = thread_rng().sample(StandardNormal));

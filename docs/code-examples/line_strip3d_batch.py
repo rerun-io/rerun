@@ -1,7 +1,7 @@
 """Log a batch of 3d line strips."""
 import rerun as rr
 
-rr.init("rerun-example-line_strip3d", spawn=True)
+rr.init("rerun_example_line_strip3d", spawn=True)
 
 rr.log_line_strips_3d(
     "batch",

@@ -57,7 +57,7 @@ fn main() -> anyhow::Result<()> {
 
     let default_enabled = true;
     args.rerun.clone().run(
-        "rerun-example-minimal_options",
+        "rerun_example_minimal_options",
         default_enabled,
         move |rec_stream| {
             run(&rec_stream, &args).unwrap();

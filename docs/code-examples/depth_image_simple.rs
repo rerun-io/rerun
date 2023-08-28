@@ -5,7 +5,7 @@ use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun-example-depth_image").memory()?;
+        RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
 
     let mut image = Array::<u16, _>::from_elem((200, 300).f(), 65535);
     image.slice_mut(s![50..150, 50..150]).fill(20000);

@@ -12,7 +12,7 @@ As an example, consider:
 import rerun as rr
 from rerun_demo.data import color_grid
 
-rr.init("rerun-example-log_points", True)
+rr.init("rerun_example_log_points", True)
 
 rr.log_points("my_points", color_grid.positions, colors=color_grid.colors)
 ```
