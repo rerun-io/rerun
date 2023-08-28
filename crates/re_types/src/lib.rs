@@ -537,6 +537,7 @@ impl<T> ResultExt<T> for SerializationResult<T> {
         })
     }
 
+    #[track_caller]
     fn detailed_unwrap(self) -> T {
         match self {
             Ok(v) => v,
@@ -566,6 +567,7 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
         })
     }
 
+    #[track_caller]
     fn detailed_unwrap(self) -> T {
         match self {
             Ok(v) => v,
