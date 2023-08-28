@@ -42,7 +42,7 @@ impl Default for SpaceViewBlueprint {
         Self {
             id: SpaceViewId::invalid(),
             display_name: "invalid".to_owned(),
-            class_name: SpaceViewClassName::new("invalid"),
+            class_name: SpaceViewClassName::invalid(),
             space_origin: EntityPath::root(),
             contents: Default::default(),
             entities_determined_by_user: Default::default(),

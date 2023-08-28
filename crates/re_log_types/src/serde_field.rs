@@ -12,7 +12,7 @@ use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize
 /// use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize, field::ArrowField};
 /// use arrow2::datatypes::{DataType, Field};
 ///
-/// #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+/// #[derive(Clone, Debug, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 /// struct SomeStruct {
 ///     foo: String,
 ///     bar: u32,

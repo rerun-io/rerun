@@ -41,17 +41,16 @@ where
     // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
     // to spawn the viewer in place and migrate the user callback to a new thread.
     re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-        // TODO(cmc): it'd be nice to centralize all the UI wake up logic somewhere.
-        let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
         let startup_options = re_viewer::StartupOptions::default();
-        Box::new(re_viewer::App::from_receiver(
+        let mut app = re_viewer::App::new(
             re_build_info::build_info!(),
             &app_env,
             startup_options,
             re_ui,
             cc.storage,
-            rx,
-        ))
+        );
+        app.add_receiver(rx);
+        Box::new(app)
     }))
 }
 

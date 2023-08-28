@@ -280,12 +280,15 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 }
 
 fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
-    let rx = app.msg_receiver();
+    let rx = app.msg_receive_set();
 
-    // TODO(emilk): it would be nice to know if the network stream is still open
-    let is_latency_interesting = rx.source().is_network();
+    if rx.is_empty() {
+        return;
+    }
 
-    let queue_len = rx.len();
+    let is_latency_interesting = rx.sources().iter().any(|s| s.is_network());
+
+    let queue_len = rx.queue_len();
 
     // empty queue == unreliable latency
     let latency_sec = rx.latency_ns() as f32 / 1e9;

@@ -5,7 +5,11 @@ use std::sync::Arc;
 use re_error::ResultExt as _;
 use re_log_types::LogMsg;
 
-pub fn stream_rrd_from_http_to_channel(url: String) -> re_smart_channel::Receiver<LogMsg> {
+/// `on_msg` can be used to wake up the UI thread on Wasm.
+pub fn stream_rrd_from_http_to_channel(
+    url: String,
+    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+) -> re_smart_channel::Receiver<LogMsg> {
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
         re_smart_channel::SmartChannelSource::RrdHttpStream { url: url.clone() },
@@ -13,6 +17,9 @@ pub fn stream_rrd_from_http_to_channel(url: String) -> re_smart_channel::Receive
     stream_rrd_from_http(
         url,
         Arc::new(move |msg| {
+            if let Some(on_msg) = &on_msg {
+                on_msg();
+            }
             match msg {
                 HttpMessage::LogMsg(msg) => tx.send(msg).warn_on_err_once("failed to send message"),
                 HttpMessage::Success => {

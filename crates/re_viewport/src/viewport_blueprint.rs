@@ -7,7 +7,8 @@ use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{DataCell, DataRow, RowId, TimePoint};
 use re_types::Loggable as _;
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewId, SystemCommand, SystemCommandSender, ViewerContext,
+    CommandSender, Item, SpaceViewClassName, SpaceViewId, SystemCommand, SystemCommandSender,
+    ViewerContext,
 };
 
 use crate::{
@@ -46,8 +47,27 @@ pub struct ViewportBlueprint<'a> {
 }
 
 impl<'a> ViewportBlueprint<'a> {
+    /// Determine whether all views in a blueprint are invalid.
+    ///
+    /// This most commonly happens due to a change in struct definition that
+    /// breaks the definition of a serde-field, which means all views will
+    /// become invalid.
+    ///
+    /// Note: the invalid check is used to potentially reset the blueprint, so we
+    /// take the conservative stance that if any view is still usable we will still
+    /// treat the blueprint as valid and show it.
+    pub fn is_invalid(&self) -> bool {
+        !self.space_views.is_empty()
+            && self
+                .space_views
+                .values()
+                .all(|sv| sv.class_name() == &SpaceViewClassName::invalid())
+    }
+
     /// Reset the blueprint to a default state using some heuristics.
     pub fn reset(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
+        // TODO(jleibs): When using blueprint API, "reset" should go back to the initially transmitted
+        // blueprint, not the default blueprint.
         re_tracing::profile_function!();
 
         let ViewportBlueprint {
@@ -59,11 +79,16 @@ impl<'a> ViewportBlueprint<'a> {
             auto_space_views,
         } = self;
 
+        // Note, it's important that these values match the behavior in `load_viewport_blueprint` below.
         *space_views = Default::default();
         *tree = Default::default();
-        *maximized = Default::default();
-        *has_been_user_edited = Default::default();
-        *auto_space_views = Default::default();
+        *maximized = None;
+        *has_been_user_edited = false;
+        // Only enable auto-space-views if this is the app-default blueprint
+        *auto_space_views = self
+            .blueprint_db
+            .store_info()
+            .map_or(false, |ri| ri.is_app_default_blueprint());
 
         let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
         for space_view in
