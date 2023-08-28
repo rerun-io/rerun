@@ -95,7 +95,7 @@ class Format(Enum):
             return render_table_dict(data)
 
 
-def compare(previous_path: str, current_path: str, threshold: float) -> None:
+def compare(previous_path: str, current_path: str, threshold: float, before_header: str, after_header: str) -> None:
     previous = json.loads(Path(previous_path).read_text())
     current = json.loads(Path(current_path).read_text())
 
@@ -109,21 +109,25 @@ def compare(previous_path: str, current_path: str, threshold: float) -> None:
             entries[name] = {}
         entries[name]["previous"] = entry
 
-    headers = ["Name", "Previous", "Current", "Change"]
+    headers = ["Name", before_header, after_header, "Change"]
     rows: list[tuple[str, str, str, str]] = []
     for name, entry in entries.items():
         if "previous" in entry and "current" in entry:
             previous = float(entry["previous"]["value"]) * DIVISORS[entry["previous"]["unit"]]
             current = float(entry["current"]["value"]) * DIVISORS[entry["current"]["unit"]]
 
-            min_change = previous * (threshold / 100)
-
             unit = get_unit(min(previous, current))
             div = get_divisor(unit)
 
-            change = ((previous / current) * 100) - 100
-            sign = "+" if change > 0 else ""
+            change = abs(((current - previous) / previous) * 100)
+            if current < previous:
+                sign = "-"
+            elif current > previous:
+                sign = "+"
+            else:
+                sign = ""
 
+            min_change = previous * (threshold / 100)
             if abs(current - previous) >= min_change:
                 rows.append(
                     (
@@ -186,6 +190,20 @@ def main() -> None:
         default=20,
         help="Only print row if value is N%% larger or smaller",
     )
+    compare_parser.add_argument(
+        "--before-header",
+        type=str,
+        required=False,
+        default="Before",
+        help="Header for before column",
+    )
+    compare_parser.add_argument(
+        "--after-header",
+        type=str,
+        required=False,
+        default="After",
+        help="Header for after column",
+    )
 
     measure_parser = cmds_parser.add_parser("measure", help="Measure sizes")
     measure_parser.add_argument(
@@ -200,7 +218,13 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.cmd == "compare":
-        compare(args.before, args.after, args.threshold)
+        compare(
+            args.before,
+            args.after,
+            args.threshold,
+            args.before_header,
+            args.after_header,
+        )
     elif args.cmd == "measure":
         measure(args.files, args.format)
 
