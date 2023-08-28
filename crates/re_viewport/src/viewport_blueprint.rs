@@ -57,6 +57,8 @@ impl<'a> ViewportBlueprint<'a> {
 
     /// Reset the blueprint to a default state using some heuristics.
     pub fn reset(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
+        // TODO(jleibs): When using blueprint API, "reset" should go back to the initially transmitted
+        // blueprint, not the default blueprint.
         re_tracing::profile_function!();
 
         let ViewportBlueprint {
@@ -68,11 +70,16 @@ impl<'a> ViewportBlueprint<'a> {
             auto_space_views,
         } = self;
 
+        // Note, it's important that these values match the behavior in `load_viewport_blueprint` below.
         *space_views = Default::default();
         *tree = Default::default();
         *maximized = None;
         *has_been_user_edited = false;
-        *auto_space_views = true;
+        // Only enable auto-space-views if this is the app-default blueprint
+        *auto_space_views = self
+            .blueprint_db
+            .store_info()
+            .map_or(false, |ri| ri.is_app_default_blueprint());
 
         for space_view in default_created_space_views(ctx, spaces_info) {
             self.add_space_view(space_view);
