@@ -69,7 +69,10 @@ pub fn all_possible_space_views(
 
     let empty_entities_per_system = EntitiesPerSystem::default();
 
-    // Filter out entities that are not used in any of the part (!) systems of this class.
+    // Find all the entities that are used by the part (!) systems for each class.
+    // Note that entities_per_system_per_class includes both part-systems *and* context-systems
+    // so we filter out the context systems before aggregating the entities since context systems
+    // should not influence the heuristics.
     let entities_used_by_any_part_system_of_class: IntMap<_, _> = ctx
         .space_view_class_registry
         .iter_system_registries()
@@ -434,12 +437,13 @@ fn is_entity_processed_by_part_collection(
     false
 }
 
-pub fn default_entities_per_system_per_class(
+pub fn identify_entities_per_system_per_class(
     ctx: &mut ViewerContext<'_>,
 ) -> EntitiesPerSystemPerClass {
     re_tracing::profile_function!();
 
     // TODO(andreas): Handle several primary components.
+    // This code currently assumes the first component for each archetype is the primary.
     let system_collections_per_class: IntMap<
         SpaceViewClassName,
         (ViewContextCollection, ViewPartCollection),

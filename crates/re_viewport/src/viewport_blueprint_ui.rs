@@ -5,7 +5,7 @@ use re_space_view::DataBlueprintGroup;
 use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
 
 use crate::{
-    space_view_heuristics::{all_possible_space_views, default_entities_per_system_per_class},
+    space_view_heuristics::{all_possible_space_views, identify_entities_per_system_per_class},
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
@@ -369,7 +369,7 @@ impl ViewportBlueprint<'_> {
         ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
-            let entities_per_system_per_class = default_entities_per_system_per_class(ctx);
+            let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
             for space_view in
                 all_possible_space_views(ctx, spaces_info, &entities_per_system_per_class)
                     .into_iter()

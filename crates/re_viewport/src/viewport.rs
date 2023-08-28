@@ -16,7 +16,7 @@ use re_viewer_context::{
 
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::{default_created_space_views, default_entities_per_system_per_class},
+    space_view_heuristics::{default_created_space_views, identify_entities_per_system_per_class},
     space_view_highlights::highlights_for_space_view,
     viewport_blueprint::load_viewport_blueprint,
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
@@ -153,7 +153,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
     ) {
         re_tracing::profile_function!();
 
-        let entities_per_system_per_class = default_entities_per_system_per_class(ctx);
+        let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
 
         for space_view in self.blueprint.space_views.values_mut() {
             let space_view_state = self.state.space_view_state_mut(
