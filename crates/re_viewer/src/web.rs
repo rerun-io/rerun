@@ -59,18 +59,19 @@ impl WebHandle {
                     let re_ui = crate::customize_eframe(cc);
                     let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
 
-                    match categorize_uri(url) {
+                    let egui_ctx = cc.egui_ctx.clone();
+                    let wake_up_ui_on_msg = Box::new(move || {
+                        // Spend a few more milliseconds decoding incoming messages,
+                        // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                        egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+                    });
+
+                    let rx = match categorize_uri(url) {
                         EndpointCategory::HttpRrd(url) => {
-                            let rx = re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url);
-                            let mut app = crate::App::new(
-                                build_info,
-                                &app_env,
-                                startup_options,
-                                re_ui,
-                                cc.storage,
-                            );
-                            app.add_receiver(rx);
-                            Box::new(app)
+                            re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
+                                url,
+                                Some(wake_up_ui_on_msg),
+                            )
                         }
                         EndpointCategory::WebEventListener => {
                             // Process an rrd when it's posted via `window.postMessage`
@@ -80,9 +81,8 @@ impl WebHandle {
                             );
                             re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(
                                 Arc::new({
-                                    let egui_ctx = cc.egui_ctx.clone();
                                     move |msg| {
-                                        egui_ctx.request_repaint(); // wake up ui thread
+                                        wake_up_ui_on_msg();
                                         use re_log_encoding::stream_rrd_from_http::HttpMessage;
                                         match msg {
                                             HttpMessage::LogMsg(msg) => tx
@@ -98,29 +98,20 @@ impl WebHandle {
                                     }
                                 }),
                             );
-
-                            let mut app = crate::App::new(
-                                build_info,
-                                &app_env,
-                                startup_options,
-                                re_ui,
-                                cc.storage,
-                            );
-                            app.add_receiver(rx);
-                            Box::new(app)
+                            rx
                         }
                         EndpointCategory::WebSocket(url) => {
-                            // Connect to a Rerun server over WebSockets.
-                            Box::new(crate::RemoteViewerApp::new(
-                                build_info,
-                                app_env,
-                                startup_options,
-                                re_ui,
-                                cc.storage,
-                                url,
-                            ))
+                            re_data_source::connect_to_ws_url(&url, Some(wake_up_ui_on_msg))
+                                .unwrap_or_else(|err| {
+                                    panic!("Failed to connect to WebSocket server at {url}: {err}")
+                                })
                         }
-                    }
+                    };
+
+                    let mut app =
+                        crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
+                    app.add_receiver(rx);
+                    Box::new(app)
                 }),
             )
             .await?;

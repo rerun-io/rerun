@@ -312,14 +312,23 @@ impl App {
                 store_hub.remove_recording_id(&recording_id);
             }
 
-            SystemCommand::LoadDataSource(data_source) => match data_source.stream() {
-                Ok(rx) => {
-                    self.add_receiver(rx);
+            SystemCommand::LoadDataSource(data_source) => {
+                let egui_ctx = self.re_ui.egui_ctx.clone();
+                let wake_up_ui_on_msg = Box::new(move || {
+                    // Spend a few more milliseconds decoding incoming messages,
+                    // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                    egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+                });
+
+                match data_source.stream(Some(wake_up_ui_on_msg)) {
+                    Ok(rx) => {
+                        self.add_receiver(rx);
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed to open data source: {err}");
+                    }
                 }
-                Err(err) => {
-                    re_log::error!("Failed to open data source: {err}");
-                }
-            },
+            }
 
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {

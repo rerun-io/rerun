@@ -435,56 +435,31 @@ async fn run_impl(
         #[cfg(not(feature = "server"))]
         anyhow::bail!("No url or .rrd path given");
     } else {
-        let arguments = args
+        let data_sources = args
             .url_or_paths
             .iter()
             .cloned()
             .map(DataSource::from_uri)
             .collect_vec();
 
-        if arguments.len() == 1 {
-            if let DataSource::WebSocketAddr(rerun_server_ws_url) = arguments[0].clone() {
-                // We are connecting to a server at a websocket address:
-                if args.web_viewer {
-                    #[cfg(feature = "web_viewer")]
-                    {
-                        let web_viewer = host_web_viewer(
-                            args.bind.clone(),
-                            args.web_viewer_port,
-                            true,
-                            rerun_server_ws_url,
-                        );
-                        // We return here because the running [`WebViewerServer`] is all we need.
-                        // The page we open will be pointed at a websocket url hosted by a *different* server.
-                        return web_viewer.await;
-                    }
-                    #[cfg(not(feature = "web_viewer"))]
-                    {
-                        _ = rerun_server_ws_url;
-                        panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
-                    }
-                } else {
-                    #[cfg(feature = "native_viewer")]
-                    return native_viewer_connect_to_ws_url(
-                        _build_info,
-                        call_source.app_env(),
-                        startup_options,
-                        profiler,
-                        rerun_server_ws_url,
-                    );
-
-                    #[cfg(not(feature = "native_viewer"))]
-                    {
-                        _ = (call_source, rerun_server_ws_url);
-                        anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature");
-                    }
-                }
+        #[cfg(feature = "web_viewer")]
+        if data_sources.len() == 1 && args.web_viewer {
+            if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
+                // Special case! We are connecting a web-viewer to a web-socket address.
+                // Instead of piping, just host a web-viewer that connects to the web-socket directly:
+                return host_web_viewer(
+                    args.bind.clone(),
+                    args.web_viewer_port,
+                    true,
+                    rerun_server_ws_url,
+                )
+                .await;
             }
         }
 
-        arguments
+        data_sources
             .into_par_iter()
-            .map(DataSource::stream)
+            .map(|data_source| data_source.stream(None))
             .collect::<Result<Vec<_>, _>>()?
     };
 
@@ -495,7 +470,7 @@ async fn run_impl(
         assert_receive_into_store_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
         let rx = ReceiveSet::new(rx);
-        Ok(stream_to_rrd(&rx, &rrd_path.into())?)
+        Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
     } else if args.web_viewer {
         #[cfg(feature = "web_viewer")]
         {
@@ -630,31 +605,7 @@ fn assert_receive_into_store_db(rx: &ReceiveSet<LogMsg>) -> anyhow::Result<re_da
     }
 }
 
-#[cfg(feature = "native_viewer")]
-fn native_viewer_connect_to_ws_url(
-    build_info: re_build_info::BuildInfo,
-    app_env: re_viewer::AppEnvironment,
-    startup_options: re_viewer::StartupOptions,
-    profiler: re_tracing::Profiler,
-    rerun_server_ws_url: String,
-) -> anyhow::Result<()> {
-    // By using RemoteViewerApp we let the user change the server they are connected to.
-    re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-        let mut app = re_viewer::RemoteViewerApp::new(
-            build_info,
-            app_env,
-            startup_options,
-            re_ui,
-            cc.storage,
-            rerun_server_ws_url,
-        );
-        app.set_profiler(profiler);
-        Box::new(app)
-    }))?;
-    Ok(())
-}
-
-fn stream_to_rrd(
+fn stream_to_rrd_on_disk(
     rx: &re_smart_channel::ReceiveSet<LogMsg>,
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {

@@ -1,7 +1,11 @@
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
-pub fn connect_to_ws_url(url: &str) -> anyhow::Result<Receiver<LogMsg>> {
+/// `on_msg` can be used to wake up the UI thread on Wasm.
+pub fn connect_to_ws_url(
+    url: &str,
+    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+) -> anyhow::Result<Receiver<LogMsg>> {
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::WsClient {
             ws_server_url: url.to_owned(),
@@ -16,6 +20,9 @@ pub fn connect_to_ws_url(url: &str) -> anyhow::Result<Receiver<LogMsg>> {
     let callback = move |binary: Vec<u8>| match re_ws_comms::decode_log_msg(&binary) {
         Ok(log_msg) => {
             if tx.send(log_msg).is_ok() {
+                if let Some(on_msg) = &on_msg {
+                    on_msg();
+                }
                 std::ops::ControlFlow::Continue(())
             } else {
                 re_log::info!("Failed to send log message to viewer - closing");

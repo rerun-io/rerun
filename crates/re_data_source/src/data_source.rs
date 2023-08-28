@@ -134,11 +134,16 @@ impl DataSource {
     ///
     /// Will do minimal checks (e.g. that the file exists), for syncronous errors,
     /// but the loading is done in a background task.
-    pub fn stream(self) -> anyhow::Result<Receiver<LogMsg>> {
+    ///
+    /// `on_msg` can be used to wake up the UI thread on Wasm.
+    pub fn stream(
+        self,
+        on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+    ) -> anyhow::Result<Receiver<LogMsg>> {
         match self {
-            DataSource::RrdHttpUrl(url) => {
-                Ok(re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url))
-            }
+            DataSource::RrdHttpUrl(url) => Ok(
+                re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url, on_msg),
+            ),
 
             #[cfg(not(target_arch = "wasm32"))]
             DataSource::FilePath(path) => {
@@ -167,7 +172,7 @@ impl DataSource {
             }
 
             DataSource::WebSocketAddr(rerun_server_ws_url) => {
-                crate::web_sockets::connect_to_ws_url(&rerun_server_ws_url)
+                crate::web_sockets::connect_to_ws_url(&rerun_server_ws_url, on_msg)
             }
         }
     }

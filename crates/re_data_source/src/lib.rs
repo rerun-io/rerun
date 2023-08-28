@@ -7,6 +7,7 @@ mod web_sockets;
 mod load_file_path;
 
 pub use data_source::DataSource;
+pub use web_sockets::connect_to_ws_url;
 
 /// The contents of as file
 #[derive(Clone)]
