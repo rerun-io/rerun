@@ -158,7 +158,7 @@ impl DataSource {
             }
 
             DataSource::FileContents(file_contents) => {
-                let name = &file_contents.name;
+                let name = file_contents.name.clone();
                 let (tx, rx) = re_smart_channel::smart_channel(
                     re_smart_channel::SmartMessageSource::File(name.clone().into()),
                     re_smart_channel::SmartChannelSource::File {
@@ -166,7 +166,7 @@ impl DataSource {
                     },
                 );
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_file_contents::load_file_contents(store_id, &file_contents, tx)
+                crate::load_file_contents::load_file_contents(store_id, file_contents, tx)
                     .with_context(|| format!("{name:?}"))?;
                 Ok(rx)
             }

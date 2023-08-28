@@ -15,7 +15,7 @@ pub fn connect_to_ws_url(
         },
     );
 
-    re_log::info!("Connecting to WS server at {:?}…", url);
+    re_log::info!("Connecting to WebSocket server at {url:?}…");
 
     let callback = move |binary: Vec<u8>| match re_ws_comms::decode_log_msg(&binary) {
         Ok(log_msg) => {
@@ -36,6 +36,6 @@ pub fn connect_to_ws_url(
     };
 
     let connection = re_ws_comms::Connection::viewer_to_server(url.to_owned(), callback)?;
-    std::mem::drop(connection); // Never close the connection. TODO: is this wise?
+    std::mem::drop(connection); // Never close the connection. TODO(emilk): is this wise?
     Ok(rx)
 }
