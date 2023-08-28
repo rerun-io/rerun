@@ -29,7 +29,7 @@ impl<T: Send> ReceiveSet<T> {
         rx.push(r);
     }
 
-    /// Any receviers left?
+    /// Any receivers left?
     pub fn is_connected(&self) -> bool {
         !self.is_empty()
     }
