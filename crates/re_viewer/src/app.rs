@@ -316,7 +316,7 @@ impl App {
                 let egui_ctx = self.re_ui.egui_ctx.clone();
 
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
-                // on any new message. On we we cannot spawn threads, so instead we need
+                // on any new message. On web we cannot spawn threads, so instead we need
                 // to supply a waker that is called when new messages arrive in background tasks
                 let waker = Box::new(move || {
                     // Spend a few more milliseconds decoding incoming messages,
