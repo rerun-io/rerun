@@ -548,7 +548,6 @@ async fn run_impl(
                 cc.storage,
             );
             for rx in rx {
-                let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
                 app.add_receiver(rx);
             }
             app.set_profiler(profiler);

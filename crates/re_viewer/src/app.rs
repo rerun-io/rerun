@@ -255,6 +255,10 @@ impl App {
     }
 
     pub fn add_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
+        // Make sure we wake up when a message is sent.
+        #[cfg(not(target_arch = "wasm32"))]
+        let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.re_ui.egui_ctx.clone());
+
         self.rx.add(rx);
     }
 
@@ -310,7 +314,7 @@ impl App {
 
             SystemCommand::LoadDataSource(data_source) => match data_source.stream() {
                 Ok(rx) => {
-                    self.rx.add(rx);
+                    self.add_receiver(rx);
                 }
                 Err(err) => {
                     re_log::error!("Failed to open data source: {err}");

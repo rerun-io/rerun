@@ -42,8 +42,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_env = re_viewer::AppEnvironment::Custom("My extended Rerun Viewer".to_owned());
 
     re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-        let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-
         let mut app = re_viewer::App::new(
             re_viewer::build_info(),
             &app_env,
