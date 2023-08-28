@@ -58,7 +58,7 @@ pub fn all_possible_space_views(
     for (class_name, entities_per_system) in entities_per_system_per_class {
         for (system_name, entities) in entities_per_system {
             if entities.is_empty() {
-                re_log::warn!(
+                re_log::debug!(
                     "SpaceViewClassRegistry: No entities for system {:?} of class {:?}",
                     system_name,
                     class_name
