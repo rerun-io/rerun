@@ -78,7 +78,7 @@ impl<T: Send> Receiver<T> {
 
     /// Receives without registering the latency.
     ///
-    /// This is for use with [`Sender::send_at`] when chaining to another channel
+    /// This is for use with [`crate::Sender::send_at`] when chaining to another channel
     /// created with [`Self::chained_channel`].
     pub fn recv_with_send_time(&self) -> Result<SmartMessage<T>, RecvError> {
         self.rx.recv()
@@ -117,7 +117,7 @@ impl<T: Send> Receiver<T> {
     ///
     /// This means both channels will see the same latency numbers.
     ///
-    /// Care must be taken to use [`Self::recv_with_send_time`] and [`Sender::send_at`].
+    /// Care must be taken to use [`Self::recv_with_send_time`] and [`crate::Sender::send_at`].
     /// This is a very leaky abstraction, and it would be nice with a refactor.
     pub fn chained_channel(&self) -> (crate::Sender<T>, Receiver<T>) {
         crate::smart_channel_with_stats(
