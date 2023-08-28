@@ -242,9 +242,9 @@ fn recording_config_entry<'cfgs>(
     fn new_recording_confg(store_db: &'_ StoreDb) -> RecordingConfig {
         let play_state = if let Some(data_source) = &store_db.data_source {
             match data_source {
-                // Play files from the start by default - it feels nice and alive./
-                // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-                re_smart_channel::SmartChannelSource::File { .. }
+                // Play files from the start by default - it feels nice and alive.
+                // We assume the `RrdHttpStream` is a done recording.
+                re_smart_channel::SmartChannelSource::File(_)
                 | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
                 | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 

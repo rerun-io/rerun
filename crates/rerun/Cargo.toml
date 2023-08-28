@@ -66,6 +66,7 @@ web_viewer = ["dep:re_web_viewer_server", "re_sdk?/web_viewer"]
 [dependencies]
 re_build_info.workspace = true
 re_crash_handler.workspace = true
+re_data_source.workspace = true
 re_data_store.workspace = true
 re_format.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
@@ -74,7 +75,6 @@ re_log.workspace = true
 re_memory.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
-re_data_source.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true

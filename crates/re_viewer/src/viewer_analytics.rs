@@ -198,7 +198,7 @@ impl ViewerAnalytics {
 
         if let Some(data_source) = &store_db.data_source {
             let data_source = match data_source {
-                re_smart_channel::SmartChannelSource::File { .. } => "file", // .rrd, .png, .glb, …
+                re_smart_channel::SmartChannelSource::File(_) => "file", // .rrd, .png, .glb, …
                 re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
                 re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => "web_event",
                 re_smart_channel::SmartChannelSource::Sdk => "sdk", // show()

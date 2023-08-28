@@ -58,7 +58,7 @@ pub enum SmartChannelSource {
 impl SmartChannelSource {
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File { .. } | Self::Sdk | Self::RrdWebEventListener => false,
+            Self::File(_) | Self::Sdk | Self::RrdWebEventListener => false,
             Self::RrdHttpStream { .. } | Self::WsClient { .. } | Self::TcpServer { .. } => true,
         }
     }
