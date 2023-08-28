@@ -1,0 +1,223 @@
+use anyhow::Context as _;
+
+use re_log_types::LogMsg;
+use re_smart_channel::Receiver;
+
+use crate::FileContents;
+
+/// Somewhere we can get Rerun data from.
+#[derive(Clone)]
+pub enum DataSource {
+    /// A remote RRD file, served over http.
+    RrdHttpUrl(String),
+
+    /// A path to a local file.
+    #[cfg(not(target_arch = "wasm32"))]
+    FilePath(std::path::PathBuf),
+
+    /// The contents of a file.
+    ///
+    /// This is what you get when loading a file on Web.
+    FileContents(FileContents),
+
+    /// A remote Rerun server.
+    WebSocketAddr(String),
+}
+
+impl DataSource {
+    /// Tried to classify a URI into a `DataSource`.
+    ///
+    /// Tried to figure out if it looks like a local path,
+    /// a web-socket address, or a http url.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn from_uri(mut uri: String) -> DataSource {
+        use itertools::Itertools as _;
+
+        fn looks_like_windows_abs_path(path: &str) -> bool {
+            let path = path.as_bytes();
+            // "C:/" etc
+            path.get(1).copied() == Some(b':') && path.get(2).copied() == Some(b'/')
+        }
+
+        fn looks_like_a_file_path(uri: &str) -> bool {
+            // How do we distinguish a file path from a web url? "example.zip" could be either.
+
+            if uri.starts_with('/') {
+                return true; // Unix absolute path
+            }
+            if looks_like_windows_abs_path(uri) {
+                return true;
+            }
+
+            // We use a simple heuristic here: if there are multiple dots, it is likely an url,
+            // like "example.com/foo.zip".
+            // If there is only one dot, we treat it as an extension and look it up in a list of common
+            // file extensions:
+
+            let parts = uri.split('.').collect_vec();
+            if parts.len() <= 1 {
+                true // Only one part. Weird. Let's assume it is a file path.
+            } else if parts.len() == 2 {
+                let extension = parts[1];
+                matches!(
+                    extension,
+                    // Our own:
+                    "rrd"
+
+                    // Misc:
+                    | "txt"
+                    | "zip"
+
+                    // Meshes:
+                    | "glb"
+                    | "gltf"
+                    | "obj"
+                    | "ply"
+                    | "stl"
+
+                    // Images:
+                    | "avif"
+                    | "bmp"
+                    | "dds"
+                    | "exr"
+                    | "farbfeld"
+                    | "ff"
+                    | "gif"
+                    | "hdr"
+                    | "ico"
+                    | "jpeg"
+                    | "jpg"
+                    | "pam"
+                    | "pbm"
+                    | "pgm"
+                    | "png"
+                    | "ppm"
+                    | "tga"
+                    | "tif"
+                    | "tiff"
+                    | "webp"
+                )
+            } else {
+                false // Too many dots; assume an url
+            }
+        }
+
+        let path = std::path::Path::new(&uri).to_path_buf();
+
+        if uri.starts_with("file://") || path.exists() {
+            DataSource::FilePath(path)
+        } else if uri.starts_with("http://")
+            || uri.starts_with("https://")
+            || (uri.starts_with("www.") && uri.ends_with(".rrd"))
+        {
+            DataSource::RrdHttpUrl(uri)
+        } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
+            DataSource::WebSocketAddr(uri)
+
+        // Now we are into heuristics territory:
+        } else if looks_like_a_file_path(&uri) {
+            DataSource::FilePath(path)
+        } else if uri.ends_with(".rrd") {
+            DataSource::RrdHttpUrl(uri)
+        } else {
+            // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
+            // We could/should connect and see what it is, but for now we just take a wild guess instead:
+            re_log::debug!("Assuming WebSocket endpoint");
+            if !uri.contains("://") {
+                uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
+            }
+            DataSource::WebSocketAddr(uri)
+        }
+    }
+
+    /// Stream the data from the given data source.
+    ///
+    /// Will do minimal checks (e.g. that the file exists), for syncronous errors,
+    /// but the loading is done in a background task.
+    pub fn stream(self) -> anyhow::Result<Receiver<LogMsg>> {
+        match self {
+            DataSource::RrdHttpUrl(url) => {
+                Ok(re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url))
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::FilePath(path) => {
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    re_smart_channel::SmartMessageSource::File(path.clone()),
+                    re_smart_channel::SmartChannelSource::File { path: path.clone() },
+                );
+                let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                crate::load_file_path::load_file_path(store_id, &path, tx)
+                    .with_context(|| format!("{path:?}"))?;
+                Ok(rx)
+            }
+
+            DataSource::FileContents(file_contents) => {
+                let name = &file_contents.name;
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    re_smart_channel::SmartMessageSource::File(name.clone().into()),
+                    re_smart_channel::SmartChannelSource::File {
+                        path: name.clone().into(),
+                    },
+                );
+                let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                crate::load_file_contents::load_file_contents(store_id, &file_contents, tx)
+                    .with_context(|| format!("{name:?}"))?;
+                Ok(rx)
+            }
+
+            DataSource::WebSocketAddr(rerun_server_ws_url) => {
+                crate::web_sockets::connect_to_ws_url(&rerun_server_ws_url)
+            }
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn test_data_source_from_uri() {
+    let file = [
+        "file://foo",
+        "foo.rrd",
+        "foo.zip",
+        "/foo/bar/baz",
+        "D:/file",
+    ];
+    let http = [
+        "http://foo.zip",
+        "https://foo.zip",
+        "example.zip/foo.rrd",
+        "www.foo.zip/foo.rrd",
+    ];
+    let ws = ["ws://foo.zip", "wss://foo.zip", "127.0.0.1"];
+
+    for uri in file {
+        assert!(
+            matches!(
+                DataSource::from_uri(uri.to_owned()),
+                DataSource::FilePath(_)
+            ),
+            "Expected {uri:?} to be categorized as FilePath"
+        );
+    }
+
+    for uri in http {
+        assert!(
+            matches!(
+                DataSource::from_uri(uri.to_owned()),
+                DataSource::RrdHttpUrl(_)
+            ),
+            "Expected {uri:?} to be categorized as RrdHttpUrl"
+        );
+    }
+
+    for uri in ws {
+        assert!(
+            matches!(
+                DataSource::from_uri(uri.to_owned()),
+                DataSource::WebSocketAddr(_)
+            ),
+            "Expected {uri:?} to be categorized as WebSocketAddr"
+        );
+    }
+}
