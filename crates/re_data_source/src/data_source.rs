@@ -152,7 +152,7 @@ fn test_data_source_from_uri() {
     let file = [
         "file://foo",
         "foo.rrd",
-        "foo.zip",
+        "foo.png",
         "/foo/bar/baz",
         "D:/file",
     ];
