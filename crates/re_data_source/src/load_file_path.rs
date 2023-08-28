@@ -87,7 +87,7 @@ fn stream_rrd_file(
     let decoder = re_log_encoding::decoder::Decoder::new(file)?;
 
     rayon::spawn(move || {
-        re_tracing::profile_scope!("load_rrd_file_to_channel");
+        re_tracing::profile_scope!("stream_rrd_file");
         for msg in decoder {
             match msg {
                 Ok(msg) => {

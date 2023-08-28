@@ -32,6 +32,8 @@ pub fn load_file_contents(
 }
 
 fn load_rrd_sync(file_contents: &FileContents, tx: &Sender<LogMsg>) -> Result<(), anyhow::Error> {
+    re_tracing::profile_function!(file_contents.name.as_str());
+
     let bytes: &[u8] = &file_contents.bytes;
     let decoder = re_log_encoding::decoder::Decoder::new(bytes)?;
     for msg in decoder {
