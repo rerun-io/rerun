@@ -61,37 +61,7 @@ impl WebHandle {
 
                     match categorize_uri(url) {
                         EndpointCategory::HttpRrd(url) => {
-                            // Download an .rrd file over http:
-                            let (tx, rx) = re_smart_channel::smart_channel(
-                                re_smart_channel::SmartMessageSource::RrdHttpStream {
-                                    url: url.clone(),
-                                },
-                                re_smart_channel::SmartChannelSource::RrdHttpStream {
-                                    url: url.clone(),
-                                },
-                            );
-                            re_log_encoding::stream_rrd_from_http::stream_rrd_from_http(
-                                url,
-                                Arc::new({
-                                    let egui_ctx = cc.egui_ctx.clone();
-                                    move |msg| {
-                                        egui_ctx.request_repaint(); // wake up ui thread
-                                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
-                                        match msg {
-                                            HttpMessage::LogMsg(msg) => tx
-                                                .send(msg)
-                                                .warn_on_err_once("failed to send message"),
-                                            HttpMessage::Success => tx
-                                                .quit(None)
-                                                .warn_on_err_once("failed to send quit marker"),
-                                            HttpMessage::Failure(err) => tx
-                                                .quit(Some(err))
-                                                .warn_on_err_once("failed to send quit marker"),
-                                        };
-                                    }
-                                }),
-                            );
-
+                            let rx = re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url);
                             let mut app = crate::App::new(
                                 build_info,
                                 &app_env,
