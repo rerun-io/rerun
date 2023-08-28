@@ -317,15 +317,20 @@ impl eframe::App for ExampleApp {
                         self.re_ui
                             .list_item("Collapsing list item with icon")
                             .with_icon(&re_ui::icons::SPACE_VIEW_2D)
-                            .show_collapsing(ui, true, |_re_ui, ui| {
-                                self.re_ui.list_item("Sub-item").show(ui);
-                                self.re_ui.list_item("Sub-item").show(ui);
-                                self.re_ui
-                                    .list_item("Sub-item with icon")
-                                    .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
-                                    .show(ui);
-                                self.re_ui.list_item("Sub-item").show(ui);
-                            });
+                            .show_collapsing(
+                                ui,
+                                "collapsing example".into(),
+                                true,
+                                |_re_ui, ui| {
+                                    self.re_ui.list_item("Sub-item").show(ui);
+                                    self.re_ui.list_item("Sub-item").show(ui);
+                                    self.re_ui
+                                        .list_item("Sub-item with icon")
+                                        .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                                        .show(ui);
+                                    self.re_ui.list_item("Sub-item").show(ui);
+                                },
+                            );
                     });
                 });
             });
