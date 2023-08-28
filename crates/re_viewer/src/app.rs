@@ -855,6 +855,8 @@ impl App {
                     .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(path)));
             }
         }
+
+        egui_ctx.request_repaint();
     }
 
     /// This function will create an empty blueprint whenever the welcome screen should be
