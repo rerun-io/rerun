@@ -193,6 +193,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         });
     }
 
+    #[allow(clippy::for_kv_map)]
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -217,8 +218,8 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
             re_tracing::profile_scope!("ViewPartSystem::execute");
             let mut parts = systems.new_part_collection();
             let mut draw_data = Vec::new();
-            for (name, part) in &mut parts.systems {
-                re_tracing::profile_scope!(name.as_str());
+            for (_name, part) in &mut parts.systems {
+                re_tracing::profile_scope!(_name.as_str());
                 match part.execute(ctx, query, &view_ctx) {
                     Ok(part_draw_data) => draw_data.extend(part_draw_data),
                     Err(err) => {
