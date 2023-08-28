@@ -35,7 +35,6 @@ pub fn loading_ui(ui: &mut egui::Ui, rx: &ReceiveSet<LogMsg>) {
     }
 
     ui.centered_and_justified(|ui| {
-        // TODO: not the best wait screen when loading multiple different things
         for status_string in status_strings {
             let style = ui.style();
             let mut layout_job = egui::text::LayoutJob::default();
