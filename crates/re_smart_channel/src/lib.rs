@@ -23,10 +23,9 @@ pub use sender::Sender;
 /// receiving end.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SmartChannelSource {
-    /// The channel was created in the context of loading a bunch of files from disk (could be
+    /// The channel was created in the context of loading a file from disk (could be
     /// `.rrd` files, or `.glb`, `.png`, …).
-    // TODO(#2121): Remove this
-    Files { paths: Vec<std::path::PathBuf> },
+    File { path: std::path::PathBuf },
 
     /// The channel was created in the context of loading an `.rrd` file over http.
     RrdHttpStream { url: String },
@@ -59,7 +58,7 @@ pub enum SmartChannelSource {
 impl SmartChannelSource {
     pub fn is_network(&self) -> bool {
         match self {
-            Self::Files { .. } | Self::Sdk | Self::RrdWebEventListener => false,
+            Self::File { .. } | Self::Sdk | Self::RrdWebEventListener => false,
             Self::RrdHttpStream { .. } | Self::WsClient { .. } | Self::TcpServer { .. } => true,
         }
     }

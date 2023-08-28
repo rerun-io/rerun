@@ -903,7 +903,7 @@ impl App {
             match &*source {
                 // These source are typically "finite". We want the loading screen so long as data is
                 // coming in.
-                SmartChannelSource::Files { .. } | SmartChannelSource::RrdHttpStream { .. } => {
+                SmartChannelSource::File { .. } | SmartChannelSource::RrdHttpStream { .. } => {
                     return true;
                 }
 

@@ -751,9 +751,7 @@ fn stream_data_source(data_source: DataSource) -> anyhow::Result<Receiver<LogMsg
         DataSource::FilePath(path) => {
             let (tx, rx) = re_smart_channel::smart_channel(
                 re_smart_channel::SmartMessageSource::File(path.clone()),
-                re_smart_channel::SmartChannelSource::Files {
-                    paths: vec![path.clone()],
-                },
+                re_smart_channel::SmartChannelSource::File { path: path.clone() },
             );
             let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
             load_file_to_channel_at(store_id, &path, tx).with_context(|| format!("{path:?}"))?;

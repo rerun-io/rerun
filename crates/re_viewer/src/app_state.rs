@@ -244,7 +244,7 @@ fn recording_config_entry<'cfgs>(
             match data_source {
                 // Play files from the start by default - it feels nice and alive./
                 // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-                re_smart_channel::SmartChannelSource::Files { .. }
+                re_smart_channel::SmartChannelSource::File { .. }
                 | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
                 | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 

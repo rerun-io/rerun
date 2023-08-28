@@ -20,9 +20,8 @@ pub fn load_file_path(path: &std::path::Path, with_notifications: bool) -> Optio
                 re_log::info!("Loaded {path:?}");
             }
             for store_db in rrd.store_dbs_mut() {
-                store_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
-                    paths: vec![path.into()],
-                });
+                store_db.data_source =
+                    Some(re_smart_channel::SmartChannelSource::File { path: path.into() });
             }
             Some(rrd)
         }
@@ -44,9 +43,8 @@ pub fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<StoreB
         Ok(mut rrd) => {
             re_log::info!("Loaded {name:?}");
             for store_db in rrd.store_dbs_mut() {
-                store_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
-                    paths: vec![name.into()],
-                });
+                store_db.data_source =
+                    Some(re_smart_channel::SmartChannelSource::File { path: name.into() });
             }
             Some(rrd)
         }

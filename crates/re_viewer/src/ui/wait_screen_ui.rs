@@ -1,8 +1,7 @@
 use egui::{Ui, Widget};
-use itertools::Itertools;
+
 use re_log_types::LogMsg;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-
 use re_ui::ReUi;
 
 const MIN_COLUMN_WIDTH: f32 = 250.0;
@@ -324,16 +323,9 @@ fn status_strings(rx: &ReceiveSet<LogMsg>) -> Vec<StatusStrings> {
 
 fn status_string(source: &SmartChannelSource) -> StatusStrings {
     match source {
-        re_smart_channel::SmartChannelSource::Files { paths } => StatusStrings::new(
-            "Loading…",
-            format!(
-                "{}",
-                paths
-                    .iter()
-                    .format_with(", ", |path, f| f(&format_args!("{}", path.display()))),
-            ),
-            false,
-        ),
+        re_smart_channel::SmartChannelSource::File { path } => {
+            StatusStrings::new("Loading…", path.display().to_string(), false)
+        }
         re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
             StatusStrings::new("Loading…", url.clone(), false)
         }
