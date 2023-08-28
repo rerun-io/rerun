@@ -141,44 +141,9 @@ impl DataSource {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn is_known_file_extension(extension: &str) -> bool {
-    matches!(
-        extension,
-        // Our own:
-        "rrd"
-
-        // Misc:
-        | "txt"
-        | "zip"
-
-        // Meshes:
-        | "glb"
-        | "gltf"
-        | "obj"
-        | "ply"
-        | "stl"
-
-        // Images:
-        | "avif"
-        | "bmp"
-        | "dds"
-        | "exr"
-        | "farbfeld"
-        | "ff"
-        | "gif"
-        | "hdr"
-        | "ico"
-        | "jpeg"
-        | "jpg"
-        | "pam"
-        | "pbm"
-        | "pgm"
-        | "png"
-        | "ppm"
-        | "tga"
-        | "tif"
-        | "tiff"
-        | "webp"
-    )
+    extension == "rrd"
+        || crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension)
+        || crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
