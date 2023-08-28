@@ -18,6 +18,14 @@ namespace rerun {
                 }
                 cells.emplace_back(std::move(result.value));
             }
+            {
+                const auto result =
+                    create_marker_component("rerun.components.Transform3DMarker", num_instances());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.emplace_back(std::move(result.value));
+            }
 
             return cells;
         }

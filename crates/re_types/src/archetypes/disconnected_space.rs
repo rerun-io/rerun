@@ -97,33 +97,65 @@ impl crate::Archetype for DisconnectedSpace {
     }
 
     #[inline]
+    fn marker_component() -> crate::ComponentName {
+        "rerun.components.DisconnectedSpaceMarker".into()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
+    }
+
+    #[inline]
     fn try_to_arrow(
         &self,
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
         use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::DisconnectedSpace>::try_to_arrow(
-                    [&self.disconnected_space],
-                    None,
-                );
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.DisconnectedSpace".into(),
-                        Box::new(array.data_type().clone()),
-                        Some("rerun.disconnected_space".into()),
+        Ok([
+            {
+                Some({
+                    let array = <crate::components::DisconnectedSpace>::try_to_arrow(
+                        [&self.disconnected_space],
+                        None,
                     );
-                    (
-                        ::arrow2::datatypes::Field::new("disconnected_space", datatype, false),
-                        array,
-                    )
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.DisconnectedSpace".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.disconnected_space".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("disconnected_space", datatype, false),
+                            array,
+                        )
+                    })
                 })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
-        }]
+                .transpose()
+                .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
+            },
+            {
+                let datatype = ::arrow2::datatypes::DataType::Extension(
+                    "rerun.components.DisconnectedSpaceMarker".to_owned(),
+                    Box::new(::arrow2::datatypes::DataType::Null),
+                    Some("rerun.components.DisconnectedSpaceMarker".to_owned()),
+                );
+                let array = ::arrow2::array::NullArray::new(
+                    datatype.to_logical_type().clone(),
+                    self.num_instances(),
+                )
+                .boxed();
+                Some((
+                    ::arrow2::datatypes::Field::new(
+                        "rerun.components.DisconnectedSpaceMarker",
+                        datatype,
+                        false,
+                    ),
+                    array,
+                ))
+            },
+        ]
         .into_iter()
         .flatten()
         .collect())

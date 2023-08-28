@@ -123,6 +123,16 @@ impl crate::Archetype for Points3D {
     }
 
     #[inline]
+    fn marker_component() -> crate::ComponentName {
+        "rerun.components.Points3DMarker".into()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        self.points.len()
+    }
+
+    #[inline]
     fn try_to_arrow(
         &self,
     ) -> crate::SerializationResult<
@@ -270,6 +280,26 @@ impl crate::Archetype for Points3D {
                     })
                     .transpose()
                     .with_context("rerun.archetypes.Points3D#instance_keys")?
+            },
+            {
+                let datatype = ::arrow2::datatypes::DataType::Extension(
+                    "rerun.components.Points3DMarker".to_owned(),
+                    Box::new(::arrow2::datatypes::DataType::Null),
+                    Some("rerun.components.Points3DMarker".to_owned()),
+                );
+                let array = ::arrow2::array::NullArray::new(
+                    datatype.to_logical_type().clone(),
+                    self.num_instances(),
+                )
+                .boxed();
+                Some((
+                    ::arrow2::datatypes::Field::new(
+                        "rerun.components.Points3DMarker",
+                        datatype,
+                        false,
+                    ),
+                    array,
+                ))
             },
         ]
         .into_iter()
