@@ -29,13 +29,18 @@ pub fn welcome_ui(
 
 /// Full-screen UI shown while in loading state.
 pub fn loading_ui(ui: &mut egui::Ui, rx: &ReceiveSet<LogMsg>) {
+    let status_strings = status_strings(rx);
+    if status_strings.is_empty() {
+        return;
+    }
+
     ui.centered_and_justified(|ui| {
         // TODO: not the best wait screen when loading multiple different things
-        for status_strings in status_strings(rx) {
+        for status_string in status_strings {
             let style = ui.style();
             let mut layout_job = egui::text::LayoutJob::default();
             layout_job.append(
-                status_strings.status,
+                status_string.status,
                 0.0,
                 egui::TextFormat::simple(
                     egui::TextStyle::Heading.resolve(style),
@@ -43,7 +48,7 @@ pub fn loading_ui(ui: &mut egui::Ui, rx: &ReceiveSet<LogMsg>) {
                 ),
             );
             layout_job.append(
-                &format!("\n\n{}", status_strings.source),
+                &format!("\n\n{}", status_string.source),
                 0.0,
                 egui::TextFormat::simple(
                     egui::TextStyle::Body.resolve(style),
@@ -290,8 +295,8 @@ fn image_banner(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, image: &re_ui::Icon, col
     );
 }
 
-/// Strings describing the current state of the Rerun viewer.
-struct StatusStrings {
+/// Describes the current state of the Rerun viewer.
+struct StatusString {
     /// General status string (e.g. "Ready", "Loading…", etc.).
     status: &'static str,
 
@@ -303,7 +308,7 @@ struct StatusStrings {
     long_term: bool,
 }
 
-impl StatusStrings {
+impl StatusString {
     fn new(status: &'static str, source: String, long_term: bool) -> Self {
         Self {
             status,
@@ -314,39 +319,39 @@ impl StatusStrings {
 }
 
 /// Returns the status strings to be displayed by the loading and welcome screen.
-fn status_strings(rx: &ReceiveSet<LogMsg>) -> Vec<StatusStrings> {
+fn status_strings(rx: &ReceiveSet<LogMsg>) -> Vec<StatusString> {
     rx.sources()
         .into_iter()
         .map(|s| status_string(&s))
         .collect()
 }
 
-fn status_string(source: &SmartChannelSource) -> StatusStrings {
+fn status_string(source: &SmartChannelSource) -> StatusString {
     match source {
         re_smart_channel::SmartChannelSource::File { path } => {
-            StatusStrings::new("Loading…", path.display().to_string(), false)
+            StatusString::new("Loading…", path.display().to_string(), false)
         }
         re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
-            StatusStrings::new("Loading…", url.clone(), false)
+            StatusString::new("Loading…", url.clone(), false)
         }
         re_smart_channel::SmartChannelSource::RrdWebEventListener => {
-            StatusStrings::new("Ready", "Waiting for logging data…".to_owned(), true)
+            StatusString::new("Ready", "Waiting for logging data…".to_owned(), true)
         }
-        re_smart_channel::SmartChannelSource::Sdk => StatusStrings::new(
+        re_smart_channel::SmartChannelSource::Sdk => StatusString::new(
             "Ready",
             "Waiting for logging data from SDK".to_owned(),
             true,
         ),
         re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
             // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
-            StatusStrings::new(
+            StatusString::new(
                 "Ready",
                 format!("Waiting for data from {ws_server_url}"),
                 true,
             )
         }
         re_smart_channel::SmartChannelSource::TcpServer { port } => {
-            StatusStrings::new("Ready", format!("Listening on port {port}"), true)
+            StatusString::new("Ready", format!("Listening on port {port}"), true)
         }
     }
 }
