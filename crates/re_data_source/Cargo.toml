@@ -19,8 +19,6 @@ all-features = true
 [features]
 default = []
 
-sdk = ["dep:re_sdk"]
-
 
 [dependencies]
 re_components.workspace = true
@@ -34,9 +32,6 @@ re_ws_comms = { workspace = true, features = ["client"] }
 anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
-
-# Optional:
-re_sdk = { workspace = true, optional = true }
 
 
 [build-dependencies]

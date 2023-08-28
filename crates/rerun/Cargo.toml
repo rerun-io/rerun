@@ -48,7 +48,7 @@ native_viewer = ["dep:re_viewer"]
 server = ["re_sdk_comms/server"]
 
 ## Embed the Rerun SDK and re-export all of its public symbols.
-sdk = ["dep:re_sdk", "re_data_source/sdk"]
+sdk = ["dep:re_sdk"]
 
 ## Support serving a web viewer over HTTP.
 ##

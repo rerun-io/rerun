@@ -27,28 +27,18 @@ pub fn load_file_path(
     if extension == "rrd" {
         stream_rrd_file(path, tx)
     } else {
-        #[cfg(feature = "sdk")]
-        {
-            rayon::spawn(move || {
-                if let Err(err) = load_and_send(&path, store_id, &tx) {
-                    re_log::error!("Failed to load {path:?}: {err}");
-                }
-            });
-            Ok(())
-        }
-
-        #[cfg(not(feature = "sdk"))]
-        {
-            _ = store_id;
-            anyhow::bail!("Unsupported file extension: '{extension}' for path {path:?}. Try enabling the 'sdk' feature of 'rerun'.");
-        }
+        rayon::spawn(move || {
+            if let Err(err) = load_and_send(store_id, &path, &tx) {
+                re_log::error!("Failed to load {path:?}: {err}");
+            }
+        });
+        Ok(())
     }
 }
 
-#[cfg(feature = "sdk")]
 fn load_and_send(
-    path: &std::path::PathBuf,
     store_id: re_log_types::StoreId,
+    path: &std::path::Path,
     tx: &Sender<LogMsg>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!(path.display().to_string());
@@ -74,11 +64,35 @@ fn load_and_send(
     // .ok(): we may be running in a background thread, so who knows if the receiver is still open
 
     // Send actual file.
-    let msg_sender = re_sdk::MsgSender::from_file_path(path)?;
-    let log_msg = msg_sender.into_log_msg(store_id)?;
+    let log_msg = log_msg_from_file_path(store_id, path)?;
     tx.send(log_msg).ok();
     tx.quit(None).ok();
     Ok(())
+}
+
+fn log_msg_from_file_path(
+    store_id: re_log_types::StoreId,
+    file_path: &std::path::Path,
+) -> anyhow::Result<LogMsg> {
+    let entity_path = re_log_types::EntityPath::from_file_path_as_single_string(file_path);
+    let cell = re_components::data_cell_from_file_path(file_path)?;
+
+    let num_instances = cell.num_instances();
+
+    let timepoint = re_log_types::TimePoint::default();
+
+    let data_row = re_log_types::DataRow::from_cells(
+        re_log_types::RowId::random(),
+        timepoint,
+        entity_path,
+        num_instances,
+        vec![cell],
+    );
+
+    let data_table =
+        re_log_types::DataTable::from_rows(re_log_types::TableId::random(), [data_row]);
+    let arrow_msg = data_table.to_arrow_msg()?;
+    Ok(LogMsg::ArrowMsg(store_id, arrow_msg))
 }
 
 // Non-blocking
