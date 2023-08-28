@@ -1,6 +1,6 @@
-use re_data_source::DataSource;
 use web_time::Instant;
 
+use re_data_source::{DataSource, FileContents};
 use re_data_store::store_db::StoreDb;
 use re_log_types::{LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
@@ -840,20 +840,24 @@ impl App {
         preview_files_being_dropped(egui_ctx);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
+
         for file in dropped_files {
-            if let Some(bytes) = &file.bytes {
-                let mut bytes: &[u8] = &(*bytes)[..];
-                if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
-                    self.on_rrd_loaded(store_hub, rrd);
-                }
+            if let Some(bytes) = file.bytes {
+                // This is what we get on Web.
+                self.command_sender
+                    .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                        FileContents {
+                            name: file.name.clone(),
+                            bytes: bytes.clone(),
+                        },
+                    )));
+                continue;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            if let Some(path) = &file.path {
-                let with_notification = true;
-                if let Some(rrd) = crate::loading::load_file_path(path, with_notification) {
-                    self.on_rrd_loaded(store_hub, rrd);
-                }
+            if let Some(path) = file.path {
+                self.command_sender
+                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(path)));
             }
         }
     }

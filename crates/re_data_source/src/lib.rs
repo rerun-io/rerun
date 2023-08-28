@@ -6,7 +6,8 @@ use re_smart_channel::Receiver;
 /// The contents of as file
 #[derive(Clone)]
 pub struct FileContents {
-    pub file_name: String,
+    pub name: String,
+
     pub bytes: std::sync::Arc<[u8]>,
 }
 
@@ -158,7 +159,7 @@ impl DataSource {
             }
 
             DataSource::FileContents(file_contents) => {
-                let name = &file_contents.file_name;
+                let name = &file_contents.name;
                 let (tx, rx) = re_smart_channel::smart_channel(
                     re_smart_channel::SmartMessageSource::File(name.clone().into()),
                     re_smart_channel::SmartChannelSource::File {
@@ -241,7 +242,7 @@ fn load_file_contents_to_channel_at(
     file_contents: &FileContents,
     tx: re_smart_channel::Sender<LogMsg>,
 ) -> Result<(), anyhow::Error> {
-    let file_name = &file_contents.file_name;
+    let file_name = &file_contents.name;
     re_tracing::profile_function!(file_name);
     re_log::info!("Loading {file_name:?}…");
 
