@@ -29,8 +29,7 @@ pub use annotations::{
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
 pub use command_sender::{
-    command_channel, CommandReceiver, CommandSender, FileContents, SystemCommand,
-    SystemCommandSender,
+    command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
