@@ -239,7 +239,7 @@ fn recording_config_entry<'cfgs>(
     id: StoreId,
     store_db: &'_ StoreDb,
 ) -> &'cfgs mut RecordingConfig {
-    fn new_recording_confg(store_db: &'_ StoreDb) -> RecordingConfig {
+    fn new_recording_config(store_db: &'_ StoreDb) -> RecordingConfig {
         let play_state = if let Some(data_source) = &store_db.data_source {
             match data_source {
                 // Play files from the start by default - it feels nice and alive.
@@ -268,5 +268,5 @@ fn recording_config_entry<'cfgs>(
 
     configs
         .entry(id)
-        .or_insert_with(|| new_recording_confg(store_db))
+        .or_insert_with(|| new_recording_config(store_db))
 }
