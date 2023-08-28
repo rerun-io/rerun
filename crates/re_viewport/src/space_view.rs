@@ -281,6 +281,9 @@ impl SpaceViewBlueprint {
     ) {
         re_tracing::profile_function!();
 
+        // TODO(andreas): We believe this is *correct* but not necessarily optimal. Pay attention
+        // to the algorithmic complexity here as we consider changing the indexing and
+        // access patterns of these structures in the future.
         let mut per_system_entities = re_viewer_context::PerSystemEntities::new();
         for (system, entities) in entities_per_system_for_class {
             per_system_entities.insert(
