@@ -314,7 +314,8 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = Option<C>> + '_> {
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(C::name());
+
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
@@ -322,8 +323,10 @@ impl<A: Archetype> ArchetypeView<A> {
 
             let mut component_instance_key_iter = component.iter_instance_keys();
 
-            let component_value_iter =
-                C::try_from_arrow_opt(component.values.as_arrow_ref())?.into_iter();
+            let component_value_iter = {
+                re_tracing::profile_scope!("try_from_arrow_opt", C::name());
+                C::try_from_arrow_opt(component.values.as_arrow_ref())?.into_iter()
+            };
 
             let next_component_instance_key = component_instance_key_iter.next();
 

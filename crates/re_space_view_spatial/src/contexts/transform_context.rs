@@ -280,6 +280,8 @@ fn transform_at(
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransformReason> {
+    re_tracing::profile_function!();
+
     let pinhole = store.query_latest_component::<Pinhole>(entity_path, query);
     if pinhole.is_some() {
         if encountered_pinhole.is_some() {
