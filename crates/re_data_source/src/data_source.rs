@@ -147,7 +147,7 @@ impl DataSource {
                     re_smart_channel::SmartChannelSource::File { path: path.clone() },
                 );
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_file_path::load_file_path(store_id, &path, tx)
+                crate::load_file_path::load_file_path(store_id, path.clone(), tx)
                     .with_context(|| format!("{path:?}"))?;
                 Ok(rx)
             }

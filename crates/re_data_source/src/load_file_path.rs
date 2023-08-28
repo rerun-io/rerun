@@ -3,15 +3,19 @@ use anyhow::Context as _;
 use re_log_types::LogMsg;
 use re_smart_channel::Sender;
 
-/// Stream .rrd files, but loads other fiels syncronously (blocking).
+/// Non-blocking.
 #[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
 pub fn load_file_path(
     store_id: re_log_types::StoreId,
-    path: &std::path::Path,
+    path: std::path::PathBuf,
     tx: Sender<LogMsg>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!(path.to_string_lossy());
     re_log::info!("Loading {path:?}…");
+
+    if !path.exists() {
+        anyhow::bail!("Failed to find file {path:?}.");
+    }
 
     let extension = path
         .extension()
@@ -21,33 +25,47 @@ pub fn load_file_path(
         .to_string();
 
     if extension == "rrd" {
-        stream_rrd_file(path.to_owned(), tx)
+        stream_rrd_file(path, tx)
     } else {
         #[cfg(feature = "sdk")]
         {
-            use re_log_types::SetStoreInfo;
-            // First, set a store info since this is the first thing the application expects.
-            tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
-                row_id: re_log_types::RowId::random(),
-                info: re_log_types::StoreInfo {
-                    application_id: re_log_types::ApplicationId(path.display().to_string()),
-                    store_id: store_id.clone(),
-                    is_official_example: false,
-                    started: re_log_types::Time::now(),
-                    store_source: re_log_types::StoreSource::FileFromCli {
-                        rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-                        llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+            rayon::spawn(move || {
+                use re_log_types::SetStoreInfo;
+                // First, set a store info since this is the first thing the application expects.
+                tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
+                    row_id: re_log_types::RowId::random(),
+                    info: re_log_types::StoreInfo {
+                        application_id: re_log_types::ApplicationId(path.display().to_string()),
+                        store_id: store_id.clone(),
+                        is_official_example: false,
+                        started: re_log_types::Time::now(),
+                        store_source: re_log_types::StoreSource::FileFromCli {
+                            rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                            llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+                        },
+                        store_kind: re_log_types::StoreKind::Recording,
                     },
-                    store_kind: re_log_types::StoreKind::Recording,
-                },
-            }))
-            .ok(); // .ok(): we may be running in a background thread, so who knows if the receiver is still open
+                }))
+                .ok(); // .ok(): we may be running in a background thread, so who knows if the receiver is still open
 
-            // Send actual file.
-            tx.send(re_sdk::MsgSender::from_file_path(path)?.into_log_msg(store_id)?)
-                .ok();
+                // Send actual file.
+                match re_sdk::MsgSender::from_file_path(&path) {
+                    Ok(msg_sender) => match msg_sender.into_log_msg(store_id) {
+                        Ok(log_msg) => {
+                            tx.send(log_msg).ok();
+                        }
 
-            tx.quit(None).ok();
+                        Err(err) => {
+                            re_log::error!("Failed to load {path:?}: {err}");
+                        }
+                    },
+                    Err(err) => {
+                        re_log::error!("Failed to load {path:?}: {err}");
+                    }
+                }
+
+                tx.quit(None).ok();
+            });
             Ok(())
         }
 
