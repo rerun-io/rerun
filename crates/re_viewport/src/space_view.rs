@@ -124,13 +124,13 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
         view_state: &mut dyn SpaceViewState,
-        entities_per_system: &EntitiesPerSystem,
+        entities_per_system_for_class: &EntitiesPerSystem,
     ) {
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created.
             let reachable_entities = reachable_entities_from_root(&self.space_origin, spaces_info);
             let queries_entities = reachable_entities.iter().filter(|ent_path| {
-                entities_per_system
+                entities_per_system_for_class
                     .iter()
                     .any(|(_, ents)| ents.contains(ent_path))
             });
@@ -138,7 +138,7 @@ impl SpaceViewBlueprint {
                 .insert_entities_according_to_hierarchy(queries_entities, &self.space_origin);
         }
 
-        self.reset_systems_per_entity_path(entities_per_system);
+        self.reset_systems_per_entity_path(entities_per_system_for_class);
 
         while ScreenshotProcessor::next_readback_result(
             ctx.render_ctx,
@@ -275,11 +275,14 @@ impl SpaceViewBlueprint {
     }
 
     /// Resets the [`SpaceViewContents::per_system_entities`] for all paths that are part of this space view.
-    pub fn reset_systems_per_entity_path(&mut self, entities_per_system: &EntitiesPerSystem) {
+    pub fn reset_systems_per_entity_path(
+        &mut self,
+        entities_per_system_for_class: &EntitiesPerSystem,
+    ) {
         re_tracing::profile_function!();
 
         let mut per_system_entities = re_viewer_context::PerSystemEntities::new();
-        for (system, entities) in entities_per_system {
+        for (system, entities) in entities_per_system_for_class {
             per_system_entities.insert(
                 *system,
                 self.contents

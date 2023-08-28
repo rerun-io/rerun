@@ -163,10 +163,15 @@ impl<'a, 'b> Viewport<'a, 'b> {
             );
 
             let empty_map = IntMap::default();
-            let entities_per_system = entities_per_system_per_class
+            let entities_per_system_for_class = entities_per_system_per_class
                 .get(space_view.class_name())
                 .unwrap_or(&empty_map);
-            space_view.on_frame_start(ctx, spaces_info, space_view_state, entities_per_system);
+            space_view.on_frame_start(
+                ctx,
+                spaces_info,
+                space_view_state,
+                entities_per_system_for_class,
+            );
         }
 
         if self.blueprint.auto_space_views {

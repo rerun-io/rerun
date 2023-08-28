@@ -216,12 +216,13 @@ pub fn default_created_space_views(
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
     for mut candidate in candidates {
         // In order to have per_system_entities correctly computed, we need to reset it first - freshly created ones do not.
-        let Some(entities_per_system) = entities_per_system_per_class.get(candidate.class_name())
+        let Some(entities_per_system_for_class) =
+            entities_per_system_per_class.get(candidate.class_name())
         else {
             // Should never reach this, but if we would there would be no entities in this candidate so skipping makes sense.
             continue;
         };
-        candidate.reset_systems_per_entity_path(entities_per_system);
+        candidate.reset_systems_per_entity_path(entities_per_system_for_class);
         let spawn_heuristic = candidate
             .class(ctx.space_view_class_registry)
             .auto_spawn_heuristic(
