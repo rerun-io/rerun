@@ -1,3 +1,4 @@
+use re_data_source::DataSource;
 use web_time::Instant;
 
 use re_data_store::store_db::StoreDb;
@@ -7,8 +8,8 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
-    DynSpaceViewClass, FileContents, PlayState, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, StoreContext, SystemCommand, SystemCommandSender,
+    DynSpaceViewClass, PlayState, SpaceViewClassRegistry, SpaceViewClassRegistryError,
+    StoreContext, SystemCommand, SystemCommandSender,
 };
 
 use crate::{
@@ -94,7 +95,7 @@ pub struct App {
     rx: ReceiveSet<LogMsg>,
 
     #[cfg(target_arch = "wasm32")]
-    open_file_promise: Option<poll_promise::Promise<Option<FileContents>>>,
+    open_file_promise: Option<poll_promise::Promise<Option<re_data_source::FileContents>>>,
 
     /// What is serialized
     pub(crate) state: AppState,
@@ -307,28 +308,14 @@ impl App {
                 store_hub.remove_recording_id(&recording_id);
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            SystemCommand::LoadRrdPath(path) => {
-                let with_notification = true;
-                if let Some(rrd) = crate::loading::load_file_path(&path, with_notification) {
-                    let store_id = rrd.store_dbs().next().map(|db| db.store_id().clone());
-                    store_hub.add_bundle(rrd);
-                    if let Some(store_id) = store_id {
-                        store_hub.set_recording_id(store_id);
-                    }
+            SystemCommand::LoadDataSource(data_source) => match data_source.stream() {
+                Ok(rx) => {
+                    self.rx.add(rx);
                 }
-            }
-
-            SystemCommand::LoadRrdContents(FileContents { file_name, bytes }) => {
-                let bytes: &[u8] = &bytes;
-                if let Some(rrd) = crate::loading::load_file_contents(&file_name, bytes) {
-                    let store_id = rrd.store_dbs().next().map(|db| db.store_id().clone());
-                    store_hub.add_bundle(rrd);
-                    if let Some(store_id) = store_id {
-                        store_hub.set_recording_id(store_id);
-                    }
+                Err(err) => {
+                    re_log::error!("Failed to open data source: {err}");
                 }
-            }
+            },
 
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
@@ -337,7 +324,7 @@ impl App {
                     match blueprint_db.entity_db.try_add_data_row(&row) {
                         Ok(()) => {}
                         Err(err) => {
-                            re_log::warn_once!("Failed to store blueprint delta: {err}",);
+                            re_log::warn_once!("Failed to store blueprint delta: {err}");
                         }
                     }
                 }
@@ -370,7 +357,9 @@ impl App {
             UICommand::Open => {
                 if let Some(rrd_file) = open_rrd_dialog() {
                     self.command_sender
-                        .send_system(SystemCommand::LoadRrdPath(rrd_file));
+                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                            rrd_file,
+                        )));
                 }
             }
             #[cfg(target_arch = "wasm32")]
@@ -978,7 +967,9 @@ impl eframe::App for App {
             if let Some(contents_opt) = promise.ready() {
                 if let Some(contents) = contents_opt {
                     self.command_sender
-                        .send_system(SystemCommand::LoadRrdContents(contents.clone()));
+                        .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                            contents.clone(),
+                        )));
                 }
                 self.open_file_promise = None;
             }
@@ -1212,7 +1203,7 @@ fn open_rrd_dialog() -> Option<std::path::PathBuf> {
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn async_open_rrd_dialog() -> Option<FileContents> {
+async fn async_open_rrd_dialog() -> Option<re_data_source::FileContents> {
     let res = rfd::AsyncFileDialog::new()
         .add_filter("Rerun data file", &["rrd"])
         .pick_file()
@@ -1227,7 +1218,7 @@ async fn async_open_rrd_dialog() -> Option<FileContents> {
                 "{file_name} was {}",
                 re_format::format_bytes(bytes.len() as _)
             );
-            FileContents {
+            re_data_source::FileContents {
                 file_name,
                 bytes: bytes.into(),
             }

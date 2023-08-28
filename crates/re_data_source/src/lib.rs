@@ -3,6 +3,13 @@ use anyhow::Context as _;
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
+/// The contents of as file
+#[derive(Clone)]
+pub struct FileContents {
+    pub file_name: String,
+    pub bytes: std::sync::Arc<[u8]>,
+}
+
 /// Somewhere we can get Rerun data from.
 #[derive(Clone)]
 pub enum DataSource {
@@ -13,6 +20,11 @@ pub enum DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     FilePath(std::path::PathBuf),
 
+    /// The contents of a file.
+    ///
+    /// This is what you get when loading a file on Web.
+    FileContents(FileContents),
+
     /// A remote Rerun server.
     WebSocketAddr(String),
 }
@@ -22,6 +34,7 @@ impl DataSource {
     ///
     /// Tried to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn from_uri(mut uri: String) -> DataSource {
         use itertools::Itertools as _;
 
@@ -144,6 +157,20 @@ impl DataSource {
                 Ok(rx)
             }
 
+            DataSource::FileContents(file_contents) => {
+                let name = &file_contents.file_name;
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    re_smart_channel::SmartMessageSource::File(name.clone().into()),
+                    re_smart_channel::SmartChannelSource::File {
+                        path: name.clone().into(),
+                    },
+                );
+                let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                load_file_contents_to_channel_at(store_id, &file_contents, tx)
+                    .with_context(|| format!("{name:?}"))?;
+                Ok(rx)
+            }
+
             DataSource::WebSocketAddr(rerun_server_ws_url) => {
                 connect_to_ws_url(&rerun_server_ws_url)
             }
@@ -179,9 +206,7 @@ fn load_file_to_channel_at(
             tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: re_log_types::RowId::random(),
                 info: re_log_types::StoreInfo {
-                    application_id: re_log_types::ApplicationId(
-                        path.to_str().unwrap_or("file").to_owned(),
-                    ),
+                    application_id: re_log_types::ApplicationId(path.display().to_string()),
                     store_id: store_id.clone(),
                     is_official_example: false,
                     started: re_log_types::Time::now(),
@@ -210,7 +235,33 @@ fn load_file_to_channel_at(
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
+fn load_file_contents_to_channel_at(
+    _store_id: re_log_types::StoreId,
+    file_contents: &FileContents,
+    tx: re_smart_channel::Sender<LogMsg>,
+) -> Result<(), anyhow::Error> {
+    let file_name = &file_contents.file_name;
+    re_tracing::profile_function!(file_name);
+    re_log::info!("Loading {file_name:?}…");
+
+    if file_name.ends_with(".rrd") {
+        // TODO: background thread on native
+        let bytes: &[u8] = &file_contents.bytes;
+        let decoder = re_log_encoding::decoder::Decoder::new(bytes)?;
+        for msg in decoder {
+            tx.send(msg?)?;
+        }
+        re_log::debug!("Finished loading {file_name:?}.");
+        Ok(())
+    } else {
+        // TODO: support images and meshes
+        anyhow::bail!("Unsupported file extension for {file_name:?}.");
+    }
+}
+
 // Non-blocking
+#[cfg(not(target_arch = "wasm32"))]
 fn stream_rrd_file(
     path: std::path::PathBuf,
     tx: re_smart_channel::Sender<LogMsg>,
@@ -268,6 +319,7 @@ fn connect_to_ws_url(url: &str) -> anyhow::Result<Receiver<LogMsg>> {
     Ok(rx)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn test_data_source_from_uri() {
     let file = [

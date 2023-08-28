@@ -92,14 +92,15 @@ impl WebHandle {
                                 }),
                             );
 
-                            Box::new(crate::App::from_receiver(
+                            let mut app = crate::App::new(
                                 build_info,
                                 &app_env,
                                 startup_options,
                                 re_ui,
                                 cc.storage,
-                                rx,
-                            ))
+                            );
+                            app.add_receiver(rx);
+                            Box::new(app)
                         }
                         EndpointCategory::WebEventListener => {
                             // Process an rrd when it's posted via `window.postMessage`
@@ -128,14 +129,15 @@ impl WebHandle {
                                 }),
                             );
 
-                            Box::new(crate::App::from_receiver(
+                            let mut app = crate::App::new(
                                 build_info,
                                 &app_env,
                                 startup_options,
                                 re_ui,
                                 cc.storage,
-                                rx,
-                            ))
+                            );
+                            app.add_receiver(rx);
+                            Box::new(app)
                         }
                         EndpointCategory::WebSocket(url) => {
                             // Connect to a Rerun server over WebSockets.
