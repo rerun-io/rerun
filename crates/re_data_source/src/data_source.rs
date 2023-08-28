@@ -1,7 +1,7 @@
 use anyhow::Context as _;
 
 use re_log_types::LogMsg;
-use re_smart_channel::{Receiver, SmartMessageSource, SmartChannelSource};
+use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
 
