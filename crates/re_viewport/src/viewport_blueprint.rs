@@ -7,7 +7,8 @@ use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{DataCell, DataRow, RowId, TimePoint};
 use re_types::Loggable as _;
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewId, SystemCommand, SystemCommandSender, ViewerContext,
+    CommandSender, Item, SpaceViewClassName, SpaceViewId, SystemCommand, SystemCommandSender,
+    ViewerContext,
 };
 
 use crate::{
@@ -46,6 +47,14 @@ pub struct ViewportBlueprint<'a> {
 }
 
 impl<'a> ViewportBlueprint<'a> {
+    pub fn is_invalid(&self) -> bool {
+        !self.space_views.is_empty()
+            && self
+                .space_views
+                .values()
+                .all(|sv| sv.class_name() == &SpaceViewClassName::invalid())
+    }
+
     /// Reset the blueprint to a default state using some heuristics.
     pub fn reset(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
         re_tracing::profile_function!();
@@ -61,9 +70,9 @@ impl<'a> ViewportBlueprint<'a> {
 
         *space_views = Default::default();
         *tree = Default::default();
-        *maximized = Default::default();
-        *has_been_user_edited = Default::default();
-        *auto_space_views = Default::default();
+        *maximized = None;
+        *has_been_user_edited = false;
+        *auto_space_views = true;
 
         for space_view in default_created_space_views(ctx, spaces_info) {
             self.add_space_view(space_view);
