@@ -65,6 +65,23 @@ def _add_extension_components(
             instanced[name] = pa_value  # noqa
 
 
+def _add_marker_component(
+    arch_name: str,
+    num_instances: int,
+    instanced: dict[str, pa.ExtensionArray],
+) -> None:
+    marker_name = f"rerun.components.{arch_name}Marker"
+
+    class MarkerComponentType(pa.ExtensionType):  # type: ignore[misc]
+        def __init__(self) -> None:
+            pa.ExtensionType.__init__(self, pa.null(), marker_name)
+
+        def __arrow_ext_serialize__(self) -> bytes:
+            return b""
+
+    instanced[marker_name] = pa.nulls(num_instances, type=MarkerComponentType()).storage
+
+
 def _extract_components(entity: Archetype) -> Iterable[tuple[NamedExtensionArray, bool]]:
     """Extract the components from an entity, yielding (component, is_primary) tuples."""
     for fld in fields(type(entity)):
@@ -138,12 +155,12 @@ def log(
     splats: dict[str, NamedExtensionArray] = {}
 
     # find canonical length of this entity by based on the longest length of any primary component
-    archetype_length = max(len(comp) for comp, primary in _extract_components(archetype) if primary)
+    num_instances = max(len(comp) for comp, primary in _extract_components(archetype) if primary)
 
     for comp, primary in _extract_components(archetype):
         if primary:
             instanced[comp.extension_name] = comp.storage
-        elif len(comp) == 1 and archetype_length > 1:
+        elif len(comp) == 1 and num_instances > 1:
             splats[comp.extension_name] = comp.storage
         elif len(comp) >= 1:
             instanced[comp.extension_name] = comp.storage
@@ -156,6 +173,8 @@ def log(
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)
+
+    _add_marker_component(type(entity).__name__, num_instances, instanced)
 
     if splats:
         splats["rerun.instance_key"] = _splat()
