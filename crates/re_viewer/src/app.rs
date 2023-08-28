@@ -95,7 +95,7 @@ pub struct App {
     rx: ReceiveSet<LogMsg>,
 
     #[cfg(target_arch = "wasm32")]
-    open_file_promise: Option<poll_promise::Promise<Option<re_data_source::FileContents>>>,
+    open_files_promise: Option<poll_promise::Promise<Vec<re_data_source::FileContents>>>,
 
     /// What is serialized
     pub(crate) state: AppState,
@@ -205,7 +205,7 @@ impl App {
             component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx: Default::default(),
             #[cfg(target_arch = "wasm32")]
-            open_file_promise: Default::default(),
+            open_files_promise: Default::default(),
             state,
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::new()),
@@ -378,7 +378,7 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
                 let egui_ctx = _egui_ctx.clone();
-                self.open_file_promise = Some(poll_promise::Promise::spawn_local(async move {
+                self.open_files_promise = Some(poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
                     file
@@ -958,15 +958,15 @@ impl eframe::App for App {
         }
 
         #[cfg(target_arch = "wasm32")]
-        if let Some(promise) = &self.open_file_promise {
-            if let Some(contents_opt) = promise.ready() {
-                if let Some(contents) = contents_opt {
+        if let Some(promise) = &self.open_files_promise {
+            if let Some(files) = promise.ready() {
+                for file in files {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
-                            contents.clone(),
+                            file.clone(),
                         )));
                 }
-                self.open_file_promise = None;
+                self.open_files_promise = None;
             }
         }
 
@@ -1202,28 +1202,30 @@ fn open_file_dialog_native() -> Vec<std::path::PathBuf> {
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn async_open_rrd_dialog() -> Option<re_data_source::FileContents> {
-    let res = rfd::AsyncFileDialog::new()
+async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
+    let files = rfd::AsyncFileDialog::new()
         .add_filter("Rerun data file", &["rrd"])
-        .pick_file()
-        .await;
+        .pick_files()
+        .await
+        .unwrap_or_default();
 
-    match res {
-        Some(file) => Some({
-            let file_name = file.file_name();
-            re_log::debug!("Reading {file_name}…");
-            let bytes = file.read().await;
-            re_log::debug!(
-                "{file_name} was {}",
-                re_format::format_bytes(bytes.len() as _)
-            );
-            re_data_source::FileContents {
-                name: file_name,
-                bytes: bytes.into(),
-            }
-        }),
-        None => None,
+    let mut file_contents = Vec::with_capacity(files.len());
+
+    for file in files {
+        let file_name = file.file_name();
+        re_log::debug!("Reading {file_name}…");
+        let bytes = file.read().await;
+        re_log::debug!(
+            "{file_name} was {}",
+            re_format::format_bytes(bytes.len() as _)
+        );
+        file_contents.push(re_data_source::FileContents {
+            name: file_name,
+            bytes: bytes.into(),
+        });
     }
+
+    file_contents
 }
 
 #[cfg(not(target_arch = "wasm32"))]
