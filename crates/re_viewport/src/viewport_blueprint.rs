@@ -47,6 +47,15 @@ pub struct ViewportBlueprint<'a> {
 }
 
 impl<'a> ViewportBlueprint<'a> {
+    /// Determine whether all views in a blueprint are invalid.
+    ///
+    /// This most commonly happens due to a change in struct definition that
+    /// breaks the definition of a serde-field, which means all views will
+    /// become invalid.
+    ///
+    /// Note: the invalid check is used to potentially reset the blueprint, so we
+    /// take the conservative stance that if any view is still usable we will still
+    /// treat the blueprint as valid and show it.
     pub fn is_invalid(&self) -> bool {
         !self.space_views.is_empty()
             && self
