@@ -56,9 +56,11 @@ impl DataSource {
 
             let parts = uri.split('.').collect_vec();
             if parts.len() <= 1 {
-                true // Only one part. Weird. Let's assume it is a file path.
+                true // No dots. Weird. Let's assume it is a file path.
             } else if parts.len() == 2 {
+                // Extension or `.com` etc?
                 let extension = parts[1];
+
                 matches!(
                     extension,
                     // Our own:

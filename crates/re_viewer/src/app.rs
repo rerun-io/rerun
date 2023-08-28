@@ -368,10 +368,10 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => {
-                if let Some(rrd_file) = open_rrd_dialog() {
+                for file_path in open_file_dialog_native() {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
-                            rrd_file,
+                            file_path,
                         )));
                 }
             }
@@ -1191,10 +1191,13 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn open_rrd_dialog() -> Option<std::path::PathBuf> {
+fn open_file_dialog_native() -> Vec<std::path::PathBuf> {
     rfd::FileDialog::new()
         .add_filter("Rerun data file", &["rrd"])
-        .pick_file()
+        .add_filter("Meshes", re_data_source::SUPPORTED_MESH_EXTENSIONS)
+        .add_filter("Images", re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
+        .pick_files()
+        .unwrap_or_default()
 }
 
 #[cfg(target_arch = "wasm32")]

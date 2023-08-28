@@ -16,3 +16,11 @@ pub struct FileContents {
 
     pub bytes: std::sync::Arc<[u8]>,
 }
+
+pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj"];
+
+// …given that all feature flags are turned on for the `image` crate.
+pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
+    "avif", "bmp", "dds", "exr", "farbfeld", "ff", "gif", "hdr", "ico", "jpeg", "jpg", "pam",
+    "pbm", "pgm", "png", "ppm", "tga", "tif", "tiff", "webp",
+];
