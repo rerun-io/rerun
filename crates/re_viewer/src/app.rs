@@ -17,7 +17,7 @@ use crate::{
     background_tasks::BackgroundTasks,
     store_hub::{StoreHub, StoreHubStats},
     viewer_analytics::ViewerAnalytics,
-    AppState, StoreBundle,
+    AppState,
 };
 
 // ----------------------------------------------------------------------------
@@ -814,29 +814,7 @@ impl App {
             .and_then(|store_hub| store_hub.current_recording())
     }
 
-    fn on_rrd_loaded(&mut self, store_hub: &mut StoreHub, loaded_store_bundle: StoreBundle) {
-        let mut new_rec_id = None;
-        if let Some(store_db) = loaded_store_bundle.recordings().next() {
-            new_rec_id = Some(store_db.store_id().clone());
-            self.analytics.on_open_recording(store_db);
-        }
-
-        for blueprint_db in loaded_store_bundle.blueprints() {
-            if let Some(app_id) = blueprint_db.app_id() {
-                store_hub.set_blueprint_for_app_id(blueprint_db.store_id().clone(), app_id.clone());
-            }
-        }
-
-        store_hub.add_bundle(loaded_store_bundle);
-
-        // Set recording-id after adding to the store so that app-id, etc.
-        // is available internally.
-        if let Some(rec_id) = new_rec_id {
-            store_hub.set_recording_id(rec_id);
-        }
-    }
-
-    fn handle_dropping_files(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+    fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
         preview_files_being_dropped(egui_ctx);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
@@ -1068,7 +1046,7 @@ impl eframe::App for App {
 
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
-        self.handle_dropping_files(&mut store_hub, egui_ctx);
+        self.handle_dropping_files(egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
@@ -1223,7 +1201,7 @@ async fn async_open_rrd_dialog() -> Option<re_data_source::FileContents> {
                 re_format::format_bytes(bytes.len() as _)
             );
             re_data_source::FileContents {
-                file_name,
+                name: file_name,
                 bytes: bytes.into(),
             }
         }),

@@ -1,5 +1,6 @@
 use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
+
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
@@ -77,11 +78,6 @@ impl StoreHub {
             #[cfg(not(target_arch = "wasm32"))]
             blueprint_last_save: Default::default(),
         }
-    }
-
-    /// Add a [`StoreBundle`] to the [`StoreHub`]
-    pub fn add_bundle(&mut self, bundle: StoreBundle) {
-        self.store_dbs.append(bundle);
     }
 
     /// Get a read-only [`StoreContext`] from the [`StoreHub`] if one is available.

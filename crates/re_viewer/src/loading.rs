@@ -1,8 +1,11 @@
-use crate::StoreBundle;
-
 #[cfg(not(target_arch = "wasm32"))]
 #[must_use]
-pub fn load_file_path(path: &std::path::Path, with_notifications: bool) -> Option<StoreBundle> {
+pub fn load_file_path(
+    path: &std::path::Path,
+    with_notifications: bool,
+) -> Option<crate::StoreBundle> {
+    use crate::StoreBundle;
+
     fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<StoreBundle> {
         re_tracing::profile_function!();
         use anyhow::Context as _;
