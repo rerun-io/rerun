@@ -47,6 +47,8 @@ impl Annotations {
         &self,
         class_id: Option<re_types::components::ClassId>,
     ) -> ResolvedClassDescription<'_> {
+        re_tracing::profile_function!();
+
         let found = class_id.and_then(|class_id| self.class_map.get(&class_id.0));
         ResolvedClassDescription {
             class_id: class_id.map(|id| id.0),
@@ -81,7 +83,7 @@ impl From<ClassDescription> for CachedClassDescription {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct ResolvedClassDescription<'a> {
     pub class_id: Option<ClassId>,
     pub class_description: Option<&'a ClassDescription>,
@@ -129,6 +131,8 @@ impl<'a> ResolvedClassDescription<'a> {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 #[derive(Clone, Default)]
 pub struct ResolvedAnnotationInfo {
     pub class_id: Option<ClassId>,
@@ -172,6 +176,30 @@ impl ResolvedAnnotationInfo {
         }
     }
 }
+
+// ----------------------------------------------------------------------------
+
+/// Many [`ResolvedAnnotationInfo`], with optimization
+/// for a common case where they are all the same.
+pub enum ResolvedAnnotationInfos {
+    /// All the same
+    Same(usize, ResolvedAnnotationInfo),
+
+    /// All different
+    Many(Vec<ResolvedAnnotationInfo>),
+}
+
+impl ResolvedAnnotationInfos {
+    pub fn iter(&self) -> impl Iterator<Item = &ResolvedAnnotationInfo> {
+        use itertools::Either;
+        match self {
+            Self::Same(n, info) => Either::Left(std::iter::repeat(info).take(*n)),
+            Self::Many(infos) => Either::Right(infos.iter()),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 #[derive(Default, Clone, Debug)]
 pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);

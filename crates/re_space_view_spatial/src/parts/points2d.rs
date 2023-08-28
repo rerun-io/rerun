@@ -6,7 +6,7 @@ use re_types::{
     Archetype,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -41,7 +41,7 @@ impl Points2DPart {
         arch_view: &'a ArchetypeView<Points2D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
-        annotation_infos: &'a [ResolvedAnnotationInfo],
+        annotation_infos: &'a ResolvedAnnotationInfos,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
@@ -167,7 +167,7 @@ impl Points2DPart {
             }
         };
 
-        load_keypoint_connections(ent_context, ent_path, keypoints);
+        load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         self.data.extend_bounding_box_with_points(
             arch_view
