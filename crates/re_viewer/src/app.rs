@@ -314,13 +314,17 @@ impl App {
 
             SystemCommand::LoadDataSource(data_source) => {
                 let egui_ctx = self.re_ui.egui_ctx.clone();
-                let wake_up_ui_on_msg = Box::new(move || {
+
+                // On native, `add_receiver` spawns a thread that wakes up the ui thread
+                // on any new message. On we we cannot spawn threads, so instead we need
+                // to supply a waker that is called when new messages arrive in background tasks
+                let waker = Box::new(move || {
                     // Spend a few more milliseconds decoding incoming messages,
                     // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
                     egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
                 });
 
-                match data_source.stream(Some(wake_up_ui_on_msg)) {
+                match data_source.stream(Some(waker)) {
                     Ok(rx) => {
                         self.add_receiver(rx);
                     }
