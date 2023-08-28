@@ -79,7 +79,7 @@ pub enum SmartMessageSource {
     Unknown,
 
     /// The sender is a background thread reading data from a file on disk.
-    File(std::path::PathBuf),
+    File { path: std::path::PathBuf },
 
     /// The sender is a background thread fetching data from an HTTP file server.
     RrdHttpStream { url: String },
@@ -112,7 +112,7 @@ impl std::fmt::Display for SmartMessageSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&match self {
             SmartMessageSource::Unknown => "unknown".into(),
-            SmartMessageSource::File(path) => format!("file://{}", path.to_string_lossy()),
+            SmartMessageSource::File { path } => format!("file://{}", path.to_string_lossy()),
             SmartMessageSource::RrdHttpStream { url } => format!("http://{url}"),
             SmartMessageSource::RrdWebEventCallback => "web_callback".into(),
             SmartMessageSource::Sdk => "sdk".into(),

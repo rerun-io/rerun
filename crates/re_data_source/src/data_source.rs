@@ -148,7 +148,7 @@ impl DataSource {
             #[cfg(not(target_arch = "wasm32"))]
             DataSource::FilePath(path) => {
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::File(path.clone()),
+                    re_smart_channel::SmartMessageSource::File { path: path.clone() },
                     re_smart_channel::SmartChannelSource::File { path: path.clone() },
                 );
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
@@ -160,7 +160,9 @@ impl DataSource {
             DataSource::FileContents(file_contents) => {
                 let name = file_contents.name.clone();
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::File(name.clone().into()),
+                    re_smart_channel::SmartMessageSource::File {
+                        path: name.clone().into(),
+                    },
                     re_smart_channel::SmartChannelSource::File {
                         path: name.clone().into(),
                     },
