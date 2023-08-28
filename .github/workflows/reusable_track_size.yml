@@ -13,7 +13,6 @@ on:
       PR_NUMBER:
         required: false
         type: number
-        default: ""
 
 permissions:
   contents: write
