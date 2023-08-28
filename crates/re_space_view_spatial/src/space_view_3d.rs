@@ -54,26 +54,34 @@ impl SpaceViewClass for SpatialSpaceView3D {
         space_origin: &EntityPath,
         per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
-        // If there's a camera at a non-root path, always spawn as 3D view.
-        if per_system_entities
-            .get(&CamerasPart::name())
-            .map_or(false, |c| {
-                if c.contains(space_origin) {
-                    c.len() > 1 // Need another camera!
-                } else {
-                    !c.is_empty()
-                }
-            })
-        {
-            AutoSpawnHeuristic::AlwaysSpawn
+        let score = auto_spawn_heuristic(
+            &self.name(),
+            ctx,
+            per_system_entities,
+            SpatialSpaceViewKind::ThreeD,
+        );
+
+        if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(mut score) = score {
+            // If there's a camera at a non-root path, make 3D view higher priority.
+            if per_system_entities
+                .get(&CamerasPart::name())
+                .map_or(false, |c| {
+                    if c.contains(space_origin) {
+                        c.len() > 1 // Need another camera!
+                    } else {
+                        !c.is_empty()
+                    }
+                })
+            {
+                // TODO(andreas): It would be nice to just return `AutoSpawnHeuristic::AlwaysSpawn` here
+                // but AlwaysSpawn does not prevent other `SpawnClassWithHighestScoreForRoot` instances
+                // from being added to the view.
+                score += 100.0;
+            }
+
+            AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)
         } else {
-            // Otherwise, fall back on the generic spatial heuristic
-            auto_spawn_heuristic(
-                &self.name(),
-                ctx,
-                per_system_entities,
-                SpatialSpaceViewKind::ThreeD,
-            )
+            score
         }
     }
 
