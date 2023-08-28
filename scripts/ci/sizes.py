@@ -119,13 +119,7 @@ def compare(previous_path: str, current_path: str, threshold: float, before_head
             unit = get_unit(min(previous, current))
             div = get_divisor(unit)
 
-            change = abs(((current - previous) / previous) * 100)
-            if current < previous:
-                sign = "-"
-            elif current > previous:
-                sign = "+"
-            else:
-                sign = ""
+            change = ((current - previous) / previous) * 100
 
             min_change = previous * (threshold / 100)
             if abs(current - previous) >= min_change:
@@ -134,7 +128,7 @@ def compare(previous_path: str, current_path: str, threshold: float, before_head
                         name,
                         f"{cell(previous, div)} {unit}",
                         f"{cell(current, div)} {unit}",
-                        f"{sign}{change:.2f}%",
+                        f"{change:+.2f}%",
                     )
                 )
         elif "current" in entry:
