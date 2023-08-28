@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_env = re_viewer::AppEnvironment::Custom("My extended Rerun Viewer".to_owned());
 
     println!(
-        "This example starts a custom Rerun Viewer that is ready to accept data... you have to give it some!"
+        "This example starts a custom Rerun Viewer that is ready to accept data… you have to give it some!"
     );
     println!("Try for example to run: `cargo run -p minimal_options -- --connect` in another terminal instance.");
 
