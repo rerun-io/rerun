@@ -27,11 +27,11 @@ impl Connection {
                 WsEvent::Message(message) => match message {
                     WsMessage::Binary(binary) => on_binary_msg(binary),
                     WsMessage::Text(text) => {
-                        re_log::warn!("Unexpected text message: {:?}", text);
+                        re_log::warn!("Unexpected text message: {text:?}");
                         ControlFlow::Continue(())
                     }
                     WsMessage::Unknown(text) => {
-                        re_log::warn!("Unknown message: {:?}", text);
+                        re_log::warn!("Unknown message: {text:?}");
                         ControlFlow::Continue(())
                     }
                     WsMessage::Ping(_data) => {
@@ -44,7 +44,7 @@ impl Connection {
                     }
                 },
                 WsEvent::Error(error) => {
-                    re_log::error!("Connection error: {}", error);
+                    re_log::error!("Connection error: {error}");
                     ControlFlow::Break(())
                 }
                 WsEvent::Closed => {

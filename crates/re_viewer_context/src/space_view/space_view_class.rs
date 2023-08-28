@@ -222,7 +222,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
                 match part.execute(ctx, query, &view_ctx) {
                     Ok(part_draw_data) => draw_data.extend(part_draw_data),
                     Err(err) => {
-                        re_log::error_once!("Error executing view part system: {}", err);
+                        re_log::error_once!("Error executing view part system: {err}");
                     }
                 }
             }
@@ -231,7 +231,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         typed_state_wrapper_mut(state, |state| {
             if let Err(err) = self.ui(ctx, ui, state, &view_ctx, &parts, query, draw_data) {
                 // TODO(andreas): Draw an error message on top of the space view ui instead of logging.
-                re_log::error_once!("Error drawing ui for space view: {}", err);
+                re_log::error_once!("Error drawing ui for space view: {err}");
             }
         });
     }
