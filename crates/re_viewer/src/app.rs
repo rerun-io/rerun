@@ -494,9 +494,13 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         command: TimeControlCommand,
     ) {
-        let Some(store_db) = store_context.as_ref().and_then(|ctx| ctx.recording) else { return; };
+        let Some(store_db) = store_context.as_ref().and_then(|ctx| ctx.recording) else {
+            return;
+        };
         let rec_id = store_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else { return; };
+        let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else {
+            return;
+        };
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
         let times_per_timeline = store_db.times_per_timeline();
@@ -1222,10 +1226,10 @@ fn save(
     use crate::saving::save_database_to_file;
 
     let Some(store_db) = store_context.as_ref().and_then(|view| view.recording) else {
-            // NOTE: Can only happen if saving through the command palette.
-            re_log::error!("No data to save!");
-            return;
-        };
+        // NOTE: Can only happen if saving through the command palette.
+        re_log::error!("No data to save!");
+        return;
+    };
 
     let title = if loop_selection.is_some() {
         "Save loop selection"

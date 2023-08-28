@@ -20,13 +20,15 @@ pub fn quote_arrow_serializer(
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
 
-    let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
+    let DataType::Extension(fqname, _, _) = datatype else {
+        unreachable!()
+    };
     let fqname_use = quote_fqname_as_type_path(fqname);
     let quoted_datatype = quote! {
         (if let Some(ext) = extension_wrapper {
-            DataType::Extension(ext.to_owned(), Box::new(<#fqname_use>::to_arrow_datatype()), None)
+            DataType::Extension(ext.to_owned(), Box::new(<#fqname_use>::arrow_datatype()), None)
         } else {
-            <#fqname_use>::to_arrow_datatype()
+            <#fqname_use>::arrow_datatype()
         })
         // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
         .to_logical_type().clone()
@@ -78,7 +80,7 @@ pub fn quote_arrow_serializer(
         };
 
         let datatype = &arrow_registry.get(&obj_field.fqname);
-        let quoted_datatype = quote! { Self::to_arrow_datatype() };
+        let quoted_datatype = quote! { Self::arrow_datatype() };
 
         let quoted_serializer = quote_arrow_field_serializer(
             objects,
@@ -683,7 +685,9 @@ fn quote_arrow_field_serializer(
 
         DataType::Struct(_) | DataType::Union(_, _, _) => {
             // NOTE: We always wrap objects with full extension metadata.
-            let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
+            let DataType::Extension(fqname, _, _) = datatype else {
+                unreachable!()
+            };
             let fqname_use = quote_fqname_as_type_path(fqname);
             let quoted_extension_wrapper =
                 extension_wrapper.map_or_else(|| quote!(None::<&str>), |ext| quote!(Some(#ext)));

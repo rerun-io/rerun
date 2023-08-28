@@ -85,11 +85,7 @@ fn implicit_primary_joined_iter() {
         (&color_ids, &colors),
     );
 
-    let expected_colors = vec![
-        None, //
-        Some(Color::from(1)),
-        Some(Color::from(2)),
-    ];
+    let expected_colors = [None, Some(Color::from(1)), Some(Color::from(2))];
 
     let results = itertools::izip!(
         expected_colors.iter(),
@@ -130,7 +126,7 @@ fn implicit_component_joined_iter() {
         (&color_ids, &colors),
     );
 
-    let expected_colors = vec![
+    let expected_colors = [
         Some(Color::from(0)), //
         Some(Color::from(2)),
         Some(Color::from(4)),
@@ -183,7 +179,7 @@ fn complex_joined_iter() {
         (&color_ids, &colors),
     );
 
-    let expected_colors = vec![
+    let expected_colors = [
         None,
         Some(Color::from(17)), //
         None,

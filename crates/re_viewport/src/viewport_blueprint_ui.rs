@@ -49,7 +49,9 @@ impl ViewportBlueprint<'_> {
         tile_id: egui_tiles::TileId,
     ) -> TreeAction {
         // Temporarily remove the tile so we don't get borrow checker fights:
-        let Some(mut tile) = self.tree.tiles.remove(tile_id) else { return TreeAction::Remove; };
+        let Some(mut tile) = self.tree.tiles.remove(tile_id) else {
+            return TreeAction::Remove;
+        };
 
         let action = match &mut tile {
             egui_tiles::Tile::Container(container) => {
@@ -139,9 +141,9 @@ impl ViewportBlueprint<'_> {
         space_view_id: &SpaceViewId,
     ) -> TreeAction {
         let Some(space_view) = self.space_views.get_mut(space_view_id) else {
-                re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
-                return TreeAction::Remove;
-            };
+            re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
+            return TreeAction::Remove;
+        };
         debug_assert_eq!(space_view.id, *space_view_id);
 
         let mut visibility_changed = false;
@@ -215,9 +217,9 @@ impl ViewportBlueprint<'_> {
         space_view_visible: bool,
     ) {
         let Some(group) = space_view.contents.group(group_handle) else {
-                debug_assert!(false, "Invalid group handle in blueprint group tree");
-                return;
-            };
+            debug_assert!(false, "Invalid group handle in blueprint group tree");
+            return;
+        };
 
         // TODO(andreas): These clones are workarounds against borrowing multiple times from space_view_blueprint_ui.
         let children = group.children.clone();
@@ -286,9 +288,12 @@ impl ViewportBlueprint<'_> {
 
         for child_group_handle in &children {
             let Some(child_group) = space_view.contents.group_mut(*child_group_handle) else {
-                    debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
-                    continue;
-                };
+                debug_assert!(
+                    false,
+                    "Data blueprint group {group_name} has an invalid child"
+                );
+                continue;
+            };
 
             let is_selected = ctx.selection().contains(&Item::DataBlueprintGroup(
                 space_view.id,

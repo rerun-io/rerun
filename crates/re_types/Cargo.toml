@@ -41,6 +41,8 @@ testing = []
 [dependencies]
 # Rerun
 re_error.workspace = true
+re_string_interner.workspace = true
+re_tracing.workspace = true
 
 # External
 anyhow.workspace = true
@@ -66,8 +68,6 @@ glam = { workspace = true, optional = true }
 macaw = { workspace = true, optional = true }
 serde = { version = "1", optional = true, features = ["derive", "rc"] }
 
-# Rerun
-re_string_interner.workspace = true
 
 [dev-dependencies]
 

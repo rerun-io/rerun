@@ -22,6 +22,7 @@ impl ViewContextSystem for AnnotationSceneContext {
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
+        re_tracing::profile_function!();
         // We create a list of *all* entities here, do not only iterate over those with annotation context.
         // TODO(andreas): But knowing ahead of time where we have annotation contexts could be used for optimization.
         self.0

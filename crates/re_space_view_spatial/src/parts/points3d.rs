@@ -6,9 +6,11 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
+
+use itertools::Itertools as _;
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
@@ -41,9 +43,10 @@ impl Points3DPart {
         arch_view: &'a ArchetypeView<Points3D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
-        annotation_infos: &'a [ResolvedAnnotationInfo],
+        annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
+        re_tracing::profile_function!();
         let labels = itertools::izip!(
             annotation_infos.iter(),
             arch_view.iter_required_component::<Point3D>()?,
@@ -90,6 +93,8 @@ impl Points3DPart {
         let radii = process_radii(arch_view, ent_path)?;
 
         if arch_view.num_instances() <= self.max_labels {
+            re_tracing::profile_scope!("labels");
+
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
                 process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
@@ -119,23 +124,34 @@ impl Points3DPart {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-            let point_positions = {
-                re_tracing::profile_scope!("collect_points");
-                arch_view
-                    .iter_required_component::<Point3D>()?
-                    .map(glam::Vec3::from)
-            };
-
-            let picking_instance_ids = arch_view
-                .iter_instance_keys()
-                .map(picking_id_from_instance_key);
-            let mut point_range_builder = point_batch.add_points(
-                arch_view.num_instances(),
-                point_positions,
-                radii,
-                colors,
-                picking_instance_ids,
+            let (positions, radii, colors, picking_instance_ids) = join4(
+                || {
+                    re_tracing::profile_scope!("positions");
+                    arch_view
+                        .iter_required_component::<Point3D>()
+                        .map(|p| p.map(glam::Vec3::from).collect_vec())
+                },
+                || {
+                    re_tracing::profile_scope!("radii");
+                    radii.collect_vec()
+                },
+                || {
+                    re_tracing::profile_scope!("colors");
+                    colors.collect_vec()
+                },
+                || {
+                    re_tracing::profile_scope!("picking_ids");
+                    arch_view
+                        .iter_instance_keys()
+                        .map(picking_id_from_instance_key)
+                        .collect_vec()
+                },
             );
+
+            let positions = positions?;
+
+            let mut point_range_builder =
+                point_batch.add_points(&positions, &radii, &colors, &picking_instance_ids);
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
@@ -154,16 +170,14 @@ impl Points3DPart {
                     }
                 }
             }
+
+            self.data.extend_bounding_box_with_points(
+                positions.iter().copied(),
+                ent_context.world_from_obj,
+            );
         }
 
-        load_keypoint_connections(ent_context, ent_path, keypoints);
-
-        self.data.extend_bounding_box_with_points(
-            arch_view
-                .iter_required_component::<Point3D>()?
-                .map(glam::Vec3::from),
-            ent_context.world_from_obj,
-        );
+        load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         Ok(())
     }
@@ -205,5 +219,25 @@ impl ViewPartSystem for Points3DPart {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+/// Run 4 things in parallel
+fn join4<A: Send, B: Send, C: Send, D: Send>(
+    a: impl FnOnce() -> A + Send,
+    b: impl FnOnce() -> B + Send,
+    c: impl FnOnce() -> C + Send,
+    d: impl FnOnce() -> D + Send,
+) -> (A, B, C, D) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        re_tracing::profile_function!();
+        let ((a, b), (c, d)) = rayon::join(|| rayon::join(a, b), || rayon::join(c, d));
+        (a, b, c, d)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        (a(), b(), c(), d())
     }
 }

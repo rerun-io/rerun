@@ -133,7 +133,7 @@ impl<T: Clone> std::ops::DerefMut for MetadataRegistry<T> {
     }
 }
 
-/// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, ...) so that they
+/// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, …) so that they
 /// can be properly deduplicated on insertion.
 #[derive(Debug, Default, Clone)]
 pub struct ClusterCellCache(pub IntMap<u32, DataCell>);
@@ -200,7 +200,7 @@ pub struct DataStore {
     /// Only used to map `RowId`s to their original [`TimePoint`]s at the moment.
     pub(crate) metadata_registry: MetadataRegistry<TimePoint>,
 
-    /// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, ...)
+    /// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, …)
     /// so that they can be properly deduplicated on insertion.
     pub(crate) cluster_cell_cache: ClusterCellCache,
 
@@ -409,7 +409,7 @@ pub struct IndexedTable {
     /// buckets, in bytes.
     ///
     /// This is a best-effort approximation, adequate for most purposes (stats,
-    /// triggering GCs, ...).
+    /// triggering GCs, …).
     pub buckets_size_bytes: u64,
 }
 
@@ -506,7 +506,7 @@ pub struct IndexedBucketInner {
     /// included, in bytes.
     ///
     /// This is a best-effort approximation, adequate for most purposes (stats,
-    /// triggering GCs, ...).
+    /// triggering GCs, …).
     ///
     /// We cache this because there can be many, many buckets.
     pub size_bytes: u64,

@@ -14,7 +14,7 @@
 //! [people](https://gamedev.net/forums/topic/702292-performance-fastest-quad-drawing/5406023/)
 //! [point](https://www.reddit.com/r/vulkan/comments/le74sr/why_gpu_instancing_is_slow_for_small_meshes/)
 //! [out](https://www.reddit.com/r/vulkan/comments/47kfve/instanced_rendering_performance/)
-//! [...](https://www.reddit.com/r/opengl/comments/q7yikr/how_to_draw_several_quads_through_instancing/).
+//! […](https://www.reddit.com/r/opengl/comments/q7yikr/how_to_draw_several_quads_through_instancing/).
 //!
 //! Instead, we use a single (un-instanced) triangle list draw call and use the vertex id to orient ourselves in the vertex shader
 //! (e.g. the index of the current quad is `vertex_idx / 6` etc.).
@@ -26,7 +26,7 @@
 //!
 //! Data is provided in two separate textures, the "position data texture" and the "line strip texture".
 //! The "line strip texture" contains packed information over properties that are global to a single strip (see `gpu_data::LineStripInfo`)
-//! Data in the "position data texture" is laid out a follows (see `gpu_data::PositionData`):
+//! Data in the "position data texture" is laid out a follows (see `gpu_data::PositionRadius`):
 //! ```raw
 //!                   ___________________________________________________________________
 //! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
@@ -88,10 +88,10 @@
 //! Again, we keep all the geometry calculating logic in the vertex shader.
 //!
 //! For all batches, independent whether we use caps or not our topology is as follow:
-//!            _________________________________________________________
-//!            \  |                         |\  |                       |\
-//!             \ |  ... n strip quads ...  | \ | ... m strip quads ... | \
-//!              \|_________________________|__\|_______________________|__\
+//!            _________________________________________________
+//!            \  |                     |\  |                   |\
+//!             \ |  … n strip quads …  | \ | … m strip quads … | \
+//!              \|_____________________|__\|___________________|__\
 //! (start cap triangle only)         (start+end triangle)              (end triangle only)
 //!
 //!
@@ -343,11 +343,14 @@ pub enum LineDrawDataError {
 
     #[error("A resource failed to resolve.")]
     PoolError(#[from] PoolError),
+
+    #[error("Failed to transfer data to the GPU")]
+    FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
 // Textures are 2D since 1D textures are very limited in size (8k typically).
 // Need to keep these values in sync with lines.wgsl!
-const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionData
+const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionRadius
 const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5MiB, 65536 line strips
 
 impl LineDrawData {
@@ -419,15 +422,17 @@ impl LineDrawData {
         );
 
         let vertices = if vertices.len() >= Self::MAX_NUM_VERTICES {
-            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}.
- See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
+            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}. \
+                                See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
             &vertices[..Self::MAX_NUM_VERTICES]
         } else {
             &vertices[..]
         };
         let strips = if strips.len() > Self::MAX_NUM_STRIPS {
-            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. This may lead to rendering artifacts.
- See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_STRIPS, strips.len());
+            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. \
+                                 This may lead to rendering artifacts. \
+                                 See also https://github.com/rerun-io/rerun/issues/957",
+                                 Self::MAX_NUM_STRIPS, strips.len());
             &strips[..Self::MAX_NUM_STRIPS]
         } else {
             // Can only check for strip index validity if we haven't clamped the strips!
@@ -579,8 +584,7 @@ impl LineDrawData {
                 strip_texture_extent,
             );
 
-            picking_instance_ids_buffer
-                .extend(std::iter::repeat(Default::default()).take(num_strips_padding));
+            picking_instance_ids_buffer.fill_n(Default::default(), num_strips_padding)?;
             picking_instance_ids_buffer.copy_to_texture2d(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 wgpu::ImageCopyTexture {
@@ -590,7 +594,7 @@ impl LineDrawData {
                     aspect: wgpu::TextureAspect::All,
                 },
                 glam::uvec2(strip_texture_extent.width, strip_texture_extent.height),
-            );
+            )?;
         }
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(

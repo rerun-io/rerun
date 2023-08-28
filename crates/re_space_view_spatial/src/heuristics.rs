@@ -145,7 +145,8 @@ fn update_depth_cloud_property_heuristics(
         .unwrap_or(&BTreeSet::new())
     {
         let store = &ctx.store_db.entity_db.data_store;
-        let Some(tensor) = store.query_latest_component::<Tensor>(ent_path, &ctx.current_query()) else {
+        let Some(tensor) = store.query_latest_component::<Tensor>(ent_path, &ctx.current_query())
+        else {
             continue;
         };
 

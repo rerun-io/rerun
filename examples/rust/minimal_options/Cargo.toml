@@ -2,7 +2,7 @@
 name = "minimal_options"
 version = "0.9.0-alpha.2+dev"
 edition = "2021"
-rust-version = "1.69"
+rust-version = "1.72"
 license = "MIT OR Apache-2.0"
 publish = false
 

@@ -1,7 +1,7 @@
 # Overview
 
-Rerun has limited support for running directly embedded within a [jupyter][https://jupyter.org/] notebook.
-Many additional environments beyond jupyter are supported such as [Google Colab][https://colab.research.google.com/]
+Rerun has limited support for direct embedding within a [Jupyter](https://jupyter.org/) notebook.
+Many additional environments beyond Jupyter are supported such as [Google Colab](https://colab.research.google.com/)
 or [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks).
 
 In order to show a rerun viewer inline within the notebook you need to use a special in-memory

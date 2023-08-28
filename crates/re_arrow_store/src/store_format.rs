@@ -98,7 +98,7 @@ impl std::fmt::Display for IndexedTable {
             format_number(self.num_rows() as _),
         ))?;
         f.write_str("buckets: [\n")?;
-        for (time, bucket) in buckets.iter() {
+        for (time, bucket) in buckets {
             f.write_str(&indent::indent_all_by(4, "IndexedBucket {\n"))?;
             f.write_str(&indent::indent_all_by(
                 8,

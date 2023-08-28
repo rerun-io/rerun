@@ -14,12 +14,15 @@
 
 mod channel_logger;
 mod multi_logger;
+mod result_extensions;
 mod setup;
 
 #[cfg(target_arch = "wasm32")]
 mod web_logger;
 
 pub use log::{Level, LevelFilter};
+
+pub use result_extensions::ResultExt;
 
 // The tracing macros support more syntax features than the log, that's why we use them:
 pub use tracing::{debug, error, info, trace, warn};

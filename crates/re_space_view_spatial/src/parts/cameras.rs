@@ -64,8 +64,8 @@ impl CamerasPart {
             .parent()
             .expect("root path can't be part of scene query");
         let Some(mut world_from_camera) = transforms.reference_from_entity(&parent_path) else {
-                return;
-            };
+            return;
+        };
 
         let frustum_length = *props.pinhole_image_plane_distance;
 
@@ -91,7 +91,8 @@ impl CamerasPart {
 
         // If this transform is not representable an iso transform transform we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into()) else {
+        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
+        else {
             return;
         };
 

@@ -138,7 +138,9 @@ impl TimeSeriesSystem {
             );
 
             for (time, ent_view) in ent_views {
-                let Some(time) = time else { continue; }; // scalars cannot be timeless
+                let Some(time) = time else {
+                    continue;
+                }; // scalars cannot be timeless
 
                 match ent_view.visit5(
                     |_instance,

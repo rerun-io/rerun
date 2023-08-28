@@ -29,7 +29,7 @@ use crate::{
 use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
 
 // TODO(cmc): it'd be nice to be able to generate vanilla comments (as opposed to doc-comments)
-// once again at some point (`TokenStream` strips them)... nothing too urgent though.
+// once again at some point (`TokenStream` strips them)… nothing too urgent though.
 
 // ---
 
@@ -179,7 +179,7 @@ fn create_files(
             let mut acc = TokenStream::new();
 
             // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
-            // inject some of our own when writing to file... while making sure that don't inject
+            // inject some of our own when writing to file… while making sure that don't inject
             // random spacing into doc comments that look like code!
 
             let mut tokens = obj.tokens.into_iter();
@@ -819,7 +819,7 @@ fn quote_trait_impls_from_obj(
 
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+                    fn arrow_datatype() -> arrow2::datatypes::DataType {
                         use ::arrow2::datatypes::*;
                         #datatype
                     }

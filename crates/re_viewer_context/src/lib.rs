@@ -22,7 +22,10 @@ pub mod gpu_bridge;
 
 use std::hash::BuildHasher;
 
-pub use annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, MISSING_ANNOTATIONS};
+pub use annotations::{
+    AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos,
+    MISSING_ANNOTATIONS,
+};
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
 pub use command_sender::{

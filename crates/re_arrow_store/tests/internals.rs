@@ -18,7 +18,7 @@ use re_types::{components::InstanceKey, Loggable as _};
 // is performance: getting the datastore into a pathological topology should show up in
 // integration query benchmarks.
 //
-// In the current state of things, though, it is much easier to test for it that way... so we
+// In the current state of things, though, it is much easier to test for it that way… so we
 // make an exception, for now...
 #[test]
 fn pathological_bucket_topology() {

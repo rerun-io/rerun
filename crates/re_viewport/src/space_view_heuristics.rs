@@ -216,7 +216,8 @@ pub fn default_created_space_views(
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
     for mut candidate in candidates {
         // In order to have per_system_entities correctly computed, we need to reset it first - freshly created ones do not.
-        let Some(entities_per_system) = entities_per_system_per_class.get(candidate.class_name()) else {
+        let Some(entities_per_system) = entities_per_system_per_class.get(candidate.class_name())
+        else {
             // Should never reach this, but if we would there would be no entities in this candidate so skipping makes sense.
             continue;
         };
@@ -486,13 +487,14 @@ pub fn default_entities_per_system_per_class(
 
     let store = ctx.store_db.store();
     for ent_path in ctx.store_db.entity_db.entity_paths() {
-        let Some(components) = store.all_components(&re_log_types::Timeline::log_time(), ent_path) else {
-                continue;
-            };
+        let Some(components) = store.all_components(&re_log_types::Timeline::log_time(), ent_path)
+        else {
+            continue;
+        };
 
         for component in &components {
             if let Some(systems_per_class) = primary_component_per_system.get(component) {
-                for (class, systems) in systems_per_class.iter() {
+                for (class, systems) in systems_per_class {
                     let Some((_, part_collection)) = system_collections_per_class.get(class) else {
                         continue;
                     };

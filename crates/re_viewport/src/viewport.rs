@@ -230,9 +230,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         let highlights =
             highlights_for_space_view(self.ctx.selection_state(), *space_view_id, self.space_views);
-        let Some(space_view_blueprint) = self
-            .space_views
-            .get_mut(space_view_id) else {
+        let Some(space_view_blueprint) = self.space_views.get_mut(space_view_id) else {
             return Default::default();
         };
 
@@ -304,12 +302,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         tile_id: egui_tiles::TileId,
     ) {
         let Some(tab_widget) = TabWidget::new(self, ui, tiles, tile_id, true, 0.5) else {
-            return egui_tiles::Behavior::<SpaceViewId>::drag_ui(
-                self,
-                tiles,
-                ui,
-                tile_id,
-            );
+            return egui_tiles::Behavior::<SpaceViewId>::drag_ui(self, tiles, ui, tile_id);
         };
 
         let frame = egui::Frame {
@@ -351,11 +344,17 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         _tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
     ) {
-        let Some(active) = tabs.active.and_then(|active| tiles.get(active)) else { return; };
-        let egui_tiles::Tile::Pane(space_view_id) = active else { return; };
+        let Some(active) = tabs.active.and_then(|active| tiles.get(active)) else {
+            return;
+        };
+        let egui_tiles::Tile::Pane(space_view_id) = active else {
+            return;
+        };
         let space_view_id = *space_view_id;
 
-        let Some(space_view) = self.space_views.get(&space_view_id) else { return; };
+        let Some(space_view) = self.space_views.get(&space_view_id) else {
+            return;
+        };
         let num_space_views = tiles.tiles().filter(|tile| tile.is_pane()).count();
 
         ui.add_space(8.0); // margin within the frame
@@ -436,7 +435,7 @@ fn space_view_ui(
         ui.centered_and_justified(|ui| {
             ui.weak("No time selected");
         });
-        return
+        return;
     };
 
     space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, space_view_highlights);
@@ -469,7 +468,7 @@ impl TabWidget {
             return None;
         };
         let Some(space_view) = space_view else {
-            return None
+            return None;
         };
         let space_view_id = space_view.id;
 

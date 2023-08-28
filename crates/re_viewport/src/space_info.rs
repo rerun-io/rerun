@@ -67,7 +67,10 @@ impl SpaceInfo {
 
             for (child_path, connection) in &space_info.child_spaces {
                 let Some(child_space) = space_info_collection.spaces.get(child_path) else {
-                    re_log::warn_once!("Child space info {} not part of space info collection", child_path);
+                    re_log::warn_once!(
+                        "Child space info {} not part of space info collection",
+                        child_path
+                    );
                     continue;
                 };
 
@@ -278,8 +281,7 @@ impl SpaceInfoCollection {
                     SpaceInfoConnection::Connected { .. } => Ok(()),
                 }?;
 
-                let Some(parent_space) = self.spaces.get(parent_path)
-                else {
+                let Some(parent_space) = self.spaces.get(parent_path) else {
                     re_log::warn_once!("{} not part of space infos", parent_path);
                     return Err(UnreachableTransformReason::UnknownSpaceInfo);
                 };

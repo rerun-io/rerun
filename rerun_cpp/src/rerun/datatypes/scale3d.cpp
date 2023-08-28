@@ -10,10 +10,10 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Scale3D::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &Scale3D::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field("ThreeD", rerun::datatypes::Vec3D::to_arrow_datatype(), false),
+                arrow::field("ThreeD", rerun::datatypes::Vec3D::arrow_datatype(), false),
                 arrow::field("Uniform", arrow::float32(), false),
             });
             return datatype;
@@ -33,7 +33,7 @@ namespace rerun {
                     rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).value,
                     std::make_shared<arrow::FloatBuilder>(memory_pool),
                 }),
-                to_arrow_datatype()
+                arrow_datatype()
             ));
         }
 

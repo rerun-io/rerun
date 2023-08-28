@@ -61,7 +61,7 @@ Setup:
 * Install the Rust toolchain: <https://rustup.rs/>
 * `git clone git@github.com:rerun-io/rerun.git && cd rerun`
 * Run `./scripts/setup_dev.sh`.
-* Make sure `cargo --version` prints `1.69.0` once you are done
+* Make sure `cargo --version` prints `1.72.0` once you are done
 
 ## Building
 To build from source and install Rerun into your *current* Python environment run:
@@ -153,10 +153,10 @@ You can run with `RUST_LOG=debug` to get more output out of the rerun SDK.
 If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ``` sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.69
+rustup set default-host aarch64-apple-darwin && rustup install 1.72
 ```
 
 If you want to switch back, this is how:
 ``` sh
-rustup set default-host x86_64-apple-darwin && rustup install 1.69
+rustup set default-host x86_64-apple-darwin && rustup install 1.72
 ```

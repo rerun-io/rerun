@@ -10,11 +10,11 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer5::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer5::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
                     "single_optional_union",
-                    rerun::datatypes::AffixFuzzer4::to_arrow_datatype(),
+                    rerun::datatypes::AffixFuzzer4::arrow_datatype(),
                     true
                 ),
             });
@@ -29,7 +29,7 @@ namespace rerun {
             }
 
             return Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+                arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     rerun::datatypes::AffixFuzzer4::new_arrow_array_builder(memory_pool).value,

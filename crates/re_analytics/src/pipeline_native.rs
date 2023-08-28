@@ -61,7 +61,7 @@ impl Pipeline {
         //
         // Joining these threads is not a viable strategy for two reasons:
         // 1. We _never_ want to delay the shutdown process, analytics must never be in the way.
-        // 2. We need to deal with unexpected shutdowns anyway (crashes, SIGINT, SIGKILL, ...),
+        // 2. We need to deal with unexpected shutdowns anyway (crashes, SIGINT, SIGKILL, …),
         //    and we do indeed.
         //
         // This is an at-least-once pipeline: in the worst case, unexpected shutdowns will lead to
@@ -142,19 +142,29 @@ fn flush_pending_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<(
     for entry in read_dir {
         // NOTE: all of these can only be transient I/O errors, so no reason to delete the
         // associated file; we'll retry later.
-        let Ok(entry) = entry else { continue; };
-        let Ok(name) = entry.file_name().into_string() else { continue; };
-        let Ok(metadata) = entry.metadata() else { continue; };
+        let Ok(entry) = entry else {
+            continue;
+        };
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
         let path = entry.path();
 
         if metadata.is_file() {
-            let Some(session_id) = name.strip_suffix(".json") else { continue; };
+            let Some(session_id) = name.strip_suffix(".json") else {
+                continue;
+            };
 
             if session_id == current_session_id {
                 continue;
             }
 
-            let Ok(mut session_file) = File::open(&path) else { continue; };
+            let Ok(mut session_file) = File::open(&path) else {
+                continue;
+            };
             match flush_events(&mut session_file, &analytics_id, session_id, sink) {
                 Ok(_) => {
                     re_log::trace!(%analytics_id, %session_id, ?path, "flushed pending events");
@@ -213,7 +223,7 @@ fn realtime_pipeline(
             return;
         }
         if let Err(err) = session_file.rewind() {
-            // We couldn't reset the session file... That one is a bit messy and will likely break
+            // We couldn't reset the session file… That one is a bit messy and will likely break
             // analytics for the entire duration of this session, but that really _really_ should
             // never happen.
             re_log::debug_once!("couldn't seek into analytics data file: {err}");
@@ -223,7 +233,7 @@ fn realtime_pipeline(
     let on_event = |session_file: &mut _, event| {
         re_log::trace!(
             %analytics_id, %session_id,
-            "appending event to current session file..."
+            "appending event to current session file…"
         );
         if let Err(event) = append_event(session_file, &analytics_id, &session_id, event) {
             // We failed to append the event to the current session, so push it back at the end of

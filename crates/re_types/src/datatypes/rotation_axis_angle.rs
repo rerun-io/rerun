@@ -52,18 +52,18 @@ impl crate::Loggable for RotationAxisAngle {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "axis".to_owned(),
-                data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
             Field {
                 name: "angle".to_owned(),
-                data_type: <crate::datatypes::Angle>::to_arrow_datatype(),
+                data_type: <crate::datatypes::Angle>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -96,11 +96,11 @@ impl crate::Loggable for RotationAxisAngle {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::RotationAxisAngle>::to_arrow_datatype()),
+                        Box::new(<crate::datatypes::RotationAxisAngle>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::RotationAxisAngle>::to_arrow_datatype()
+                    <crate::datatypes::RotationAxisAngle>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -222,13 +222,13 @@ impl crate::Loggable for RotationAxisAngle {
                         DataType::Struct(vec![
                             Field {
                                 name: "axis".to_owned(),
-                                data_type: <crate::datatypes::Vec3D>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
                             Field {
                                 name: "angle".to_owned(),
-                                data_type: <crate::datatypes::Angle>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::Angle>::arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
@@ -249,7 +249,7 @@ impl crate::Loggable for RotationAxisAngle {
                 let axis = {
                     if !arrays_by_name.contains_key("axis") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "axis",
                         ))
                         .with_context("rerun.datatypes.RotationAxisAngle");
@@ -333,7 +333,7 @@ impl crate::Loggable for RotationAxisAngle {
                 let angle = {
                     if !arrays_by_name.contains_key("angle") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "angle",
                         ))
                         .with_context("rerun.datatypes.RotationAxisAngle");

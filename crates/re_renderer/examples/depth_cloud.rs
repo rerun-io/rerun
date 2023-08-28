@@ -80,7 +80,6 @@ impl RenderDepthClouds {
         let offset = glam::Vec2::new(intrinsics.z_axis.x, intrinsics.z_axis.y);
 
         let point_cloud_draw_data = {
-            let num_points = depth.dimensions.x * depth.dimensions.y;
             let (points, colors, radii): (Vec<_>, Vec<_>, Vec<_>) = (0..depth.dimensions.y)
                 .flat_map(|y| (0..depth.dimensions.x).map(move |x| glam::UVec2::new(x, y)))
                 .map(|texcoords| {
@@ -98,15 +97,11 @@ impl RenderDepthClouds {
                 .multiunzip();
 
             let mut builder = PointCloudBuilder::new(re_ctx);
-            builder.batch("backprojected point cloud").add_points(
-                num_points as _,
-                points.into_iter(),
-                radii.into_iter(),
-                colors.into_iter(),
-                std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
-            );
+            builder
+                .batch("backprojected point cloud")
+                .add_points(&points, &radii, &colors, &[]);
 
-            builder.into_draw_data(re_ctx)
+            builder.into_draw_data(re_ctx).unwrap()
         };
 
         let mut view_builder = ViewBuilder::new(

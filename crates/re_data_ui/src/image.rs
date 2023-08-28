@@ -389,7 +389,9 @@ pub fn show_zoomed_image_region_area_outline(
 ) {
     use egui::{pos2, remap, Rect};
 
-    let Some([height, width, _]) = tensor.image_height_width_channels() else { return; };
+    let Some([height, width, _]) = tensor.image_height_width_channels() else {
+        return;
+    };
 
     let width = width as f32;
     let height = height as f32;
@@ -450,7 +452,9 @@ fn try_show_zoomed_image_region(
     debug_name: &str,
     center_texel: [isize; 2],
 ) -> anyhow::Result<()> {
-    let Some([height, width, _]) = tensor.image_height_width_channels() else { return Ok(()); };
+    let Some([height, width, _]) = tensor.image_height_width_channels() else {
+        return Ok(());
+    };
 
     let texture =
         gpu_bridge::tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats, annotations)?;

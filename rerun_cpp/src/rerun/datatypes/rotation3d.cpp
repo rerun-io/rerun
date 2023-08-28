@@ -11,17 +11,13 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Rotation3D::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &Rotation3D::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field(
-                    "Quaternion",
-                    rerun::datatypes::Quaternion::to_arrow_datatype(),
-                    false
-                ),
+                arrow::field("Quaternion", rerun::datatypes::Quaternion::arrow_datatype(), false),
                 arrow::field(
                     "AxisAngle",
-                    rerun::datatypes::RotationAxisAngle::to_arrow_datatype(),
+                    rerun::datatypes::RotationAxisAngle::arrow_datatype(),
                     false
                 ),
             });
@@ -42,7 +38,7 @@ namespace rerun {
                     rerun::datatypes::Quaternion::new_arrow_array_builder(memory_pool).value,
                     rerun::datatypes::RotationAxisAngle::new_arrow_array_builder(memory_pool).value,
                 }),
-                to_arrow_datatype()
+                arrow_datatype()
             ));
         }
 

@@ -101,22 +101,22 @@ lazy_static! {
         <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
-        Field::new(AnnotationContext::name().as_str(), AnnotationContext::to_arrow_datatype(), false),
-        Field::new(ClassId::name().as_str(), ClassId::to_arrow_datatype(), false),
-        Field::new(Color::name().as_str(), Color::to_arrow_datatype(), false),
-        Field::new(DisconnectedSpace::name().as_str(), DisconnectedSpace::to_arrow_datatype(), false),
-        Field::new(DrawOrder::name().as_str(), DrawOrder::to_arrow_datatype(), false),
-        Field::new(InstanceKey::name().as_str(), InstanceKey::to_arrow_datatype(), false),
-        Field::new(KeypointId::name().as_str(), KeypointId::to_arrow_datatype(), false),
-        Field::new(Label::name().as_str(), Label::to_arrow_datatype(), false),
-        Field::new(LineStrip2D::name().as_str(), LineStrip2D::to_arrow_datatype(), false),
-        Field::new(LineStrip3D::name().as_str(), LineStrip3D::to_arrow_datatype(), false),
-        Field::new(Origin3D::name().as_str(), Origin3D::to_arrow_datatype(), false),
-        Field::new(Point2D::name().as_str(), Point2D::to_arrow_datatype(), false),
-        Field::new(Point3D::name().as_str(), Point3D::to_arrow_datatype(), false),
-        Field::new(Radius::name().as_str(), Radius::to_arrow_datatype(), false),
-        Field::new(Transform3D::name().as_str(), Transform3D::to_arrow_datatype(), false),
-        Field::new(Vector3D::name().as_str(), Vector3D::to_arrow_datatype(), false),
+        Field::new(AnnotationContext::name().as_str(), AnnotationContext::arrow_datatype(), false),
+        Field::new(ClassId::name().as_str(), ClassId::arrow_datatype(), false),
+        Field::new(Color::name().as_str(), Color::arrow_datatype(), false),
+        Field::new(DisconnectedSpace::name().as_str(), DisconnectedSpace::arrow_datatype(), false),
+        Field::new(DrawOrder::name().as_str(), DrawOrder::arrow_datatype(), false),
+        Field::new(InstanceKey::name().as_str(), InstanceKey::arrow_datatype(), false),
+        Field::new(KeypointId::name().as_str(), KeypointId::arrow_datatype(), false),
+        Field::new(Label::name().as_str(), Label::arrow_datatype(), false),
+        Field::new(LineStrip2D::name().as_str(), LineStrip2D::arrow_datatype(), false),
+        Field::new(LineStrip3D::name().as_str(), LineStrip3D::arrow_datatype(), false),
+        Field::new(Origin3D::name().as_str(), Origin3D::arrow_datatype(), false),
+        Field::new(Point2D::name().as_str(), Point2D::arrow_datatype(), false),
+        Field::new(Point3D::name().as_str(), Point3D::arrow_datatype(), false),
+        Field::new(Radius::name().as_str(), Radius::arrow_datatype(), false),
+        Field::new(Transform3D::name().as_str(), Transform3D::arrow_datatype(), false),
+        Field::new(Vector3D::name().as_str(), Vector3D::arrow_datatype(), false),
     ];
 }
 
@@ -187,7 +187,7 @@ where
         array: &mut Self::MutableArrayType,
     ) -> arrow2::error::Result<()> {
         let values = array.mut_values();
-        for i in v.iter() {
+        for i in v {
             <T as ArrowSerialize>::arrow_serialize(i, values)?;
         }
         array.try_push_valid()

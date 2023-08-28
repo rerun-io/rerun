@@ -101,13 +101,13 @@ pub trait Loggable: Sized {
     fn name() -> Self::Name;
 
     /// The underlying [`arrow2::datatypes::DataType`].
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType;
+    fn arrow_datatype() -> arrow2::datatypes::DataType;
 
     // ---
 
     /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
     /// them into an Arrow array.
-    /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
+    /// The Arrow array's datatype will match [`Loggable::arrow_datatype`].
     ///
     /// Panics on failure.
     /// This will _never_ fail for Rerun's built-in [`Loggable`]s.
@@ -126,7 +126,7 @@ pub trait Loggable: Sized {
 
     /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
     /// them into an Arrow array.
-    /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
+    /// The Arrow array's datatype will match [`Loggable::arrow_datatype`].
     ///
     /// This will _never_ fail for Rerun's built-in [`Loggable`].
     /// For the non-fallible version, see [`Loggable::to_arrow`].
@@ -143,7 +143,7 @@ pub trait Loggable: Sized {
 
     /// Given an iterator of options of owned or reference values to the current
     /// [`Loggable`], serializes them into an Arrow array.
-    /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
+    /// The Arrow array's datatype will match [`Loggable::arrow_datatype`].
     ///
     /// Panics on failure.
     /// This will _never_ fail for Rerun's built-in [`Loggable`].
@@ -162,7 +162,7 @@ pub trait Loggable: Sized {
 
     /// Given an iterator of options of owned or reference values to the current
     /// [`Loggable`], serializes them into an Arrow array.
-    /// The Arrow array's datatype will match [`Loggable::to_arrow_datatype`].
+    /// The Arrow array's datatype will match [`Loggable::arrow_datatype`].
     ///
     /// This will _never_ fail for Rerun's built-in [`Loggable`].
     /// For the non-fallible version, see [`Loggable::to_arrow_opt`].
@@ -187,7 +187,7 @@ pub trait Loggable: Sized {
     /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
     ///
     /// This will _never_ fail if the Arrow array's datatype matches the one returned by
-    /// [`Loggable::to_arrow_datatype`].
+    /// [`Loggable::arrow_datatype`].
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
@@ -199,7 +199,7 @@ pub trait Loggable: Sized {
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
     ///
     /// This will _never_ fail if the Arrow array's datatype matches the one returned by
-    /// [`Loggable::to_arrow_datatype`].
+    /// [`Loggable::arrow_datatype`].
     /// For the fallible version, see [`Loggable::try_from_arrow_opt`].
     #[inline]
     fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>> {
@@ -209,12 +209,13 @@ pub trait Loggable: Sized {
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
     ///
     /// This will _never_ fail if the Arrow array's datatype matches the one returned by
-    /// [`Loggable::to_arrow_datatype`].
+    /// [`Loggable::arrow_datatype`].
     /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
+        re_tracing::profile_function!();
         Ok(Self::try_iter_from_arrow(data)?
             .map(Self::convert_item_to_opt_self)
             .collect())
@@ -232,7 +233,7 @@ pub trait Loggable: Sized {
     /// conversions above can be generated from this primitive.
     ///
     /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
-    /// [`Loggable::to_arrow_datatype`].
+    /// [`Loggable::arrow_datatype`].
     fn try_iter_from_arrow(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Self::Iter<'_>>;
@@ -536,6 +537,7 @@ impl<T> ResultExt<T> for SerializationResult<T> {
         })
     }
 
+    #[track_caller]
     fn detailed_unwrap(self) -> T {
         match self {
             Ok(v) => v,
@@ -565,6 +567,7 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
         })
     }
 
+    #[track_caller]
     fn detailed_unwrap(self) -> T {
         match self {
             Ok(v) => v,

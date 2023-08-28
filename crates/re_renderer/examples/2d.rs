@@ -1,4 +1,6 @@
 use ecolor::Hsva;
+use itertools::Itertools as _;
+
 use re_renderer::{
     renderer::{
         ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
@@ -169,23 +171,20 @@ impl framework::Example for Render2D {
         // The third point is automatic thickness which is determined by the point renderer implementation.
         let mut point_cloud_builder = PointCloudBuilder::new(re_ctx);
         point_cloud_builder.batch("points").add_points_2d(
-            4,
-            [
-                glam::vec2(500.0, 120.0),
-                glam::vec2(520.0, 120.0),
-                glam::vec2(540.0, 120.0),
-                glam::vec2(560.0, 120.0),
-            ]
-            .into_iter(),
-            [
+            &[
+                glam::vec3(500.0, 120.0, 0.0),
+                glam::vec3(520.0, 120.0, 0.0),
+                glam::vec3(540.0, 120.0, 0.0),
+                glam::vec3(560.0, 120.0, 0.0),
+            ],
+            &[
                 Size::new_scene(4.0),
                 Size::new_points(4.0),
                 Size::AUTO,
                 Size::AUTO_LARGE,
-            ]
-            .into_iter(),
-            std::iter::repeat(Color32::from_rgb(55, 180, 1)),
-            std::iter::repeat(re_renderer::PickingLayerInstanceId::default()),
+            ],
+            &[Color32::from_rgb(55, 180, 1); 4],
+            &[re_renderer::PickingLayerInstanceId::default(); 4],
         );
 
         // Pile stuff to test for overlap handling.
@@ -214,26 +213,33 @@ impl framework::Example for Render2D {
 
             let num_points = 8;
             let size = Size::new_points(3.0);
+
+            let positions = (0..num_points)
+                .map(|i| {
+                    glam::vec3(
+                        30.0 * i as f32 + 20.0,
+                        y_range.start
+                            + (y_range.end - y_range.start) / num_points as f32 * i as f32,
+                        0.0,
+                    )
+                })
+                .collect_vec();
+
+            let sizes = std::iter::repeat(size).collect_vec();
+
+            let colors = std::iter::repeat(Color32::WHITE).collect_vec();
+
+            let picking_ids =
+                std::iter::repeat(re_renderer::PickingLayerInstanceId::default()).collect_vec();
+
             point_cloud_builder
                 .batch("points overlapping with lines")
                 .depth_offset(5)
-                .add_points_2d(
-                    num_points,
-                    (0..num_points).map(|i| {
-                        glam::vec2(
-                            30.0 * i as f32 + 20.0,
-                            y_range.start
-                                + (y_range.end - y_range.start) / num_points as f32 * i as f32,
-                        )
-                    }),
-                    std::iter::repeat(size),
-                    std::iter::repeat(Color32::WHITE),
-                    std::iter::repeat(re_renderer::PickingLayerInstanceId::default()),
-                );
+                .add_points_2d(&positions, &sizes, &colors, &picking_ids);
         }
 
         let line_strip_draw_data = line_strip_builder.into_draw_data(re_ctx).unwrap();
-        let point_draw_data = point_cloud_builder.into_draw_data(re_ctx);
+        let point_draw_data = point_cloud_builder.into_draw_data(re_ctx).unwrap();
 
         let image_scale = 4.0;
         let rectangle_draw_data = RectangleDrawData::new(

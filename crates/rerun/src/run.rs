@@ -226,7 +226,7 @@ impl CallSource {
 
 /// Run the Rerun application and return an exit code.
 ///
-/// This is used by the `rerun` binary and the Rerun Python SDK via `python -m rerun [args...]`.
+/// This is used by the `rerun` binary and the Rerun Python SDK via `python -m rerun [args…]`.
 ///
 /// This installs crash panic and signal handlers that sends analytics on panics and signals.
 /// These crash reports includes a stacktrace. We make sure the file paths in the stacktrace

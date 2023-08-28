@@ -276,7 +276,9 @@ impl TimeControl {
     }
 
     pub fn step_time_back(&mut self, times_per_timeline: &TimesPerTimeline) {
-        let Some(time_values) = times_per_timeline.get(self.timeline()) else { return; };
+        let Some(time_values) = times_per_timeline.get(self.timeline()) else {
+            return;
+        };
 
         self.pause();
 
@@ -292,7 +294,9 @@ impl TimeControl {
     }
 
     pub fn step_time_fwd(&mut self, times_per_timeline: &TimesPerTimeline) {
-        let Some(time_values) = times_per_timeline.get(self.timeline()) else { return; };
+        let Some(time_values) = times_per_timeline.get(self.timeline()) else {
+            return;
+        };
 
         self.pause();
 
