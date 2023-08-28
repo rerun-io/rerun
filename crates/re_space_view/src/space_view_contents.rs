@@ -111,7 +111,7 @@ impl SpaceViewContents {
         let Self {
             groups,
             path_to_group,
-            per_system_entity_list: entity_paths,
+            per_system_entity_list: _,
             root_group_handle,
             data_blueprints,
         } = self;
@@ -124,7 +124,6 @@ impl SpaceViewContents {
                     .map_or(true, |other_val| val.has_edits(other_val))
             })
             || *path_to_group != other.path_to_group
-            || *entity_paths != other.per_system_entity_list
             || *root_group_handle != other.root_group_handle
             || data_blueprints.has_edits(&other.data_blueprints)
     }
