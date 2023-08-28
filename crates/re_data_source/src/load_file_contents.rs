@@ -5,7 +5,7 @@ use crate::FileContents;
 
 #[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
 pub fn load_file_contents(
-    _store_id: re_log_types::StoreId,
+    store_id: re_log_types::StoreId,
     file_contents: FileContents,
     tx: Sender<LogMsg>,
 ) -> anyhow::Result<()> {
@@ -26,9 +26,80 @@ pub fn load_file_contents(
             Ok(())
         }
     } else {
-        // TODO(emilk): support loading images and meshes from file contents
-        anyhow::bail!("Unsupported file extension for {file_name:?}.");
+        // non-rrd = image or mesh:
+        if cfg!(target_arch = "wasm32") {
+            load_and_send(store_id, file_contents, &tx)
+        } else {
+            rayon::spawn(move || {
+                let name = file_contents.name.clone();
+                if let Err(err) = load_and_send(store_id, file_contents, &tx) {
+                    re_log::error!("Failed to load {name:?}: {err}");
+                }
+            });
+            Ok(())
+        }
     }
+}
+
+fn load_and_send(
+    store_id: re_log_types::StoreId,
+    file_contents: FileContents,
+    tx: &Sender<LogMsg>,
+) -> anyhow::Result<()> {
+    use re_log_types::SetStoreInfo;
+
+    re_tracing::profile_function!(file_contents.name.as_str());
+
+    // First, set a store info since this is the first thing the application expects.
+    tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
+        row_id: re_log_types::RowId::random(),
+        info: re_log_types::StoreInfo {
+            application_id: re_log_types::ApplicationId(file_contents.name.clone()),
+            store_id: store_id.clone(),
+            is_official_example: false,
+            started: re_log_types::Time::now(),
+            store_source: re_log_types::StoreSource::FileFromCli {
+                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+            },
+            store_kind: re_log_types::StoreKind::Recording,
+        },
+    }))
+    .ok();
+    // .ok(): we may be running in a background thread, so who knows if the receiver is still open
+
+    // Send actual file.
+    let log_msg = log_msg_from_file_contents(store_id, file_contents)?;
+    tx.send(log_msg).ok();
+    tx.quit(None).ok();
+    Ok(())
+}
+
+fn log_msg_from_file_contents(
+    store_id: re_log_types::StoreId,
+    file_contents: FileContents,
+) -> anyhow::Result<LogMsg> {
+    let FileContents { name, bytes } = file_contents;
+
+    let entity_path = re_log_types::EntityPath::from_single_string(name.clone());
+    let cell = re_components::data_cell_from_file_contents(&name, bytes.to_vec())?;
+
+    let num_instances = cell.num_instances();
+
+    let timepoint = re_log_types::TimePoint::default();
+
+    let data_row = re_log_types::DataRow::from_cells(
+        re_log_types::RowId::random(),
+        timepoint,
+        entity_path,
+        num_instances,
+        vec![cell],
+    );
+
+    let data_table =
+        re_log_types::DataTable::from_rows(re_log_types::TableId::random(), [data_row]);
+    let arrow_msg = data_table.to_arrow_msg()?;
+    Ok(LogMsg::ArrowMsg(store_id, arrow_msg))
 }
 
 fn load_rrd_sync(file_contents: &FileContents, tx: &Sender<LogMsg>) -> Result<(), anyhow::Error> {

@@ -329,7 +329,7 @@ impl App {
                         self.add_receiver(rx);
                     }
                     Err(err) => {
-                        re_log::error!("Failed to open data source: {err}");
+                        re_log::error!("Failed to open data source: {}", re_error::format(err));
                     }
                 }
             }

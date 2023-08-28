@@ -181,6 +181,30 @@ impl MsgSender {
         })
     }
 
+    /// Log the given mesh or image file.
+    ///
+    /// Supported file formats are:
+    ///  * `glb`, `gltf`, `obj`: encoded meshes, leaving it to the viewer to decode
+    ///  * `jpg`, `jpeg`: encoded JPEG, leaving it to the viewer to decode. Requires the `image` feature.
+    ///  * `png` and other image formats: decoded here. Requires the `image` feature.
+    ///
+    /// All other formats will return an error.
+    pub fn from_file_contents(
+        file_name: &str,
+        bytes: Vec<u8>,
+    ) -> Result<Self, re_components::FromFileError> {
+        let ent_path = re_log_types::EntityPath::from_file_path_as_single_string(
+            std::path::Path::new(file_name),
+        );
+        let cell = re_components::data_cell_from_file_contents(file_name, bytes)?;
+
+        Ok(Self {
+            num_instances: Some(cell.num_instances()),
+            instanced: vec![cell],
+            ..Self::new(ent_path)
+        })
+    }
+
     // --- Time ---
 
     /// Appends a given `timepoint` to the current message.

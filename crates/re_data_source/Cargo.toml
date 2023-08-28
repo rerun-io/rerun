@@ -23,6 +23,7 @@ sdk = ["dep:re_sdk"]
 
 
 [dependencies]
+re_components.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
