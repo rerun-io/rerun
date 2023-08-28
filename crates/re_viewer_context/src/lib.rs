@@ -34,6 +34,7 @@ pub use command_sender::{
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
+use re_log_types::EntityPath;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
@@ -76,6 +77,12 @@ impl SpaceViewId {
 
     pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())
+    }
+
+    pub fn from_entity_path(path: &EntityPath) -> Self {
+        path.last()
+            .and_then(|last| uuid::Uuid::parse_str(last.to_string().as_str()).ok())
+            .map_or(Self::invalid(), Self)
     }
 
     pub fn hashed_from_str(s: &str) -> Self {

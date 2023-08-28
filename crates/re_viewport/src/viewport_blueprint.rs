@@ -272,10 +272,25 @@ pub fn load_space_view_blueprint(
     blueprint_db: &re_data_store::StoreDb,
 ) -> Option<SpaceViewBlueprint> {
     re_tracing::profile_function!();
-    blueprint_db
+    let mut space_view = blueprint_db
         .store()
         .query_timeless_component::<SpaceViewComponent>(path)
-        .map(|c| c.space_view)
+        .map(|c| c.space_view);
+
+    // Blueprint data migrations can leave us unable to parse the expected id from the source-data
+    // We always want the id to match the one derived from the EntityPath since this id is how
+    // we would end up removing it from the blueprint.
+    let expected_id = SpaceViewId::from_entity_path(path);
+    if let Some(space_view) = &mut space_view {
+        if space_view.id != SpaceViewId::invalid() && space_view.id != expected_id {
+            re_log::warn_once!(
+                "SpaceViewBlueprint id is inconsistent with path: {:?}",
+                space_view.id
+            );
+        }
+        space_view.id = expected_id;
+    }
+    space_view
 }
 
 pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint<'_> {
