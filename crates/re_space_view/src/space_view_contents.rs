@@ -92,7 +92,7 @@ pub struct SpaceViewContents {
 
     /// List of all entities that we query via this data blueprint collection.
     ///
-    /// Currently this is reset every frame in [`Self::reset_per_system_entities`].
+    /// Currently this is reset every frame in [`crate::SpaceViewBlueprint::reset_systems_per_entity_path`].
     /// In the future, we may want to keep this around and only add/remove systems
     /// for entities. But at this point we'd likely handle the heuristics a bit differently as well
     /// and don't use serde here for serialization.
