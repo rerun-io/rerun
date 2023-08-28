@@ -433,7 +433,7 @@ async fn run_impl(
         }
 
         #[cfg(not(feature = "server"))]
-        anyhow::bail!("No url or .rrd path given");
+        vec![]
     } else {
         let data_sources = args
             .url_or_paths
