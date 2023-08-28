@@ -24,7 +24,7 @@ pub fn load_file_path(
             }
             for store_db in rrd.store_dbs_mut() {
                 store_db.data_source =
-                    Some(re_smart_channel::SmartChannelSource::File { path: path.into() });
+                    Some(re_smart_channel::SmartChannelSource::File(path.into()));
             }
             Some(rrd)
         }

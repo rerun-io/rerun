@@ -1192,6 +1192,7 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 
 #[cfg(not(target_arch = "wasm32"))]
 fn open_file_dialog_native() -> Vec<std::path::PathBuf> {
+    re_tracing::profile_function!();
     rfd::FileDialog::new()
         .add_filter("Rerun data file", &["rrd"])
         .add_filter("Meshes", re_data_source::SUPPORTED_MESH_EXTENSIONS)

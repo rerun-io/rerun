@@ -327,7 +327,7 @@ fn status_strings(rx: &ReceiveSet<LogMsg>) -> Vec<StatusString> {
 
 fn status_string(source: &SmartChannelSource) -> StatusString {
     match source {
-        re_smart_channel::SmartChannelSource::File { path } => {
+        re_smart_channel::SmartChannelSource::File(path) => {
             StatusString::new("Loading…", path.display().to_string(), false)
         }
         re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {

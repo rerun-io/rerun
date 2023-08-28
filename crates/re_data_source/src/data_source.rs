@@ -1,7 +1,7 @@
 use anyhow::Context as _;
 
 use re_log_types::LogMsg;
-use re_smart_channel::Receiver;
+use re_smart_channel::{Receiver, SmartMessageSource, SmartChannelSource};
 
 use crate::FileContents;
 
@@ -25,9 +25,9 @@ pub enum DataSource {
 }
 
 impl DataSource {
-    /// Tried to classify a URI into a `DataSource`.
+    /// Tried to classify a URI into a [`DataSource`].
     ///
-    /// Tried to figure out if it looks like a local path,
+    /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_uri(mut uri: String) -> DataSource {
@@ -59,46 +59,7 @@ impl DataSource {
                 true // No dots. Weird. Let's assume it is a file path.
             } else if parts.len() == 2 {
                 // Extension or `.com` etc?
-                let extension = parts[1];
-
-                matches!(
-                    extension,
-                    // Our own:
-                    "rrd"
-
-                    // Misc:
-                    | "txt"
-                    | "zip"
-
-                    // Meshes:
-                    | "glb"
-                    | "gltf"
-                    | "obj"
-                    | "ply"
-                    | "stl"
-
-                    // Images:
-                    | "avif"
-                    | "bmp"
-                    | "dds"
-                    | "exr"
-                    | "farbfeld"
-                    | "ff"
-                    | "gif"
-                    | "hdr"
-                    | "ico"
-                    | "jpeg"
-                    | "jpg"
-                    | "pam"
-                    | "pbm"
-                    | "pgm"
-                    | "png"
-                    | "ppm"
-                    | "tga"
-                    | "tif"
-                    | "tiff"
-                    | "webp"
-                )
+                is_known_file_extension(parts[1])
             } else {
                 false // Too many dots; assume an url
             }
@@ -150,8 +111,8 @@ impl DataSource {
             #[cfg(not(target_arch = "wasm32"))]
             DataSource::FilePath(path) => {
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::File { path: path.clone() },
-                    re_smart_channel::SmartChannelSource::File { path: path.clone() },
+                    SmartMessageSource::File(path.clone()),
+                    SmartChannelSource::File(path.clone()),
                 );
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
                 crate::load_file_path::load_file_path(store_id, path.clone(), tx)
@@ -162,12 +123,8 @@ impl DataSource {
             DataSource::FileContents(file_contents) => {
                 let name = file_contents.name.clone();
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::File {
-                        path: name.clone().into(),
-                    },
-                    re_smart_channel::SmartChannelSource::File {
-                        path: name.clone().into(),
-                    },
+                    SmartMessageSource::File(name.clone().into()),
+                    SmartChannelSource::File(name.clone().into()),
                 );
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
                 crate::load_file_contents::load_file_contents(store_id, file_contents, tx)
@@ -180,6 +137,48 @@ impl DataSource {
             }
         }
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn is_known_file_extension(extension: &str) -> bool {
+    matches!(
+        extension,
+        // Our own:
+        "rrd"
+
+        // Misc:
+        | "txt"
+        | "zip"
+
+        // Meshes:
+        | "glb"
+        | "gltf"
+        | "obj"
+        | "ply"
+        | "stl"
+
+        // Images:
+        | "avif"
+        | "bmp"
+        | "dds"
+        | "exr"
+        | "farbfeld"
+        | "ff"
+        | "gif"
+        | "hdr"
+        | "ico"
+        | "jpeg"
+        | "jpg"
+        | "pam"
+        | "pbm"
+        | "pgm"
+        | "png"
+        | "ppm"
+        | "tga"
+        | "tif"
+        | "tiff"
+        | "webp"
+    )
 }
 
 #[cfg(not(target_arch = "wasm32"))]
