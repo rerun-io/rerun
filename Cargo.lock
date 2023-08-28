@@ -4037,6 +4037,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_data_source"
+version = "0.9.0-alpha.2+dev"
+dependencies = [
+ "anyhow",
+ "itertools 0.11.0",
+ "rayon",
+ "re_build_tools",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_sdk",
+ "re_smart_channel",
+ "re_tracing",
+ "re_ws_comms",
+]
+
+[[package]]
 name = "re_data_store"
 version = "0.9.0-alpha.2+dev"
 dependencies = [
@@ -4875,6 +4892,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_crash_handler",
+ "re_data_source",
  "re_data_store",
  "re_format",
  "re_log",

@@ -48,7 +48,7 @@ native_viewer = ["dep:re_viewer"]
 server = ["re_sdk_comms/server"]
 
 ## Embed the Rerun SDK and re-export all of its public symbols.
-sdk = ["dep:re_sdk"]
+sdk = ["dep:re_sdk", "re_data_source/sdk"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -74,6 +74,7 @@ re_log.workspace = true
 re_memory.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
+re_data_source.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
