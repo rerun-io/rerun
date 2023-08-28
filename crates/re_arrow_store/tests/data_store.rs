@@ -12,7 +12,8 @@ use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
 use re_arrow_store::{
     polars_util, test_row, test_util::sanity_unwrap, ArrayExt as _, DataStore, DataStoreConfig,
-    DataStoreStats, GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
+    DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery,
+    TimeInt, TimeRange,
 };
 use re_components::{
     datagen::{
@@ -50,7 +51,7 @@ fn all_components() {
             }
 
             // Stress test GC
-            store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+            store2.gc(GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
                 store2.insert_table(&table).unwrap();
             }
@@ -305,7 +306,7 @@ fn latest_at_impl(store: &mut DataStore) {
         store2.insert_table(&table).unwrap();
     }
     // Stress test GC
-    store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+    store2.gc(GarbageCollectionOptions::gc_everything());
     for table in store.to_data_tables(None) {
         store2.insert_table(&table).unwrap();
     }
@@ -438,7 +439,7 @@ fn range_impl(store: &mut DataStore) {
                 store2.insert_table(&table).unwrap();
             }
             store2.wipe_timeless_data();
-            store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+            store2.gc(GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
                 store2.insert_table(&table).unwrap();
             }
@@ -861,8 +862,11 @@ fn gc_impl(store: &mut DataStore) {
 
         let stats = DataStoreStats::from_store(store);
 
-        let (row_ids, stats_diff) =
-            store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0));
+        let (row_ids, stats_diff) = store.gc(GarbageCollectionOptions {
+            target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
+            gc_timeless: false,
+            protect_latest: 0,
+        });
         for row_id in &row_ids {
             assert!(store.get_msg_metadata(row_id).is_none());
         }

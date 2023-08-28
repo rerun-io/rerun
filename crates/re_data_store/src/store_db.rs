@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, TimeInt};
+use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions, TimeInt};
 use re_log_types::{
     ApplicationId, ArrowMsg, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
     EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RowId, SetStoreInfo, StoreId, StoreInfo,
@@ -347,9 +347,13 @@ impl StoreDb {
         re_tracing::profile_function!();
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        let (drop_row_ids, stats_diff) = self.entity_db.data_store.gc(
-            re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
-        );
+        let (drop_row_ids, stats_diff) = self.entity_db.data_store.gc(GarbageCollectionOptions {
+            target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
+                fraction_to_purge as _,
+            ),
+            gc_timeless: false,
+            protect_latest: 0,
+        });
         re_log::trace!(
             num_row_ids_dropped = drop_row_ids.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
