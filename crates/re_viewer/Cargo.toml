@@ -89,7 +89,7 @@ egui-wgpu.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
 once_cell = { workspace = true }
-poll-promise = { version = "0.2", features = ["web"] }
+poll-promise = { version = "0.3", features = ["web"] }
 rfd.workspace = true
 ron = "0.8.0"
 serde = { version = "1", features = ["derive"] }

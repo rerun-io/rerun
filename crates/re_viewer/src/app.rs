@@ -378,7 +378,7 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
                 let egui_ctx = _egui_ctx.clone();
-                self.open_file_promise = Some(poll_promise::Promise::spawn_async(async move {
+                self.open_file_promise = Some(poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
                     file
