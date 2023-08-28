@@ -1,3 +1,15 @@
+//! Handles different ways of loading Rerun data, e.g.:
+//!
+//! - Over HTTPS
+//! - Over WebSockets
+//! - From disk
+//!
+//! Also handles different file types:
+//!
+//! - .rrd
+//! - images
+//! - meshes
+
 mod data_source;
 
 mod load_file_contents;
