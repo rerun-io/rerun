@@ -886,6 +886,24 @@ fn quote_trait_impls_from_obj(
                 (num_components, quoted_components)
             }
 
+            let first_required_comp = obj
+                .fields
+                .iter()
+                .find(|field| {
+                    field
+                        .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
+                        .is_some()
+                })
+                // NOTE: must have at least one required component.
+                .unwrap();
+
+            let num_instances = if first_required_comp.typ.is_plural() {
+                let name = format_ident!("{}", first_required_comp.name);
+                quote!(self.#name.len())
+            } else {
+                quote!(1)
+            };
+
             let (num_required, required) =
                 compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, objects);
             let (num_recommended, recommended) =
@@ -1029,6 +1047,9 @@ fn quote_trait_impls_from_obj(
                 })
             };
 
+            let marker_fqname =
+                format!("{}Marker", obj.fqname).replace("rerun.archetypes", "rerun.components");
+
             quote! {
                 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_required]> =
                     once_cell::sync::Lazy::new(|| {[#required]});
@@ -1073,11 +1094,39 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
+                    fn marker_component() -> crate::ComponentName  {
+                        #marker_fqname.into()
+                    }
+
+                    #[inline]
+                    fn num_instances(&self) -> usize {
+                        #num_instances
+                    }
+
+                    #[inline]
                     fn try_to_arrow(
                         &self,
                     ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
                         use crate::{Loggable as _, ResultExt as _};
-                        Ok([ #({ #all_serializers },)* ].into_iter().flatten().collect())
+                        Ok([
+                            #({ #all_serializers }),*,
+                            // Inject the marker component.
+                            {
+                                let datatype = ::arrow2::datatypes::DataType::Extension(
+                                    #marker_fqname.to_owned(),
+                                    Box::new(::arrow2::datatypes::DataType::Null),
+                                    // NOTE: Mandatory during migration to codegen.
+                                    Some(#marker_fqname.to_owned()),
+                                );
+                                let array = ::arrow2::array::NullArray::new(
+                                    datatype.to_logical_type().clone(), self.num_instances(),
+                                ).boxed();
+                                Some((
+                                    ::arrow2::datatypes::Field::new(#marker_fqname, datatype, false),
+                                    array,
+                                ))
+                            },
+                        ].into_iter().flatten().collect())
                     }
 
                     #[inline]
