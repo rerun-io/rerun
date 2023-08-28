@@ -63,8 +63,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         let blueprint = load_viewport_blueprint(blueprint_db);
 
+        let snapshot = blueprint.clone();
+
         Self {
-            snapshot: blueprint.clone(),
+            snapshot,
             blueprint,
             state,
         }
