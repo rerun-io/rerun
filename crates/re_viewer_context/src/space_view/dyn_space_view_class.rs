@@ -19,6 +19,12 @@ re_string_interner::declare_new_type!(
     pub struct SpaceViewClassName;
 );
 
+impl SpaceViewClassName {
+    pub fn invalid() -> Self {
+        Self::from("invalid")
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum SpaceViewClassLayoutPriority {
     /// This space view can share space with others
