@@ -132,7 +132,7 @@ impl DataSource {
 
     /// Stream the data from the given data source.
     ///
-    /// Will do minimal checks (e.g. that the file exists), for syncronous errors,
+    /// Will do minimal checks (e.g. that the file exists), for synchronous errors,
     /// but the loading is done in a background task.
     ///
     /// `on_msg` can be used to wake up the UI thread on Wasm.
