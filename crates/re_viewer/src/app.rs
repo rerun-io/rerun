@@ -864,8 +864,6 @@ impl App {
     /// loaded). This function implements the heuristic which determines when the welcome screen
     /// should show up.
     fn should_show_welcome_screen(&mut self, store_hub: &mut StoreHub) -> bool {
-        #![allow(clippy::match_same_arms)]
-
         // Don't show the welcome screen if we have actual data to display.
         if store_hub.current_recording().is_some() || store_hub.selected_application_id().is_some()
         {
@@ -889,10 +887,9 @@ impl App {
         // being used in.
         for source in sources {
             match &*source {
-                // These source are typically "finite". We want the loading screen so long as data is
-                // coming in.
+                // No need for a welome screen - data is coming soon!
                 SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
-                    return true;
+                    return false;
                 }
 
                 // The workflows associated with these sources typically do not require showing the
