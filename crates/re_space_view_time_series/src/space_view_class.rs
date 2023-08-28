@@ -1,7 +1,4 @@
-use egui::{
-    plot::{Legend, Line, Plot, Points},
-    Color32,
-};
+use egui::plot::{Legend, Line, Plot, Points};
 
 use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
@@ -175,8 +172,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                     .map(|p| [(p.0 - time_offset) as _, p.1])
                     .collect::<Vec<_>>();
 
-                let c = line.color;
-                let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
+                let color = line.color;
 
                 match line.kind {
                     PlotSeriesKind::Continuous => plot_ui.line(
