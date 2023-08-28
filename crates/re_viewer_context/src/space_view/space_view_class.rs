@@ -207,8 +207,8 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         let view_ctx = {
             re_tracing::profile_scope!("ViewContextSystem::execute");
             let mut view_ctx = systems.new_context_collection();
-            for (name, system) in &mut view_ctx.systems {
-                re_tracing::profile_scope!(name.as_str());
+            for (_name, system) in &mut view_ctx.systems {
+                re_tracing::profile_scope!(_name.as_str());
                 system.execute(ctx, query);
             }
             view_ctx
