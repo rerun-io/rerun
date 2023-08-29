@@ -225,19 +225,8 @@ jobs:
   toml-lints:
     name: Lint TOML files
     runs-on: ubuntu-latest
-    env:
-      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v3
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          # Cache will be produced by `reusable_checks/rs-lints`
-          save_cache: false
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
@@ -349,3 +338,4 @@ jobs:
       - name: Build code examples
         shell: bash
         run: ./tests/cpp/build_all_doc_examples.sh --werror
+
