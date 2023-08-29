@@ -127,7 +127,7 @@ root:
         - name: text-logging
           python: python/text_logging
 
-    - name: paper-walkthrough
+    - name: paper-visualizations
       title: Paper Visualizations
       prelude: |
         The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
