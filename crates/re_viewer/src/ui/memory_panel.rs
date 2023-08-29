@@ -370,8 +370,8 @@ impl MemoryPanel {
 
         use itertools::Itertools as _;
 
-        fn to_line(history: &egui::util::History<i64>) -> egui::plot::Line {
-            egui::plot::Line::new(
+        fn to_line(history: &egui::util::History<i64>) -> egui_plot::Line {
+            egui_plot::Line::new(
                 history
                     .iter()
                     .map(|(time, bytes)| [time, bytes as f64])
@@ -379,19 +379,19 @@ impl MemoryPanel {
             )
         }
 
-        egui::plot::Plot::new("mem_history_plot")
+        egui_plot::Plot::new("mem_history_plot")
             .min_size(egui::Vec2::splat(200.0))
             .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
             .x_axis_formatter(|time, _, _| format!("{time} s"))
             .y_axis_formatter(|bytes, _, _| format_bytes(bytes))
             .show_x(false)
-            .legend(egui::plot::Legend::default().position(egui::plot::Corner::LeftTop))
+            .legend(egui_plot::Legend::default().position(egui_plot::Corner::LeftTop))
             .include_y(0.0)
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
                 if let Some(counted_limit) = limit.limit {
                     plot_ui.hline(
-                        egui::plot::HLine::new(counted_limit as f64)
+                        egui_plot::HLine::new(counted_limit as f64)
                             .name("Limit (counted)")
                             .width(2.0),
                     );
@@ -399,7 +399,7 @@ impl MemoryPanel {
 
                 for &time in &self.memory_purge_times {
                     plot_ui.vline(
-                        egui::plot::VLine::new(time)
+                        egui_plot::VLine::new(time)
                             .name("RAM purge")
                             .color(egui::Color32::from_rgb(252, 161, 3))
                             .width(2.0),
