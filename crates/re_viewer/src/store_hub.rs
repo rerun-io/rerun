@@ -221,13 +221,20 @@ impl StoreHub {
         // Because we save blueprints based on their `ApplicationId`, we only
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
+
+        use re_arrow_store::GarbageCollectionOptions;
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
             let blueprint_path = default_blueprint_path(app_id)?;
             re_log::debug!("Saving blueprint for {app_id} to {blueprint_path:?}");
 
-            if let Some(blueprint) = self.store_dbs.blueprint(blueprint_id) {
+            if let Some(blueprint) = self.store_dbs.blueprint_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
-                    // TODO(#1803): We should "flatten" blueprints when we save them
+                    let gc_rows = blueprint.store_mut().gc(GarbageCollectionOptions {
+                        target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
+                        gc_timeless: true,
+                        protect_latest: 1,
+                    });
+                    re_log::debug!("Cleaned up blueprint: {:?}", gc_rows);
                     // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
                     // be small & fast to save, but maybe not once we start adding big pieces of user data?
                     let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
