@@ -117,6 +117,9 @@ impl DataSource {
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
                 crate::load_file_path::load_file_path(store_id, path.clone(), tx)
                     .with_context(|| format!("{path:?}"))?;
+                if let Some(on_msg) = on_msg {
+                    on_msg();
+                }
                 Ok(rx)
             }
 
@@ -129,6 +132,9 @@ impl DataSource {
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
                 crate::load_file_contents::load_file_contents(store_id, file_contents, tx)
                     .with_context(|| format!("{name:?}"))?;
+                if let Some(on_msg) = on_msg {
+                    on_msg();
+                }
                 Ok(rx)
             }
 

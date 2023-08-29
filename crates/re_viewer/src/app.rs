@@ -329,7 +329,7 @@ impl App {
                         self.add_receiver(rx);
                     }
                     Err(err) => {
-                        re_log::error!("Failed to open data source: {err}");
+                        re_log::error!("Failed to open data source: {}", re_error::format(err));
                     }
                 }
             }
@@ -855,6 +855,8 @@ impl App {
                     .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(path)));
             }
         }
+
+        egui_ctx.request_repaint();
     }
 
     /// This function will create an empty blueprint whenever the welcome screen should be
@@ -1206,6 +1208,8 @@ fn open_file_dialog_native() -> Vec<std::path::PathBuf> {
 async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
     let files = rfd::AsyncFileDialog::new()
         .add_filter("Rerun data file", &["rrd"])
+        .add_filter("Meshes", re_data_source::SUPPORTED_MESH_EXTENSIONS)
+        .add_filter("Images", re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
         .pick_files()
         .await
         .unwrap_or_default();
